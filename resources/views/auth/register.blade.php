@@ -1,7 +1,7 @@
 @extends('layouts.auth')
 
 @section('content')
-<div style="width:100%;max-width:900px;background:#fff;border-radius:24px;box-shadow:0 24px 80px rgba(99,102,241,0.12);overflow:hidden;display:flex;min-height:560px;">
+<div style="width:100%;max-width:880px;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(79,70,229,0.15);overflow:hidden;display:flex;min-height:540px;">
 
     {{-- ── Left: Form ── --}}
     <div style="flex:1;padding:40px 44px;display:flex;flex-direction:column;justify-content:center;min-width:0;">
@@ -139,11 +139,12 @@
         <p style="color:rgba(255,255,255,0.6);font-size:11px;text-align:center;margin-top:32px;line-height:1.6;position:relative;z-index:1;">
             <strong style="color:rgba(255,255,255,0.9);">Tasks, Messages, Calendar</strong><br>everything your team needs.
         </p>
+
+        {{-- Copyright --}}
+        <p style="position:absolute;bottom:16px;right:20px;font-size:10px;color:rgba(255,255,255,0.4);margin:0;z-index:1;">
+            &copy; {{ date('Y') }} {{ $appSettings['app_name'] ?? config('app.name','Dash') }}. All rights reserved.
+        </p>
     </div>
 
 </div>
-
-<p style="text-align:center;font-size:11px;color:rgba(107,114,128,0.7);margin-top:20px;">
-    &copy; {{ date('Y') }} {{ $appSettings['app_name'] ?? config('app.name','Dash') }}. All rights reserved.
-</p>
 @endsection

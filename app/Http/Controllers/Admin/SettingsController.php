@@ -28,6 +28,9 @@ class SettingsController extends Controller
         'accent_color'          => '#6366F1',
         'logo_path'             => '',
         'favicon_path'          => '',
+        'login_bg_type'         => 'gradient',
+        'login_bg_color'        => '#e8eaf6',
+        'login_bg_image'        => '',
         // Team
         'default_role'          => 'user',
         'allow_registration'    => '1',
@@ -83,14 +86,25 @@ class SettingsController extends Controller
     public function updateBranding(Request $request)
     {
         $request->validate([
-            'company_name'  => 'required|string|max:60',
-            'primary_color' => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
-            'accent_color'  => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
-            'logo'          => 'nullable|image|mimes:png,jpg,jpeg,svg,webp|max:2048',
-            'favicon'       => 'nullable|image|mimes:png,jpg,jpeg,ico,svg|max:512',
+            'company_name'     => 'required|string|max:60',
+            'primary_color'    => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'accent_color'     => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'logo'             => 'nullable|image|mimes:png,jpg,jpeg,svg,webp|max:2048',
+            'favicon'          => 'nullable|image|mimes:png,jpg,jpeg,ico,svg|max:512',
+            'login_bg_type'    => 'nullable|in:gradient,color,image',
+            'login_bg_color'   => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'login_bg_image'   => 'nullable|image|mimes:png,jpg,jpeg,webp|max:5120',
         ]);
 
         Setting::setMany($request->only('company_name', 'primary_color', 'accent_color'));
+
+        // Login background type and color
+        if ($request->filled('login_bg_type')) {
+            Setting::set('login_bg_type', $request->login_bg_type);
+        }
+        if ($request->filled('login_bg_color')) {
+            Setting::set('login_bg_color', $request->login_bg_color);
+        }
 
         if ($request->hasFile('logo')) {
             $old = Setting::get('logo_path');
@@ -106,6 +120,13 @@ class SettingsController extends Controller
             Setting::set('favicon_path', $path);
         }
 
+        if ($request->hasFile('login_bg_image')) {
+            $old = Setting::get('login_bg_image');
+            if ($old) Storage::disk('public')->delete($old);
+            $path = $request->file('login_bg_image')->store('branding', 'public');
+            Setting::set('login_bg_image', $path);
+        }
+
         if ($request->input('remove_logo') === '1') {
             $old = Setting::get('logo_path');
             if ($old) Storage::disk('public')->delete($old);
@@ -116,6 +137,12 @@ class SettingsController extends Controller
             $old = Setting::get('favicon_path');
             if ($old) Storage::disk('public')->delete($old);
             Setting::set('favicon_path', '');
+        }
+
+        if ($request->input('remove_login_bg_image') === '1') {
+            $old = Setting::get('login_bg_image');
+            if ($old) Storage::disk('public')->delete($old);
+            Setting::set('login_bg_image', '');
         }
 
         return back()->with('success', 'Branding saved.')->withFragment('branding');

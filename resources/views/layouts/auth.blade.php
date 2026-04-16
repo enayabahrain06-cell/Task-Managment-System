@@ -13,7 +13,7 @@
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; min-height: 100vh;
-               background: linear-gradient(135deg, #fce4ec 0%, #f3e5f5 35%, #e8eaf6 70%, #e3f2fd 100%);
+               background: linear-gradient(135deg, #fce4ec 0%, #ede6f8 40%, #dce8fb 100%);
                display: flex; align-items: center; justify-content: center; padding: 16px; }
 
         /* Floating orbit icons */
@@ -38,6 +38,13 @@
         .pulse-ring2 { animation-delay:0.8s; }
         .pulse-ring3 { animation-delay:1.6s; }
     </style>
+    {{-- Dynamic background override from branding settings --}}
+    @php $loginBgType = $appSettings['login_bg_type'] ?? 'gradient'; @endphp
+    @if($loginBgType === 'color')
+    <style>body { background: {!! e($appSettings['login_bg_color'] ?? '#e8eaf6') !!} !important; }</style>
+    @elseif($loginBgType === 'image' && !empty($appSettings['login_bg_image']))
+    <style>body { background: url('{!! e(\Illuminate\Support\Facades\Storage::url($appSettings['login_bg_image'])) !!}') center/cover no-repeat fixed !important; }</style>
+    @endif
 </head>
 <body>
     @yield('content')

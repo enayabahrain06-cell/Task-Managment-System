@@ -172,15 +172,20 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
         {{-- ════ BRANDING ════ --}}
         <div x-show="tab === 'branding'" x-cloak>
             <div class="scard" x-data="{
-                primary:       '{{ $settings['primary_color'] }}',
-                accent:        '{{ $settings['accent_color'] }}',
-                companyName:   '{{ addslashes($settings['company_name']) }}',
-                logoPreview:   '{{ $settings['logo_path']    ? Storage::url($settings['logo_path'])    : '' }}',
-                faviconPreview:'{{ $settings['favicon_path'] ? Storage::url($settings['favicon_path']) : '' }}',
-                removeLogo:    false,
-                removeFavicon: false,
+                primary:          '{{ $settings['primary_color'] }}',
+                accent:           '{{ $settings['accent_color'] }}',
+                companyName:      '{{ addslashes($settings['company_name']) }}',
+                logoPreview:      '{{ $settings['logo_path']    ? Storage::url($settings['logo_path'])    : '' }}',
+                faviconPreview:   '{{ $settings['favicon_path'] ? Storage::url($settings['favicon_path']) : '' }}',
+                removeLogo:       false,
+                removeFavicon:    false,
+                loginBgType:      '{{ $settings['login_bg_type']  ?? 'gradient' }}',
+                loginBgColor:     '{{ $settings['login_bg_color'] ?? '#e8eaf6' }}',
+                loginBgPreview:   '{{ isset($settings['login_bg_image']) && $settings['login_bg_image'] ? Storage::url($settings['login_bg_image']) : '' }}',
+                removeBgImage:    false,
                 setLogo(e)    { const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=ev=>{ this.logoPreview=ev.target.result; this.removeLogo=false; }; r.readAsDataURL(f); } },
                 setFavicon(e) { const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=ev=>{ this.faviconPreview=ev.target.result; this.removeFavicon=false; }; r.readAsDataURL(f); } },
+                setBgImage(e) { const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=ev=>{ this.loginBgPreview=ev.target.result; this.removeBgImage=false; }; r.readAsDataURL(f); } },
             }">
                 <div class="scard-header">
                     <div class="scard-icon" style="background:#FDF2F8;color:#EC4899;"><i class="fas fa-palette"></i></div>
@@ -310,6 +315,87 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 </div>
                             </div>
                         </div>
+
+                        {{-- ── Login Background ── --}}
+                        <div style="margin-top:24px;padding-top:20px;border-top:1px solid #F3F4F6;">
+                            <label class="sf-label" style="margin-bottom:10px;">Login Page Background</label>
+                            <p class="sf-hint" style="margin-bottom:14px;">Controls the background of the login and register pages.</p>
+
+                            {{-- Type selector --}}
+                            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;">
+                                <label style="cursor:pointer;">
+                                    <input type="radio" name="login_bg_type" value="gradient" x-model="loginBgType" style="display:none;">
+                                    <div :style="loginBgType==='gradient' ? 'border-color:#6366F1;background:#EEF2FF;' : 'border-color:#E5E7EB;'"
+                                         style="border:2px solid;border-radius:10px;padding:10px 8px;text-align:center;transition:all 0.15s;cursor:pointer;">
+                                        <div style="height:28px;border-radius:6px;background:linear-gradient(135deg,#fce4ec,#f3e5f5,#e8eaf6,#e3f2fd);margin-bottom:6px;"></div>
+                                        <p style="font-size:11px;font-weight:600;margin:0;" :style="loginBgType==='gradient' ? 'color:#4F46E5' : 'color:#374151'">Gradient</p>
+                                    </div>
+                                </label>
+                                <label style="cursor:pointer;">
+                                    <input type="radio" name="login_bg_type" value="color" x-model="loginBgType" style="display:none;">
+                                    <div :style="loginBgType==='color' ? 'border-color:#6366F1;background:#EEF2FF;' : 'border-color:#E5E7EB;'"
+                                         style="border:2px solid;border-radius:10px;padding:10px 8px;text-align:center;transition:all 0.15s;cursor:pointer;">
+                                        <div :style="`height:28px;border-radius:6px;background:${loginBgColor};margin-bottom:6px;`"></div>
+                                        <p style="font-size:11px;font-weight:600;margin:0;" :style="loginBgType==='color' ? 'color:#4F46E5' : 'color:#374151'">Solid Color</p>
+                                    </div>
+                                </label>
+                                <label style="cursor:pointer;">
+                                    <input type="radio" name="login_bg_type" value="image" x-model="loginBgType" style="display:none;">
+                                    <div :style="loginBgType==='image' ? 'border-color:#6366F1;background:#EEF2FF;' : 'border-color:#E5E7EB;'"
+                                         style="border:2px solid;border-radius:10px;padding:10px 8px;text-align:center;transition:all 0.15s;cursor:pointer;">
+                                        <div style="height:28px;border-radius:6px;background:#E5E7EB;display:flex;align-items:center;justify-content:center;margin-bottom:6px;">
+                                            <i class="fas fa-image" style="color:#9CA3AF;font-size:13px;"></i>
+                                        </div>
+                                        <p style="font-size:11px;font-weight:600;margin:0;" :style="loginBgType==='image' ? 'color:#4F46E5' : 'color:#374151'">Image</p>
+                                    </div>
+                                </label>
+                            </div>
+
+                            {{-- Solid Color picker --}}
+                            <div x-show="loginBgType === 'color'" style="margin-bottom:8px;">
+                                <label class="sf-label">Background Color</label>
+                                <div class="color-wrap">
+                                    <input type="color" x-model="loginBgColor" class="color-swatch"
+                                           :style="`background:${loginBgColor};border-color:${loginBgColor}`">
+                                    <input type="text" name="login_bg_color" class="sf-input"
+                                           x-model="loginBgColor" pattern="^#[0-9A-Fa-f]{6}$">
+                                </div>
+                            </div>
+
+                            {{-- Image upload --}}
+                            <div x-show="loginBgType === 'image'">
+                                <label class="sf-label">
+                                    Background Image
+                                    <span style="font-size:10px;color:#9CA3AF;font-weight:400;margin-left:4px;">PNG, JPG, WEBP · max 5 MB</span>
+                                </label>
+                                <div class="upload-zone" @dragover.prevent @drop.prevent="setBgImage($event.dataTransfer)"
+                                     style="min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;">
+                                    <input type="file" name="login_bg_image" accept="image/png,image/jpeg,image/webp" @change="setBgImage($event)">
+                                    <input type="hidden" name="remove_login_bg_image" :value="removeBgImage ? '1' : '0'">
+
+                                    <template x-if="loginBgPreview && !removeBgImage">
+                                        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;">
+                                            <img :src="loginBgPreview" class="upload-preview" alt="Background preview"
+                                                 style="height:80px;object-fit:cover;border-radius:8px;">
+                                            <button type="button" class="remove-btn"
+                                                    @click.stop="removeBgImage=true;loginBgPreview=''">
+                                                <i class="fas fa-trash-can"></i> Remove
+                                            </button>
+                                        </div>
+                                    </template>
+                                    <template x-if="!loginBgPreview || removeBgImage">
+                                        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;">
+                                            <div style="width:40px;height:40px;background:#F0F9FF;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                                                <i class="fas fa-panorama" style="color:#0EA5E9;font-size:16px;"></i>
+                                            </div>
+                                            <p style="font-size:12px;font-weight:500;color:#374151;margin:0;">Click or drag to upload</p>
+                                            <p style="font-size:11px;color:#9CA3AF;margin:0;">Used as the full-page background</p>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
 
                     <div class="scard-footer">
