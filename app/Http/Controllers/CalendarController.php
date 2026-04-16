@@ -1,0 +1,65 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Meeting;
+use App\Models\Task;
+use App\Models\User;
+
+class CalendarController extends Controller
+{
+    public function index()
+    {
+        $user = auth()->user();
+
+        $tasks = match($user->role) {
+            'admin', 'manager' => Task::with('project', 'assignee')->get(),
+            default            => $user->tasks()->with('project')->get(),
+        };
+
+        $events = $tasks->map(fn($task) => [
+            'id'    => $task->id,
+            'title' => $task->title,
+            'start' => $task->deadline->format('Y-m-d'),
+            'color' => match($task->status) {
+                'completed'   => '#10B981',
+                'in_progress' => '#F59E0B',
+                default       => match($task->priority) {
+                    'high'   => '#EF4444',
+                    'medium' => '#6366F1',
+                    default  => '#9CA3AF',
+                },
+            },
+            'extendedProps' => [
+                'type'    => 'task',
+                'id'      => $task->id,
+                'status'  => $task->status,
+                'project' => $task->project->name ?? '',
+            ],
+        ]);
+
+        // Add meeting events to calendar
+        $allMeetings = Meeting::with(['creator', 'attendees'])->get();
+        $meetingEvents = $allMeetings->map(fn($m) => [
+            'id'    => 'meeting-' . $m->id,
+            'title' => '📅 ' . $m->title,
+            'start' => $m->meeting_date->format('Y-m-d') . 'T' . $m->start_time,
+            'color' => $m->color,
+            'extendedProps' => ['type' => 'meeting', 'location' => $m->location ?? ''],
+        ]);
+
+        $events = $events->merge($meetingEvents);
+
+        $todayTasks    = $tasks->filter(fn($t) => $t->deadline->isToday());
+        $upcomingTasks = $tasks->filter(fn($t) => $t->deadline->isFuture() && !$t->deadline->isToday())
+            ->sortBy('deadline')->take(5);
+
+        // Meetings
+        $todayMeetings    = $allMeetings->filter(fn($m) => $m->meeting_date->isToday())->sortBy('start_time');
+        $upcomingMeetings = $allMeetings->filter(fn($m) => $m->meeting_date->isFuture())->sortBy('meeting_date')->take(3);
+
+        $teamMembers = $user->role === 'admin' ? User::where('id', '!=', $user->id)->orderBy('name')->get() : collect();
+
+        return view('calendar.index', compact('events', 'todayTasks', 'upcomingTasks', 'todayMeetings', 'upcomingMeetings', 'teamMembers', 'allMeetings'));
+    }
+}

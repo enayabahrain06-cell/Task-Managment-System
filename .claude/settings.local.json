@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan *)",
+      "Bash(php -l app/Models/User.php app/Http/Controllers/MessagesController.php app/Http/Controllers/ActivitiesController.php app/Http/Controllers/CalendarController.php app/Http/Controllers/TeamController.php app/Http/Controllers/Admin/DashboardController.php app/Providers/AppServiceProvider.php)",
+      "Read(//c/Users/it/.claude/projects/c--Users-it-Desktop-task-managment-system/memory/**)",
+      "WebFetch(domain:dribbble.com)",
+      "WebSearch",
+      "Bash(php -r ' *)",
+      "Bash(php -r \"require 'vendor/autoload.php';\")"
+    ]
+  }
+}
