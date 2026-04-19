@@ -14,8 +14,8 @@ class TaskApprovalController extends Controller
 {
     public function index()
     {
-        $tasks = Task::where('status', 'pending_approval')
-            ->with(['project', 'assignee', 'submissions' => fn($q) => $q->latest()])
+        $tasks = Task::where('status', 'submitted')
+            ->with(['project', 'assignee', 'assignees', 'submissions' => fn($q) => $q->latest()])
             ->latest()
             ->paginate(20);
 
@@ -31,7 +31,7 @@ class TaskApprovalController extends Controller
             ->orderByDesc('version')
             ->first();
 
-        $task->update(['status' => 'completed']);
+        $task->update(['status' => 'approved']);
 
         TaskSubmission::where('task_id', $task->id)
             ->where('status', 'submitted')
@@ -45,13 +45,15 @@ class TaskApprovalController extends Controller
         TaskLog::create([
             'task_id'  => $task->id,
             'user_id'  => auth()->id(),
-            'action'   => 'status_updated_completed',
+            'action'   => 'status_updated_approved',
             'note'     => $request->note ? 'Approved: ' . $request->note : 'Approved by admin',
             'metadata' => [
-                'reviewer_id'       => auth()->id(),
-                'reviewer_name'     => auth()->user()->name,
-                'submission_version'=> $latestSub?->version,
-                'approval_note'     => $request->note,
+                'old_status'         => 'submitted',
+                'new_status'         => 'approved',
+                'reviewer_id'        => auth()->id(),
+                'reviewer_name'      => auth()->user()->name,
+                'submission_version' => $latestSub?->version,
+                'approval_note'      => $request->note,
             ],
         ]);
 
@@ -59,7 +61,7 @@ class TaskApprovalController extends Controller
             $task->assignee->notify(new TaskApproved($task, $request->note));
         }
 
-        return back()->with('success', 'Task approved and marked as completed.');
+        return back()->with('success', 'Task approved.');
     }
 
     public function reject(Request $request, Task $task)
@@ -71,7 +73,7 @@ class TaskApprovalController extends Controller
             ->orderByDesc('version')
             ->first();
 
-        $task->update(['status' => 'in_progress']);
+        $task->update(['status' => 'revision_requested']);
 
         TaskSubmission::where('task_id', $task->id)
             ->where('status', 'submitted')
@@ -85,9 +87,11 @@ class TaskApprovalController extends Controller
         TaskLog::create([
             'task_id'  => $task->id,
             'user_id'  => auth()->id(),
-            'action'   => 'status_updated_in_progress',
-            'note'     => 'Rejected: ' . $request->note,
+            'action'   => 'status_updated_revision_requested',
+            'note'     => 'Revision requested: ' . $request->note,
             'metadata' => [
+                'old_status'         => 'submitted',
+                'new_status'         => 'revision_requested',
                 'reviewer_id'        => auth()->id(),
                 'reviewer_name'      => auth()->user()->name,
                 'submission_version' => $latestSub?->version,
@@ -99,6 +103,6 @@ class TaskApprovalController extends Controller
             $task->assignee->notify(new TaskRejected($task, $request->note));
         }
 
-        return back()->with('success', 'Task rejected — user notified to revise.');
+        return back()->with('success', 'Revision requested — assignee has been notified.');
     }
 }

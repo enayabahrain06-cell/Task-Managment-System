@@ -29,6 +29,11 @@ class Project extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function attachments(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ProjectAttachment::class)->orderBy('created_at');
+    }
+
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\Task;
 use App\Models\TaskLog;
+use App\Models\TaskTransfer;
 use App\Models\User;
 use App\Notifications\UserReportSubmitted;
 use Illuminate\Http\Request;
@@ -16,42 +17,69 @@ class DashboardController extends Controller
         $user     = auth()->user();
         $allTasks = $user->tasks()->with('project')->get();
 
-        $total      = $allTasks->count();
-        $completed  = $allTasks->where('status', 'completed')->count();
-        $inProgress = $allTasks->where('status', 'in_progress')->count();
-        $pending    = $allTasks->where('status', 'pending')->count();
-        $pendingApproval = $allTasks->where('status', 'pending_approval')->count();
-        $overdue    = $allTasks->filter(fn($t) => $t->deadline->isPast() && !in_array($t->status, ['completed','pending_approval']))->count();
-        $rate       = $total > 0 ? round($completed / $total * 100) : 0;
+        // IDs of tasks that were transferred TO this user (inherited)
+        $inheritedIds = TaskTransfer::where('to_user_id', $user->id)
+            ->pluck('task_id')
+            ->unique();
 
-        // My tasks sorted: overdue → in_progress → pending_approval → upcoming → completed
-        $tasks = $allTasks->sortBy(function ($t) {
-            if ($t->status === 'completed')        return '5_' . $t->deadline->format('Y-m-d');
-            if ($t->status === 'pending_approval') return '3_' . $t->deadline->format('Y-m-d');
-            if ($t->deadline->isPast())            return '1_' . $t->deadline->format('Y-m-d');
-            if ($t->status === 'in_progress')      return '2_' . $t->deadline->format('Y-m-d');
-            return '4_' . $t->deadline->format('Y-m-d');
+        // Native = assigned to this user and NOT inherited
+        $nativeTasks    = $allTasks->whereNotIn('id', $inheritedIds);
+        $inheritedTasks = $allTasks->whereIn('id', $inheritedIds);
+
+        $doneStatuses   = ['approved', 'delivered', 'archived'];
+        $activeStatuses = ['draft', 'assigned', 'viewed', 'in_progress', 'submitted', 'revision_requested'];
+
+        $total      = $allTasks->count();
+        $completed  = $allTasks->whereIn('status', $doneStatuses)->count();
+        $inProgress = $allTasks->where('status', 'in_progress')->count();
+        $pending    = $allTasks->whereIn('status', ['draft', 'assigned', 'viewed'])->count();
+        $inReview   = $allTasks->where('status', 'submitted')->count();
+        $overdue    = $allTasks->filter(
+            fn($t) => $t->deadline && $t->deadline->isPast() && in_array($t->status, $activeStatuses)
+        )->count();
+
+        // Completion rate based on native tasks only (excludes inherited)
+        $nativeTotal     = $nativeTasks->count();
+        $nativeCompleted = $nativeTasks->whereIn('status', $doneStatuses)->count();
+        $rate            = $nativeTotal > 0 ? round($nativeCompleted / $nativeTotal * 100) : 0;
+
+        // My tasks sorted: overdue → in_progress → submitted → upcoming → done
+        $tasks = $allTasks->sortBy(function ($t) use ($doneStatuses) {
+            if (in_array($t->status, $doneStatuses))  return '5_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+            if ($t->status === 'submitted')            return '3_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+            if ($t->deadline && $t->deadline->isPast()) return '1_' . $t->deadline->format('Y-m-d');
+            if ($t->status === 'in_progress')          return '2_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+            return '4_' . ($t->deadline?->format('Y-m-d') ?? '9999');
         })->values();
 
-        // Next 4 upcoming (non-completed, future deadline)
+        // Tag each task as inherited or not for the view
+        $tasks = $tasks->map(function ($t) use ($inheritedIds) {
+            $t->is_inherited = $inheritedIds->contains($t->id);
+            return $t;
+        });
+
+        // Next 4 upcoming (non-done, future deadline)
         $upcomingTasks = $allTasks
-            ->filter(fn($t) => $t->deadline->isFuture() && !in_array($t->status, ['completed','pending_approval']))
+            ->filter(fn($t) => $t->deadline && $t->deadline->isFuture() && !in_array($t->status, $doneStatuses))
             ->sortBy('deadline')
             ->take(4);
 
-        // Team tasks: all tasks in my projects, excluding my own
+        // Team tasks: tasks in my projects not assigned to me
         $myProjectIds = $user->projects()->pluck('projects.id');
         $teamTasks = Task::whereIn('project_id', $myProjectIds)
             ->where('assigned_to', '!=', $user->id)
             ->with(['project', 'assignee'])
-            ->orderByRaw("CASE WHEN status='completed' THEN 1 ELSE 0 END")
+            ->orderByRaw("CASE WHEN status IN ('approved','delivered','archived') THEN 1 ELSE 0 END")
             ->orderBy('deadline')
             ->take(20)
             ->get();
 
         // My projects with progress
         $myProjects = $user->projects()
-            ->withCount(['tasks', 'tasks as completed_count' => fn($q) => $q->where('status','completed')])
+            ->withCount([
+                'tasks',
+                'tasks as completed_count' => fn($q) => $q->whereIn('status', $doneStatuses),
+            ])
             ->orderByRaw("CASE WHEN status='completed' THEN 1 ELSE 0 END")
             ->orderBy('deadline')
             ->take(6)
@@ -64,7 +92,7 @@ class DashboardController extends Controller
             ->take(8)
             ->get();
 
-        // Last 7 days activity for bar chart
+        // Last 7 days activity bar chart
         $weekActivity = collect(range(6, 0))->map(function ($daysAgo) use ($user) {
             $date = now()->subDays($daysAgo)->toDateString();
             return [
@@ -75,10 +103,15 @@ class DashboardController extends Controller
             ];
         });
 
+        $inheritedCount = $inheritedTasks->count();
+
+        $pendingApproval = $inReview; // view uses old name, maps to 'submitted' status
+
         return view('user.dashboard', compact(
             'total', 'completed', 'inProgress', 'pending', 'pendingApproval', 'overdue', 'rate',
             'tasks', 'upcomingTasks', 'recentActivity', 'weekActivity',
-            'teamTasks', 'myProjects'
+            'teamTasks', 'myProjects',
+            'inheritedCount', 'nativeTotal', 'nativeCompleted'
         ));
     }
 

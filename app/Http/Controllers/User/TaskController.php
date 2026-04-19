@@ -8,6 +8,7 @@ use App\Models\Task;
 use App\Models\TaskComment;
 use App\Models\TaskLog;
 use App\Models\TaskSubmission;
+use App\Models\TaskTransfer;
 use App\Models\User;
 use App\Notifications\TaskCommentPosted;
 use App\Notifications\TaskCompleted;
@@ -29,9 +30,13 @@ class TaskController extends Controller
             abort(403);
         }
 
-        // Notify admins and log first view
+        // Auto-advance to "viewed" on first open
         if (is_null($task->first_viewed_at)) {
-            $task->update(['first_viewed_at' => now()]);
+            $updates = ['first_viewed_at' => now()];
+            if ($task->status === 'assigned') {
+                $updates['status'] = 'viewed';
+            }
+            $task->update($updates);
 
             TaskLog::create([
                 'task_id'  => $task->id,
@@ -49,8 +54,15 @@ class TaskController extends Controller
             );
         }
 
-        $task->load('project', 'logs.user', 'submissions.user', 'submissions.reviewer', 'comments.user');
-        return view('user.tasks.show', compact('task'));
+        $task->load('project', 'assignees', 'reviewer', 'creator', 'logs.user', 'submissions.user', 'submissions.reviewer', 'comments.user', 'transfers.fromUser', 'transfers.transferredBy');
+
+        // Find the transfer that handed this task TO the current user
+        $incomingTransfer = $task->transfers
+            ->where('to_user_id', auth()->id())
+            ->sortByDesc('transferred_at')
+            ->first();
+
+        return view('user.tasks.show', compact('task', 'incomingTransfer'));
     }
 
     public function updateStatus(Request $request, Task $task)
@@ -59,10 +71,20 @@ class TaskController extends Controller
             abort(403);
         }
 
+        $allowed = match($task->status) {
+            'viewed', 'revision_requested' => ['in_progress'],
+            'in_progress'                  => [],
+            default                        => [],
+        };
+
         $request->validate([
-            'status' => 'required|in:pending,in_progress',
+            'status' => 'required|in:' . implode(',', $allowed ?: ['in_progress']),
             'note'   => 'nullable|string|max:500',
         ]);
+
+        if (!in_array($request->status, $allowed)) {
+            return back()->with('error', 'This status transition is not allowed.');
+        }
 
         $oldStatus = $task->status;
         $task->update(['status' => $request->status]);
@@ -78,7 +100,7 @@ class TaskController extends Controller
             ],
         ]);
 
-        return back()->with('success', 'Status updated.');
+        return back()->with('success', 'Status updated to ' . ucfirst(str_replace('_', ' ', $request->status)) . '.');
     }
 
     public function submitVersion(Request $request, Task $task)
@@ -87,8 +109,9 @@ class TaskController extends Controller
             abort(403);
         }
 
-        if ($task->status === 'completed') {
-            return back()->with('error', 'This task is already completed.');
+        $notSubmittable = ['submitted', 'approved', 'delivered', 'archived'];
+        if (in_array($task->status, $notSubmittable)) {
+            return back()->with('error', 'This task cannot receive new submissions at this stage.');
         }
 
         $request->validate([
@@ -120,22 +143,24 @@ class TaskController extends Controller
             'status'            => 'submitted',
         ]);
 
-        $task->update(['status' => 'pending_approval']);
+        $oldStatus = $task->status;
+        $task->update(['status' => 'submitted']);
 
         TaskLog::create([
             'task_id'  => $task->id,
             'user_id'  => auth()->id(),
-            'action'   => 'status_updated_pending_approval',
+            'action'   => 'status_updated_submitted',
             'note'     => 'Submitted version ' . $version . ($request->note ? ': ' . $request->note : ''),
             'metadata' => [
-                'version'           => $version,
-                'has_file'          => !is_null($filePath),
-                'filename'          => $originalFilename,
-                'submission_note'   => $request->note,
+                'old_status'      => $oldStatus,
+                'new_status'      => 'submitted',
+                'version'         => $version,
+                'has_file'        => !is_null($filePath),
+                'filename'        => $originalFilename,
+                'submission_note' => $request->note,
             ],
         ]);
 
-        // Notify admins
         if (Setting::get('notify_on_complete', '1') === '1') {
             $task->load('assignee');
             $hasFile = !is_null($filePath);

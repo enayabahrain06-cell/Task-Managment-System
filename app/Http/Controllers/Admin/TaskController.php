@@ -17,7 +17,7 @@ class TaskController extends Controller
 {
     public function show(Task $task)
     {
-        $task->load('project', 'assignee', 'logs.user', 'submissions.user', 'submissions.reviewer', 'comments.user');
+        $task->load('project', 'assignee', 'assignees', 'reviewer', 'creator', 'logs.user', 'submissions.user', 'submissions.reviewer', 'comments.user', 'transfers.fromUser', 'transfers.toUser', 'transfers.transferredBy');
         $users = User::whereIn('role', ['user', 'manager'])->orderBy('name')->get();
         return view('admin.tasks.show', compact('task', 'users'));
     }
@@ -53,8 +53,8 @@ class TaskController extends Controller
     {
         $request->validate(['note' => 'nullable|string|max:500']);
 
-        if ($task->status !== 'completed') {
-            return back()->with('error', 'Only completed tasks can be marked as delivered.');
+        if ($task->status !== 'approved') {
+            return back()->with('error', 'Only approved tasks can be marked as delivered.');
         }
 
         $task->update(['status' => 'delivered']);
@@ -65,6 +65,8 @@ class TaskController extends Controller
             'action'   => 'status_updated_delivered',
             'note'     => $request->note ? 'Delivered: ' . $request->note : 'Marked as delivered',
             'metadata' => [
+                'old_status'        => 'approved',
+                'new_status'        => 'delivered',
                 'delivered_by_id'   => auth()->id(),
                 'delivered_by_name' => auth()->user()->name,
                 'delivery_note'     => $request->note,
@@ -76,6 +78,26 @@ class TaskController extends Controller
         }
 
         return back()->with('success', 'Task marked as delivered — ' . ($task->assignee->name ?? 'assignee') . ' has been notified.');
+    }
+
+    public function archive(Request $request, Task $task)
+    {
+        $task->update(['status' => 'archived']);
+
+        TaskLog::create([
+            'task_id'  => $task->id,
+            'user_id'  => auth()->id(),
+            'action'   => 'status_updated_archived',
+            'note'     => 'Task archived by ' . auth()->user()->name,
+            'metadata' => [
+                'old_status'       => $task->getOriginal('status'),
+                'new_status'       => 'archived',
+                'archived_by_id'   => auth()->id(),
+                'archived_by_name' => auth()->user()->name,
+            ],
+        ]);
+
+        return back()->with('success', 'Task archived.');
     }
 
     public function reassign(Request $request, Task $task)

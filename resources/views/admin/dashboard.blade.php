@@ -49,8 +49,8 @@
 .priority-btn.active-high   { background:#FFF1F2; border-color:#EF4444; color:#DC2626; }
 </style>
 
-{{-- ══ Page Title + Quick Create Modal ══ --}}
-<div x-data="taskModal()" style="margin-bottom:22px;">
+{{-- ══ Page Title + Quick Create Modals ══ --}}
+<div x-data="dashModals()" style="margin-bottom:22px;">
 
     {{-- Title row --}}
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
@@ -64,8 +64,13 @@
                 <span>Last Week</span>
                 <i class="fas fa-chevron-down" style="color:#9CA3AF;font-size:10px;"></i>
             </div>
+            {{-- NEW PROJECT BUTTON --}}
+            <button @click="projectOpen = true"
+                    style="display:flex;align-items:center;gap:7px;background:#fff;color:#4F46E5;font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;border:1.5px solid #C7D2FE;cursor:pointer;">
+                <i class="fas fa-folder-plus" style="font-size:11px;"></i> New Project
+            </button>
             {{-- NEW TASK BUTTON --}}
-            <button @click="open = true"
+            <button @click="taskOpen = true"
                     style="display:flex;align-items:center;gap:7px;background:#4F46E5;color:#fff;font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;border:none;cursor:pointer;box-shadow:0 2px 10px rgba(79,70,229,0.4);">
                 <i class="fas fa-plus" style="font-size:11px;"></i> New Task
             </button>
@@ -76,7 +81,7 @@
     </div>
 
     {{-- ══ Create Task Modal ══ --}}
-    <div x-show="open" x-cloak class="task-modal-backdrop" @click.self="open = false"
+    <div x-show="taskOpen" x-cloak class="task-modal-backdrop" @click.self="taskOpen = false"
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
          x-transition:leave="transition ease-in duration-150"
@@ -99,7 +104,7 @@
                         <p  style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Assign and track instantly</p>
                     </div>
                 </div>
-                <button @click="open = false"
+                <button @click="taskOpen = false"
                         style="width:32px;height:32px;border-radius:8px;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:13px;">
                     <i class="fas fa-times"></i>
                 </button>
@@ -107,7 +112,7 @@
 
             {{-- Modal Body --}}
             <div class="task-modal-body">
-                <form method="POST" action="{{ route('admin.tasks.quick') }}" @submit="submitting = true">
+                <form method="POST" action="{{ route('admin.tasks.quick') }}" @submit="taskSubmitting = true">
                     @csrf
 
                     {{-- Title --}}
@@ -179,16 +184,102 @@
 
                     {{-- Actions --}}
                     <div style="display:flex;align-items:center;gap:10px;justify-content:flex-end;">
-                        <button type="button" @click="open = false"
+                        <button type="button" @click="taskOpen = false"
                                 style="padding:9px 20px;font-size:13px;font-weight:500;background:#F3F4F6;border:none;border-radius:9px;cursor:pointer;color:#374151;">
                             Cancel
                         </button>
-                        <button type="submit" :disabled="submitting"
+                        <button type="submit" :disabled="taskSubmitting"
                                 style="padding:9px 24px;font-size:13px;font-weight:600;background:#4F46E5;color:#fff;border:none;border-radius:9px;cursor:pointer;box-shadow:0 2px 8px rgba(79,70,229,0.35);display:flex;align-items:center;gap:7px;"
-                                :style="submitting ? 'opacity:0.7;cursor:not-allowed;' : ''">
-                            <i class="fas fa-plus" style="font-size:11px;" x-show="!submitting"></i>
-                            <i class="fas fa-spinner fa-spin" style="font-size:11px;" x-show="submitting"></i>
-                            <span x-text="submitting ? 'Creating…' : 'Create Task'"></span>
+                                :style="taskSubmitting ? 'opacity:0.7;cursor:not-allowed;' : ''">
+                            <i class="fas fa-plus" style="font-size:11px;" x-show="!taskSubmitting"></i>
+                            <i class="fas fa-spinner fa-spin" style="font-size:11px;" x-show="taskSubmitting"></i>
+                            <span x-text="taskSubmitting ? 'Creating…' : 'Create Task'"></span>
+                        </button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══ Create Project Modal ══ --}}
+    <div x-show="projectOpen" x-cloak class="task-modal-backdrop" @click.self="projectOpen = false"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+
+        <div class="task-modal"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 translate-y-4 scale-95"
+             x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+             @click.stop>
+
+            {{-- Modal Header --}}
+            <div class="task-modal-header">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:36px;height:36px;background:#EEF2FF;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-folder-plus" style="color:#4F46E5;font-size:15px;"></i>
+                    </div>
+                    <div>
+                        <h2 style="font-size:16px;font-weight:700;color:#111827;margin:0;">Create New Project</h2>
+                        <p  style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Set up a new project instantly</p>
+                    </div>
+                </div>
+                <button @click="projectOpen = false"
+                        style="width:32px;height:32px;border-radius:8px;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:13px;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            {{-- Modal Body --}}
+            <div class="task-modal-body">
+                <form method="POST" action="{{ route('admin.projects.store') }}" @submit="projectSubmitting = true">
+                    @csrf
+
+                    {{-- Name --}}
+                    <div style="margin-bottom:16px;">
+                        <label class="form-label">Project Name <span style="color:#EF4444;">*</span></label>
+                        <input type="text" name="name" class="form-input" placeholder="e.g. Website Redesign" required
+                               value="{{ old('name') }}">
+                    </div>
+
+                    {{-- Description --}}
+                    <div style="margin-bottom:16px;">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-input" rows="3"
+                                  placeholder="Brief overview of this project (optional)" style="resize:vertical;">{{ old('description') }}</textarea>
+                    </div>
+
+                    {{-- Deadline + Status (2 cols) --}}
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;">
+                        <div>
+                            <label class="form-label">Deadline</label>
+                            <input type="date" name="deadline" class="form-input"
+                                   min="{{ date('Y-m-d') }}" value="{{ old('deadline') }}">
+                        </div>
+                        <div>
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-input form-select">
+                                <option value="active" {{ old('status','active') === 'active' ? 'selected' : '' }}>Active</option>
+                                <option value="on_hold" {{ old('status') === 'on_hold' ? 'selected' : '' }}>On Hold</option>
+                                <option value="completed" {{ old('status') === 'completed' ? 'selected' : '' }}>Completed</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {{-- Actions --}}
+                    <div style="display:flex;align-items:center;gap:10px;justify-content:flex-end;">
+                        <button type="button" @click="projectOpen = false"
+                                style="padding:9px 20px;font-size:13px;font-weight:500;background:#F3F4F6;border:none;border-radius:9px;cursor:pointer;color:#374151;">
+                            Cancel
+                        </button>
+                        <button type="submit" :disabled="projectSubmitting"
+                                style="padding:9px 24px;font-size:13px;font-weight:600;background:#4F46E5;color:#fff;border:none;border-radius:9px;cursor:pointer;box-shadow:0 2px 8px rgba(79,70,229,0.35);display:flex;align-items:center;gap:7px;"
+                                :style="projectSubmitting ? 'opacity:0.7;cursor:not-allowed;' : ''">
+                            <i class="fas fa-folder-plus" style="font-size:11px;" x-show="!projectSubmitting"></i>
+                            <i class="fas fa-spinner fa-spin" style="font-size:11px;" x-show="projectSubmitting"></i>
+                            <span x-text="projectSubmitting ? 'Creating…' : 'Create Project'"></span>
                         </button>
                     </div>
 
@@ -201,11 +292,13 @@
 
 @push('scripts')
 <script>
-function taskModal() {
+function dashModals() {
     return {
-        open:      {{ $errors->any() ? 'true' : 'false' }},
-        priority:  '{{ old('priority', 'medium') }}',
-        submitting: false,
+        taskOpen:           {{ $errors->any() ? 'true' : 'false' }},
+        taskSubmitting:     false,
+        priority:           '{{ old('priority', 'medium') }}',
+        projectOpen:        false,
+        projectSubmitting:  false,
     };
 }
 </script>
@@ -281,6 +374,101 @@ function taskModal() {
                 <span style="font-size:11px;color:#9CA3AF;">Users</span>
             </div>
         </div>
+    </div>
+</div>
+
+{{-- ══ Task Analytics ══ --}}
+<div class="dash-card" style="margin-bottom:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+        <div>
+            <h3 style="font-size:14px;font-weight:700;color:#111827;margin:0;display:flex;align-items:center;gap:8px;">
+                <i class="fas fa-chart-pie" style="color:#6366F1;font-size:13px;"></i> Task Analytics
+            </h3>
+            <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">All-time overview across every task in the system</p>
+        </div>
+        <a href="{{ route('admin.projects.index') }}" style="font-size:11px;color:#4F46E5;text-decoration:none;font-weight:600;">View Projects →</a>
+    </div>
+
+    {{-- Main grid: status counts --}}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:14px;">
+
+        @php
+        $analyticsItems = [
+            ['label'=>'Total Assigned',  'value'=>$taskOverview['assigned'],    'icon'=>'fa-user-check',     'bg'=>'#EEF2FF','color'=>'#4F46E5'],
+            ['label'=>'Pending',         'value'=>$taskOverview['pending'],     'icon'=>'fa-clock',          'bg'=>'#F3F4F6','color'=>'#6B7280'],
+            ['label'=>'In Progress',     'value'=>$taskOverview['in_progress'], 'icon'=>'fa-spinner',        'bg'=>'#FEF3C7','color'=>'#D97706'],
+            ['label'=>'Waiting Review',  'value'=>$taskOverview['in_review'],   'icon'=>'fa-gavel',          'bg'=>'#EDE9FE','color'=>'#7C3AED'],
+            ['label'=>'Completed',       'value'=>$taskOverview['completed'],   'icon'=>'fa-circle-check',   'bg'=>'#D1FAE5','color'=>'#059669'],
+            ['label'=>'Delivered',       'value'=>$taskOverview['delivered'],   'icon'=>'fa-truck',          'bg'=>'#ECFDF5','color'=>'#047857'],
+            ['label'=>'Overdue',         'value'=>$taskOverview['overdue'],     'icon'=>'fa-triangle-exclamation','bg'=>'#FEE2E2','color'=>'#DC2626'],
+            ['label'=>'Due Today',       'value'=>$taskOverview['due_today'],   'icon'=>'fa-calendar-day',   'bg'=>'#FFF7ED','color'=>'#EA580C'],
+            ['label'=>'Due This Week',   'value'=>$taskOverview['due_this_week'],'icon'=>'fa-calendar-week', 'bg'=>'#F0F9FF','color'=>'#0284C7'],
+        ];
+        @endphp
+
+        @foreach($analyticsItems as $item)
+        <div style="background:{{ $item['bg'] }};border-radius:12px;padding:14px 12px;display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+                <i class="fas {{ $item['icon'] }}" style="font-size:12px;color:{{ $item['color'] }};"></i>
+                <span style="font-size:11px;font-weight:600;color:{{ $item['color'] }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $item['label'] }}</span>
+            </div>
+            <p style="font-size:26px;font-weight:700;color:#111827;margin:0;line-height:1;">{{ $item['value'] }}</p>
+        </div>
+        @endforeach
+
+    </div>
+
+    {{-- Rate metrics row --}}
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+
+        {{-- Completion Rate --}}
+        <div style="background:#F8FAFC;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:14px;">
+            <div style="position:relative;width:50px;height:50px;flex-shrink:0;">
+                <svg viewBox="0 0 36 36" style="width:50px;height:50px;transform:rotate(-90deg);">
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="#E5E7EB" stroke-width="3"/>
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="#10B981" stroke-width="3"
+                            stroke-dasharray="{{ $completionRate }} {{ 100 - $completionRate }}"
+                            stroke-linecap="round"/>
+                </svg>
+                <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#111827;">{{ $completionRate }}%</span>
+            </div>
+            <div>
+                <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">Completion Rate</p>
+                <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">{{ $taskOverview['completed'] + $taskOverview['delivered'] }} of {{ $taskOverview['total'] }} tasks done</p>
+            </div>
+        </div>
+
+        {{-- On-time Rate --}}
+        <div style="background:#F8FAFC;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:14px;">
+            <div style="position:relative;width:50px;height:50px;flex-shrink:0;">
+                <svg viewBox="0 0 36 36" style="width:50px;height:50px;transform:rotate(-90deg);">
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="#E5E7EB" stroke-width="3"/>
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="#6366F1" stroke-width="3"
+                            stroke-dasharray="{{ $onTimeRate }} {{ 100 - $onTimeRate }}"
+                            stroke-linecap="round"/>
+                </svg>
+                <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#111827;">{{ $onTimeRate }}%</span>
+            </div>
+            <div>
+                <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">On-time Rate</p>
+                <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">Tasks completed before deadline</p>
+            </div>
+        </div>
+
+        {{-- Review Cycles --}}
+        <div style="background:#F8FAFC;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:14px;">
+            <div style="width:50px;height:50px;border-radius:12px;background:#EDE9FE;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-rotate" style="color:#7C3AED;font-size:18px;"></i>
+            </div>
+            <div>
+                <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">Review Cycles</p>
+                <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">
+                    <span style="font-size:22px;font-weight:700;color:#7C3AED;display:block;line-height:1.2;">{{ $reviewCycles }}</span>
+                    Total submissions made
+                </p>
+            </div>
+        </div>
+
     </div>
 </div>
 

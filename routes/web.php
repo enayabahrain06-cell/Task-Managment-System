@@ -49,6 +49,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/team', [TeamController::class, 'index'])->name('team.index');
     Route::get('/notifications/read/{id}',    [NotificationsController::class, 'markRead'])->name('notifications.read');
     Route::post('/notifications/mark-all-read', [NotificationsController::class, 'markAllRead'])->name('notifications.mark-all-read');
+    Route::get('/notifications/count',          [NotificationsController::class, 'unreadCount'])->name('notifications.count');
 });
 
 // Admin routes
@@ -89,6 +90,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('tasks/{task}/comment',            [AdminTaskController::class, 'comment'])->name('tasks.comment');
     Route::post('tasks/{task}/deliver',            [AdminTaskController::class, 'deliver'])->name('tasks.deliver');
     Route::post('tasks/{task}/reassign',           [AdminTaskController::class, 'reassign'])->name('tasks.reassign');
+    Route::post('tasks/{task}/archive',            [AdminTaskController::class, 'archive'])->name('tasks.archive');
 
     // User task transfer
     Route::post('users/{user}/transfer-tasks',     [AdminUserController::class, 'transferTasks'])->name('users.transfer-tasks');

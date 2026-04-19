@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -21,11 +22,16 @@ class Task extends Model
         'priority',
         'deadline',
         'first_viewed_at',
+        'created_by',
+        'reviewer_id',
+        'task_type',
+        'tags',
     ];
 
     protected $casts = [
         'deadline'        => 'date',
         'first_viewed_at' => 'datetime',
+        'tags'            => 'array',
     ];
 
     public function project(): BelongsTo
@@ -36,6 +42,23 @@ class Task extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function assignees(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'task_assignees')
+            ->withPivot('role_in_task')
+            ->withTimestamps();
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewer_id');
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function logs(): HasMany
@@ -56,6 +79,16 @@ class Task extends Model
     public function comments(): HasMany
     {
         return $this->hasMany(TaskComment::class)->latest();
+    }
+
+    public function transfers(): HasMany
+    {
+        return $this->hasMany(TaskTransfer::class)->orderBy('transferred_at');
+    }
+
+    public function latestTransfer(): HasOne
+    {
+        return $this->hasOne(TaskTransfer::class)->latestOfMany('transferred_at');
     }
 }
 

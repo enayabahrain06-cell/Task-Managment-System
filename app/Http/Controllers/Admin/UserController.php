@@ -225,31 +225,87 @@ class UserController extends Controller
     {
         $request->validate([
             'to_user_id' => 'required|exists:users,id|not_in:' . $user->id,
+            'reason'     => 'nullable|string|max:500',
         ]);
 
         $toUser = User::findOrFail($request->to_user_id);
 
-        $tasks = Task::where('assigned_to', $user->id)
-            ->whereNotIn('status', ['completed', 'delivered'])
+        $doneStatuses = ['approved', 'delivered', 'archived'];
+
+        // Collect from both assigned_to and pivot
+        $assignedToIds = Task::where('assigned_to', $user->id)
+            ->whereNotIn('status', $doneStatuses)
+            ->pluck('id');
+
+        $pivotIds = \Illuminate\Support\Facades\DB::table('task_assignees')
+            ->where('user_id', $user->id)
+            ->pluck('task_id');
+
+        $taskIds = $assignedToIds->merge($pivotIds)->unique();
+
+        $tasks = Task::whereIn('id', $taskIds)
+            ->whereNotIn('status', $doneStatuses)
             ->get();
 
         if ($tasks->isEmpty()) {
             return back()->with('error', 'No unfinished tasks to transfer from ' . $user->name . '.');
         }
 
+        $reason = $request->input('reason', 'Bulk task transfer by admin.');
+        $now    = now();
+
         foreach ($tasks as $task) {
-            $task->update(['assigned_to' => $toUser->id]);
+            if ($task->assigned_to === $user->id) {
+                $task->update(['assigned_to' => $toUser->id]);
+            }
+
+            // Move pivot entry
+            $existingRole = \Illuminate\Support\Facades\DB::table('task_assignees')
+                ->where('task_id', $task->id)
+                ->where('user_id', $user->id)
+                ->value('role_in_task');
+
+            \Illuminate\Support\Facades\DB::table('task_assignees')
+                ->where('task_id', $task->id)
+                ->where('user_id', $user->id)
+                ->delete();
+
+            $alreadyAssigned = \Illuminate\Support\Facades\DB::table('task_assignees')
+                ->where('task_id', $task->id)
+                ->where('user_id', $toUser->id)
+                ->exists();
+
+            if (!$alreadyAssigned) {
+                \Illuminate\Support\Facades\DB::table('task_assignees')->insert([
+                    'task_id'      => $task->id,
+                    'user_id'      => $toUser->id,
+                    'role_in_task' => $existingRole,
+                    'created_at'   => $now,
+                    'updated_at'   => $now,
+                ]);
+            }
+
+            \App\Models\TaskTransfer::create([
+                'task_id'        => $task->id,
+                'from_user_id'   => $user->id,
+                'to_user_id'     => $toUser->id,
+                'transferred_by' => auth()->id(),
+                'reason'         => $reason,
+                'transferred_at' => $now,
+            ]);
+
             TaskLog::create([
                 'task_id'  => $task->id,
                 'user_id'  => auth()->id(),
-                'action'   => 'task_reassigned',
-                'note'     => 'Bulk transferred from ' . $user->name . ' to ' . $toUser->name,
+                'action'   => 'task_transferred',
+                'note'     => 'Transferred from ' . $user->name . ' → ' . $toUser->name . '.',
                 'metadata' => [
                     'from_user_id'   => $user->id,
                     'from_user_name' => $user->name,
                     'to_user_id'     => $toUser->id,
                     'to_user_name'   => $toUser->name,
-                    'reassigned_by'  => auth()->user()->name,
+                    'performed_by'   => auth()->user()->name,
+                    'reason'         => $reason,
                     'is_bulk'        => true,
                 ],
             ]);
@@ -266,6 +322,7 @@ class UserController extends Controller
                 'to_user_name'   => $toUser->name,
                 'task_count'     => $tasks->count(),
                 'task_ids'       => $tasks->pluck('id')->toArray(),
+                'reason'         => $reason,
             ]
         );
 

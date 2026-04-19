@@ -136,34 +136,49 @@
                     <i class="fas fa-search"></i>
                 </button>
                 {{-- Notification Bell --}}
-                <div x-data="{ open: false }" @click.outside="open = false" style="position:relative;">
+                <div x-data="notifBell()" x-init="init()" @click.outside="open = false" style="position:relative;">
+
+                    {{-- Bell button --}}
                     <button @click="open = !open" class="icon-btn" title="Notifications" style="position:relative;">
-                        <i class="fas fa-bell"></i>
-                        @if($notificationCount > 0)
-                        <span style="position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:#EF4444;border-radius:999px;font-size:9px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 3px;border:2px solid #fff;line-height:1;">
-                            {{ $notificationCount > 9 ? '9+' : $notificationCount }}
+                        <i class="fas fa-bell" :class="count > 0 && !open ? 'fa-shake' : ''" style="animation-duration:2s;"></i>
+                        <span x-show="count > 0"
+                              style="position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:#EF4444;border-radius:999px;font-size:9px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 3px;border:2px solid #fff;line-height:1;"
+                              x-text="count > 9 ? '9+' : count">
                         </span>
-                        @endif
                     </button>
 
+                    {{-- Dropdown --}}
                     <div x-show="open" x-cloak
                          style="position:absolute;right:0;top:calc(100% + 8px);width:340px;background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.12);border:1px solid #F0F0F0;z-index:200;overflow:hidden;">
 
-                        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 12px;border-bottom:1px solid #F3F4F6;">
+                        {{-- Header --}}
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #F3F4F6;">
                             <div style="display:flex;align-items:center;gap:8px;">
                                 <span style="font-size:14px;font-weight:700;color:#111827;">Notifications</span>
+                                <span x-show="count > 0"
+                                      style="background:#EEF2FF;color:#4F46E5;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;"
+                                      x-text="count + ' new'">
+                                </span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                {{-- Sound toggle --}}
+                                <button @click.stop="toggleSound()"
+                                        :title="soundEnabled ? 'Mute notification sound' : 'Enable notification sound'"
+                                        style="width:28px;height:28px;border-radius:7px;border:1.5px solid #E5E7EB;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:12px;transition:all .15s;"
+                                        :style="soundEnabled ? 'border-color:#6366F1;color:#6366F1;background:#EEF2FF;' : 'border-color:#E5E7EB;color:#9CA3AF;'">
+                                    <i :class="soundEnabled ? 'fas fa-volume-high' : 'fas fa-volume-xmark'"></i>
+                                </button>
+                                {{-- Mark all read --}}
                                 @if($notificationCount > 0)
-                                <span style="background:#EEF2FF;color:#4F46E5;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;">{{ $notificationCount }} new</span>
+                                <form method="POST" action="{{ route('notifications.mark-all-read') }}">
+                                    @csrf
+                                    <button type="submit" style="font-size:11px;color:#6366F1;font-weight:600;background:none;border:none;cursor:pointer;padding:0;">Mark all read</button>
+                                </form>
                                 @endif
                             </div>
-                            @if($notificationCount > 0)
-                            <form method="POST" action="{{ route('notifications.mark-all-read') }}">
-                                @csrf
-                                <button type="submit" style="font-size:11px;color:#6366F1;font-weight:600;background:none;border:none;cursor:pointer;padding:0;">Mark all read</button>
-                            </form>
-                            @endif
                         </div>
 
+                        {{-- List --}}
                         <div style="max-height:360px;overflow-y:auto;">
                             @forelse($notifications as $n)
                             @php
@@ -195,6 +210,19 @@
                                 <p style="font-size:12px;color:#9CA3AF;margin:0;">You're all caught up!</p>
                             </div>
                             @endforelse
+                        </div>
+
+                        {{-- Sound status footer --}}
+                        <div style="padding:8px 16px;border-top:1px solid #F3F4F6;display:flex;align-items:center;gap:6px;">
+                            <i :class="soundEnabled ? 'fas fa-volume-high' : 'fas fa-volume-xmark'"
+                               :style="soundEnabled ? 'color:#6366F1;' : 'color:#9CA3AF;'"
+                               style="font-size:11px;"></i>
+                            <span style="font-size:11px;color:#9CA3AF;" x-text="soundEnabled ? 'Sound alerts on' : 'Sound alerts off'"></span>
+                            <button @click.stop="toggleSound()"
+                                    style="margin-left:auto;font-size:11px;font-weight:600;background:none;border:none;cursor:pointer;padding:0;"
+                                    :style="soundEnabled ? 'color:#DC2626;' : 'color:#6366F1;'"
+                                    x-text="soundEnabled ? 'Mute' : 'Unmute'">
+                            </button>
                         </div>
 
                     </div>
@@ -260,6 +288,64 @@ document.querySelectorAll('.app-sidebar .nav-item').forEach(function(link) {
         }
     });
 });
+</script>
+
+<script>
+function notifBell() {
+    return {
+        open:         false,
+        count:        {{ $notificationCount }},
+        soundEnabled: localStorage.getItem('notif_sound') !== 'false',
+        _timer:       null,
+
+        init() {
+            // Start polling every 15 s
+            this._timer = setInterval(() => this.poll(), 15000);
+        },
+
+        async poll() {
+            try {
+                const res  = await fetch('{{ route("notifications.count") }}', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.count > this.count && this.soundEnabled) {
+                    this.playSound();
+                }
+                this.count = data.count;
+            } catch (e) { /* network error — silently skip */ }
+        },
+
+        playSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                // Two-note ascending ding: G5 → B5
+                [[784, 0], [988, 0.18]].forEach(([freq, delay]) => {
+                    const osc  = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    const t = ctx.currentTime + delay;
+                    gain.gain.setValueAtTime(0, t);
+                    gain.gain.linearRampToValueAtTime(0.28, t + 0.015);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+                    osc.start(t);
+                    osc.stop(t + 0.55);
+                });
+            } catch (e) { /* AudioContext not supported */ }
+        },
+
+        toggleSound() {
+            this.soundEnabled = !this.soundEnabled;
+            localStorage.setItem('notif_sound', this.soundEnabled);
+            // Play a preview note so the user knows sound is working
+            if (this.soundEnabled) this.playSound();
+        },
+    };
+}
 </script>
 
 @stack('scripts')

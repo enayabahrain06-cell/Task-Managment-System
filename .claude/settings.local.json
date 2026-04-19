@@ -13,7 +13,8 @@
       "Bash(php -l app/Http/Controllers/User/TaskController.php)",
       "Bash(php -l app/Notifications/TaskViewed.php)",
       "Bash(php -l app/Notifications/TaskCommentPosted.php)",
-      "Bash(php -l app/Notifications/TaskDelivered.php)"
+      "Bash(php -l app/Notifications/TaskDelivered.php)",
+      "Bash(php -l resources/views/admin/projects/create.blade.php)"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory"

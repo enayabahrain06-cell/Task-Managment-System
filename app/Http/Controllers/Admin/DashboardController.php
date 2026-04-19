@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CalendarEvent;
 use App\Models\Project;
 use App\Models\Task;
+use App\Models\TaskSubmission;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 
@@ -18,10 +19,47 @@ class DashboardController extends Controller
         $allUsers   = User::where('role', 'user')->orderBy('name')->get();
         $allProjects = Project::where('status', 'active')->orderBy('name')->get();
 
-        $overdueTasks   = Task::where('deadline', '<', now())->where('status', '!=', 'completed')->count();
-        $completedTasks = Task::where('status', 'completed')->count();
+        $doneStatuses   = ['approved', 'delivered', 'archived'];
+        $overdueTasks   = Task::where('deadline', '<', now())->whereNotIn('status', $doneStatuses)->count();
+        $completedTasks = Task::where('status', 'approved')->count();
         $totalTasks     = Task::count();
         $activeProjects = Project::where('status', 'active')->count();
+
+        // --- Task Analytics ---
+        $analyticsNonDone = ['draft', 'assigned', 'viewed', 'in_progress', 'submitted', 'revision_requested'];
+
+        $taskOverview = [
+            'total'              => $totalTasks,
+            'assigned'           => Task::whereNotNull('assigned_to')->count(),
+            'pending'            => Task::whereIn('status', ['draft', 'assigned', 'viewed'])->count(),
+            'in_progress'        => Task::where('status', 'in_progress')->count(),
+            'in_review'          => Task::where('status', 'submitted')->count(),
+            'revision_requested' => Task::where('status', 'revision_requested')->count(),
+            'completed'          => Task::where('status', 'approved')->count(),
+            'delivered'          => Task::where('status', 'delivered')->count(),
+            'overdue'            => Task::where('deadline', '<', now())->whereIn('status', $analyticsNonDone)->count(),
+            'due_today'          => Task::whereDate('deadline', today())->whereIn('status', $analyticsNonDone)->count(),
+            'due_this_week'      => Task::whereBetween('deadline', [now()->startOfWeek(Carbon::MONDAY), now()->endOfWeek(Carbon::SUNDAY)])->whereIn('status', $analyticsNonDone)->count(),
+        ];
+
+        $totalDone = $taskOverview['completed'] + $taskOverview['delivered'];
+
+        $completionRate = $taskOverview['total'] > 0
+            ? round($totalDone / $taskOverview['total'] * 100)
+            : 0;
+
+        // On-time: approved/delivered tasks that have a log entry before the deadline
+        $onTimeCount = Task::whereIn('status', ['approved', 'delivered'])
+            ->whereHas('logs', function ($q) {
+                $q->whereIn('action', ['status_updated_approved', 'status_updated_delivered', 'status_updated_completed'])
+                  ->whereColumn('task_logs.created_at', '<=', 'tasks.deadline');
+            })
+            ->count();
+
+        $onTimeRate = $totalDone > 0 ? round($onTimeCount / $totalDone * 100) : 0;
+
+        // Review cycles = total number of task submissions (each submit = 1 cycle)
+        $reviewCycles = TaskSubmission::count();
 
         // --- Chart: Working Hours / Daily Task Activity (last 7 days) ---
         $weekLabels = [];
@@ -35,10 +73,10 @@ class DashboardController extends Controller
 
         // --- Chart: Project Statistics (donut) ---
         $taskStats = [
-            'completed'   => Task::where('status', 'completed')->count(),
+            'completed'   => Task::where('status', 'approved')->count(),
             'in_progress' => Task::where('status', 'in_progress')->count(),
-            'pending'     => Task::where('status', 'pending')->count(),
-            'overdue'     => Task::where('deadline', '<', now())->where('status', '!=', 'completed')->count(),
+            'pending'     => Task::whereIn('status', ['draft', 'assigned', 'viewed'])->count(),
+            'overdue'     => $overdueTasks,
         ];
 
         // --- Chart: Task Workload (bar) per user ---
@@ -117,7 +155,8 @@ class DashboardController extends Controller
             'workloadLabels', 'workloadData',
             'totalMembers', 'activeMembers', 'managerCount', 'userCount',
             'calWeeks', 'taskDotMap', 'todayMeetings', 'todayTaskEvents',
-            'calMonthLabel', 'calTodayKey', 'calWeekCount', 'firstOfMonth'
+            'calMonthLabel', 'calTodayKey', 'calWeekCount', 'firstOfMonth',
+            'taskOverview', 'completionRate', 'onTimeRate', 'reviewCycles'
         ));
     }
 }

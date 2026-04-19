@@ -5,20 +5,35 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Task;
 use App\Models\TaskLog;
+use App\Models\TaskTransfer;
 use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class OffboardingController extends Controller
 {
+    private const DONE_STATUSES = ['approved', 'delivered', 'archived'];
+
     public function show(User $user)
     {
         abort_if($user->status === 'archived', 422, 'User is already archived.');
         abort_if($user->id === auth()->id(), 422, 'You cannot offboard yourself.');
 
-        $unfinishedTasks = Task::where('assigned_to', $user->id)
-            ->whereNotIn('status', ['completed', 'delivered'])
-            ->with('project')
+        // Collect unfinished tasks from both assigned_to and pivot
+        $assignedToIds = Task::where('assigned_to', $user->id)
+            ->whereNotIn('status', self::DONE_STATUSES)
+            ->pluck('id');
+
+        $pivotIds = DB::table('task_assignees')
+            ->where('user_id', $user->id)
+            ->pluck('task_id');
+
+        $allIds = $assignedToIds->merge($pivotIds)->unique();
+
+        $unfinishedTasks = Task::whereIn('id', $allIds)
+            ->whereNotIn('status', self::DONE_STATUSES)
+            ->with(['project', 'assignees'])
             ->orderBy('deadline')
             ->get();
 
@@ -51,34 +66,99 @@ class OffboardingController extends Controller
         if (!empty($data['to_user_id'])) {
             $toUser = User::findOrFail($data['to_user_id']);
 
-            $tasks = Task::where('assigned_to', $user->id)
-                ->whereNotIn('status', ['completed', 'delivered'])
+            $assignedToIds = Task::where('assigned_to', $user->id)
+                ->whereNotIn('status', self::DONE_STATUSES)
+                ->pluck('id');
+
+            $pivotIds = DB::table('task_assignees')
+                ->where('user_id', $user->id)
+                ->pluck('task_id');
+
+            $taskIds = $assignedToIds->merge($pivotIds)->unique();
+
+            $tasks = Task::whereIn('id', $taskIds)
+                ->whereNotIn('status', self::DONE_STATUSES)
                 ->get();
 
-            $transferredCount = $tasks->count();
+            $now = now();
 
             foreach ($tasks as $task) {
-                $task->update(['assigned_to' => $toUser->id]);
+                // Reassign primary assignee
+                if ($task->assigned_to === $user->id) {
+                    $task->update(['assigned_to' => $toUser->id]);
+                }
 
+                // Move pivot entry: preserve role, swap user
+                $existingRole = DB::table('task_assignees')
+                    ->where('task_id', $task->id)
+                    ->where('user_id', $user->id)
+                    ->value('role_in_task');
+
+                DB::table('task_assignees')
+                    ->where('task_id', $task->id)
+                    ->where('user_id', $user->id)
+                    ->delete();
+
+                $alreadyAssigned = DB::table('task_assignees')
+                    ->where('task_id', $task->id)
+                    ->where('user_id', $toUser->id)
+                    ->exists();
+
+                if (!$alreadyAssigned) {
+                    DB::table('task_assignees')->insert([
+                        'task_id'      => $task->id,
+                        'user_id'      => $toUser->id,
+                        'role_in_task' => $existingRole,
+                        'created_at'   => $now,
+                        'updated_at'   => $now,
+                    ]);
+                }
+
+                // Permanent transfer record
+                TaskTransfer::create([
+                    'task_id'        => $task->id,
+                    'from_user_id'   => $user->id,
+                    'to_user_id'     => $toUser->id,
+                    'transferred_by' => auth()->id(),
+                    'reason'         => $data['reason'],
+                    'transferred_at' => $now,
+                ]);
+
+                // Task-level log entry (visible in task history)
                 TaskLog::create([
                     'task_id'  => $task->id,
                     'user_id'  => auth()->id(),
-                    'action'   => 'task_reassigned',
-                    'note'     => 'Transferred during offboarding of ' . $user->name . ' → ' . $toUser->name,
+                    'action'   => 'task_transferred',
+                    'note'     => 'Transferred from ' . $user->name . ' → ' . $toUser->name . ' (offboarding).',
                     'metadata' => [
                         'from_user_id'   => $user->id,
                         'from_user_name' => $user->name,
                         'to_user_id'     => $toUser->id,
                         'to_user_name'   => $toUser->name,
-                        'reassigned_by'  => auth()->user()->name,
-                        'is_bulk'        => true,
-                        'offboarding'    => true,
+                        'performed_by'   => auth()->user()->name,
                         'reason'         => $data['reason'],
+                        'offboarding'    => true,
                     ],
                 ]);
+
+                $transferredCount++;
+            }
+
+            // Auto-add replacement as project member
+            $projectIds = Task::whereIn('id', $taskIds)->pluck('project_id')->unique()->filter();
+            foreach ($projectIds as $pid) {
+                DB::table('project_user')->insertOrIgnore([
+                    'project_id' => $pid,
+                    'user_id'    => $toUser->id,
+                ]);
+            }
+
+            if ($transferredCount > 0) {
+                $toUser->notify(new \App\Notifications\TaskTransferred($toUser, $user, $transferredCount));
             }
         }
 
+        // Archive or deactivate
         $newStatus  = $data['action'] === 'archive' ? 'archived' : 'inactive';
         $updateData = ['status' => $newStatus];
 
@@ -89,10 +169,8 @@ class OffboardingController extends Controller
 
         $user->update($updateData);
 
-        // Invalidate any active sessions
-        \Illuminate\Support\Facades\DB::table('users')
-            ->where('id', $user->id)
-            ->update(['remember_token' => null]);
+        // Invalidate active sessions
+        DB::table('users')->where('id', $user->id)->update(['remember_token' => null]);
 
         AuditLogger::log(
             'user.offboarded',

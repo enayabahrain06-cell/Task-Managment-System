@@ -3,18 +3,28 @@
 
 @section('content')
 @php
-    $isOverdue  = $task->deadline->isPast() && !in_array($task->status, ['completed','pending_approval','delivered']);
+    $doneStatuses = ['approved','delivered','archived'];
+    $isOverdue  = $task->deadline->isPast() && !in_array($task->status, $doneStatuses);
     $statusMap  = [
-        'pending'          => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Pending'],
-        'in_progress'      => ['bg'=>'#FEF3C7','color'=>'#D97706','label'=>'In Progress'],
-        'pending_approval' => ['bg'=>'#EDE9FE','color'=>'#7C3AED','label'=>'In Review'],
-        'completed'        => ['bg'=>'#D1FAE5','color'=>'#059669','label'=>'Completed'],
-        'delivered'        => ['bg'=>'#ECFDF5','color'=>'#047857','label'=>'Delivered'],
+        'draft'              => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Draft'],
+        'assigned'           => ['bg'=>'#E0F2FE','color'=>'#0284C7','label'=>'Assigned'],
+        'viewed'             => ['bg'=>'#EEF2FF','color'=>'#4F46E5','label'=>'Viewed'],
+        'in_progress'        => ['bg'=>'#FEF3C7','color'=>'#D97706','label'=>'In Progress'],
+        'submitted'          => ['bg'=>'#EDE9FE','color'=>'#7C3AED','label'=>'Submitted for Review'],
+        'revision_requested' => ['bg'=>'#FEE2E2','color'=>'#DC2626','label'=>'Revision Requested'],
+        'approved'           => ['bg'=>'#D1FAE5','color'=>'#059669','label'=>'Approved'],
+        'delivered'          => ['bg'=>'#ECFDF5','color'=>'#047857','label'=>'Delivered'],
+        'archived'           => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Archived'],
+        // legacy fallbacks
+        'pending'            => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Pending'],
+        'pending_approval'   => ['bg'=>'#EDE9FE','color'=>'#7C3AED','label'=>'In Review'],
+        'completed'          => ['bg'=>'#D1FAE5','color'=>'#059669','label'=>'Completed'],
     ];
     $priorityMap = ['low'=>['bg'=>'#D1FAE5','color'=>'#059669'],'medium'=>['bg'=>'#FEF3C7','color'=>'#D97706'],'high'=>['bg'=>'#FEE2E2','color'=>'#DC2626']];
     $s = $statusMap[$task->status]    ?? $statusMap['pending'];
     $p = $priorityMap[$task->priority] ?? $priorityMap['medium'];
     $latestSub = $task->submissions->first();
+    $tagColors = ['#EEF2FF:#4F46E5','#FEF3C7:#D97706','#FEE2E2:#DC2626','#D1FAE5:#059669','#FCE7F3:#BE185D','#E0E7FF:#3730A3'];
 @endphp
 
 {{-- Header --}}
@@ -31,9 +41,18 @@
         </p>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        @if($task->task_type)
+        <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;"><i class="fa fa-tag" style="margin-right:4px;color:#9CA3AF;"></i>{{ $task->task_type }}</span>
+        @endif
         <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:{{ $p['bg'] }};color:{{ $p['color'] }};">{{ ucfirst($task->priority) }} Priority</span>
         <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:{{ $s['bg'] }};color:{{ $s['color'] }};">{{ $s['label'] }}</span>
         @if($isOverdue)<span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#FEE2E2;color:#DC2626;"><i class="fa fa-clock" style="margin-right:3px;"></i>Overdue</span>@endif
+        @if($task->tags)
+        @foreach($task->tags as $idx => $tag)
+        @php [$tbg,$tco] = explode(':', $tagColors[$idx % count($tagColors)]); @endphp
+        <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:{{ $tbg }};color:{{ $tco }};">#{{ $tag }}</span>
+        @endforeach
+        @endif
     </div>
 </div>
 
@@ -50,17 +69,48 @@
             @if($task->description)
             <p style="font-size:14px;color:#6B7280;line-height:1.7;margin:0 0 16px;padding-bottom:16px;border-bottom:1px solid #F3F4F6;">{{ $task->description }}</p>
             @endif
+            {{-- Assignees with roles --}}
+            @if($task->assignees->count())
+            <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #F3F4F6;">
+                <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;font-weight:600;margin:0 0 10px;">Assignees</p>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    @foreach($task->assignees as $a)
+                    <div style="display:flex;align-items:center;gap:10px;background:#FAFAFA;border-radius:10px;padding:10px 12px;">
+                        <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">
+                            {{ strtoupper(substr($a->name, 0, 1)) }}
+                        </div>
+                        <div style="flex:1;min-width:0;">
+                            <p style="font-size:13px;font-weight:600;color:#111827;margin:0;">{{ $a->name }}</p>
+                            @if($a->pivot->role_in_task)
+                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">{{ $a->pivot->role_in_task }}</p>
+                            @endif
+                        </div>
+                        <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px;background:#EEF2FF;color:#4F46E5;">{{ ucfirst($a->role) }}</span>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                @if($task->assignees->isEmpty())
                 <div style="background:#FAFAFA;border-radius:10px;padding:12px;">
                     <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;font-weight:600;margin:0 0 4px;">Assignee</p>
                     <p style="font-size:14px;font-weight:600;color:#111827;margin:0;">{{ $task->assignee->name ?? '—' }}</p>
                 </div>
+                @endif
                 <div style="background:#FAFAFA;border-radius:10px;padding:12px;">
                     <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;font-weight:600;margin:0 0 4px;">Deadline</p>
                     <p style="font-size:14px;font-weight:600;color:{{ $isOverdue ? '#DC2626' : '#111827' }};margin:0;">
                         {{ $task->deadline->format('M d, Y') }}
                     </p>
                 </div>
+                @if($task->reviewer)
+                <div style="background:#FAFAFA;border-radius:10px;padding:12px;">
+                    <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;font-weight:600;margin:0 0 4px;">Reviewer</p>
+                    <p style="font-size:14px;font-weight:600;color:#111827;margin:0;">{{ $task->reviewer->name }}</p>
+                </div>
+                @endif
                 <div style="background:#FAFAFA;border-radius:10px;padding:12px;">
                     <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;font-weight:600;margin:0 0 4px;">First Viewed</p>
                     <p style="font-size:13px;font-weight:500;color:#111827;margin:0;">
@@ -71,11 +121,17 @@
                     <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;font-weight:600;margin:0 0 4px;">Versions</p>
                     <p style="font-size:14px;font-weight:600;color:#111827;margin:0;">{{ $task->submissions->count() }}</p>
                 </div>
+                @if($task->creator)
+                <div style="background:#FAFAFA;border-radius:10px;padding:12px;">
+                    <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;font-weight:600;margin:0 0 4px;">Created By</p>
+                    <p style="font-size:14px;font-weight:600;color:#111827;margin:0;">{{ $task->creator->name }}</p>
+                </div>
+                @endif
             </div>
         </div>
 
-        {{-- Admin Actions: Approve/Reject (only when pending_approval) --}}
-        @if($task->status === 'pending_approval')
+        {{-- Admin Actions: Approve/Reject (only when submitted) --}}
+        @if(in_array($task->status, ['submitted', 'pending_approval']))
         <div style="background:#fff;border-radius:14px;border:1.5px solid #A78BFA;box-shadow:0 4px 16px rgba(124,58,237,.08);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 16px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-gavel" style="color:#7C3AED;"></i> Review Submission
@@ -103,8 +159,8 @@
         </div>
         @endif
 
-        {{-- Deliver (only when completed) --}}
-        @if($task->status === 'completed')
+        {{-- Deliver (only when approved) --}}
+        @if($task->status === 'approved')
         <div style="background:#fff;border-radius:14px;border:1.5px solid #A7F3D0;box-shadow:0 4px 16px rgba(5,150,105,.06);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 12px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-truck" style="color:#059669;"></i> Mark as Delivered
@@ -248,14 +304,18 @@
                     {{-- Rich metadata chips --}}
                     @if(!empty($meta))
                     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;">
-                        @if($log->action === 'task_reassigned' && isset($meta['from_user_name'], $meta['to_user_name']))
+                        @if(in_array($log->action, ['task_reassigned','task_transferred']) && isset($meta['from_user_name'], $meta['to_user_name']))
                         <span style="font-size:11px;background:#FEF3C7;color:#D97706;padding:2px 8px;border-radius:6px;">
-                            <span style="text-decoration:line-through;opacity:.7;">{{ $meta['from_user_name'] }}</span> → <strong>{{ $meta['to_user_name'] }}</strong>
+                            <span style="text-decoration:line-through;opacity:.7;">{{ $meta['from_user_name'] }}</span>
+                            <i class="fa fa-arrow-right" style="font-size:9px;margin:0 3px;"></i>
+                            <strong>{{ $meta['to_user_name'] }}</strong>
                         </span>
-                        @if(!empty($meta['reassigned_by']))
-                        <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;">by {{ $meta['reassigned_by'] }}</span>
+                        @if(!empty($meta['performed_by'] ?? $meta['reassigned_by'] ?? null))
+                        <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;">by {{ $meta['performed_by'] ?? $meta['reassigned_by'] }}</span>
                         @endif
-                        @if(!empty($meta['is_bulk']))
+                        @if(!empty($meta['offboarding']))
+                        <span style="font-size:11px;background:#FEE2E2;color:#DC2626;padding:2px 8px;border-radius:6px;"><i class="fa fa-user-slash" style="margin-right:3px;"></i>offboarding</span>
+                        @elseif(!empty($meta['is_bulk']))
                         <span style="font-size:11px;background:#EDE9FE;color:#7C3AED;padding:2px 8px;border-radius:6px;">bulk transfer</span>
                         @endif
                         @elseif(in_array($log->action, ['status_updated_completed','status_updated_in_progress']) && isset($meta['reviewer_name']))
@@ -363,6 +423,47 @@
            style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:#EEF2FF;border-radius:12px;text-decoration:none;color:#4F46E5;font-size:13px;font-weight:600;">
             <i class="fa fa-list-check"></i> Back to Approvals
         </a>
+
+        {{-- Transfer History --}}
+        @if($task->transfers->isNotEmpty())
+        <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;">
+            <h3 style="font-size:13px;font-weight:600;color:#374151;margin:0 0 12px;text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:6px;">
+                <i class="fa fa-arrow-right-arrow-left" style="color:#6366F1;font-size:12px;"></i> Transfer History
+            </h3>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                @foreach($task->transfers as $transfer)
+                <div style="border-left:3px solid #C7D2FE;padding-left:12px;">
+                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">
+                        {{ $transfer->fromUser?->name ?? 'Former Employee' }}
+                        <span style="color:#6366F1;"> → </span>
+                        {{ $transfer->toUser?->name ?? '—' }}
+                    </p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:2px 0;">
+                        {{ $transfer->transferred_at->format('M d, Y · H:i') }}
+                        · by {{ $transfer->transferredBy?->name ?? 'Admin' }}
+                    </p>
+                    @if($transfer->reason)
+                    <p style="font-size:11px;color:#6B7280;margin:4px 0 0;background:#F9FAFB;padding:5px 8px;border-radius:6px;line-height:1.4;">
+                        "{{ \Illuminate\Support\Str::limit($transfer->reason, 100) }}"
+                    </p>
+                    @endif
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
+        {{-- Archive --}}
+        @if(!in_array($task->status, ['archived','delivered']))
+        <form method="POST" action="{{ route('admin.tasks.archive', $task) }}"
+              onsubmit="return confirm('Archive this task? It will be hidden from active views.')">
+            @csrf
+            <button type="submit"
+                    style="width:100%;background:#F3F4F6;color:#6B7280;border:none;padding:10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                <i class="fa fa-box-archive"></i> Archive Task
+            </button>
+        </form>
+        @endif
 
     </div>{{-- /right --}}
 
