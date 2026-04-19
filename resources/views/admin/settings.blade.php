@@ -571,6 +571,74 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                 </div>
                 <div class="scard-body">
 
+                    {{-- ── Full System Backup ── --}}
+                    <div style="background:linear-gradient(135deg,#1E1B4B 0%,#312E81 100%);border-radius:14px;padding:22px 24px;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+                        <div style="display:flex;align-items:center;gap:14px;">
+                            <div style="width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-server" style="color:#fff;font-size:20px;"></i>
+                            </div>
+                            <div>
+                                <p style="font-size:15px;font-weight:700;color:#fff;margin:0 0 3px;">Full System Backup</p>
+                                <p style="font-size:12px;color:rgba(255,255,255,.6);margin:0;">Downloads the entire database — all users, projects, tasks, settings, notifications</p>
+                            </div>
+                        </div>
+                        <a href="{{ route('admin.settings.backup.download') }}"
+                           style="display:flex;align-items:center;gap:8px;padding:11px 22px;background:#fff;color:#4F46E5;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;flex-shrink:0;transition:opacity .15s;"
+                           onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">
+                            <i class="fas fa-download" style="font-size:12px;"></i> Download Backup
+                        </a>
+                    </div>
+
+                    {{-- ── Full System Restore ── --}}
+                    <div style="border:2px solid #FEE2E2;border-radius:14px;padding:20px 22px;margin-bottom:22px;background:#FFF8F8;" x-data="{ show: false }">
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                            <div style="display:flex;align-items:center;gap:12px;">
+                                <div style="width:42px;height:42px;border-radius:10px;background:#FEE2E2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-rotate-left" style="color:#DC2626;font-size:17px;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:14px;font-weight:700;color:#111827;margin:0 0 2px;">Full System Restore</p>
+                                    <p style="font-size:12px;color:#9CA3AF;margin:0;">Upload a <code style="background:#F3F4F6;padding:1px 5px;border-radius:4px;">.sqlite</code> backup file to completely replace the current database</p>
+                                </div>
+                            </div>
+                            <button type="button" @click="show = !show"
+                                    style="display:flex;align-items:center;gap:6px;padding:9px 18px;background:#DC2626;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0;"
+                                    onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
+                                <i class="fas fa-upload" style="font-size:11px;"></i>
+                                <span x-text="show ? 'Cancel' : 'Restore System'"></span>
+                            </button>
+                        </div>
+
+                        <div x-show="show" x-cloak style="margin-top:16px;padding-top:16px;border-top:1px solid #FECACA;">
+                            <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;gap:8px;align-items:flex-start;">
+                                <i class="fas fa-triangle-exclamation" style="color:#DC2626;flex-shrink:0;margin-top:1px;"></i>
+                                <p style="font-size:12px;color:#7F1D1D;margin:0;line-height:1.6;">
+                                    <strong>Warning:</strong> This will permanently replace ALL current data with the backup. This action cannot be undone. Make sure to download a backup of the current state first.
+                                </p>
+                            </div>
+                            <form method="POST" action="{{ route('admin.settings.backup.restore') }}" enctype="multipart/form-data"
+                                  onsubmit="return confirm('Are you sure? This will replace ALL system data with the uploaded backup. This cannot be undone.')">
+                                @csrf
+                                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                                    <label style="flex:1;min-width:200px;display:flex;align-items:center;gap:8px;padding:10px 14px;border:2px dashed #FECACA;border-radius:8px;cursor:pointer;background:#fff;"
+                                           onmouseover="this.style.borderColor='#DC2626'" onmouseout="this.style.borderColor='#FECACA'">
+                                        <i class="fas fa-file" style="color:#DC2626;font-size:14px;flex-shrink:0;"></i>
+                                        <span style="font-size:13px;color:#9CA3AF;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="backup-file-name">Choose .sqlite backup file…</span>
+                                        <input type="file" name="backup_file" accept=".sqlite" required style="display:none;"
+                                               onchange="document.getElementById('backup-file-name').textContent = this.files[0]?.name || 'Choose .sqlite backup file…'">
+                                    </label>
+                                    <button type="submit"
+                                            style="padding:10px 22px;background:#DC2626;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0;"
+                                            onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
+                                        <i class="fas fa-rotate-left" style="font-size:11px;"></i> Restore Now
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <hr style="border:none;border-top:1px solid #F3F4F6;margin-bottom:22px;">
+
                     {{-- Stats strip --}}
                     <div class="stat-strip" style="margin-bottom:22px;">
                         <div class="stat-pill">
@@ -644,6 +712,134 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         <p style="font-size:12px;color:#6B7280;margin:0;line-height:1.6;">
                             Exports download instantly as <strong>.csv</strong> files. They include all records at the time of download. For a full database backup, copy the <code style="background:#E5E7EB;padding:1px 5px;border-radius:4px;font-size:11px;">database/database.sqlite</code> file directly from the server.
                         </p>
+                    </div>
+
+                </div>
+            </div>
+
+            {{-- ── Restore ── --}}
+            <div class="scard" style="margin-top:20px;">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#FEF3C7;color:#D97706;"><i class="fas fa-rotate-left"></i></div>
+                    <div>
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Restore from CSV</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Import data back from a previously exported CSV file</p>
+                    </div>
+                </div>
+                <div class="scard-body">
+
+                    @if($errors->any())
+                    <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#DC2626;">
+                        <i class="fas fa-exclamation-circle" style="margin-right:6px;"></i>{{ $errors->first() }}
+                    </div>
+                    @endif
+
+                    <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px;">
+                        <i class="fas fa-triangle-exclamation" style="color:#D97706;margin-top:1px;flex-shrink:0;"></i>
+                        <p style="font-size:12px;color:#92400E;margin:0;line-height:1.6;">
+                            Restore is <strong>non-destructive</strong> — it adds missing records and updates existing ones. It never deletes data. Use the same CSV format as the exports above.
+                        </p>
+                    </div>
+
+                    <div class="export-grid">
+
+                        {{-- Restore Users --}}
+                        <div class="export-card" style="background:#FAFBFF;">
+                            <div class="export-icon" style="background:#EEF2FF;color:#4F46E5;">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div>
+                                <p style="font-size:13px;font-weight:700;color:#111827;margin:0 0 3px;">Restore Users</p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:0;">Upload users CSV — creates new users, updates existing by email</p>
+                            </div>
+                            <form method="POST" action="{{ route('admin.settings.restore.users') }}" enctype="multipart/form-data" style="width:100%;">
+                                @csrf
+                                <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px dashed #C7D2FE;border-radius:8px;cursor:pointer;background:#fff;margin-bottom:8px;"
+                                       onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#C7D2FE'">
+                                    <i class="fas fa-file-csv" style="color:#6366F1;font-size:13px;flex-shrink:0;"></i>
+                                    <span style="font-size:12px;color:#6B7280;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="users-csv-name">Choose CSV file…</span>
+                                    <input type="file" name="file" accept=".csv,.txt" style="display:none;"
+                                           onchange="document.getElementById('users-csv-name').textContent = this.files[0]?.name || 'Choose CSV file…'">
+                                </label>
+                                <button type="submit"
+                                        style="width:100%;background:#4F46E5;color:#fff;border:none;padding:8px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"
+                                        onmouseover="this.style.background='#4338CA'" onmouseout="this.style.background='#4F46E5'">
+                                    <i class="fas fa-rotate-left" style="font-size:10px;"></i> Restore Users
+                                </button>
+                            </form>
+                        </div>
+
+                        {{-- Restore Tasks --}}
+                        <div class="export-card" style="background:#F0FDF4;">
+                            <div class="export-icon" style="background:#D1FAE5;color:#059669;">
+                                <i class="fas fa-square-check"></i>
+                            </div>
+                            <div>
+                                <p style="font-size:13px;font-weight:700;color:#111827;margin:0 0 3px;">Restore Tasks</p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:0;">Upload tasks CSV — skips duplicates, matches by project &amp; title</p>
+                            </div>
+                            <form method="POST" action="{{ route('admin.settings.restore.tasks') }}" enctype="multipart/form-data" style="width:100%;">
+                                @csrf
+                                <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px dashed #BBF7D0;border-radius:8px;cursor:pointer;background:#fff;margin-bottom:8px;"
+                                       onmouseover="this.style.borderColor='#16A34A'" onmouseout="this.style.borderColor='#BBF7D0'">
+                                    <i class="fas fa-file-csv" style="color:#16A34A;font-size:13px;flex-shrink:0;"></i>
+                                    <span style="font-size:12px;color:#6B7280;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="tasks-csv-name">Choose CSV file…</span>
+                                    <input type="file" name="file" accept=".csv,.txt" style="display:none;"
+                                           onchange="document.getElementById('tasks-csv-name').textContent = this.files[0]?.name || 'Choose CSV file…'">
+                                </label>
+                                <button type="submit"
+                                        style="width:100%;background:#16A34A;color:#fff;border:none;padding:8px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"
+                                        onmouseover="this.style.background='#15803D'" onmouseout="this.style.background='#16A34A'">
+                                    <i class="fas fa-rotate-left" style="font-size:10px;"></i> Restore Tasks
+                                </button>
+                            </form>
+                        </div>
+
+                        {{-- Restore Projects --}}
+                        <div class="export-card" style="background:#FFFBEB;">
+                            <div class="export-icon" style="background:#FEF3C7;color:#D97706;">
+                                <i class="fas fa-diagram-project"></i>
+                            </div>
+                            <div>
+                                <p style="font-size:13px;font-weight:700;color:#111827;margin:0 0 3px;">Restore Projects</p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:0;">Upload projects CSV — creates new, updates existing by name</p>
+                            </div>
+                            <form method="POST" action="{{ route('admin.settings.restore.projects') }}" enctype="multipart/form-data" style="width:100%;">
+                                @csrf
+                                <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px dashed #FDE68A;border-radius:8px;cursor:pointer;background:#fff;margin-bottom:8px;"
+                                       onmouseover="this.style.borderColor='#D97706'" onmouseout="this.style.borderColor='#FDE68A'">
+                                    <i class="fas fa-file-csv" style="color:#D97706;font-size:13px;flex-shrink:0;"></i>
+                                    <span style="font-size:12px;color:#6B7280;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="projects-csv-name">Choose CSV file…</span>
+                                    <input type="file" name="file" accept=".csv,.txt" style="display:none;"
+                                           onchange="document.getElementById('projects-csv-name').textContent = this.files[0]?.name || 'Choose CSV file…'">
+                                </label>
+                                <button type="submit"
+                                        style="width:100%;background:#D97706;color:#fff;border:none;padding:8px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"
+                                        onmouseover="this.style.background='#B45309'" onmouseout="this.style.background='#D97706'">
+                                    <i class="fas fa-rotate-left" style="font-size:10px;"></i> Restore Projects
+                                </button>
+                            </form>
+                        </div>
+
+                    </div>
+
+                    {{-- Format guide --}}
+                    <div style="margin-top:16px;background:#F8FAFC;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;">
+                        <p style="font-size:12px;font-weight:600;color:#374151;margin:0 0 8px;"><i class="fas fa-circle-info" style="color:#6366F1;margin-right:6px;"></i>Required CSV columns</p>
+                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+                            <div>
+                                <p style="font-size:11px;font-weight:600;color:#4F46E5;margin:0 0 4px;">Users</p>
+                                <p style="font-size:11px;color:#6B7280;margin:0;line-height:1.8;">name, email, role<br><span style="color:#9CA3AF;">(role: user/manager/admin)</span></p>
+                            </div>
+                            <div>
+                                <p style="font-size:11px;font-weight:600;color:#16A34A;margin:0 0 4px;">Tasks</p>
+                                <p style="font-size:11px;color:#6B7280;margin:0;line-height:1.8;">title, project, assigned to,<br>deadline, priority, status</p>
+                            </div>
+                            <div>
+                                <p style="font-size:11px;font-weight:600;color:#D97706;margin:0 0 4px;">Projects</p>
+                                <p style="font-size:11px;color:#6B7280;margin:0;line-height:1.8;">name, deadline, status<br><span style="color:#9CA3AF;">(status: active/completed/overdue)</span></p>
+                            </div>
+                        </div>
                     </div>
 
                 </div>

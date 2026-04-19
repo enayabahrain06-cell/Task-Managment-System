@@ -2,7 +2,7 @@
     $role              = auth()->user()->role ?? 'user';
     $taskCount         = auth()->check() ? auth()->user()->tasks()->where('status','!=','completed')->count() : 0;
     $dashRoute         = $role === 'admin' ? 'admin.dashboard' : ($role === 'manager' ? 'manager.dashboard' : 'user.dashboard');
-    $tasksRoute        = $role === 'admin' ? 'admin.dashboard' : ($role === 'manager' ? 'manager.dashboard' : 'user.tasks.index');
+    $tasksRoute        = $role === 'admin' ? 'admin.dashboard' : ($role === 'manager' ? 'manager.dashboard' : 'user.dashboard');
     $approvalCount     = ($role === 'admin' && auth()->check()) ? \App\Models\Task::where('status','pending_approval')->count() : 0;
     $userProjectCount  = ($role === 'user'  && auth()->check()) ? auth()->user()->projects()->count() : 0;
 @endphp
@@ -45,7 +45,7 @@
 
         {{-- My Tasks --}}
         <a href="{{ route($tasksRoute) }}"
-           class="nav-item {{ request()->routeIs($tasksRoute) || request()->routeIs('user.tasks.*') ? 'active' : '' }}">
+           class="nav-item {{ request()->routeIs($tasksRoute) ? 'active' : '' }}">
             <div class="nav-left">
                 <i class="fas fa-square-check nav-icon"></i>
                 My Tasks
@@ -67,7 +67,8 @@
         {{-- MENU section --}}
         <div class="sidebar-section">Menu</div>
 
-        {{-- Overview --}}
+        {{-- Overview (admin/manager only — users have My Tasks as their dashboard) --}}
+        @if($role !== 'user')
         <a href="{{ route($dashRoute) }}"
            class="nav-item {{ request()->routeIs($dashRoute) ? 'active' : '' }}">
             <div class="nav-left">
@@ -75,6 +76,7 @@
                 Overview
             </div>
         </a>
+        @endif
 
         {{-- Messages --}}
         <a href="{{ route('messages.index') }}"
@@ -147,6 +149,14 @@
             @if($approvalCount > 0)
             <span class="nav-badge nav-badge-red">{{ $approvalCount }}</span>
             @endif
+        </a>
+
+        <a href="{{ route('admin.audit.index') }}"
+           class="nav-item {{ request()->routeIs('admin.audit.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-shield-halved nav-icon"></i>
+                Audit Log
+            </div>
         </a>
         @endif
 

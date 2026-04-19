@@ -30,6 +30,8 @@ class User extends Authenticatable
         'phone',
         'job_title',
         'status',
+        'archived_at',
+        'archived_by',
     ];
 
     /** Returns the public URL of the avatar, or null. */
@@ -57,9 +59,20 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'role' => 'string',
+            'archived_at'       => 'datetime',
+            'password'          => 'hashed',
+            'role'              => 'string',
         ];
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->status === 'archived';
+    }
+
+    public function archivedBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class, 'archived_by');
     }
 
     public function tasks(): HasMany

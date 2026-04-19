@@ -20,10 +20,12 @@ class Task extends Model
         'status',
         'priority',
         'deadline',
+        'first_viewed_at',
     ];
 
     protected $casts = [
-        'deadline' => 'date',
+        'deadline'        => 'date',
+        'first_viewed_at' => 'datetime',
     ];
 
     public function project(): BelongsTo
@@ -49,6 +51,11 @@ class Task extends Model
     public function calendarEvent(): HasOne
     {
         return $this->hasOne(CalendarEvent::class, 'related_task_id');
+    }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(TaskComment::class)->latest();
     }
 }
 

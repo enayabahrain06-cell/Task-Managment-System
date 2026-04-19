@@ -7,7 +7,7 @@ use Illuminate\Notifications\Notification;
 
 class TaskCompleted extends Notification
 {
-    public function __construct(public Task $task) {}
+    public function __construct(public Task $task, public bool $hasFile = false) {}
 
     public function via(object $notifiable): array
     {
@@ -16,12 +16,15 @@ class TaskCompleted extends Notification
 
     public function toDatabase(object $notifiable): array
     {
+        $name   = $this->task->assignee->name ?? 'A user';
+        $action = $this->hasFile ? 'submitted artwork for review' : 'submitted work for review';
+
         return [
-            'title'   => 'Task Completed',
-            'message' => ($this->task->assignee->name ?? 'A user') . ' completed: ' . $this->task->title,
-            'url'     => route('admin.projects.show', $this->task->project_id),
-            'icon'    => 'fa-circle-check',
-            'color'   => 'green',
+            'title'   => 'Submitted for Review',
+            'message' => $name . ' ' . $action . ': ' . $this->task->title,
+            'url'     => route('admin.tasks.show', $this->task->id),
+            'icon'    => $this->hasFile ? 'fa-file-circle-check' : 'fa-hourglass-half',
+            'color'   => 'amber',
         ];
     }
 }

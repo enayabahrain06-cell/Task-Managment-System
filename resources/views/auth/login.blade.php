@@ -102,11 +102,6 @@
             @endforeach
         </div>
 
-        {{-- Register link --}}
-        <p style="text-align:center;font-size:12px;color:#9CA3AF;margin-top:20px;">
-            Don't have an account?
-            <a href="{{ route('register') }}" style="color:#4F46E5;font-weight:600;text-decoration:none;">Create account</a>
-        </p>
     </div>
 
     {{-- ── Right: Illustration ── --}}

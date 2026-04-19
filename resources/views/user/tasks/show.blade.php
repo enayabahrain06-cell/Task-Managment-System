@@ -3,18 +3,19 @@
 
 @section('content')
 @php
-    $isOverdue  = $task->deadline->isPast() && !in_array($task->status, ['completed','pending_approval']);
+    $isOverdue  = $task->deadline->isPast() && !in_array($task->status, ['completed','pending_approval','delivered']);
     $statusMap  = [
         'pending'          => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Pending'],
         'in_progress'      => ['bg'=>'#FEF3C7','color'=>'#D97706','label'=>'In Progress'],
         'pending_approval' => ['bg'=>'#EDE9FE','color'=>'#7C3AED','label'=>'In Review'],
         'completed'        => ['bg'=>'#D1FAE5','color'=>'#059669','label'=>'Completed'],
+        'delivered'        => ['bg'=>'#ECFDF5','color'=>'#047857','label'=>'Delivered'],
     ];
     $priorityMap = ['low'=>['bg'=>'#D1FAE5','color'=>'#059669'],'medium'=>['bg'=>'#FEF3C7','color'=>'#D97706'],'high'=>['bg'=>'#FEE2E2','color'=>'#DC2626']];
     $s = $statusMap[$task->status]    ?? $statusMap['pending'];
     $p = $priorityMap[$task->priority] ?? $priorityMap['medium'];
     $latestSubmission = $task->submissions->first(); // already ordered desc
-    $canSubmit = !in_array($task->status, ['completed']);
+    $canSubmit = !in_array($task->status, ['completed', 'delivered']);
 @endphp
 
 {{-- Header --}}
@@ -99,6 +100,16 @@
                 @else
                 <p style="font-size:13px;color:#047857;margin:0;">Your submission was approved by the admin.</p>
                 @endif
+            </div>
+        </div>
+        @elseif($task->status === 'delivered')
+        <div style="background:#ECFDF5;border:1px solid #6EE7B7;border-radius:14px;padding:20px;display:flex;align-items:center;gap:14px;">
+            <div style="width:44px;height:44px;border-radius:50%;background:#D1FAE5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fa fa-truck" style="color:#047857;font-size:18px;"></i>
+            </div>
+            <div>
+                <p style="font-size:14px;font-weight:700;color:#065F46;margin:0 0 2px;">Work Delivered!</p>
+                <p style="font-size:13px;color:#047857;margin:0;">Your completed work has been delivered to the client.</p>
             </div>
         </div>
         @else
@@ -234,20 +245,8 @@
             </h2>
             @forelse($task->logs->sortByDesc('created_at') as $log)
             @php
-                $actionIcons = [
-                    'status_updated_pending'          => ['fa-circle-pause','#6B7280','#F3F4F6'],
-                    'status_updated_in_progress'      => ['fa-circle-play','#D97706','#FEF3C7'],
-                    'status_updated_completed'        => ['fa-circle-check','#059669','#D1FAE5'],
-                    'status_updated_pending_approval' => ['fa-hourglass-half','#7C3AED','#EDE9FE'],
-                ];
-                [$aico,$aco,$abg] = $actionIcons[$log->action] ?? ['fa-circle-dot','#6366F1','#EEF2FF'];
-                $actionLabel = match($log->action) {
-                    'status_updated_pending'          => 'Set to Pending',
-                    'status_updated_in_progress'      => 'Started Working',
-                    'status_updated_completed'        => 'Marked Completed',
-                    'status_updated_pending_approval' => 'Submitted for Review',
-                    default => ucwords(str_replace(['status_updated_','_'],['',' '],$log->action)),
-                };
+                [$aico, $aco, $abg] = $log->actionStyle();
+                $meta = $log->metadata ?? [];
             @endphp
             <div style="display:flex;gap:14px;padding-bottom:20px;margin-bottom:20px;border-bottom:1px solid #F9FAFB;">
                 <div style="flex-shrink:0;">
@@ -257,15 +256,46 @@
                 </div>
                 <div style="flex:1;min-width:0;">
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+                        @if($log->user)
                         <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">
                             {{ strtoupper(substr($log->user->name,0,1)) }}
                         </div>
                         <span style="font-size:13px;font-weight:600;color:#111827;">{{ $log->user->name }}</span>
-                        <span style="font-size:12px;color:#9CA3AF;">{{ $log->created_at->diffForHumans() }}</span>
+                        @else
+                        <span style="font-size:13px;color:#9CA3AF;font-style:italic;">System</span>
+                        @endif
+                        <span style="font-size:11px;font-weight:600;padding:1px 7px;border-radius:8px;background:{{ $abg }};color:{{ $aco }};">{{ $log->actionLabel() }}</span>
                         <span style="font-size:11px;color:#6B7280;margin-left:auto;">{{ $log->created_at->format('M d, H:i') }}</span>
                     </div>
-                    <p style="font-size:13px;color:#374151;margin:0 0 4px;">{{ $actionLabel }}</p>
-                    @if($log->note)
+
+                    {{-- Rich metadata chips --}}
+                    @if(!empty($meta))
+                    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;">
+                        @if($log->action === 'task_reassigned' && isset($meta['from_user_name'], $meta['to_user_name']))
+                        <span style="font-size:11px;background:#FEF3C7;color:#D97706;padding:2px 8px;border-radius:6px;">
+                            <span style="text-decoration:line-through;opacity:.7;">{{ $meta['from_user_name'] }}</span> → <strong>{{ $meta['to_user_name'] }}</strong>
+                        </span>
+                        @elseif($log->action === 'status_updated_pending_approval' && isset($meta['version']))
+                        <span style="font-size:11px;background:#EEF2FF;color:#4F46E5;padding:2px 8px;border-radius:6px;">v{{ $meta['version'] }}</span>
+                        @if(!empty($meta['has_file']))
+                        <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;"><i class="fa fa-paperclip" style="margin-right:3px;"></i>{{ $meta['filename'] ?? 'file attached' }}</span>
+                        @endif
+                        @elseif(in_array($log->action, ['status_updated_completed','status_updated_in_progress']) && isset($meta['reviewer_name']))
+                        <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;">reviewer: <strong>{{ $meta['reviewer_name'] }}</strong></span>
+                        @if(isset($meta['submission_version']))
+                        <span style="font-size:11px;background:#EEF2FF;color:#4F46E5;padding:2px 8px;border-radius:6px;">v{{ $meta['submission_version'] }}</span>
+                        @endif
+                        @elseif($log->action === 'status_updated_delivered' && isset($meta['delivered_by_name']))
+                        <span style="font-size:11px;background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:6px;"><i class="fa fa-truck" style="margin-right:3px;"></i>{{ $meta['delivered_by_name'] }}</span>
+                        @elseif(isset($meta['old_status'], $meta['new_status']))
+                        <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;">
+                            <span style="text-decoration:line-through;opacity:.7;">{{ str_replace('_',' ',$meta['old_status']) }}</span> → <strong>{{ str_replace('_',' ',$meta['new_status']) }}</strong>
+                        </span>
+                        @endif
+                    </div>
+                    @endif
+
+                    @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed']))
                     <p style="font-size:12px;color:#6B7280;background:#F9FAFB;padding:8px 12px;border-radius:8px;border-left:3px solid #E5E7EB;margin:6px 0 0;">"{{ $log->note }}"</p>
                     @endif
                 </div>
@@ -273,6 +303,63 @@
             @empty
             <div style="text-align:center;padding:40px 0;color:#9CA3AF;">
                 <p style="font-size:14px;margin:0;">No activity recorded yet.</p>
+            </div>
+            @endforelse
+        </div>
+
+        {{-- Comments & Updates --}}
+        <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
+            <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 16px;display:flex;align-items:center;gap:8px;">
+                <i class="fa fa-comments" style="color:#6366F1;"></i> Comments & Updates
+                <span style="margin-left:auto;font-size:12px;font-weight:500;color:#9CA3AF;">{{ $task->comments->count() }} {{ Str::plural('comment', $task->comments->count()) }}</span>
+            </h2>
+
+            {{-- Post comment --}}
+            <form method="POST" action="{{ route('user.tasks.comment', $task) }}" style="margin-bottom:20px;">
+                @csrf
+                <div style="display:flex;gap:10px;align-items:flex-start;">
+                    @if(auth()->user()?->avatarUrl())
+                        <img src="{{ auth()->user()->avatarUrl() }}" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                    @else
+                        <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#10B981,#059669);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">
+                            {{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}
+                        </div>
+                    @endif
+                    <div style="flex:1;">
+                        <textarea name="body" rows="2" required placeholder="Ask a question or post an update..."
+                                  style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;resize:vertical;font-family:'Inter',sans-serif;line-height:1.5;"
+                                  onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">{{ old('body') }}</textarea>
+                        @error('body')<p style="font-size:11px;color:#DC2626;margin:3px 0 0;">{{ $message }}</p>@enderror
+                        <button type="submit"
+                                style="margin-top:8px;background:#6366F1;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;">
+                            <i class="fa fa-paper-plane"></i> Post Comment
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            {{-- Comment list --}}
+            @forelse($task->comments as $comment)
+            @php $isAdmin = in_array($comment->user->role ?? 'user', ['admin','manager']); @endphp
+            <div style="display:flex;gap:10px;padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid #F9FAFB;">
+                <div style="width:34px;height:34px;border-radius:50%;background:{{ $isAdmin ? 'linear-gradient(135deg,#6366F1,#8B5CF6)' : 'linear-gradient(135deg,#10B981,#059669)' }};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">
+                    {{ strtoupper(substr($comment->user->name ?? 'U', 0, 1)) }}
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+                        <span style="font-size:13px;font-weight:600;color:#111827;">{{ $comment->user->name ?? 'Unknown' }}</span>
+                        @if($isAdmin)
+                        <span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:#EEF2FF;color:#4F46E5;">Admin</span>
+                        @endif
+                        <span style="font-size:11px;color:#9CA3AF;">{{ $comment->created_at->diffForHumans() }}</span>
+                    </div>
+                    <p style="font-size:13px;color:#374151;margin:0;line-height:1.6;">{{ $comment->body }}</p>
+                </div>
+            </div>
+            @empty
+            <div style="text-align:center;padding:24px;color:#9CA3AF;">
+                <i class="fa fa-comment-slash" style="font-size:22px;margin-bottom:8px;display:block;color:#E5E7EB;"></i>
+                <p style="font-size:13px;margin:0;">No comments yet. Post a question or update for the admin.</p>
             </div>
             @endforelse
         </div>
@@ -310,9 +397,12 @@
         </div>
 
         {{-- Time remaining --}}
-        <div style="background:{{ $isOverdue ? '#FEF2F2' : ($task->status==='completed' ? '#F0FDF4' : ($task->status==='pending_approval' ? '#F5F3FF' : '#EEF2FF')) }};border:1px solid {{ $isOverdue ? '#FECACA' : ($task->status==='completed' ? '#A7F3D0' : ($task->status==='pending_approval' ? '#DDD6FE' : '#C7D2FE')) }};border-radius:14px;padding:20px;text-align:center;">
-            <i class="fa fa-clock" style="font-size:24px;color:{{ $isOverdue ? '#DC2626' : ($task->status==='completed' ? '#059669' : ($task->status==='pending_approval' ? '#7C3AED' : '#6366F1')) }};margin-bottom:8px;display:block;"></i>
-            @if($task->status === 'completed')
+        <div style="background:{{ $isOverdue ? '#FEF2F2' : (in_array($task->status,['completed','delivered']) ? '#F0FDF4' : ($task->status==='pending_approval' ? '#F5F3FF' : '#EEF2FF')) }};border:1px solid {{ $isOverdue ? '#FECACA' : (in_array($task->status,['completed','delivered']) ? '#A7F3D0' : ($task->status==='pending_approval' ? '#DDD6FE' : '#C7D2FE')) }};border-radius:14px;padding:20px;text-align:center;">
+            <i class="fa fa-clock" style="font-size:24px;color:{{ $isOverdue ? '#DC2626' : (in_array($task->status,['completed','delivered']) ? '#059669' : ($task->status==='pending_approval' ? '#7C3AED' : '#6366F1')) }};margin-bottom:8px;display:block;"></i>
+            @if($task->status === 'delivered')
+                <p style="font-size:14px;font-weight:700;color:#065F46;margin:0 0 4px;">Delivered!</p>
+                <p style="font-size:12px;color:#047857;margin:0;">Work delivered to client.</p>
+            @elseif($task->status === 'completed')
                 <p style="font-size:14px;font-weight:700;color:#065F46;margin:0 0 4px;">Approved!</p>
                 <p style="font-size:12px;color:#047857;margin:0;">This task is complete.</p>
             @elseif($task->status === 'pending_approval')

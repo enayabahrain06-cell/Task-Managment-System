@@ -13,8 +13,19 @@ class AdminMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!auth()->check() || auth()->user()->role !== 'admin') {
+        $user = auth()->user();
+
+        if (!$user || $user->role !== 'admin') {
             abort(403, 'Admin access required.');
+        }
+
+        if ($user->status !== 'active') {
+            auth()->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return redirect('/login')->withErrors([
+                'email' => 'Your account has been deactivated.',
+            ]);
         }
 
         return $next($request);

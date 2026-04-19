@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\CalendarEvent;
 use App\Models\Task;
+use App\Models\TaskLog;
 
 class TaskObserver
 {
@@ -11,14 +12,30 @@ class TaskObserver
     {
         if ($task->assigned_to) {
             CalendarEvent::create([
-                'user_id' => $task->assigned_to,
-                'title' => $task->title,
-                'description' => $task->description,
-                'start_date' => $task->deadline,
-                'type' => 'task',
+                'user_id'         => $task->assigned_to,
+                'title'           => $task->title,
+                'description'     => $task->description,
+                'start_date'      => $task->deadline,
+                'type'            => 'task',
                 'related_task_id' => $task->id,
             ]);
         }
+
+        // Load relationship for metadata if not already loaded
+        $task->loadMissing('assignee');
+
+        TaskLog::create([
+            'task_id'  => $task->id,
+            'user_id'  => auth()->id() ?? $task->assigned_to,
+            'action'   => 'task_created',
+            'note'     => 'Task created and assigned to ' . ($task->assignee->name ?? 'user'),
+            'metadata' => [
+                'assigned_to_id'   => $task->assigned_to,
+                'assigned_to_name' => $task->assignee->name ?? null,
+                'priority'         => $task->priority,
+                'deadline'         => $task->deadline?->toDateString(),
+            ],
+        ]);
     }
 
     public function updated(Task $task): void
@@ -27,9 +44,10 @@ class TaskObserver
             $event = CalendarEvent::where('related_task_id', $task->id)->first();
             if ($event) {
                 $event->update([
-                    'title' => $task->title,
+                    'user_id'     => $task->assigned_to,
+                    'title'       => $task->title,
                     'description' => $task->description,
-                    'start_date' => $task->deadline,
+                    'start_date'  => $task->deadline,
                 ]);
             }
         }

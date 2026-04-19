@@ -49,6 +49,16 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        $status = Auth::user()->status;
+        if ($status !== 'active') {
+            Auth::logout();
+            throw ValidationException::withMessages([
+                'email' => $status === 'archived'
+                    ? 'This account has been archived and can no longer sign in.'
+                    : 'This account has been deactivated. Please contact your administrator.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

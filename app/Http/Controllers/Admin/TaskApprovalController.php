@@ -26,6 +26,11 @@ class TaskApprovalController extends Controller
     {
         $request->validate(['note' => 'nullable|string|max:500']);
 
+        $latestSub = TaskSubmission::where('task_id', $task->id)
+            ->where('status', 'submitted')
+            ->orderByDesc('version')
+            ->first();
+
         $task->update(['status' => 'completed']);
 
         TaskSubmission::where('task_id', $task->id)
@@ -38,10 +43,16 @@ class TaskApprovalController extends Controller
             ]);
 
         TaskLog::create([
-            'task_id' => $task->id,
-            'user_id' => auth()->id(),
-            'action'  => 'status_updated_completed',
-            'note'    => $request->note ? 'Approved: ' . $request->note : 'Approved by admin',
+            'task_id'  => $task->id,
+            'user_id'  => auth()->id(),
+            'action'   => 'status_updated_completed',
+            'note'     => $request->note ? 'Approved: ' . $request->note : 'Approved by admin',
+            'metadata' => [
+                'reviewer_id'       => auth()->id(),
+                'reviewer_name'     => auth()->user()->name,
+                'submission_version'=> $latestSub?->version,
+                'approval_note'     => $request->note,
+            ],
         ]);
 
         if ($task->assignee) {
@@ -55,6 +66,11 @@ class TaskApprovalController extends Controller
     {
         $request->validate(['note' => 'required|string|max:500']);
 
+        $latestSub = TaskSubmission::where('task_id', $task->id)
+            ->where('status', 'submitted')
+            ->orderByDesc('version')
+            ->first();
+
         $task->update(['status' => 'in_progress']);
 
         TaskSubmission::where('task_id', $task->id)
@@ -67,10 +83,16 @@ class TaskApprovalController extends Controller
             ]);
 
         TaskLog::create([
-            'task_id' => $task->id,
-            'user_id' => auth()->id(),
-            'action'  => 'status_updated_in_progress',
-            'note'    => 'Rejected: ' . $request->note,
+            'task_id'  => $task->id,
+            'user_id'  => auth()->id(),
+            'action'   => 'status_updated_in_progress',
+            'note'     => 'Rejected: ' . $request->note,
+            'metadata' => [
+                'reviewer_id'        => auth()->id(),
+                'reviewer_name'      => auth()->user()->name,
+                'submission_version' => $latestSub?->version,
+                'rejection_reason'   => $request->note,
+            ],
         ]);
 
         if ($task->assignee) {

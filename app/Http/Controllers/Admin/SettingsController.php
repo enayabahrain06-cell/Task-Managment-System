@@ -238,6 +238,168 @@ class SettingsController extends Controller
         });
     }
 
+    // ── Full System Backup / Restore ─────────────────────────────────────
+
+    public function downloadBackup()
+    {
+        $dbPath  = database_path('database.sqlite');
+        $filename = 'backup_' . now()->format('Ymd_His') . '.sqlite';
+
+        return response()->download($dbPath, $filename, [
+            'Content-Type'        => 'application/octet-stream',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    public function restoreBackup(Request $request)
+    {
+        $request->validate(['backup_file' => 'required|file|max:51200']);
+
+        $file    = $request->file('backup_file');
+        $tmpPath = $file->getRealPath();
+
+        // Verify it is a valid SQLite file by checking the header magic bytes
+        $handle = fopen($tmpPath, 'rb');
+        $magic  = fread($handle, 16);
+        fclose($handle);
+
+        if (strncmp($magic, "SQLite format 3\000", 16) !== 0) {
+            return back()->withErrors(['backup_file' => 'Invalid file — please upload a .sqlite backup file created by this system.'])->withFragment('backup');
+        }
+
+        $dbPath = database_path('database.sqlite');
+
+        // Close all DB connections before replacing the file
+        DB::disconnect();
+
+        // Keep a copy of the current DB just in case
+        $safeCopy = $dbPath . '.pre_restore_' . now()->format('YmdHis');
+        copy($dbPath, $safeCopy);
+
+        try {
+            copy($tmpPath, $dbPath);
+            // Remove the safety copy on success
+            @unlink($safeCopy);
+        } catch (\Throwable $e) {
+            // Roll back
+            copy($safeCopy, $dbPath);
+            @unlink($safeCopy);
+            return back()->with('error', 'Restore failed: ' . $e->getMessage())->withFragment('backup');
+        }
+
+        return redirect()->route('admin.settings.index')->with('success', 'Full system restore completed successfully. All data has been restored.')->withFragment('backup');
+    }
+
+    // ── Restores ─────────────────────────────────────────────────────────
+
+    public function restoreUsers(Request $request)
+    {
+        $request->validate(['file' => 'required|file|mimes:csv,txt|max:2048']);
+
+        [$created, $updated, $skipped] = [0, 0, 0];
+        $handle = fopen($request->file('file')->getRealPath(), 'r');
+        $headers = array_map('strtolower', array_map('trim', fgetcsv($handle)));
+
+        $need = ['name', 'email', 'role'];
+        if (count(array_diff($need, $headers)) > 0) {
+            fclose($handle);
+            return back()->withErrors(['file' => 'CSV must have columns: name, email, role'])->withFragment('backup');
+        }
+
+        while (($row = fgetcsv($handle)) !== false) {
+            $data = array_combine($headers, $row);
+            $email = strtolower(trim($data['email'] ?? ''));
+            $role  = in_array($data['role'] ?? '', ['admin','manager','user']) ? $data['role'] : 'user';
+            if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) { $skipped++; continue; }
+
+            $existing = User::where('email', $email)->first();
+            if ($existing) {
+                $existing->update(['name' => $data['name'] ?? $existing->name, 'role' => $role]);
+                $updated++;
+            } else {
+                User::create(['name' => $data['name'] ?? 'User', 'email' => $email, 'role' => $role, 'password' => bcrypt(\Illuminate\Support\Str::random(16))]);
+                $created++;
+            }
+        }
+        fclose($handle);
+
+        return back()->with('success', "Users restored: {$created} created, {$updated} updated, {$skipped} skipped.")->withFragment('backup');
+    }
+
+    public function restoreProjects(Request $request)
+    {
+        $request->validate(['file' => 'required|file|mimes:csv,txt|max:2048']);
+
+        [$created, $updated, $skipped] = [0, 0, 0];
+        $handle  = fopen($request->file('file')->getRealPath(), 'r');
+        $headers = array_map('strtolower', array_map('trim', fgetcsv($handle)));
+
+        if (!in_array('name', $headers) || !in_array('deadline', $headers)) {
+            fclose($handle);
+            return back()->withErrors(['file' => 'CSV must have columns: name, deadline'])->withFragment('backup');
+        }
+
+        $adminId = auth()->id();
+        while (($row = fgetcsv($handle)) !== false) {
+            $data     = array_combine($headers, $row);
+            $name     = trim($data['name'] ?? '');
+            $deadline = trim($data['deadline'] ?? '');
+            if (!$name || !$deadline) { $skipped++; continue; }
+
+            $status   = in_array($data['status'] ?? '', ['active','completed','overdue']) ? $data['status'] : 'active';
+            $existing = Project::where('name', $name)->first();
+            if ($existing) {
+                $existing->update(['status' => $status, 'deadline' => $deadline]);
+                $updated++;
+            } else {
+                Project::create(['name' => $name, 'description' => $data['description'] ?? null, 'deadline' => $deadline, 'status' => $status, 'created_by' => $adminId]);
+                $created++;
+            }
+        }
+        fclose($handle);
+
+        return back()->with('success', "Projects restored: {$created} created, {$updated} updated, {$skipped} skipped.")->withFragment('backup');
+    }
+
+    public function restoreTasks(Request $request)
+    {
+        $request->validate(['file' => 'required|file|mimes:csv,txt|max:2048']);
+
+        [$created, $skipped] = [0, 0];
+        $handle  = fopen($request->file('file')->getRealPath(), 'r');
+        $headers = array_map('strtolower', array_map('trim', fgetcsv($handle)));
+
+        $need = ['title', 'project', 'assigned to', 'deadline'];
+        if (count(array_diff($need, $headers)) > 0) {
+            fclose($handle);
+            return back()->withErrors(['file' => 'CSV must have columns: title, project, assigned to, deadline'])->withFragment('backup');
+        }
+
+        while (($row = fgetcsv($handle)) !== false) {
+            $data    = array_combine($headers, $row);
+            $title   = trim($data['title'] ?? '');
+            $projName = trim($data['project'] ?? '');
+            $userName = trim($data['assigned to'] ?? '');
+            $deadline = trim($data['deadline'] ?? '');
+            if (!$title || !$projName || !$deadline) { $skipped++; continue; }
+
+            $project  = Project::where('name', $projName)->first();
+            $assignee = User::where('name', $userName)->first();
+            if (!$project || !$assignee) { $skipped++; continue; }
+
+            $exists = Task::where('title', $title)->where('project_id', $project->id)->exists();
+            if ($exists) { $skipped++; continue; }
+
+            $priority = in_array($data['priority'] ?? '', ['low','medium','high']) ? $data['priority'] : 'medium';
+            $status   = in_array($data['status'] ?? '', ['pending','in_progress','completed','pending_approval']) ? $data['status'] : 'pending';
+            Task::create(['title' => $title, 'project_id' => $project->id, 'assigned_to' => $assignee->id, 'priority' => $priority, 'status' => $status, 'deadline' => $deadline]);
+            $created++;
+        }
+        fclose($handle);
+
+        return back()->with('success', "Tasks restored: {$created} created, {$skipped} skipped.")->withFragment('backup');
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────
 
     private function csvResponse(string $filename, callable $callback): StreamedResponse

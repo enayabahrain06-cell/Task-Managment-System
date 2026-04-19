@@ -214,6 +214,23 @@
 
         </div>
 
+        {{-- Admin comment + view task link --}}
+        <div style="padding:12px 20px 16px;border-top:1px solid #F9FAFB;display:flex;gap:10px;align-items:flex-start;background:#FAFBFF;">
+            <form method="POST" action="{{ route('admin.tasks.comment', $task) }}" style="flex:1;display:flex;gap:8px;">
+                @csrf
+                <input type="text" name="body" required placeholder="Add a comment or update for {{ $task->assignee->name ?? 'assignee' }}..."
+                       style="flex:1;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#111827;outline:none;background:#fff;">
+                <button type="submit"
+                        style="padding:8px 14px;background:#EEF2FF;color:#4F46E5;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:4px;">
+                    <i class="fa fa-comment" style="font-size:10px;"></i> Comment
+                </button>
+            </form>
+            <a href="{{ route('admin.tasks.show', $task) }}"
+               style="padding:8px 14px;background:#F3F4F6;color:#374151;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap;display:flex;align-items:center;gap:4px;flex-shrink:0;">
+                <i class="fa fa-arrow-up-right-from-square" style="font-size:10px;"></i> Full View
+            </a>
+        </div>
+
         {{-- All versions toggle --}}
         @if($task->submissions->count() > 1)
         <div x-data="{ open: false }" style="border-top:1px solid #F9FAFB;">

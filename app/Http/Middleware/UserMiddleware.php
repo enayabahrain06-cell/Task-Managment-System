@@ -13,8 +13,20 @@ class UserMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!auth()->check()) {
+        $user = auth()->user();
+
+        if (!$user) {
             return redirect('/login');
+        }
+
+        if ($user->status !== 'active') {
+            auth()->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            $msg = $user->status === 'archived'
+                ? 'Your account has been archived and is no longer accessible.'
+                : 'Your account has been deactivated. Please contact your administrator.';
+            return redirect('/login')->withErrors(['email' => $msg]);
         }
 
         return $next($request);

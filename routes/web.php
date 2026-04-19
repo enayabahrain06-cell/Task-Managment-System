@@ -15,6 +15,9 @@ use App\Http\Controllers\TeamController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\MeetingController as AdminMeetingController;
 use App\Http\Controllers\Admin\TaskApprovalController as AdminTaskApprovalController;
+use App\Http\Controllers\Admin\TaskController as AdminTaskController;
+use App\Http\Controllers\Admin\AuditLogController as AdminAuditLogController;
+use App\Http\Controllers\Admin\OffboardingController as AdminOffboardingController;
 use App\Http\Controllers\User\ProjectController as UserProjectController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\ManagerMiddleware;
@@ -70,11 +73,32 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::get('settings/export/users',            [AdminSettingsController::class, 'exportUsers'])->name('settings.export.users');
     Route::get('settings/export/tasks',           [AdminSettingsController::class, 'exportTasks'])->name('settings.export.tasks');
     Route::get('settings/export/projects',        [AdminSettingsController::class, 'exportProjects'])->name('settings.export.projects');
+    Route::post('settings/restore/users',         [AdminSettingsController::class, 'restoreUsers'])->name('settings.restore.users');
+    Route::post('settings/restore/tasks',         [AdminSettingsController::class, 'restoreTasks'])->name('settings.restore.tasks');
+    Route::post('settings/restore/projects',      [AdminSettingsController::class, 'restoreProjects'])->name('settings.restore.projects');
+    Route::get('settings/backup/download',        [AdminSettingsController::class, 'downloadBackup'])->name('settings.backup.download');
+    Route::post('settings/backup/restore',        [AdminSettingsController::class, 'restoreBackup'])->name('settings.backup.restore');
 
     // Task approvals
     Route::get('approvals',                        [AdminTaskApprovalController::class, 'index'])->name('approvals.index');
     Route::post('tasks/{task}/approve',            [AdminTaskApprovalController::class, 'approve'])->name('tasks.approve');
     Route::post('tasks/{task}/reject',             [AdminTaskApprovalController::class, 'reject'])->name('tasks.reject');
+
+    // Individual task management
+    Route::get('tasks/{task}',                     [AdminTaskController::class, 'show'])->name('tasks.show');
+    Route::post('tasks/{task}/comment',            [AdminTaskController::class, 'comment'])->name('tasks.comment');
+    Route::post('tasks/{task}/deliver',            [AdminTaskController::class, 'deliver'])->name('tasks.deliver');
+    Route::post('tasks/{task}/reassign',           [AdminTaskController::class, 'reassign'])->name('tasks.reassign');
+
+    // User task transfer
+    Route::post('users/{user}/transfer-tasks',     [AdminUserController::class, 'transferTasks'])->name('users.transfer-tasks');
+
+    // User offboarding
+    Route::get('users/{user}/offboard',            [AdminOffboardingController::class, 'show'])->name('users.offboard');
+    Route::post('users/{user}/offboard',           [AdminOffboardingController::class, 'process'])->name('users.offboard.process');
+
+    // Audit log
+    Route::get('audit',                            [AdminAuditLogController::class, 'index'])->name('audit.index');
 });
 
 // Manager routes
@@ -90,6 +114,7 @@ Route::middleware([UserMiddleware::class])->prefix('user')->name('user.')->group
     Route::get('/tasks/{task}', [UserTaskController::class, 'show'])->name('tasks.show');
     Route::patch('/tasks/{task}/status', [UserTaskController::class, 'updateStatus'])->name('tasks.updateStatus');
     Route::post('/tasks/{task}/submit', [UserTaskController::class, 'submitVersion'])->name('tasks.submit');
+    Route::post('/tasks/{task}/comment', [UserTaskController::class, 'addComment'])->name('tasks.comment');
     Route::get('/projects', [UserProjectController::class, 'index'])->name('projects.index');
     Route::get('/projects/{project}', [UserProjectController::class, 'show'])->name('projects.show');
 });

@@ -141,5 +141,44 @@
         </div>
 
     </form>
+
+    {{-- Transfer Tasks --}}
+    @php
+        $unfinishedCount = \App\Models\Task::where('assigned_to', $user->id)
+            ->whereNotIn('status', ['completed', 'delivered'])->count();
+        $otherUsers = \App\Models\User::where('id', '!=', $user->id)
+            ->whereIn('role', ['user', 'manager'])->orderBy('name')->get();
+    @endphp
+    @if($unfinishedCount > 0 && $otherUsers->count() > 0)
+    <div class="bg-white rounded-xl border border-amber-200 shadow-sm p-6 mt-4">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
+                <i class="fa fa-right-left text-amber-500 text-sm"></i>
+            </div>
+            <div>
+                <p class="text-sm font-semibold text-gray-800">Transfer Unfinished Tasks</p>
+                <p class="text-xs text-gray-400 mt-0.5">{{ $user->name }} has <strong>{{ $unfinishedCount }}</strong> unfinished {{ Str::plural('task', $unfinishedCount) }}. Transfer them to another team member.</p>
+            </div>
+        </div>
+        <form method="POST" action="{{ route('admin.users.transfer-tasks', $user) }}"
+              onsubmit="return confirm('Transfer all {{ $unfinishedCount }} unfinished task(s) from {{ $user->name }}?')">
+            @csrf
+            <div class="flex gap-3 items-center">
+                <select name="to_user_id" required
+                        class="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition">
+                    <option value="">— Select recipient —</option>
+                    @foreach($otherUsers as $ou)
+                    <option value="{{ $ou->id }}">{{ $ou->name }} ({{ ucfirst($ou->role) }})</option>
+                    @endforeach
+                </select>
+                <button type="submit"
+                        class="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-xl text-sm transition shadow-sm whitespace-nowrap">
+                    <i class="fa fa-right-left mr-1.5"></i> Transfer
+                </button>
+            </div>
+        </form>
+    </div>
+    @endif
+
 </div>
 @endsection

@@ -7,7 +7,13 @@
       "WebFetch(domain:dribbble.com)",
       "WebSearch",
       "Bash(php -r ' *)",
-      "Bash(php -r \"require 'vendor/autoload.php';\")"
+      "Bash(php -r \"require 'vendor/autoload.php';\")",
+      "Bash(xargs grep *)",
+      "Bash(php -l app/Http/Controllers/Admin/TaskController.php)",
+      "Bash(php -l app/Http/Controllers/User/TaskController.php)",
+      "Bash(php -l app/Notifications/TaskViewed.php)",
+      "Bash(php -l app/Notifications/TaskCommentPosted.php)",
+      "Bash(php -l app/Notifications/TaskDelivered.php)"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory"

@@ -215,37 +215,49 @@ function taskModal() {
 <div class="stats-grid">
 
     {{-- Tasks --}}
-    <div class="stat-card" style="background:linear-gradient(135deg,#4F46E5,#6366F1);">
+    <a href="{{ route('admin.dashboard') }}" style="text-decoration:none;">
+    <div class="stat-card" style="background:linear-gradient(135deg,#4F46E5,#6366F1);cursor:pointer;transition:transform .15s,box-shadow .15s;"
+         onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(79,70,229,.4)'"
+         onmouseout="this.style.transform='';this.style.boxShadow=''">
         <div class="stat-card-blob"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;">
             <p class="stat-card-label">Tasks</p>
-            <button class="stat-card-menu"><i class="fas fa-ellipsis-h"></i></button>
+            <button class="stat-card-menu" onclick="event.preventDefault()"><i class="fas fa-ellipsis-h"></i></button>
         </div>
         <p class="stat-card-value">{{ $totalTasks }}</p>
         <p class="stat-card-sub">Open Tasks</p>
     </div>
+    </a>
 
     {{-- Projects --}}
-    <div class="stat-card" style="background:linear-gradient(135deg,#4F46E5,#6366F1);">
+    <a href="{{ route('admin.projects.index') }}" style="text-decoration:none;">
+    <div class="stat-card" style="background:linear-gradient(135deg,#4F46E5,#6366F1);cursor:pointer;transition:transform .15s,box-shadow .15s;"
+         onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(79,70,229,.4)'"
+         onmouseout="this.style.transform='';this.style.boxShadow=''">
         <div class="stat-card-blob"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;">
             <p class="stat-card-label">Projects</p>
-            <button class="stat-card-menu"><i class="fas fa-ellipsis-h"></i></button>
+            <button class="stat-card-menu" onclick="event.preventDefault()"><i class="fas fa-ellipsis-h"></i></button>
         </div>
         <p class="stat-card-value">{{ $activeProjects }}</p>
         <p class="stat-card-sub">Active Projects</p>
     </div>
+    </a>
 
     {{-- Meetings --}}
-    <div class="stat-card" style="background:linear-gradient(135deg,#4F46E5,#6366F1);">
+    <a href="{{ route('calendar.index') }}" style="text-decoration:none;">
+    <div class="stat-card" style="background:linear-gradient(135deg,#4F46E5,#6366F1);cursor:pointer;transition:transform .15s,box-shadow .15s;"
+         onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(79,70,229,.4)'"
+         onmouseout="this.style.transform='';this.style.boxShadow=''">
         <div class="stat-card-blob"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;">
             <p class="stat-card-label">Meetings</p>
-            <button class="stat-card-menu"><i class="fas fa-ellipsis-h"></i></button>
+            <button class="stat-card-menu" onclick="event.preventDefault()"><i class="fas fa-ellipsis-h"></i></button>
         </div>
         <p class="stat-card-value">{{ $scheduledMeetings }}</p>
         <p class="stat-card-sub">Scheduled Meetings</p>
     </div>
+    </a>
 
     {{-- Member Status --}}
     <div class="dash-card" style="padding:18px 20px;">
