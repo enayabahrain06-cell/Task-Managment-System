@@ -135,9 +135,70 @@
                 <button class="icon-btn" title="Search" onclick="document.getElementById('topbar-search-wrap').style.display='block';this.style.display='none'">
                     <i class="fas fa-search"></i>
                 </button>
-                <button class="icon-btn" title="Notifications">
-                    <i class="fas fa-bell"></i>
-                </button>
+                {{-- Notification Bell --}}
+                <div x-data="{ open: false }" @click.outside="open = false" style="position:relative;">
+                    <button @click="open = !open" class="icon-btn" title="Notifications" style="position:relative;">
+                        <i class="fas fa-bell"></i>
+                        @if($notificationCount > 0)
+                        <span style="position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:#EF4444;border-radius:999px;font-size:9px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 3px;border:2px solid #fff;line-height:1;">
+                            {{ $notificationCount > 9 ? '9+' : $notificationCount }}
+                        </span>
+                        @endif
+                    </button>
+
+                    <div x-show="open" x-cloak
+                         style="position:absolute;right:0;top:calc(100% + 8px);width:340px;background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.12);border:1px solid #F0F0F0;z-index:200;overflow:hidden;">
+
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 12px;border-bottom:1px solid #F3F4F6;">
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <span style="font-size:14px;font-weight:700;color:#111827;">Notifications</span>
+                                @if($notificationCount > 0)
+                                <span style="background:#EEF2FF;color:#4F46E5;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;">{{ $notificationCount }} new</span>
+                                @endif
+                            </div>
+                            @if($notificationCount > 0)
+                            <form method="POST" action="{{ route('notifications.mark-all-read') }}">
+                                @csrf
+                                <button type="submit" style="font-size:11px;color:#6366F1;font-weight:600;background:none;border:none;cursor:pointer;padding:0;">Mark all read</button>
+                            </form>
+                            @endif
+                        </div>
+
+                        <div style="max-height:360px;overflow-y:auto;">
+                            @forelse($notifications as $n)
+                            @php
+                                $nData  = $n->data;
+                                $isRead = !is_null($n->read_at);
+                                $palettes = ['indigo'=>['#EEF2FF','#4F46E5'],'green'=>['#F0FDF4','#16A34A'],'red'=>['#FEF2F2','#DC2626'],'amber'=>['#FFFBEB','#D97706']];
+                                [$cbg,$cico] = $palettes[$nData['color'] ?? 'indigo'] ?? $palettes['indigo'];
+                            @endphp
+                            <a href="{{ route('notifications.read', $n->id) }}"
+                               style="display:flex;align-items:flex-start;gap:11px;padding:11px 16px;border-bottom:1px solid #F9FAFB;text-decoration:none;background:{{ $isRead ? '#fff' : '#F8F8FF' }};"
+                               onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='{{ $isRead ? '#fff' : '#F8F8FF' }}'">
+                                <div style="width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:{{ $cbg }};">
+                                    <i class="fas {{ $nData['icon'] ?? 'fa-bell' }}" style="font-size:13px;color:{{ $cico }};"></i>
+                                </div>
+                                <div style="flex:1;min-width:0;">
+                                    <p style="font-size:12px;font-weight:{{ $isRead ? '500' : '700' }};color:#111827;margin:0 0 2px;">{{ $nData['title'] ?? '' }}</p>
+                                    <p style="font-size:11px;color:#6B7280;margin:0 0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $nData['message'] ?? '' }}</p>
+                                    <p style="font-size:10px;color:#9CA3AF;margin:0;">{{ $n->created_at->diffForHumans() }}</p>
+                                </div>
+                                @unless($isRead)
+                                <div style="width:7px;height:7px;border-radius:50%;background:#6366F1;flex-shrink:0;margin-top:5px;"></div>
+                                @endunless
+                            </a>
+                            @empty
+                            <div style="text-align:center;padding:32px 16px;">
+                                <div style="width:44px;height:44px;background:#F3F4F6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
+                                    <i class="fas fa-bell-slash" style="color:#D1D5DB;font-size:18px;"></i>
+                                </div>
+                                <p style="font-size:12px;color:#9CA3AF;margin:0;">You're all caught up!</p>
+                            </div>
+                            @endforelse
+                        </div>
+
+                    </div>
+                </div>
                 <button class="icon-btn" title="Toggle theme" style="display:none" id="theme-btn">
                     <i class="fas fa-moon"></i>
                 </button>

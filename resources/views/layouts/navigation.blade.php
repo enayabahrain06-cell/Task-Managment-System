@@ -1,8 +1,10 @@
 @php
-    $role         = auth()->user()->role ?? 'user';
-    $taskCount    = auth()->check() ? auth()->user()->tasks()->where('status','!=','completed')->count() : 0;
-    $dashRoute    = $role === 'admin' ? 'admin.dashboard' : ($role === 'manager' ? 'manager.dashboard' : 'user.dashboard');
-    $tasksRoute   = $role === 'admin' ? 'admin.dashboard' : ($role === 'manager' ? 'manager.dashboard' : 'user.tasks.index');
+    $role              = auth()->user()->role ?? 'user';
+    $taskCount         = auth()->check() ? auth()->user()->tasks()->where('status','!=','completed')->count() : 0;
+    $dashRoute         = $role === 'admin' ? 'admin.dashboard' : ($role === 'manager' ? 'manager.dashboard' : 'user.dashboard');
+    $tasksRoute        = $role === 'admin' ? 'admin.dashboard' : ($role === 'manager' ? 'manager.dashboard' : 'user.tasks.index');
+    $approvalCount     = ($role === 'admin' && auth()->check()) ? \App\Models\Task::where('status','pending_approval')->count() : 0;
+    $userProjectCount  = ($role === 'user'  && auth()->check()) ? auth()->user()->projects()->count() : 0;
 @endphp
 
 <div style="display:flex;flex-direction:column;height:100%;">
@@ -102,6 +104,20 @@
             </div>
         </a>
 
+        {{-- User-only: My Projects --}}
+        @if($role === 'user')
+        <a href="{{ route('user.projects.index') }}"
+           class="nav-item {{ request()->routeIs('user.projects.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-diagram-project nav-icon"></i>
+                My Projects
+            </div>
+            @if($userProjectCount > 0)
+            <span class="nav-badge nav-badge-blue">{{ $userProjectCount }}</span>
+            @endif
+        </a>
+        @endif
+
         {{-- Admin-only --}}
         @if($role === 'admin')
         <div class="sidebar-section">Admin</div>
@@ -120,6 +136,17 @@
                 <i class="fas fa-diagram-project nav-icon"></i>
                 Projects
             </div>
+        </a>
+
+        <a href="{{ route('admin.approvals.index') }}"
+           class="nav-item {{ request()->routeIs('admin.approvals.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-clipboard-check nav-icon"></i>
+                Approvals
+            </div>
+            @if($approvalCount > 0)
+            <span class="nav-badge nav-badge-red">{{ $approvalCount }}</span>
+            @endif
         </a>
         @endif
 

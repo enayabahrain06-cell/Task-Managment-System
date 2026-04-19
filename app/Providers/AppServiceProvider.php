@@ -24,6 +24,24 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
+        // Share notifications with the main app layout
+        View::composer('layouts.app', function ($view) {
+            if (auth()->check()) {
+                try {
+                    $notifications    = auth()->user()->notifications()->latest()->take(15)->get();
+                    $notificationCount = auth()->user()->unreadNotifications()->count();
+                    $view->with('notifications', $notifications);
+                    $view->with('notificationCount', $notificationCount);
+                } catch (\Throwable) {
+                    $view->with('notifications', collect());
+                    $view->with('notificationCount', 0);
+                }
+            } else {
+                $view->with('notifications', collect());
+                $view->with('notificationCount', 0);
+            }
+        });
+
         // Share global app settings with all views
         View::composer('*', function ($view) {
             try {

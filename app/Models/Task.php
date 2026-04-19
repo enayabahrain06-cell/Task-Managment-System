@@ -41,6 +41,11 @@ class Task extends Model
         return $this->hasMany(TaskLog::class);
     }
 
+    public function submissions(): HasMany
+    {
+        return $this->hasMany(TaskSubmission::class)->orderBy('version', 'desc');
+    }
+
     public function calendarEvent(): HasOne
     {
         return $this->hasOne(CalendarEvent::class, 'related_task_id');
