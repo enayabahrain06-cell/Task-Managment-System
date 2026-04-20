@@ -728,10 +728,19 @@ document.addEventListener('DOMContentLoaded', function () {
             }));
         },
 
+        eventAllow: function (dropInfo, draggedEvent) {
+            return draggedEvent.extendedProps.type === 'meeting';
+        },
+
         eventDidMount: function (info) {
             const props = info.event.extendedProps;
             if (props.type === 'meeting') {
                 info.el.style.cursor = 'grab';
+                // Show time in the event bar
+                if (props.start_time) {
+                    const timeEl = info.el.querySelector('.fc-event-title');
+                    if (timeEl) timeEl.textContent = info.event.title + ' · ' + props.start_time;
+                }
             } else {
                 info.el.title = info.event.title
                     + '\nProject: ' + (props.project || '')

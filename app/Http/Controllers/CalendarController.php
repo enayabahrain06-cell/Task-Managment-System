@@ -50,10 +50,15 @@ class CalendarController extends Controller
         $meetingEvents = $allMeetings->map(fn($m) => [
             'id'       => 'meeting-' . $m->id,
             'title'    => '📅 ' . $m->title,
-            'start'    => $m->meeting_date->format('Y-m-d') . 'T' . $m->start_time,
+            'start'    => $m->meeting_date->format('Y-m-d'),
             'color'    => $m->color,
             'editable' => $isAdmin,
-            'extendedProps' => ['type' => 'meeting', 'location' => $m->location ?? ''],
+            'display'  => 'block',
+            'extendedProps' => [
+                'type'       => 'meeting',
+                'location'   => $m->location ?? '',
+                'start_time' => substr($m->start_time, 0, 5),
+            ],
         ]);
 
         $events = $events->merge($meetingEvents);

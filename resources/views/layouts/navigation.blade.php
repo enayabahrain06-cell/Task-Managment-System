@@ -146,15 +146,7 @@
         @if($role === 'admin')
         <div class="sidebar-section">Admin</div>
 
-        <a href="{{ route('admin.users.index') }}"
-           class="nav-item {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
-            <div class="nav-left">
-                <i class="fas fa-user-shield nav-icon"></i>
-                Manage Users
-            </div>
-        </a>
-
-        <a href="{{ route('admin.projects.index') }}"
+<a href="{{ route('admin.projects.index') }}"
            class="nav-item {{ request()->routeIs('admin.projects.*') ? 'active' : '' }}">
             <div class="nav-left">
                 <i class="fas fa-diagram-project nav-icon"></i>
