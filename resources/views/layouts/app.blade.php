@@ -270,6 +270,13 @@
                 </div>
             @endif
             @yield('content')
+
+            @php $copyright = \App\Models\Setting::get('copyright', ''); @endphp
+            @if($copyright)
+            <div style="text-align:center;padding:14px 0 6px;font-size:11.5px;color:#B0B7C3;border-top:1px solid #F3F4F6;margin-top:24px;">
+                {{ $copyright }}
+            </div>
+            @endif
         </main>
 
     </div>

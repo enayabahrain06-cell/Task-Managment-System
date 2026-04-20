@@ -277,6 +277,13 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             <p class="sf-hint">Shown in the sidebar header (when no logo is set).</p>
                         </div>
 
+                        {{-- ── Copyright ── --}}
+                        <div class="sf-group">
+                            <label class="sf-label">Copyright Text</label>
+                            <input type="text" name="copyright" class="sf-input" value="{{ $settings['copyright'] }}" placeholder="© 2025 Your Company. All rights reserved." maxlength="160">
+                            <p class="sf-hint">Shown in the application footer.</p>
+                        </div>
+
                         {{-- ── Live brand preview banner ── --}}
                         <div style="border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;transition:background 0.3s;"
                              :style="`background:linear-gradient(135deg,${primary},${accent})`">
