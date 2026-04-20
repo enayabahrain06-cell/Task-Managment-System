@@ -3,8 +3,13 @@
 namespace App\Observers;
 
 use App\Models\CalendarEvent;
+use App\Models\Setting;
 use App\Models\Task;
+<<<<<<< Updated upstream
 use App\Models\TaskLog;
+=======
+use App\Notifications\TaskAssigned;
+>>>>>>> Stashed changes
 
 class TaskObserver
 {
@@ -19,6 +24,11 @@ class TaskObserver
                 'type'            => 'task',
                 'related_task_id' => $task->id,
             ]);
+
+            $assignee = $task->assignee;
+            if ($assignee && Setting::get('notify_on_assign') === '1') {
+                $assignee->notify(new TaskAssigned($task));
+            }
         }
 
         // Load relationship for metadata if not already loaded
