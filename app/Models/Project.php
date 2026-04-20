@@ -16,12 +16,14 @@ class Project extends Model
         'name',
         'description',
         'deadline',
+        'first_review_date',
         'created_by',
         'status',
     ];
 
     protected $casts = [
-        'deadline' => 'date',
+        'deadline'          => 'date',
+        'first_review_date' => 'date',
     ];
 
     public function creator(): BelongsTo

@@ -35,6 +35,7 @@ class ProjectController extends Controller
             'name'                            => 'required|string|max:255',
             'description'                     => 'nullable|string',
             'deadline'                        => 'nullable|date|after:now',
+            'first_review_date'               => 'nullable|date',
             'members'                         => 'nullable|array',
             'members.*'                       => 'exists:users,id',
             'tasks'                           => 'nullable|array',
@@ -57,11 +58,12 @@ class ProjectController extends Controller
         ]);
 
         $project = Project::create([
-            'name'        => $request->name,
-            'description' => $request->description,
-            'deadline'    => $request->deadline,
-            'status'      => $request->input('status', 'active'),
-            'created_by'  => auth()->id(),
+            'name'              => $request->name,
+            'description'       => $request->description,
+            'deadline'          => $request->deadline,
+            'first_review_date' => $request->first_review_date ?: null,
+            'status'            => $request->input('status', 'active'),
+            'created_by'        => auth()->id(),
         ]);
 
         if ($request->filled('members')) {

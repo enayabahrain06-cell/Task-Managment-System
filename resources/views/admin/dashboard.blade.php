@@ -206,7 +206,7 @@
                                     <span x-show="projectStep <= s" x-text="s"></span>
                                 </div>
                                 <span :style="projectStep >= s ? 'font-size:10px;font-weight:600;color:#4F46E5;' : 'font-size:10px;font-weight:600;color:#9CA3AF;'"
-                                      x-text="s === 1 ? 'Details' : s === 2 ? 'Attachments' : 'Tasks'"></span>
+                                      x-text="s === 1 ? 'Details' : s === 2 ? 'Tasks' : 'Attachments'"></span>
                             </div>
                             <template x-if="s < 3">
                                 <div :style="projectStep > s ? 'flex:1;height:2px;background:#4F46E5;margin:0 4px;margin-bottom:20px;' : 'flex:1;height:2px;background:#E5E7EB;margin:0 4px;margin-bottom:20px;'"></div>
@@ -225,20 +225,38 @@
                     <div x-show="projectStep === 1">
                         <div style="margin-bottom:16px;">
                             <label class="form-label">Project Name <span style="color:#EF4444;">*</span></label>
-                            <input type="text" name="name" class="form-input" placeholder="e.g. Mobile App Redesign" required value="{{ old('name') }}">
+                            <input type="text" name="name" class="form-input" placeholder="e.g. Mobile App Redesign" required value="{{ old('name') }}"
+                                   x-ref="pWizardName" @input="pNameError = false"
+                                   :style="pNameError ? 'border-color:#EF4444;background:#FEF2F2;' : ''">
+                            <p x-show="pNameError" style="margin:4px 0 0;font-size:11px;color:#EF4444;"><i class="fa fa-circle-exclamation" style="margin-right:3px;"></i>Project name is required.</p>
                         </div>
                         <div style="margin-bottom:16px;">
-                            <label class="form-label">Description</label>
-                            <textarea name="description" class="form-input" rows="3" placeholder="Brief description of the project..." style="resize:vertical;">{{ old('description') }}</textarea>
+                            <label class="form-label">
+                                Description
+                                <span style="font-size:11px;font-weight:400;color:#9CA3AF;margin-left:4px;">— keep it brief</span>
+                            </label>
+                            <textarea name="description" class="form-input" rows="2" placeholder="Short summary of the project goal..." style="resize:none;">{{ old('description') }}</textarea>
                         </div>
-                        <div style="margin-bottom:8px;">
-                            <label class="form-label">Deadline <span style="color:#EF4444;">*</span></label>
-                            <input type="date" name="deadline" class="form-input" required min="{{ date('Y-m-d') }}" value="{{ old('deadline') }}">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px;">
+                            <div>
+                                <label class="form-label">Deadline <span style="color:#EF4444;">*</span></label>
+                                <input type="date" name="deadline" class="form-input" required min="{{ date('Y-m-d') }}" value="{{ old('deadline') }}"
+                                       x-ref="pWizardDeadline" @change="pDeadlineError = false"
+                                       :style="pDeadlineError ? 'border-color:#EF4444;background:#FEF2F2;' : ''">
+                                <p x-show="pDeadlineError" style="margin:4px 0 0;font-size:11px;color:#EF4444;"><i class="fa fa-circle-exclamation" style="margin-right:3px;"></i>Deadline is required.</p>
+                            </div>
+                            <div>
+                                <label class="form-label">
+                                    First Review Date
+                                    <span style="font-size:10px;font-weight:400;color:#9CA3AF;">optional</span>
+                                </label>
+                                <input type="date" name="first_review_date" class="form-input" value="{{ old('first_review_date') }}">
+                            </div>
                         </div>
                     </div>
 
-                    {{-- Step 2: Attachments --}}
-                    <div x-show="projectStep === 2">
+                    {{-- Step 3: Attachments --}}
+                    <div x-show="projectStep === 3">
                         <label class="form-label" style="margin-bottom:8px;">Files <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— max 20 MB each</span></label>
                         <div @dragover.prevent="pDragover = true" @dragleave.prevent="pDragover = false"
                              @drop.prevent="pDragover = false; pHandleFiles($event)"
@@ -287,8 +305,8 @@
                         </div>
                     </div>
 
-                    {{-- Step 3: Tasks --}}
-                    <div x-show="projectStep === 3">
+                    {{-- Step 2: Tasks --}}
+                    <div x-show="projectStep === 2">
                         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
                             <div>
                                 <p style="font-size:13px;font-weight:700;color:#374151;margin:0;">Assign Tasks</p>
@@ -300,7 +318,7 @@
                         </div>
                         <div style="display:flex;flex-direction:column;gap:14px;">
                             <template x-for="(task, i) in pTasks" :key="i">
-                                <div style="border:1.5px solid #E5E7EB;border-radius:12px;padding:16px;background:#FAFBFF;">
+                                <div :style="(task.titleError || task.assigneeError) ? 'border:1.5px solid #FCA5A5;border-radius:12px;padding:16px;background:#FAFBFF;' : 'border:1.5px solid #E5E7EB;border-radius:12px;padding:16px;background:#FAFBFF;'">
                                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
                                         <span style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Task <span x-text="i+1"></span></span>
                                         <button type="button" @click="if(pTasks.length>1) pTasks.splice(i,1)" x-show="pTasks.length > 1" style="width:24px;height:24px;border-radius:6px;background:#FEE2E2;color:#DC2626;border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;">
@@ -308,7 +326,13 @@
                                         </button>
                                     </div>
                                     <div style="margin-bottom:10px;">
-                                        <input type="text" :name="'tasks['+i+'][title]'" x-model="task.title" placeholder="Task title *" class="form-input">
+                                        <input type="text" :name="'tasks['+i+'][title]'" x-model="task.title"
+                                               @input="task.titleError = false"
+                                               placeholder="Task title *" class="form-input"
+                                               :style="task.titleError ? 'border-color:#EF4444;background:#FEF2F2;' : ''">
+                                        <p x-show="task.titleError" style="margin:3px 0 0;font-size:11px;color:#EF4444;display:flex;align-items:center;gap:3px;">
+                                            <i class="fa fa-circle-exclamation"></i> Task title is required.
+                                        </p>
                                     </div>
                                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
                                         <div>
@@ -328,7 +352,10 @@
                                         <div style="display:flex;flex-direction:column;gap:6px;">
                                             <template x-for="(assignee, j) in task.assignees" :key="j">
                                                 <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;">
-                                                    <select :name="'tasks['+i+'][assignees]['+j+'][user_id]'" x-model="assignee.user_id" class="form-input form-select">
+                                                    <select :name="'tasks['+i+'][assignees]['+j+'][user_id]'" x-model="assignee.user_id"
+                                                            @change="task.assigneeError = false"
+                                                            class="form-input form-select"
+                                                            :style="task.assigneeError && j === 0 ? 'border-color:#EF4444;background:#FEF2F2;' : ''">
                                                         <option value="">— Select person —</option>
                                                         <template x-for="u in pAllUsers" :key="u.id">
                                                             <option :value="u.id" x-text="u.name + ' (' + u.role + ')'"></option>
@@ -341,6 +368,9 @@
                                                     <div x-show="task.assignees.length === 1" style="width:26px;"></div>
                                                 </div>
                                             </template>
+                                            <p x-show="task.assigneeError" style="margin:4px 0 0;font-size:11px;color:#EF4444;display:flex;align-items:center;gap:3px;">
+                                                <i class="fa fa-circle-exclamation"></i> Please assign at least one person.
+                                            </p>
                                         </div>
                                     </div>
                                     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
@@ -390,7 +420,7 @@
                         </template>
                     </div>
                     <template x-if="projectStep < 3">
-                        <button type="button" @click="projectStep++"
+                        <button type="button" @click="pNextStep()"
                                 style="padding:9px 20px;background:#4F46E5;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;">
                             Next <i class="fa fa-arrow-right" style="font-size:11px;"></i>
                         </button>
@@ -420,21 +450,45 @@ function dashModals() {
         priority:       '{{ old('priority', 'medium') }}',
 
         /* ── Project Wizard ── */
-        projectOpen:  false,
-        projectStep:  1,
-        pDragover:    false,
-        pFiles:       [],
-        pLinks:       [],
-        pTasks:       [],
-        pAllUsers:    @json($allUsers->map(fn($u) => ['id' => (string)$u->id, 'name' => $u->name, 'role' => ucfirst($u->role)])),
+        projectOpen:    false,
+        projectStep:    1,
+        pDragover:      false,
+        pFiles:         [],
+        pLinks:         [],
+        pTasks:         [],
+        pNameError:     false,
+        pDeadlineError: false,
+        pAllUsers:      @json($allUsers->map(fn($u) => ['id' => (string)$u->id, 'name' => $u->name, 'role' => ucfirst($u->role)])),
 
         pBlankTask() {
-            return { title:'', task_type:'', tags:'', assignees:[{user_id:'',role:''}], reviewer_id:'', priority:'medium', deadline:'', description:'' };
+            return { title:'', task_type:'', tags:'', assignees:[{user_id:'',role:''}], reviewer_id:'', priority:'medium', deadline:'', description:'',
+                     titleError:false, assigneeError:false };
+        },
+
+        pNextStep() {
+            if (this.projectStep === 1) {
+                this.pNameError     = !this.$refs.pWizardName?.value.trim();
+                this.pDeadlineError = !this.$refs.pWizardDeadline?.value;
+                if (this.pNameError || this.pDeadlineError) return;
+            }
+            if (this.projectStep === 2) {
+                let hasError = false;
+                for (const task of this.pTasks) {
+                    task.titleError    = !task.title.trim();
+                    task.assigneeError = !task.assignees.some(a => a.user_id);
+                    if (task.titleError || task.assigneeError) hasError = true;
+                }
+                if (hasError) return;
+            }
+            if (this.projectStep < 3) this.projectStep++;
         },
 
         init() {
             this.pTasks = [this.pBlankTask()];
-            this.$watch('projectOpen', v => { if (v) { this.projectStep = 1; document.body.style.overflow = 'hidden'; } else { document.body.style.overflow = ''; } });
+            this.$watch('projectOpen', v => {
+                if (v) { this.projectStep = 1; this.pNameError = false; this.pDeadlineError = false; document.body.style.overflow = 'hidden'; }
+                else { document.body.style.overflow = ''; }
+            });
         },
 
         pAddTask() { this.pTasks.push(this.pBlankTask()); },

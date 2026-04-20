@@ -13,20 +13,39 @@
 
     _blankTask() {
         return { title:'', task_type:'', tags:'', assignees:[{user_id:'',role:''}], reviewer_id:'', priority:'medium', deadline:'', description:'',
-                 mentionOpen:false, mentionResults:[], mentionCursor:0, mentionStart:-1, _ta:null };
+                 mentionOpen:false, mentionResults:[], mentionCursor:0, mentionStart:-1, _ta:null,
+                 titleError:false, assigneeError:false };
     },
 
     tasks: [],
     files: [],
     links: [],
     dragover: false,
+    nameError: false,
+    deadlineError: false,
 
     init() { this.tasks = [this._blankTask()]; },
 
-    openWizard() { this.step = 1; this.wizardOpen = true; document.body.style.overflow = 'hidden'; },
+    openWizard() { this.step = 1; this.nameError = false; this.deadlineError = false; this.wizardOpen = true; document.body.style.overflow = 'hidden'; },
     closeWizard() { this.wizardOpen = false; document.body.style.overflow = ''; },
 
-    nextStep() { if (this.step < this.totalSteps) this.step++; },
+    nextStep() {
+        if (this.step === 1) {
+            this.nameError     = !this.$refs.wizardName?.value.trim();
+            this.deadlineError = !this.$refs.wizardDeadline?.value;
+            if (this.nameError || this.deadlineError) return;
+        }
+        if (this.step === 2) {
+            let hasError = false;
+            for (const task of this.tasks) {
+                task.titleError    = !task.title.trim();
+                task.assigneeError = !task.assignees.some(a => a.user_id);
+                if (task.titleError || task.assigneeError) hasError = true;
+            }
+            if (hasError) return;
+        }
+        if (this.step < this.totalSteps) this.step++;
+    },
     prevStep() { if (this.step > 1) this.step--; },
 
     addTask()            { this.tasks.push(this._blankTask()); },
@@ -340,7 +359,7 @@
                                 <span x-show="step <= s" x-text="s"></span>
                             </div>
                             <span :style="step >= s ? 'font-size:10px;font-weight:600;color:#4F46E5;' : 'font-size:10px;font-weight:600;color:#9CA3AF;'"
-                                  x-text="s === 1 ? 'Details' : s === 2 ? 'Attachments' : 'Tasks'"></span>
+                                  x-text="s === 1 ? 'Details' : s === 2 ? 'Tasks' : 'Attachments'"></span>
                         </div>
                         <template x-if="s < totalSteps">
                             <div :style="step > s ? 'flex:1;height:2px;background:#4F46E5;margin:0 4px;margin-bottom:20px;transition:all .3s;' : 'flex:1;height:2px;background:#E5E7EB;margin:0 4px;margin-bottom:20px;transition:all .3s;'"></div>
@@ -362,30 +381,49 @@
                             Project Name <span style="color:#EF4444;">*</span>
                         </label>
                         <input type="text" name="name" value="{{ old('name') }}" required
+                               x-ref="wizardName"
+                               @input="nameError = false"
                                placeholder="e.g. Mobile App Redesign"
-                               style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;color:#111827;box-sizing:border-box;outline:none;background:#fff;transition:border-color .2s;"
-                               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                               :style="nameError ? 'width:100%;padding:10px 14px;border:1.5px solid #EF4444;border-radius:10px;font-size:14px;color:#111827;box-sizing:border-box;outline:none;background:#FEF2F2;transition:border-color .2s;' : 'width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;color:#111827;box-sizing:border-box;outline:none;background:#fff;transition:border-color .2s;'"
+                               onfocus="this.style.borderColor='#6366F1'" onblur="if(!this.closest('[x-data]').__x.$data.nameError) this.style.borderColor='#E5E7EB'">
+                        <p x-show="nameError" style="margin:4px 0 0;font-size:11px;color:#EF4444;"><i class="fa fa-circle-exclamation" style="margin-right:3px;"></i>Project name is required.</p>
                     </div>
 
                     <div style="margin-bottom:16px;">
-                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Description</label>
-                        <textarea name="description" rows="3" placeholder="Brief description of the project..."
-                                  style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;color:#111827;box-sizing:border-box;outline:none;resize:vertical;font-family:'Inter',sans-serif;transition:border-color .2s;"
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
+                            Description
+                            <span style="font-size:11px;font-weight:400;color:#9CA3AF;margin-left:4px;">— keep it brief</span>
+                        </label>
+                        <textarea name="description" rows="2" placeholder="Short summary of the project goal..."
+                                  style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;color:#111827;box-sizing:border-box;outline:none;resize:none;font-family:'Inter',sans-serif;transition:border-color .2s;"
                                   onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">{{ old('description') }}</textarea>
                     </div>
 
-                    <div style="margin-bottom:8px;">
-                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
-                            Deadline <span style="color:#EF4444;">*</span>
-                        </label>
-                        <input type="date" name="deadline" value="{{ old('deadline') }}" required
-                               style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;color:#111827;box-sizing:border-box;outline:none;transition:border-color .2s;"
-                               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px;">
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
+                                Deadline <span style="color:#EF4444;">*</span>
+                            </label>
+                            <input type="date" name="deadline" value="{{ old('deadline') }}" required
+                                   x-ref="wizardDeadline"
+                                   @change="deadlineError = false"
+                                   :style="deadlineError ? 'width:100%;padding:10px 14px;border:1.5px solid #EF4444;border-radius:10px;font-size:14px;color:#111827;box-sizing:border-box;outline:none;background:#FEF2F2;transition:border-color .2s;' : 'width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;color:#111827;box-sizing:border-box;outline:none;transition:border-color .2s;'">
+                            <p x-show="deadlineError" style="margin:4px 0 0;font-size:11px;color:#EF4444;"><i class="fa fa-circle-exclamation" style="margin-right:3px;"></i>Deadline is required.</p>
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
+                                First Review Date
+                                <span style="font-size:10px;font-weight:400;color:#9CA3AF;">optional</span>
+                            </label>
+                            <input type="date" name="first_review_date" value="{{ old('first_review_date') }}"
+                                   style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;color:#111827;box-sizing:border-box;outline:none;transition:border-color .2s;"
+                                   onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                        </div>
                     </div>
                 </div>
 
-                {{-- ── STEP 2: Attachments & Links ── --}}
-                <div x-show="step === 2">
+                {{-- ── STEP 3: Attachments & Links ── --}}
+                <div x-show="step === 3">
                     {{-- Drop Zone --}}
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:8px;">
                         Files <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— max 20 MB each</span>
@@ -451,8 +489,8 @@
                     </div>
                 </div>
 
-                {{-- ── STEP 3: Tasks ── --}}
-                <div x-show="step === 3">
+                {{-- ── STEP 2: Tasks ── --}}
+                <div x-show="step === 2">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
                         <div>
                             <p style="font-size:13px;font-weight:700;color:#374151;margin:0;">Assign Tasks</p>
@@ -466,7 +504,7 @@
 
                     <div style="display:flex;flex-direction:column;gap:14px;">
                         <template x-for="(task, i) in tasks" :key="i">
-                            <div style="border:1.5px solid #E5E7EB;border-radius:12px;padding:16px;background:#FAFBFF;position:relative;">
+                            <div :style="(task.titleError || task.assigneeError) ? 'border:1.5px solid #FCA5A5;border-radius:12px;padding:16px;background:#FAFBFF;position:relative;' : 'border:1.5px solid #E5E7EB;border-radius:12px;padding:16px;background:#FAFBFF;position:relative;'">
 
                                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
                                     <span style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">
@@ -480,8 +518,12 @@
 
                                 <div style="margin-bottom:10px;">
                                     <input type="text" :name="'tasks['+i+'][title]'" x-model="task.title"
+                                           @input="task.titleError = false"
                                            placeholder="Task title *"
-                                           style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;background:#fff;">
+                                           :style="task.titleError ? 'width:100%;padding:9px 12px;border:1.5px solid #EF4444;border-radius:8px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;background:#FEF2F2;' : 'width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;background:#fff;'">
+                                    <p x-show="task.titleError" style="margin:3px 0 0;font-size:11px;color:#EF4444;display:flex;align-items:center;gap:3px;">
+                                        <i class="fa fa-circle-exclamation"></i> Task title is required.
+                                    </p>
                                 </div>
 
                                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
@@ -511,7 +553,8 @@
                                         <template x-for="(assignee, j) in task.assignees" :key="j">
                                             <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;">
                                                 <select :name="'tasks['+i+'][assignees]['+j+'][user_id]'" x-model="assignee.user_id"
-                                                        style="width:100%;padding:7px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#111827;background:#fff;outline:none;box-sizing:border-box;">
+                                                        @change="task.assigneeError = false"
+                                                        :style="task.assigneeError && j === 0 ? 'width:100%;padding:7px 10px;border:1.5px solid #EF4444;border-radius:8px;font-size:12px;color:#111827;background:#FEF2F2;outline:none;box-sizing:border-box;' : 'width:100%;padding:7px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#111827;background:#fff;outline:none;box-sizing:border-box;'">
                                                     <option value="">— Select person —</option>
                                                     <template x-for="u in allUsers" :key="u.id">
                                                         <option :value="u.id" x-text="u.name + ' (' + u.role + ')'"></option>
@@ -527,6 +570,9 @@
                                                 <div x-show="task.assignees.length === 1" style="width:26px;"></div>
                                             </div>
                                         </template>
+                                        <p x-show="task.assigneeError" style="margin:4px 0 0;font-size:11px;color:#EF4444;display:flex;align-items:center;gap:3px;">
+                                            <i class="fa fa-circle-exclamation"></i> Please assign at least one person.
+                                        </p>
                                     </div>
                                 </div>
 
