@@ -86,9 +86,6 @@ class SettingsController extends Controller
             'app_name', 'app_tagline', 'department_name', 'timezone', 'date_format'
         ));
 
-        // Sync APP_NAME in .env so config('app.name') stays consistent
-        $this->updateEnvKey('APP_NAME', $request->app_name);
-
         return back()->with('success', 'General settings saved.')->withFragment('general');
     }
 
@@ -499,29 +496,7 @@ class SettingsController extends Controller
         }, $filename, ['Content-Type' => 'text/csv']);
     }
 
-    /** Update a single key in the .env file. */
-    private function updateEnvKey(string $key, string $value): void
-    {
-        $envPath = base_path('.env');
-        if (! file_exists($envPath)) {
-            return;
-        }
 
-        $escaped = str_contains($value, ' ') ? '"' . addslashes($value) . '"' : $value;
-        $content = file_get_contents($envPath);
-
-        if (preg_match('/^' . preg_quote($key, '/') . '=/m', $content)) {
-            $content = preg_replace(
-                '/^' . preg_quote($key, '/') . '=.*/m',
-                $key . '=' . $escaped,
-                $content
-            );
-        } else {
-            $content .= PHP_EOL . $key . '=' . $escaped . PHP_EOL;
-        }
-
-        file_put_contents($envPath, $content);
-    }
 
     private function dbSizeKb(): int
     {
