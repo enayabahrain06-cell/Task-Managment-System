@@ -53,7 +53,7 @@ class UserController extends Controller
 
     public function create()
     {
-        return view('admin.users.create');
+        return redirect()->route('team.index', ['view' => 'manage']);
     }
 
     public function store(Request $request)
@@ -108,12 +108,12 @@ class UserController extends Controller
             ]
         );
 
-        return redirect()->route('admin.users.index')->with('success', 'User created successfully.');
+        return back()->with('success', 'User created successfully.');
     }
 
     public function edit(User $user)
     {
-        return view('admin.users.edit', compact('user'));
+        return redirect()->route('team.index', ['view' => 'manage']);
     }
 
     public function update(Request $request, User $user)
@@ -219,7 +219,7 @@ class UserController extends Controller
             );
         }
 
-        return redirect()->route('admin.users.index')->with('success', 'User updated successfully.');
+        return back()->with('success', 'User updated successfully.');
     }
 
     public function updatePermissions(Request $request, User $user)
@@ -257,7 +257,7 @@ class UserController extends Controller
 
         if ($user->avatar) Storage::disk('public')->delete($user->avatar);
         $user->delete();
-        return redirect()->route('admin.users.index')->with('success', 'User deleted.');
+        return back()->with('success', 'User deleted.');
     }
 
     public function transferTasks(Request $request, User $user)
