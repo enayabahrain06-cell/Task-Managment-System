@@ -11,7 +11,7 @@
     @endif
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
@@ -45,6 +45,8 @@
 
         @media (min-width: 769px) {
             .app-content { padding: 24px; }
+            .topbar-search { display: block !important; }
+            #user-info-block { display: block !important; }
         }
 
         /* Sidebar brand */
@@ -92,6 +94,16 @@
         /* Alpine cloak */
         [x-cloak] { display: none !important; }
 
+        /* Page content fade-in */
+        .app-content { animation: pageFadeIn 0.3s ease both; }
+        @keyframes pageFadeIn { from { opacity:0; } to { opacity:1; } }
+
+        /* Topbar search hidden on mobile, shown on desktop via media query */
+        .topbar-search { display: none; }
+
+        /* User info hidden on mobile */
+        #user-info-block { display: none; }
+
         /* Alert */
         .alert { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
         .alert-success { background: #F0FDF4; border: 1px solid #BBF7D0; color: #15803D; }
@@ -128,13 +140,10 @@
                 </div>
             </div>
             <div class="topbar-right">
-                <div class="topbar-search" style="display:none" id="topbar-search-wrap">
+                <div class="topbar-search" id="topbar-search-wrap">
                     <i class="fas fa-search"></i>
                     <input type="text" placeholder="What are you looking for?">
                 </div>
-                <button class="icon-btn" title="Search" onclick="document.getElementById('topbar-search-wrap').style.display='block';this.style.display='none'">
-                    <i class="fas fa-search"></i>
-                </button>
                 {{-- Notification Bell --}}
                 <div x-data="notifBell()" x-init="init()" @click.outside="open = false" style="position:relative;">
 
@@ -227,9 +236,6 @@
 
                     </div>
                 </div>
-                <button class="icon-btn" title="Toggle theme" style="display:none" id="theme-btn">
-                    <i class="fas fa-moon"></i>
-                </button>
                 <div style="display:flex;align-items:center;gap:8px;margin-left:4px;">
                     @if(auth()->user()?->avatarUrl())
                         <img src="{{ auth()->user()->avatarUrl() }}" alt="{{ auth()->user()->name }}"
@@ -239,7 +245,7 @@
                             {{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}
                         </div>
                     @endif
-                    <div class="user-info" style="display:none" id="user-info-block">
+                    <div class="user-info" id="user-info-block">
                         <p class="user-name">{{ auth()->user()->name ?? '' }}</p>
                         <p class="user-email">{{ auth()->user()->email ?? '' }}</p>
                     </div>
@@ -270,21 +276,12 @@
 </div>
 
 <script>
-if (window.innerWidth >= 1024) {
-    var el = document.getElementById('user-info-block');
-    if (el) el.style.display = 'block';
-    var sw = document.getElementById('topbar-search-wrap');
-    if (sw) sw.style.display = 'block';
-    var themeBtn = document.getElementById('theme-btn');
-    if (themeBtn) themeBtn.style.display = 'flex';
-}
-// Close sidebar when a nav link is clicked on mobile
+// Close sidebar when a nav link is clicked on mobile (Alpine v3 compatible)
 document.querySelectorAll('.app-sidebar .nav-item').forEach(function(link) {
     link.addEventListener('click', function() {
         if (window.innerWidth <= 768) {
-            // trigger Alpine close
-            var shell = document.querySelector('[x-data]');
-            if (shell && shell.__x) { shell.__x.$data.sidebarOpen = false; }
+            var overlay = document.querySelector('.sidebar-overlay.overlay-open');
+            if (overlay) overlay.click();
         }
     });
 });

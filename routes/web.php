@@ -18,6 +18,8 @@ use App\Http\Controllers\Admin\TaskApprovalController as AdminTaskApprovalContro
 use App\Http\Controllers\Admin\TaskController as AdminTaskController;
 use App\Http\Controllers\Admin\AuditLogController as AdminAuditLogController;
 use App\Http\Controllers\Admin\OffboardingController as AdminOffboardingController;
+use App\Http\Controllers\Admin\RoleController as AdminRoleController;
+use App\Http\Controllers\Admin\ReportsController as AdminReportsController;
 use App\Http\Controllers\User\ProjectController as UserProjectController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\ManagerMiddleware;
@@ -55,8 +57,13 @@ Route::middleware(['auth'])->group(function () {
 // Admin routes
 Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboard::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/refresh', [AdminDashboard::class, 'refresh'])->name('dashboard.refresh');
+    Route::get('/reports', [AdminReportsController::class, 'index'])->name('reports.index');
     Route::resource('users', AdminUserController::class);
     Route::patch('users/{user}/permissions', [AdminUserController::class, 'updatePermissions'])->name('users.permissions');
+    Route::post('roles',              [AdminRoleController::class, 'store'])->name('roles.store');
+    Route::put('roles/{role}',        [AdminRoleController::class, 'update'])->name('roles.update');
+    Route::delete('roles/{role}',     [AdminRoleController::class, 'destroy'])->name('roles.destroy');
     Route::resource('projects', AdminProjectController::class);
     Route::get('projects/{project}/tasks/create', [AdminProjectController::class, 'tasksCreate'])->name('projects.tasks.create');
     Route::post('projects/{project}/tasks', [AdminProjectController::class, 'tasksStore'])->name('projects.tasks.store');
@@ -69,6 +76,8 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('settings/team',                  [AdminSettingsController::class, 'updateTeam'])->name('settings.team');
     Route::post('settings/notifications',         [AdminSettingsController::class, 'updateNotifications'])->name('settings.notifications');
     Route::post('settings/security',              [AdminSettingsController::class, 'updateSecurity'])->name('settings.security');
+    Route::post('settings/mail',                  [AdminSettingsController::class, 'updateMail'])->name('settings.mail');
+    Route::post('settings/mail/test',             [AdminSettingsController::class, 'testMail'])->name('settings.mail.test');
     Route::post('meetings',                        [AdminMeetingController::class, 'store'])->name('meetings.store');
     Route::put('meetings/{meeting}',               [AdminMeetingController::class, 'update'])->name('meetings.update');
     Route::delete('meetings/{meeting}',            [AdminMeetingController::class, 'destroy'])->name('meetings.destroy');

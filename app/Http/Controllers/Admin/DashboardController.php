@@ -12,6 +12,81 @@ use Illuminate\Support\Carbon;
 
 class DashboardController extends Controller
 {
+    public function refresh()
+    {
+        $doneStatuses     = ['approved', 'delivered', 'archived'];
+        $analyticsNonDone = ['draft', 'assigned', 'viewed', 'in_progress', 'submitted', 'revision_requested'];
+
+        $totalTasks     = Task::count();
+        $activeProjects = Project::where('status', 'active')->count();
+        $overdueTasks   = Task::where('deadline', '<', now())->whereNotIn('status', $doneStatuses)->count();
+
+        $taskOverview = [
+            'total'         => $totalTasks,
+            'assigned'      => Task::whereNotNull('assigned_to')->count(),
+            'pending'       => Task::whereIn('status', ['draft', 'assigned', 'viewed'])->count(),
+            'in_progress'   => Task::where('status', 'in_progress')->count(),
+            'in_review'     => Task::where('status', 'submitted')->count(),
+            'completed'     => Task::where('status', 'approved')->count(),
+            'delivered'     => Task::where('status', 'delivered')->count(),
+            'overdue'       => $overdueTasks,
+            'due_today'     => Task::whereDate('deadline', today())->whereIn('status', $analyticsNonDone)->count(),
+            'due_this_week' => Task::whereBetween('deadline', [now()->startOfWeek(Carbon::MONDAY), now()->endOfWeek(Carbon::SUNDAY)])->whereIn('status', $analyticsNonDone)->count(),
+        ];
+
+        $totalDone      = $taskOverview['completed'] + $taskOverview['delivered'];
+        $completionRate = $totalTasks > 0 ? round($totalDone / $totalTasks * 100) : 0;
+
+        $onTimeCount = Task::whereIn('status', ['approved', 'delivered'])
+            ->whereHas('logs', function ($q) {
+                $q->whereIn('action', ['status_updated_approved', 'status_updated_delivered', 'status_updated_completed'])
+                  ->whereColumn('task_logs.created_at', '<=', 'tasks.deadline');
+            })->count();
+
+        $onTimeRate   = $totalDone > 0 ? round($onTimeCount / $totalDone * 100) : 0;
+        $reviewCycles = TaskSubmission::count();
+
+        $weekLabels = [];
+        $weekData   = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $day          = Carbon::now()->subDays($i);
+            $weekLabels[] = $day->format('D');
+            $weekData[]   = Task::whereDate('created_at', $day)->count()
+                          + Task::whereDate('updated_at', $day)->where('status', 'completed')->count();
+        }
+
+        $taskStats = [
+            'completed'   => $taskOverview['completed'],
+            'in_progress' => $taskOverview['in_progress'],
+            'pending'     => $taskOverview['pending'],
+            'overdue'     => $overdueTasks,
+        ];
+
+        $workloadUsers  = User::withCount(['tasks as open_tasks' => fn($q) => $q->where('status', '!=', 'completed')])->where('role', 'user')->orderByDesc('open_tasks')->take(6)->get();
+        $workloadLabels = $workloadUsers->pluck('name')->map(fn($n) => explode(' ', $n)[0])->toArray();
+        $workloadData   = $workloadUsers->pluck('open_tasks')->toArray();
+
+        return response()->json([
+            'totalTasks'        => $totalTasks,
+            'activeProjects'    => $activeProjects,
+            'scheduledMeetings' => CalendarEvent::where('start_date', '>=', now())->count(),
+            'totalMembers'      => User::count(),
+            'activeMembers'     => User::where('role', '!=', 'admin')->count(),
+            'managerCount'      => User::where('role', 'manager')->count(),
+            'userCount'         => User::where('role', 'user')->count(),
+            'taskOverview'      => $taskOverview,
+            'completionRate'    => $completionRate,
+            'onTimeRate'        => $onTimeRate,
+            'reviewCycles'      => $reviewCycles,
+            'weekLabels'        => $weekLabels,
+            'weekData'          => $weekData,
+            'taskStats'         => $taskStats,
+            'workloadLabels'    => $workloadLabels,
+            'workloadData'      => $workloadData,
+            'refreshedAt'       => now()->format('H:i:s'),
+        ]);
+    }
+
     public function index()
     {
         $users      = User::paginate(10);

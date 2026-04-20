@@ -5,23 +5,49 @@
 @section('content')
 
 <style>
-/* ── Responsive grid helpers ── */
-.stats-grid   { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }
-.charts-grid  { display:grid; grid-template-columns:2fr 1fr;        gap:16px; margin-bottom:16px; }
-.bottom-grid  { display:grid; grid-template-columns:1fr 2fr;        gap:16px; margin-bottom:0; }
+/* ── Box-sizing reset (cross-browser) ── */
+*, *::before, *::after { box-sizing: border-box; }
 
-@media(max-width:1100px){
-    .charts-grid, .bottom-grid { grid-template-columns:1fr; }
+/* ── Responsive grid helpers ── */
+.stats-grid   { display: -ms-grid; display:grid; -ms-grid-columns: 1fr 16px 1fr 16px 1fr 16px 1fr; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }
+.charts-grid  { display: -ms-grid; display:grid; -ms-grid-columns: 3fr 16px 2fr;  grid-template-columns:3fr 2fr; gap:16px; margin-bottom:16px; align-items:start; }
+.bottom-grid  { display: -ms-grid; display:grid; -ms-grid-columns: 2fr 16px 3fr;  grid-template-columns:2fr 3fr; gap:16px; margin-bottom:0; align-items:start; }
+
+/* ── Working Hours chart — fixed height so it never balloons ── */
+.wh-chart-wrap { position:relative; width:100%; height:220px; }
+
+/* ── Project Stats card — matched height ── */
+.project-stats-card { display:-webkit-box; display:-ms-flexbox; display:flex; -webkit-box-orient:vertical; -webkit-box-direction:normal; -ms-flex-direction:column; flex-direction:column; }
+
+@media(max-width:1200px){
+    .charts-grid  { grid-template-columns:3fr 2fr; }
+    .bottom-grid  { grid-template-columns:2fr 3fr; }
+}
+@media(max-width:1024px){
+    .charts-grid, .bottom-grid { -ms-grid-columns:1fr; grid-template-columns:1fr; }
 }
 @media(max-width:700px){
-    .stats-grid { grid-template-columns:repeat(2,1fr); }
+    .stats-grid { -ms-grid-columns:1fr 16px 1fr; grid-template-columns:repeat(2,1fr); }
 }
 @media(max-width:420px){
-    .stats-grid { grid-template-columns:1fr; }
+    .stats-grid { -ms-grid-columns:1fr; grid-template-columns:1fr; }
 }
 
 /* ── Card base ── */
-.dash-card { background:#fff; border-radius:14px; border:1px solid #F0F0F0; box-shadow:0 1px 4px rgba(0,0,0,0.05); padding:20px; }
+.dash-card {
+    background:#fff;
+    border-radius:14px;
+    border:1px solid #F0F0F0;
+    -webkit-box-shadow:0 1px 4px rgba(0,0,0,0.05);
+    box-shadow:0 1px 4px rgba(0,0,0,0.05);
+    padding:20px;
+    -webkit-transition: box-shadow 0.2s, -webkit-transform 0.2s;
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+.dash-card:hover {
+    -webkit-box-shadow:0 6px 24px rgba(0,0,0,0.08);
+    box-shadow:0 6px 24px rgba(0,0,0,0.08);
+}
 
 /* ── Stat cards ── */
 .stat-card { border-radius:14px; padding:18px 20px; position:relative; overflow:hidden; color:#fff; }
@@ -29,21 +55,82 @@
 .stat-card-label { font-size:12px; font-weight:500; color:rgba(255,255,255,0.75); margin:0 0 8px; }
 .stat-card-value { font-size:34px; font-weight:700; line-height:1; margin:0; }
 .stat-card-sub   { font-size:11px; color:rgba(255,255,255,0.6); margin:6px 0 0; }
-.stat-card-menu  { position:absolute; top:14px; right:14px; background:rgba(255,255,255,0.15); border:none; border-radius:6px; width:26px; height:26px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; }
+.stat-card-menu  { position:absolute; top:14px; right:14px; background:rgba(255,255,255,0.15); border:none; border-radius:6px; width:26px; height:26px; cursor:pointer; display:-webkit-box; display:-ms-flexbox; display:flex; -webkit-box-align:center; -ms-flex-align:center; align-items:center; -webkit-box-pack:center; -ms-flex-pack:center; justify-content:center; color:#fff; font-size:11px; }
 
 /* ── Calendar dark card ── */
-.cal-card { background:linear-gradient(135deg,#1a2040 0%,#1e2756 100%); border-radius:14px; padding:20px; color:#fff; }
+.cal-card { background:-webkit-linear-gradient(315deg,#1a2040 0%,#1e2756 100%); background:linear-gradient(135deg,#1a2040 0%,#1e2756 100%); border-radius:14px; padding:20px; color:#fff; }
+
+/* ── Entrance animations ── */
+@-webkit-keyframes fadeInUp {
+    from { opacity:0; -webkit-transform:translateY(14px); transform:translateY(14px); }
+    to   { opacity:1; -webkit-transform:translateY(0);    transform:translateY(0); }
+}
+@keyframes fadeInUp {
+    from { opacity:0; transform:translateY(14px); }
+    to   { opacity:1; transform:translateY(0); }
+}
+@-webkit-keyframes fillCircle {
+    from { stroke-dasharray: 0 100; }
+}
+@keyframes fillCircle {
+    from { stroke-dasharray: 0 100; }
+}
+.anim-card {
+    -webkit-animation: fadeInUp 0.45s cubic-bezier(0.22,1,0.36,1) both;
+    animation: fadeInUp 0.45s cubic-bezier(0.22,1,0.36,1) both;
+}
+.anim-d1  { -webkit-animation-delay:0.04s; animation-delay:0.04s; }
+.anim-d2  { -webkit-animation-delay:0.10s; animation-delay:0.10s; }
+.anim-d3  { -webkit-animation-delay:0.16s; animation-delay:0.16s; }
+.anim-d4  { -webkit-animation-delay:0.22s; animation-delay:0.22s; }
+.anim-d5  { -webkit-animation-delay:0.28s; animation-delay:0.28s; }
+.anim-d6  { -webkit-animation-delay:0.34s; animation-delay:0.34s; }
+
+/* ── Auto-refresh pulse ── */
+@-webkit-keyframes pulse {
+    0%,100% { opacity:1; -webkit-transform:scale(1); transform:scale(1); }
+    50%      { opacity:.4; -webkit-transform:scale(0.8); transform:scale(0.8); }
+}
+@keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50%      { opacity:.4; transform:scale(0.8); }
+}
+.rv-pulse { -webkit-animation:pulse 1s ease-in-out infinite; animation:pulse 1s ease-in-out infinite; }
+
+/* ── Rate circles ── */
+.rate-circle {
+    -webkit-animation: fillCircle 1.1s cubic-bezier(0.65,0,0.35,1) both;
+    animation: fillCircle 1.1s cubic-bezier(0.65,0,0.35,1) both;
+    -webkit-animation-delay:0.6s;
+    animation-delay:0.6s;
+}
 
 /* ── Task Modal ── */
-.task-modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:200; display:flex; align-items:center; justify-content:center; padding:16px; }
-.task-modal { background:#fff; border-radius:20px; width:100%; max-width:560px; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.2); }
-.task-modal-header { display:flex; align-items:center; justify-content:space-between; padding:22px 24px 0; }
+.task-modal-backdrop { position:fixed; top:0; right:0; bottom:0; left:0; background:rgba(0,0,0,0.45); z-index:200; display:-webkit-box; display:-ms-flexbox; display:flex; -webkit-box-align:center; -ms-flex-align:center; align-items:center; -webkit-box-pack:center; -ms-flex-pack:center; justify-content:center; padding:16px; }
+.task-modal { background:#fff; border-radius:20px; width:100%; max-width:560px; max-height:90vh; overflow-y:auto; -webkit-box-shadow:0 20px 60px rgba(0,0,0,0.2); box-shadow:0 20px 60px rgba(0,0,0,0.2); }
+.task-modal-header { display:-webkit-box; display:-ms-flexbox; display:flex; -webkit-box-align:center; -ms-flex-align:center; align-items:center; -webkit-box-pack:justify; -ms-flex-pack:justify; justify-content:space-between; padding:22px 24px 0; }
 .task-modal-body   { padding:20px 24px 24px; }
 .form-label { display:block; font-size:12px; font-weight:600; color:#374151; margin-bottom:6px; }
-.form-input { width:100%; padding:9px 12px; font-size:13px; border:1.5px solid #E5E7EB; border-radius:9px; color:#111827; outline:none; font-family:'Inter',sans-serif; transition:border-color 0.15s; background:#fff; }
-.form-input:focus { border-color:#6366F1; box-shadow:0 0 0 3px rgba(99,102,241,0.12); }
-.form-select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:32px; }
-.priority-btn { flex:1; padding:8px; font-size:12px; font-weight:600; border-radius:8px; border:1.5px solid #E5E7EB; cursor:pointer; transition:all 0.15s; text-align:center; background:#fff; color:#6B7280; }
+.form-input {
+    width:100%; padding:9px 12px; font-size:13px;
+    border:1.5px solid #E5E7EB; border-radius:9px;
+    color:#111827; outline:none;
+    font-family:'Inter',system-ui,-apple-system,sans-serif;
+    -webkit-transition:border-color 0.15s; transition:border-color 0.15s;
+    background:#fff;
+    -webkit-box-sizing:border-box; box-sizing:border-box;
+}
+.form-input:focus { border-color:#6366F1; -webkit-box-shadow:0 0 0 3px rgba(99,102,241,0.12); box-shadow:0 0 0 3px rgba(99,102,241,0.12); }
+.form-select {
+    -webkit-appearance:none;
+    -moz-appearance:none;
+    appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 12px center;
+    padding-right:32px;
+}
+.priority-btn { -webkit-box-flex:1; -ms-flex:1; flex:1; padding:8px; font-size:12px; font-weight:600; border-radius:8px; border:1.5px solid #E5E7EB; cursor:pointer; -webkit-transition:all 0.15s; transition:all 0.15s; text-align:center; background:#fff; color:#6B7280; }
 .priority-btn.active-low    { background:#F0FDF4; border-color:#10B981; color:#059669; }
 .priority-btn.active-medium { background:#FFFBEB; border-color:#F59E0B; color:#D97706; }
 .priority-btn.active-high   { background:#FFF1F2; border-color:#EF4444; color:#DC2626; }
@@ -56,7 +143,13 @@
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
         <div>
             <h1 style="font-size:22px;font-weight:700;color:#111827;margin:0;">Overview</h1>
-            <p  style="font-size:13px;color:#9CA3AF;margin:3px 0 0;">Welcome back, {{ auth()->user()->name }}!</p>
+            <p style="font-size:13px;color:#9CA3AF;margin:3px 0 0;">
+                Welcome back, {{ auth()->user()->name }}!
+                <span id="refreshIndicator" style="display:inline-flex;align-items:center;gap:4px;margin-left:8px;font-size:11px;color:#9CA3AF;vertical-align:middle;">
+                    <span id="refreshDot" style="width:6px;height:6px;border-radius:50%;background:#10B981;display:inline-block;"></span>
+                    <span id="refreshLabel">Live</span>
+                </span>
+            </p>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:6px;font-size:13px;color:#374151;background:#fff;border:1px solid #E5E7EB;border-radius:8px;padding:7px 12px;cursor:pointer;">
@@ -84,7 +177,7 @@
     <div x-show="taskOpen" x-cloak style="position:fixed;inset:0;z-index:9999;">
     <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;">
 
-        <div @click="taskOpen = false" style="position:absolute;inset:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(3px);"></div>
+        <div @click="taskOpen = false" style="position:absolute;inset:0;background:rgba(0,0,0,0.45);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);"></div>
 
         <div style="position:relative;width:100%;max-width:480px;background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,0.2);overflow:hidden;">
 
@@ -179,7 +272,7 @@
     <div x-show="projectOpen" x-cloak style="position:fixed;inset:0;z-index:9999;">
     <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;">
 
-        <div @click="projectOpen = false" style="position:absolute;inset:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(3px);"></div>
+        <div @click="projectOpen = false" style="position:absolute;inset:0;background:rgba(0,0,0,0.45);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);"></div>
 
         <div style="position:relative;width:100%;max-width:700px;max-height:90vh;background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,0.2);display:flex;flex-direction:column;overflow:hidden;">
 
@@ -535,68 +628,74 @@ function dashModals() {
 
     {{-- Tasks --}}
     <a href="{{ route('admin.dashboard') }}" style="text-decoration:none;">
-    <div class="stat-card" style="background:linear-gradient(135deg,#4F46E5,#6366F1);cursor:pointer;transition:transform .15s,box-shadow .15s;"
+    <div class="stat-card anim-card anim-d1" style="background:linear-gradient(135deg,#4F46E5,#6366F1);cursor:pointer;transition:transform .15s,box-shadow .15s;"
          onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(79,70,229,.4)'"
-         onmouseout="this.style.transform='';this.style.boxShadow=''">
+         onmouseout="this.style.transform='';this.style.boxShadow=''"
+         onmousedown="this.style.transform='translateY(-1px)'"
+         onmouseup="this.style.transform='translateY(-3px)'">
         <div class="stat-card-blob"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;">
             <p class="stat-card-label">Tasks</p>
             <button class="stat-card-menu" onclick="event.preventDefault()"><i class="fas fa-ellipsis-h"></i></button>
         </div>
-        <p class="stat-card-value">{{ $totalTasks }}</p>
+        <p class="stat-card-value stat-count" data-target="{{ $totalTasks }}" data-rv="totalTasks">{{ $totalTasks }}</p>
         <p class="stat-card-sub">Open Tasks</p>
     </div>
     </a>
 
     {{-- Projects --}}
     <a href="{{ route('admin.projects.index') }}" style="text-decoration:none;">
-    <div class="stat-card" style="background:linear-gradient(135deg,#4F46E5,#6366F1);cursor:pointer;transition:transform .15s,box-shadow .15s;"
-         onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(79,70,229,.4)'"
-         onmouseout="this.style.transform='';this.style.boxShadow=''">
+    <div class="stat-card anim-card anim-d2" style="background:linear-gradient(135deg,#059669,#10B981);cursor:pointer;transition:transform .15s,box-shadow .15s;"
+         onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(5,150,105,.4)'"
+         onmouseout="this.style.transform='';this.style.boxShadow=''"
+         onmousedown="this.style.transform='translateY(-1px)'"
+         onmouseup="this.style.transform='translateY(-3px)'">
         <div class="stat-card-blob"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;">
             <p class="stat-card-label">Projects</p>
             <button class="stat-card-menu" onclick="event.preventDefault()"><i class="fas fa-ellipsis-h"></i></button>
         </div>
-        <p class="stat-card-value">{{ $activeProjects }}</p>
+        <p class="stat-card-value stat-count" data-target="{{ $activeProjects }}" data-rv="activeProjects">{{ $activeProjects }}</p>
         <p class="stat-card-sub">Active Projects</p>
     </div>
     </a>
 
     {{-- Meetings --}}
     <a href="{{ route('calendar.index') }}" style="text-decoration:none;">
-    <div class="stat-card" style="background:linear-gradient(135deg,#4F46E5,#6366F1);cursor:pointer;transition:transform .15s,box-shadow .15s;"
-         onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(79,70,229,.4)'"
-         onmouseout="this.style.transform='';this.style.boxShadow=''">
+    <div class="stat-card anim-card anim-d3" style="background:linear-gradient(135deg,#7C3AED,#8B5CF6);cursor:pointer;transition:transform .15s,box-shadow .15s;"
+         onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(124,58,237,.4)'"
+         onmouseout="this.style.transform='';this.style.boxShadow=''"
+         onmousedown="this.style.transform='translateY(-1px)'"
+         onmouseup="this.style.transform='translateY(-3px)'">
         <div class="stat-card-blob"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;">
             <p class="stat-card-label">Meetings</p>
             <button class="stat-card-menu" onclick="event.preventDefault()"><i class="fas fa-ellipsis-h"></i></button>
         </div>
-        <p class="stat-card-value">{{ $scheduledMeetings }}</p>
+        <p class="stat-card-value stat-count" data-target="{{ $scheduledMeetings }}" data-rv="scheduledMeetings">{{ $scheduledMeetings }}</p>
         <p class="stat-card-sub">Scheduled Meetings</p>
     </div>
     </a>
 
     {{-- Member Status --}}
-    <div class="dash-card" style="padding:18px 20px;">
+    <div class="dash-card anim-card anim-d4" style="padding:18px 20px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
             <p style="font-size:12px;font-weight:500;color:#6B7280;margin:0;">Member Status</p>
             <a href="{{ route('team.index') }}" style="font-size:11px;color:#4F46E5;text-decoration:none;font-weight:500;">View more</a>
         </div>
-        <p style="font-size:32px;font-weight:700;color:#111827;margin:0 0 2px;line-height:1;">{{ $totalMembers }}</p>
+        <p class="stat-count" data-target="{{ $totalMembers }}" data-rv="totalMembers" style="font-size:32px;font-weight:700;color:#111827;margin:0 0 2px;line-height:1;">{{ $totalMembers }}</p>
         <p style="font-size:11px;color:#9CA3AF;margin:0 0 10px;">Total Members</p>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:5px;">
-                <span style="width:24px;height:24px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#4F46E5;">{{ $activeMembers }}</span>
+                <span data-rv="activeMembers" style="width:24px;height:24px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#4F46E5;">{{ $activeMembers }}</span>
                 <span style="font-size:11px;color:#9CA3AF;">Active</span>
             </div>
             <div style="display:flex;align-items:center;gap:5px;">
-                <span style="width:24px;height:24px;border-radius:8px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#D97706;">{{ $managerCount }}</span>
+                <span data-rv="managerCount" style="width:24px;height:24px;border-radius:8px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#D97706;">{{ $managerCount }}</span>
                 <span style="font-size:11px;color:#9CA3AF;">Mgr</span>
             </div>
             <div style="display:flex;align-items:center;gap:5px;">
-                <span style="width:24px;height:24px;border-radius:8px;background:#F0FDF4;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#16A34A;">{{ $userCount }}</span>
+                <span data-rv="userCount" style="width:24px;height:24px;border-radius:8px;background:#F0FDF4;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#16A34A;">{{ $userCount }}</span>
                 <span style="font-size:11px;color:#9CA3AF;">Users</span>
             </div>
         </div>
@@ -604,7 +703,7 @@ function dashModals() {
 </div>
 
 {{-- ══ Task Analytics ══ --}}
-<div class="dash-card" style="margin-bottom:16px;">
+<div class="dash-card anim-card anim-d5" style="margin-bottom:16px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
         <div>
             <h3 style="font-size:14px;font-weight:700;color:#111827;margin:0;display:flex;align-items:center;gap:8px;">
@@ -620,15 +719,15 @@ function dashModals() {
 
         @php
         $analyticsItems = [
-            ['label'=>'Total Assigned',  'value'=>$taskOverview['assigned'],    'icon'=>'fa-user-check',     'bg'=>'#EEF2FF','color'=>'#4F46E5'],
-            ['label'=>'Pending',         'value'=>$taskOverview['pending'],     'icon'=>'fa-clock',          'bg'=>'#F3F4F6','color'=>'#6B7280'],
-            ['label'=>'In Progress',     'value'=>$taskOverview['in_progress'], 'icon'=>'fa-spinner',        'bg'=>'#FEF3C7','color'=>'#D97706'],
-            ['label'=>'Waiting Review',  'value'=>$taskOverview['in_review'],   'icon'=>'fa-gavel',          'bg'=>'#EDE9FE','color'=>'#7C3AED'],
-            ['label'=>'Completed',       'value'=>$taskOverview['completed'],   'icon'=>'fa-circle-check',   'bg'=>'#D1FAE5','color'=>'#059669'],
-            ['label'=>'Delivered',       'value'=>$taskOverview['delivered'],   'icon'=>'fa-truck',          'bg'=>'#ECFDF5','color'=>'#047857'],
-            ['label'=>'Overdue',         'value'=>$taskOverview['overdue'],     'icon'=>'fa-triangle-exclamation','bg'=>'#FEE2E2','color'=>'#DC2626'],
-            ['label'=>'Due Today',       'value'=>$taskOverview['due_today'],   'icon'=>'fa-calendar-day',   'bg'=>'#FFF7ED','color'=>'#EA580C'],
-            ['label'=>'Due This Week',   'value'=>$taskOverview['due_this_week'],'icon'=>'fa-calendar-week', 'bg'=>'#F0F9FF','color'=>'#0284C7'],
+            ['label'=>'Total Assigned',  'value'=>$taskOverview['assigned'],     'key'=>'assigned',      'icon'=>'fa-user-check',          'bg'=>'#EEF2FF','color'=>'#4F46E5'],
+            ['label'=>'Pending',         'value'=>$taskOverview['pending'],      'key'=>'pending',       'icon'=>'fa-clock',               'bg'=>'#F3F4F6','color'=>'#6B7280'],
+            ['label'=>'In Progress',     'value'=>$taskOverview['in_progress'],  'key'=>'in_progress',   'icon'=>'fa-spinner',             'bg'=>'#FEF3C7','color'=>'#D97706'],
+            ['label'=>'Waiting Review',  'value'=>$taskOverview['in_review'],    'key'=>'in_review',     'icon'=>'fa-gavel',               'bg'=>'#EDE9FE','color'=>'#7C3AED'],
+            ['label'=>'Completed',       'value'=>$taskOverview['completed'],    'key'=>'completed',     'icon'=>'fa-circle-check',        'bg'=>'#D1FAE5','color'=>'#059669'],
+            ['label'=>'Delivered',       'value'=>$taskOverview['delivered'],    'key'=>'delivered',     'icon'=>'fa-truck',               'bg'=>'#ECFDF5','color'=>'#047857'],
+            ['label'=>'Overdue',         'value'=>$taskOverview['overdue'],      'key'=>'overdue',       'icon'=>'fa-triangle-exclamation','bg'=>'#FEE2E2','color'=>'#DC2626'],
+            ['label'=>'Due Today',       'value'=>$taskOverview['due_today'],    'key'=>'due_today',     'icon'=>'fa-calendar-day',        'bg'=>'#FFF7ED','color'=>'#EA580C'],
+            ['label'=>'Due This Week',   'value'=>$taskOverview['due_this_week'],'key'=>'due_this_week', 'icon'=>'fa-calendar-week',       'bg'=>'#F0F9FF','color'=>'#0284C7'],
         ];
         @endphp
 
@@ -638,7 +737,7 @@ function dashModals() {
                 <i class="fas {{ $item['icon'] }}" style="font-size:12px;color:{{ $item['color'] }};"></i>
                 <span style="font-size:11px;font-weight:600;color:{{ $item['color'] }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $item['label'] }}</span>
             </div>
-            <p style="font-size:26px;font-weight:700;color:#111827;margin:0;line-height:1;">{{ $item['value'] }}</p>
+            <p data-rv="overview_{{ $item['key'] }}" style="font-size:26px;font-weight:700;color:#111827;margin:0;line-height:1;">{{ $item['value'] }}</p>
         </div>
         @endforeach
 
@@ -654,13 +753,13 @@ function dashModals() {
                     <circle cx="18" cy="18" r="15.9" fill="none" stroke="#E5E7EB" stroke-width="3"/>
                     <circle cx="18" cy="18" r="15.9" fill="none" stroke="#10B981" stroke-width="3"
                             stroke-dasharray="{{ $completionRate }} {{ 100 - $completionRate }}"
-                            stroke-linecap="round"/>
+                            stroke-linecap="round" class="rate-circle" id="rateCircleCompletion"/>
                 </svg>
-                <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#111827;">{{ $completionRate }}%</span>
+                <span id="rateTextCompletion" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#111827;">{{ $completionRate }}%</span>
             </div>
             <div>
                 <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">Completion Rate</p>
-                <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">{{ $taskOverview['completed'] + $taskOverview['delivered'] }} of {{ $taskOverview['total'] }} tasks done</p>
+                <p id="rateSubCompletion" style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">{{ $taskOverview['completed'] + $taskOverview['delivered'] }} of {{ $taskOverview['total'] }} tasks done</p>
             </div>
         </div>
 
@@ -671,9 +770,9 @@ function dashModals() {
                     <circle cx="18" cy="18" r="15.9" fill="none" stroke="#E5E7EB" stroke-width="3"/>
                     <circle cx="18" cy="18" r="15.9" fill="none" stroke="#6366F1" stroke-width="3"
                             stroke-dasharray="{{ $onTimeRate }} {{ 100 - $onTimeRate }}"
-                            stroke-linecap="round"/>
+                            stroke-linecap="round" class="rate-circle" id="rateCircleOnTime" style="animation-delay:0.75s"/>
                 </svg>
-                <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#111827;">{{ $onTimeRate }}%</span>
+                <span id="rateTextOnTime" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#111827;">{{ $onTimeRate }}%</span>
             </div>
             <div>
                 <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">On-time Rate</p>
@@ -689,7 +788,7 @@ function dashModals() {
             <div>
                 <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">Review Cycles</p>
                 <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">
-                    <span style="font-size:22px;font-weight:700;color:#7C3AED;display:block;line-height:1.2;">{{ $reviewCycles }}</span>
+                    <span id="reviewCyclesVal" style="font-size:22px;font-weight:700;color:#7C3AED;display:block;line-height:1.2;">{{ $reviewCycles }}</span>
                     Total submissions made
                 </p>
             </div>
@@ -702,69 +801,77 @@ function dashModals() {
 <div class="charts-grid">
 
     {{-- Working Hours Line Chart --}}
-    <div class="dash-card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+    <div class="dash-card anim-card anim-d5" style="display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-orient:vertical;-webkit-box-direction:normal;-ms-flex-direction:column;flex-direction:column;">
+        <div style="display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center;-webkit-box-pack:justify;-ms-flex-pack:justify;justify-content:space-between;margin-bottom:16px;-ms-flex-wrap:wrap;flex-wrap:wrap;gap:8px;">
             <div>
                 <h3 style="font-size:14px;font-weight:600;color:#111827;margin:0;">Working Hours Statistics</h3>
                 <p  style="font-size:12px;color:#9CA3AF;margin:3px 0 0;">Task activity over the past 7 days</p>
             </div>
-            <div style="display:flex;align-items:center;gap:2px;background:#F3F4F6;border-radius:8px;padding:3px;">
-                <button style="padding:4px 12px;font-size:12px;font-weight:500;background:#fff;border:none;border-radius:6px;cursor:pointer;color:#374151;box-shadow:0 1px 2px rgba(0,0,0,0.06);">Week</button>
+            <div style="display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center;gap:2px;background:#F3F4F6;border-radius:8px;padding:3px;">
+                <button style="padding:4px 12px;font-size:12px;font-weight:500;background:#fff;border:none;border-radius:6px;cursor:pointer;color:#374151;-webkit-box-shadow:0 1px 2px rgba(0,0,0,0.06);box-shadow:0 1px 2px rgba(0,0,0,0.06);">Week</button>
                 <button style="padding:4px 12px;font-size:12px;font-weight:500;background:none;border:none;border-radius:6px;cursor:pointer;color:#9CA3AF;">Month</button>
                 <button style="padding:4px 12px;font-size:12px;font-weight:500;background:none;border:none;border-radius:6px;cursor:pointer;color:#9CA3AF;">Year</button>
             </div>
         </div>
-        <canvas id="workingHoursChart" height="85"></canvas>
+        <div class="wh-chart-wrap">
+            <canvas id="workingHoursChart"></canvas>
+        </div>
     </div>
 
     {{-- Project Statistics Donut + Project List --}}
-    <div class="dash-card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+    <div class="dash-card anim-card anim-d6 project-stats-card">
+        <div style="display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center;-webkit-box-pack:justify;-ms-flex-pack:justify;justify-content:space-between;margin-bottom:16px;">
             <h3 style="font-size:14px;font-weight:600;color:#111827;margin:0;">Project Statistics</h3>
             <a href="{{ route('admin.projects.index') }}" style="font-size:11px;color:#4F46E5;text-decoration:none;font-weight:500;">View more</a>
         </div>
 
-        {{-- Donut --}}
-        <div style="display:flex;justify-content:center;margin-bottom:14px;">
-            <div style="position:relative;width:120px;height:120px;">
-                <canvas id="projectStatsChart"></canvas>
-                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-                    <p style="font-size:24px;font-weight:700;color:#111827;margin:0;line-height:1;">{{ $activeProjects }}</p>
-                    <p style="font-size:10px;color:#9CA3AF;margin:2px 0 0;">Active</p>
+        {{-- Donut + legend side-by-side --}}
+        <div style="display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center;gap:20px;margin-bottom:16px;-ms-flex-wrap:wrap;flex-wrap:wrap;">
+            <div style="position:relative;width:140px;height:140px;-ms-flex-negative:0;flex-shrink:0;">
+                <canvas id="projectStatsChart" style="width:140px!important;height:140px!important;"></canvas>
+                <div style="position:absolute;top:0;right:0;bottom:0;left:0;display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-orient:vertical;-webkit-box-direction:normal;-ms-flex-direction:column;flex-direction:column;-webkit-box-align:center;-ms-flex-align:center;align-items:center;-webkit-box-pack:center;-ms-flex-pack:center;justify-content:center;pointer-events:none;">
+                    <p style="font-size:26px;font-weight:700;color:#111827;margin:0;line-height:1;">{{ $activeProjects }}</p>
+                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Active</p>
+                </div>
+            </div>
+            <div style="-webkit-box-flex:1;-ms-flex:1;flex:1;min-width:0;">
+                <div style="display:-webkit-box;display:-ms-flexbox;display:flex;gap:20px;margin-bottom:14px;-ms-flex-wrap:wrap;flex-wrap:wrap;">
+                    <div style="text-align:center;">
+                        <p style="font-size:22px;font-weight:700;color:#10B981;margin:0;line-height:1;">{{ $taskStats['completed'] }}</p>
+                        <p style="font-size:11px;color:#9CA3AF;margin:4px 0 0;">Success</p>
+                    </div>
+                    <div style="text-align:center;">
+                        <p style="font-size:22px;font-weight:700;color:#F59E0B;margin:0;line-height:1;">{{ $taskStats['pending'] }}</p>
+                        <p style="font-size:11px;color:#9CA3AF;margin:4px 0 0;">Pending</p>
+                    </div>
+                    <div style="text-align:center;">
+                        <p style="font-size:22px;font-weight:700;color:#6366F1;margin:0;line-height:1;">{{ $taskStats['in_progress'] }}</p>
+                        <p style="font-size:11px;color:#9CA3AF;margin:4px 0 0;">On-Going</p>
+                    </div>
+                </div>
+                <div style="display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-orient:vertical;-webkit-box-direction:normal;-ms-flex-direction:column;flex-direction:column;gap:6px;">
+                    @php $legendItems = [['Completed','#10B981'],['In Progress','#F59E0B'],['Pending','#60A5FA'],['Overdue','#EF4444']]; @endphp
+                    @foreach($legendItems as [$lbl,$lc])
+                    <div style="display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center;gap:6px;">
+                        <span style="width:9px;height:9px;border-radius:50%;background:{{ $lc }};display:inline-block;-ms-flex-negative:0;flex-shrink:0;"></span>
+                        <span style="font-size:12px;color:#6B7280;">{{ $lbl }}</span>
+                    </div>
+                    @endforeach
                 </div>
             </div>
         </div>
 
-        {{-- Stat rows --}}
-        <div style="display:flex;justify-content:center;gap:16px;margin-bottom:14px;">
-            <div style="text-align:center;">
-                <p style="font-size:16px;font-weight:700;color:#10B981;margin:0;">{{ $taskStats['completed'] }}</p>
-                <p style="font-size:10px;color:#9CA3AF;margin:2px 0 0;">Success</p>
-            </div>
-            <div style="text-align:center;">
-                <p style="font-size:16px;font-weight:700;color:#F59E0B;margin:0;">{{ $taskStats['pending'] }}</p>
-                <p style="font-size:10px;color:#9CA3AF;margin:2px 0 0;">Pending</p>
-            </div>
-            <div style="text-align:center;">
-                <p style="font-size:16px;font-weight:700;color:#6366F1;margin:0;">{{ $taskStats['in_progress'] }}</p>
-                <p style="font-size:10px;color:#9CA3AF;margin:2px 0 0;">On-Going</p>
-            </div>
-        </div>
-
         {{-- Project list --}}
-        <div style="display:flex;flex-direction:column;gap:8px;">
-            @forelse($projects->take(3) as $proj)
-            @php
-                $pColors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6'];
-                $c = $pColors[$loop->index % 5];
-            @endphp
-            <div style="display:flex;align-items:center;gap:8px;">
-                <span style="width:8px;height:8px;border-radius:50%;background:{{ $c }};flex-shrink:0;"></span>
-                <span style="flex:1;font-size:12px;color:#374151;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $proj->name }}</span>
-                <button style="background:none;border:none;cursor:pointer;color:#D1D5DB;font-size:11px;padding:0;"><i class="fas fa-ellipsis-h"></i></button>
+        <div style="border-top:1px solid #F3F4F6;padding-top:14px;display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-orient:vertical;-webkit-box-direction:normal;-ms-flex-direction:column;flex-direction:column;gap:8px;">
+            @forelse($projects->take(4) as $proj)
+            @php $pColors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6']; $c = $pColors[$loop->index % 5]; @endphp
+            <div style="display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center;gap:8px;">
+                <span style="width:8px;height:8px;border-radius:50%;background:{{ $c }};-ms-flex-negative:0;flex-shrink:0;display:inline-block;"></span>
+                <span style="-webkit-box-flex:1;-ms-flex:1;flex:1;font-size:12px;color:#374151;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $proj->name }}</span>
+                <button style="background:none;border:none;cursor:pointer;color:#D1D5DB;font-size:11px;padding:0;line-height:1;"><i class="fas fa-ellipsis-h"></i></button>
             </div>
             @empty
-            <p style="font-size:12px;color:#9CA3AF;text-align:center;">No projects yet</p>
+            <p style="font-size:12px;color:#9CA3AF;text-align:center;margin:0;">No projects yet</p>
             @endforelse
         </div>
     </div>
@@ -774,15 +881,17 @@ function dashModals() {
 <div class="bottom-grid">
 
     {{-- Task Workload Bar Chart --}}
-    <div class="dash-card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+    <div class="dash-card anim-card anim-d6" style="display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-orient:vertical;-webkit-box-direction:normal;-ms-flex-direction:column;flex-direction:column;">
+        <div style="display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center;-webkit-box-pack:justify;-ms-flex-pack:justify;justify-content:space-between;margin-bottom:16px;">
             <h3 style="font-size:14px;font-weight:600;color:#111827;margin:0;">Task Workload</h3>
             <a href="{{ route('team.index') }}" style="font-size:11px;color:#4F46E5;text-decoration:none;font-weight:500;">View more</a>
         </div>
         @if(count($workloadLabels) > 0)
-            <canvas id="workloadChart" height="130"></canvas>
+            <div style="position:relative;width:100%;height:220px;">
+                <canvas id="workloadChart"></canvas>
+            </div>
         @else
-            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:130px;color:#D1D5DB;">
+            <div style="display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-orient:vertical;-webkit-box-direction:normal;-ms-flex-direction:column;flex-direction:column;-webkit-box-align:center;-ms-flex-align:center;align-items:center;-webkit-box-pack:center;-ms-flex-pack:center;justify-content:center;height:220px;color:#D1D5DB;">
                 <i class="fas fa-chart-bar" style="font-size:28px;margin-bottom:8px;"></i>
                 <p style="font-size:12px;margin:0;">No data yet</p>
             </div>
@@ -924,11 +1033,30 @@ function dashModals() {
 
 @push('scripts')
 <script>
+// Count-up animation for stat numbers
+(function() {
+    var els = document.querySelectorAll('.stat-count[data-target]');
+    els.forEach(function(el) {
+        var target = parseInt(el.getAttribute('data-target'), 10);
+        if (!target || target <= 0) return;
+        var duration = 900, start = null;
+        function step(ts) {
+            if (!start) start = ts;
+            var p = Math.min((ts - start) / duration, 1);
+            var eased = 1 - Math.pow(1 - p, 3);
+            el.textContent = Math.round(eased * target);
+            if (p < 1) requestAnimationFrame(step);
+        }
+        el.textContent = '0';
+        requestAnimationFrame(step);
+    });
+})();
+
 Chart.defaults.font = { family: 'Inter, sans-serif', size: 12 };
 Chart.defaults.color = '#9CA3AF';
 
 // Line Chart
-new Chart(document.getElementById('workingHoursChart'), {
+var chartWorkingHours = new Chart(document.getElementById('workingHoursChart'), {
     type: 'line',
     data: {
         labels: @json($weekLabels),
@@ -948,16 +1076,17 @@ new Chart(document.getElementById('workingHoursChart'), {
     },
     options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
             x: { grid: { display: false }, border: { display: false } },
-            y: { grid: { color: '#F3F4F6' }, border: { display: false }, beginAtZero: true, ticks: { stepSize: 1 } }
+            y: { grid: { color: '#F3F4F6' }, border: { display: false }, beginAtZero: true, ticks: { stepSize: 1, maxTicksLimit: 6 } }
         }
     }
 });
 
 // Donut Chart
-new Chart(document.getElementById('projectStatsChart'), {
+var chartProjectStats = new Chart(document.getElementById('projectStatsChart'), {
     type: 'doughnut',
     data: {
         labels: ['Completed','In Progress','Pending','Overdue'],
@@ -969,22 +1098,26 @@ new Chart(document.getElementById('projectStatsChart'), {
                 {{ $taskStats['overdue'] }}
             ],
             backgroundColor: ['#10B981','#F59E0B','#60A5FA','#EF4444'],
-            borderWidth: 0,
-            hoverOffset: 4,
+            borderWidth: 2,
+            borderColor: '#fff',
+            hoverOffset: 6,
         }]
     },
     options: {
         responsive: true,
-        cutout: '72%',
-        plugins: { legend: { display: false }, tooltip: { callbacks: {
-            label: ctx => ` ${ctx.label}: ${ctx.parsed}`
-        }}}
+        maintainAspectRatio: true,
+        cutout: '70%',
+        plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: function(ctx) { return ' ' + ctx.label + ': ' + ctx.parsed; } } }
+        }
     }
 });
 
-// Bar Chart
+// Bar Chart — Task Workload
+var chartWorkload = null;
 @if(count($workloadLabels) > 0)
-new Chart(document.getElementById('workloadChart'), {
+chartWorkload = new Chart(document.getElementById('workloadChart'), {
     type: 'bar',
     data: {
         labels: @json($workloadLabels),
@@ -1005,13 +1138,136 @@ new Chart(document.getElementById('workloadChart'), {
     },
     options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
             x: { grid: { display: false }, border: { display: false } },
-            y: { grid: { color: '#F3F4F6' }, border: { display: false }, beginAtZero: true, ticks: { stepSize: 1 } }
+            y: { grid: { color: '#F3F4F6' }, border: { display: false }, beginAtZero: true, ticks: { stepSize: 1, maxTicksLimit: 6 } }
         }
     }
 });
 @endif
+
+// ── Auto-Refresh (every 60 seconds) ──────────────────────────────────────
+(function() {
+    var REFRESH_URL    = '{{ route('admin.dashboard.refresh') }}';
+    var INTERVAL_MS    = 60000;
+    var dot            = document.getElementById('refreshDot');
+    var label          = document.getElementById('refreshLabel');
+    var workloadWrap   = document.getElementById('workloadChart') ? document.getElementById('workloadChart').parentNode : null;
+
+    function setRV(key, val) {
+        var els = document.querySelectorAll('[data-rv="' + key + '"]');
+        for (var i = 0; i < els.length; i++) els[i].textContent = val;
+    }
+
+    function updateRateCircle(circleId, textId, rate) {
+        var circle = document.getElementById(circleId);
+        var text   = document.getElementById(textId);
+        if (circle) circle.setAttribute('stroke-dasharray', rate + ' ' + (100 - rate));
+        if (text)   text.textContent = rate + '%';
+    }
+
+    function doRefresh() {
+        // show pulsing indicator
+        if (dot)   { dot.classList.add('rv-pulse'); dot.style.background = '#F59E0B'; }
+        if (label) label.textContent = 'Refreshing…';
+
+        fetch(REFRESH_URL, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+            .then(function(r) { return r.ok ? r.json() : Promise.reject(r.status); })
+            .then(function(d) {
+                // ── Stat cards ──
+                setRV('totalTasks',        d.totalTasks);
+                setRV('activeProjects',    d.activeProjects);
+                setRV('scheduledMeetings', d.scheduledMeetings);
+                setRV('totalMembers',      d.totalMembers);
+                setRV('activeMembers',     d.activeMembers);
+                setRV('managerCount',      d.managerCount);
+                setRV('userCount',         d.userCount);
+
+                // ── Task Analytics tiles ──
+                var ov = d.taskOverview;
+                setRV('overview_assigned',      ov.assigned);
+                setRV('overview_pending',        ov.pending);
+                setRV('overview_in_progress',    ov.in_progress);
+                setRV('overview_in_review',      ov.in_review);
+                setRV('overview_completed',      ov.completed);
+                setRV('overview_delivered',      ov.delivered);
+                setRV('overview_overdue',        ov.overdue);
+                setRV('overview_due_today',      ov.due_today);
+                setRV('overview_due_this_week',  ov.due_this_week);
+
+                // ── Rate circles ──
+                updateRateCircle('rateCircleCompletion', 'rateTextCompletion', d.completionRate);
+                updateRateCircle('rateCircleOnTime',     'rateTextOnTime',     d.onTimeRate);
+                var rcEl = document.getElementById('reviewCyclesVal');
+                if (rcEl) rcEl.textContent = d.reviewCycles;
+                var rsSub = document.getElementById('rateSubCompletion');
+                if (rsSub) rsSub.textContent = (ov.completed + ov.delivered) + ' of ' + ov.total + ' tasks done';
+
+                // ── Working Hours chart ──
+                if (typeof chartWorkingHours !== 'undefined' && chartWorkingHours) {
+                    chartWorkingHours.data.labels = d.weekLabels;
+                    chartWorkingHours.data.datasets[0].data = d.weekData;
+                    chartWorkingHours.update('none');
+                }
+
+                // ── Project Stats donut ──
+                if (typeof chartProjectStats !== 'undefined' && chartProjectStats) {
+                    var ts = d.taskStats;
+                    chartProjectStats.data.datasets[0].data = [ts.completed, ts.in_progress, ts.pending, ts.overdue];
+                    chartProjectStats.update('none');
+                    // update center label
+                    var centerEl = document.querySelector('#projectStatsChart').parentNode.querySelector('p');
+                    if (centerEl) centerEl.textContent = d.activeProjects;
+                }
+
+                // ── Workload bar chart ──
+                if (d.workloadData && d.workloadData.length > 0) {
+                    if (typeof chartWorkload !== 'undefined' && chartWorkload) {
+                        chartWorkload.data.labels = d.workloadLabels;
+                        chartWorkload.data.datasets[0].data = d.workloadData;
+                        chartWorkload.update('none');
+                    } else if (workloadWrap) {
+                        // chart wasn't created on load (no data then) — create it now
+                        var canvas = document.createElement('canvas');
+                        canvas.id = 'workloadChart';
+                        workloadWrap.innerHTML = '';
+                        workloadWrap.appendChild(canvas);
+                        chartWorkload = new Chart(canvas, {
+                            type: 'bar',
+                            data: {
+                                labels: d.workloadLabels,
+                                datasets: [{
+                                    label: 'Open Tasks',
+                                    data: d.workloadData,
+                                    backgroundColor: ['rgba(99,102,241,0.85)','rgba(16,185,129,0.85)','rgba(245,158,11,0.85)','rgba(239,68,68,0.85)','rgba(139,92,246,0.85)','rgba(59,130,246,0.85)'],
+                                    borderRadius: 6, borderSkipped: false,
+                                }]
+                            },
+                            options: {
+                                responsive: true, maintainAspectRatio: false,
+                                plugins: { legend: { display: false } },
+                                scales: {
+                                    x: { grid: { display: false }, border: { display: false } },
+                                    y: { grid: { color: '#F3F4F6' }, border: { display: false }, beginAtZero: true, ticks: { stepSize: 1, maxTicksLimit: 6 } }
+                                }
+                            }
+                        });
+                    }
+                }
+
+                // ── Indicator: success ──
+                if (dot)   { dot.classList.remove('rv-pulse'); dot.style.background = '#10B981'; }
+                if (label) label.textContent = 'Updated ' + d.refreshedAt;
+            })
+            .catch(function() {
+                if (dot)   { dot.classList.remove('rv-pulse'); dot.style.background = '#EF4444'; }
+                if (label) label.textContent = 'Refresh failed';
+            });
+    }
+
+    setInterval(doRefresh, INTERVAL_MS);
+})();
 </script>
 @endpush

@@ -36,23 +36,59 @@ class User extends Authenticatable
     ];
 
     public const ALL_PERMISSIONS = [
-        'view_activity_log'   => 'Activity Log',
-        'view_version_history'=> 'Version History',
-        'view_comments'       => 'Comments & Updates',
-        'view_team_tasks'     => 'Team Tasks Tab',
-        'view_projects'       => 'Projects Section',
-        'view_messages'       => 'Messages',
-        'view_team'           => 'Team Page',
-        'view_calendar'       => 'Calendar',
-        'submit_work'         => 'Submit Work',
+        // Tasks & Work
+        'view_tasks'           => 'View Tasks',
+        'submit_work'          => 'Submit Work',
+        'manage_tasks'         => 'Create & Assign Tasks',
+        'approve_tasks'        => 'Approve Submissions',
+        'view_activity_log'    => 'Task Activity Log',
+        'view_version_history' => 'Version History',
+        'view_comments'        => 'Comments & Updates',
+
+        // Projects & Team
+        'view_projects'        => 'View Projects',
+        'manage_projects'      => 'Create & Manage Projects',
+        'view_team_tasks'      => 'View Team Tasks',
+        'view_team'            => 'Team Directory',
+
+        // Communication
+        'view_messages'        => 'Messages',
+        'view_calendar'        => 'Calendar & Schedule',
+
+        // Reports & Data
+        'view_reports'         => 'Reports & Analytics',
+        'export_data'          => 'Export & Download Data',
+        'view_audit_log'       => 'Audit Log',
+
+        // Administration
+        'manage_users'         => 'Manage Users',
+        'manage_roles'         => 'Manage Roles & Permissions',
+        'manage_settings'      => 'System Settings',
+        'view_approvals'       => 'Task Approvals',
     ];
 
     /** Returns true if the user has the given permission (null = all allowed). */
     public function hasPermission(string $key): bool
     {
         if (in_array($this->role, ['admin', 'manager'])) return true;
-        if (is_null($this->permissions)) return true;
-        return in_array($key, $this->permissions);
+
+        // User-level explicit permissions take priority over role defaults
+        if (!is_null($this->permissions)) {
+            return in_array($key, $this->permissions);
+        }
+
+        // Fall back to role-level default permissions
+        $role = $this->roleModel;
+        if ($role && !is_null($role->permissions)) {
+            return in_array($key, $role->permissions);
+        }
+
+        return true;
+    }
+
+    public function roleModel(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'role', 'name');
     }
 
     /** Returns the public URL of the avatar, or null. */

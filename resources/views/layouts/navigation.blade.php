@@ -38,6 +38,12 @@
     @media (max-width: 768px) {
         #sidebar-close-btn { display: flex !important; }
     }
+    .recent-proj-link { display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:13px;color:#6B7280;text-decoration:none;border-radius:6px;transition:color 0.15s,background 0.15s;margin-bottom:2px; }
+    .recent-proj-link:hover { color:#4F46E5; background:#F5F3FF; }
+    .logout-btn-wrap { width:100%;background:none;border:none;cursor:pointer;text-align:left;padding:0; }
+    .logout-btn-wrap .nav-item { transition:background 0.15s,color 0.15s; }
+    .logout-btn-wrap:hover .nav-item { background:#FEF2F2 !important; color:#DC2626 !important; }
+    .logout-btn-wrap:hover .nav-icon { color:#DC2626 !important; }
     </style>
 
     {{-- Nav --}}
@@ -164,6 +170,14 @@
                 Audit Log
             </div>
         </a>
+
+        <a href="{{ route('admin.reports.index') }}"
+           class="nav-item {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-chart-bar nav-icon"></i>
+                Reports
+            </div>
+        </a>
         @endif
 
         {{-- Recent Projects (from View Composer) --}}
@@ -172,8 +186,7 @@
         @foreach($recentProjects as $rp)
         @php $dotColors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6']; @endphp
         <a href="{{ $role === 'admin' ? route('admin.projects.show', $rp) : '#' }}"
-           style="display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:13px;color:#6B7280;text-decoration:none;border-radius:6px;transition:color 0.15s;margin-bottom:2px;"
-           onmouseover="this.style.color='#4F46E5'" onmouseout="this.style.color='#6B7280'">
+           class="recent-proj-link">
             <span style="width:8px;height:8px;border-radius:50%;background:{{ $dotColors[$rp->id % 5] }};flex-shrink:0;"></span>
             <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $rp->name }}</span>
         </a>
@@ -195,10 +208,7 @@
         @endif
         <form method="POST" action="{{ route('logout') }}">
             @csrf
-            <button type="submit"
-                    style="width:100%;background:none;border:none;cursor:pointer;text-align:left;padding:0;"
-                    onmouseover="this.firstElementChild.style.background='#FEF2F2';this.firstElementChild.style.color='#DC2626'"
-                    onmouseout="this.firstElementChild.style.background='';this.firstElementChild.style.color=''">
+            <button type="submit" class="logout-btn-wrap">
                 <span class="nav-item" style="display:flex;">
                     <span class="nav-left">
                         <i class="fas fa-right-from-bracket nav-icon"></i>

@@ -99,6 +99,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
             ['id'=>'branding',      'icon'=>'fa-palette',        'label'=>'Branding'],
             ['id'=>'team',          'icon'=>'fa-users',          'label'=>'Team'],
             ['id'=>'notifications', 'icon'=>'fa-bell',           'label'=>'Notifications'],
+            ['id'=>'mail',          'icon'=>'fa-envelope',       'label'=>'Mail / SMTP'],
             ['id'=>'security',      'icon'=>'fa-shield-halved',  'label'=>'Security'],
             ['id'=>'backup',        'icon'=>'fa-database',       'label'=>'Backup & Export'],
         ];
@@ -507,6 +508,181 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                     </div>
                     <div class="scard-footer">
                         <button type="submit" class="btn-save"><i class="fas fa-check" style="font-size:11px;margin-right:5px;"></i>Save Preferences</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {{-- ════ MAIL / SMTP ════ --}}
+        <div x-show="tab === 'mail'" x-cloak x-data="{
+            host:        '{{ addslashes($mail['host']        ?? '') }}',
+            port:        '{{ $mail['port']        ?? 587 }}',
+            encryption:  '{{ $mail['encryption']  ?? 'tls' }}',
+            username:    '{{ addslashes($mail['username']    ?? '') }}',
+            fromAddress: '{{ addslashes($mail['from_address'] ?? '') }}',
+            fromName:    '{{ addslashes($mail['from_name']   ?? '') }}',
+            showPw:      false,
+            testEmail:   '',
+            testing:     false,
+            testResult:  '',
+            testOk:      null,
+            preset(p) {
+                const presets = {
+                    gmail:     { host:'smtp.gmail.com',       port:587, encryption:'tls'  },
+                    outlook:   { host:'smtp.office365.com',   port:587, encryption:'starttls' },
+                    mailgun:   { host:'smtp.mailgun.org',     port:587, encryption:'tls'  },
+                    sendgrid:  { host:'smtp.sendgrid.net',    port:587, encryption:'tls'  },
+                    mailtrap:  { host:'sandbox.smtp.mailtrap.io', port:2525, encryption:'tls' },
+                };
+                if (presets[p]) { this.host = presets[p].host; this.port = presets[p].port; this.encryption = presets[p].encryption; }
+            },
+            async sendTest() {
+                if (!this.testEmail) return;
+                this.testing = true; this.testResult = ''; this.testOk = null;
+                try {
+                    const fd = new FormData(document.getElementById('mail-form'));
+                    fd.append('_token', document.querySelector('meta[name=csrf-token]').content);
+                    fd.append('to', this.testEmail);
+                    const r = await fetch('{{ route('admin.settings.mail.test') }}', { method:'POST', body: fd });
+                    const j = await r.json();
+                    this.testOk = j.ok; this.testResult = j.message;
+                } catch(e) { this.testOk = false; this.testResult = 'Request failed: ' + e.message; }
+                this.testing = false;
+            }
+        }">
+            <div class="scard">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#EFF6FF;color:#2563EB;"><i class="fas fa-envelope"></i></div>
+                    <div>
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Mail / SMTP</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Configure outgoing email for notifications and alerts</p>
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ route('admin.settings.mail') }}" id="mail-form">
+                    @csrf
+                    <div class="scard-body">
+
+                        {{-- Quick Presets --}}
+                        <div class="sf-group">
+                            <label class="sf-label">Quick Presets</label>
+                            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                                @foreach([
+                                    ['key'=>'gmail',    'label'=>'Gmail',     'color'=>'#EA4335'],
+                                    ['key'=>'outlook',  'label'=>'Outlook',   'color'=>'#0078D4'],
+                                    ['key'=>'mailgun',  'label'=>'Mailgun',   'color'=>'#F06B35'],
+                                    ['key'=>'sendgrid', 'label'=>'SendGrid',  'color'=>'#1A82E2'],
+                                    ['key'=>'mailtrap', 'label'=>'Mailtrap',  'color'=>'#16A34A'],
+                                ] as $p)
+                                <button type="button" @click="preset('{{ $p['key'] }}')"
+                                        style="padding:6px 14px;font-size:12px;font-weight:600;border-radius:8px;border:1.5px solid {{ $p['color'] }}20;background:{{ $p['color'] }}10;color:{{ $p['color'] }};cursor:pointer;transition:all 0.15s;"
+                                        onmouseover="this.style.background='{{ $p['color'] }}20'" onmouseout="this.style.background='{{ $p['color'] }}10'">
+                                    {{ $p['label'] }}
+                                </button>
+                                @endforeach
+                            </div>
+                            <p class="sf-hint">Click a preset to auto-fill the server details below.</p>
+                        </div>
+
+                        {{-- Connection --}}
+                        <div style="background:#F8FAFC;border:1px solid #E5E7EB;border-radius:10px;padding:16px 18px;margin-bottom:18px;">
+                            <p style="font-size:12px;font-weight:700;color:#374151;margin:0 0 14px;text-transform:uppercase;letter-spacing:.05em;">Connection</p>
+                            <div style="display:grid;grid-template-columns:1fr 120px 160px;gap:14px;align-items:end;">
+                                <div class="sf-group" style="margin-bottom:0;">
+                                    <label class="sf-label">SMTP Host</label>
+                                    <input type="text" name="mail_host" class="sf-input" x-model="host"
+                                           placeholder="smtp.example.com" required>
+                                </div>
+                                <div class="sf-group" style="margin-bottom:0;">
+                                    <label class="sf-label">Port</label>
+                                    <select name="mail_port" class="sf-input sf-select" x-model="port">
+                                        <option value="25">25</option>
+                                        <option value="465">465</option>
+                                        <option value="587">587</option>
+                                        <option value="2525">2525</option>
+                                    </select>
+                                </div>
+                                <div class="sf-group" style="margin-bottom:0;">
+                                    <label class="sf-label">Encryption</label>
+                                    <select name="mail_encryption" class="sf-input sf-select" x-model="encryption">
+                                        <option value="tls">TLS (STARTTLS)</option>
+                                        <option value="ssl">SSL</option>
+                                        <option value="starttls">STARTTLS</option>
+                                        <option value="">None</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Authentication --}}
+                        <div style="background:#F8FAFC;border:1px solid #E5E7EB;border-radius:10px;padding:16px 18px;margin-bottom:18px;">
+                            <p style="font-size:12px;font-weight:700;color:#374151;margin:0 0 14px;text-transform:uppercase;letter-spacing:.05em;">Authentication</p>
+                            <div class="sf-row">
+                                <div class="sf-group" style="margin-bottom:0;">
+                                    <label class="sf-label">Username</label>
+                                    <input type="text" name="mail_username" class="sf-input" x-model="username"
+                                           placeholder="you@example.com" autocomplete="off" required>
+                                </div>
+                                <div class="sf-group" style="margin-bottom:0;">
+                                    <label class="sf-label">Password</label>
+                                    <div style="position:relative;">
+                                        <input :type="showPw ? 'text' : 'password'" name="mail_password" class="sf-input"
+                                               placeholder="Leave blank to keep current" autocomplete="new-password"
+                                               style="padding-right:40px;">
+                                        <button type="button" @click="showPw=!showPw"
+                                                style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9CA3AF;padding:0;">
+                                            <i :class="showPw ? 'fas fa-eye-slash' : 'fas fa-eye'" style="font-size:13px;"></i>
+                                        </button>
+                                    </div>
+                                    <p class="sf-hint">Leave blank to keep the existing password.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Sender Identity --}}
+                        <div style="background:#F8FAFC;border:1px solid #E5E7EB;border-radius:10px;padding:16px 18px;margin-bottom:18px;">
+                            <p style="font-size:12px;font-weight:700;color:#374151;margin:0 0 14px;text-transform:uppercase;letter-spacing:.05em;">Sender Identity</p>
+                            <div class="sf-row">
+                                <div class="sf-group" style="margin-bottom:0;">
+                                    <label class="sf-label">From Address</label>
+                                    <input type="email" name="mail_from_address" class="sf-input" x-model="fromAddress"
+                                           placeholder="noreply@example.com" required>
+                                </div>
+                                <div class="sf-group" style="margin-bottom:0;">
+                                    <label class="sf-label">From Name</label>
+                                    <input type="text" name="mail_from_name" class="sf-input" x-model="fromName"
+                                           placeholder="Task Manager" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Test Email --}}
+                        <div style="border:1.5px solid #DBEAFE;border-radius:10px;padding:16px 18px;background:#EFF6FF;">
+                            <p style="font-size:12px;font-weight:700;color:#1D4ED8;margin:0 0 12px;"><i class="fas fa-vial" style="margin-right:6px;"></i>Send Test Email</p>
+                            <div style="display:flex;gap:10px;align-items:flex-end;">
+                                <div style="flex:1;">
+                                    <label class="sf-label">Recipient Address</label>
+                                    <input type="email" class="sf-input" x-model="testEmail"
+                                           placeholder="test@example.com" style="background:#fff;">
+                                </div>
+                                <button type="button" @click="sendTest()" :disabled="testing || !testEmail"
+                                        style="padding:9px 18px;font-size:13px;font-weight:600;background:#2563EB;color:#fff;border:none;border-radius:9px;cursor:pointer;white-space:nowrap;transition:background 0.15s;flex-shrink:0;"
+                                        :style="(testing || !testEmail) ? 'opacity:.6;cursor:not-allowed;' : ''"
+                                        onmouseover="if(!this.disabled)this.style.background='#1D4ED8'" onmouseout="this.style.background='#2563EB'">
+                                    <i class="fas fa-paper-plane" style="font-size:11px;margin-right:5px;"></i>
+                                    <span x-text="testing ? 'Sending…' : 'Send Test'"></span>
+                                </button>
+                            </div>
+                            <div x-show="testResult" x-cloak style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;padding:9px 13px;border-radius:8px;"
+                                 :style="testOk ? 'background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0;' : 'background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;'">
+                                <i :class="testOk ? 'fas fa-circle-check' : 'fas fa-circle-xmark'"></i>
+                                <span x-text="testResult"></span>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="scard-footer">
+                        <button type="submit" class="btn-save"><i class="fas fa-check" style="font-size:11px;margin-right:5px;"></i>Save Mail Settings</button>
                     </div>
                 </form>
             </div>

@@ -50,7 +50,15 @@ class SettingsController extends Controller
     {
         $settings = array_merge(
             $this->defaults,
-            Setting::all()->pluck('value', 'key')->toArray()
+            Setting::all()->pluck('value', 'key')->toArray(),
+            [
+                'mail_host'         => config('mail.mailers.smtp.host',       'smtp.mailtrap.io'),
+                'mail_port'         => config('mail.mailers.smtp.port',       587),
+                'mail_username'     => config('mail.mailers.smtp.username',   ''),
+                'mail_encryption'   => config('mail.mailers.smtp.encryption', 'tls'),
+                'mail_from_address' => config('mail.from.address',            ''),
+                'mail_from_name'    => config('mail.from.name',               config('app.name')),
+            ]
         );
 
         $stats = [
@@ -175,6 +183,86 @@ class SettingsController extends Controller
         ]);
 
         return back()->with('success', 'Notification preferences saved.')->withFragment('notifications');
+    }
+
+    public function updateMail(Request $request)
+    {
+        $request->validate([
+            'mail_host'         => 'required|string|max:120',
+            'mail_port'         => 'required|integer|in:25,465,587,2525',
+            'mail_username'     => 'required|string|max:120',
+            'mail_from_address' => 'required|email|max:120',
+            'mail_from_name'    => 'required|string|max:80',
+            'mail_encryption'   => 'nullable|in:tls,ssl,starttls,',
+        ]);
+
+        $this->updateEnvKey('MAIL_MAILER',       'smtp');
+        $this->updateEnvKey('MAIL_HOST',         $request->mail_host);
+        $this->updateEnvKey('MAIL_PORT',         $request->mail_port);
+        $this->updateEnvKey('MAIL_USERNAME',     $request->mail_username);
+        $this->updateEnvKey('MAIL_ENCRYPTION',   $request->input('mail_encryption', 'tls'));
+        $this->updateEnvKey('MAIL_FROM_ADDRESS', $request->mail_from_address);
+        $this->updateEnvKey('MAIL_FROM_NAME',    $request->mail_from_name);
+
+        if ($request->filled('mail_password')) {
+            $this->updateEnvKey('MAIL_PASSWORD', $request->mail_password);
+        }
+
+        return back()->with('success', 'Mail settings saved.')->withFragment('mail');
+    }
+
+    public function testMail(Request $request)
+    {
+        $request->validate([
+            'to'           => 'required|email',
+            'host'         => 'required|string',
+            'port'         => 'required|integer',
+            'username'     => 'required|string',
+            'from_address' => 'required|email',
+            'from_name'    => 'required|string',
+        ]);
+
+        try {
+            $password   = $request->filled('password')
+                ? $request->password
+                : config('mail.mailers.smtp.password', '');
+            $encryption = strtolower($request->input('encryption', 'tls'));
+
+            $user = rawurlencode($request->username);
+            $pass = rawurlencode($password);
+            $host = $request->host;
+            $port = (int) $request->port;
+
+            $dsn = match($encryption) {
+                'ssl'   => "smtps://{$user}:{$pass}@{$host}:{$port}",
+                'tls'   => "smtp://{$user}:{$pass}@{$host}:{$port}?encryption=tls",
+                default => "smtp://{$user}:{$pass}@{$host}:{$port}",
+            };
+
+            $transport = \Symfony\Component\Mailer\Transport::fromDsn($dsn);
+            $mailer    = new \Symfony\Component\Mailer\Mailer($transport);
+
+            $html = '<div style="font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;border:1px solid #E5E7EB;border-radius:12px;">'
+                  . '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">'
+                  . '<div style="width:42px;height:42px;background:#EEF2FF;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;">✅</div>'
+                  . '<h2 style="margin:0;font-size:18px;color:#111827;">SMTP Test Successful</h2></div>'
+                  . '<p style="color:#374151;margin:0 0 12px;">Your SMTP configuration for <strong>' . e(config('app.name')) . '</strong> is working correctly.</p>'
+                  . '<p style="color:#9CA3AF;font-size:12px;margin:0;border-top:1px solid #F3F4F6;padding-top:12px;">Host: ' . e($request->host) . ':' . $port . ' · Sent: ' . now()->format('F d, Y H:i') . '</p>'
+                  . '</div>';
+
+            $email = (new \Symfony\Component\Mime\Email())
+                ->from(new \Symfony\Component\Mime\Address($request->from_address, $request->from_name))
+                ->to($request->to)
+                ->subject('SMTP Test — ' . config('app.name'))
+                ->html($html)
+                ->text('SMTP test from ' . config('app.name') . ' — configuration is working correctly. Sent: ' . now()->format('F d, Y H:i'));
+
+            $mailer->send($email);
+
+            return response()->json(['ok' => true, 'message' => 'Test email sent to ' . $request->to]);
+        } catch (\Throwable $e) {
+            return response()->json(['ok' => false, 'message' => $e->getMessage()], 422);
+        }
     }
 
     public function updateSecurity(Request $request)

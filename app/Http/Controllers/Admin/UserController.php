@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Role;
 use App\Models\Task;
 use App\Models\TaskLog;
 use App\Models\User;
@@ -11,6 +12,7 @@ use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -44,7 +46,9 @@ class UserController extends Controller
             'managers' => User::where('role', 'manager')->count(),
         ];
 
-        return view('admin.users.index', compact('users', 'stats'));
+        $allRoles = Role::ordered();
+
+        return view('admin.users.index', compact('users', 'stats', 'allRoles'));
     }
 
     public function create()
@@ -58,7 +62,7 @@ class UserController extends Controller
             'name'      => 'required|string|max:255',
             'email'     => 'required|email|max:255|unique:users',
             'password'  => 'required|string|min:8|confirmed',
-            'role'      => 'required|in:admin,manager,user',
+            'role'      => ['required', Rule::in(Role::pluck('name'))],
             'phone'     => 'nullable|string|max:30',
             'job_title' => 'nullable|string|max:80',
             'status'    => 'nullable|in:active,inactive',
@@ -66,7 +70,8 @@ class UserController extends Controller
         ]);
 
         $allKeys = array_keys(User::ALL_PERMISSIONS);
-        if ($request->has('_perms_sent') && $request->role === 'user') {
+        $isPrivileged = in_array($request->role, ['admin', 'manager']);
+        if ($request->has('_perms_sent') && !$isPrivileged) {
             $submitted = $request->input('permissions', []);
             $perms = empty($submitted) ? null : array_values(array_intersect($submitted, $allKeys));
         } else {
@@ -116,7 +121,7 @@ class UserController extends Controller
         $request->validate([
             'name'      => 'required|string|max:255',
             'email'     => 'required|email|max:255|unique:users,email,' . $user->id,
-            'role'      => 'required|in:admin,manager,user',
+            'role'      => ['required', Rule::in(Role::pluck('name'))],
             'password'  => 'nullable|string|min:8|confirmed',
             'phone'     => 'nullable|string|max:30',
             'job_title' => 'nullable|string|max:80',
@@ -130,8 +135,8 @@ class UserController extends Controller
         $oldStatus = $user->status;
 
         $allKeys = array_keys(User::ALL_PERMISSIONS);
-        // _perms_sent = permissions panel was shown; no checkboxes = null (all access)
-        if ($request->has('_perms_sent') && $request->role === 'user') {
+        $isPrivileged = in_array($request->role, ['admin', 'manager']);
+        if ($request->has('_perms_sent') && !$isPrivileged) {
             $submitted = $request->input('permissions', []);
             $perms = empty($submitted) ? null : array_values(array_intersect($submitted, $allKeys));
         } else {
