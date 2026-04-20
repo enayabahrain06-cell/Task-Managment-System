@@ -49,7 +49,16 @@
     {{-- Nav --}}
     <nav class="sidebar-nav">
 
-        {{-- My Tasks --}}
+        {{-- Top item: Overview for admin, My Tasks for everyone else --}}
+        @if($role === 'admin')
+        <a href="{{ route($dashRoute) }}"
+           class="nav-item {{ request()->routeIs($dashRoute) ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-table-cells-large nav-icon"></i>
+                Overview
+            </div>
+        </a>
+        @else
         <a href="{{ route($tasksRoute) }}"
            class="nav-item {{ request()->routeIs($tasksRoute) ? 'active' : '' }}">
             <div class="nav-left">
@@ -60,6 +69,7 @@
                 <span class="nav-badge nav-badge-blue">{{ $taskCount }}</span>
             @endif
         </a>
+        @endif
 
         {{-- Activities --}}
         <a href="{{ route('activities.index') }}"
@@ -73,8 +83,8 @@
         {{-- MENU section --}}
         <div class="sidebar-section">Menu</div>
 
-        {{-- Overview (admin/manager only — users have My Tasks as their dashboard) --}}
-        @if($role !== 'user')
+        {{-- Overview for manager only (admin already has it at top) --}}
+        @if($role === 'manager')
         <a href="{{ route($dashRoute) }}"
            class="nav-item {{ request()->routeIs($dashRoute) ? 'active' : '' }}">
             <div class="nav-left">

@@ -80,6 +80,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('settings/mail/test',             [AdminSettingsController::class, 'testMail'])->name('settings.mail.test');
     Route::post('meetings',                        [AdminMeetingController::class, 'store'])->name('meetings.store');
     Route::put('meetings/{meeting}',               [AdminMeetingController::class, 'update'])->name('meetings.update');
+    Route::patch('meetings/{meeting}/reschedule',  [AdminMeetingController::class, 'reschedule'])->name('meetings.reschedule');
     Route::delete('meetings/{meeting}',            [AdminMeetingController::class, 'destroy'])->name('meetings.destroy');
     Route::get('settings/export/users',            [AdminSettingsController::class, 'exportUsers'])->name('settings.export.users');
     Route::get('settings/export/tasks',           [AdminSettingsController::class, 'exportTasks'])->name('settings.export.tasks');

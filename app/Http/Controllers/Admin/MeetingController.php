@@ -66,6 +66,18 @@ class MeetingController extends Controller
         return back()->with('success', 'Meeting updated.');
     }
 
+    public function reschedule(Request $request, Meeting $meeting)
+    {
+        $request->validate([
+            'meeting_date' => 'required|date',
+            'start_time'   => 'nullable|date_format:H:i',
+        ]);
+        $data = ['meeting_date' => $request->meeting_date];
+        if ($request->filled('start_time')) $data['start_time'] = $request->start_time;
+        $meeting->update($data);
+        return response()->json(['ok' => true]);
+    }
+
     public function destroy(Meeting $meeting)
     {
         $meeting->delete();

@@ -21,11 +21,14 @@ class CalendarController extends Controller
             default            => $user->tasks()->with('project')->get(),
         };
 
+        $isAdmin = $user->role === 'admin';
+
         $events = $tasks->map(fn($task) => [
-            'id'    => $task->id,
-            'title' => $task->title,
-            'start' => $task->deadline->format('Y-m-d'),
-            'color' => match($task->status) {
+            'id'       => $task->id,
+            'title'    => $task->title,
+            'start'    => $task->deadline->format('Y-m-d'),
+            'editable' => false,
+            'color'    => match($task->status) {
                 'completed'   => '#10B981',
                 'in_progress' => '#F59E0B',
                 default       => match($task->priority) {
@@ -45,10 +48,11 @@ class CalendarController extends Controller
         // Add meeting events to calendar
         $allMeetings = Meeting::with(['creator', 'attendees'])->get();
         $meetingEvents = $allMeetings->map(fn($m) => [
-            'id'    => 'meeting-' . $m->id,
-            'title' => '📅 ' . $m->title,
-            'start' => $m->meeting_date->format('Y-m-d') . 'T' . $m->start_time,
-            'color' => $m->color,
+            'id'       => 'meeting-' . $m->id,
+            'title'    => '📅 ' . $m->title,
+            'start'    => $m->meeting_date->format('Y-m-d') . 'T' . $m->start_time,
+            'color'    => $m->color,
+            'editable' => $isAdmin,
             'extendedProps' => ['type' => 'meeting', 'location' => $m->location ?? ''],
         ]);
 

@@ -4,6 +4,25 @@
 
 @section('content')
 
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+.stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+@media(max-width:700px){ .stats-grid { grid-template-columns:repeat(2,1fr); } }
+@media(max-width:420px){ .stats-grid { grid-template-columns:1fr; } }
+.stat-card { border-radius:14px; padding:18px 20px; position:relative; overflow:hidden; color:#fff; }
+.stat-card-blob { position:absolute; top:-20px; right:-20px; width:80px; height:80px; border-radius:50%; background:rgba(255,255,255,0.12); }
+.stat-card-label { font-size:12px; font-weight:500; color:rgba(255,255,255,0.75); margin:0 0 8px; }
+.stat-card-value { font-size:34px; font-weight:700; line-height:1; margin:0; }
+.stat-card-sub   { font-size:11px; color:rgba(255,255,255,0.6); margin:6px 0 0; }
+.stat-card-menu  { position:absolute; top:14px; right:14px; background:rgba(255,255,255,0.15); border:none; border-radius:6px; width:26px; height:26px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; }
+@keyframes fadeInUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+.anim-card { animation: fadeInUp 0.45s cubic-bezier(0.22,1,0.36,1) both; }
+.anim-d1 { animation-delay:0.04s; }
+.anim-d2 { animation-delay:0.10s; }
+.anim-d3 { animation-delay:0.16s; }
+.anim-d4 { animation-delay:0.22s; }
+</style>
+
 <div class="flex items-center justify-between mb-6">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Team Members</h1>
@@ -17,23 +36,72 @@
 </div>
 
 {{-- Stats --}}
-<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-        <p class="text-3xl font-bold text-indigo-600">{{ $totalMembers }}</p>
-        <p class="text-xs text-gray-400 mt-1">Total Members</p>
+<div class="stats-grid" style="margin-bottom:24px;">
+
+    <a href="{{ route('team.index') }}" style="text-decoration:none;display:flex;">
+    <div class="stat-card anim-card anim-d1" style="flex:1 1 0%;background:linear-gradient(135deg,#4F46E5,#6366F1);cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;"
+         onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(79,70,229,.4)'"
+         onmouseout="this.style.transform='';this.style.boxShadow=''"
+         onmousedown="this.style.transform='translateY(-1px)'"
+         onmouseup="this.style.transform='translateY(-3px)'">
+        <div class="stat-card-blob"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+            <p class="stat-card-label">Team</p>
+            <button class="stat-card-menu" onclick="event.preventDefault()"><i class="fas fa-ellipsis-h"></i></button>
+        </div>
+        <p class="stat-card-value">{{ $totalMembers }}</p>
+        <p class="stat-card-sub">Total Members</p>
     </div>
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-        <p class="text-3xl font-bold text-emerald-600">{{ $activeMembers }}</p>
-        <p class="text-xs text-gray-400 mt-1">Active Users</p>
+    </a>
+
+    <a href="{{ route('team.index') }}" style="text-decoration:none;display:flex;">
+    <div class="stat-card anim-card anim-d2" style="flex:1 1 0%;background:linear-gradient(135deg,#059669,#10B981);cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;"
+         onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(5,150,105,.4)'"
+         onmouseout="this.style.transform='';this.style.boxShadow=''"
+         onmousedown="this.style.transform='translateY(-1px)'"
+         onmouseup="this.style.transform='translateY(-3px)'">
+        <div class="stat-card-blob"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+            <p class="stat-card-label">Active</p>
+            <button class="stat-card-menu" onclick="event.preventDefault()"><i class="fas fa-ellipsis-h"></i></button>
+        </div>
+        <p class="stat-card-value">{{ $activeMembers }}</p>
+        <p class="stat-card-sub">Active Users</p>
     </div>
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-        <p class="text-3xl font-bold text-amber-500">{{ $totalPending }}</p>
-        <p class="text-xs text-gray-400 mt-1">Open Tasks</p>
+    </a>
+
+    <a href="{{ route('team.index') }}" style="text-decoration:none;display:flex;">
+    <div class="stat-card anim-card anim-d3" style="flex:1 1 0%;background:linear-gradient(135deg,#7C3AED,#8B5CF6);cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;"
+         onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(124,58,237,.4)'"
+         onmouseout="this.style.transform='';this.style.boxShadow=''"
+         onmousedown="this.style.transform='translateY(-1px)'"
+         onmouseup="this.style.transform='translateY(-3px)'">
+        <div class="stat-card-blob"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+            <p class="stat-card-label">Open</p>
+            <button class="stat-card-menu" onclick="event.preventDefault()"><i class="fas fa-ellipsis-h"></i></button>
+        </div>
+        <p class="stat-card-value">{{ $totalPending }}</p>
+        <p class="stat-card-sub">Open Tasks</p>
     </div>
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-        <p class="text-3xl font-bold text-gray-700">{{ $totalCompleted }}</p>
-        <p class="text-xs text-gray-400 mt-1">Tasks Completed</p>
+    </a>
+
+    <a href="{{ route('team.index') }}" style="text-decoration:none;display:flex;">
+    <div class="stat-card anim-card anim-d4" style="flex:1 1 0%;background:linear-gradient(135deg,#0E7490,#0891B2);cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;"
+         onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(8,145,178,.4)'"
+         onmouseout="this.style.transform='';this.style.boxShadow=''"
+         onmousedown="this.style.transform='translateY(-1px)'"
+         onmouseup="this.style.transform='translateY(-3px)'">
+        <div class="stat-card-blob"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+            <p class="stat-card-label">Done</p>
+            <button class="stat-card-menu" onclick="event.preventDefault()"><i class="fas fa-ellipsis-h"></i></button>
+        </div>
+        <p class="stat-card-value">{{ $totalCompleted }}</p>
+        <p class="stat-card-sub">Tasks Completed</p>
     </div>
+    </a>
+
 </div>
 
 {{-- Members Grid --}}
