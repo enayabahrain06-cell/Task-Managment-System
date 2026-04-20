@@ -20,6 +20,7 @@ class SettingsController extends Controller
         'app_name'              => 'Dash',
         'app_tagline'           => 'Task Management System',
         'department_name'       => 'Product Department',
+        'copyright'             => '',
         'timezone'              => 'UTC',
         'date_format'           => 'Y-m-d',
         // Branding
@@ -95,6 +96,7 @@ class SettingsController extends Controller
     {
         $request->validate([
             'company_name'     => 'required|string|max:60',
+            'copyright'        => 'nullable|string|max:160',
             'primary_color'    => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
             'accent_color'     => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
             'logo'             => 'nullable|image|mimes:png,jpg,jpeg,svg,webp|max:2048',
@@ -104,7 +106,7 @@ class SettingsController extends Controller
             'login_bg_image'   => 'nullable|image|mimes:png,jpg,jpeg,webp|max:5120',
         ]);
 
-        Setting::setMany($request->only('company_name', 'primary_color', 'accent_color'));
+        Setting::setMany($request->only('company_name', 'copyright', 'primary_color', 'accent_color'));
 
         // Login background type and color
         if ($request->filled('login_bg_type')) {

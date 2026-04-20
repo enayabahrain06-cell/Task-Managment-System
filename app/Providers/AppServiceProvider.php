@@ -45,7 +45,7 @@ class AppServiceProvider extends ServiceProvider
         // Share global app settings with all views
         View::composer('*', function ($view) {
             try {
-                $appSettings = Setting::getMany(['app_name','company_name','primary_color','department_name','logo_path','favicon_path','login_bg_type','login_bg_color','login_bg_image']);
+                $appSettings = Setting::getMany(['app_name','company_name','primary_color','department_name','logo_path','favicon_path','login_bg_type','login_bg_color','login_bg_image','copyright']);
                 $view->with('appSettings', array_merge([
                     'app_name'        => 'Dash',
                     'company_name'    => 'Product Co.',
@@ -56,6 +56,7 @@ class AppServiceProvider extends ServiceProvider
                     'login_bg_type'   => 'gradient',
                     'login_bg_color'  => '#e8eaf6',
                     'login_bg_image'  => '',
+                    'copyright'       => '',
                 ], $appSettings));
             } catch (\Throwable) {
                 $view->with('appSettings', [
@@ -68,6 +69,7 @@ class AppServiceProvider extends ServiceProvider
                     'login_bg_type'   => 'gradient',
                     'login_bg_color'  => '#e8eaf6',
                     'login_bg_image'  => '',
+                    'copyright'       => '',
                 ]);
             }
         });
