@@ -34,23 +34,33 @@
             </span>
         </div>
 
+        @if($selectedUser)
+        <div class="mb-3 px-1">
+            <a href="{{ route('activities.index') }}" class="inline-flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-medium transition">
+                <i class="fa fa-times-circle"></i> Clear filter
+            </a>
+        </div>
+        @endif
+
         <div class="space-y-2">
             @php $teamColors = ['manager' => '#6366F1', 'user' => '#10B981']; @endphp
             @foreach($teams as $role => $members)
             <div class="mb-3">
                 <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">{{ ucfirst($role) }} Team</p>
                 @foreach($members as $member)
-                <div class="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 transition cursor-pointer">
+                @php $isActive = $selectedUser && $selectedUser->id === $member->id; @endphp
+                <a href="{{ route('activities.index', ['user_id' => $member->id]) }}"
+                   class="flex items-center gap-2 p-2 rounded-lg transition {{ $isActive ? 'bg-indigo-50 ring-1 ring-indigo-200' : 'hover:bg-gray-50' }}">
                     <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                          style="background:{{ $teamColors[$role] ?? '#6366F1' }}">
                         {{ strtoupper(substr($member->name, 0, 1)) }}
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-xs font-medium text-gray-800 truncate">{{ $member->name }}</p>
+                        <p class="text-xs font-medium {{ $isActive ? 'text-indigo-700' : 'text-gray-800' }} truncate">{{ $member->name }}</p>
                         <p class="text-xs text-gray-400">{{ $member->tasks_count }} tasks</p>
                     </div>
                     <span class="w-2 h-2 bg-emerald-400 rounded-full flex-shrink-0"></span>
-                </div>
+                </a>
                 @endforeach
             </div>
             @endforeach
@@ -64,8 +74,18 @@
     {{-- Right: Activity Feed --}}
     <div class="lg:col-span-3 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h3 class="font-semibold text-gray-900">Latest Activity Feed</h3>
-            <span class="text-xs text-gray-400">{{ $activities->total() }} total activities</span>
+            <div class="flex items-center gap-2">
+                <h3 class="font-semibold text-gray-900">Latest Activity Feed</h3>
+                @if($selectedUser)
+                <span class="inline-flex items-center gap-1.5 text-xs bg-indigo-100 text-indigo-700 font-medium px-2.5 py-1 rounded-full">
+                    <span class="w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[10px] font-bold">
+                        {{ strtoupper(substr($selectedUser->name, 0, 1)) }}
+                    </span>
+                    {{ $selectedUser->name }}
+                </span>
+                @endif
+            </div>
+            <span class="text-xs text-gray-400">{{ $activities->total() }} {{ $selectedUser ? 'activities' : 'total activities' }}</span>
         </div>
 
         @php

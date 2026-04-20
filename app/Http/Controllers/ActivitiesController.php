@@ -8,7 +8,7 @@ use App\Models\User;
 
 class ActivitiesController extends Controller
 {
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
         $teams = User::withCount('tasks')
             ->where('role', '!=', 'admin')
@@ -16,10 +16,17 @@ class ActivitiesController extends Controller
             ->get()
             ->groupBy('role');
 
-        $activities = TaskLog::with(['user', 'task.project'])
-            ->latest()
-            ->paginate(20);
+        $query = TaskLog::with(['user', 'task.project'])->latest();
 
-        return view('activities.index', compact('teams', 'activities'));
+        $selectedUserId = $request->input('user_id');
+        $selectedUser   = null;
+        if ($selectedUserId) {
+            $query->where('user_id', $selectedUserId);
+            $selectedUser = User::find($selectedUserId);
+        }
+
+        $activities = $query->paginate(20)->withQueryString();
+
+        return view('activities.index', compact('teams', 'activities', 'selectedUser'));
     }
 }

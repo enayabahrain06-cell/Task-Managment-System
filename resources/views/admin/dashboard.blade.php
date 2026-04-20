@@ -627,8 +627,8 @@ function dashModals() {
 <div class="stats-grid">
 
     {{-- Tasks --}}
-    <a href="{{ route('admin.dashboard') }}" style="text-decoration:none;">
-    <div class="stat-card anim-card anim-d1" style="background:linear-gradient(135deg,#4F46E5,#6366F1);cursor:pointer;transition:transform .15s,box-shadow .15s;"
+    <a href="{{ route('admin.dashboard') }}" style="text-decoration:none;display:flex;">
+    <div class="stat-card anim-card anim-d1" style="flex:1;background:linear-gradient(135deg,#4F46E5,#6366F1);cursor:pointer;transition:transform .15s,box-shadow .15s;"
          onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(79,70,229,.4)'"
          onmouseout="this.style.transform='';this.style.boxShadow=''"
          onmousedown="this.style.transform='translateY(-1px)'"
@@ -644,8 +644,8 @@ function dashModals() {
     </a>
 
     {{-- Projects --}}
-    <a href="{{ route('admin.projects.index') }}" style="text-decoration:none;">
-    <div class="stat-card anim-card anim-d2" style="background:linear-gradient(135deg,#059669,#10B981);cursor:pointer;transition:transform .15s,box-shadow .15s;"
+    <a href="{{ route('admin.projects.index') }}" style="text-decoration:none;display:flex;">
+    <div class="stat-card anim-card anim-d2" style="flex:1;background:linear-gradient(135deg,#059669,#10B981);cursor:pointer;transition:transform .15s,box-shadow .15s;"
          onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(5,150,105,.4)'"
          onmouseout="this.style.transform='';this.style.boxShadow=''"
          onmousedown="this.style.transform='translateY(-1px)'"
@@ -661,8 +661,8 @@ function dashModals() {
     </a>
 
     {{-- Meetings --}}
-    <a href="{{ route('calendar.index') }}" style="text-decoration:none;">
-    <div class="stat-card anim-card anim-d3" style="background:linear-gradient(135deg,#7C3AED,#8B5CF6);cursor:pointer;transition:transform .15s,box-shadow .15s;"
+    <a href="{{ route('calendar.index') }}" style="text-decoration:none;display:flex;">
+    <div class="stat-card anim-card anim-d3" style="flex:1;background:linear-gradient(135deg,#7C3AED,#8B5CF6);cursor:pointer;transition:transform .15s,box-shadow .15s;"
          onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(124,58,237,.4)'"
          onmouseout="this.style.transform='';this.style.boxShadow=''"
          onmousedown="this.style.transform='translateY(-1px)'"
@@ -677,29 +677,27 @@ function dashModals() {
     </div>
     </a>
 
-    {{-- Member Status --}}
-    <div class="dash-card anim-card anim-d4" style="padding:18px 20px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-            <p style="font-size:12px;font-weight:500;color:#6B7280;margin:0;">Member Status</p>
-            <a href="{{ route('team.index') }}" style="font-size:11px;color:#4F46E5;text-decoration:none;font-weight:500;">View more</a>
+    {{-- Team --}}
+    <a href="{{ route('team.index') }}" style="text-decoration:none;display:flex;">
+    <div class="stat-card anim-card anim-d4" style="flex:1;background:linear-gradient(135deg,#0E7490,#0891B2);cursor:pointer;transition:transform .15s,box-shadow .15s;"
+         onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(8,145,178,.4)'"
+         onmouseout="this.style.transform='';this.style.boxShadow=''"
+         onmousedown="this.style.transform='translateY(-1px)'"
+         onmouseup="this.style.transform='translateY(-3px)'">
+        <div class="stat-card-blob"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+            <p class="stat-card-label">Team</p>
+            <button class="stat-card-menu" onclick="event.preventDefault()"><i class="fas fa-ellipsis-h"></i></button>
         </div>
-        <p class="stat-count" data-target="{{ $totalMembers }}" data-rv="totalMembers" style="font-size:32px;font-weight:700;color:#111827;margin:0 0 2px;line-height:1;">{{ $totalMembers }}</p>
-        <p style="font-size:11px;color:#9CA3AF;margin:0 0 10px;">Total Members</p>
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:5px;">
-                <span data-rv="activeMembers" style="width:24px;height:24px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#4F46E5;">{{ $activeMembers }}</span>
-                <span style="font-size:11px;color:#9CA3AF;">Active</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:5px;">
-                <span data-rv="managerCount" style="width:24px;height:24px;border-radius:8px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#D97706;">{{ $managerCount }}</span>
-                <span style="font-size:11px;color:#9CA3AF;">Mgr</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:5px;">
-                <span data-rv="userCount" style="width:24px;height:24px;border-radius:8px;background:#F0FDF4;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#16A34A;">{{ $userCount }}</span>
-                <span style="font-size:11px;color:#9CA3AF;">Users</span>
-            </div>
-        </div>
+        <p class="stat-card-value stat-count" data-target="{{ $totalMembers }}" data-rv="totalMembers">{{ $totalMembers }}</p>
+        <p class="stat-card-sub">
+            <span data-rv="activeMembers">{{ $activeMembers }}</span> active ·
+            <span data-rv="managerCount">{{ $managerCount }}</span> mgr ·
+            <span data-rv="userCount">{{ $userCount }}</span> users
+        </p>
     </div>
+    </a>
+
 </div>
 
 {{-- ══ Task Analytics ══ --}}
@@ -715,19 +713,16 @@ function dashModals() {
     </div>
 
     {{-- Main grid: status counts --}}
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:14px;">
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px;">
 
         @php
         $analyticsItems = [
-            ['label'=>'Total Assigned',  'value'=>$taskOverview['assigned'],     'key'=>'assigned',      'icon'=>'fa-user-check',          'bg'=>'#EEF2FF','color'=>'#4F46E5'],
-            ['label'=>'Pending',         'value'=>$taskOverview['pending'],      'key'=>'pending',       'icon'=>'fa-clock',               'bg'=>'#F3F4F6','color'=>'#6B7280'],
-            ['label'=>'In Progress',     'value'=>$taskOverview['in_progress'],  'key'=>'in_progress',   'icon'=>'fa-spinner',             'bg'=>'#FEF3C7','color'=>'#D97706'],
-            ['label'=>'Waiting Review',  'value'=>$taskOverview['in_review'],    'key'=>'in_review',     'icon'=>'fa-gavel',               'bg'=>'#EDE9FE','color'=>'#7C3AED'],
-            ['label'=>'Completed',       'value'=>$taskOverview['completed'],    'key'=>'completed',     'icon'=>'fa-circle-check',        'bg'=>'#D1FAE5','color'=>'#059669'],
-            ['label'=>'Delivered',       'value'=>$taskOverview['delivered'],    'key'=>'delivered',     'icon'=>'fa-truck',               'bg'=>'#ECFDF5','color'=>'#047857'],
-            ['label'=>'Overdue',         'value'=>$taskOverview['overdue'],      'key'=>'overdue',       'icon'=>'fa-triangle-exclamation','bg'=>'#FEE2E2','color'=>'#DC2626'],
-            ['label'=>'Due Today',       'value'=>$taskOverview['due_today'],    'key'=>'due_today',     'icon'=>'fa-calendar-day',        'bg'=>'#FFF7ED','color'=>'#EA580C'],
-            ['label'=>'Due This Week',   'value'=>$taskOverview['due_this_week'],'key'=>'due_this_week', 'icon'=>'fa-calendar-week',       'bg'=>'#F0F9FF','color'=>'#0284C7'],
+            ['label'=>'Pending',        'value'=>$taskOverview['pending'],      'key'=>'pending',       'icon'=>'fa-clock',               'bg'=>'#F3F4F6','color'=>'#6B7280'],
+            ['label'=>'In Progress',    'value'=>$taskOverview['in_progress'],  'key'=>'in_progress',   'icon'=>'fa-spinner',             'bg'=>'#FEF3C7','color'=>'#D97706'],
+            ['label'=>'Waiting Review', 'value'=>$taskOverview['in_review'],    'key'=>'in_review',     'icon'=>'fa-gavel',               'bg'=>'#EDE9FE','color'=>'#7C3AED'],
+            ['label'=>'Completed',      'value'=>$taskOverview['completed'],    'key'=>'completed',     'icon'=>'fa-circle-check',        'bg'=>'#D1FAE5','color'=>'#059669'],
+            ['label'=>'Overdue',        'value'=>$taskOverview['overdue'],      'key'=>'overdue',       'icon'=>'fa-triangle-exclamation','bg'=>'#FEE2E2','color'=>'#DC2626'],
+            ['label'=>'Due This Week',  'value'=>$taskOverview['due_this_week'],'key'=>'due_this_week', 'icon'=>'fa-calendar-week',       'bg'=>'#F0F9FF','color'=>'#0284C7'],
         ];
         @endphp
 

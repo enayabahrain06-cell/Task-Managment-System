@@ -16,6 +16,7 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
     'location'         => $m->location ?? '',
     'color'            => $m->color,
     'attendees'        => $m->attendees->pluck('id')->values(),
+    'attendee_details' => $m->attendees->map(fn($a) => ['id' => $a->id, 'name' => $a->name])->values(),
 ])->values();
 @endphp
 
@@ -179,6 +180,247 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
     </template>
 </div>
 @endif
+
+{{-- ── Meeting Detail Modal (view / edit / reschedule) ── --}}
+<div x-data="meetingDetailModal()"
+     x-on:show-meeting-detail.window="openView($event.detail)"
+     x-on:confirm-reschedule.window="openReschedule($event.detail)"
+     x-cloak>
+
+    <div x-show="open"
+         x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"  x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+         class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         style="backdrop-filter:blur(6px);background:rgba(0,0,0,0.5);"
+         @click.self="close()">
+
+        <div x-show="open"
+             x-transition:enter="transition ease-out duration-250" x-transition:enter-start="opacity-0 scale-95 translate-y-2" x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-150"  x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+             class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" @click.stop>
+
+            {{-- Color accent top bar --}}
+            <div class="h-1.5 w-full" :style="`background:${meeting?.color || '#4F46E5'}`"></div>
+
+            {{-- ── VIEW MODE ── --}}
+            <div x-show="mode === 'view'">
+                <div class="flex items-start justify-between px-6 pt-5 pb-3">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                             :style="`background:${meeting?.color || '#4F46E5'}22`">
+                            <i class="fas fa-calendar-days text-sm" :style="`color:${meeting?.color || '#4F46E5'}`"></i>
+                        </div>
+                        <div>
+                            <h2 class="font-bold text-gray-900 text-lg leading-tight" x-text="meeting?.title"></h2>
+                            <p class="text-xs text-gray-400 mt-0.5">Scheduled Meeting</p>
+                        </div>
+                    </div>
+                    <button @click="close()" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition flex-shrink-0 mt-0.5">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="px-6 pb-4 space-y-2.5">
+                    {{-- Date & Time --}}
+                    <div class="flex items-center gap-3 p-3 rounded-xl" style="background:#F8F7FF;">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                             :style="`background:${meeting?.color || '#4F46E5'}20`">
+                            <i class="fas fa-clock text-xs" :style="`color:${meeting?.color || '#4F46E5'}`"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-semibold text-gray-800" x-text="formatDate(meeting?.meeting_date)"></p>
+                            <p class="text-xs text-gray-500 mt-0.5" x-text="formatTimeRange(meeting?.start_time, meeting?.duration_minutes)"></p>
+                        </div>
+                    </div>
+                    {{-- Location --}}
+                    <div x-show="meeting?.location" class="flex items-center gap-3 p-3 bg-amber-50 rounded-xl">
+                        <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-location-dot text-amber-500 text-xs"></i>
+                        </div>
+                        <p class="text-sm text-gray-700" x-text="meeting?.location"></p>
+                    </div>
+                    {{-- Description --}}
+                    <div x-show="meeting?.description" class="p-3 bg-gray-50 rounded-xl">
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Notes</p>
+                        <p class="text-sm text-gray-600 leading-relaxed" x-text="meeting?.description"></p>
+                    </div>
+                    {{-- Attendees --}}
+                    <div x-show="meeting?.attendee_details?.length" class="p-3 bg-gray-50 rounded-xl">
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2.5">Attendees</p>
+                        <div class="flex flex-wrap gap-2">
+                            <template x-for="att in (meeting?.attendee_details || [])" :key="att.id">
+                                <div class="flex items-center gap-1.5 px-2.5 py-1.5 bg-white rounded-lg border border-gray-100 shadow-sm">
+                                    <div class="w-5 h-5 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
+                                         :style="`background:${meeting?.color || '#4F46E5'};font-size:9px`"
+                                         x-text="att.name.charAt(0).toUpperCase()"></div>
+                                    <span class="text-xs font-medium text-gray-700" x-text="att.name"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                @if($isAdmin)
+                <div class="flex items-center gap-2 px-6 py-4 border-t border-gray-100">
+                    <button @click="deleteMeeting()"
+                            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition">
+                        <i class="fas fa-trash-can text-xs"></i> Delete
+                    </button>
+                    <div class="flex-1"></div>
+                    <button @click="openEdit()"
+                            class="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white rounded-lg transition shadow-sm"
+                            :style="`background:${meeting?.color || '#4F46E5'}`">
+                        <i class="fas fa-pen text-xs"></i> Edit Meeting
+                    </button>
+                </div>
+                @endif
+            </div>
+
+            {{-- ── EDIT MODE ── --}}
+            <div x-show="mode === 'edit'">
+                <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                    <div class="flex items-center gap-2">
+                        <button @click="mode='view'" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-700 transition">
+                            <i class="fas fa-arrow-left text-sm"></i>
+                        </button>
+                        <h3 class="font-bold text-gray-900">Edit Meeting</h3>
+                    </div>
+                    <button @click="close()" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                </div>
+
+                <div class="p-5 space-y-4 max-h-[65vh] overflow-y-auto">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">Title <span class="text-red-500">*</span></label>
+                        <input type="text" x-model="form.title" placeholder="Meeting title"
+                               class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">Description</label>
+                        <textarea x-model="form.description" rows="2" placeholder="Agenda or notes..."
+                                  class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition resize-none"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">Date <span class="text-red-500">*</span></label>
+                            <input type="date" x-model="form.meeting_date"
+                                   class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">Start Time <span class="text-red-500">*</span></label>
+                            <input type="time" x-model="form.start_time"
+                                   class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">Duration</label>
+                            <select x-model="form.duration_minutes"
+                                    class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-400 bg-white transition">
+                                <option value="15">15 min</option>
+                                <option value="30">30 min</option>
+                                <option value="45">45 min</option>
+                                <option value="60">1 hour</option>
+                                <option value="90">1.5 hours</option>
+                                <option value="120">2 hours</option>
+                                <option value="180">3 hours</option>
+                                <option value="240">4 hours</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1.5">Location</label>
+                            <input type="text" x-model="form.location" placeholder="Room / Zoom..."
+                                   class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">Color</label>
+                        <div class="flex items-center gap-2">
+                            <input type="color" x-model="form.color"
+                                   class="w-9 h-9 rounded-lg border-2 cursor-pointer p-0.5 flex-shrink-0"
+                                   :style="`border-color:${form.color}`">
+                            <div class="flex items-center gap-1.5 flex-1">
+                                <template x-for="c in ['#4F46E5','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#0EA5E9','#14B8A6']" :key="c">
+                                    <button type="button" @click="form.color = c"
+                                            class="w-6 h-6 rounded-full border-2 border-white shadow hover:scale-110 transition"
+                                            :style="`background:${c};` + (form.color === c ? 'outline:2px solid #6B7280;outline-offset:2px;' : '')"></button>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                    @if($teamMembers->count())
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">Attendees</label>
+                        <div class="border border-gray-200 rounded-lg overflow-hidden max-h-36 overflow-y-auto divide-y divide-gray-100">
+                            @foreach($teamMembers as $member)
+                            <label class="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                                <input type="checkbox" :checked="form.attendees.includes({{ $member->id }})"
+                                       @change="toggleAttendee({{ $member->id }})"
+                                       class="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                <div class="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-bold text-indigo-600 flex-shrink-0">
+                                    {{ strtoupper(substr($member->name, 0, 1)) }}
+                                </div>
+                                <span class="text-sm text-gray-700 flex-1">{{ $member->name }}</span>
+                                <i class="fas fa-check text-indigo-500 text-xs transition" :class="form.attendees.includes({{ $member->id }}) ? 'opacity-100' : 'opacity-0'"></i>
+                            </label>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+                </div>
+
+                <div class="flex items-center gap-2 px-5 py-4 border-t border-gray-100">
+                    <button @click="mode='view'" class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+                        Cancel
+                    </button>
+                    <div class="flex-1"></div>
+                    <button @click="saveEdit()" :disabled="saving"
+                            class="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition shadow-sm disabled:opacity-60">
+                        <i class="fas fa-check text-xs"></i>
+                        <span x-text="saving ? 'Saving...' : 'Save Changes'"></span>
+                    </button>
+                </div>
+            </div>
+
+            {{-- ── RESCHEDULE MODE ── --}}
+            <div x-show="mode === 'reschedule'">
+                <div class="px-6 py-5">
+                    <div class="flex items-center gap-3 mb-5">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-calendar-plus text-indigo-600"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <h3 class="font-bold text-gray-900">Move Meeting</h3>
+                            <p class="text-xs text-gray-400 mt-0.5 truncate" x-text="`Moving to ${formatDate(reschedule.new_date)}`"></p>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-indigo-50 rounded-xl mb-4">
+                        <p class="text-xs font-semibold text-indigo-600 truncate" x-text="reschedule.title"></p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1.5">Start time on the new date</label>
+                        <input type="time" x-model="reschedule.start_time"
+                               class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition">
+                        <p class="text-xs text-gray-400 mt-1.5">Keep it the same or pick a new time.</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 px-6 py-4 border-t border-gray-100">
+                    <button @click="cancelReschedule()" class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition">
+                        Revert
+                    </button>
+                    <div class="flex-1"></div>
+                    <button @click="confirmReschedule()" :disabled="saving"
+                            class="flex items-center gap-2 px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition shadow-sm disabled:opacity-60">
+                        <i class="fas fa-arrows-up-down text-xs"></i>
+                        <span x-text="saving ? 'Moving...' : 'Confirm Move'"></span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
 
 {{-- ── Page Header ── --}}
 <div class="flex items-center justify-between mb-6">
@@ -433,9 +675,11 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 <script>
+const csrfToken = '{{ csrf_token() }}';
+
 document.addEventListener('DOMContentLoaded', function () {
-    const calendarEl = document.getElementById('calendar');
-    const events = JSON.parse(calendarEl.dataset.events || '[]');
+    const calendarEl  = document.getElementById('calendar');
+    const events      = JSON.parse(calendarEl.dataset.events || '[]');
     const allMeetings = @json($allMeetingsJson);
 
     const calendar = new FullCalendar.Calendar(calendarEl, {
@@ -447,27 +691,47 @@ document.addEventListener('DOMContentLoaded', function () {
             right:  'dayGridMonth,listWeek'
         },
         buttonText: { today: 'Today', month: 'Month', list: 'List' },
-        events: events,
+        events:   events,
+        editable: true,
+
         eventClick: function (info) {
             const props = info.event.extendedProps;
             if (props.type === 'task') {
                 @if(auth()->user()->role === 'user')
                 window.location.href = '/user/tasks/' + props.id;
                 @endif
-            } else if (props.type === 'meeting') {
-                @if($isAdmin)
-                const mid = parseInt(info.event.id.replace('meeting-', ''));
-                const m   = allMeetings.find(x => x.id === mid);
-                if (m) window.dispatchEvent(new CustomEvent('open-edit-meeting', { detail: m }));
-                @endif
+                return;
             }
+            // Meeting click → open detail modal
+            const mid = parseInt(info.event.id.replace('meeting-', ''));
+            const m   = allMeetings.find(x => x.id === mid);
+            if (m) window.dispatchEvent(new CustomEvent('show-meeting-detail', { detail: m }));
         },
+
+        eventDrop: function (info) {
+            const props = info.event.extendedProps;
+            if (props.type !== 'meeting') { info.revert(); return; }
+
+            const mid     = parseInt(info.event.id.replace('meeting-', ''));
+            const m       = allMeetings.find(x => x.id === mid);
+            const newDate = info.event.start.toISOString().split('T')[0];
+
+            // Show reschedule time-picker modal, pass a revert callback
+            window.dispatchEvent(new CustomEvent('confirm-reschedule', {
+                detail: {
+                    id:         mid,
+                    title:      m?.title || '',
+                    new_date:   newDate,
+                    start_time: m?.start_time || '',
+                    revert:     () => info.revert()
+                }
+            }));
+        },
+
         eventDidMount: function (info) {
             const props = info.event.extendedProps;
             if (props.type === 'meeting') {
-                info.el.style.cursor = 'pointer';
-                info.el.title = 'Meeting: ' + info.event.title.replace('📅 ', '')
-                    + (props.location ? '\nLocation: ' + props.location : '');
+                info.el.style.cursor = 'grab';
             } else {
                 info.el.title = info.event.title
                     + '\nProject: ' + (props.project || '')
@@ -481,47 +745,129 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 @if($isAdmin)
+// Create-new-meeting modal (for "New Meeting" button + sidebar edit buttons)
 function meetingModal() {
     return {
         open:   false,
         editId: null,
-        form: {
-            title:            '',
-            description:      '',
-            meeting_date:     '',
-            start_time:       '',
-            duration_minutes: '60',
-            location:         '',
-            color:            '#4F46E5',
-            attendees:        []
-        },
+        form: { title:'', description:'', meeting_date:'', start_time:'', duration_minutes:'60', location:'', color:'#4F46E5', attendees:[] },
         openCreate() {
             this.editId = null;
-            this.form   = {
-                title: '', description: '', meeting_date: '', start_time: '',
-                duration_minutes: '60', location: '', color: '#4F46E5', attendees: []
-            };
-            this.open = true;
+            this.form   = { title:'', description:'', meeting_date:'', start_time:'', duration_minutes:'60', location:'', color:'#4F46E5', attendees:[] };
+            this.open   = true;
         },
         openEdit(data) {
             this.editId = data.id;
             this.form   = {
-                title:            data.title,
-                description:      data.description  || '',
-                meeting_date:     data.meeting_date,
-                start_time:       data.start_time,
-                duration_minutes: String(data.duration_minutes),
-                location:         data.location     || '',
-                color:            data.color,
-                attendees:        (data.attendees   || []).map(Number)
+                title: data.title, description: data.description||'',
+                meeting_date: data.meeting_date, start_time: data.start_time,
+                duration_minutes: String(data.duration_minutes), location: data.location||'',
+                color: data.color, attendees: (data.attendees||[]).map(Number)
             };
             this.open = true;
         },
         close() { this.open = false; },
         toggleAttendee(id) {
             const idx = this.form.attendees.indexOf(id);
-            if (idx === -1) this.form.attendees.push(id);
-            else            this.form.attendees.splice(idx, 1);
+            if (idx === -1) this.form.attendees.push(id); else this.form.attendees.splice(idx,1);
+        }
+    };
+}
+
+// Detail / Edit / Reschedule modal (for calendar event clicks & drag-drop)
+function meetingDetailModal() {
+    return {
+        open:  false,
+        mode:  'view', // 'view' | 'edit' | 'reschedule'
+        meeting: null,
+        form: { title:'', description:'', meeting_date:'', start_time:'', duration_minutes:'60', location:'', color:'#4F46E5', attendees:[] },
+        reschedule: { id:null, title:'', new_date:'', start_time:'', revert:null },
+        saving: false,
+
+        openView(m) {
+            this.meeting = m;
+            this.mode    = 'view';
+            this.open    = true;
+        },
+
+        openEdit() {
+            this.form = {
+                title:            this.meeting.title,
+                description:      this.meeting.description || '',
+                meeting_date:     this.meeting.meeting_date,
+                start_time:       this.meeting.start_time,
+                duration_minutes: String(this.meeting.duration_minutes),
+                location:         this.meeting.location || '',
+                color:            this.meeting.color,
+                attendees:        (this.meeting.attendees || []).map(Number)
+            };
+            this.mode = 'edit';
+        },
+
+        openReschedule(data) {
+            this.reschedule = data;
+            this.mode       = 'reschedule';
+            this.open       = true;
+        },
+
+        close() { this.open = false; },
+
+        cancelReschedule() {
+            if (this.reschedule.revert) this.reschedule.revert();
+            this.open = false;
+        },
+
+        async saveEdit() {
+            if (!this.form.title.trim()) return;
+            this.saving = true;
+            const fd = new FormData();
+            fd.append('_method', 'PUT');
+            fd.append('_token', csrfToken);
+            ['title','description','meeting_date','start_time','duration_minutes','location','color'].forEach(k => fd.append(k, this.form[k]));
+            this.form.attendees.forEach(id => fd.append('attendees[]', id));
+            await fetch('/admin/meetings/' + this.meeting.id, { method:'POST', body:fd });
+            window.location.reload();
+        },
+
+        async deleteMeeting() {
+            if (!confirm('Delete "' + this.meeting.title + '"? This cannot be undone.')) return;
+            const fd = new FormData();
+            fd.append('_method', 'DELETE');
+            fd.append('_token', csrfToken);
+            await fetch('/admin/meetings/' + this.meeting.id, { method:'POST', body:fd });
+            window.location.reload();
+        },
+
+        async confirmReschedule() {
+            this.saving = true;
+            const r = await fetch('/admin/meetings/' + this.reschedule.id + '/reschedule', {
+                method:  'PATCH',
+                headers: { 'Content-Type':'application/json', 'X-CSRF-TOKEN': csrfToken },
+                body:    JSON.stringify({ meeting_date: this.reschedule.new_date, start_time: this.reschedule.start_time })
+            });
+            this.saving = false;
+            if (r.ok) { this.open = false; window.location.reload(); }
+            else      { if (this.reschedule.revert) this.reschedule.revert(); this.open = false; }
+        },
+
+        toggleAttendee(id) {
+            const idx = this.form.attendees.indexOf(id);
+            if (idx === -1) this.form.attendees.push(id); else this.form.attendees.splice(idx,1);
+        },
+
+        formatDate(d) {
+            if (!d) return '';
+            return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+        },
+
+        formatTimeRange(t, dur) {
+            if (!t || !dur) return '';
+            const [h, m] = t.split(':').map(Number);
+            const s = new Date(1970,0,1,h,m);
+            const e = new Date(s.getTime() + dur*60000);
+            const f = d => d.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit', hour12:true });
+            const label = dur >= 60 ? (dur%60===0 ? dur/60+'h' : Math.floor(dur/60)+'h '+(dur%60)+'m') : dur+'min';
+            return f(s) + ' – ' + f(e) + ' · ' + label;
         }
     };
 }

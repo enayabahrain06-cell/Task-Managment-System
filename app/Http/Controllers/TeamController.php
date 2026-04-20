@@ -13,10 +13,12 @@ class TeamController extends Controller
             return redirect()->route('user.dashboard')->with('error', "You don't have permission to access Team Members.");
         }
 
+        $doneStatuses = ['delivered', 'approved', 'archived'];
+
         $members = User::withCount([
-            'tasks as total_tasks',
-            'tasks as completed_tasks' => fn($q) => $q->where('status', 'completed'),
-            'tasks as pending_tasks'   => fn($q) => $q->where('status', '!=', 'completed'),
+            'assignedTasks as total_tasks',
+            'assignedTasks as completed_tasks' => fn($q) => $q->whereIn('status', $doneStatuses),
+            'assignedTasks as pending_tasks'   => fn($q) => $q->whereNotIn('status', $doneStatuses),
         ])->orderBy('role')->get();
 
         $totalMembers    = $members->count();
