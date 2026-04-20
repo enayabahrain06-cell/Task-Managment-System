@@ -12,6 +12,10 @@ class CalendarController extends Controller
     {
         $user = auth()->user();
 
+        if (!$user->hasPermission('view_calendar')) {
+            return redirect()->route('user.dashboard')->with('error', "You don't have permission to access Calendar.");
+        }
+
         $tasks = match($user->role) {
             'admin', 'manager' => Task::with('project', 'assignee')->get(),
             default            => $user->tasks()->with('project')->get(),

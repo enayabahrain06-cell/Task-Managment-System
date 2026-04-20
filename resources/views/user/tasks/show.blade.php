@@ -277,7 +277,7 @@
         @endif
 
         {{-- Submit Work --}}
-        @if($canSubmit)
+        @if($canSubmit && auth()->user()->hasPermission('submit_work'))
         <div style="background:#fff;border-radius:14px;border:1.5px solid #6366F1;box-shadow:0 4px 16px rgba(99,102,241,.08);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 4px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-upload" style="color:#6366F1;"></i>
@@ -323,7 +323,7 @@
         @endif
 
         {{-- Submission history --}}
-        @if($task->submissions->count())
+        @if($task->submissions->count() && auth()->user()->hasPermission('view_version_history'))
         <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 20px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-clock-rotate-left" style="color:#6366F1;"></i> Version History
@@ -374,6 +374,7 @@
         @endif
 
         {{-- Activity log --}}
+        @if(auth()->user()->hasPermission('view_activity_log'))
         <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 20px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-timeline" style="color:#6366F1;"></i> Activity Log
@@ -413,8 +414,10 @@
             <p style="font-size:14px;color:#9CA3AF;text-align:center;padding:24px 0;margin:0;">No activity recorded yet.</p>
             @endforelse
         </div>
+        @endif {{-- view_activity_log --}}
 
         {{-- Comments --}}
+        @if(auth()->user()->hasPermission('view_comments'))
         <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 16px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-comments" style="color:#6366F1;"></i> Comments & Updates
@@ -460,6 +463,8 @@
             </div>
             @endforelse
         </div>
+
+        @endif {{-- view_comments --}}
 
     </div>{{-- /left --}}
 

@@ -9,6 +9,10 @@ class ProjectController extends Controller
 {
     public function index()
     {
+        if (!auth()->user()->hasPermission('view_projects')) {
+            return redirect()->route('user.dashboard')->with('error', "You don't have permission to access Projects.");
+        }
+
         $projects = auth()->user()->projects()
             ->withCount(['tasks', 'tasks as completed_tasks_count' => fn($q) => $q->where('status', 'completed')])
             ->orderByRaw("CASE WHEN status = 'completed' THEN 1 ELSE 0 END")
@@ -20,6 +24,10 @@ class ProjectController extends Controller
 
     public function show(Project $project)
     {
+        if (!auth()->user()->hasPermission('view_projects')) {
+            return redirect()->route('user.dashboard')->with('error', "You don't have permission to access Projects.");
+        }
+
         // Ensure user is a member
         if (!$project->members()->where('users.id', auth()->id())->exists()) {
             abort(403);

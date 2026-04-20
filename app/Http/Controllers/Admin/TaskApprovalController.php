@@ -12,14 +12,22 @@ use Illuminate\Http\Request;
 
 class TaskApprovalController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $tab = $request->get('tab', 'pending');
+
         $tasks = Task::where('status', 'submitted')
             ->with(['project', 'assignee', 'assignees', 'submissions' => fn($q) => $q->latest()])
             ->latest()
-            ->paginate(20);
+            ->paginate(20, ['*'], 'page');
 
-        return view('admin.approvals.index', compact('tasks'));
+        $history = TaskSubmission::whereIn('status', ['approved', 'rejected'])
+            ->whereNotNull('reviewed_at')
+            ->with(['task.project', 'task.assignee', 'reviewer'])
+            ->orderByDesc('reviewed_at')
+            ->paginate(20, ['*'], 'hpage');
+
+        return view('admin.approvals.index', compact('tasks', 'history', 'tab'));
     }
 
     public function approve(Request $request, Task $task)

@@ -9,6 +9,10 @@ class TeamController extends Controller
 {
     public function index()
     {
+        if (!auth()->user()->hasPermission('view_team')) {
+            return redirect()->route('user.dashboard')->with('error', "You don't have permission to access Team Members.");
+        }
+
         $members = User::withCount([
             'tasks as total_tasks',
             'tasks as completed_tasks' => fn($q) => $q->where('status', 'completed'),

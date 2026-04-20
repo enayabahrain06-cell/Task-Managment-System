@@ -30,9 +30,30 @@ class User extends Authenticatable
         'phone',
         'job_title',
         'status',
+        'permissions',
         'archived_at',
         'archived_by',
     ];
+
+    public const ALL_PERMISSIONS = [
+        'view_activity_log'   => 'Activity Log',
+        'view_version_history'=> 'Version History',
+        'view_comments'       => 'Comments & Updates',
+        'view_team_tasks'     => 'Team Tasks Tab',
+        'view_projects'       => 'Projects Section',
+        'view_messages'       => 'Messages',
+        'view_team'           => 'Team Page',
+        'view_calendar'       => 'Calendar',
+        'submit_work'         => 'Submit Work',
+    ];
+
+    /** Returns true if the user has the given permission (null = all allowed). */
+    public function hasPermission(string $key): bool
+    {
+        if (in_array($this->role, ['admin', 'manager'])) return true;
+        if (is_null($this->permissions)) return true;
+        return in_array($key, $this->permissions);
+    }
 
     /** Returns the public URL of the avatar, or null. */
     public function avatarUrl(): ?string
@@ -62,6 +83,7 @@ class User extends Authenticatable
             'archived_at'       => 'datetime',
             'password'          => 'hashed',
             'role'              => 'string',
+            'permissions'       => 'array',
         ];
     }
 

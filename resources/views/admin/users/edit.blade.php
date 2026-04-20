@@ -128,6 +128,64 @@
             </div>
         </div>
 
+        {{-- Permissions --}}
+        @if($user->role === 'user')
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-4"
+             x-data="{ allOn: {{ is_null($user->permissions) ? 'true' : 'false' }} }">
+
+            <div class="flex items-center justify-between mb-1">
+                <div>
+                    <p class="text-sm font-semibold text-gray-700">Access Permissions</p>
+                    <p class="text-xs text-gray-400 mt-0.5">Control what this user can see and access</p>
+                </div>
+                <button type="button" @click="allOn = !allOn"
+                        :class="allOn ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200'"
+                        class="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition">
+                    <i class="fa fa-shield-halved text-xs"></i>
+                    <span x-text="allOn ? 'All Access (unrestricted)' : 'Custom restrictions'"></span>
+                </button>
+            </div>
+
+            {{-- Hidden: when allOn, send no permissions[] so null is stored --}}
+            <input type="hidden" name="_perms_sent" value="1">
+
+            <div x-show="!allOn" x-cloak class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                @foreach(\App\Models\User::ALL_PERMISSIONS as $key => $label)
+                @php
+                    $checked = is_null($user->permissions) || in_array($key, $user->permissions ?? []);
+                @endphp
+                <label class="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50 cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition group">
+                    <input type="checkbox" name="permissions[]" value="{{ $key }}"
+                           {{ $checked ? 'checked' : '' }}
+                           class="w-4 h-4 rounded text-indigo-600 border-gray-300 focus:ring-indigo-400">
+                    <div>
+                        <p class="text-sm font-medium text-gray-700 group-hover:text-indigo-700 leading-none">{{ $label }}</p>
+                        <p class="text-xs text-gray-400 mt-0.5">
+                            @switch($key)
+                                @case('view_activity_log') Shows task event history @break
+                                @case('view_version_history') Shows submission versions @break
+                                @case('view_comments') Shows & allows posting comments @break
+                                @case('view_team_tasks') Shows colleagues' tasks tab @break
+                                @case('view_projects') Access to projects section @break
+                                @case('view_messages') Access to messages/chat @break
+                                @case('view_team') View the team members page @break
+                                @case('view_calendar') View the calendar @break
+                                @case('submit_work') Can submit work for review @break
+                            @endswitch
+                        </p>
+                    </div>
+                </label>
+                @endforeach
+            </div>
+
+            {{-- When allOn, send no checkboxes — controller sees no permissions[] and stores null --}}
+            <p x-show="allOn" class="text-xs text-gray-400 mt-3">
+                <i class="fa fa-circle-check text-indigo-400 mr-1"></i>
+                This user has unrestricted access to all sections.
+            </p>
+        </div>
+        @endif
+
         {{-- Actions --}}
         <div class="flex gap-3">
             <button type="submit"

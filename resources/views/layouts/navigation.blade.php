@@ -79,6 +79,7 @@
         @endif
 
         {{-- Messages --}}
+        @if(auth()->user()->hasPermission('view_messages'))
         <a href="{{ route('messages.index') }}"
            class="nav-item {{ request()->routeIs('messages.*') ? 'active' : '' }}">
             <div class="nav-left">
@@ -87,8 +88,10 @@
             </div>
             <span class="nav-badge nav-badge-red">8</span>
         </a>
+        @endif
 
         {{-- Team Members --}}
+        @if(auth()->user()->hasPermission('view_team'))
         <a href="{{ route('team.index') }}"
            class="nav-item {{ request()->routeIs('team.*') ? 'active' : '' }}">
             <div class="nav-left">
@@ -96,8 +99,10 @@
                 Team Members
             </div>
         </a>
+        @endif
 
         {{-- Calendar --}}
+        @if(auth()->user()->hasPermission('view_calendar'))
         <a href="{{ route('calendar.index') }}"
            class="nav-item {{ request()->routeIs('calendar.*') ? 'active' : '' }}">
             <div class="nav-left">
@@ -105,9 +110,10 @@
                 Calendar
             </div>
         </a>
+        @endif
 
         {{-- User-only: My Projects --}}
-        @if($role === 'user')
+        @if($role === 'user' && auth()->user()->hasPermission('view_projects'))
         <a href="{{ route('user.projects.index') }}"
            class="nav-item {{ request()->routeIs('user.projects.*') ? 'active' : '' }}">
             <div class="nav-left">

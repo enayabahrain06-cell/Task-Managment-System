@@ -13,7 +13,37 @@
         </div>
     </div>
 
-    <form method="POST" action="{{ route('admin.users.store') }}" enctype="multipart/form-data">
+    @php
+        $allPermKeys  = array_keys(\App\Models\User::ALL_PERMISSIONS);
+        $hasOld       = old('_perms_sent') !== null;
+        $oldPerms     = old('permissions', []);
+        $permsAllOn   = (!$hasOld || empty($oldPerms)) ? 'true' : 'false';
+        $permsInit    = $hasOld && !empty($oldPerms) ? $oldPerms : $allPermKeys;
+        $createPermGroups = [
+            'Content & Tasks' => [
+                'icon' => 'fa-file-lines', 'color' => '#6366F1', 'bg' => '#EEF2FF',
+                'perms' => [
+                    'view_activity_log'    => ['icon' => 'fa-bolt',              'label' => 'Activity Log',       'desc' => 'Task history and change log'],
+                    'view_version_history' => ['icon' => 'fa-clock-rotate-left', 'label' => 'Version History',    'desc' => 'Submitted versions and review history'],
+                    'view_comments'        => ['icon' => 'fa-comments',          'label' => 'Comments & Updates', 'desc' => 'Read and write task comments'],
+                    'submit_work'          => ['icon' => 'fa-paper-plane',       'label' => 'Submit Work',        'desc' => 'Submit deliverables for manager review'],
+                ],
+            ],
+            'Navigation & Pages' => [
+                'icon' => 'fa-compass', 'color' => '#8B5CF6', 'bg' => '#F5F3FF',
+                'perms' => [
+                    'view_messages'   => ['icon' => 'fa-comment-dots',    'label' => 'Messages',       'desc' => 'Direct messaging with teammates'],
+                    'view_team'       => ['icon' => 'fa-users',           'label' => 'Team Page',      'desc' => 'Browse team member profiles'],
+                    'view_calendar'   => ['icon' => 'fa-calendar-days',   'label' => 'Calendar',       'desc' => 'View task deadlines and schedule'],
+                    'view_projects'   => ['icon' => 'fa-diagram-project', 'label' => 'Projects',       'desc' => 'Personal projects section'],
+                    'view_team_tasks' => ['icon' => 'fa-list-check',      'label' => 'Team Tasks Tab', 'desc' => 'See tasks assigned to teammates'],
+                ],
+            ],
+        ];
+    @endphp
+
+    <form method="POST" action="{{ route('admin.users.store') }}" enctype="multipart/form-data"
+          x-data="{ role: '{{ old('role', '') }}' }">
         @csrf
 
         {{-- Avatar Upload --}}
@@ -80,7 +110,7 @@
 
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Role <span class="text-red-400">*</span></label>
-                    <select name="role" required
+                    <select name="role" required x-model="role"
                             class="w-full px-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition bg-gray-50 {{ $errors->has('role') ? 'border-red-400' : 'border-gray-200' }}">
                         <option value="">Select role</option>
                         <option value="admin"   {{ old('role')==='admin'   ? 'selected':'' }}>Admin</option>
@@ -127,6 +157,105 @@
                         </button>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <script>
+        function createPermsData() {
+            return {
+                allOn:   {{ $permsAllOn }},
+                perms:   @json($permsInit),
+                allKeys: @json($allPermKeys),
+                hasPermission(key) { return this.allOn || this.perms.includes(key); },
+                toggle(key) {
+                    if (this.allOn) return;
+                    const idx = this.perms.indexOf(key);
+                    if (idx >= 0) this.perms.splice(idx, 1);
+                    else this.perms.push(key);
+                },
+                setAll(val) {
+                    this.allOn = val;
+                    if (!val && this.perms.length === 0) this.perms = [...this.allKeys];
+                },
+            };
+        }
+        </script>
+
+        {{-- Permissions (only for user role) --}}
+        <div x-show="role === 'user'" x-cloak class="mb-4" x-data="createPermsData()">
+
+            {{-- Hidden flag + per-permission checkboxes (disabled when allOn so nothing submits → null stored) --}}
+            <input type="hidden" name="_perms_sent" value="1">
+            @foreach($allPermKeys as $pk)
+            <input type="checkbox" name="permissions[]" value="{{ $pk }}"
+                   :checked="perms.includes('{{ $pk }}')"
+                   :disabled="allOn"
+                   class="sr-only">
+            @endforeach
+
+            <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+
+                {{-- Header + Full Access toggle --}}
+                <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
+                    <div>
+                        <p class="text-sm font-semibold text-gray-700">Permissions</p>
+                        <p class="text-xs text-gray-400 mt-0.5">Control what this user can see and access</p>
+                    </div>
+                    <div class="flex items-center gap-3 flex-shrink-0">
+                        <span class="text-xs font-medium" :class="allOn ? 'text-emerald-600' : 'text-gray-400'"
+                              x-text="allOn ? 'Full Access' : 'Custom'"></span>
+                        <button type="button" @click="setAll(!allOn)"
+                            :class="allOn ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-gray-300'"
+                            style="position:relative;width:44px;height:24px;border-radius:12px;border:2px solid;transition:background .2s,border-color .2s;cursor:pointer;flex-shrink:0;outline:none;">
+                            <span :style="allOn ? 'transform:translateX(20px)' : 'transform:translateX(0)'"
+                                  style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s;display:block;"></span>
+                        </button>
+                    </div>
+                </div>
+
+                {{-- Full Access notice --}}
+                <div x-show="allOn" style="padding:12px 24px;background:#ECFDF5;border-bottom:1px solid #A7F3D0;">
+                    <p style="font-size:12px;color:#059669;">
+                        <i class="fa fa-circle-check" style="margin-right:5px;"></i>
+                        User will have unrestricted access to all features and pages.
+                    </p>
+                </div>
+
+                {{-- Permission groups --}}
+                <div x-show="!allOn" x-cloak>
+                    @foreach($createPermGroups as $groupName => $group)
+                    <div class="{{ !$loop->first ? 'border-t border-gray-100' : '' }}">
+                        <div style="padding:10px 24px;background:#FAFAFA;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;gap:8px;">
+                            <div style="width:24px;height:24px;border-radius:6px;background:{{ $group['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fa {{ $group['icon'] }}" style="font-size:10px;color:{{ $group['color'] }};"></i>
+                            </div>
+                            <span style="font-size:12px;font-weight:600;color:#374151;text-transform:uppercase;letter-spacing:.04em;">{{ $groupName }}</span>
+                        </div>
+                        @foreach($group['perms'] as $key => $perm)
+                        <div style="padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;{{ !$loop->last ? 'border-bottom:1px solid #F9FAFB;' : '' }}"
+                             style2="cursor:pointer;" @click="toggle('{{ $key }}')"
+                             class="hover:bg-gray-50 transition-colors cursor-pointer">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="width:32px;height:32px;border-radius:8px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fa {{ $perm['icon'] }}" style="font-size:12px;color:#6B7280;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:13px;font-weight:600;color:#374151;">{{ $perm['label'] }}</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin-top:1px;">{{ $perm['desc'] }}</p>
+                                </div>
+                            </div>
+                            <button type="button" @click.stop="toggle('{{ $key }}')"
+                                :class="hasPermission('{{ $key }}') ? 'bg-indigo-500 border-indigo-500' : 'bg-white border-gray-300'"
+                                style="position:relative;width:40px;height:22px;border-radius:11px;border:2px solid;transition:background .2s,border-color .2s;cursor:pointer;flex-shrink:0;outline:none;">
+                                <span :style="hasPermission('{{ $key }}') ? 'transform:translateX(18px)' : 'transform:translateX(0)'"
+                                      style="position:absolute;top:2px;left:2px;width:14px;height:14px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s;display:block;"></span>
+                            </button>
+                        </div>
+                        @endforeach
+                    </div>
+                    @endforeach
+                </div>
+
             </div>
         </div>
 

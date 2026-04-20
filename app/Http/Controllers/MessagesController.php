@@ -11,6 +11,10 @@ class MessagesController extends Controller
 {
     public function index()
     {
+        if (!auth()->user()->hasPermission('view_messages')) {
+            return redirect()->route('user.dashboard')->with('error', "You don't have permission to access Messages.");
+        }
+
         $teamMembers = User::where('id', '!=', auth()->id())
             ->orderBy('name')
             ->get();

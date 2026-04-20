@@ -50,7 +50,7 @@
 </style>
 
 {{-- ══ Page Title + Quick Create Modals ══ --}}
-<div x-data="dashModals()" style="margin-bottom:22px;">
+<div x-data="dashModals()" x-init="init()" style="margin-bottom:22px;">
 
     {{-- Title row --}}
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
@@ -69,10 +69,10 @@
                     style="display:flex;align-items:center;gap:7px;background:#fff;color:#4F46E5;font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;border:1.5px solid #C7D2FE;cursor:pointer;">
                 <i class="fas fa-folder-plus" style="font-size:11px;"></i> New Project
             </button>
-            {{-- NEW TASK BUTTON --}}
+            {{-- QUICK TASK BUTTON --}}
             <button @click="taskOpen = true"
-                    style="display:flex;align-items:center;gap:7px;background:#4F46E5;color:#fff;font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;border:none;cursor:pointer;box-shadow:0 2px 10px rgba(79,70,229,0.4);">
-                <i class="fas fa-plus" style="font-size:11px;"></i> New Task
+                    style="display:flex;align-items:center;gap:7px;background:#F59E0B;color:#fff;font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;border:none;cursor:pointer;box-shadow:0 2px 10px rgba(245,158,11,0.4);">
+                <i class="fas fa-bolt" style="font-size:11px;"></i> Quick Task
             </button>
             <button style="width:36px;height:36px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#9CA3AF;">
                 <i class="fas fa-ellipsis-h"></i>
@@ -80,212 +80,332 @@
         </div>
     </div>
 
-    {{-- ══ Create Task Modal ══ --}}
-    <div x-show="taskOpen" x-cloak class="task-modal-backdrop" @click.self="taskOpen = false"
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-150"
-         x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+    {{-- ══ Quick Task Modal ══ --}}
+    <div x-show="taskOpen" x-cloak style="position:fixed;inset:0;z-index:9999;">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;">
 
-        <div class="task-modal"
-             x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="opacity-0 translate-y-4 scale-95"
-             x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-             @click.stop>
+        <div @click="taskOpen = false" style="position:absolute;inset:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(3px);"></div>
 
-            {{-- Modal Header --}}
-            <div class="task-modal-header">
+        <div style="position:relative;width:100%;max-width:480px;background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,0.2);overflow:hidden;">
+
+            {{-- Header --}}
+            <div style="padding:20px 24px 16px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
                 <div style="display:flex;align-items:center;gap:10px;">
-                    <div style="width:36px;height:36px;background:#EEF2FF;border-radius:10px;display:flex;align-items:center;justify-content:center;">
-                        <i class="fas fa-square-check" style="color:#6366F1;font-size:15px;"></i>
+                    <div style="width:34px;height:34px;border-radius:10px;background:#FFFBEB;display:flex;align-items:center;justify-content:center;">
+                        <i class="fa fa-bolt" style="color:#F59E0B;font-size:15px;"></i>
                     </div>
                     <div>
-                        <h2 style="font-size:16px;font-weight:700;color:#111827;margin:0;">Create New Task</h2>
-                        <p  style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Assign and track instantly</p>
+                        <h2 style="font-size:16px;font-weight:700;color:#111827;margin:0;">Quick Task</h2>
+                        <p style="font-size:11px;color:#9CA3AF;margin:0;">Assign a task instantly to a team member</p>
                     </div>
                 </div>
                 <button @click="taskOpen = false"
-                        style="width:32px;height:32px;border-radius:8px;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:13px;">
-                    <i class="fas fa-times"></i>
+                        style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:13px;">
+                    <i class="fa fa-times"></i>
                 </button>
             </div>
 
-            {{-- Modal Body --}}
-            <div class="task-modal-body">
-                <form method="POST" action="{{ route('admin.tasks.quick') }}" @submit="taskSubmitting = true">
-                    @csrf
+            {{-- Form --}}
+            <form method="POST" action="{{ route('admin.tasks.quick') }}" style="padding:20px 24px 24px;">
+                @csrf
 
-                    {{-- Title --}}
-                    <div style="margin-bottom:16px;">
-                        <label class="form-label">Task Title <span style="color:#EF4444;">*</span></label>
-                        <input type="text" name="title" class="form-input" placeholder="e.g. Redesign the login page" required
-                               value="{{ old('title') }}">
-                    </div>
+                <div style="margin-bottom:14px;">
+                    <label class="form-label">Task Title <span style="color:#EF4444;">*</span></label>
+                    <input type="text" name="title" class="form-input" placeholder="e.g. Update hero banner image" required
+                           value="{{ old('title') }}"
+                           onfocus="this.style.borderColor='#F59E0B';this.style.boxShadow='0 0 0 3px rgba(245,158,11,0.12)'"
+                           onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">
+                </div>
 
-                    {{-- Description --}}
-                    <div style="margin-bottom:16px;">
-                        <label class="form-label">Description</label>
-                        <textarea name="description" class="form-input" rows="3"
-                                  placeholder="What needs to be done? (optional)" style="resize:vertical;">{{ old('description') }}</textarea>
-                    </div>
+                <div style="margin-bottom:14px;">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-input" rows="2"
+                              placeholder="Brief details or notes..." style="resize:vertical;"
+                              onfocus="this.style.borderColor='#F59E0B';this.style.boxShadow='0 0 0 3px rgba(245,158,11,0.12)'"
+                              onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">{{ old('description') }}</textarea>
+                </div>
 
-                    {{-- Project + Assign To (2 cols) --}}
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-                        <div>
-                            <label class="form-label">Project <span style="color:#EF4444;">*</span></label>
-                            <select name="project_id" class="form-input form-select" required>
-                                <option value="">— Select Project —</option>
-                                @foreach($allProjects as $proj)
-                                <option value="{{ $proj->id }}" {{ old('project_id') == $proj->id ? 'selected' : '' }}>
-                                    {{ $proj->name }}
-                                </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div>
-                            <label class="form-label">Assign To <span style="color:#EF4444;">*</span></label>
-                            <select name="assigned_to" class="form-input form-select" required>
-                                <option value="">— Select Member —</option>
-                                @foreach($allUsers as $member)
-                                <option value="{{ $member->id }}" {{ old('assigned_to') == $member->id ? 'selected' : '' }}>
-                                    {{ $member->name }}
-                                </option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
+                <div style="margin-bottom:14px;">
+                    <label class="form-label">Assign To <span style="color:#EF4444;">*</span></label>
+                    <select name="assigned_to" class="form-input form-select" required>
+                        <option value="">— Select team member —</option>
+                        @foreach($allUsers as $member)
+                        <option value="{{ $member->id }}" {{ old('assigned_to') == $member->id ? 'selected' : '' }}>
+                            {{ $member->name }} ({{ ucfirst($member->role) }})
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
 
-                    {{-- Priority --}}
-                    <div style="margin-bottom:16px;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+                    <div>
                         <label class="form-label">Priority <span style="color:#EF4444;">*</span></label>
-                        <div style="display:flex;gap:8px;">
-                            <button type="button" @click="priority = 'low'"
-                                    :class="priority === 'low' ? 'priority-btn active-low' : 'priority-btn'">
-                                <i class="fas fa-circle-minus" style="margin-right:4px;font-size:10px;"></i> Low
-                            </button>
-                            <button type="button" @click="priority = 'medium'"
-                                    :class="priority === 'medium' ? 'priority-btn active-medium' : 'priority-btn'">
-                                <i class="fas fa-circle" style="margin-right:4px;font-size:10px;"></i> Medium
-                            </button>
-                            <button type="button" @click="priority = 'high'"
-                                    :class="priority === 'high' ? 'priority-btn active-high' : 'priority-btn'">
-                                <i class="fas fa-circle-exclamation" style="margin-right:4px;font-size:10px;"></i> High
-                            </button>
-                        </div>
-                        <input type="hidden" name="priority" :value="priority">
+                        <select name="priority" class="form-input form-select" required>
+                            <option value="low" {{ old('priority') === 'low' ? 'selected' : '' }}>Low</option>
+                            <option value="medium" {{ old('priority','medium') === 'medium' ? 'selected' : '' }}>Medium</option>
+                            <option value="high" {{ old('priority') === 'high' ? 'selected' : '' }}>High</option>
+                        </select>
                     </div>
-
-                    {{-- Deadline --}}
-                    <div style="margin-bottom:24px;">
+                    <div>
                         <label class="form-label">Deadline <span style="color:#EF4444;">*</span></label>
                         <input type="date" name="deadline" class="form-input" required
                                min="{{ date('Y-m-d') }}" value="{{ old('deadline') }}">
                     </div>
+                </div>
 
-                    {{-- Actions --}}
-                    <div style="display:flex;align-items:center;gap:10px;justify-content:flex-end;">
-                        <button type="button" @click="taskOpen = false"
-                                style="padding:9px 20px;font-size:13px;font-weight:500;background:#F3F4F6;border:none;border-radius:9px;cursor:pointer;color:#374151;">
-                            Cancel
-                        </button>
-                        <button type="submit" :disabled="taskSubmitting"
-                                style="padding:9px 24px;font-size:13px;font-weight:600;background:#4F46E5;color:#fff;border:none;border-radius:9px;cursor:pointer;box-shadow:0 2px 8px rgba(79,70,229,0.35);display:flex;align-items:center;gap:7px;"
-                                :style="taskSubmitting ? 'opacity:0.7;cursor:not-allowed;' : ''">
-                            <i class="fas fa-plus" style="font-size:11px;" x-show="!taskSubmitting"></i>
-                            <i class="fas fa-spinner fa-spin" style="font-size:11px;" x-show="taskSubmitting"></i>
-                            <span x-text="taskSubmitting ? 'Creating…' : 'Create Task'"></span>
-                        </button>
-                    </div>
+                <div style="margin-bottom:20px;">
+                    <label class="form-label">Link to Project <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
+                    <select name="project_id" class="form-input form-select">
+                        <option value="">— No project (standalone) —</option>
+                        @foreach($allProjects as $proj)
+                        <option value="{{ $proj->id }}" {{ old('project_id') == $proj->id ? 'selected' : '' }}>
+                            {{ $proj->name }}
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
 
-                </form>
-            </div>
+                <button type="submit"
+                        style="width:100%;padding:11px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(245,158,11,.35);">
+                    <i class="fa fa-bolt"></i> Assign Task
+                </button>
+            </form>
+
         </div>
     </div>
+    </div>
 
-    {{-- ══ Create Project Modal ══ --}}
-    <div x-show="projectOpen" x-cloak class="task-modal-backdrop" @click.self="projectOpen = false"
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-150"
-         x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+    {{-- ══ New Project Wizard Modal ══ --}}
+    <div x-show="projectOpen" x-cloak style="position:fixed;inset:0;z-index:9999;">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;">
 
-        <div class="task-modal"
-             x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="opacity-0 translate-y-4 scale-95"
-             x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-             @click.stop>
+        <div @click="projectOpen = false" style="position:absolute;inset:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(3px);"></div>
 
-            {{-- Modal Header --}}
-            <div class="task-modal-header">
-                <div style="display:flex;align-items:center;gap:10px;">
-                    <div style="width:36px;height:36px;background:#EEF2FF;border-radius:10px;display:flex;align-items:center;justify-content:center;">
-                        <i class="fas fa-folder-plus" style="color:#4F46E5;font-size:15px;"></i>
-                    </div>
+        <div style="position:relative;width:100%;max-width:700px;max-height:90vh;background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,0.2);display:flex;flex-direction:column;overflow:hidden;">
+
+            {{-- Header --}}
+            <div style="padding:20px 24px 0;flex-shrink:0;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
                     <div>
-                        <h2 style="font-size:16px;font-weight:700;color:#111827;margin:0;">Create New Project</h2>
-                        <p  style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Set up a new project instantly</p>
+                        <h2 style="font-size:18px;font-weight:700;color:#111827;margin:0;">New Project</h2>
+                        <p style="font-size:12px;color:#9CA3AF;margin:4px 0 0;" x-text="'Step ' + projectStep + ' of 3'"></p>
                     </div>
+                    <button @click="projectOpen = false"
+                            style="width:32px;height:32px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:14px;">
+                        <i class="fa fa-times"></i>
+                    </button>
                 </div>
-                <button @click="projectOpen = false"
-                        style="width:32px;height:32px;border-radius:8px;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:13px;">
-                    <i class="fas fa-times"></i>
-                </button>
+
+                {{-- Step Indicators --}}
+                <div style="display:flex;align-items:center;gap:0;margin-bottom:24px;">
+                    <template x-for="s in 3" :key="s">
+                        <div style="display:flex;align-items:center;flex:1;">
+                            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
+                                <div :style="projectStep >= s ? 'width:32px;height:32px;border-radius:50%;background:#4F46E5;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;' : 'width:32px;height:32px;border-radius:50%;background:#F3F4F6;color:#9CA3AF;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;'">
+                                    <span x-show="projectStep > s"><i class="fa fa-check" style="font-size:11px;"></i></span>
+                                    <span x-show="projectStep <= s" x-text="s"></span>
+                                </div>
+                                <span :style="projectStep >= s ? 'font-size:10px;font-weight:600;color:#4F46E5;' : 'font-size:10px;font-weight:600;color:#9CA3AF;'"
+                                      x-text="s === 1 ? 'Details' : s === 2 ? 'Attachments' : 'Tasks'"></span>
+                            </div>
+                            <template x-if="s < 3">
+                                <div :style="projectStep > s ? 'flex:1;height:2px;background:#4F46E5;margin:0 4px;margin-bottom:20px;' : 'flex:1;height:2px;background:#E5E7EB;margin:0 4px;margin-bottom:20px;'"></div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
             </div>
 
-            {{-- Modal Body --}}
-            <div class="task-modal-body">
-                <form method="POST" action="{{ route('admin.projects.store') }}" @submit="projectSubmitting = true">
-                    @csrf
+            {{-- Body --}}
+            <form method="POST" action="{{ route('admin.projects.store') }}" enctype="multipart/form-data" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+                @csrf
+                <div style="flex:1;overflow-y:auto;padding:0 24px 8px;">
 
-                    {{-- Name --}}
-                    <div style="margin-bottom:16px;">
-                        <label class="form-label">Project Name <span style="color:#EF4444;">*</span></label>
-                        <input type="text" name="name" class="form-input" placeholder="e.g. Website Redesign" required
-                               value="{{ old('name') }}">
-                    </div>
-
-                    {{-- Description --}}
-                    <div style="margin-bottom:16px;">
-                        <label class="form-label">Description</label>
-                        <textarea name="description" class="form-input" rows="3"
-                                  placeholder="Brief overview of this project (optional)" style="resize:vertical;">{{ old('description') }}</textarea>
-                    </div>
-
-                    {{-- Deadline + Status (2 cols) --}}
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;">
-                        <div>
-                            <label class="form-label">Deadline</label>
-                            <input type="date" name="deadline" class="form-input"
-                                   min="{{ date('Y-m-d') }}" value="{{ old('deadline') }}">
+                    {{-- Step 1: Details --}}
+                    <div x-show="projectStep === 1">
+                        <div style="margin-bottom:16px;">
+                            <label class="form-label">Project Name <span style="color:#EF4444;">*</span></label>
+                            <input type="text" name="name" class="form-input" placeholder="e.g. Mobile App Redesign" required value="{{ old('name') }}">
                         </div>
-                        <div>
-                            <label class="form-label">Status</label>
-                            <select name="status" class="form-input form-select">
-                                <option value="active" {{ old('status','active') === 'active' ? 'selected' : '' }}>Active</option>
-                                <option value="on_hold" {{ old('status') === 'on_hold' ? 'selected' : '' }}>On Hold</option>
-                                <option value="completed" {{ old('status') === 'completed' ? 'selected' : '' }}>Completed</option>
-                            </select>
+                        <div style="margin-bottom:16px;">
+                            <label class="form-label">Description</label>
+                            <textarea name="description" class="form-input" rows="3" placeholder="Brief description of the project..." style="resize:vertical;">{{ old('description') }}</textarea>
+                        </div>
+                        <div style="margin-bottom:8px;">
+                            <label class="form-label">Deadline <span style="color:#EF4444;">*</span></label>
+                            <input type="date" name="deadline" class="form-input" required min="{{ date('Y-m-d') }}" value="{{ old('deadline') }}">
                         </div>
                     </div>
 
-                    {{-- Actions --}}
-                    <div style="display:flex;align-items:center;gap:10px;justify-content:flex-end;">
-                        <button type="button" @click="projectOpen = false"
-                                style="padding:9px 20px;font-size:13px;font-weight:500;background:#F3F4F6;border:none;border-radius:9px;cursor:pointer;color:#374151;">
-                            Cancel
-                        </button>
-                        <button type="submit" :disabled="projectSubmitting"
-                                style="padding:9px 24px;font-size:13px;font-weight:600;background:#4F46E5;color:#fff;border:none;border-radius:9px;cursor:pointer;box-shadow:0 2px 8px rgba(79,70,229,0.35);display:flex;align-items:center;gap:7px;"
-                                :style="projectSubmitting ? 'opacity:0.7;cursor:not-allowed;' : ''">
-                            <i class="fas fa-folder-plus" style="font-size:11px;" x-show="!projectSubmitting"></i>
-                            <i class="fas fa-spinner fa-spin" style="font-size:11px;" x-show="projectSubmitting"></i>
-                            <span x-text="projectSubmitting ? 'Creating…' : 'Create Project'"></span>
-                        </button>
+                    {{-- Step 2: Attachments --}}
+                    <div x-show="projectStep === 2">
+                        <label class="form-label" style="margin-bottom:8px;">Files <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— max 20 MB each</span></label>
+                        <div @dragover.prevent="pDragover = true" @dragleave.prevent="pDragover = false"
+                             @drop.prevent="pDragover = false; pHandleFiles($event)"
+                             @click="$refs.pFileInput.click()"
+                             :style="pDragover ? 'border-color:#6366F1;background:#EEF2FF;' : 'border-color:#E5E7EB;background:#FAFAFA;'"
+                             style="border:2px dashed;border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:10px;">
+                            <i class="fas fa-cloud-upload-alt" style="font-size:24px;color:#9CA3AF;margin-bottom:8px;display:block;"></i>
+                            <p style="font-size:13px;color:#6B7280;margin:0;">Drag &amp; drop files or <span style="color:#6366F1;font-weight:600;">browse</span></p>
+                            <input type="file" name="attachments[]" multiple x-ref="pFileInput" @change="pHandleFiles($event)" style="display:none;">
+                        </div>
+                        <template x-if="pFiles.length > 0">
+                            <div style="margin-bottom:14px;display:flex;flex-direction:column;gap:5px;">
+                                <template x-for="(file, i) in pFiles" :key="i">
+                                    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;">
+                                        <i :class="'fas ' + pFileIcon(file.name)" style="font-size:14px;color:#6366F1;flex-shrink:0;"></i>
+                                        <div style="flex:1;min-width:0;">
+                                            <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="file.name"></p>
+                                            <p style="font-size:11px;color:#9CA3AF;margin:0;" x-text="pFormatSize(file.size)"></p>
+                                        </div>
+                                        <button type="button" @click.stop="pRemoveFile(i)" style="width:22px;height:22px;border-radius:6px;background:#FEE2E2;color:#DC2626;border:none;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                        <div style="margin-top:16px;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                                <label class="form-label" style="margin:0;">Links</label>
+                                <button type="button" @click="pLinks.push({url:'',label:''})" style="font-size:11px;font-weight:600;color:#4F46E5;background:#EEF2FF;border:none;padding:4px 12px;border-radius:6px;cursor:pointer;">+ Add Link</button>
+                            </div>
+                            <template x-if="pLinks.length > 0">
+                                <div style="display:flex;flex-direction:column;gap:6px;">
+                                    <template x-for="(link, i) in pLinks" :key="i">
+                                        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;">
+                                            <input type="url" :name="'links['+i+'][url]'" x-model="link.url" placeholder="https://..." class="form-input">
+                                            <input type="text" :name="'links['+i+'][label]'" x-model="link.label" placeholder="Label (optional)" class="form-input">
+                                            <button type="button" @click="pLinks.splice(i,1)" style="width:26px;height:26px;border-radius:6px;background:#FEE2E2;color:#DC2626;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                            <p x-show="pLinks.length === 0" style="font-size:11px;color:#9CA3AF;margin:0;">No links yet — click "+ Add Link".</p>
+                        </div>
                     </div>
 
-                </form>
-            </div>
+                    {{-- Step 3: Tasks --}}
+                    <div x-show="projectStep === 3">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                            <div>
+                                <p style="font-size:13px;font-weight:700;color:#374151;margin:0;">Assign Tasks</p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">Assignees are automatically added as project members</p>
+                            </div>
+                            <button type="button" @click="pAddTask()" style="display:flex;align-items:center;gap:6px;padding:7px 14px;background:#EEF2FF;color:#4F46E5;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
+                                <i class="fas fa-plus" style="font-size:10px;"></i> Add Task
+                            </button>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:14px;">
+                            <template x-for="(task, i) in pTasks" :key="i">
+                                <div style="border:1.5px solid #E5E7EB;border-radius:12px;padding:16px;background:#FAFBFF;">
+                                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                                        <span style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Task <span x-text="i+1"></span></span>
+                                        <button type="button" @click="if(pTasks.length>1) pTasks.splice(i,1)" x-show="pTasks.length > 1" style="width:24px;height:24px;border-radius:6px;background:#FEE2E2;color:#DC2626;border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                    <div style="margin-bottom:10px;">
+                                        <input type="text" :name="'tasks['+i+'][title]'" x-model="task.title" placeholder="Task title *" class="form-input">
+                                    </div>
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+                                        <div>
+                                            <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px;">Task Type</label>
+                                            <input type="text" :name="'tasks['+i+'][task_type]'" x-model="task.task_type" placeholder="e.g. Design, Video" class="form-input">
+                                        </div>
+                                        <div>
+                                            <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px;">Tags</label>
+                                            <input type="text" :name="'tasks['+i+'][tags]'" x-model="task.tags" placeholder="#video, #urgent" class="form-input">
+                                        </div>
+                                    </div>
+                                    <div style="margin-bottom:10px;">
+                                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                                            <label style="font-size:11px;font-weight:600;color:#6B7280;">Assignees</label>
+                                            <button type="button" @click="task.assignees.push({user_id:'',role:''})" style="font-size:10px;font-weight:600;color:#4F46E5;background:#EEF2FF;border:none;padding:3px 10px;border-radius:6px;cursor:pointer;">+ Add Person</button>
+                                        </div>
+                                        <div style="display:flex;flex-direction:column;gap:6px;">
+                                            <template x-for="(assignee, j) in task.assignees" :key="j">
+                                                <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;">
+                                                    <select :name="'tasks['+i+'][assignees]['+j+'][user_id]'" x-model="assignee.user_id" class="form-input form-select">
+                                                        <option value="">— Select person —</option>
+                                                        <template x-for="u in pAllUsers" :key="u.id">
+                                                            <option :value="u.id" x-text="u.name + ' (' + u.role + ')'"></option>
+                                                        </template>
+                                                    </select>
+                                                    <input type="text" :name="'tasks['+i+'][assignees]['+j+'][role]'" x-model="assignee.role" placeholder="Role (e.g. designer)" class="form-input">
+                                                    <button type="button" @click="if(task.assignees.length>1) task.assignees.splice(j,1)" x-show="task.assignees.length > 1" style="width:26px;height:26px;border-radius:6px;background:#FEE2E2;color:#DC2626;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                    <div x-show="task.assignees.length === 1" style="width:26px;"></div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+                                        <div>
+                                            <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px;">Reviewer</label>
+                                            <select :name="'tasks['+i+'][reviewer_id]'" x-model="task.reviewer_id" class="form-input form-select">
+                                                <option value="">— None —</option>
+                                                <template x-for="u in pAllUsers" :key="u.id">
+                                                    <option :value="u.id" x-text="u.name"></option>
+                                                </template>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px;">Priority</label>
+                                            <select :name="'tasks['+i+'][priority]'" x-model="task.priority" class="form-input form-select">
+                                                <option value="low">Low</option>
+                                                <option value="medium">Medium</option>
+                                                <option value="high">High</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px;">Deadline</label>
+                                            <input type="date" :name="'tasks['+i+'][deadline]'" x-model="task.deadline" class="form-input">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px;">Description</label>
+                                        <textarea :name="'tasks['+i+'][description]'" x-model="task.description" rows="2" placeholder="Task brief or notes..." class="form-input" style="resize:vertical;font-family:'Inter',sans-serif;"></textarea>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                </div>
+
+                {{-- Footer --}}
+                <div style="padding:16px 24px;border-top:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fff;">
+                    <button type="button" @click="projectStep > 1 ? projectStep-- : projectOpen = false"
+                            style="padding:9px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;">
+                        <i class="fa fa-arrow-left" style="font-size:11px;"></i>
+                        <span x-text="projectStep > 1 ? 'Back' : 'Cancel'"></span>
+                    </button>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <template x-for="s in 3" :key="s">
+                            <div :style="projectStep === s ? 'width:8px;height:8px;border-radius:50%;background:#4F46E5;' : 'width:6px;height:6px;border-radius:50%;background:#E5E7EB;'"></div>
+                        </template>
+                    </div>
+                    <template x-if="projectStep < 3">
+                        <button type="button" @click="projectStep++"
+                                style="padding:9px 20px;background:#4F46E5;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;">
+                            Next <i class="fa fa-arrow-right" style="font-size:11px;"></i>
+                        </button>
+                    </template>
+                    <template x-if="projectStep === 3">
+                        <button type="submit"
+                                style="padding:9px 20px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(99,102,241,.35);">
+                            <i class="fa fa-rocket" style="font-size:11px;"></i> Create Project
+                        </button>
+                    </template>
+                </div>
+            </form>
+
         </div>
+    </div>
     </div>
 
 </div>
@@ -294,11 +414,63 @@
 <script>
 function dashModals() {
     return {
-        taskOpen:           {{ $errors->any() ? 'true' : 'false' }},
-        taskSubmitting:     false,
-        priority:           '{{ old('priority', 'medium') }}',
-        projectOpen:        false,
-        projectSubmitting:  false,
+        /* ── Quick Task ── */
+        taskOpen:       {{ $errors->any() ? 'true' : 'false' }},
+        taskSubmitting: false,
+        priority:       '{{ old('priority', 'medium') }}',
+
+        /* ── Project Wizard ── */
+        projectOpen:  false,
+        projectStep:  1,
+        pDragover:    false,
+        pFiles:       [],
+        pLinks:       [],
+        pTasks:       [],
+        pAllUsers:    @json($allUsers->map(fn($u) => ['id' => (string)$u->id, 'name' => $u->name, 'role' => ucfirst($u->role)])),
+
+        pBlankTask() {
+            return { title:'', task_type:'', tags:'', assignees:[{user_id:'',role:''}], reviewer_id:'', priority:'medium', deadline:'', description:'' };
+        },
+
+        init() {
+            this.pTasks = [this.pBlankTask()];
+            this.$watch('projectOpen', v => { if (v) { this.projectStep = 1; document.body.style.overflow = 'hidden'; } else { document.body.style.overflow = ''; } });
+        },
+
+        pAddTask() { this.pTasks.push(this.pBlankTask()); },
+
+        pHandleFiles(event) {
+            const incoming = event.dataTransfer ? event.dataTransfer.files : event.target.files;
+            const dt = new DataTransfer();
+            for (let f of this.pFiles) dt.items.add(f);
+            for (let f of incoming) dt.items.add(f);
+            this.pFiles = Array.from(dt.files);
+            this.$refs.pFileInput.files = dt.files;
+        },
+
+        pRemoveFile(i) {
+            const dt = new DataTransfer();
+            this.pFiles.forEach((f, idx) => { if (idx !== i) dt.items.add(f); });
+            this.pFiles = Array.from(dt.files);
+            this.$refs.pFileInput.files = dt.files;
+        },
+
+        pFormatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+            return (bytes/1048576).toFixed(1) + ' MB';
+        },
+
+        pFileIcon(name) {
+            const ext = name.split('.').pop().toLowerCase();
+            if (['pdf'].includes(ext))                               return 'fa-file-pdf';
+            if (['doc','docx'].includes(ext))                        return 'fa-file-word';
+            if (['xls','xlsx'].includes(ext))                        return 'fa-file-excel';
+            if (['jpg','jpeg','png','gif','webp','svg'].includes(ext))return 'fa-file-image';
+            if (['zip','rar','7z'].includes(ext))                    return 'fa-file-zipper';
+            if (['mp4','mov','avi'].includes(ext))                   return 'fa-file-video';
+            return 'fa-file';
+        },
     };
 }
 </script>

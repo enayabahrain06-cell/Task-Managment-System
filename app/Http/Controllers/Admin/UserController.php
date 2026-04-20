@@ -65,14 +65,23 @@ class UserController extends Controller
             'avatar'    => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
+        $allKeys = array_keys(User::ALL_PERMISSIONS);
+        if ($request->has('_perms_sent') && $request->role === 'user') {
+            $submitted = $request->input('permissions', []);
+            $perms = empty($submitted) ? null : array_values(array_intersect($submitted, $allKeys));
+        } else {
+            $perms = null;
+        }
+
         $data = [
-            'name'      => $request->name,
-            'email'     => $request->email,
-            'password'  => Hash::make($request->password),
-            'role'      => $request->role,
-            'phone'     => $request->phone,
-            'job_title' => $request->job_title,
-            'status'    => $request->status ?? 'active',
+            'name'        => $request->name,
+            'email'       => $request->email,
+            'password'    => Hash::make($request->password),
+            'role'        => $request->role,
+            'phone'       => $request->phone,
+            'job_title'   => $request->job_title,
+            'status'      => $request->status ?? 'active',
+            'permissions' => $perms,
         ];
 
         if ($request->hasFile('avatar')) {
@@ -120,13 +129,23 @@ class UserController extends Controller
         $oldRole   = $user->role;
         $oldStatus = $user->status;
 
+        $allKeys = array_keys(User::ALL_PERMISSIONS);
+        // _perms_sent = permissions panel was shown; no checkboxes = null (all access)
+        if ($request->has('_perms_sent') && $request->role === 'user') {
+            $submitted = $request->input('permissions', []);
+            $perms = empty($submitted) ? null : array_values(array_intersect($submitted, $allKeys));
+        } else {
+            $perms = null;
+        }
+
         $data = [
-            'name'      => $request->name,
-            'email'     => $request->email,
-            'role'      => $request->role,
-            'phone'     => $request->phone,
-            'job_title' => $request->job_title,
-            'status'    => $request->status ?? 'active',
+            'name'        => $request->name,
+            'email'       => $request->email,
+            'role'        => $request->role,
+            'phone'       => $request->phone,
+            'job_title'   => $request->job_title,
+            'status'      => $request->status ?? 'active',
+            'permissions' => $perms,
         ];
 
         foreach (['name', 'email', 'role', 'phone', 'job_title'] as $field) {
@@ -196,6 +215,21 @@ class UserController extends Controller
         }
 
         return redirect()->route('admin.users.index')->with('success', 'User updated successfully.');
+    }
+
+    public function updatePermissions(Request $request, User $user)
+    {
+        $allKeys = array_keys(User::ALL_PERMISSIONS);
+        $submitted = $request->input('permissions', []);
+
+        // null = unrestricted (all access), array = specific allowed list
+        $perms = $request->boolean('unrestricted')
+            ? null
+            : array_values(array_intersect((array) $submitted, $allKeys));
+
+        $user->update(['permissions' => $perms]);
+
+        return response()->json(['ok' => true, 'permissions' => $perms]);
     }
 
     public function destroy(User $user)

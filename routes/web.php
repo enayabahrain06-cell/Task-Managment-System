@@ -56,6 +56,7 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboard::class, 'index'])->name('dashboard');
     Route::resource('users', AdminUserController::class);
+    Route::patch('users/{user}/permissions', [AdminUserController::class, 'updatePermissions'])->name('users.permissions');
     Route::resource('projects', AdminProjectController::class);
     Route::get('projects/{project}/tasks/create', [AdminProjectController::class, 'tasksCreate'])->name('projects.tasks.create');
     Route::post('projects/{project}/tasks', [AdminProjectController::class, 'tasksStore'])->name('projects.tasks.store');

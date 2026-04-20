@@ -100,10 +100,10 @@
     </template>
 
     {{-- ═══ PAGE CONTENT ═══ --}}
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
         <div>
             <h1 style="font-size:20px;font-weight:700;color:#111827;margin:0;">Task Approvals</h1>
-            <p style="font-size:13px;color:#9CA3AF;margin:3px 0 0;">Review and approve submitted work</p>
+            <p style="font-size:13px;color:#9CA3AF;margin:3px 0 0;">Review submitted work and track approval history</p>
         </div>
         @if($tasks->total() > 0)
         <span style="background:#EDE9FE;color:#7C3AED;font-size:13px;font-weight:700;padding:6px 14px;border-radius:20px;">
@@ -112,11 +112,34 @@
         @endif
     </div>
 
+    {{-- ── Tabs ── --}}
+    <div style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;margin-bottom:22px;width:fit-content;">
+        <a href="{{ route('admin.approvals.index') }}?tab=pending"
+           style="display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;
+                  {{ $tab === 'pending' ? 'background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);' : 'color:#6B7280;' }}">
+            <i class="fas fa-clock" style="font-size:11px;"></i> Pending
+            @if($tasks->total() > 0)
+            <span style="background:#EDE9FE;color:#7C3AED;font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;">{{ $tasks->total() }}</span>
+            @endif
+        </a>
+        <a href="{{ route('admin.approvals.index') }}?tab=history"
+           style="display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;
+                  {{ $tab === 'history' ? 'background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);' : 'color:#6B7280;' }}">
+            <i class="fas fa-clock-rotate-left" style="font-size:11px;"></i> History
+            @if($history->total() > 0)
+            <span style="background:#F3F4F6;color:#6B7280;font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;">{{ $history->total() }}</span>
+            @endif
+        </a>
+    </div>
+
     @if(session('success'))
     <div style="background:#D1FAE5;border:1px solid #A7F3D0;border-radius:10px;padding:12px 16px;margin-bottom:20px;color:#065F46;font-size:14px;display:flex;gap:10px;align-items:center;">
         <i class="fa fa-circle-check"></i> {{ session('success') }}
     </div>
     @endif
+
+    {{-- ══════════ PENDING TAB ══════════ --}}
+    @if($tab === 'pending')
 
     @forelse($tasks as $task)
     @php
@@ -288,6 +311,114 @@
     @if($tasks->hasPages())
     <div style="margin-top:16px;">{{ $tasks->links() }}</div>
     @endif
+
+    @endif {{-- end pending tab --}}
+
+    {{-- ══════════ HISTORY TAB ══════════ --}}
+    @if($tab === 'history')
+
+    @if($history->total() === 0)
+    <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;padding:60px;text-align:center;">
+        <div style="width:60px;height:60px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+            <i class="fa fa-clock-rotate-left" style="color:#D1D5DB;font-size:28px;"></i>
+        </div>
+        <p style="font-size:15px;font-weight:600;color:#374151;margin:0 0 6px;">No history yet</p>
+        <p style="font-size:13px;color:#9CA3AF;margin:0;">Approved and rejected submissions will appear here.</p>
+    </div>
+    @else
+
+    <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
+        <table style="width:100%;border-collapse:collapse;">
+            <thead>
+                <tr style="border-bottom:1px solid #F3F4F6;background:#F9FAFB;">
+                    <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Task</th>
+                    <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Assignee</th>
+                    <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Project</th>
+                    <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Ver.</th>
+                    <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Decision</th>
+                    <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Reviewed By</th>
+                    <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Date</th>
+                    <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Note</th>
+                    <th style="padding:11px 16px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($history as $sub)
+                @php
+                    $isApproved = $sub->status === 'approved';
+                    $decisionBg  = $isApproved ? '#D1FAE5' : '#FEE2E2';
+                    $decisionCo  = $isApproved ? '#059669' : '#DC2626';
+                    $decisionIco = $isApproved ? 'fa-circle-check' : 'fa-rotate-left';
+                    $decisionLbl = $isApproved ? 'Approved' : 'Rejected';
+                @endphp
+                <tr style="border-bottom:1px solid #F9FAFB;transition:background .1s;" onmouseover="this.style.background='#FAFBFF'" onmouseout="this.style.background=''">
+                    <td style="padding:12px 16px;">
+                        <p style="font-size:13px;font-weight:600;color:#111827;margin:0;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                            {{ $sub->task->title ?? '—' }}
+                        </p>
+                    </td>
+                    <td style="padding:12px 16px;">
+                        <div style="display:flex;align-items:center;gap:7px;">
+                            <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;">
+                                {{ strtoupper(substr($sub->task->assignee->name ?? 'U', 0, 1)) }}
+                            </div>
+                            <span style="font-size:12px;font-weight:500;color:#374151;">{{ $sub->task->assignee->name ?? '—' }}</span>
+                        </div>
+                    </td>
+                    <td style="padding:12px 16px;">
+                        <span style="font-size:12px;color:#6B7280;">{{ $sub->task->project->name ?? '—' }}</span>
+                    </td>
+                    <td style="padding:12px 16px;">
+                        <span style="font-size:12px;font-weight:700;color:#4F46E5;background:#EEF2FF;padding:2px 8px;border-radius:6px;">v{{ $sub->version }}</span>
+                    </td>
+                    <td style="padding:12px 16px;">
+                        <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:{{ $decisionBg }};color:{{ $decisionCo }};">
+                            <i class="fa {{ $decisionIco }}" style="font-size:10px;"></i> {{ $decisionLbl }}
+                        </span>
+                    </td>
+                    <td style="padding:12px 16px;">
+                        <span style="font-size:12px;color:#374151;">{{ $sub->reviewer->name ?? '—' }}</span>
+                    </td>
+                    <td style="padding:12px 16px;">
+                        <span style="font-size:12px;color:#9CA3AF;white-space:nowrap;">{{ $sub->reviewed_at?->format('M d, Y') }}</span>
+                        <p style="font-size:10px;color:#D1D5DB;margin:1px 0 0;">{{ $sub->reviewed_at?->diffForHumans() }}</p>
+                    </td>
+                    <td style="padding:12px 16px;max-width:200px;">
+                        @if($sub->admin_note)
+                        <p style="font-size:12px;color:#6B7280;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $sub->admin_note }}</p>
+                        @else
+                        <span style="font-size:12px;color:#D1D5DB;">—</span>
+                        @endif
+                    </td>
+                    <td style="padding:12px 16px;">
+                        <button @click="openModal({
+                                    version: {{ $sub->version }},
+                                    task: @js($sub->task->title ?? ''),
+                                    status: @js($sub->status),
+                                    date: @js($sub->reviewed_at?->format('M d, Y H:i')),
+                                    user: @js($sub->task->assignee->name ?? 'Unknown'),
+                                    note: @js($sub->note),
+                                    file: @js($sub->file_path ? $sub->fileUrl() : null),
+                                    filename: @js($sub->original_filename),
+                                    adminNote: @js($sub->admin_note)
+                                })"
+                                style="display:flex;align-items:center;gap:4px;padding:5px 12px;background:#F3F4F6;color:#6B7280;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;"
+                                onmouseover="this.style.background='#EEF2FF';this.style.color='#4F46E5'" onmouseout="this.style.background='#F3F4F6';this.style.color='#6B7280'">
+                            <i class="fas fa-eye" style="font-size:10px;"></i> View
+                        </button>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+
+    @if($history->hasPages())
+    <div style="margin-top:16px;">{{ $history->appends(['tab' => 'history'])->links() }}</div>
+    @endif
+
+    @endif {{-- end history total check --}}
+    @endif {{-- end history tab --}}
 
 </div>
 
