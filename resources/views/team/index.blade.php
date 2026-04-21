@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $view === 'manage' ? 'Manage Users' : 'Team Members')
+@section('title', 'Team Members')
 
 @section('content')
 
@@ -43,34 +43,47 @@
 {{-- ═══════ Page Header ═══════ --}}
 <div class="flex items-center justify-between mb-5">
     <div>
-        @if($view === 'manage')
-        <h1 class="text-2xl font-bold text-gray-900">Manage Users</h1>
-        <p class="text-sm text-gray-500 mt-0.5">{{ $stats['total'] ?? 0 }} total members</p>
-        @else
         <h1 class="text-2xl font-bold text-gray-900">Team Members</h1>
         <p class="text-sm text-gray-500 mt-0.5">{{ $totalMembers }} total members across all teams</p>
-        @endif
     </div>
     @if(auth()->user()->role === 'admin')
     <button type="button"
             onclick="window.dispatchEvent(new CustomEvent('open-add-user'))"
             class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm">
-        <i class="fa fa-user-plus"></i> {{ $view === 'manage' ? 'Add User' : 'Add Member' }}
+        <i class="fa fa-user-plus"></i> Add Member
     </button>
     @endif
 </div>
 
 {{-- ═══════ Outer Tabs (admin only) ═══════ --}}
 @if(auth()->user()->role === 'admin')
-<div class="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit mb-6">
+<div class="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit mb-6" style="flex-wrap:wrap;">
     <a href="{{ route('team.index') }}"
        class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition {{ $view === 'team' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
         <i class="fa fa-users text-xs"></i> Team
     </a>
-    <a href="{{ route('team.index', ['view' => 'manage']) }}"
-       class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition {{ $view === 'manage' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
-        <i class="fa fa-user-shield text-xs"></i> Manage Users
+    <a href="{{ route('team.index', ['view' => 'permissions']) }}"
+       class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition {{ $view === 'permissions' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
+        <i class="fa fa-shield-halved text-xs"></i> Permissions
     </a>
+    <a href="{{ route('team.index', ['view' => 'roles']) }}"
+       class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition {{ $view === 'roles' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
+        <i class="fa fa-tag text-xs"></i> Roles
+        <span class="text-xs font-bold px-1.5 py-0.5 rounded-full {{ $view === 'roles' ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-200 text-gray-500' }}">{{ $allRoles->count() }}</span>
+    </a>
+    <a href="{{ route('team.index', ['view' => 'former']) }}"
+       class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition {{ $view === 'former' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
+        <i class="fa fa-user-slash text-xs"></i> Former Employees
+        @if($formerEmployees->isNotEmpty())
+        <span class="text-xs font-bold px-1.5 py-0.5 rounded-full {{ $view === 'former' ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-200 text-gray-500' }}">{{ $formerEmployees->count() }}</span>
+        @endif
+    </a>
+</div>
+@endif
+
+@if(session('success'))
+<div class="mb-4 flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm px-4 py-3 rounded-xl">
+    <i class="fa fa-circle-check"></i> {{ session('success') }}
 </div>
 @endif
 
@@ -148,6 +161,32 @@
 
 </div>
 
+{{-- Search & Filters --}}
+@if(auth()->user()->role === 'admin')
+<form method="GET" action="{{ route('team.index') }}" class="flex flex-wrap gap-3 mb-5">
+    <div class="relative flex-1 min-w-[200px]">
+        <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+        <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name, email or username…"
+               class="w-full pl-8 pr-3 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300">
+    </div>
+    <select name="role" class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300">
+        <option value="">All Roles</option>
+        @foreach($allRoles as $r)
+        <option value="{{ $r->name }}" {{ request('role') === $r->name ? 'selected' : '' }}>{{ $r->label }}</option>
+        @endforeach
+    </select>
+    <select name="status" class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300">
+        <option value="">All Status</option>
+        <option value="active"   {{ request('status')==='active'   ? 'selected':'' }}>Active</option>
+        <option value="inactive" {{ request('status')==='inactive' ? 'selected':'' }}>Inactive</option>
+    </select>
+    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">Filter</button>
+    @if(request()->hasAny(['search','role','status']))
+    <a href="{{ route('team.index') }}" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-medium rounded-lg transition">Clear</a>
+    @endif
+</form>
+@endif
+
 {{-- Members Grid --}}
 @php
     $roleColors = ['admin' => '#EF4444', 'manager' => '#6366F1', 'user' => '#10B981'];
@@ -161,7 +200,8 @@
         $color     = $avatarColors[$loop->index % count($avatarColors)];
         $progress  = $member->total_tasks > 0 ? round(($member->completed_tasks / $member->total_tasks) * 100) : 0;
     @endphp
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md hover:border-indigo-200 transition group">
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md hover:border-indigo-200 transition group cursor-pointer"
+         onclick="window.location.href='{{ route('admin.users.dashboard', $member) }}'">
         {{-- Avatar + Name --}}
         <div class="flex flex-col items-center text-center mb-4">
             <div class="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-3 group-hover:scale-105 transition"
@@ -170,9 +210,16 @@
             </div>
             <h3 class="font-semibold text-gray-900 text-sm">{{ $member->name }}</h3>
             <p class="text-xs text-gray-400 mt-0.5 truncate w-full">{{ $member->email }}</p>
-            <span class="mt-2 text-xs px-2.5 py-0.5 rounded-full font-medium {{ $roleBg[$member->role] ?? 'bg-gray-100 text-gray-600' }}">
-                {{ ucfirst($member->role) }}
-            </span>
+            <div class="flex items-center gap-1.5 mt-2 flex-wrap justify-center">
+                <span class="text-xs px-2.5 py-0.5 rounded-full font-medium {{ $roleBg[$member->role] ?? 'bg-gray-100 text-gray-600' }}">
+                    {{ ucfirst($member->role) }}
+                </span>
+                @if($member->status === 'inactive')
+                <span class="text-xs px-2 py-0.5 rounded-full font-semibold bg-amber-100 text-amber-700 flex items-center gap-1">
+                    <i class="fa fa-lock text-xs"></i> Held
+                </span>
+                @endif
+            </div>
         </div>
 
         {{-- Task Stats --}}
@@ -193,221 +240,78 @@
 
         {{-- Actions (admin only) --}}
         @if(auth()->user()->role === 'admin')
-        <div class="flex gap-2 mt-4">
+        <div class="flex gap-2 mt-4" onclick="event.stopPropagation()">
+            {{-- Edit --}}
             <button type="button"
-                    onclick='window.dispatchEvent(new CustomEvent("open-edit-user",{detail:{{ json_encode(['id'=>$member->id,'name'=>$member->name,'email'=>$member->email,'phone'=>$member->phone??'','job_title'=>$member->job_title??'','role'=>$member->role,'status'=>$member->status,'avatar'=>$member->avatarUrl()??'']) }}}))'
+                    onclick='window.dispatchEvent(new CustomEvent("open-edit-user",{detail:{{ json_encode(['id'=>$member->id,'name'=>$member->name,'username'=>$member->username??'','email'=>$member->email,'phone'=>$member->phone??'','job_title'=>$member->job_title??'','nationality'=>$member->nationality??'','role'=>$member->role,'status'=>$member->status,'avatar'=>$member->avatarUrl()??'']) }}}))'
                     class="flex-1 text-center text-xs bg-gray-100 hover:bg-indigo-100 text-gray-600 hover:text-indigo-600 py-1.5 rounded-lg transition font-medium">
-                Edit
+                <i class="fa fa-pen text-xs mr-1"></i> Edit
             </button>
-            <form action="{{ route('admin.users.destroy', $member) }}" method="POST" class="flex-1"
-                  onsubmit="return confirm('Remove {{ addslashes($member->name) }}?')">
-                @csrf @method('DELETE')
-                <button type="submit" class="w-full text-xs bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-600 py-1.5 rounded-lg transition font-medium">
-                    Remove
+            {{-- Actions dropdown --}}
+            <div x-data="{ open: false }" class="relative flex-1">
+                <button type="button" @click="open = !open" @click.outside="open = false"
+                        class="w-full text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 py-1.5 rounded-lg transition font-medium flex items-center justify-center gap-1">
+                    Actions <i class="fa fa-chevron-down text-xs" :class="open ? 'rotate-180' : ''" style="transition:transform .15s;"></i>
                 </button>
-            </form>
+                <div x-show="open" x-cloak
+                     style="position:absolute;bottom:calc(100% + 6px);right:0;min-width:180px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.15);border:1px solid #F3F4F6;z-index:50;overflow:hidden;">
+                    {{-- Hold / Release --}}
+                    <form method="POST" action="{{ route('admin.users.hold', $member) }}">
+                        @csrf
+                        <button type="submit"
+                                class="w-full text-left px-4 py-2.5 text-xs font-medium flex items-center gap-2.5 transition
+                                       {{ $member->status === 'inactive' ? 'text-emerald-600 hover:bg-emerald-50' : 'text-amber-600 hover:bg-amber-50' }}">
+                            <i class="fa {{ $member->status === 'inactive' ? 'fa-lock-open' : 'fa-lock' }} text-xs w-3"></i>
+                            {{ $member->status === 'inactive' ? 'Release Hold' : 'Hold Account' }}
+                        </button>
+                    </form>
+                    {{-- Transfer Tasks --}}
+                    <button type="button"
+                            onclick="openTransferModal({{ $member->id }}, '{{ addslashes($member->name) }}')"
+                            @click="open = false"
+                            class="w-full text-left px-4 py-2.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50 flex items-center gap-2.5 transition">
+                        <i class="fa fa-right-left text-xs w-3"></i> Transfer Tasks
+                    </button>
+                    <div style="height:1px;background:#F3F4F6;margin:2px 0;"></div>
+                    {{-- Archive --}}
+                    <button type="button"
+                            onclick="openDeleteConfirm('{{ route('admin.users.destroy', $member) }}','{{ addslashes($member->name) }}')"
+                            @click="open = false"
+                            class="w-full text-left px-4 py-2.5 text-xs font-medium text-amber-600 hover:bg-amber-50 flex items-center gap-2.5 transition">
+                        <i class="fa fa-user-slash text-xs w-3"></i> Archive Employee
+                    </button>
+                </div>
+            </div>
         </div>
         @endif
     </div>
     @empty
     <div class="col-span-full text-center py-16">
         <i class="fa fa-users text-5xl text-gray-200 mb-3"></i>
-        <p class="text-gray-400">No team members yet</p>
+        <p class="text-gray-400">No team members found</p>
+        @if(request()->hasAny(['search','role','status']))
+        <a href="{{ route('team.index') }}" class="mt-3 inline-block text-sm text-indigo-500 hover:underline">Clear filters</a>
+        @endif
     </div>
     @endforelse
 </div>
+@if($members->hasPages())
+<div class="mt-5">{{ $members->links() }}</div>
+@endif
 
 @endif {{-- team view --}}
 
 {{-- ══════════════════════════════════════════════════════
-     MANAGE VIEW (admin only)
+     PERMISSIONS & ROLES (admin only)
 ══════════════════════════════════════════════════════ --}}
-@if($view === 'manage' && auth()->user()->role === 'admin')
+@if(in_array($view, ['permissions','roles','former']) && auth()->user()->role === 'admin')
 
 @php
 $roleColorMap = ['admin'=>'bg-red-100 text-red-600','manager'=>'bg-amber-100 text-amber-700','user'=>'bg-emerald-100 text-emerald-700'];
-$avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
 @endphp
 
-@if(session('success'))
-<div class="mb-4 flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm px-4 py-3 rounded-xl">
-    <i class="fa fa-circle-check"></i> {{ session('success') }}
-</div>
-@endif
-
-{{-- Inner Tabs --}}
-<div class="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit mb-6">
-    <a href="{{ route('team.index', ['view' => 'manage', 'tab' => 'users']) }}"
-       class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition {{ request('tab', 'users') === 'users' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
-        <i class="fa fa-users text-xs"></i> Users
-    </a>
-    <a href="{{ route('team.index', ['view' => 'manage', 'tab' => 'permissions']) }}"
-       class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition {{ request('tab') === 'permissions' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
-        <i class="fa fa-shield-halved text-xs"></i> Permissions
-    </a>
-    <a href="{{ route('team.index', ['view' => 'manage', 'tab' => 'roles']) }}"
-       class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition {{ request('tab') === 'roles' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
-        <i class="fa fa-tag text-xs"></i> Roles
-        <span class="text-xs font-bold px-1.5 py-0.5 rounded-full {{ request('tab') === 'roles' ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-200 text-gray-500' }}">{{ $allRoles->count() }}</span>
-    </a>
-</div>
-
-{{-- ─── Users Sub-Tab ─── --}}
-@if(request('tab', 'users') === 'users')
-
-{{-- Mini stats --}}
-<div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
-    @foreach([['label'=>'Total','value'=>$stats['total'],'icon'=>'fa-users','color'=>'#6366F1'],['label'=>'Active','value'=>$stats['active'],'icon'=>'fa-circle-check','color'=>'#10B981'],['label'=>'Inactive','value'=>$stats['inactive'],'icon'=>'fa-circle-xmark','color'=>'#EF4444'],['label'=>'Admins','value'=>$stats['admins'],'icon'=>'fa-user-shield','color'=>'#8B5CF6'],['label'=>'Managers','value'=>$stats['managers'],'icon'=>'fa-user-tie','color'=>'#F59E0B']] as $s)
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex items-center gap-3">
-        <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style="background:{{ $s['color'] }}18;">
-            <i class="fa {{ $s['icon'] }} text-sm" style="color:{{ $s['color'] }};"></i>
-        </div>
-        <div>
-            <p class="text-lg font-bold text-gray-900 leading-none">{{ $s['value'] }}</p>
-            <p class="text-xs text-gray-400 mt-0.5">{{ $s['label'] }}</p>
-        </div>
-    </div>
-    @endforeach
-</div>
-
-{{-- Search & Filters --}}
-<form method="GET" action="{{ route('team.index') }}" class="flex flex-wrap gap-3 mb-4">
-    <input type="hidden" name="view" value="manage">
-    <input type="hidden" name="tab" value="users">
-    <div class="relative flex-1 min-w-[200px]">
-        <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-        <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name or email…"
-               class="w-full pl-8 pr-3 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300">
-    </div>
-    <select name="role" class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300">
-        <option value="">All Roles</option>
-        @foreach($allRoles as $r)
-        <option value="{{ $r->name }}" {{ request('role') === $r->name ? 'selected' : '' }}>{{ $r->label }}</option>
-        @endforeach
-    </select>
-    <select name="status" class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300">
-        <option value="">All Status</option>
-        <option value="active"   {{ request('status')==='active'   ? 'selected':'' }}>Active</option>
-        <option value="inactive" {{ request('status')==='inactive' ? 'selected':'' }}>Inactive</option>
-    </select>
-    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition">Filter</button>
-    @if(request()->hasAny(['search','role','status']))
-    <a href="{{ route('team.index', ['view' => 'manage']) }}" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-medium rounded-lg transition">Clear</a>
-    @endif
-</form>
-
-{{-- Users Table --}}
-<div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-    <table class="w-full">
-        <thead>
-            <tr class="border-b border-gray-100 bg-gray-50/60">
-                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">User</th>
-                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Contact</th>
-                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
-                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Status</th>
-                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Tasks</th>
-                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Joined</th>
-                <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-50">
-            @forelse($users as $u)
-            <tr class="hover:bg-gray-50/60 transition">
-                <td class="px-5 py-3.5">
-                    <div class="flex items-center gap-3">
-                        @if($u->avatarUrl())
-                            <img src="{{ $u->avatarUrl() }}" alt="{{ $u->name }}"
-                                 class="w-10 h-10 rounded-full object-cover flex-shrink-0 border-2 border-white shadow-sm">
-                        @else
-                            <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0 shadow-sm"
-                                 style="background:{{ $avatarBg[$loop->index % count($avatarBg)] }}">
-                                {{ strtoupper(substr($u->name, 0, 1)) }}
-                            </div>
-                        @endif
-                        <div>
-                            <p class="text-sm font-semibold text-gray-900">{{ $u->name }}</p>
-                            @if($u->job_title)
-                            <p class="text-xs text-gray-400">{{ $u->job_title }}</p>
-                            @endif
-                        </div>
-                    </div>
-                </td>
-                <td class="px-5 py-3.5 hidden sm:table-cell">
-                    <p class="text-sm text-gray-600">{{ $u->email }}</p>
-                    @if($u->phone)
-                    <p class="text-xs text-gray-400 mt-0.5"><i class="fa fa-phone text-xs mr-1"></i>{{ $u->phone }}</p>
-                    @endif
-                </td>
-                <td class="px-5 py-3.5">
-                    @php
-                        $roleObj   = $allRoles->firstWhere('name', $u->role);
-                        $roleLabel = $roleObj ? $roleObj->label : ucfirst($u->role);
-                        $roleStyle = $roleObj ? "background:{$roleObj->color}18;color:{$roleObj->color};" : '';
-                    @endphp
-                    <span class="text-xs px-2.5 py-1 rounded-full font-medium {{ $roleColorMap[$u->role] ?? '' }}"
-                          @if(!isset($roleColorMap[$u->role])) style="{{ $roleStyle }}" @endif>
-                        {{ $roleLabel }}
-                    </span>
-                </td>
-                <td class="px-5 py-3.5 hidden md:table-cell">
-                    @if($u->status === 'active')
-                    <span class="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-100 text-emerald-700">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
-                    </span>
-                    @else
-                    <span class="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-500">
-                        <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span> Inactive
-                    </span>
-                    @endif
-                </td>
-                <td class="px-5 py-3.5 hidden lg:table-cell">
-                    <span class="text-sm font-medium text-gray-700">{{ $u->tasks_count }}</span>
-                    <span class="text-xs text-gray-400 ml-1">tasks</span>
-                </td>
-                <td class="px-5 py-3.5 hidden lg:table-cell text-sm text-gray-400">
-                    {{ $u->created_at->format('M d, Y') }}
-                </td>
-                <td class="px-5 py-3.5 text-right">
-                    <div class="flex items-center justify-end gap-2">
-                        <button type="button"
-                                onclick='window.dispatchEvent(new CustomEvent("open-edit-user",{detail:{{ json_encode(['id'=>$u->id,'name'=>$u->name,'email'=>$u->email,'phone'=>$u->phone??'','job_title'=>$u->job_title??'','role'=>$u->role,'status'=>$u->status,'avatar'=>$u->avatarUrl()??'']) }}}))'
-                                class="w-8 h-8 flex items-center justify-center rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition" title="Edit">
-                            <i class="fa fa-pen text-xs"></i>
-                        </button>
-                        <form action="{{ route('admin.users.destroy', $u) }}" method="POST"
-                              onsubmit="return confirm('Delete {{ addslashes($u->name) }}?')">
-                            @csrf @method('DELETE')
-                            <button type="submit"
-                                    class="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition" title="Delete">
-                                <i class="fa fa-trash text-xs"></i>
-                            </button>
-                        </form>
-                    </div>
-                </td>
-            </tr>
-            @empty
-            <tr>
-                <td colspan="7" class="px-5 py-16 text-center">
-                    <i class="fa fa-users text-5xl text-gray-200 mb-3 block"></i>
-                    <p class="text-sm text-gray-400">No users found</p>
-                    @if(request()->hasAny(['search','role','status']))
-                    <a href="{{ route('team.index', ['view' => 'manage']) }}" class="mt-3 inline-block text-sm text-indigo-500 hover:underline">Clear filters</a>
-                    @endif
-                </td>
-            </tr>
-            @endforelse
-        </tbody>
-    </table>
-    @if($users->hasPages())
-    <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/50">
-        {{ $users->links() }}
-    </div>
-    @endif
-</div>
-@endif {{-- users sub-tab --}}
-
-{{-- ─── Permissions Sub-Tab ─── --}}
-@if(request('tab') === 'permissions')
+{{-- ─── Permissions ─── --}}
+@if($view === 'permissions')
 @php
     $permUsers     = \App\Models\User::whereNotIn('role', ['admin', 'manager'])->orderBy('name')->get();
     $allPerms      = \App\Models\User::ALL_PERMISSIONS;
@@ -732,10 +636,10 @@ function permsApp() {
 </script>
 @endif {{-- permUsers check --}}
 
-@endif {{-- permissions sub-tab --}}
+@endif {{-- permissions --}}
 
-{{-- ─── Roles Sub-Tab ─── --}}
-@if(request('tab') === 'roles')
+{{-- ─── Roles ─── --}}
+@if($view === 'roles')
 
 @if(session('role_success'))
 <div class="mb-4 flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm px-4 py-3 rounded-xl">
@@ -807,7 +711,7 @@ function permsApp() {
                         <span><strong class="text-gray-700">{{ $userCount }}</strong> {{ Str::plural('user', $userCount) }}</span>
                     </div>
                     @if($userCount > 0)
-                    <a href="{{ route('team.index', ['view' => 'manage', 'tab' => 'users', 'role' => $role->name]) }}"
+                    <a href="{{ route('team.index', ['role' => $role->name]) }}"
                        class="ml-auto text-xs text-indigo-500 hover:text-indigo-700 font-medium">View →</a>
                     @endif
                 </div>
@@ -1075,9 +979,93 @@ function rolesTab() {
     };
 }
 </script>
-@endif {{-- roles sub-tab --}}
 
-@endif {{-- manage view --}}
+@endif {{-- roles --}}
+
+@endif {{-- permissions & roles --}}
+
+{{-- ══════════════════════════════════════════════════════
+     FORMER EMPLOYEES TAB
+══════════════════════════════════════════════════════ --}}
+@if($view === 'former' && auth()->user()->role === 'admin')
+@php $fAvatarColors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6','#EC4899','#06B6D4']; @endphp
+
+@if($formerEmployees->isEmpty())
+<div class="col-span-full text-center py-16">
+    <i class="fa fa-user-slash text-5xl text-gray-200 mb-3"></i>
+    <p class="text-gray-400">No former employees</p>
+</div>
+@else
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    @foreach($formerEmployees as $former)
+    @php
+        $fColor    = $fAvatarColors[$loop->index % count($fAvatarColors)];
+        $fTotal    = $former->total_tasks ?? 0;
+        $fDone     = $former->completed_tasks ?? 0;
+        $fPending  = $fTotal - $fDone;
+        $fProgress = $fTotal > 0 ? round(($fDone / $fTotal) * 100) : 0;
+    @endphp
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md hover:border-indigo-200 transition group cursor-pointer"
+         onclick="window.location.href='{{ route('admin.users.dashboard', $former) }}'">
+
+        {{-- Avatar + Name --}}
+        <div class="flex flex-col items-center text-center mb-4">
+            <div class="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-3 group-hover:scale-105 transition opacity-80"
+                 style="background: {{ $fColor }}">
+                {{ strtoupper(substr($former->name, 0, 1)) }}
+            </div>
+            <h3 class="font-semibold text-gray-900 text-sm">{{ $former->name }}</h3>
+            <p class="text-xs text-gray-400 mt-0.5 truncate w-full">{{ $former->email }}</p>
+            <div class="flex items-center gap-1.5 mt-2 flex-wrap justify-center">
+                <span class="text-xs px-2.5 py-0.5 rounded-full font-medium bg-red-100 text-red-600">
+                    Archived
+                </span>
+                <span class="text-xs px-2.5 py-0.5 rounded-full font-medium {{ ['admin'=>'bg-red-100 text-red-600','manager'=>'bg-indigo-100 text-indigo-600'][$former->role] ?? 'bg-emerald-100 text-emerald-700' }}">
+                    {{ ucfirst($former->role) }}
+                </span>
+            </div>
+        </div>
+
+        {{-- Task Stats --}}
+        <div class="space-y-2">
+            <div class="flex justify-between text-xs text-gray-500 mb-1">
+                <span>Task Progress</span>
+                <span class="font-semibold text-gray-700">{{ $fProgress }}%</span>
+            </div>
+            <div class="w-full bg-gray-100 rounded-full h-1.5">
+                <div class="h-1.5 rounded-full bg-indigo-500 transition-all" style="width: {{ $fProgress }}%"></div>
+            </div>
+            <div class="flex justify-between text-xs text-gray-500 pt-1">
+                <span><span class="font-semibold text-gray-700">{{ $fDone }}</span> done</span>
+                <span><span class="font-semibold text-gray-700">{{ $fPending }}</span> pending</span>
+            </div>
+        </div>
+
+        {{-- Actions --}}
+        <div class="flex gap-2 mt-4" onclick="event.stopPropagation()">
+            {{-- Restore --}}
+            <form method="POST" action="{{ route('admin.users.restore', $former) }}" class="flex-1">
+                @csrf
+                <button type="submit"
+                        class="w-full text-center text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 py-1.5 rounded-lg transition font-medium">
+                    <i class="fa fa-rotate-left text-xs mr-1"></i> Restore
+                </button>
+            </form>
+            {{-- Transfer Tasks --}}
+            <button type="button"
+                    onclick="openTransferModal({{ $former->id }}, '{{ addslashes($former->name) }}')"
+                    class="flex-1 text-center text-xs bg-gray-100 hover:bg-indigo-100 text-gray-600 hover:text-indigo-600 py-1.5 rounded-lg transition font-medium">
+                <i class="fa fa-right-left text-xs mr-1"></i> Transfer
+            </button>
+        </div>
+    </div>
+    @endforeach
+</div>
+@endif
+
+@endif {{-- former --}}
+
+
 
 {{-- ══════════════════════════════════════════════════════
      EDIT USER MODAL
@@ -1153,10 +1141,19 @@ function rolesTab() {
                 {{-- Basic Info grid --}}
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
 
-                    <div style="grid-column:span 2;">
+                    <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Full Name <span style="color:#EF4444;">*</span></label>
                         <input type="text" name="name" x-model="name" required maxlength="255"
                                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;">
+                    </div>
+
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Username</label>
+                        <div style="position:relative;">
+                            <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;color:#9CA3AF;font-weight:500;">@</span>
+                            <input type="text" name="username" x-model="username" placeholder="john_doe" maxlength="60"
+                                   style="width:100%;padding:9px 12px 9px 26px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;">
+                        </div>
                     </div>
 
                     <div>
@@ -1184,6 +1181,89 @@ function rolesTab() {
                             @foreach($allRoles as $r)
                             <option value="{{ $r->name }}">{{ $r->label }}</option>
                             @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Nationality</label>
+                        <select name="nationality" x-model="nationality"
+                                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;cursor:pointer;">
+                            <option value="">— Select country —</option>
+                            <option value="Afghan">🇦🇫 Afghan</option>
+                            <option value="Albanian">🇦🇱 Albanian</option>
+                            <option value="Algerian">🇩🇿 Algerian</option>
+                            <option value="American">🇺🇸 American</option>
+                            <option value="Argentinian">🇦🇷 Argentinian</option>
+                            <option value="Australian">🇦🇺 Australian</option>
+                            <option value="Austrian">🇦🇹 Austrian</option>
+                            <option value="Bahraini">🇧🇭 Bahraini</option>
+                            <option value="Bangladeshi">🇧🇩 Bangladeshi</option>
+                            <option value="Belgian">🇧🇪 Belgian</option>
+                            <option value="Brazilian">🇧🇷 Brazilian</option>
+                            <option value="British">🇬🇧 British</option>
+                            <option value="Bulgarian">🇧🇬 Bulgarian</option>
+                            <option value="Cambodian">🇰🇭 Cambodian</option>
+                            <option value="Canadian">🇨🇦 Canadian</option>
+                            <option value="Chilean">🇨🇱 Chilean</option>
+                            <option value="Chinese">🇨🇳 Chinese</option>
+                            <option value="Colombian">🇨🇴 Colombian</option>
+                            <option value="Croatian">🇭🇷 Croatian</option>
+                            <option value="Czech">🇨🇿 Czech</option>
+                            <option value="Danish">🇩🇰 Danish</option>
+                            <option value="Dutch">🇳🇱 Dutch</option>
+                            <option value="Egyptian">🇪🇬 Egyptian</option>
+                            <option value="Emirati">🇦🇪 Emirati</option>
+                            <option value="Estonian">🇪🇪 Estonian</option>
+                            <option value="Ethiopian">🇪🇹 Ethiopian</option>
+                            <option value="Filipino">🇵🇭 Filipino</option>
+                            <option value="Finnish">🇫🇮 Finnish</option>
+                            <option value="French">🇫🇷 French</option>
+                            <option value="German">🇩🇪 German</option>
+                            <option value="Ghanaian">🇬🇭 Ghanaian</option>
+                            <option value="Greek">🇬🇷 Greek</option>
+                            <option value="Hungarian">🇭🇺 Hungarian</option>
+                            <option value="Indian">🇮🇳 Indian</option>
+                            <option value="Indonesian">🇮🇩 Indonesian</option>
+                            <option value="Iranian">🇮🇷 Iranian</option>
+                            <option value="Iraqi">🇮🇶 Iraqi</option>
+                            <option value="Irish">🇮🇪 Irish</option>
+                            <option value="Israeli">🇮🇱 Israeli</option>
+                            <option value="Italian">🇮🇹 Italian</option>
+                            <option value="Jordanian">🇯🇴 Jordanian</option>
+                            <option value="Japanese">🇯🇵 Japanese</option>
+                            <option value="Kenyan">🇰🇪 Kenyan</option>
+                            <option value="Korean">🇰🇷 Korean</option>
+                            <option value="Kuwaiti">🇰🇼 Kuwaiti</option>
+                            <option value="Lebanese">🇱🇧 Lebanese</option>
+                            <option value="Libyan">🇱🇾 Libyan</option>
+                            <option value="Malaysian">🇲🇾 Malaysian</option>
+                            <option value="Mexican">🇲🇽 Mexican</option>
+                            <option value="Moroccan">🇲🇦 Moroccan</option>
+                            <option value="Nigerian">🇳🇬 Nigerian</option>
+                            <option value="Norwegian">🇳🇴 Norwegian</option>
+                            <option value="Omani">🇴🇲 Omani</option>
+                            <option value="Pakistani">🇵🇰 Pakistani</option>
+                            <option value="Palestinian">🇵🇸 Palestinian</option>
+                            <option value="Polish">🇵🇱 Polish</option>
+                            <option value="Portuguese">🇵🇹 Portuguese</option>
+                            <option value="Qatari">🇶🇦 Qatari</option>
+                            <option value="Romanian">🇷🇴 Romanian</option>
+                            <option value="Russian">🇷🇺 Russian</option>
+                            <option value="Saudi">🇸🇦 Saudi</option>
+                            <option value="Serbian">🇷🇸 Serbian</option>
+                            <option value="Singaporean">🇸🇬 Singaporean</option>
+                            <option value="South African">🇿🇦 South African</option>
+                            <option value="Spanish">🇪🇸 Spanish</option>
+                            <option value="Sri Lankan">🇱🇰 Sri Lankan</option>
+                            <option value="Sudanese">🇸🇩 Sudanese</option>
+                            <option value="Swedish">🇸🇪 Swedish</option>
+                            <option value="Swiss">🇨🇭 Swiss</option>
+                            <option value="Syrian">🇸🇾 Syrian</option>
+                            <option value="Thai">🇹🇭 Thai</option>
+                            <option value="Tunisian">🇹🇳 Tunisian</option>
+                            <option value="Turkish">🇹🇷 Turkish</option>
+                            <option value="Ukrainian">🇺🇦 Ukrainian</option>
+                            <option value="Yemeni">🇾🇪 Yemeni</option>
                         </select>
                     </div>
 
@@ -1251,9 +1331,11 @@ function editUserModal() {
         saving:       false,
         userId:       null,
         name:         '',
+        username:     '',
         email:        '',
         phone:        '',
         jobTitle:     '',
+        nationality:  '',
         role:         '',
         status:       '',
         avatarPreview: null,
@@ -1261,9 +1343,11 @@ function editUserModal() {
         open(u) {
             this.userId        = u.id;
             this.name          = u.name;
+            this.username      = u.username || '';
             this.email         = u.email;
             this.phone         = u.phone || '';
             this.jobTitle      = u.job_title || '';
+            this.nationality   = u.nationality || '';
             this.role          = u.role;
             this.status        = u.status;
             this.avatarPreview = u.avatar || null;
@@ -1353,10 +1437,18 @@ function editUserModal() {
 
                 {{-- Basic Info --}}
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-                    <div style="grid-column:span 2;">
+                    <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Full Name <span style="color:#EF4444;">*</span></label>
                         <input type="text" name="name" required placeholder="John Doe" maxlength="255"
                                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Username</label>
+                        <div style="position:relative;">
+                            <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;color:#9CA3AF;font-weight:500;">@</span>
+                            <input type="text" name="username" placeholder="john_doe" maxlength="60"
+                                   style="width:100%;padding:9px 12px 9px 26px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;">
+                        </div>
                     </div>
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Email Address <span style="color:#EF4444;">*</span></label>
@@ -1389,6 +1481,88 @@ function editUserModal() {
                                 style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;cursor:pointer;">
                             <option value="active">Active</option>
                             <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Nationality</label>
+                        <select name="nationality" x-model="nationality"
+                                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;cursor:pointer;">
+                            <option value="">— Select country —</option>
+                            <option value="Afghan">🇦🇫 Afghan</option>
+                            <option value="Albanian">🇦🇱 Albanian</option>
+                            <option value="Algerian">🇩🇿 Algerian</option>
+                            <option value="American">🇺🇸 American</option>
+                            <option value="Argentinian">🇦🇷 Argentinian</option>
+                            <option value="Australian">🇦🇺 Australian</option>
+                            <option value="Austrian">🇦🇹 Austrian</option>
+                            <option value="Bahraini">🇧🇭 Bahraini</option>
+                            <option value="Bangladeshi">🇧🇩 Bangladeshi</option>
+                            <option value="Belgian">🇧🇪 Belgian</option>
+                            <option value="Brazilian">🇧🇷 Brazilian</option>
+                            <option value="British">🇬🇧 British</option>
+                            <option value="Bulgarian">🇧🇬 Bulgarian</option>
+                            <option value="Cambodian">🇰🇭 Cambodian</option>
+                            <option value="Canadian">🇨🇦 Canadian</option>
+                            <option value="Chilean">🇨🇱 Chilean</option>
+                            <option value="Chinese">🇨🇳 Chinese</option>
+                            <option value="Colombian">🇨🇴 Colombian</option>
+                            <option value="Croatian">🇭🇷 Croatian</option>
+                            <option value="Czech">🇨🇿 Czech</option>
+                            <option value="Danish">🇩🇰 Danish</option>
+                            <option value="Dutch">🇳🇱 Dutch</option>
+                            <option value="Egyptian">🇪🇬 Egyptian</option>
+                            <option value="Emirati">🇦🇪 Emirati</option>
+                            <option value="Estonian">🇪🇪 Estonian</option>
+                            <option value="Ethiopian">🇪🇹 Ethiopian</option>
+                            <option value="Filipino">🇵🇭 Filipino</option>
+                            <option value="Finnish">🇫🇮 Finnish</option>
+                            <option value="French">🇫🇷 French</option>
+                            <option value="German">🇩🇪 German</option>
+                            <option value="Ghanaian">🇬🇭 Ghanaian</option>
+                            <option value="Greek">🇬🇷 Greek</option>
+                            <option value="Hungarian">🇭🇺 Hungarian</option>
+                            <option value="Indian">🇮🇳 Indian</option>
+                            <option value="Indonesian">🇮🇩 Indonesian</option>
+                            <option value="Iranian">🇮🇷 Iranian</option>
+                            <option value="Iraqi">🇮🇶 Iraqi</option>
+                            <option value="Irish">🇮🇪 Irish</option>
+                            <option value="Israeli">🇮🇱 Israeli</option>
+                            <option value="Italian">🇮🇹 Italian</option>
+                            <option value="Jordanian">🇯🇴 Jordanian</option>
+                            <option value="Japanese">🇯🇵 Japanese</option>
+                            <option value="Kenyan">🇰🇪 Kenyan</option>
+                            <option value="Korean">🇰🇷 Korean</option>
+                            <option value="Kuwaiti">🇰🇼 Kuwaiti</option>
+                            <option value="Lebanese">🇱🇧 Lebanese</option>
+                            <option value="Libyan">🇱🇾 Libyan</option>
+                            <option value="Malaysian">🇲🇾 Malaysian</option>
+                            <option value="Mexican">🇲🇽 Mexican</option>
+                            <option value="Moroccan">🇲🇦 Moroccan</option>
+                            <option value="Nigerian">🇳🇬 Nigerian</option>
+                            <option value="Norwegian">🇳🇴 Norwegian</option>
+                            <option value="Omani">🇴🇲 Omani</option>
+                            <option value="Pakistani">🇵🇰 Pakistani</option>
+                            <option value="Palestinian">🇵🇸 Palestinian</option>
+                            <option value="Polish">🇵🇱 Polish</option>
+                            <option value="Portuguese">🇵🇹 Portuguese</option>
+                            <option value="Qatari">🇶🇦 Qatari</option>
+                            <option value="Romanian">🇷🇴 Romanian</option>
+                            <option value="Russian">🇷🇺 Russian</option>
+                            <option value="Saudi">🇸🇦 Saudi</option>
+                            <option value="Serbian">🇷🇸 Serbian</option>
+                            <option value="Singaporean">🇸🇬 Singaporean</option>
+                            <option value="South African">🇿🇦 South African</option>
+                            <option value="Spanish">🇪🇸 Spanish</option>
+                            <option value="Sri Lankan">🇱🇰 Sri Lankan</option>
+                            <option value="Sudanese">🇸🇩 Sudanese</option>
+                            <option value="Swedish">🇸🇪 Swedish</option>
+                            <option value="Swiss">🇨🇭 Swiss</option>
+                            <option value="Syrian">🇸🇾 Syrian</option>
+                            <option value="Thai">🇹🇭 Thai</option>
+                            <option value="Tunisian">🇹🇳 Tunisian</option>
+                            <option value="Turkish">🇹🇷 Turkish</option>
+                            <option value="Ukrainian">🇺🇦 Ukrainian</option>
+                            <option value="Yemeni">🇾🇪 Yemeni</option>
                         </select>
                     </div>
                 </div>
@@ -1498,6 +1672,7 @@ function addUserModal() {
         allOn:        false,
         perms:        [...defaultPerms],
         avatarPreview: null,
+        nationality:   '',
 
         open() {
             this.show          = true;
@@ -1506,6 +1681,7 @@ function addUserModal() {
             this.allOn         = false;
             this.perms         = [...defaultPerms];
             this.avatarPreview = null;
+            this.nationality   = '';
             document.body.style.overflow = 'hidden';
         },
 
@@ -1520,6 +1696,115 @@ function addUserModal() {
             else this.perms.push(key);
         },
     };
+}
+
+function openDeleteConfirm(action, name) {
+    document.getElementById('dc-username').textContent = name;
+    document.getElementById('dc-input').value = '';
+    document.getElementById('dc-confirm-btn').disabled = true;
+    document.getElementById('dc-form').action = action;
+    document.getElementById('delete-confirm-modal').style.display = 'flex';
+    setTimeout(() => document.getElementById('dc-input').focus(), 80);
+}
+function closeDeleteConfirm() {
+    document.getElementById('delete-confirm-modal').style.display = 'none';
+}
+</script>
+
+{{-- Delete confirmation modal --}}
+<div id="delete-confirm-modal"
+     style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;"
+     onclick="if(event.target===this)closeDeleteConfirm()">
+    <div style="background:#fff;border-radius:16px;padding:28px 28px 24px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+            <div style="width:42px;height:42px;border-radius:12px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fa fa-user-slash" style="color:#D97706;font-size:18px;"></i>
+            </div>
+            <div>
+                <p style="font-size:15px;font-weight:700;color:#111827;margin:0;">Move to Former Employees</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:0;">The employee can be restored later if needed</p>
+            </div>
+        </div>
+        <p style="font-size:13px;color:#374151;margin:0 0 6px;">
+            To confirm, type the name <strong id="dc-username" style="color:#D97706;"></strong> below:
+        </p>
+        <input id="dc-input" type="text" placeholder="Enter username to confirm"
+               oninput="const btn=document.getElementById('dc-confirm-btn');btn.disabled=this.value!==document.getElementById('dc-username').textContent;btn.style.opacity=btn.disabled?'0.4':'1';"
+               style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;outline:none;box-sizing:border-box;margin-bottom:18px;"
+               onfocus="this.style.borderColor='#D97706'" onblur="this.style.borderColor='#E5E7EB'">
+        <form id="dc-form" method="POST">
+            @csrf
+            @method('DELETE')
+            <div style="display:flex;gap:10px;">
+                <button type="button" onclick="closeDeleteConfirm()"
+                        style="flex:1;padding:10px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
+                    Cancel
+                </button>
+                <button id="dc-confirm-btn" type="submit" disabled
+                        style="flex:1;padding:10px;background:#D97706;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;opacity:0.4;transition:opacity 0.15s;"
+                        onmouseenter="if(!this.disabled)this.style.opacity='0.85'" onmouseleave="if(!this.disabled)this.style.opacity='1'">
+                    <i class="fa fa-user-slash" style="margin-right:5px;"></i> Archive Employee
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- Transfer Tasks Modal --}}
+<div id="transfer-modal"
+     style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;"
+     onclick="if(event.target===this)closeTransferModal()">
+    <div style="background:#fff;border-radius:16px;padding:28px 28px 24px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+            <div style="width:42px;height:42px;border-radius:12px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fa fa-right-left" style="color:#6366F1;font-size:16px;"></i>
+            </div>
+            <div>
+                <p style="font-size:15px;font-weight:700;color:#111827;margin:0;">Transfer Tasks</p>
+                <p id="transfer-subtitle" style="font-size:12px;color:#9CA3AF;margin:0;">Move all pending tasks to another member</p>
+            </div>
+            <button type="button" onclick="closeTransferModal()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:18px;line-height:1;">×</button>
+        </div>
+
+        <form id="transfer-form" method="POST">
+            @csrf
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Transfer all pending tasks to:</label>
+                <select name="to_user_id" required
+                        style="width:100%;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;background:#F9FAFB;outline:none;box-sizing:border-box;cursor:pointer;">
+                    <option value="">— Select a team member —</option>
+                    @foreach(\App\Models\User::where('status','active')->orderBy('name')->get() as $tm)
+                    <option value="{{ $tm->id }}">{{ $tm->name }} ({{ ucfirst($tm->role) }})</option>
+                    @endforeach
+                </select>
+            </div>
+            <div style="margin-bottom:18px;">
+                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Reason <span style="font-weight:400;color:#9CA3AF;">(optional)</span></label>
+                <textarea name="reason" rows="2" placeholder="e.g. Employee on hold pending review…"
+                          style="width:100%;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;background:#F9FAFB;outline:none;resize:none;box-sizing:border-box;"></textarea>
+            </div>
+            <div style="display:flex;gap:10px;">
+                <button type="button" onclick="closeTransferModal()"
+                        style="flex:1;padding:10px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
+                    Cancel
+                </button>
+                <button type="submit"
+                        style="flex:1;padding:10px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
+                    <i class="fa fa-right-left" style="margin-right:6px;"></i>Transfer Tasks
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openTransferModal(userId, userName) {
+    document.getElementById('transfer-subtitle').textContent = 'Move all pending tasks from ' + userName;
+    document.getElementById('transfer-form').action = '/admin/users/' + userId + '/transfer-tasks';
+    document.getElementById('transfer-modal').style.display = 'flex';
+}
+function closeTransferModal() {
+    document.getElementById('transfer-modal').style.display = 'none';
 }
 </script>
 @endsection

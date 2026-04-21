@@ -13,14 +13,29 @@ use Illuminate\Http\Request;
 
 class ProjectController extends Controller
 {
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
-        $projects = Project::withCount('tasks')
+        $query = Project::withCount('tasks')
+            ->withCount(['tasks as completed_tasks_count' => fn($q) => $q->whereIn('status', ['completed', 'delivered', 'approved'])])
+            ->with(['members' => fn($q) => $q->select('users.id','users.name','users.avatar')->limit(5)]);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $projects = $query
             ->orderByRaw("CASE WHEN status = 'completed' THEN 1 ELSE 0 END")
             ->orderBy('deadline', 'asc')
-            ->paginate(15);
+            ->paginate(15)
+            ->withQueryString();
         $users = User::whereIn('role', ['user', 'manager'])->orderBy('name')->get();
-        return view('admin.projects.index', compact('projects', 'users'));
+        $stats = [
+            'total'     => Project::count(),
+            'active'    => Project::where('status', 'active')->count(),
+            'completed' => Project::where('status', 'completed')->count(),
+            'overdue'   => Project::where('status', 'overdue')->count(),
+        ];
+        return view('admin.projects.index', compact('projects', 'users', 'stats'));
     }
 
     public function create()
@@ -171,7 +186,7 @@ class ProjectController extends Controller
     public function show(Project $project)
     {
         $project->load('tasks.assignee', 'members');
-        $pendingApprovalCount = $project->tasks()->where('status', 'pending_approval')->count();
+        $pendingApprovalCount = $project->tasks()->where('status', 'submitted')->count();
         return view('admin.projects.show', compact('project', 'pendingApprovalCount'));
     }
 

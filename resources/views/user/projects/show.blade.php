@@ -19,7 +19,7 @@
 
 {{-- Stats --}}
 <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px;">
-@foreach([['Total','fa-list-check','#EEF2FF','#4F46E5',$stats['total']],['Completed','fa-circle-check','#F0FDF4','#16A34A',$stats['completed']],['In Progress','fa-spinner','#FFFBEB','#D97706',$stats['in_progress']],['In Review','fa-hourglass-half','#F5F3FF','#7C3AED',$stats['pending_approval']],['Pending','fa-clock','#F8FAFC','#64748B',$stats['pending']]] as [$lbl,$ico,$bg,$ic,$val])
+@foreach([['Total','fa-list-check','#EEF2FF','#4F46E5',$stats['total']],['Completed','fa-circle-check','#F0FDF4','#16A34A',$stats['completed']],['In Progress','fa-spinner','#FFFBEB','#D97706',$stats['in_progress']],['In Review','fa-hourglass-half','#F5F3FF','#7C3AED',$stats['submitted']],['Pending','fa-clock','#F8FAFC','#64748B',$stats['pending']]] as [$lbl,$ico,$bg,$ic,$val])
 <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <span style="font-size:10px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">{{ $lbl }}</span>
@@ -52,10 +52,10 @@
             <h3 style="font-size:14px;font-weight:700;color:#111827;margin:0;">All Tasks</h3>
             <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">{{ $project->tasks->count() }} total</p>
         </div>
-        @forelse($project->tasks->sortBy(fn($t)=>match($t->status){'pending_approval'=>0,'in_progress'=>1,'pending'=>2,'completed'=>3,default=>4}) as $task)
+        @forelse($project->tasks->sortBy(fn($t)=>match($t->status){'submitted'=>0,'in_progress'=>1,'pending'=>2,'completed'=>3,default=>4}) as $task)
         @php
             $isMe = $task->assigned_to === auth()->id();
-            $sMap=['completed'=>['#F0FDF4','#16A34A','Completed'],'in_progress'=>['#FFFBEB','#D97706','In Progress'],'pending'=>['#F8FAFC','#64748B','Pending'],'pending_approval'=>['#EDE9FE','#7C3AED','In Review']];
+            $sMap=['completed'=>['#F0FDF4','#16A34A','Completed'],'in_progress'=>['#FFFBEB','#D97706','In Progress'],'pending'=>['#F8FAFC','#64748B','Pending'],'submitted'=>['#EDE9FE','#7C3AED','In Review']];
             [$sbg,$sco,$slbl] = $sMap[$task->status] ?? ['#F8FAFC','#9CA3AF','Unknown'];
             $pco = ['high'=>'#DC2626','medium'=>'#D97706','low'=>'#16A34A'][$task->priority] ?? '#9CA3AF';
         @endphp

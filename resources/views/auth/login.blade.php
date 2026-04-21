@@ -17,8 +17,8 @@
                 <div style="width:34px;height:34px;background:#4F46E5;border-radius:10px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(79,70,229,0.35);">
                     <i class="fa fa-bolt" style="color:#fff;font-size:14px;"></i>
                 </div>
-                <span style="font-size:15px;font-weight:700;color:#111827;">{{ $appSettings['app_name'] ?? config('app.name','Dash') }}</span>
             @endif
+            <span style="font-size:15px;font-weight:700;color:#111827;">{{ $appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name','Dash') }}</span>
         </div>
 
         {{-- Heading --}}
@@ -38,11 +38,11 @@
 
             {{-- Email --}}
             <div style="margin-bottom:16px;">
-                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Email</label>
+                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Email or Username</label>
                 <div style="position:relative;">
-                    <i class="fa fa-envelope" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;"></i>
-                    <input type="email" name="email" value="{{ old('email') }}" required
-                           placeholder="eg. pixelcor@gmail.com"
+                    <i class="fa fa-user" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;"></i>
+                    <input type="text" name="email" value="{{ old('email') }}" required
+                           placeholder="Email or username"
                            style="width:100%;padding:10px 12px 10px 36px;border:1.5px solid {{ $errors->has('email') ? '#FCA5A5' : '#E5E7EB' }};border-radius:10px;font-size:13px;font-family:'Inter',sans-serif;background:{{ $errors->has('email') ? '#FEF2F2' : '#F9FAFB' }};color:#111827;outline:none;box-sizing:border-box;"
                            onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.1)'"
                            onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow='none'">

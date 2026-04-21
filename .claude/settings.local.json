@@ -15,7 +15,10 @@
       "Bash(php -l app/Notifications/TaskCommentPosted.php)",
       "Bash(php -l app/Notifications/TaskDelivered.php)",
       "Bash(php -l resources/views/admin/projects/create.blade.php)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(grep -n 'former --\\\\|FORMER EMPLOYEES\\\\|@if\\($view === '\\\\''former'\\\\''\\)\\\\|@endif {{-- former' c:/Users/it/Desktop/task-managment-system/resources/views/team/index.blade.php)",
+      "Bash(python3 -c ' *)",
+      "Bash(node -e ' *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory"

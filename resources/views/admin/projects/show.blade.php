@@ -6,7 +6,7 @@
     $statusMap = [
         'pending'          => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Pending'],
         'in_progress'      => ['bg'=>'#FEF3C7','color'=>'#D97706','label'=>'In Progress'],
-        'pending_approval' => ['bg'=>'#EDE9FE','color'=>'#7C3AED','label'=>'In Review'],
+        'submitted'        => ['bg'=>'#EDE9FE','color'=>'#7C3AED','label'=>'In Review'],
         'completed'        => ['bg'=>'#D1FAE5','color'=>'#059669','label'=>'Completed'],
         'delivered'        => ['bg'=>'#ECFDF5','color'=>'#047857','label'=>'Delivered'],
     ];
@@ -62,7 +62,7 @@
 @php
     $total    = $project->tasks->count();
     $done     = $project->tasks->whereIn('status', ['completed','delivered'])->count();
-    $inReview = $project->tasks->where('status','pending_approval')->count();
+    $inReview = $project->tasks->where('status','submitted')->count();
     $active   = $project->tasks->whereIn('status', ['pending','in_progress'])->count();
 @endphp
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;">
@@ -89,7 +89,7 @@
     @php
         $s = $statusMap[$task->status] ?? $statusMap['pending'];
         [$pbg,$pco] = $priorityMap[$task->priority] ?? ['#F3F4F6','#6B7280'];
-        $isOverdue = $task->deadline->isPast() && !in_array($task->status, ['completed','delivered','pending_approval']);
+        $isOverdue = $task->deadline->isPast() && !in_array($task->status, ['completed','delivered','submitted']);
     @endphp
     <div x-data="{ reassignOpen: false }" style="border-bottom:1px solid #F9FAFB;padding:16px 20px;">
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">

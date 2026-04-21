@@ -4,18 +4,112 @@
 
 @section('content')
 
+@php
+    $currentAction    = request('action', '');
+    $currentDateRange = request('date_range', '');
+    $currentSort      = request('sort', 'newest');
+    $hasFilters       = $currentAction || $currentDateRange || $currentSort !== 'newest';
+
+    $dateRangeLabels = ['today'=>'Today','yesterday'=>'Yesterday','week'=>'This Week','month'=>'This Month'];
+    $sortLabels      = ['newest'=>'Newest first','oldest'=>'Oldest first'];
+
+    function actUrl($params) {
+        $base = array_merge(request()->only(['user_id','action','date_range','sort']), $params);
+        $base = array_filter($base, fn($v) => $v !== '' && $v !== null);
+        return route('activities.index', $base);
+    }
+@endphp
+
 <div class="flex items-center justify-between mb-6">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Activities</h1>
         <p class="text-sm text-gray-500 mt-0.5">Latest activity feed across all teams</p>
     </div>
     <div class="flex items-center gap-2">
-        <button class="flex items-center gap-2 text-sm border border-gray-200 bg-white rounded-lg px-3 py-2 hover:border-indigo-300 transition">
-            <i class="fa fa-filter text-gray-400"></i> Filters
-        </button>
-        <button class="flex items-center gap-2 text-sm border border-gray-200 bg-white rounded-lg px-3 py-2 hover:border-indigo-300 transition">
-            <i class="fa fa-sort text-gray-400"></i> Most important first
-        </button>
+
+        {{-- ── Filters dropdown ── --}}
+        <div x-data="{ open: false }" style="position:relative;">
+            <button @click="open = !open" @click.outside="open = false"
+                    style="display:inline-flex;align-items:center;gap:7px;padding:7px 14px;font-size:13px;font-weight:500;border-radius:9px;border:1.5px solid {{ $hasFilters ? '#6366F1' : '#E5E7EB' }};background:{{ $hasFilters ? '#EEF2FF' : '#fff' }};color:{{ $hasFilters ? '#4F46E5' : '#374151' }};cursor:pointer;transition:all .15s;white-space:nowrap;">
+                <i class="fa fa-filter" style="font-size:12px;color:{{ $hasFilters ? '#6366F1' : '#9CA3AF' }};"></i>
+                Filters
+                @if($hasFilters)<span style="width:7px;height:7px;border-radius:50%;background:#6366F1;display:inline-block;margin-left:1px;"></span>@endif
+                <i class="fa fa-chevron-down" style="font-size:10px;opacity:.5;" :style="open ? 'transform:rotate(180deg)' : ''"></i>
+            </button>
+
+            <div x-show="open" x-cloak @click.outside="open = false"
+                 style="position:absolute;right:0;top:calc(100% + 6px);z-index:200;width:270px;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,0.12);overflow:hidden;">
+
+                {{-- Action type --}}
+                <div style="padding:14px 16px 10px;border-bottom:1px solid #F3F4F6;">
+                    <p style="font-size:10.5px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.07em;margin:0 0 10px;">Action Type</p>
+                    <div style="display:flex;flex-direction:column;gap:3px;">
+                        <a href="{{ actUrl(['action' => '']) }}"
+                           style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;font-size:12.5px;font-weight:500;text-decoration:none;transition:background .12s;{{ $currentAction === '' ? 'background:#EEF2FF;color:#4F46E5;' : 'color:#374151;' }}"
+                           onmouseover="if(this.style.color!=='rgb(79, 70, 229)')this.style.background='#F9FAFB'" onmouseout="if(this.style.color!=='rgb(79, 70, 229)')this.style.background='transparent'">
+                            <i class="fas fa-layer-group" style="width:14px;font-size:11px;color:#9CA3AF;"></i> All actions
+                        </a>
+                        @foreach($actionTypes as $action)
+                        @php
+                            $label = ucwords(str_replace(['_',' updated '], [' ', ' → '], $action));
+                        @endphp
+                        <a href="{{ actUrl(['action' => $action]) }}"
+                           style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;font-size:12.5px;font-weight:500;text-decoration:none;transition:background .12s;{{ $currentAction === $action ? 'background:#EEF2FF;color:#4F46E5;' : 'color:#374151;' }}"
+                           onmouseover="if(this.style.color!=='rgb(79, 70, 229)')this.style.background='#F9FAFB'" onmouseout="if(this.style.color!=='rgb(79, 70, 229)')this.style.background='transparent'">
+                            <i class="fas fa-circle" style="width:14px;font-size:7px;color:#9CA3AF;"></i> {{ $label }}
+                        </a>
+                        @endforeach
+                    </div>
+                </div>
+
+                {{-- Date range --}}
+                <div style="padding:12px 16px 14px;">
+                    <p style="font-size:10.5px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.07em;margin:0 0 10px;">Date Range</p>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                        @foreach([''=>'All time','today'=>'Today','yesterday'=>'Yesterday','week'=>'This Week','month'=>'This Month'] as $val => $lbl)
+                        <a href="{{ actUrl(['date_range' => $val]) }}"
+                           style="text-align:center;padding:6px 8px;border-radius:7px;font-size:12px;font-weight:500;text-decoration:none;border:1.5px solid {{ $currentDateRange === $val ? '#6366F1' : '#E5E7EB' }};background:{{ $currentDateRange === $val ? '#EEF2FF' : '#fff' }};color:{{ $currentDateRange === $val ? '#4F46E5' : '#374151' }};transition:all .12s;"
+                           onmouseover="if(this.style.borderColor!=='rgb(99, 102, 241)')this.style.background='#F9FAFB'" onmouseout="if(this.style.borderColor!=='rgb(99, 102, 241)')this.style.background='#fff'">
+                            {{ $lbl }}
+                        </a>
+                        @endforeach
+                    </div>
+                </div>
+
+                @if($hasFilters)
+                <div style="padding:10px 16px;border-top:1px solid #F3F4F6;background:#FAFAFA;">
+                    <a href="{{ route('activities.index', array_filter(['user_id' => request('user_id')])) }}"
+                       style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:600;color:#EF4444;text-decoration:none;">
+                        <i class="fas fa-times-circle" style="font-size:11px;"></i> Clear all filters
+                    </a>
+                </div>
+                @endif
+            </div>
+        </div>
+
+        {{-- ── Sort dropdown ── --}}
+        <div x-data="{ open: false }" style="position:relative;">
+            <button @click="open = !open" @click.outside="open = false"
+                    style="display:inline-flex;align-items:center;gap:7px;padding:7px 14px;font-size:13px;font-weight:500;border-radius:9px;border:1.5px solid #E5E7EB;background:#fff;color:#374151;cursor:pointer;transition:all .15s;white-space:nowrap;">
+                <i class="fa fa-sort" style="font-size:12px;color:#9CA3AF;"></i>
+                {{ $sortLabels[$currentSort] ?? 'Newest first' }}
+                <i class="fa fa-chevron-down" style="font-size:10px;opacity:.5;" :style="open ? 'transform:rotate(180deg)' : ''"></i>
+            </button>
+
+            <div x-show="open" x-cloak @click.outside="open = false"
+                 style="position:absolute;right:0;top:calc(100% + 6px);z-index:200;width:190px;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,0.12);overflow:hidden;padding:6px;">
+                @foreach(['newest'=>['Newest first','fa-arrow-down-wide-short'],'oldest'=>['Oldest first','fa-arrow-up-wide-short']] as $val => [$lbl,$icon])
+                <a href="{{ actUrl(['sort' => $val]) }}"
+                   style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;font-size:13px;font-weight:500;text-decoration:none;transition:background .12s;{{ $currentSort === $val ? 'background:#EEF2FF;color:#4F46E5;' : 'color:#374151;' }}"
+                   onmouseover="if(this.style.color!=='rgb(79, 70, 229)')this.style.background='#F9FAFB'" onmouseout="if(this.style.color!=='rgb(79, 70, 229)')this.style.background='transparent'">
+                    <i class="fas {{ $icon }}" style="font-size:12px;{{ $currentSort === $val ? 'color:#6366F1;' : 'color:#9CA3AF;' }}"></i>
+                    {{ $lbl }}
+                    @if($currentSort === $val)<i class="fas fa-check" style="font-size:10px;color:#6366F1;margin-left:auto;"></i>@endif
+                </a>
+                @endforeach
+            </div>
+        </div>
+
         <button class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition">
             <i class="fa fa-rocket"></i> Release
         </button>

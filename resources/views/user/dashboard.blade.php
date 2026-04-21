@@ -1,12 +1,26 @@
 @extends('layouts.app')
-@section('title', 'My Dashboard')
+@section('title', isset($previewUser) ? $previewUser->name . ' — Dashboard Preview' : 'My Dashboard')
 
 @section('content')
 @php
-    $user     = auth()->user();
-    $hour     = now()->hour;
-    $greeting = $hour < 12 ? 'Good morning' : ($hour < 17 ? 'Good afternoon' : 'Good evening');
+    $user      = $previewUser ?? auth()->user();
+    $isPreview = isset($previewUser);
+    $hour      = now()->hour;
+    $greeting  = $hour < 12 ? 'Good morning' : ($hour < 17 ? 'Good afternoon' : 'Good evening');
 @endphp
+
+@isset($previewUser)
+<div style="background:#FEF3C7;border:1.5px solid #FCD34D;border-radius:12px;padding:10px 18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+    <div style="display:flex;align-items:center;gap:10px;">
+        <i class="fa fa-eye" style="color:#D97706;font-size:14px;"></i>
+        <span style="font-size:13px;font-weight:600;color:#92400E;">Previewing dashboard as <strong>{{ $previewUser->name }}</strong></span>
+    </div>
+    <a href="{{ url()->previous() }}"
+       style="font-size:12px;font-weight:600;color:#D97706;background:rgba(217,119,6,0.1);padding:5px 14px;border-radius:8px;text-decoration:none;">
+        <i class="fa fa-arrow-left" style="margin-right:4px;"></i> Back to Team
+    </a>
+</div>
+@endisset
 
 {{-- ═══════════════════════════════
      HEADER
@@ -30,40 +44,27 @@
             @endif
         </div>
     </div>
+    @unless($isPreview)
     <button onclick="document.getElementById('report-modal').style.display='flex'"
             style="display:flex;align-items:center;gap:8px;padding:10px 20px;background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.3);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;backdrop-filter:blur(4px);transition:background .15s;flex-shrink:0;"
             onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">
         <i class="fas fa-paper-plane" style="font-size:12px;"></i> Submit Report
     </button>
+    @endunless
 </div>
 
 {{-- ═══════════════════════════════
-     STATS  (2-row: 3 + 2)
+     STATS  (single row: 5 cards)
 ════════════════════════════════ --}}
-<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:10px;">
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:20px;">
     @foreach([
-        ['Total Tasks',  $total,      'fa-list-check',    '#EEF2FF','#4F46E5', 'Assigned to you'],
-        ['Completed',    $completed,  'fa-circle-check',  '#F0FDF4','#16A34A', $rate.'% rate'],
-        ['Overdue',      $overdue,    'fa-triangle-exclamation', $overdue>0?'#FEF2F2':'#F8FAFC', $overdue>0?'#DC2626':'#9CA3AF', $overdue>0?'Needs attention':'All on time'],
-    ] as [$label,$val,$icon,$bg,$ic,$sub])
-    <div style="background:#fff;border-radius:14px;border:1px solid {{ ($label==='Overdue'&&$overdue>0)?'#FECACA':'#F0F0F0' }};padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-            <span style="font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">{{ $label }}</span>
-            <div style="width:34px;height:34px;border-radius:10px;background:{{ $bg }};display:flex;align-items:center;justify-content:center;">
-                <i class="fas {{ $icon }}" style="font-size:14px;color:{{ $ic }};"></i>
-            </div>
-        </div>
-        <p style="font-size:30px;font-weight:800;color:#111827;margin:0 0 2px;line-height:1;">{{ $val }}</p>
-        <p style="font-size:11px;color:#9CA3AF;margin:0;">{{ $sub }}</p>
-    </div>
-    @endforeach
-</div>
-<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:20px;">
-    @foreach([
-        ['In Progress',  $inProgress,      'fa-spinner',       '#FFFBEB','#D97706','Active tasks'],
-        ['In Review',    $pendingApproval, 'fa-hourglass-half','#F5F3FF','#7C3AED','Awaiting approval'],
-    ] as [$label,$val,$icon,$bg,$ic,$sub])
-    <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+        ['Total Tasks',  $total,           'fa-list-check',              '#EEF2FF', '#4F46E5', 'Assigned to you',  'F0F0F0'],
+        ['Completed',    $completed,       'fa-circle-check',            '#F0FDF4', '#16A34A', $rate.'% rate',     'F0F0F0'],
+        ['In Progress',  $inProgress,      'fa-spinner',                 '#FFFBEB', '#D97706', 'Active tasks',     'F0F0F0'],
+        ['In Review',    $pendingApproval, 'fa-hourglass-half',          '#F5F3FF', '#7C3AED', 'Awaiting approval','F0F0F0'],
+        ['Overdue',      $overdue,         'fa-triangle-exclamation',    $overdue>0?'#FEF2F2':'#F8FAFC', $overdue>0?'#DC2626':'#9CA3AF', $overdue>0?'Needs attention':'All on time', $overdue>0?'FECACA':'F0F0F0'],
+    ] as [$label,$val,$icon,$bg,$ic,$sub,$border])
+    <div style="background:#fff;border-radius:14px;border:1px solid #{{ $border }};padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
             <span style="font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">{{ $label }}</span>
             <div style="width:34px;height:34px;border-radius:10px;background:{{ $bg }};display:flex;align-items:center;justify-content:center;">
@@ -82,19 +83,21 @@
 <div x-data="{ tab: 'my-tasks' }">
 
     {{-- Tab bar --}}
-    <div style="display:flex;gap:4px;background:#F3F4F6;border-radius:12px;padding:4px;margin-bottom:20px;width:fit-content;">
+    <div class="flex gap-1 bg-gray-100 p-1 rounded-xl mb-6" style="flex-wrap:wrap;">
         @foreach([['my-tasks','fa-square-check','My Tasks'],['team-tasks','fa-users','Team Tasks'],['my-projects','fa-diagram-project','My Projects']] as [$id,$icon,$label])
         <button @click="tab='{{ $id }}'"
-                :style="tab==='{{ $id }}' ? 'background:#fff;color:#4F46E5;box-shadow:0 1px 6px rgba(0,0,0,.1);' : 'background:transparent;color:#6B7280;'"
-                style="display:flex;align-items:center;gap:7px;padding:8px 18px;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;">
-            <i class="fas {{ $icon }}" style="font-size:11px;"></i> {{ $label }}
+                :class="tab==='{{ $id }}'
+                    ? 'bg-white text-indigo-600 shadow-sm'
+                    : 'bg-transparent text-gray-500 hover:text-gray-700'"
+                class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition border-none cursor-pointer font-sans">
+            <i class="fas {{ $icon }} text-xs"></i> {{ $label }}
         </button>
         @endforeach
     </div>
 
     {{-- ══ MY TASKS ══ --}}
     <div x-show="tab==='my-tasks'">
-        <div style="display:grid;grid-template-columns:1fr 320px;gap:18px;align-items:start;">
+        <div style="display:grid;grid-template-columns:10fr 2fr;gap:18px;align-items:start;">
 
             {{-- Left: task list + activity --}}
             <div style="display:flex;flex-direction:column;gap:18px;">
@@ -106,18 +109,20 @@
                             <h3 style="font-size:14px;font-weight:700;color:#111827;margin:0;">My Tasks</h3>
                             <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Sorted by urgency</p>
                         </div>
+                        @unless($isPreview)
                         <a href="{{ route('user.tasks.index') }}" style="font-size:11px;font-weight:600;color:#6366F1;text-decoration:none;background:#EEF2FF;padding:5px 12px;border-radius:7px;">View all</a>
+                        @endunless
                     </div>
                     @forelse($tasks->take(8) as $task)
                     @php
-                        $isOv = $task->deadline->isPast() && !in_array($task->status,['completed','pending_approval']);
-                        $dl   = now()->diffInDays($task->deadline, false);
-                        $sm   = ['completed'=>['#F0FDF4','#16A34A','Completed'],'in_progress'=>['#FFFBEB','#D97706','In Progress'],'pending'=>['#F8FAFC','#64748B','Pending'],'pending_approval'=>['#F5F3FF','#7C3AED','In Review']];
+                        $isOv = $task->deadline && $task->deadline->isPast() && !in_array($task->status,['completed','submitted']);
+                        $dl   = $task->deadline ? now()->diffInDays($task->deadline, false) : 0;
+                        $sm   = ['completed'=>['#F0FDF4','#16A34A','Completed'],'in_progress'=>['#FFFBEB','#D97706','In Progress'],'pending'=>['#F8FAFC','#64748B','Pending'],'submitted'=>['#F5F3FF','#7C3AED','In Review']];
                         [$sbg,$sco,$slbl] = $sm[$task->status] ?? ['#F8FAFC','#9CA3AF','Unknown'];
                         $pco = ['high'=>'#DC2626','medium'=>'#D97706','low'=>'#16A34A'][$task->priority] ?? '#9CA3AF';
                     @endphp
-                    <a href="{{ route('user.tasks.show',$task) }}"
-                       style="display:flex;align-items:center;gap:12px;padding:11px 20px;border-bottom:1px solid #F9FAFB;text-decoration:none;background:{{ $isOv?'#FFF8F8':($task->status==='pending_approval'?'#FAFBFF':'#fff') }};transition:background .1s;"
+                    <a href="{{ $isPreview ? route('admin.tasks.show',$task) : route('user.tasks.show',$task) }}"
+                       style="display:flex;align-items:center;gap:12px;padding:11px 20px;border-bottom:1px solid #F9FAFB;text-decoration:none;background:{{ $isOv?'#FFF8F8':($task->status==='submitted'?'#FAFBFF':'#fff') }};transition:background .1s;"
                        onmouseover="this.style.background='#F5F5FF'" onmouseout="this.style.background='{{ $isOv?'#FFF8F8':'#fff' }}'">
                         <div style="width:8px;height:8px;border-radius:50%;background:{{ $pco }};flex-shrink:0;margin-top:1px;"></div>
                         <div style="flex:1;min-width:0;">
@@ -128,7 +133,8 @@
                         <span style="font-size:11px;font-weight:{{ $isOv?'700':'500' }};color:{{ $isOv?'#DC2626':($dl<=3?'#D97706':'#9CA3AF') }};flex-shrink:0;white-space:nowrap;min-width:60px;text-align:right;">
                             @if($isOv)<i class="fas fa-triangle-exclamation" style="font-size:9px;margin-right:2px;"></i>Overdue
                             @elseif($task->status==='completed')<i class="fas fa-check" style="font-size:9px;margin-right:2px;color:#16A34A;"></i>Done
-                            @elseif($task->status==='pending_approval')<i class="fas fa-hourglass-half" style="font-size:9px;margin-right:2px;color:#7C3AED;"></i>Review
+                            @elseif($task->status==='submitted')<i class="fas fa-hourglass-half" style="font-size:9px;margin-right:2px;color:#7C3AED;"></i>Review
+                            @elseif(!$task->deadline)—
                             @elseif($dl===0)Today
                             @elseif($dl===1)Tomorrow
                             @else{{ $task->deadline->format('M d') }}
@@ -151,7 +157,7 @@
                     </div>
                     @forelse($recentActivity as $log)
                     @php
-                        $am=['status_updated_completed'=>['fa-circle-check','#16A34A','#F0FDF4','Completed'],'status_updated_in_progress'=>['fa-spinner','#D97706','#FFFBEB','Started'],'status_updated_pending'=>['fa-clock','#64748B','#F8FAFC','Set pending'],'status_updated_pending_approval'=>['fa-hourglass-half','#7C3AED','#F5F3FF','Submitted']];
+                        $am=['status_updated_completed'=>['fa-circle-check','#16A34A','#F0FDF4','Completed'],'status_updated_in_progress'=>['fa-spinner','#D97706','#FFFBEB','Started'],'status_updated_pending'=>['fa-clock','#64748B','#F8FAFC','Set pending'],'status_updated_submitted'=>['fa-hourglass-half','#7C3AED','#F5F3FF','Submitted']];
                         [$ai,$ac,$ab,$al]=$am[$log->action]??['fa-circle-dot','#6366F1','#EEF2FF',ucfirst(str_replace('_',' ',$log->action))];
                     @endphp
                     <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 20px;border-bottom:1px solid #F9FAFB;">
@@ -180,9 +186,9 @@
                 <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;">
                     <h3 style="font-size:14px;font-weight:700;color:#111827;margin:0 0 2px;">Performance</h3>
                     <p style="font-size:11px;color:#9CA3AF;margin:0 0 16px;">Task status breakdown</p>
-                    <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:14px;">
-                        <canvas id="perfChart" width="150" height="150"></canvas>
-                        <div style="position:absolute;text-align:center;pointer-events:none;">
+                    <div style="position:relative;width:160px;height:160px;margin:0 auto 14px;">
+                        <canvas id="perfChart" width="160" height="160" style="display:block;"></canvas>
+                        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
                             <p style="font-size:26px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $rate }}<span style="font-size:13px;font-weight:600;color:#9CA3AF;">%</span></p>
                             <p style="font-size:10px;color:#9CA3AF;margin:2px 0 0;">Done</p>
                         </div>
@@ -204,7 +210,9 @@
                 <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;">
                     <h3 style="font-size:14px;font-weight:700;color:#111827;margin:0 0 2px;">Weekly Activity</h3>
                     <p style="font-size:11px;color:#9CA3AF;margin:0 0 14px;">Updates in last 7 days</p>
-                    <canvas id="weekChart" height="85"></canvas>
+                    <div style="height:85px;position:relative;">
+                        <canvas id="weekChart"></canvas>
+                    </div>
                 </div>
 
                 {{-- Upcoming deadlines --}}
@@ -214,13 +222,13 @@
                     </div>
                     <div style="padding:6px 0;">
                         @forelse($upcomingTasks as $ut)
-                        @php $dl2=(int)now()->diffInDays($ut->deadline,false); $urg=$dl2<=2; @endphp
-                        <a href="{{ route('user.tasks.show',$ut) }}"
+                        @php $dl2 = $ut->deadline ? (int)now()->diffInDays($ut->deadline,false) : 0; $urg=$dl2<=2; @endphp
+                        <a href="{{ $isPreview ? route('admin.tasks.show',$ut) : route('user.tasks.show',$ut) }}"
                            style="display:flex;align-items:center;gap:12px;padding:9px 18px;text-decoration:none;transition:background .1s;"
                            onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='#fff'">
                             <div style="width:34px;height:34px;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;background:{{ $urg?'#FEF2F2':'#EEF2FF' }};">
-                                <span style="font-size:12px;font-weight:800;line-height:1;color:{{ $urg?'#DC2626':'#4F46E5' }};">{{ $ut->deadline->format('d') }}</span>
-                                <span style="font-size:9px;color:{{ $urg?'#EF4444':'#818CF8' }};">{{ $ut->deadline->format('M') }}</span>
+                                <span style="font-size:12px;font-weight:800;line-height:1;color:{{ $urg?'#DC2626':'#4F46E5' }};">{{ $ut->deadline?->format('d') ?? '—' }}</span>
+                                <span style="font-size:9px;color:{{ $urg?'#EF4444':'#818CF8' }};">{{ $ut->deadline?->format('M') ?? '' }}</span>
                             </div>
                             <div style="flex:1;min-width:0;">
                                 <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $ut->title }}</p>
@@ -250,8 +258,8 @@
             </div>
             @forelse($teamTasks as $task)
             @php
-                $isOv2=$task->deadline->isPast()&&!in_array($task->status,['completed','pending_approval']);
-                $sm2=['completed'=>['#F0FDF4','#16A34A','Completed'],'in_progress'=>['#FFFBEB','#D97706','In Progress'],'pending'=>['#F8FAFC','#64748B','Pending'],'pending_approval'=>['#F5F3FF','#7C3AED','In Review']];
+                $isOv2=$task->deadline&&$task->deadline->isPast()&&!in_array($task->status,['completed','submitted']);
+                $sm2=['completed'=>['#F0FDF4','#16A34A','Completed'],'in_progress'=>['#FFFBEB','#D97706','In Progress'],'pending'=>['#F8FAFC','#64748B','Pending'],'submitted'=>['#F5F3FF','#7C3AED','In Review']];
                 [$sb,$sc,$sl]=$sm2[$task->status]??['#F8FAFC','#9CA3AF','Unknown'];
                 $pc2=['high'=>'#DC2626','medium'=>'#D97706','low'=>'#16A34A'][$task->priority]??'#9CA3AF';
             @endphp
@@ -270,7 +278,7 @@
                 </div>
                 @endif
                 <span style="font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;background:{{ $sb }};color:{{ $sc }};flex-shrink:0;">{{ $sl }}</span>
-                <span style="font-size:11px;color:{{ $isOv2?'#DC2626':'#9CA3AF' }};font-weight:{{ $isOv2?'700':'400' }};flex-shrink:0;white-space:nowrap;">{{ $task->deadline->format('M d') }}</span>
+                <span style="font-size:11px;color:{{ $isOv2?'#DC2626':'#9CA3AF' }};font-weight:{{ $isOv2?'700':'400' }};flex-shrink:0;white-space:nowrap;">{{ $task->deadline?->format('M d') ?? '—' }}</span>
             </div>
             @empty
             <div style="text-align:center;padding:56px 20px;">
@@ -302,7 +310,7 @@
                 $sc2=['active'=>['#EEF2FF','#4F46E5'],'completed'=>['#F0FDF4','#16A34A'],'overdue'=>['#FEF2F2','#DC2626']];
                 [$pcbg,$pcco]=$sc2[$proj->status]??['#F3F4F6','#6B7280'];
             @endphp
-            <a href="{{ route('user.projects.show',$proj) }}"
+            <a href="{{ $isPreview ? route('admin.projects.show',$proj) : route('user.projects.show',$proj) }}"
                style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;text-decoration:none;display:block;transition:box-shadow .15s,transform .15s;"
                onmouseover="this.style.boxShadow='0 6px 20px rgba(99,102,241,.14)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)';this.style.transform='translateY(0)'">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;">
@@ -312,7 +320,7 @@
                     <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:10px;background:{{ $pcbg }};color:{{ $pcco }};">{{ ucfirst($proj->status) }}</span>
                 </div>
                 <h3 style="font-size:14px;font-weight:700;color:#111827;margin:0 0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $proj->name }}</h3>
-                <p style="font-size:11px;color:#9CA3AF;margin:0 0 14px;">Due {{ $proj->deadline->format('M d, Y') }}</p>
+                <p style="font-size:11px;color:#9CA3AF;margin:0 0 14px;">{{ $proj->deadline ? 'Due '.$proj->deadline->format('M d, Y') : 'No deadline' }}</p>
                 <div style="margin-bottom:6px;">
                     <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
                         <span style="font-size:11px;color:#6B7280;">Progress</span>
@@ -328,7 +336,7 @@
         </div>
         @if($myProjects->count()>=6)
         <div style="text-align:center;margin-top:16px;">
-            <a href="{{ route('user.projects.index') }}" style="font-size:13px;font-weight:600;color:#6366F1;text-decoration:none;">View all projects →</a>
+            <a href="{{ $isPreview ? route('admin.projects.index') : route('user.projects.index') }}" style="font-size:13px;font-weight:600;color:#6366F1;text-decoration:none;">View all projects →</a>
         </div>
         @endif
         @endif
@@ -339,6 +347,7 @@
 {{-- ═══════════════════════════════
      SUBMIT REPORT MODAL
 ════════════════════════════════ --}}
+@unless($isPreview)
 <div id="report-modal"
      style="display:none;position:fixed;inset:0;z-index:50;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.5);"
      onclick="if(event.target===this)this.style.display='none'">
@@ -401,20 +410,42 @@
         </form>
     </div>
 </div>
+@endunless
 
 @endsection
 
 @push('scripts')
+@php
+    $perfTotal  = $completed + $inProgress + $pendingApproval + $overdue;
+    $perfData   = $perfTotal > 0 ? [$completed, $inProgress, $pendingApproval, $overdue] : [1];
+    $perfColors = $perfTotal > 0 ? ['#10B981','#F59E0B','#8B5CF6','#EF4444'] : ['#E5E7EB'];
+@endphp
 <script>
-new Chart(document.getElementById('perfChart').getContext('2d'), {
-    type: 'doughnut',
-    data: {
-        labels: ['Completed','In Progress','In Review','Overdue'],
-        datasets: [{ data: [{{ $completed }},{{ $inProgress }},{{ $pendingApproval }},{{ $overdue }}],
-            backgroundColor: ['#10B981','#F59E0B','#8B5CF6','#EF4444'], borderWidth: 0, hoverOffset: 4 }]
-    },
-    options: { cutout: '72%', plugins: { legend: { display: false } }, animation: { duration: 800 } }
-});
+(function () {
+    var ctx = document.getElementById('perfChart');
+    if (!ctx) return;
+    new Chart(ctx.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Completed','In Progress','In Review','Overdue'],
+            datasets: [{
+                data: @json($perfData),
+                backgroundColor: @json($perfColors),
+                borderWidth: 0,
+                hoverOffset: {{ $perfTotal > 0 ? 4 : 0 }}
+            }]
+        },
+        options: {
+            responsive: false,
+            cutout: '72%',
+            plugins: {
+                legend: { display: false },
+                tooltip: { enabled: {{ $perfTotal > 0 ? 'true' : 'false' }} }
+            },
+            animation: { duration: 500 }
+        }
+    });
+}());
 
 new Chart(document.getElementById('weekChart').getContext('2d'), {
     type: 'bar',
@@ -424,10 +455,12 @@ new Chart(document.getElementById('weekChart').getContext('2d'), {
             backgroundColor: '#818CF8', borderRadius: 5, borderSkipped: false }]
     },
     options: {
+        responsive: true,
+        maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
             x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#9CA3AF' } },
-            y: { grid: { color: '#F3F4F6' }, ticks: { font: { size: 10 }, color: '#9CA3AF', stepSize: 1 }, beginAtZero: true }
+            y: { grid: { color: '#F3F4F6' }, ticks: { font: { size: 10 }, color: '#9CA3AF', stepSize: 1, precision: 0 }, beginAtZero: true }
         },
         animation: { duration: 600 }
     }

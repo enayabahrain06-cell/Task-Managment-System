@@ -17,7 +17,7 @@
         'archived'           => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Archived'],
         // legacy fallbacks
         'pending'            => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Pending'],
-        'pending_approval'   => ['bg'=>'#EDE9FE','color'=>'#7C3AED','label'=>'In Review'],
+        'submitted'          => ['bg'=>'#EDE9FE','color'=>'#7C3AED','label'=>'In Review'],
         'completed'          => ['bg'=>'#D1FAE5','color'=>'#059669','label'=>'Completed'],
     ];
     $priorityMap = ['low'=>['bg'=>'#D1FAE5','color'=>'#059669'],'medium'=>['bg'=>'#FEF3C7','color'=>'#D97706'],'high'=>['bg'=>'#FEE2E2','color'=>'#DC2626']];
@@ -131,7 +131,7 @@
         </div>
 
         {{-- Admin Actions: Approve/Reject (only when submitted) --}}
-        @if(in_array($task->status, ['submitted', 'pending_approval']))
+        @if($task->status === 'submitted')
         <div style="background:#fff;border-radius:14px;border:1.5px solid #A78BFA;box-shadow:0 4px 16px rgba(124,58,237,.08);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 16px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-gavel" style="color:#7C3AED;"></i> Review Submission
@@ -329,7 +329,7 @@
                         @if(isset($meta['rejection_reason']) && $meta['rejection_reason'])
                         <span style="font-size:11px;background:#FEE2E2;color:#991B1B;padding:2px 8px;border-radius:6px;">reason: {{ Str::limit($meta['rejection_reason'], 60) }}</span>
                         @endif
-                        @elseif($log->action === 'status_updated_pending_approval' && isset($meta['version']))
+                        @elseif($log->action === 'status_updated_submitted' && isset($meta['version']))
                         <span style="font-size:11px;background:#EEF2FF;color:#4F46E5;padding:2px 8px;border-radius:6px;">v{{ $meta['version'] }}</span>
                         @if(!empty($meta['has_file']))
                         <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;"><i class="fa fa-paperclip" style="margin-right:3px;"></i>{{ $meta['filename'] ?? 'file attached' }}</span>

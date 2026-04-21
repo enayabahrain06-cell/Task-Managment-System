@@ -15,59 +15,63 @@ class TeamController extends Controller
             return redirect()->route('user.dashboard')->with('error', "You don't have permission to access Team Members.");
         }
 
-        $authUser = auth()->user();
-        $view = $request->input('view', 'team');
+        $allowedViews = ['team', 'permissions', 'roles', 'former'];
+        $view = in_array($request->input('view'), $allowedViews) ? $request->input('view') : 'team';
 
         $doneStatuses = ['delivered', 'approved', 'archived'];
+        $allRoles     = Role::ordered();
 
-        $members = User::withCount([
+        $stats = [
+            'total'    => User::count(),
+            'active'   => User::where('status', 'active')->count(),
+            'inactive' => User::where('status', 'inactive')->count(),
+            'archived' => User::where('status', 'archived')->count(),
+            'admins'   => User::where('role', 'admin')->count(),
+            'managers' => User::where('role', 'manager')->count(),
+        ];
+
+        $query = User::withCount([
             'assignedTasks as total_tasks',
             'assignedTasks as completed_tasks' => fn($q) => $q->whereIn('status', $doneStatuses),
             'assignedTasks as pending_tasks'   => fn($q) => $q->whereNotIn('status', $doneStatuses),
-        ])->orderBy('role')->get();
+            'tasks',
+        ]);
 
-        $totalMembers   = $members->count();
-        $activeMembers  = $members->where('status', 'active')->count();
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->search . '%')
+                  ->orWhere('email', 'like', '%' . $request->search . '%')
+                  ->orWhere('username', 'like', '%' . $request->search . '%');
+            });
+        }
+        if ($request->filled('role')) {
+            $query->where('role', $request->role);
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $query->where('status', '!=', 'archived');
+        $members = $query->orderBy('role')->paginate(20)->withQueryString();
+
+        $doneFormer = ['delivered', 'approved', 'archived'];
+        $formerEmployees = User::where('status', 'archived')
+            ->withCount([
+                'assignedTasks as total_tasks',
+                'assignedTasks as completed_tasks' => fn($q) => $q->whereIn('status', $doneFormer),
+            ])
+            ->with('archivedBy')
+            ->orderByDesc('archived_at')
+            ->get();
+
+        $totalMembers   = $stats['total'] - ($stats['archived'] ?? 0);
+        $activeMembers  = $stats['active'];
         $totalCompleted = Task::whereIn('status', $doneStatuses)->count();
         $totalPending   = Task::whereNotIn('status', $doneStatuses)->count();
 
-        $allRoles = Role::ordered();
-
-        // Admin manage tab data
-        $users = null;
-        $stats = null;
-
-        if ($authUser->role === 'admin' && $view === 'manage') {
-            $query = User::withCount('tasks');
-
-            if ($request->filled('search')) {
-                $query->where(function ($q) use ($request) {
-                    $q->where('name', 'like', '%' . $request->search . '%')
-                      ->orWhere('email', 'like', '%' . $request->search . '%');
-                });
-            }
-            if ($request->filled('role')) {
-                $query->where('role', $request->role);
-            }
-            if ($request->filled('status')) {
-                $query->where('status', $request->status);
-            }
-
-            $users = $query->latest()->paginate(15)->withQueryString();
-
-            $stats = [
-                'total'    => User::count(),
-                'active'   => User::where('status', 'active')->count(),
-                'inactive' => User::where('status', 'inactive')->count(),
-                'archived' => User::where('status', 'archived')->count(),
-                'admins'   => User::where('role', 'admin')->count(),
-                'managers' => User::where('role', 'manager')->count(),
-            ];
-        }
-
         return view('team.index', compact(
             'members', 'totalMembers', 'activeMembers', 'totalCompleted', 'totalPending',
-            'allRoles', 'view', 'users', 'stats'
+            'allRoles', 'view', 'stats', 'formerEmployees'
         ));
     }
 }

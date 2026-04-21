@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\Task;
 use App\Models\TaskLog;
+use App\Models\TaskTransfer;
 use App\Models\User;
 use App\Notifications\TaskTransferred;
 use App\Services\AuditLogger;
@@ -59,14 +60,16 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name'      => 'required|string|max:255',
-            'email'     => 'required|email|max:255|unique:users',
-            'password'  => 'required|string|min:8|confirmed',
-            'role'      => ['required', Rule::in(Role::pluck('name'))],
-            'phone'     => 'nullable|string|max:30',
-            'job_title' => 'nullable|string|max:80',
-            'status'    => 'nullable|in:active,inactive',
-            'avatar'    => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'name'        => 'required|string|max:255',
+            'username'    => 'nullable|string|max:60|unique:users|alpha_dash',
+            'email'       => 'required|email|max:255|unique:users',
+            'password'    => 'required|string|min:8|confirmed',
+            'role'        => ['required', Rule::in(Role::pluck('name'))],
+            'phone'       => 'nullable|string|max:30',
+            'job_title'   => 'nullable|string|max:80',
+            'nationality' => 'nullable|string|max:80',
+            'status'      => 'nullable|in:active,inactive',
+            'avatar'      => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
         $allKeys = array_keys(User::ALL_PERMISSIONS);
@@ -80,11 +83,13 @@ class UserController extends Controller
 
         $data = [
             'name'        => $request->name,
+            'username'    => $request->username ?: null,
             'email'       => $request->email,
             'password'    => Hash::make($request->password),
             'role'        => $request->role,
             'phone'       => $request->phone,
             'job_title'   => $request->job_title,
+            'nationality' => $request->nationality,
             'status'      => $request->status ?? 'active',
             'permissions' => $perms,
         ];
@@ -119,14 +124,16 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $request->validate([
-            'name'      => 'required|string|max:255',
-            'email'     => 'required|email|max:255|unique:users,email,' . $user->id,
-            'role'      => ['required', Rule::in(Role::pluck('name'))],
-            'password'  => 'nullable|string|min:8|confirmed',
-            'phone'     => 'nullable|string|max:30',
-            'job_title' => 'nullable|string|max:80',
-            'status'    => 'nullable|in:active,inactive',
-            'avatar'    => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'name'        => 'required|string|max:255',
+            'username'    => 'nullable|string|max:60|alpha_dash|unique:users,username,' . $user->id,
+            'email'       => 'required|email|max:255|unique:users,email,' . $user->id,
+            'role'        => ['required', Rule::in(Role::pluck('name'))],
+            'password'    => 'nullable|string|min:8|confirmed',
+            'phone'       => 'nullable|string|max:30',
+            'job_title'   => 'nullable|string|max:80',
+            'nationality' => 'nullable|string|max:80',
+            'status'      => 'nullable|in:active,inactive',
+            'avatar'      => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
         // Capture before-state for audit diff
@@ -145,15 +152,17 @@ class UserController extends Controller
 
         $data = [
             'name'        => $request->name,
+            'username'    => $request->username ?: null,
             'email'       => $request->email,
             'role'        => $request->role,
             'phone'       => $request->phone,
             'job_title'   => $request->job_title,
+            'nationality' => $request->nationality,
             'status'      => $request->status ?? 'active',
             'permissions' => $perms,
         ];
 
-        foreach (['name', 'email', 'role', 'phone', 'job_title'] as $field) {
+        foreach (['name', 'username', 'email', 'role', 'phone', 'job_title', 'nationality'] as $field) {
             if ($user->$field !== $data[$field]) {
                 $changes[$field] = ['from' => $user->$field, 'to' => $data[$field]];
             }
@@ -239,25 +248,64 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
-        $taskCount = Task::where('assigned_to', $user->id)
-            ->whereNotIn('status', ['completed', 'delivered'])
-            ->count();
+        if ($user->id === auth()->id()) {
+            return back()->with('error', 'You cannot archive your own account.');
+        }
+
+        $user->update([
+            'status'      => 'archived',
+            'archived_at' => now(),
+            'archived_by' => auth()->id(),
+        ]);
 
         AuditLogger::log(
-            'user.deleted',
-            null,
-            'Account deleted for ' . $user->name . ' (' . $user->email . ')',
-            [
-                'user_name'            => $user->name,
-                'user_email'           => $user->email,
-                'role'                 => $user->role,
-                'unfinished_tasks'     => $taskCount,
-            ]
+            'user.archived',
+            $user,
+            'Account archived for ' . $user->name . ' (' . $user->email . ')',
+            ['user_name' => $user->name, 'user_email' => $user->email, 'role' => $user->role]
         );
 
-        if ($user->avatar) Storage::disk('public')->delete($user->avatar);
-        $user->delete();
-        return back()->with('success', 'User deleted.');
+        return back()->with('success', $user->name . ' has been moved to Former Employees.');
+    }
+
+    public function restore(User $user)
+    {
+        $user->update([
+            'status'      => 'active',
+            'archived_at' => null,
+            'archived_by' => null,
+        ]);
+
+        AuditLogger::log(
+            'user.restored',
+            $user,
+            'Account restored for ' . $user->name . ' (' . $user->email . ')',
+            ['user_name' => $user->name, 'user_email' => $user->email]
+        );
+
+        return back()->with('success', $user->name . ' has been restored to the team.');
+    }
+
+    public function hold(User $user)
+    {
+        if ($user->id === auth()->id()) {
+            return back()->with('error', 'You cannot hold your own account.');
+        }
+
+        $wasHeld = $user->status === 'inactive';
+        $user->update(['status' => $wasHeld ? 'active' : 'inactive']);
+
+        AuditLogger::log(
+            $wasHeld ? 'user.released' : 'user.held',
+            $user,
+            ($wasHeld ? 'Account released for ' : 'Account put on hold for ') . $user->name,
+            ['status' => $user->status]
+        );
+
+        return back()->with('success', $wasHeld
+            ? $user->name . ' account has been released.'
+            : $user->name . ' account is now on hold. They cannot log in.'
+        );
     }
 
     public function transferTasks(Request $request, User $user)
@@ -368,5 +416,134 @@ class UserController extends Controller
         $toUser->notify(new TaskTransferred($tasks->count(), $user));
 
         return back()->with('success', $tasks->count() . ' task(s) transferred from ' . $user->name . ' to ' . $toUser->name . '.');
+    }
+
+    public function viewDashboard(User $user)
+    {
+        $allTasks = $user->tasks()->with('project')->get();
+
+        $inheritedIds   = TaskTransfer::where('to_user_id', $user->id)->pluck('task_id')->unique();
+        $nativeTasks    = $allTasks->whereNotIn('id', $inheritedIds);
+        $inheritedTasks = $allTasks->whereIn('id', $inheritedIds);
+
+        $doneStatuses   = ['approved', 'delivered', 'archived'];
+        $activeStatuses = ['draft', 'assigned', 'viewed', 'in_progress', 'submitted', 'revision_requested'];
+
+        $total      = $allTasks->count();
+        $completed  = $allTasks->whereIn('status', $doneStatuses)->count();
+        $inProgress = $allTasks->where('status', 'in_progress')->count();
+        $pending    = $allTasks->whereIn('status', ['draft', 'assigned', 'viewed'])->count();
+        $inReview   = $allTasks->where('status', 'submitted')->count();
+        $overdue    = $allTasks->filter(
+            fn($t) => $t->deadline && $t->deadline->isPast() && in_array($t->status, $activeStatuses)
+        )->count();
+
+        $nativeTotal     = $nativeTasks->count();
+        $nativeCompleted = $nativeTasks->whereIn('status', $doneStatuses)->count();
+        $rate            = $nativeTotal > 0 ? round($nativeCompleted / $nativeTotal * 100) : 0;
+
+        $tasks = $allTasks->sortBy(function ($t) use ($doneStatuses) {
+            if (in_array($t->status, $doneStatuses))   return '5_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+            if ($t->status === 'submitted')             return '3_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+            if ($t->deadline && $t->deadline->isPast()) return '1_' . $t->deadline->format('Y-m-d');
+            if ($t->status === 'in_progress')           return '2_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+            return '4_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+        })->values()->map(function ($t) use ($inheritedIds) {
+            $t->is_inherited = $inheritedIds->contains($t->id);
+            return $t;
+        });
+
+        $upcomingTasks = $allTasks
+            ->filter(fn($t) => $t->deadline && $t->deadline->isFuture() && !in_array($t->status, $doneStatuses))
+            ->sortBy('deadline')
+            ->take(4);
+
+        $myProjectIds = $user->projects()->pluck('projects.id');
+        $teamTasks = Task::whereIn('project_id', $myProjectIds)
+            ->where('assigned_to', '!=', $user->id)
+            ->with(['project', 'assignee'])
+            ->orderByRaw("CASE WHEN status IN ('approved','delivered','archived') THEN 1 ELSE 0 END")
+            ->orderBy('deadline')
+            ->take(20)
+            ->get();
+
+        $myProjects = $user->projects()
+            ->withCount([
+                'tasks',
+                'tasks as completed_count' => fn($q) => $q->whereIn('status', $doneStatuses),
+            ])
+            ->orderByRaw("CASE WHEN status='completed' THEN 1 ELSE 0 END")
+            ->orderBy('deadline')
+            ->take(6)
+            ->get();
+
+        $recentActivity = TaskLog::where('user_id', $user->id)
+            ->with('task')
+            ->latest()
+            ->take(8)
+            ->get();
+
+        $weekActivity = collect(range(6, 0))->map(function ($daysAgo) use ($user) {
+            $date = now()->subDays($daysAgo)->toDateString();
+            return [
+                'label' => now()->subDays($daysAgo)->format('D'),
+                'count' => TaskLog::where('user_id', $user->id)->whereDate('created_at', $date)->count(),
+            ];
+        });
+
+        $inheritedCount  = $inheritedTasks->count();
+        $pendingApproval = $inReview;
+        $previewUser     = $user;
+
+        return view('user.dashboard', compact(
+            'total', 'completed', 'inProgress', 'pending', 'pendingApproval', 'overdue', 'rate',
+            'tasks', 'upcomingTasks', 'recentActivity', 'weekActivity',
+            'teamTasks', 'myProjects',
+            'inheritedCount', 'nativeTotal', 'nativeCompleted', 'previewUser'
+        ));
+    }
+
+    public function performance(User $user)
+    {
+        $doneStatuses = ['delivered', 'approved', 'archived'];
+
+        $tasks = Task::where('assigned_to', $user->id)
+            ->with('project:id,name')
+            ->orderByDesc('created_at')
+            ->get(['id', 'title', 'status', 'priority', 'deadline', 'created_at', 'project_id']);
+
+        $total     = $tasks->count();
+        $completed = $tasks->whereIn('status', $doneStatuses)->count();
+        $pending   = $tasks->whereNotIn('status', $doneStatuses)->count();
+
+        return response()->json([
+            'user' => [
+                'id'          => $user->id,
+                'name'        => $user->name,
+                'email'       => $user->email,
+                'role'        => $user->role,
+                'job_title'   => $user->job_title ?? '',
+                'nationality' => $user->nationality ?? '',
+                'phone'       => $user->phone ?? '',
+                'joined_at'   => $user->created_at?->format('M d, Y') ?? '—',
+                'archived_at' => $user->archived_at?->format('M d, Y') ?? '—',
+                'archived_by' => $user->archivedBy?->name ?? '—',
+            ],
+            'stats' => [
+                'total'     => $total,
+                'completed' => $completed,
+                'pending'   => $pending,
+                'rate'      => $total > 0 ? round(($completed / $total) * 100) : 0,
+            ],
+            'tasks' => $tasks->map(fn($t) => [
+                'id'         => $t->id,
+                'title'      => $t->title,
+                'status'     => $t->status,
+                'priority'   => $t->priority,
+                'project'    => $t->project?->name ?? '—',
+                'deadline'   => $t->deadline?->format('M d, Y') ?? '—',
+                'created_at' => $t->created_at?->format('M d, Y') ?? '—',
+            ])->values(),
+        ]);
     }
 }
