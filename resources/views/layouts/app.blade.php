@@ -270,14 +270,14 @@
                 </div>
             @endif
             @yield('content')
-
-            @php $copyright = \App\Models\Setting::get('copyright', ''); @endphp
-            @if($copyright)
-            <div style="text-align:center;padding:14px 0 6px;font-size:11.5px;color:#B0B7C3;border-top:1px solid #F3F4F6;margin-top:24px;">
-                {{ $copyright }}
-            </div>
-            @endif
         </main>
+
+        @php $copyright = \App\Models\Setting::get('copyright', ''); @endphp
+        @if($copyright)
+        <div style="flex-shrink:0;text-align:center;padding:10px 16px;font-size:11.5px;color:#B0B7C3;border-top:1px solid #F3F4F6;background:#fff;">
+            {{ $copyright }}
+        </div>
+        @endif
 
     </div>
 </div>
@@ -300,14 +300,48 @@ function notifBell() {
         open:         false,
         count:        {{ $notificationCount }},
         soundEnabled: localStorage.getItem('notif_sound') !== 'false',
-        _timer:       null,
+        _es:          null,
+        _fallback:    null,
 
         init() {
-            // Start polling every 15 s
-            this._timer = setInterval(() => this.poll(), 15000);
+            this._connect();
+            // Re-poll immediately when the user returns to this tab
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) this._poll();
+            });
         },
 
-        async poll() {
+        _connect() {
+            if (!window.EventSource) { this._startFallback(); return; }
+
+            this._es = new EventSource('{{ route("notifications.stream") }}');
+
+            this._es.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                if (data.reconnect) {
+                    // Server asked us to reconnect — EventSource does this automatically
+                    return;
+                }
+                if (data.count > this.count && this.soundEnabled) {
+                    this.playSound();
+                }
+                this.count = data.count;
+            };
+
+            this._es.onerror = () => {
+                // SSE failed — close and fall back to polling
+                this._es.close();
+                this._es = null;
+                this._startFallback();
+            };
+        },
+
+        _startFallback() {
+            if (this._fallback) return;
+            this._fallback = setInterval(() => this._poll(), 5000);
+        },
+
+        async _poll() {
             try {
                 const res  = await fetch('{{ route("notifications.count") }}', {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -324,7 +358,6 @@ function notifBell() {
         playSound() {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                // Two-note ascending ding: G5 → B5
                 [[784, 0], [988, 0.18]].forEach(([freq, delay]) => {
                     const osc  = ctx.createOscillator();
                     const gain = ctx.createGain();
@@ -345,7 +378,6 @@ function notifBell() {
         toggleSound() {
             this.soundEnabled = !this.soundEnabled;
             localStorage.setItem('notif_sound', this.soundEnabled);
-            // Play a preview note so the user knows sound is working
             if (this.soundEnabled) this.playSound();
         },
     };

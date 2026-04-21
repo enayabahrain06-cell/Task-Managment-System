@@ -52,6 +52,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/notifications/read/{id}',    [NotificationsController::class, 'markRead'])->name('notifications.read');
     Route::post('/notifications/mark-all-read', [NotificationsController::class, 'markAllRead'])->name('notifications.mark-all-read');
     Route::get('/notifications/count',          [NotificationsController::class, 'unreadCount'])->name('notifications.count');
+    Route::get('/notifications/stream',         [NotificationsController::class, 'stream'])->name('notifications.stream');
 });
 
 // Admin routes
@@ -97,6 +98,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('tasks/{task}/reject',             [AdminTaskApprovalController::class, 'reject'])->name('tasks.reject');
 
     // Individual task management
+    Route::get('tasks',                            [AdminTaskController::class, 'index'])->name('tasks.index');
     Route::get('tasks/{task}',                     [AdminTaskController::class, 'show'])->name('tasks.show');
     Route::post('tasks/{task}/comment',            [AdminTaskController::class, 'comment'])->name('tasks.comment');
     Route::post('tasks/{task}/deliver',            [AdminTaskController::class, 'deliver'])->name('tasks.deliver');
@@ -105,6 +107,14 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
 
     // User task transfer
     Route::post('users/{user}/transfer-tasks',     [AdminUserController::class, 'transferTasks'])->name('users.transfer-tasks');
+    // Hold / release account
+    Route::post('users/{user}/hold',               [AdminUserController::class, 'hold'])->name('users.hold');
+    // Restore archived user
+    Route::post('users/{user}/restore',            [AdminUserController::class, 'restore'])->name('users.restore');
+    // View user's dashboard (admin preview)
+    Route::get('users/{user}/dashboard',           [AdminUserController::class, 'viewDashboard'])->name('users.dashboard');
+    // Performance data (JSON)
+    Route::get('users/{user}/performance',         [AdminUserController::class, 'performance'])->name('users.performance');
 
     // User offboarding
     Route::get('users/{user}/offboard',            [AdminOffboardingController::class, 'show'])->name('users.offboard');

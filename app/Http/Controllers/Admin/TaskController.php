@@ -15,6 +15,49 @@ use Illuminate\Support\Str;
 
 class TaskController extends Controller
 {
+    public function index(Request $request)
+    {
+        $query = Task::with(['project:id,name', 'assignee:id,name,avatar'])
+            ->withCount('assignees');
+
+        if ($request->filled('search')) {
+            $query->where('title', 'like', '%' . $request->search . '%');
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('priority')) {
+            $query->where('priority', $request->priority);
+        }
+        if ($request->filled('project')) {
+            $query->where('project_id', $request->project);
+        }
+        if ($request->boolean('overdue')) {
+            $query->whereNotNull('deadline')
+                  ->where('deadline', '<', now())
+                  ->whereNotIn('status', ['approved','delivered','archived']);
+        }
+
+        $tasks = $query->orderByRaw('CASE WHEN deadline IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('deadline')
+            ->paginate(24)
+            ->withQueryString();
+
+        $projects = \App\Models\Project::orderBy('name')->get(['id','name']);
+
+        $stats = [
+            'total'       => Task::count(),
+            'in_progress' => Task::where('status', 'in_progress')->count(),
+            'overdue'     => Task::whereNotNull('deadline')
+                ->where('deadline', '<', now())
+                ->whereNotIn('status', ['approved','delivered','archived'])
+                ->count(),
+            'done'        => Task::whereIn('status', ['approved','delivered'])->count(),
+        ];
+
+        return view('admin.tasks.index', compact('tasks', 'projects', 'stats'));
+    }
+
     public function show(Task $task)
     {
         $task->load('project', 'assignee', 'assignees', 'reviewer', 'creator', 'logs.user', 'submissions.user', 'submissions.reviewer', 'comments.user', 'transfers.fromUser', 'transfers.toUser', 'transfers.transferredBy');

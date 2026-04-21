@@ -16,8 +16,8 @@
                 <div style="width:34px;height:34px;background:#4F46E5;border-radius:10px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(79,70,229,0.35);">
                     <i class="fa fa-bolt" style="color:#fff;font-size:14px;"></i>
                 </div>
-                <span style="font-size:15px;font-weight:700;color:#111827;">{{ $appSettings['app_name'] ?? config('app.name','Dash') }}</span>
             @endif
+            <span style="font-size:15px;font-weight:700;color:#111827;">{{ $appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name','Dash') }}</span>
         </div>
 
         <h1 style="font-size:22px;font-weight:800;color:#111827;margin:0 0 6px;">Create your account!</h1>

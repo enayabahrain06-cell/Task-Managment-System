@@ -154,7 +154,7 @@ class OffboardingController extends Controller
             }
 
             if ($transferredCount > 0) {
-                $toUser->notify(new \App\Notifications\TaskTransferred($toUser, $user, $transferredCount));
+                $toUser->notify(new \App\Notifications\TaskTransferred($transferredCount, $user));
             }
         }
 

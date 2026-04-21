@@ -3,7 +3,7 @@
     $taskCount         = auth()->check() ? auth()->user()->tasks()->where('status','!=','completed')->count() : 0;
     $dashRoute         = $role === 'admin' ? 'admin.dashboard' : ($role === 'manager' ? 'manager.dashboard' : 'user.dashboard');
     $tasksRoute        = $role === 'admin' ? 'admin.dashboard' : ($role === 'manager' ? 'manager.dashboard' : 'user.dashboard');
-    $approvalCount     = ($role === 'admin' && auth()->check()) ? \App\Models\Task::where('status','pending_approval')->count() : 0;
+    $approvalCount     = ($role === 'admin' && auth()->check()) ? \App\Models\Task::where('status','submitted')->count() : 0;
     $userProjectCount  = ($role === 'user'  && auth()->check()) ? auth()->user()->projects()->count() : 0;
 @endphp
 
@@ -16,11 +16,16 @@
                 @if(!empty($appSettings['logo_path']))
                     <img src="{{ Storage::url($appSettings['logo_path']) }}"
                          alt="{{ $appSettings['app_name'] ?? 'Logo' }}"
-                         style="height:32px;width:auto;max-width:120px;object-fit:contain;border-radius:6px;">
+                         style="height:42px;width:auto;max-width:140px;object-fit:contain;border-radius:6px;">
                 @else
                     <div class="sidebar-logo-icon"><i class="fas fa-bolt"></i></div>
-                    <span class="sidebar-logo-text">{{ strtolower($appSettings['app_name'] ?? 'dash') }}</span>
                 @endif
+                <div>
+                    <span class="sidebar-logo-text">{{ $appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name', 'Dash') }}</span>
+                    @if(!empty($appSettings['app_tagline']))
+                    <span style="display:block;font-size:10px;color:#9CA3AF;font-weight:400;margin-top:1px;line-height:1;">{{ $appSettings['app_tagline'] }}</span>
+                    @endif
+                </div>
             </div>
             {{-- Mobile close button --}}
             <button @click="sidebarOpen = false"
@@ -29,10 +34,6 @@
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        <button class="sidebar-company">
-            <span>{{ $appSettings['company_name'] ?? 'Product Co.' }}</span>
-            <i class="fas fa-chevron-down" style="font-size:10px;color:#9CA3AF;"></i>
-        </button>
     </div>
     <style>
     @media (max-width: 768px) {
@@ -151,6 +152,14 @@
             <div class="nav-left">
                 <i class="fas fa-diagram-project nav-icon"></i>
                 Projects
+            </div>
+        </a>
+
+        <a href="{{ route('admin.tasks.index') }}"
+           class="nav-item {{ request()->routeIs('admin.tasks.index') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-list-check nav-icon"></i>
+                Tasks
             </div>
         </a>
 

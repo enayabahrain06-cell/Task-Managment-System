@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php -r ' *)",
+      "Bash(php -l /var/www/Task-Managment-System/app/Http/Controllers/NotificationsController.php)",
+      "Bash(php -i)",
+      "Read(//etc/apache2/sites-enabled/**)",
+      "Read(//etc/nginx/**)",
+      "Bash(php -r \"echo php_sapi_name\\(\\);\")",
+      "Bash(apache2ctl -M)"
+    ]
+  }
+}

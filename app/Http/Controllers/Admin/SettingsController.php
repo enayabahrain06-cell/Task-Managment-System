@@ -478,7 +478,7 @@ class SettingsController extends Controller
             if ($exists) { $skipped++; continue; }
 
             $priority = in_array($data['priority'] ?? '', ['low','medium','high']) ? $data['priority'] : 'medium';
-            $status   = in_array($data['status'] ?? '', ['pending','in_progress','completed','pending_approval']) ? $data['status'] : 'pending';
+            $status   = in_array($data['status'] ?? '', ['pending','in_progress','completed','submitted','assigned','draft']) ? $data['status'] : 'pending';
             Task::create(['title' => $title, 'project_id' => $project->id, 'assigned_to' => $assignee->id, 'priority' => $priority, 'status' => $status, 'deadline' => $deadline]);
             $created++;
         }

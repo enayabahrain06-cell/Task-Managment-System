@@ -44,7 +44,7 @@ class ProjectController extends Controller
             'completed'        => $project->tasks->where('status', 'completed')->count(),
             'in_progress'      => $project->tasks->where('status', 'in_progress')->count(),
             'pending'          => $project->tasks->where('status', 'pending')->count(),
-            'pending_approval' => $project->tasks->where('status', 'pending_approval')->count(),
+            'submitted'        => $project->tasks->where('status', 'submitted')->count(),
         ];
         $stats['rate'] = $stats['total'] > 0 ? round($stats['completed'] / $stats['total'] * 100) : 0;
 
