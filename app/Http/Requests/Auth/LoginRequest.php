@@ -40,7 +40,9 @@ class LoginRequest extends FormRequest
         $login = $this->input('email');
         $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
 
-        $user = User::where($field, $login)->first();
+        $user = $field === 'username'
+            ? User::whereRaw('LOWER(username) = LOWER(?)', [$login])->first()
+            : User::where('email', $login)->first();
 
         if (! $user || ! Auth::attempt(['email' => $user->email ?? '', 'password' => $this->input('password')], $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
