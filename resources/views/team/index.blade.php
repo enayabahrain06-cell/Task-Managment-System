@@ -87,6 +87,17 @@
 </div>
 @endif
 
+@if($errors->any())
+<div class="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
+    <div class="flex items-center gap-2 font-semibold mb-1"><i class="fa fa-circle-exclamation"></i> Please fix the following errors:</div>
+    <ul class="list-disc list-inside space-y-0.5">
+        @foreach($errors->all() as $error)
+        <li>{{ $error }}</li>
+        @endforeach
+    </ul>
+</div>
+@endif
+
 {{-- ══════════════════════════════════════════════════════
      TEAM VIEW
 ══════════════════════════════════════════════════════ --}}

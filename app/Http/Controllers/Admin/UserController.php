@@ -11,7 +11,6 @@ use App\Models\User;
 use App\Notifications\TaskTransferred;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
@@ -85,7 +84,7 @@ class UserController extends Controller
             'name'        => $request->name,
             'username'    => $request->username ?: null,
             'email'       => $request->email,
-            'password'    => Hash::make($request->password),
+            'password'    => $request->password,
             'role'        => $request->role,
             'phone'       => $request->phone,
             'job_title'   => $request->job_title,
@@ -180,8 +179,8 @@ class UserController extends Controller
 
         $passwordChanged = false;
         if ($request->filled('password')) {
-            $data['password']  = Hash::make($request->password);
-            $passwordChanged   = true;
+            $data['password'] = $request->password;
+            $passwordChanged  = true;
         }
 
         $user->update($data);
