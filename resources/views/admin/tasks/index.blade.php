@@ -100,35 +100,112 @@ $avatarColors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6','#E
 </div>
 
 {{-- ── Filters ── --}}
-<div class="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 mb-5 flex flex-wrap items-center gap-3">
-    <form method="GET" action="{{ route('admin.tasks.index') }}" class="flex flex-wrap items-center gap-3 flex-1">
-        <div class="relative flex-1 min-w-48">
-            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs"></i>
-            <input type="text" name="search" value="{{ request('search') }}" placeholder="Search tasks…"
-                   class="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 bg-gray-50">
+<div class="mb-6">
+    <form method="GET" action="{{ route('admin.tasks.index') }}">
+        <div class="bg-white/80 backdrop-blur-sm border border-gray-100 rounded-2xl shadow-sm p-4">
+            <div class="flex flex-wrap items-center gap-3">
+
+                {{-- Search --}}
+                <div class="relative flex-1 min-w-56">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none">
+                        <i class="fas fa-search text-indigo-400 text-xs"></i>
+                    </div>
+                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Search tasks…"
+                           class="w-full pl-9 pr-4 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl
+                                  placeholder-gray-400 text-gray-700
+                                  focus:outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100
+                                  transition-all duration-200">
+                </div>
+
+                {{-- Divider --}}
+                <div class="hidden sm:block w-px h-8 bg-gray-200"></div>
+
+                {{-- Status --}}
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <i class="fas fa-layer-group text-gray-400 text-xs"></i>
+                    </div>
+                    <select name="status"
+                            class="pl-8 pr-8 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-700
+                                   appearance-none cursor-pointer
+                                   focus:outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100
+                                   transition-all duration-200">
+                        <option value="">All Statuses</option>
+                        @foreach($statusMeta as $key => $s)
+                        <option value="{{ $key }}" {{ request('status')===$key?'selected':'' }}>{{ $s['label'] }}</option>
+                        @endforeach
+                    </select>
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none">
+                        <i class="fas fa-chevron-down text-gray-400 text-[10px]"></i>
+                    </div>
+                </div>
+
+                {{-- Priority --}}
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <i class="fas fa-flag text-gray-400 text-xs"></i>
+                    </div>
+                    <select name="priority"
+                            class="pl-8 pr-8 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-700
+                                   appearance-none cursor-pointer
+                                   focus:outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100
+                                   transition-all duration-200">
+                        <option value="">All Priorities</option>
+                        <option value="high"   {{ request('priority')==='high'  ?'selected':'' }}>High</option>
+                        <option value="medium" {{ request('priority')==='medium'?'selected':'' }}>Medium</option>
+                        <option value="low"    {{ request('priority')==='low'   ?'selected':'' }}>Low</option>
+                    </select>
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none">
+                        <i class="fas fa-chevron-down text-gray-400 text-[10px]"></i>
+                    </div>
+                </div>
+
+                {{-- Project --}}
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <i class="fas fa-folder text-gray-400 text-xs"></i>
+                    </div>
+                    <select name="project"
+                            class="pl-8 pr-8 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-700
+                                   appearance-none cursor-pointer
+                                   focus:outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100
+                                   transition-all duration-200">
+                        <option value="">All Projects</option>
+                        @foreach($projects as $proj)
+                        <option value="{{ $proj->id }}" {{ request('project')==$proj->id?'selected':'' }}>{{ $proj->name }}</option>
+                        @endforeach
+                    </select>
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none">
+                        <i class="fas fa-chevron-down text-gray-400 text-[10px]"></i>
+                    </div>
+                </div>
+
+                {{-- Divider --}}
+                <div class="hidden sm:block w-px h-8 bg-gray-200"></div>
+
+                {{-- Actions --}}
+                <div class="flex items-center gap-2">
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700
+                                   text-white text-sm font-semibold rounded-xl
+                                   shadow-sm shadow-indigo-200 hover:shadow-indigo-300
+                                   transition-all duration-200 active:scale-95">
+                        <i class="fas fa-sliders-h text-xs"></i>
+                        Apply
+                    </button>
+                    @if(request()->hasAny(['search','status','priority','project']))
+                    <a href="{{ route('admin.tasks.index') }}"
+                       class="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200
+                              text-gray-600 text-sm font-semibold rounded-xl
+                              transition-all duration-200 active:scale-95">
+                        <i class="fas fa-times text-xs"></i>
+                        Clear
+                    </a>
+                    @endif
+                </div>
+
+            </div>
         </div>
-        <select name="status" class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 focus:outline-none focus:border-indigo-400">
-            <option value="">All Statuses</option>
-            @foreach($statusMeta as $key => $s)
-            <option value="{{ $key }}" {{ request('status')===$key?'selected':'' }}>{{ $s['label'] }}</option>
-            @endforeach
-        </select>
-        <select name="priority" class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 focus:outline-none focus:border-indigo-400">
-            <option value="">All Priorities</option>
-            <option value="high"   {{ request('priority')==='high'  ?'selected':'' }}>High</option>
-            <option value="medium" {{ request('priority')==='medium'?'selected':'' }}>Medium</option>
-            <option value="low"    {{ request('priority')==='low'   ?'selected':'' }}>Low</option>
-        </select>
-        <select name="project" class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 focus:outline-none focus:border-indigo-400">
-            <option value="">All Projects</option>
-            @foreach($projects as $proj)
-            <option value="{{ $proj->id }}" {{ request('project')==$proj->id?'selected':'' }}>{{ $proj->name }}</option>
-            @endforeach
-        </select>
-        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition">Filter</button>
-        @if(request()->hasAny(['search','status','priority','project']))
-        <a href="{{ route('admin.tasks.index') }}" class="px-4 py-2 bg-gray-100 text-gray-600 text-sm font-semibold rounded-lg hover:bg-gray-200 transition">Clear</a>
-        @endif
     </form>
 </div>
 
