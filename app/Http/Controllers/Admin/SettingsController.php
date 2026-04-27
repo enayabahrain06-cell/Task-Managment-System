@@ -7,6 +7,7 @@ use App\Models\Project;
 use App\Models\Setting;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -49,6 +50,10 @@ class SettingsController extends Controller
 
     public function index()
     {
+        if (!auth()->user()->hasPermission('manage_settings')) {
+            abort(403, 'You do not have permission to access Settings.');
+        }
+
         $settings = array_merge(
             $this->defaults,
             Setting::all()->pluck('value', 'key')->toArray(),
@@ -72,6 +77,55 @@ class SettingsController extends Controller
         return view('admin.settings', compact('settings', 'stats'));
     }
 
+    public function toggleDevMode()
+    {
+        $current = Setting::get('developer_mode', '0');
+        $new     = $current === '1' ? '0' : '1';
+        Setting::set('developer_mode', $new);
+        return response()->json(['developer_mode' => $new === '1']);
+    }
+
+    public function toggleElement(Request $request)
+    {
+        $request->validate(['key' => 'required|string|max:80', 'action' => 'required|in:hide,restore,add,remove']);
+
+        if (in_array($request->action, ['add', 'remove'])) {
+            // Extra (default-hidden) elements
+            $extras = json_decode(Setting::get('shown_extras', '[]'), true) ?: [];
+            if ($request->action === 'add') {
+                if (!in_array($request->key, $extras)) $extras[] = $request->key;
+            } else {
+                $extras = array_values(array_filter($extras, fn($k) => $k !== $request->key));
+            }
+            Setting::set('shown_extras', json_encode($extras));
+            return response()->json(['ok' => true, 'shown_extras' => $extras]);
+        }
+
+        // Default-visible elements
+        $hidden = json_decode(Setting::get('hidden_elements', '[]'), true) ?: [];
+        if ($request->action === 'hide') {
+            if (!in_array($request->key, $hidden)) $hidden[] = $request->key;
+        } else {
+            $hidden = array_values(array_filter($hidden, fn($k) => $k !== $request->key));
+        }
+        Setting::set('hidden_elements', json_encode($hidden));
+        return response()->json(['ok' => true, 'hidden' => $hidden]);
+    }
+
+    public function toggleNavItem(Request $request)
+    {
+        $request->validate(['key' => 'required|string|max:80', 'action' => 'required|in:hide,show']);
+
+        $hidden = json_decode(Setting::get('nav_hidden', '[]'), true) ?: [];
+        if ($request->action === 'hide') {
+            if (!in_array($request->key, $hidden)) $hidden[] = $request->key;
+        } else {
+            $hidden = array_values(array_filter($hidden, fn($k) => $k !== $request->key));
+        }
+        Setting::set('nav_hidden', json_encode($hidden));
+        return response()->json(['ok' => true, 'nav_hidden' => $hidden]);
+    }
+
     public function updateGeneral(Request $request)
     {
         $request->validate([
@@ -85,6 +139,8 @@ class SettingsController extends Controller
         Setting::setMany($request->only(
             'app_name', 'app_tagline', 'department_name', 'timezone', 'date_format'
         ));
+
+        AuditLogger::log('settings.updated', null, 'General settings updated', ['section' => 'general']);
 
         return back()->with('success', 'General settings saved.')->withFragment('general');
     }
@@ -152,6 +208,8 @@ class SettingsController extends Controller
             Setting::set('login_bg_image', '');
         }
 
+        AuditLogger::log('settings.updated', null, 'Branding settings updated', ['section' => 'branding']);
+
         return back()->with('success', 'Branding saved.')->withFragment('branding');
     }
 
@@ -169,6 +227,8 @@ class SettingsController extends Controller
             'max_tasks_per_user' => $request->max_tasks_per_user,
         ]);
 
+        AuditLogger::log('settings.updated', null, 'Team settings updated', ['section' => 'team']);
+
         return back()->with('success', 'Team settings saved.')->withFragment('team');
     }
 
@@ -180,6 +240,8 @@ class SettingsController extends Controller
             'notify_on_assign'    => $request->boolean('notify_on_assign') ? '1' : '0',
             'notify_on_complete'  => $request->boolean('notify_on_complete') ? '1' : '0',
         ]);
+
+        AuditLogger::log('settings.updated', null, 'Notification settings updated', ['section' => 'notifications']);
 
         return back()->with('success', 'Notification preferences saved.')->withFragment('notifications');
     }
@@ -277,6 +339,8 @@ class SettingsController extends Controller
             'require_strong_password'  => $request->boolean('require_strong_password') ? '1' : '0',
         ]);
 
+        AuditLogger::log('settings.updated', null, 'Security settings updated', ['section' => 'security']);
+
         return back()->with('success', 'Security settings saved.')->withFragment('security');
     }
 
@@ -373,6 +437,8 @@ class SettingsController extends Controller
             @unlink($safeCopy);
             return back()->with('error', 'Restore failed: ' . $e->getMessage())->withFragment('backup');
         }
+
+        AuditLogger::log('system.restored', null, 'Full system backup restored from uploaded file', []);
 
         return redirect()->route('admin.settings.index')->with('success', 'Full system restore completed successfully. All data has been restored.')->withFragment('backup');
     }
@@ -485,6 +551,93 @@ class SettingsController extends Controller
         fclose($handle);
 
         return back()->with('success', "Tasks restored: {$created} created, {$skipped} skipped.")->withFragment('backup');
+    }
+
+    // ── Clear Data ───────────────────────────────────────────────────────
+
+    public function clearData(Request $request)
+    {
+        $type = $request->input('type');
+
+        $allowed = ['notifications', 'messages', 'audit_logs', 'task_activity', 'tasks_projects', 'full_reset'];
+        if (!in_array($type, $allowed)) {
+            return back()->with('error', 'Invalid clear type.')->withFragment('danger');
+        }
+
+        // Disable foreign key checks for SQLite so deletes don't fail on constraints
+        DB::statement('PRAGMA foreign_keys = OFF');
+
+        try {
+            match ($type) {
+                'notifications'  => DB::table('notifications')->delete(),
+
+                'messages'       => DB::table('messages')->delete(),
+
+                'audit_logs'     => DB::table('audit_logs')->delete(),
+
+                'task_activity'  => (function () {
+                    DB::table('activity_reactions')->delete();
+                    DB::table('activity_replies')->delete();
+                    DB::table('task_logs')->delete();
+                    DB::table('task_comments')->delete();
+                    DB::table('task_submissions')->delete();
+                })(),
+
+                'tasks_projects' => (function () {
+                    DB::table('task_social_posts')->delete();
+                    DB::table('task_transfers')->delete();
+                    DB::table('task_assignees')->delete();
+                    DB::table('task_submissions')->delete();
+                    DB::table('task_comments')->delete();
+                    DB::table('task_logs')->delete();
+                    DB::table('activity_reactions')->delete();
+                    DB::table('activity_replies')->delete();
+                    DB::table('tasks')->delete();
+                    DB::table('project_attachments')->delete();
+                    DB::table('project_user')->delete();
+                    DB::table('projects')->delete();
+                    DB::table('calendar_events')->delete();
+                    DB::table('meetings')->delete();
+                })(),
+
+                'full_reset'     => (function () {
+                    DB::table('notifications')->delete();
+                    DB::table('messages')->delete();
+                    DB::table('message_group_users')->delete();
+                    DB::table('message_groups')->delete();
+                    DB::table('audit_logs')->delete();
+                    DB::table('task_social_posts')->delete();
+                    DB::table('task_transfers')->delete();
+                    DB::table('task_assignees')->delete();
+                    DB::table('task_submissions')->delete();
+                    DB::table('task_comments')->delete();
+                    DB::table('task_logs')->delete();
+                    DB::table('activity_reactions')->delete();
+                    DB::table('activity_replies')->delete();
+                    DB::table('tasks')->delete();
+                    DB::table('project_attachments')->delete();
+                    DB::table('project_user')->delete();
+                    DB::table('projects')->delete();
+                    DB::table('calendar_events')->delete();
+                    DB::table('meetings')->delete();
+                })(),
+            };
+        } finally {
+            DB::statement('PRAGMA foreign_keys = ON');
+        }
+
+        $labels = [
+            'notifications'  => 'All notifications cleared.',
+            'messages'       => 'All messages cleared.',
+            'audit_logs'     => 'Audit logs cleared.',
+            'task_activity'  => 'Task logs, comments and submissions cleared.',
+            'tasks_projects' => 'All tasks, projects and social media posts cleared.',
+            'full_reset'     => 'Full data reset completed. Users and settings are untouched.',
+        ];
+
+        AuditLogger::log('data.cleared', null, 'Data cleared: ' . $type, ['type' => $type]);
+
+        return back()->with('success', $labels[$type])->withFragment('danger');
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────

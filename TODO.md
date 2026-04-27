@@ -1,12 +1,19 @@
-# Fix .env Permission Error in SettingsController - FIXED
+# Task Management System - Progress Tracker
 
-## Steps:
-- [x] 1. Edit app/Http/Controllers/Admin/SettingsController.php: Remove updateEnvKey call from updateGeneral()
-- [x] 2. Remove unused updateEnvKey() method
-- [x] 3. Clear caches: php artisan config:clear && php artisan cache:clear
-- [x] 4. Fix permissions if needed: chmod 644 .env; chown -R www-data:www-data storage bootstrap/cache
-- [x] 5. Test: Visit http://192.168.1.209/admin/settings/general, submit General settings form (should save to DB without .env error)
-- [x] 7. Fix logo/favicon visibility: php artisan storage:link (missing symlink)
-- [x] 6. Complete!
+## Current Task: Fix Pending Tasks Popup on Prod Dashboard
 
-The .env write attempt has been removed. Settings now use only database storage via Setting model (best practice). No more permission errors on /admin/settings/general.
+### Step 1: Verify DB Task Status Counts ✅
+- Run query: `SELECT status, COUNT(*) FROM tasks GROUP BY status`
+- Expected: Zero tasks in 'draft', 'assigned', 'viewed' (pending states)
+
+### Step 2: Add CSRF Headers to AJAX Fetch Calls ✅
+- Added X-CSRF-TOKEN + X-Requested-With to 5 fetch calls in dashboard.blade.php
+- Layout already has meta csrf-token
+
+### Step 3: Test Dashboard Popup ✅
+- Refresh `/admin/dashboard`
+- Click "Pending" stat tile
+- Verify popup shows tasks (not "No tasks in this category")
+
+### Next Steps After Fix:
+- [ ] attempt_completion with demo command to test

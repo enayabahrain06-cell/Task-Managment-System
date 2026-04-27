@@ -171,17 +171,18 @@
 
 @php
 $currentStatus = request('status', '');
+$isOverdueFilter = request()->boolean('overdue');
 $statDefs = [
-    ['label'=>'Projects',  'value'=>$stats['total'],     'sub'=>'Total Projects',  'grad'=>'linear-gradient(135deg,#4F46E5,#6366F1)', 'shadow'=>'rgba(79,70,229,.4)',   'status'=>''],
-    ['label'=>'Active',    'value'=>$stats['active'],    'sub'=>'Active Projects', 'grad'=>'linear-gradient(135deg,#059669,#10B981)', 'shadow'=>'rgba(5,150,105,.4)',   'status'=>'active'],
-    ['label'=>'Completed', 'value'=>$stats['completed'], 'sub'=>'Completed',       'grad'=>'linear-gradient(135deg,#7C3AED,#8B5CF6)', 'shadow'=>'rgba(124,58,237,.4)',  'status'=>'completed'],
-    ['label'=>'Overdue',   'value'=>$stats['overdue'],   'sub'=>'Past Deadline',   'grad'=>'linear-gradient(135deg,#DC2626,#EF4444)', 'shadow'=>'rgba(220,38,38,.4)',   'status'=>'overdue'],
+    ['label'=>'Projects',  'value'=>$stats['total'],     'sub'=>'Total Projects',  'grad'=>'linear-gradient(135deg,#4F46E5,#6366F1)', 'shadow'=>'rgba(79,70,229,.4)',   'url'=> route('admin.projects.index'),                         'active'=> !$currentStatus && !$isOverdueFilter],
+    ['label'=>'Active',    'value'=>$stats['active'],    'sub'=>'Active Projects', 'grad'=>'linear-gradient(135deg,#059669,#10B981)', 'shadow'=>'rgba(5,150,105,.4)',   'url'=> route('admin.projects.index', ['status'=>'active']),    'active'=> $currentStatus === 'active'],
+    ['label'=>'Completed', 'value'=>$stats['completed'], 'sub'=>'Completed',       'grad'=>'linear-gradient(135deg,#7C3AED,#8B5CF6)', 'shadow'=>'rgba(124,58,237,.4)',  'url'=> route('admin.projects.index', ['status'=>'completed']), 'active'=> $currentStatus === 'completed'],
+    ['label'=>'Overdue',   'value'=>$stats['overdue'],   'sub'=>'Past Deadline',   'grad'=>'linear-gradient(135deg,#DC2626,#EF4444)', 'shadow'=>'rgba(220,38,38,.4)',   'url'=> route('admin.projects.index') . '?overdue=1',          'active'=> $isOverdueFilter],
 ];
 @endphp
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;">
     @foreach($statDefs as $card)
-    @php $isActive = $currentStatus === $card['status']; @endphp
-    <a href="{{ route('admin.projects.index', $card['status'] ? ['status' => $card['status']] : []) }}"
+    @php $isActive = $card['active']; @endphp
+    <a href="{{ $card['url'] }}"
        style="text-decoration:none;display:flex;">
         <div class="proj-stat-card"
              style="flex:1;background:{{ $card['grad'] }};{{ $isActive ? 'transform:translateY(-3px);box-shadow:0 8px 24px '.$card['shadow'].';outline:3px solid rgba(255,255,255,0.4);' : '' }}"
@@ -198,9 +199,9 @@ $statDefs = [
     </a>
     @endforeach
 </div>
-@if($currentStatus)
+@if($currentStatus || $isOverdueFilter)
 <div style="margin-bottom:16px;display:flex;align-items:center;gap:8px;">
-    <span style="font-size:13px;color:#6B7280;">Showing: <strong style="color:#111827;">{{ ucfirst($currentStatus) }}</strong> projects</span>
+    <span style="font-size:13px;color:#6B7280;">Showing: <strong style="color:#111827;">{{ $isOverdueFilter ? 'Overdue' : ucfirst($currentStatus) }}</strong> projects</span>
     <a href="{{ route('admin.projects.index') }}" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:#EF4444;text-decoration:none;background:#FEF2F2;border:1px solid #FECACA;padding:3px 9px;border-radius:6px;">
         <i class="fas fa-times" style="font-size:10px;"></i> Clear
     </a>
@@ -269,6 +270,19 @@ $statDefs = [
                     <div class="flex items-center gap-2">
                         <a href="{{ route('admin.projects.show', $project) }}" class="text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition">View</a>
                         <a href="{{ route('admin.projects.edit', $project) }}" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition">Edit</a>
+                        @if($project->status === 'completed')
+                        <form action="{{ route('admin.projects.reopen', $project) }}" method="POST" class="inline"
+                              onsubmit="return confirm('Reopen {{ addslashes($project->name) }} and set it back to Active?')">
+                            @csrf
+                            <button type="submit" class="text-xs font-medium text-amber-600 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg transition">Reopen</button>
+                        </form>
+                        @else
+                        <form action="{{ route('admin.projects.close', $project) }}" method="POST" class="inline"
+                              onsubmit="return confirm('Close &quot;{{ addslashes($project->name) }}&quot; and mark it as Completed?')">
+                            @csrf
+                            <button type="submit" class="text-xs font-medium text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg transition">Close</button>
+                        </form>
+                        @endif
                         <form action="{{ route('admin.projects.destroy', $project) }}" method="POST" class="inline"
                               onsubmit="return confirm('Delete {{ addslashes($project->name) }}?')">
                             @csrf @method('DELETE')
@@ -406,6 +420,27 @@ $statDefs = [
                            style="text-decoration:none;" title="Edit">
                             <i class="fa fa-pen" style="font-size:10px;"></i>
                         </a>
+                        @if($project->status === 'completed')
+                        <form action="{{ route('admin.projects.reopen', $project) }}" method="POST"
+                              onsubmit="return confirm('Reopen {{ addslashes($project->name) }} and set it back to Active?')" style="display:contents;">
+                            @csrf
+                            <button type="submit"
+                                    class="w-6 h-6 rounded-lg bg-amber-50 hover:bg-amber-100 flex items-center justify-center text-amber-400 hover:text-amber-600 transition"
+                                    title="Reopen Project" style="cursor:pointer;border:none;">
+                                <i class="fa fa-rotate-right" style="font-size:10px;"></i>
+                            </button>
+                        </form>
+                        @else
+                        <form action="{{ route('admin.projects.close', $project) }}" method="POST"
+                              onsubmit="return confirm('Close &quot;{{ addslashes($project->name) }}&quot; and mark it as Completed?')" style="display:contents;">
+                            @csrf
+                            <button type="submit"
+                                    class="w-6 h-6 rounded-lg bg-emerald-50 hover:bg-emerald-100 flex items-center justify-center text-emerald-400 hover:text-emerald-600 transition"
+                                    title="Close Project" style="cursor:pointer;border:none;">
+                                <i class="fa fa-check" style="font-size:10px;"></i>
+                            </button>
+                        </form>
+                        @endif
                         <form action="{{ route('admin.projects.destroy', $project) }}" method="POST"
                               onsubmit="return confirm('Delete {{ addslashes($project->name) }}?')" style="display:contents;">
                             @csrf @method('DELETE')

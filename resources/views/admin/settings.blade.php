@@ -89,7 +89,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
     </div>
 </div>
 
-<div class="settings-wrap" x-data="{ tab: '{{ session('_fragment') ?? 'general' }}' }">
+<div class="settings-wrap" x-data="{ tab: '{{ session('_fragment') ?? 'general' }}', confirm: null, phrase: '', openClear(type){ this.confirm = type; this.phrase = ''; }, closeClear(){ this.confirm = null; } }">
 
     {{-- ── Sidebar Nav ── --}}
     <nav class="settings-nav">
@@ -102,14 +102,25 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
             ['id'=>'mail',          'icon'=>'fa-envelope',       'label'=>'Mail / SMTP'],
             ['id'=>'security',      'icon'=>'fa-shield-halved',  'label'=>'Security'],
             ['id'=>'backup',        'icon'=>'fa-database',       'label'=>'Backup & Export'],
+            ['id'=>'developer',     'icon'=>'fa-code',           'label'=>'Developer'],
+            ['id'=>'danger',        'icon'=>'fa-trash-can',      'label'=>'Clear Data'],
         ];
         @endphp
         @foreach($navItems as $nav)
+        @if($nav['id'] === 'danger')
+        <button class="snav-item"
+                :class="tab === 'danger' ? 'active' : ''"
+                :style="tab === 'danger' ? 'background:#FEF2F2;color:#DC2626;' : 'color:#EF4444;'"
+                @click="tab = 'danger'">
+            <i class="fas fa-trash-can"></i> Clear Data
+        </button>
+        @else
         <button class="snav-item" :class="tab === '{{ $nav['id'] }}' ? 'active' : ''"
                 @click="tab = '{{ $nav['id'] }}'">
             <i class="fas {{ $nav['icon'] }}"></i>
             {{ $nav['label'] }}
         </button>
+        @endif
         @endforeach
     </nav>
 
@@ -1030,7 +1041,428 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 
         </div>
 
+        {{-- ════ DEVELOPER ════ --}}
+        <div x-show="tab === 'developer'" x-cloak>
+
+            <div class="scard">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#EEF2FF;color:#6366F1;"><i class="fas fa-code"></i></div>
+                    <div>
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Developer Mode</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Customise which sections appear on the dashboard. Toggle off to return to normal view.</p>
+                    </div>
+                </div>
+
+                {{-- Toggle row --}}
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-top:1px solid #F3F4F6;margin-top:4px;">
+                    <div>
+                        <p style="font-size:13px;font-weight:600;color:#111827;margin:0;">Developer Mode</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:3px 0 0;" id="dev-mode-status">
+                            {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'Active — click sections on the dashboard to remove them' : 'Inactive — enable to customise the dashboard layout' }}
+                        </p>
+                    </div>
+                    <button id="dev-mode-toggle"
+                            onclick="toggleDevMode(this)"
+                            style="display:flex;align-items:center;gap:8px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s;
+                                   {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'background:#6366F1;color:#fff;' : 'background:#F3F4F6;color:#374151;' }}">
+                        <i class="fas {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'fa-toggle-on' : 'fa-toggle-off' }}" id="dev-mode-icon"></i>
+                        <span id="dev-mode-label">{{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'Enabled' : 'Disabled' }}</span>
+                    </button>
+                </div>
+
+                {{-- Hidden (default-visible) elements --}}
+                @php
+                    $hiddenKeys  = json_decode($appSettings['hidden_elements'] ?? '[]', true) ?: [];
+                    $shownExtras = json_decode($appSettings['shown_extras']    ?? '[]', true) ?: [];
+                    $defaultVisibleLabels = ['dash_stats'=>'Overview Cards','dash_task_analytics'=>'Task Analytics','dash_working_hours'=>'Working Hours Chart','dash_project_stats'=>'Project Statistics','dash_workload'=>'Task Workload Chart','dash_calendar'=>'Calendar & Meetings'];
+                    $extraLabels = ['dash_priority_chart'=>'Tasks by Priority','dash_team_performance'=>'Team Performance','dash_project_progress'=>'Project Progress'];
+                @endphp
+
+                @if(count($hiddenKeys) > 0)
+                <div style="border-top:1px solid #F3F4F6;padding-top:16px;">
+                    <p style="font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;">Hidden Sections</p>
+                    <div style="display:flex;flex-direction:column;gap:8px;" id="hidden-list">
+                        @foreach($hiddenKeys as $hk)
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#F8FAFF;border-radius:10px;border:1px solid #EEF0FA;" id="hidden-row-{{ $hk }}">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <i class="fas fa-eye-slash" style="color:#C4B5FD;font-size:12px;"></i>
+                                <span style="font-size:13px;font-weight:500;color:#374151;">{{ $defaultVisibleLabels[$hk] ?? $hk }}</span>
+                            </div>
+                            <button onclick="restoreElement('{{ $hk }}', this)"
+                                    style="display:flex;align-items:center;gap:5px;padding:6px 14px;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;"
+                                    onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'">
+                                <i class="fas fa-eye" style="font-size:10px;"></i> Restore
+                            </button>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @else
+                <div style="border-top:1px solid #F3F4F6;padding-top:16px;text-align:center;padding-bottom:4px;">
+                    <i class="fas fa-check-circle" style="font-size:20px;margin-bottom:6px;display:block;color:#6EE7B7;"></i>
+                    <p style="font-size:12px;color:#9CA3AF;margin:0;">All default sections are visible.</p>
+                </div>
+                @endif
+
+                {{-- Extra (opt-in) charts --}}
+                <div style="border-top:1px solid #F3F4F6;padding-top:16px;margin-top:16px;">
+                    <p style="font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;">Additional Charts</p>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        @foreach($extraLabels as $ek => $elabel)
+                        @php $isAdded = in_array($ek, $shownExtras); @endphp
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:{{ $isAdded ? '#F0FDF4' : '#F9FAFB' }};border-radius:10px;border:1px solid {{ $isAdded ? '#BBF7D0' : '#F0F0F0' }};" id="extra-row-{{ $ek }}">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <i class="fas {{ $isAdded ? 'fa-eye' : 'fa-plus-circle' }}" style="color:{{ $isAdded ? '#10B981' : '#A5B4FC' }};font-size:12px;" id="extra-icon-{{ $ek }}"></i>
+                                <span style="font-size:13px;font-weight:500;color:#374151;">{{ $elabel }}</span>
+                                @if($isAdded)
+                                <span style="font-size:10px;font-weight:700;background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:20px;">Active</span>
+                                @endif
+                            </div>
+                            @if($isAdded)
+                            <button onclick="removeExtra('{{ $ek }}', this)"
+                                    style="display:flex;align-items:center;gap:5px;padding:6px 14px;background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;"
+                                    onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
+                                <i class="fas fa-times" style="font-size:10px;"></i> Remove
+                            </button>
+                            @else
+                            <button onclick="addExtra('{{ $ek }}', this)"
+                                    style="display:flex;align-items:center;gap:5px;padding:6px 14px;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;"
+                                    onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'">
+                                <i class="fas fa-plus" style="font-size:10px;"></i> Add
+                            </button>
+                            @endif
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+
+            {{-- ── Sidebar Navigation Control ── --}}
+            @php
+                $navHiddenKeys = json_decode($appSettings['nav_hidden'] ?? '[]', true) ?: [];
+                $navItems = [
+                    'all'     => [
+                        ['key'=>'nav_activities',  'icon'=>'fa-bolt',            'label'=>'Activities'],
+                        ['key'=>'nav_messages',    'icon'=>'fa-comment-dots',    'label'=>'Messages'],
+                        ['key'=>'nav_team',        'icon'=>'fa-users',           'label'=>'Team Members'],
+                        ['key'=>'nav_calendar',    'icon'=>'fa-calendar-days',   'label'=>'Calendar'],
+                    ],
+                    'admin'   => [
+                        ['key'=>'nav_overview',        'icon'=>'fa-table-cells-large', 'label'=>'Overview (Admin/Manager)'],
+                        ['key'=>'nav_projects',        'icon'=>'fa-diagram-project',   'label'=>'Projects'],
+                        ['key'=>'nav_tasks',           'icon'=>'fa-list-check',        'label'=>'Tasks'],
+                        ['key'=>'nav_approvals',       'icon'=>'fa-clipboard-check',   'label'=>'Approvals'],
+                        ['key'=>'nav_audit',           'icon'=>'fa-shield-halved',     'label'=>'Audit Log'],
+                        ['key'=>'nav_reports',         'icon'=>'fa-chart-bar',         'label'=>'Reports'],
+                        ['key'=>'nav_recent_projects', 'icon'=>'fa-clock-rotate-left', 'label'=>'Recent Projects Section'],
+                    ],
+                    'user'    => [
+                        ['key'=>'nav_my_tasks',      'icon'=>'fa-square-check',    'label'=>'My Tasks (User)'],
+                        ['key'=>'nav_my_projects',   'icon'=>'fa-diagram-project', 'label'=>'My Projects (User)'],
+                        ['key'=>'nav_user_reports',  'icon'=>'fa-chart-bar',       'label'=>'My Reports (User)'],
+                    ],
+                    'footer'  => [
+                        ['key'=>'nav_settings',    'icon'=>'fa-gear',            'label'=>'Settings Link'],
+                    ],
+                ];
+            @endphp
+            <div class="scard" style="margin-top:20px;">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#F5F3FF;color:#7C3AED;"><i class="fas fa-sidebar"></i></div>
+                    <div>
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Sidebar Navigation</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Show or hide individual items in the left sidebar. Hidden items are removed for all users.</p>
+                    </div>
+                </div>
+
+                @foreach(['all'=>'All Roles','admin'=>'Admin / Manager','user'=>'User Only','footer'=>'Sidebar Footer'] as $grp => $grpLabel)
+                <div style="border-top:1px solid #F3F4F6;padding:14px 0 6px;">
+                    <p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.07em;margin:0 0 10px;">{{ $grpLabel }}</p>
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                        @foreach($navItems[$grp] as $ni)
+                        @php $niHidden = in_array($ni['key'], $navHiddenKeys); @endphp
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:{{ $niHidden ? '#FEF2F2' : '#F9FAFB' }};border-radius:10px;border:1px solid {{ $niHidden ? '#FECACA' : '#F0F0F0' }};" id="navrow-{{ $ni['key'] }}">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="width:30px;height:30px;border-radius:8px;background:{{ $niHidden ? '#FEE2E2' : '#EEF2FF' }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas {{ $ni['icon'] }}" style="font-size:11px;color:{{ $niHidden ? '#DC2626' : '#6366F1' }};"></i>
+                                </div>
+                                <span style="font-size:13px;font-weight:500;color:#374151;">{{ $ni['label'] }}</span>
+                                @if($niHidden)
+                                <span style="font-size:10px;font-weight:700;background:#FEE2E2;color:#DC2626;padding:2px 8px;border-radius:20px;">Hidden</span>
+                                @endif
+                            </div>
+                            @if($niHidden)
+                            <button onclick="toggleNavItem('{{ $ni['key'] }}','show',this)"
+                                    style="display:flex;align-items:center;gap:5px;padding:6px 14px;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;"
+                                    onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'">
+                                <i class="fas fa-eye" style="font-size:10px;"></i> Show
+                            </button>
+                            @else
+                            <button onclick="toggleNavItem('{{ $ni['key'] }}','hide',this)"
+                                    style="display:flex;align-items:center;gap:5px;padding:6px 14px;background:#F9FAFB;color:#6B7280;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;"
+                                    onmouseover="this.style.background='#FEF2F2';this.style.color='#DC2626';this.style.borderColor='#FECACA';"
+                                    onmouseout="this.style.background='#F9FAFB';this.style.color='#6B7280';this.style.borderColor='#E5E7EB';">
+                                <i class="fas fa-eye-slash" style="font-size:10px;"></i> Hide
+                            </button>
+                            @endif
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endforeach
+            </div>
+
+            {{-- ── Header Elements Control ── --}}
+            @php
+                $headerItems = [
+                    ['key'=>'nav_notifications', 'icon'=>'fa-bell',       'label'=>'Notifications Bell',  'desc'=>'The notification bell icon in the top bar'],
+                    ['key'=>'nav_online_users',  'icon'=>'fa-circle-dot', 'label'=>"Who's Online Button", 'desc'=>'Online users indicator (Admin/Manager only)'],
+                ];
+            @endphp
+            <div class="scard" style="margin-top:20px;">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#FFF7ED;color:#EA580C;"><i class="fas fa-bars-staggered"></i></div>
+                    <div>
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Header Elements</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Control visibility of icons and buttons in the top navigation bar.</p>
+                    </div>
+                </div>
+                <div style="border-top:1px solid #F3F4F6;padding:14px 0 6px;">
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                        @foreach($headerItems as $hi)
+                        @php $hiHidden = in_array($hi['key'], $navHiddenKeys); @endphp
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:{{ $hiHidden ? '#FEF2F2' : '#F9FAFB' }};border-radius:10px;border:1px solid {{ $hiHidden ? '#FECACA' : '#F0F0F0' }};" id="navrow-{{ $hi['key'] }}">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="width:30px;height:30px;border-radius:8px;background:{{ $hiHidden ? '#FEE2E2' : '#FFF7ED' }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas {{ $hi['icon'] }}" style="font-size:11px;color:{{ $hiHidden ? '#DC2626' : '#EA580C' }};"></i>
+                                </div>
+                                <div>
+                                    <span style="font-size:13px;font-weight:500;color:#374151;">{{ $hi['label'] }}</span>
+                                    <span style="display:block;font-size:11px;color:#9CA3AF;">{{ $hi['desc'] }}</span>
+                                </div>
+                                @if($hiHidden)
+                                <span style="font-size:10px;font-weight:700;background:#FEE2E2;color:#DC2626;padding:2px 8px;border-radius:20px;">Hidden</span>
+                                @endif
+                            </div>
+                            @if($hiHidden)
+                            <button onclick="toggleNavItem('{{ $hi['key'] }}','show',this)"
+                                    style="display:flex;align-items:center;gap:5px;padding:6px 14px;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;"
+                                    onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'">
+                                <i class="fas fa-eye" style="font-size:10px;"></i> Show
+                            </button>
+                            @else
+                            <button onclick="toggleNavItem('{{ $hi['key'] }}','hide',this)"
+                                    style="display:flex;align-items:center;gap:5px;padding:6px 14px;background:#F9FAFB;color:#6B7280;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;"
+                                    onmouseover="this.style.background='#FEF2F2';this.style.color='#DC2626';this.style.borderColor='#FECACA';"
+                                    onmouseout="this.style.background='#F9FAFB';this.style.color='#6B7280';this.style.borderColor='#E5E7EB';">
+                                <i class="fas fa-eye-slash" style="font-size:10px;"></i> Hide
+                            </button>
+                            @endif
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        {{-- ════ CLEAR DATA ════ --}}
+        <div x-show="tab === 'danger'" x-cloak>
+
+            {{-- Warning banner --}}
+            <div style="background:#FEF2F2;border:1.5px solid #FECACA;border-radius:12px;padding:14px 18px;display:flex;align-items:flex-start;gap:12px;margin-bottom:20px;">
+                <i class="fas fa-triangle-exclamation" style="color:#DC2626;margin-top:2px;flex-shrink:0;font-size:15px;"></i>
+                <div>
+                    <p style="font-size:13px;font-weight:700;color:#DC2626;margin:0 0 3px;">Danger Zone</p>
+                    <p style="font-size:12px;color:#B91C1C;margin:0;line-height:1.6;">These actions permanently delete data and <strong>cannot be undone</strong>. Users and system settings are never affected.</p>
+                </div>
+            </div>
+
+            {{-- Clear options --}}
+            <div class="scard">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#FEF2F2;color:#DC2626;"><i class="fas fa-trash-can"></i></div>
+                    <div>
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Clear Data</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Select what to permanently remove from the system</p>
+                    </div>
+                </div>
+                <div class="scard-body" style="padding:0;">
+
+                    @php
+                    $clearItems = [
+                        ['type'=>'notifications',  'icon'=>'fa-bell',              'bg'=>'#EEF2FF', 'ic'=>'#4F46E5', 'label'=>'Notifications',        'desc'=>'All read and unread notifications for every user'],
+                        ['type'=>'messages',        'icon'=>'fa-envelope',          'bg'=>'#F0FDF4', 'ic'=>'#16A34A', 'label'=>'Messages',              'desc'=>'All direct messages between team members'],
+                        ['type'=>'audit_logs',      'icon'=>'fa-list-check',        'bg'=>'#FFFBEB', 'ic'=>'#D97706', 'label'=>'Audit Logs',            'desc'=>'Full history of admin actions and system events'],
+                        ['type'=>'task_activity',   'icon'=>'fa-clock-rotate-left', 'bg'=>'#F5F3FF', 'ic'=>'#7C3AED', 'label'=>'Task Activity',        'desc'=>'Task logs, comments and submission history'],
+                        ['type'=>'tasks_projects',  'icon'=>'fa-diagram-project',   'bg'=>'#FFF7ED', 'ic'=>'#EA580C', 'label'=>'All Tasks & Projects', 'desc'=>'Every task, project and their related files'],
+                    ];
+                    @endphp
+
+                    @foreach($clearItems as $item)
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #F3F4F6;">
+                        <div style="display:flex;align-items:center;gap:14px;">
+                            <div style="width:38px;height:38px;border-radius:10px;background:{{ $item['bg'] }};color:{{ $item['ic'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;">
+                                <i class="fas {{ $item['icon'] }}"></i>
+                            </div>
+                            <div>
+                                <p style="font-size:13px;font-weight:600;color:#111827;margin:0 0 2px;">{{ $item['label'] }}</p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:0;">{{ $item['desc'] }}</p>
+                            </div>
+                        </div>
+                        <button type="button"
+                                @click="openClear('{{ $item['type'] }}')"
+                                style="padding:7px 16px;font-size:12px;font-weight:600;background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;border-radius:8px;cursor:pointer;white-space:nowrap;flex-shrink:0;"
+                                onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
+                            <i class="fas fa-trash" style="font-size:10px;margin-right:5px;"></i>Clear
+                        </button>
+                    </div>
+                    @endforeach
+
+                    {{-- Full Reset row --}}
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:#FEF2F2;border-top:2px dashed #FECACA;">
+                        <div style="display:flex;align-items:center;gap:14px;">
+                            <div style="width:38px;height:38px;border-radius:10px;background:#DC2626;color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;">
+                                <i class="fas fa-bomb"></i>
+                            </div>
+                            <div>
+                                <p style="font-size:13px;font-weight:700;color:#DC2626;margin:0 0 2px;">Full Data Reset</p>
+                                <p style="font-size:11px;color:#B91C1C;margin:0;">Clears everything above at once — users &amp; settings are kept</p>
+                            </div>
+                        </div>
+                        <button type="button"
+                                @click="openClear('full_reset')"
+                                style="padding:7px 16px;font-size:12px;font-weight:700;background:#DC2626;color:#fff;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;flex-shrink:0;"
+                                onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
+                            <i class="fas fa-bomb" style="font-size:10px;margin-right:5px;"></i>Full Reset
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+        {{-- ════ END CLEAR DATA ════ --}}
+
+        {{-- ════ CONFIRMATION MODAL (teleported to <body> to escape any overflow/z-index traps) ════ --}}
+        <template x-teleport="body">
+            <div x-show="confirm !== null"
+                 x-cloak
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 @keydown.escape.window="closeClear()"
+                 style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99999;">
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;">
+                <div style="background:#fff;border-radius:16px;width:100%;max-width:440px;box-shadow:0 25px 60px rgba(0,0,0,0.3);" @click.stop>
+
+                    {{-- Header --}}
+                    <div style="padding:24px 24px 0;">
+                        <div style="width:52px;height:52px;background:#FEF2F2;border-radius:14px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;">
+                            <i class="fas fa-triangle-exclamation" style="color:#DC2626;font-size:22px;"></i>
+                        </div>
+                        <p style="font-size:17px;font-weight:700;color:#111827;margin:0 0 8px;">Are you absolutely sure?</p>
+                        <p style="font-size:13px;color:#6B7280;margin:0 0 20px;line-height:1.65;">
+                            This will <strong style="color:#DC2626;">permanently delete</strong> the selected data and cannot be undone.<br>
+                            Type <strong style="color:#DC2626;letter-spacing:0.05em;">DELETE</strong> below to confirm.
+                        </p>
+                        <input type="text"
+                               x-model="phrase"
+                               placeholder="Type DELETE to confirm"
+                               autocomplete="off"
+                               style="width:100%;padding:10px 14px;font-size:13px;border:1.5px solid #E5E7EB;border-radius:9px;outline:none;font-family:'Inter',sans-serif;box-sizing:border-box;transition:border-color 0.15s;"
+                               :style="phrase === 'DELETE' ? 'border-color:#16A34A;background:#F0FDF4;' : ''"
+                               @keydown.enter="if(phrase === 'DELETE') $refs.clearBtn.click()">
+                    </div>
+
+                    {{-- Footer --}}
+                    <div style="padding:16px 24px 24px;display:flex;gap:10px;justify-content:flex-end;">
+                        <button type="button"
+                                @click="closeClear()"
+                                style="padding:10px 20px;font-size:13px;font-weight:500;background:#F3F4F6;color:#374151;border:none;border-radius:9px;cursor:pointer;">
+                            Cancel
+                        </button>
+                        <form method="POST" action="{{ route('admin.settings.clear') }}" style="margin:0;">
+                            @csrf
+                            <input type="hidden" name="type" :value="confirm">
+                            <button type="submit"
+                                    x-ref="clearBtn"
+                                    :disabled="phrase !== 'DELETE'"
+                                    style="padding:10px 20px;font-size:13px;font-weight:500;background:#DC2626;color:#fff;border:none;border-radius:9px;cursor:pointer;"
+                                    :style="phrase !== 'DELETE' ? 'opacity:0.5;cursor:not-allowed;' : 'opacity:1;cursor:pointer;'"
+                                    onmouseover="if(!this.disabled)this.style.background='#B91C1C'"
+                                    onmouseout="this.style.background='#DC2626'">
+                                <i class="fas fa-trash" style="font-size:11px;margin-right:6px;"></i>Yes, Delete
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
+                </div>
+            </div>
+        </template>
+
     </div>{{-- end settings-panel --}}
 </div>{{-- end settings-wrap --}}
+
+<script>
+const _devToggleUrl   = '{{ route('admin.settings.dev-mode') }}';
+const _devElementsUrl = '{{ route('admin.settings.elements.toggle') }}';
+const _csrfToken      = '{{ csrf_token() }}';
+
+function toggleDevMode(btn) {
+    fetch(_devToggleUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': _csrfToken, 'Content-Type': 'application/json' } })
+        .then(r => r.json())
+        .then(d => {
+            const on = d.developer_mode;
+            btn.style.background = on ? '#6366F1' : '#F3F4F6';
+            btn.style.color      = on ? '#fff'    : '#374151';
+            document.getElementById('dev-mode-icon').className  = 'fas ' + (on ? 'fa-toggle-on' : 'fa-toggle-off');
+            document.getElementById('dev-mode-label').textContent = on ? 'Enabled' : 'Disabled';
+            document.getElementById('dev-mode-status').textContent = on
+                ? 'Active — click sections on the dashboard to remove them'
+                : 'Inactive — enable to customise the dashboard layout';
+        });
+}
+
+function restoreElement(key, btn) {
+    fetch(_devElementsUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': _csrfToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ key, action: 'restore' }) })
+        .then(r => r.json())
+        .then(() => {
+            const row = document.getElementById('hidden-row-' + key);
+            if (row) row.remove();
+            const list = document.getElementById('hidden-list');
+            if (list && list.children.length === 0) {
+                list.closest('div').innerHTML = '<div style="text-align:center;padding-bottom:4px;"><i class="fas fa-check-circle" style="font-size:20px;margin-bottom:6px;display:block;color:#6EE7B7;"></i><p style="font-size:12px;color:#9CA3AF;margin:0;">All default sections are visible.</p></div>';
+            }
+        });
+}
+
+function addExtra(key, btn) {
+    fetch(_devElementsUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': _csrfToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ key, action: 'add' }) })
+        .then(r => r.json())
+        .then(() => { location.reload(); });
+}
+
+function removeExtra(key, btn) {
+    fetch(_devElementsUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': _csrfToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ key, action: 'remove' }) })
+        .then(r => r.json())
+        .then(() => { location.reload(); });
+}
+
+const _navToggleUrl = '{{ route('admin.settings.nav.toggle') }}';
+
+function toggleNavItem(key, action, btn) {
+    btn.disabled = true;
+    fetch(_navToggleUrl, {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': _csrfToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, action })
+    })
+    .then(r => r.json())
+    .then(() => { location.reload(); })
+    .catch(() => { btn.disabled = false; });
+}
+</script>
 
 @endsection

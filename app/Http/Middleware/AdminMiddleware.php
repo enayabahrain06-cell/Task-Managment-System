@@ -15,8 +15,8 @@ class AdminMiddleware
     {
         $user = auth()->user();
 
-        if (!$user || $user->role !== 'admin') {
-            abort(403, 'Admin access required.');
+        if (!$user || !in_array($user->role, ['admin', 'manager'])) {
+            abort(403, 'Admin or Manager access required.');
         }
 
         if ($user->status !== 'active') {

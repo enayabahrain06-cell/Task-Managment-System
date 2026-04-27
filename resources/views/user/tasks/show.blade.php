@@ -23,7 +23,7 @@
     $p = $priorityMap[$task->priority] ?? $priorityMap['medium'];
 
     $latestSubmission = $task->submissions->first();
-    $canSubmit = in_array($task->status, ['viewed', 'in_progress', 'revision_requested']);
+    $canSubmit = in_array($task->status, ['in_progress', 'revision_requested']);
     $canStartWork = in_array($task->status, ['viewed', 'revision_requested']);
 
     // Workflow step index (for stepper)
@@ -37,6 +37,23 @@
         ['key'=>'approved',    'label'=>'Approved'],
         ['key'=>'delivered',   'label'=>'Delivered'],
     ];
+
+    // Append social media steps when required
+    $hasSocial = $task->social_required === true;
+    if ($hasSocial) {
+        $steps[] = [
+            'key'         => 'social_assigned',
+            'label'       => 'Social Assigned',
+            'socialState' => $task->social_assigned_to
+                ? ($task->social_posted_at ? 'done' : 'active')
+                : 'pending',
+        ];
+        $steps[] = [
+            'key'         => 'social_posted',
+            'label'       => 'Social Posted',
+            'socialState' => $task->social_posted_at ? 'done' : 'pending',
+        ];
+    }
 @endphp
 
 {{-- Header --}}
@@ -58,19 +75,38 @@
 
 {{-- Workflow Stepper --}}
 <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;margin-bottom:20px;overflow-x:auto;">
-    <div style="display:flex;align-items:center;min-width:560px;">
+    <div style="display:flex;align-items:center;min-width:{{ $hasSocial ? '760px' : '560px' }};">
         @foreach($steps as $idx => $step)
         @php
-            $done    = $currentStep > $idx;
-            $active  = $currentStep === $idx;
-            $isRev   = $task->status === 'revision_requested' && $step['key'] === 'submitted';
-            $dotBg   = $done ? '#6366F1' : ($active ? '#6366F1' : ($isRev ? '#DC2626' : '#E5E7EB'));
-            $dotText = $done ? '#fff' : ($active ? '#fff' : ($isRev ? '#fff' : '#9CA3AF'));
-            $labelColor = $active ? '#111827' : ($done ? '#6366F1' : ($isRev ? '#DC2626' : '#9CA3AF'));
+            $isSocial = isset($step['socialState']);
+            if ($isSocial) {
+                $socialState = $step['socialState'];
+                $done        = $socialState === 'done';
+                $active      = $socialState === 'active';
+                $isRev       = false;
+                $dotBg       = $done ? '#059669' : ($active ? '#D97706' : '#E5E7EB');
+                $dotText     = ($done || $active) ? '#fff' : '#9CA3AF';
+                $labelColor  = $done ? '#059669' : ($active ? '#D97706' : '#9CA3AF');
+            } else {
+                $done    = $currentStep > $idx;
+                $active  = $currentStep === $idx;
+                $isRev   = $task->status === 'revision_requested' && $step['key'] === 'submitted';
+                $dotBg   = $done ? '#6366F1' : ($active ? '#6366F1' : ($isRev ? '#DC2626' : '#E5E7EB'));
+                $dotText = $done ? '#fff' : ($active ? '#fff' : ($isRev ? '#fff' : '#9CA3AF'));
+                $labelColor = $active ? '#111827' : ($done ? '#6366F1' : ($isRev ? '#DC2626' : '#9CA3AF'));
+            }
         @endphp
         <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
             <div style="width:28px;height:28px;border-radius:50%;background:{{ $dotBg }};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:{{ $dotText }};position:relative;z-index:1;flex-shrink:0;">
-                @if($done)
+                @if($isSocial)
+                    @if($done)
+                        <i class="fa fa-check" style="font-size:10px;"></i>
+                    @elseif($active)
+                        <i class="fa fa-share-nodes" style="font-size:10px;"></i>
+                    @else
+                        {{ $idx + 1 }}
+                    @endif
+                @elseif($done)
                     <i class="fa fa-check" style="font-size:10px;"></i>
                 @elseif($isRev)
                     <i class="fa fa-rotate-left" style="font-size:10px;"></i>
@@ -83,7 +119,18 @@
             </p>
         </div>
         @if(!$loop->last)
-        <div style="flex:1;height:2px;background:{{ $currentStep > $idx ? '#6366F1' : '#E5E7EB' }};margin-bottom:14px;"></div>
+        @php
+            $nextStep     = $steps[$idx + 1] ?? null;
+            $nextIsSocial = isset($nextStep['socialState']);
+            if ($isSocial) {
+                $connectorColor = ($step['socialState'] === 'done') ? '#059669' : '#E5E7EB';
+            } elseif ($nextIsSocial) {
+                $connectorColor = ($currentStep > $idx) ? '#059669' : '#E5E7EB';
+            } else {
+                $connectorColor = $currentStep > $idx ? '#6366F1' : '#E5E7EB';
+            }
+        @endphp
+        <div style="flex:1;height:2px;background:{{ $connectorColor }};margin-bottom:14px;"></div>
         @endif
         @endforeach
     </div>
@@ -324,52 +371,144 @@
 
         {{-- Submission history --}}
         @if($task->submissions->count() && auth()->user()->hasPermission('view_version_history'))
-        <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
-            <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 20px;display:flex;align-items:center;gap:8px;">
+        @php
+            $subColorMap = [
+                'submitted' => ['#EEF2FF','#4F46E5','fa-hourglass-half','In Review'],
+                'approved'  => ['#D1FAE5','#059669','fa-circle-check','Approved'],
+                'rejected'  => ['#FEE2E2','#DC2626','fa-rotate-left','Revision Requested'],
+            ];
+            $subsJson = $task->submissions->map(function($sub) use ($subColorMap) {
+                [$sbg,$sco,$sico,$slbl] = $subColorMap[$sub->status] ?? $subColorMap['submitted'];
+                return [
+                    'version'       => $sub->version,
+                    'statusLabel'   => $slbl,
+                    'statusBg'      => $sbg,
+                    'statusColor'   => $sco,
+                    'icon'          => $sico,
+                    'time'          => $sub->created_at->format('M d, Y · H:i'),
+                    'timeAgo'       => $sub->created_at->diffForHumans(),
+                    'note'          => $sub->note,
+                    'fileUrl'       => $sub->file_path ? $sub->fileUrl() : null,
+                    'fileName'      => $sub->original_filename ?? 'Download file',
+                    'adminNote'     => $sub->admin_note,
+                    'adminName'     => $sub->reviewer?->name ?? 'Admin',
+                    'adminApproved' => $sub->status === 'approved',
+                ];
+            })->values();
+        @endphp
+        <script>
+        function versionHistoryData() {
+            return {
+                subs: {!! json_encode($subsJson) !!},
+                open: false,
+                sel: null,
+                show(i) { this.sel = this.subs[i]; this.open = true; },
+                close() { this.open = false; this.sel = null; }
+            };
+        }
+        </script>
+        <div x-data="versionHistoryData()"
+             style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
+            <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 16px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-clock-rotate-left" style="color:#6366F1;"></i> Version History
                 <span style="margin-left:auto;font-size:12px;font-weight:500;color:#9CA3AF;">{{ $task->submissions->count() }} {{ Str::plural('version', $task->submissions->count()) }}</span>
             </h2>
-            @foreach($task->submissions as $sub)
-            @php
-                $subColors = [
-                    'submitted' => ['#EEF2FF','#4F46E5','fa-hourglass-half','In Review'],
-                    'approved'  => ['#D1FAE5','#059669','fa-circle-check','Approved'],
-                    'rejected'  => ['#FEE2E2','#DC2626','fa-rotate-left','Revision Requested'],
-                ];
-                [$sbg2,$sco2,$sico,$slbl2] = $subColors[$sub->status] ?? $subColors['submitted'];
-            @endphp
-            <div style="display:flex;gap:14px;padding-bottom:20px;margin-bottom:20px;border-bottom:1px solid #F9FAFB;">
-                <div style="flex-shrink:0;">
-                    <div style="width:36px;height:36px;border-radius:50%;background:{{ $sbg2 }};display:flex;align-items:center;justify-content:center;">
-                        <i class="fa {{ $sico }}" style="color:{{ $sco2 }};font-size:14px;"></i>
-                    </div>
+
+            @foreach($task->submissions as $i => $sub)
+            @php [$sbg2,$sco2,$sico,$slbl2] = $subColorMap[$sub->status] ?? $subColorMap['submitted']; @endphp
+            <div @click="show({{ $i }})"
+                 style="display:flex;align-items:center;gap:14px;padding:12px;border-radius:10px;cursor:pointer;transition:background .15s;border:1px solid transparent;margin-bottom:6px;"
+                 @mouseenter="$el.style.background='#F9FAFB';$el.style.borderColor='#E5E7EB'"
+                 @mouseleave="$el.style.background='transparent';$el.style.borderColor='transparent'">
+                <div style="width:38px;height:38px;border-radius:50%;background:{{ $sbg2 }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fa {{ $sico }}" style="color:{{ $sco2 }};font-size:14px;"></i>
                 </div>
                 <div style="flex:1;min-width:0;">
-                    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
                         <span style="font-size:13px;font-weight:700;color:#111827;">Version {{ $sub->version }}</span>
                         <span style="font-size:11px;font-weight:600;padding:2px 9px;border-radius:10px;background:{{ $sbg2 }};color:{{ $sco2 }};">{{ $slbl2 }}</span>
-                        <span style="font-size:11px;color:#9CA3AF;margin-left:auto;">{{ $sub->created_at->diffForHumans() }}</span>
                     </div>
-                    @if($sub->note)
-                    <p style="font-size:13px;color:#374151;margin:0 0 6px;line-height:1.5;">{{ $sub->note }}</p>
-                    @endif
-                    @if($sub->file_path)
-                    <a href="{{ $sub->fileUrl() }}" target="_blank"
-                       style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#6366F1;text-decoration:none;background:#EEF2FF;padding:5px 10px;border-radius:7px;margin-bottom:6px;">
-                        <i class="fa fa-paperclip"></i> {{ $sub->original_filename ?? 'Download file' }}
-                    </a>
-                    @endif
-                    @if($sub->admin_note)
-                    <div style="background:{{ $sub->status === 'approved' ? '#F0FDF4' : '#FEF2F2' }};border-radius:8px;padding:8px 12px;border-left:3px solid {{ $sub->status === 'approved' ? '#10B981' : '#EF4444' }};">
-                        <p style="font-size:11px;font-weight:600;color:{{ $sub->status === 'approved' ? '#065F46' : '#991B1B' }};margin:0 0 2px;">
-                            Admin feedback — {{ $sub->reviewer?->name ?? 'Admin' }}
-                        </p>
-                        <p style="font-size:12px;color:{{ $sub->status === 'approved' ? '#047857' : '#B91C1C' }};margin:0;">{{ $sub->admin_note }}</p>
-                    </div>
-                    @endif
+                    <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">{{ $sub->created_at->diffForHumans() }}
+                        @if($sub->file_path) &middot; <i class="fa fa-paperclip"></i> Attachment @endif
+                        @if($sub->admin_note) &middot; <i class="fa fa-comment-dots"></i> Admin feedback @endif
+                    </p>
                 </div>
+                <i class="fa fa-chevron-right" style="color:#D1D5DB;font-size:11px;flex-shrink:0;"></i>
             </div>
             @endforeach
+
+            {{-- Version detail modal --}}
+            <template x-teleport="body">
+                {{-- Outer: position:fixed overlay. x-show only toggles display on this div,
+                     so we keep display:flex on the INNER centering wrapper, not here. --}}
+                <div x-show="open" x-cloak
+                     @keydown.escape.window="close()"
+                     style="position:fixed;inset:0;z-index:9999;">
+                    {{-- Backdrop + centering wrapper (always display:flex once outer is visible) --}}
+                    <div @click.self="close()"
+                         style="width:100%;height:100%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;">
+                        <div x-transition
+                             style="background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.18);width:100%;max-width:460px;overflow:hidden;">
+                            <template x-if="sel">
+                            <div>
+                                {{-- Modal header --}}
+                                <div style="padding:20px 24px 16px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;gap:12px;">
+                                    <div :style="'width:40px;height:40px;border-radius:50%;background:'+sel.statusBg+';display:flex;align-items:center;justify-content:center;flex-shrink:0;'">
+                                        <i :class="'fa '+sel.icon" :style="'color:'+sel.statusColor+';font-size:15px;'"></i>
+                                    </div>
+                                    <div style="flex:1;min-width:0;">
+                                        <div style="display:flex;align-items:center;gap:8px;">
+                                            <span style="font-size:15px;font-weight:700;color:#111827;" x-text="'Version '+sel.version"></span>
+                                            <span :style="'font-size:11px;font-weight:600;padding:2px 9px;border-radius:10px;background:'+sel.statusBg+';color:'+sel.statusColor+';'" x-text="sel.statusLabel"></span>
+                                        </div>
+                                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;" x-text="sel.time"></p>
+                                    </div>
+                                    <button @click="close()" style="width:32px;height:32px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                        <i class="fa fa-xmark" style="color:#6B7280;font-size:13px;"></i>
+                                    </button>
+                                </div>
+                                {{-- Modal body --}}
+                                <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px;max-height:60vh;overflow-y:auto;">
+                                    {{-- Submission note --}}
+                                    <template x-if="sel.note">
+                                    <div>
+                                        <p style="font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;">Submission Note</p>
+                                        <p style="font-size:13px;color:#374151;margin:0;line-height:1.6;background:#F9FAFB;padding:10px 14px;border-radius:10px;" x-text="sel.note"></p>
+                                    </div>
+                                    </template>
+                                    {{-- File attachment --}}
+                                    <template x-if="sel.fileUrl">
+                                    <div>
+                                        <p style="font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;">Attachment</p>
+                                        <a :href="sel.fileUrl" target="_blank"
+                                           style="display:inline-flex;align-items:center;gap:8px;font-size:13px;color:#6366F1;text-decoration:none;background:#EEF2FF;padding:8px 14px;border-radius:10px;font-weight:500;">
+                                            <i class="fa fa-paperclip"></i>
+                                            <span x-text="sel.fileName"></span>
+                                            <i class="fa fa-arrow-up-right-from-square" style="font-size:10px;opacity:.7;"></i>
+                                        </a>
+                                    </div>
+                                    </template>
+                                    {{-- Admin feedback --}}
+                                    <template x-if="sel.adminNote">
+                                    <div>
+                                        <p style="font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;">Admin Feedback</p>
+                                        <div :style="'background:'+(sel.adminApproved?'#F0FDF4':'#FEF2F2')+';border-radius:10px;padding:12px 14px;border-left:3px solid '+(sel.adminApproved?'#10B981':'#EF4444')+';'">
+                                            <p :style="'font-size:11px;font-weight:600;color:'+(sel.adminApproved?'#065F46':'#991B1B')+';margin:0 0 4px;'" x-text="sel.adminName"></p>
+                                            <p :style="'font-size:13px;color:'+(sel.adminApproved?'#047857':'#B91C1C')+';margin:0;line-height:1.5;'" x-text="sel.adminNote"></p>
+                                        </div>
+                                    </div>
+                                    </template>
+                                    {{-- Fallback --}}
+                                    <template x-if="!sel.note && !sel.fileUrl && !sel.adminNote">
+                                    <p style="font-size:13px;color:#9CA3AF;text-align:center;padding:10px 0;">No additional details for this version.</p>
+                                    </template>
+                                </div>
+                            </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </template>
         </div>
         @endif
 
@@ -397,7 +536,18 @@
                         <span style="font-size:11px;font-weight:600;padding:1px 7px;border-radius:8px;background:{{ $abg }};color:{{ $aco }};">{{ $log->actionLabel() }}</span>
                         <span style="font-size:11px;color:#9CA3AF;margin-left:auto;">{{ $log->created_at->format('M d, H:i') }}</span>
                     </div>
-                    @if(isset($meta['old_status'], $meta['new_status']))
+                    @if(in_array($log->action, ['task_reassigned','task_transferred']) && isset($meta['from_user_name'], $meta['to_user_name']))
+                    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;">
+                        <span style="font-size:11px;background:#FEF3C7;color:#D97706;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                            <span style="text-decoration:line-through;opacity:.7;">{{ $meta['from_user_name'] }}</span>
+                            <i class="fa fa-arrow-right" style="font-size:9px;"></i>
+                            <strong>{{ $meta['to_user_name'] }}</strong>
+                        </span>
+                        @if(!empty($meta['reassigned_by'] ?? $meta['performed_by'] ?? null))
+                        <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;">by {{ $meta['reassigned_by'] ?? $meta['performed_by'] }}</span>
+                        @endif
+                    </div>
+                    @elseif(isset($meta['old_status'], $meta['new_status']))
                     <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;">
                         {{ str_replace('_',' ',$meta['old_status']) }} → <strong>{{ str_replace('_',' ',$meta['new_status']) }}</strong>
                     </span>
@@ -405,7 +555,7 @@
                     @if(isset($meta['rejection_reason']))
                     <p style="font-size:12px;color:#DC2626;background:#FEF2F2;padding:6px 10px;border-radius:8px;border-left:3px solid #EF4444;margin:5px 0 0;">"{{ $meta['rejection_reason'] }}"</p>
                     @endif
-                    @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed']))
+                    @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','task_reassigned','task_transferred']))
                     <p style="font-size:12px;color:#6B7280;background:#F9FAFB;padding:6px 10px;border-radius:8px;border-left:3px solid #E5E7EB;margin:5px 0 0;">"{{ $log->note }}"</p>
                     @endif
                 </div>

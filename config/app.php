@@ -52,7 +52,7 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'http://localhost'),
+'url' => str_replace('http://', 'https://', env('APP_URL', 'https://ms.p7h.me')),
 
     /*
     |--------------------------------------------------------------------------

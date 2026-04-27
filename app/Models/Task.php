@@ -8,16 +8,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Task extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'project_id',
         'title',
         'description',
         'assigned_to',
+        'social_assigned_to',
+        'social_posted_at',
+        'social_required',
         'status',
         'priority',
         'deadline',
@@ -29,9 +33,11 @@ class Task extends Model
     ];
 
     protected $casts = [
-        'deadline'        => 'date',
-        'first_viewed_at' => 'datetime',
-        'tags'            => 'array',
+        'deadline'         => 'date',
+        'first_viewed_at'  => 'datetime',
+        'social_posted_at' => 'datetime',
+        'social_required'  => 'boolean',
+        'tags'             => 'array',
     ];
 
     public function project(): BelongsTo
@@ -54,6 +60,16 @@ class Task extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewer_id');
+    }
+
+    public function socialAssignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'social_assigned_to');
+    }
+
+    public function socialPosts(): HasMany
+    {
+        return $this->hasMany(TaskSocialPost::class)->latest();
     }
 
     public function creator(): BelongsTo

@@ -50,7 +50,20 @@ class Project extends Model
     {
         $total = $this->tasks()->count();
         if ($total === 0) return 0;
-        return (int) round($this->tasks()->where('status', 'completed')->count() / $total * 100);
+        return (int) round($this->tasks()->whereIn('status', ['delivered', 'archived'])->count() / $total * 100);
+    }
+
+    public function autoComplete(): bool
+    {
+        if ($this->status === 'completed') return false;
+        $total = $this->tasks()->count();
+        if ($total === 0) return false;
+        $done = $this->tasks()->whereIn('status', ['approved', 'delivered', 'archived'])->count();
+        if ($total === $done) {
+            $this->update(['status' => 'completed']);
+            return true;
+        }
+        return false;
     }
 }
 

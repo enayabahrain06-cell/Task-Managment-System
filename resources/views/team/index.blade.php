@@ -46,7 +46,7 @@
         <h1 class="text-2xl font-bold text-gray-900">Team Members</h1>
         <p class="text-sm text-gray-500 mt-0.5">{{ $totalMembers }} total members across all teams</p>
     </div>
-    @if(auth()->user()->role === 'admin')
+    @if(in_array(auth()->user()->role, ['admin', 'manager']))
     <button type="button"
             onclick="window.dispatchEvent(new CustomEvent('open-add-user'))"
             class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm">
@@ -55,8 +55,8 @@
     @endif
 </div>
 
-{{-- ═══════ Outer Tabs (admin only) ═══════ --}}
-@if(auth()->user()->role === 'admin')
+{{-- ═══════ Outer Tabs (admin/manager only) ═══════ --}}
+@if(in_array(auth()->user()->role, ['admin', 'manager']))
 <div class="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit mb-6" style="flex-wrap:wrap;">
     <a href="{{ route('team.index') }}"
        class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition {{ $view === 'team' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
@@ -173,7 +173,7 @@
 </div>
 
 {{-- Search & Filters --}}
-@if(auth()->user()->role === 'admin')
+@if(in_array(auth()->user()->role, ['admin', 'manager']))
 <form method="GET" action="{{ route('team.index') }}" class="flex flex-wrap gap-3 mb-5">
     <div class="relative flex-1 min-w-[200px]">
         <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
@@ -249,8 +249,8 @@
             </div>
         </div>
 
-        {{-- Actions (admin only) --}}
-        @if(auth()->user()->role === 'admin')
+        {{-- Actions (admin/manager) --}}
+        @if(in_array(auth()->user()->role, ['admin', 'manager']))
         <div class="flex gap-2 mt-4" onclick="event.stopPropagation()">
             {{-- Edit --}}
             <button type="button"
@@ -315,7 +315,7 @@
 {{-- ══════════════════════════════════════════════════════
      PERMISSIONS & ROLES (admin only)
 ══════════════════════════════════════════════════════ --}}
-@if(in_array($view, ['permissions','roles','former']) && auth()->user()->role === 'admin')
+@if(in_array($view, ['permissions','roles','former']) && in_array(auth()->user()->role, ['admin', 'manager']))
 
 @php
 $roleColorMap = ['admin'=>'bg-red-100 text-red-600','manager'=>'bg-amber-100 text-amber-700','user'=>'bg-emerald-100 text-emerald-700'];
@@ -324,23 +324,47 @@ $roleColorMap = ['admin'=>'bg-red-100 text-red-600','manager'=>'bg-amber-100 tex
 {{-- ─── Permissions ─── --}}
 @if($view === 'permissions')
 @php
-    $permUsers     = \App\Models\User::whereNotIn('role', ['admin', 'manager'])->orderBy('name')->get();
+    $permUsers     = \App\Models\User::whereNotIn('role', ['admin', 'manager'])->with('roleModel')->orderBy('name')->get();
     $allPerms      = \App\Models\User::ALL_PERMISSIONS;
     $allPermKeys   = array_keys($allPerms);
     $avatarBgList  = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
 
-    $usersData = $permUsers->values()->map(function($u, $i) use ($allPermKeys, $avatarBgList) {
+    $allRoleLabels = \App\Models\Role::pluck('label', 'name')->toArray();
+
+    $usersData = $permUsers->values()->map(function($u, $i) use ($allPermKeys, $avatarBgList, $allRoleLabels) {
+        // Resolve effective permissions exactly as hasPermission() does
+        if (!is_null($u->permissions)) {
+            // User has explicit overrides — use them directly
+            $effectivePerms = $u->permissions;
+            $unrestricted   = false;
+        } elseif ($u->roleModel) {
+            if (is_null($u->roleModel->permissions)) {
+                // Role is fully unrestricted
+                $effectivePerms = $allPermKeys;
+                $unrestricted   = true;
+            } else {
+                // Role has a limited permission set
+                $effectivePerms = $u->roleModel->permissions;
+                $unrestricted   = false;
+            }
+        } else {
+            $effectivePerms = [];
+            $unrestricted   = false;
+        }
+
         return [
             'id'           => $u->id,
             'name'         => $u->name,
             'email'        => $u->email,
             'job_title'    => $u->job_title ?? '',
+            'role'         => $u->role,
+            'role_label'   => $allRoleLabels[$u->role] ?? ucfirst($u->role),
             'avatar'       => $u->avatarUrl(),
             'initials'     => strtoupper(substr($u->name, 0, 1)),
             'color'        => $avatarBgList[$i % count($avatarBgList)],
-            'unrestricted' => is_null($u->permissions),
-            'perms'        => $u->permissions ?? $allPermKeys,
-            'perm_count'   => is_null($u->permissions) ? count($allPermKeys) : count($u->permissions ?? []),
+            'unrestricted' => $unrestricted,
+            'perms'        => $effectivePerms,
+            'perm_count'   => count($effectivePerms),
             'route'        => route('admin.users.permissions', $u),
         ];
     })->toArray();
@@ -377,7 +401,7 @@ $roleColorMap = ['admin'=>'bg-red-100 text-red-600','manager'=>'bg-amber-100 tex
         'Reports & Data' => [
             'icon' => 'fa-chart-bar', 'color' => '#F59E0B', 'bg' => '#FFFBEB',
             'perms' => [
-                'view_reports'   => ['icon' => 'fa-chart-column',  'label' => 'Reports & Analytics', 'desc' => 'Reports & analytics page'],
+                'view_reports'   => ['icon' => 'fa-chart-column',  'label' => 'My Reports', 'desc' => 'Reports & analytics page'],
                 'export_data'    => ['icon' => 'fa-file-export',   'label' => 'Export Data',         'desc' => 'Export & download data'],
                 'view_audit_log' => ['icon' => 'fa-shield-halved', 'label' => 'Audit Log',           'desc' => 'View audit log entries'],
             ],
@@ -429,7 +453,10 @@ $roleColorMap = ['admin'=>'bg-red-100 text-red-600','manager'=>'bg-amber-100 tex
                         <div :style="`background:${u.color}`" style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;flex-shrink:0;" x-text="u.initials"></div>
                     </template>
                     <div style="flex:1;min-width:0;">
-                        <p style="font-size:13px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="u.name"></p>
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <p style="font-size:13px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0;" x-text="u.name"></p>
+                            <span x-text="u.role_label" style="font-size:10px;padding:1px 7px;border-radius:20px;background:#EEF2FF;color:#4F46E5;font-weight:600;flex-shrink:0;"></span>
+                        </div>
                         <template x-if="u.unrestricted">
                             <span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;padding:1px 7px;border-radius:20px;background:#D1FAE5;color:#059669;font-weight:700;margin-top:2px;">
                                 <i class="fa fa-infinity" style="font-size:8px;"></i> Full Access
@@ -477,8 +504,11 @@ $roleColorMap = ['admin'=>'bg-red-100 text-red-600','manager'=>'bg-amber-100 tex
                             <div :style="`background:${activeUser.color}`" style="width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:700;flex-shrink:0;border:2px solid #E5E7EB;" x-text="activeUser.initials"></div>
                         </template>
                         <div>
-                            <p style="font-size:15px;font-weight:700;color:#111827;" x-text="activeUser.name"></p>
-                            <p style="font-size:12px;color:#9CA3AF;margin-top:2px;" x-text="activeUser.email"></p>
+                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                <p style="font-size:15px;font-weight:700;color:#111827;margin:0;" x-text="activeUser.name"></p>
+                                <span x-text="activeUser.role_label" style="font-size:11px;padding:2px 9px;border-radius:20px;background:#EEF2FF;color:#4F46E5;font-weight:600;flex-shrink:0;"></span>
+                            </div>
+                            <p style="font-size:12px;color:#9CA3AF;margin-top:3px;" x-text="activeUser.job_title ? `${activeUser.email} · ${activeUser.job_title}` : activeUser.email"></p>
                         </div>
                     </div>
                     <div style="flex-shrink:0;">
@@ -998,7 +1028,7 @@ function rolesTab() {
 {{-- ══════════════════════════════════════════════════════
      FORMER EMPLOYEES TAB
 ══════════════════════════════════════════════════════ --}}
-@if($view === 'former' && auth()->user()->role === 'admin')
+@if($view === 'former' && in_array(auth()->user()->role, ['admin', 'manager']))
 @php $fAvatarColors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6','#EC4899','#06B6D4']; @endphp
 
 @if($formerEmployees->isEmpty())

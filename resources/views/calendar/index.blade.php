@@ -753,36 +753,6 @@ document.addEventListener('DOMContentLoaded', function () {
     calendar.render();
 });
 
-@if($isAdmin)
-// Create-new-meeting modal (for "New Meeting" button + sidebar edit buttons)
-function meetingModal() {
-    return {
-        open:   false,
-        editId: null,
-        form: { title:'', description:'', meeting_date:'', start_time:'', duration_minutes:'60', location:'', color:'#4F46E5', attendees:[] },
-        openCreate() {
-            this.editId = null;
-            this.form   = { title:'', description:'', meeting_date:'', start_time:'', duration_minutes:'60', location:'', color:'#4F46E5', attendees:[] };
-            this.open   = true;
-        },
-        openEdit(data) {
-            this.editId = data.id;
-            this.form   = {
-                title: data.title, description: data.description||'',
-                meeting_date: data.meeting_date, start_time: data.start_time,
-                duration_minutes: String(data.duration_minutes), location: data.location||'',
-                color: data.color, attendees: (data.attendees||[]).map(Number)
-            };
-            this.open = true;
-        },
-        close() { this.open = false; },
-        toggleAttendee(id) {
-            const idx = this.form.attendees.indexOf(id);
-            if (idx === -1) this.form.attendees.push(id); else this.form.attendees.splice(idx,1);
-        }
-    };
-}
-
 // Detail / Edit / Reschedule modal (for calendar event clicks & drag-drop)
 function meetingDetailModal() {
     return {
@@ -880,6 +850,37 @@ function meetingDetailModal() {
         }
     };
 }
+
+@if($isAdmin)
+// Create-new-meeting modal (for "New Meeting" button + sidebar edit buttons)
+function meetingModal() {
+    return {
+        open:   false,
+        editId: null,
+        form: { title:'', description:'', meeting_date:'', start_time:'', duration_minutes:'60', location:'', color:'#4F46E5', attendees:[] },
+        openCreate() {
+            this.editId = null;
+            this.form   = { title:'', description:'', meeting_date:'', start_time:'', duration_minutes:'60', location:'', color:'#4F46E5', attendees:[] };
+            this.open   = true;
+        },
+        openEdit(data) {
+            this.editId = data.id;
+            this.form   = {
+                title: data.title, description: data.description||'',
+                meeting_date: data.meeting_date, start_time: data.start_time,
+                duration_minutes: String(data.duration_minutes), location: data.location||'',
+                color: data.color, attendees: (data.attendees||[]).map(Number)
+            };
+            this.open = true;
+        },
+        close() { this.open = false; },
+        toggleAttendee(id) {
+            const idx = this.form.attendees.indexOf(id);
+            if (idx === -1) this.form.attendees.push(id); else this.form.attendees.splice(idx,1);
+        }
+    };
+}
+
 @endif
 </script>
 @endpush

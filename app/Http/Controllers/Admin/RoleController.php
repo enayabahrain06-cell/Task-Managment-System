@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -13,12 +14,12 @@ class RoleController extends Controller
     private function resolvePermissions(Request $request): ?array
     {
         if ($request->boolean('unrestricted', true)) {
-            return null;
+            return null; // null = full access
         }
         $raw      = json_decode($request->input('permissions_json', '[]'), true);
         $allKeys  = array_keys(User::ALL_PERMISSIONS);
         $filtered = array_values(array_intersect($raw ?? [], $allKeys));
-        return empty($filtered) ? null : $filtered;
+        return $filtered; // [] = no access, ['x',...] = specific access
     }
 
     public function store(Request $request)
@@ -46,6 +47,13 @@ class RoleController extends Controller
             'permissions' => $this->resolvePermissions($request),
         ]);
 
+        AuditLogger::log(
+            'role.created',
+            null,
+            'Role "' . $data['label'] . '" created',
+            ['role_name' => $name, 'label' => $data['label']]
+        );
+
         return back()->with('role_success', "Role \"{$data['label']}\" created successfully.");
     }
 
@@ -64,6 +72,13 @@ class RoleController extends Controller
             'permissions' => $this->resolvePermissions($request),
         ]);
 
+        AuditLogger::log(
+            'role.updated',
+            null,
+            'Role "' . $role->label . '" updated',
+            ['role_name' => $role->name, 'label' => $role->label]
+        );
+
         return back()->with('role_success', "Role \"{$role->label}\" updated.");
     }
 
@@ -77,6 +92,12 @@ class RoleController extends Controller
         $role->users()->update(['role' => 'user']);
 
         $label = $role->label;
+        AuditLogger::log(
+            'role.deleted',
+            null,
+            'Role "' . $label . '" deleted',
+            ['role_name' => $role->name, 'label' => $label]
+        );
         $role->delete();
 
         return back()->with('role_success', "Role \"{$label}\" deleted. Affected users moved to User role.");

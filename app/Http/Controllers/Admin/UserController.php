@@ -419,46 +419,124 @@ class UserController extends Controller
 
     public function viewDashboard(User $user)
     {
-        $allTasks = $user->tasks()->with('project')->get();
-
-        $inheritedIds   = TaskTransfer::where('to_user_id', $user->id)->pluck('task_id')->unique();
-        $nativeTasks    = $allTasks->whereNotIn('id', $inheritedIds);
-        $inheritedTasks = $allTasks->whereIn('id', $inheritedIds);
-
         $doneStatuses   = ['approved', 'delivered', 'archived'];
         $activeStatuses = ['draft', 'assigned', 'viewed', 'in_progress', 'submitted', 'revision_requested'];
+        $isAdminOrManager = in_array($user->role, ['admin', 'manager']);
 
-        $total      = $allTasks->count();
-        $completed  = $allTasks->whereIn('status', $doneStatuses)->count();
-        $inProgress = $allTasks->where('status', 'in_progress')->count();
-        $pending    = $allTasks->whereIn('status', ['draft', 'assigned', 'viewed'])->count();
-        $inReview   = $allTasks->where('status', 'submitted')->count();
-        $overdue    = $allTasks->filter(
-            fn($t) => $t->deadline && $t->deadline->isPast() && in_array($t->status, $activeStatuses)
-        )->count();
+        if ($isAdminOrManager) {
+            // Admin/Manager: stats based on tasks they created
+            $allTasks = Task::where('created_by', $user->id)->with('project')->get();
 
-        $nativeTotal     = $nativeTasks->count();
-        $nativeCompleted = $nativeTasks->whereIn('status', $doneStatuses)->count();
-        $rate            = $nativeTotal > 0 ? round($nativeCompleted / $nativeTotal * 100) : 0;
+            $total      = $allTasks->count();
+            $completed  = $allTasks->whereIn('status', $doneStatuses)->count();
+            $inProgress = $allTasks->where('status', 'in_progress')->count();
+            $pending    = $allTasks->whereIn('status', ['draft', 'assigned', 'viewed'])->count();
+            $inReview   = $allTasks->where('status', 'submitted')->count();
+            $overdue    = $allTasks->filter(
+                fn($t) => $t->deadline && $t->deadline->isPast() && in_array($t->status, $activeStatuses)
+            )->count();
 
-        $tasks = $allTasks->sortBy(function ($t) use ($doneStatuses) {
-            if (in_array($t->status, $doneStatuses))   return '5_' . ($t->deadline?->format('Y-m-d') ?? '9999');
-            if ($t->status === 'submitted')             return '3_' . ($t->deadline?->format('Y-m-d') ?? '9999');
-            if ($t->deadline && $t->deadline->isPast()) return '1_' . $t->deadline->format('Y-m-d');
-            if ($t->status === 'in_progress')           return '2_' . ($t->deadline?->format('Y-m-d') ?? '9999');
-            return '4_' . ($t->deadline?->format('Y-m-d') ?? '9999');
-        })->values()->map(function ($t) use ($inheritedIds) {
-            $t->is_inherited = $inheritedIds->contains($t->id);
-            return $t;
-        });
+            $nativeTotal      = $total;
+            $nativeCompleted  = $completed;
+            $rate             = $total > 0 ? round($completed / $total * 100) : 0;
+            $inheritedCount   = 0;
+            $receivedTotal    = 0;
+            $receivedCompleted = 0;
 
-        $upcomingTasks = $allTasks
-            ->filter(fn($t) => $t->deadline && $t->deadline->isFuture() && !in_array($t->status, $doneStatuses))
-            ->sortBy('deadline')
-            ->take(4);
+            $tasks = $allTasks->sortBy(function ($t) use ($doneStatuses) {
+                if (in_array($t->status, $doneStatuses))    return '5_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+                if ($t->status === 'submitted')              return '3_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+                if ($t->deadline && $t->deadline->isPast()) return '1_' . $t->deadline->format('Y-m-d');
+                if ($t->status === 'in_progress')            return '2_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+                return '4_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+            })->values()->map(function ($t) {
+                $t->is_inherited  = false;
+                $t->is_reassigned = false;
+                $t->is_received   = false;
+                $t->from_user     = null;
+                $t->is_social     = false;
+                return $t;
+            });
 
-        $myProjectIds = $user->projects()->pluck('projects.id');
-        $teamTasks = Task::whereIn('project_id', $myProjectIds)
+            $upcomingTasks = $allTasks
+                ->filter(fn($t) => $t->deadline && $t->deadline->isFuture() && !in_array($t->status, $doneStatuses))
+                ->sortBy('deadline')
+                ->take(4);
+
+            $involvedProjectIds = \App\Models\Project::where('created_by', $user->id)->pluck('id');
+        } else {
+            // Regular user: stats based on tasks assigned to them
+            $allTasks = $user->tasks()->with('project')->get();
+
+            $inheritedIds = TaskTransfer::where('to_user_id', $user->id)->pluck('task_id')->unique();
+
+            $reassignedLogsToUser = TaskLog::where('action', 'task_reassigned')
+                ->whereIn('task_id', $allTasks->pluck('id'))
+                ->get()
+                ->filter(fn($log) => ($log->metadata['to_user_id'] ?? null) == $user->id)
+                ->keyBy('task_id');
+
+            $receivedFromOthersIds = $inheritedIds->merge($reassignedLogsToUser->keys())->unique();
+            $nativeTasks   = $allTasks->whereNotIn('id', $receivedFromOthersIds->toArray());
+            $receivedTasks = $allTasks->whereIn('id', $receivedFromOthersIds->toArray());
+
+            $total      = $allTasks->count();
+            $completed  = $allTasks->whereIn('status', $doneStatuses)->count();
+            $inProgress = $allTasks->where('status', 'in_progress')->count();
+            $pending    = $allTasks->whereIn('status', ['draft', 'assigned', 'viewed'])->count();
+            $inReview   = $allTasks->where('status', 'submitted')->count();
+            $overdue    = $allTasks->filter(
+                fn($t) => $t->deadline && $t->deadline->isPast() && in_array($t->status, $activeStatuses)
+            )->count();
+
+            $nativeTotal       = $nativeTasks->count();
+            $nativeCompleted   = $nativeTasks->whereIn('status', $doneStatuses)->count();
+            $rate              = $nativeTotal > 0 ? round($nativeCompleted / $nativeTotal * 100) : 0;
+            $inheritedCount    = $receivedFromOthersIds->count();
+            $receivedTotal     = $receivedTasks->count();
+            $receivedCompleted = $receivedTasks->whereIn('status', $doneStatuses)->count();
+
+            $tasks = $allTasks->sortBy(function ($t) use ($doneStatuses) {
+                if (in_array($t->status, $doneStatuses))    return '5_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+                if ($t->status === 'submitted')              return '3_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+                if ($t->deadline && $t->deadline->isPast()) return '1_' . $t->deadline->format('Y-m-d');
+                if ($t->status === 'in_progress')            return '2_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+                return '4_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+            })->values()->map(function ($t) use ($inheritedIds, $reassignedLogsToUser, $receivedFromOthersIds) {
+                $t->is_inherited  = $inheritedIds->contains($t->id);
+                $t->is_reassigned = $reassignedLogsToUser->has($t->id);
+                $t->from_user     = $reassignedLogsToUser->get($t->id)?->metadata['from_user_name'] ?? null;
+                $t->is_received   = $receivedFromOthersIds->contains($t->id);
+                $t->is_social     = false;
+                return $t;
+            });
+
+            $pendingSocialTasks = Task::where('social_assigned_to', $user->id)
+                ->whereNull('social_posted_at')
+                ->with('project')
+                ->get()
+                ->map(function ($t) {
+                    $t->is_inherited  = false;
+                    $t->is_reassigned = false;
+                    $t->is_received   = false;
+                    $t->from_user     = null;
+                    $t->is_social     = true;
+                    return $t;
+                });
+            $tasks = $tasks->merge($pendingSocialTasks)->values();
+
+            $upcomingTasks = $allTasks
+                ->filter(fn($t) => $t->deadline && $t->deadline->isFuture() && !in_array($t->status, $doneStatuses))
+                ->sortBy('deadline')
+                ->take(4);
+
+            $involvedProjectIds = $user->projects()->pluck('projects.id')
+                ->merge(Task::where('assigned_to', $user->id)->whereNotNull('project_id')->pluck('project_id'))
+                ->merge(Task::where('social_assigned_to', $user->id)->whereNotNull('project_id')->pluck('project_id'))
+                ->unique()->values();
+        }
+
+        $teamTasks = Task::whereIn('project_id', $involvedProjectIds)
             ->where('assigned_to', '!=', $user->id)
             ->with(['project', 'assignee'])
             ->orderByRaw("CASE WHEN status IN ('approved','delivered','archived') THEN 1 ELSE 0 END")
@@ -466,7 +544,7 @@ class UserController extends Controller
             ->take(20)
             ->get();
 
-        $myProjects = $user->projects()
+        $myProjects = \App\Models\Project::whereIn('id', $involvedProjectIds)
             ->withCount([
                 'tasks',
                 'tasks as completed_count' => fn($q) => $q->whereIn('status', $doneStatuses),
@@ -475,6 +553,17 @@ class UserController extends Controller
             ->orderBy('deadline')
             ->take(6)
             ->get();
+
+        $myProjectStats = [
+            'total'     => \App\Models\Project::whereIn('id', $involvedProjectIds)->count(),
+            'active'    => \App\Models\Project::whereIn('id', $involvedProjectIds)->where('status', 'active')->count(),
+            'completed' => \App\Models\Project::whereIn('id', $involvedProjectIds)->where('status', 'completed')->count(),
+            'overdue'   => \App\Models\Project::whereIn('id', $involvedProjectIds)
+                ->whereNotNull('deadline')
+                ->where('deadline', '<', now())
+                ->where('status', '!=', 'completed')
+                ->count(),
+        ];
 
         $recentActivity = TaskLog::where('user_id', $user->id)
             ->with('task')
@@ -490,15 +579,25 @@ class UserController extends Controller
             ];
         });
 
-        $inheritedCount  = $inheritedTasks->count();
         $pendingApproval = $inReview;
         $previewUser     = $user;
+
+        $socialTasks = Task::where('social_assigned_to', $user->id)
+            ->with(['project', 'socialPosts'])
+            ->orderByRaw('social_posted_at IS NOT NULL')
+            ->orderBy('deadline')
+            ->get();
+
+        $pendingSocialPosts   = $socialTasks->whereNull('social_posted_at')->count();
+        $completedSocialPosts = $socialTasks->whereNotNull('social_posted_at')->count();
 
         return view('user.dashboard', compact(
             'total', 'completed', 'inProgress', 'pending', 'pendingApproval', 'overdue', 'rate',
             'tasks', 'upcomingTasks', 'recentActivity', 'weekActivity',
-            'teamTasks', 'myProjects',
-            'inheritedCount', 'nativeTotal', 'nativeCompleted', 'previewUser'
+            'teamTasks', 'myProjects', 'myProjectStats', 'socialTasks',
+            'inheritedCount', 'nativeTotal', 'nativeCompleted', 'pendingSocialPosts', 'completedSocialPosts',
+            'receivedTotal', 'receivedCompleted',
+            'previewUser'
         ));
     }
 

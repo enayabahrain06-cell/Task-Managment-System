@@ -32,6 +32,8 @@ class User extends Authenticatable
         'job_title',
         'nationality',
         'status',
+        'presence_status',
+        'last_seen_at',
         'permissions',
         'archived_at',
         'archived_by',
@@ -58,7 +60,7 @@ class User extends Authenticatable
         'view_calendar'        => 'Calendar & Schedule',
 
         // Reports & Data
-        'view_reports'         => 'Reports & Analytics',
+        'view_reports'         => 'My Reports',
         'export_data'          => 'Export & Download Data',
         'view_audit_log'       => 'Audit Log',
 
@@ -72,20 +74,20 @@ class User extends Authenticatable
     /** Returns true if the user has the given permission (null = all allowed). */
     public function hasPermission(string $key): bool
     {
-        if (in_array($this->role, ['admin', 'manager'])) return true;
-
-        // User-level explicit permissions take priority over role defaults
+        // User-level explicit permissions always take priority
         if (!is_null($this->permissions)) {
             return in_array($key, $this->permissions);
         }
 
-        // Fall back to role-level default permissions
+        // Role-level permissions — if explicitly configured, respect them for all roles including admin/manager
         $role = $this->roleModel;
-        if ($role && !is_null($role->permissions)) {
+        if ($role) {
+            if (is_null($role->permissions)) return true; // role has full access (null = unrestricted)
             return in_array($key, $role->permissions);
         }
 
-        return true;
+        // No role record found: admin/manager get full access by default, others are denied
+        return in_array($this->role, ['admin', 'manager']);
     }
 
     public function roleModel(): \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -119,6 +121,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'archived_at'       => 'datetime',
+            'last_seen_at'      => 'datetime',
             'password'          => 'hashed',
             'role'              => 'string',
             'permissions'       => 'array',
@@ -128,6 +131,23 @@ class User extends Authenticatable
     public function isArchived(): bool
     {
         return $this->status === 'archived';
+    }
+
+    public function isOnline(): bool
+    {
+        return $this->last_seen_at
+            && $this->last_seen_at->gt(now()->subMinutes(3))
+            && $this->presence_status !== 'offline';
+    }
+
+    public function presenceDotColor(): string
+    {
+        return match($this->presence_status) {
+            'online'  => '#10B981',
+            'away'    => '#F59E0B',
+            'busy'    => '#EF4444',
+            default   => '#9CA3AF',
+        };
     }
 
     public function archivedBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
