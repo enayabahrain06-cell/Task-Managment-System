@@ -3,8 +3,9 @@
     $taskCount         = auth()->check() ? auth()->user()->tasks()->where('status','!=','completed')->count() : 0;
     $dashRoute         = $role === 'admin' ? 'admin.dashboard' : ($role === 'manager' ? 'manager.dashboard' : 'user.dashboard');
     $tasksRoute        = $role === 'admin' ? 'admin.dashboard' : ($role === 'manager' ? 'manager.dashboard' : 'user.dashboard');
-    $approvalCount     = ($role === 'admin' && auth()->check()) ? \App\Models\Task::where('status','submitted')->count() : 0;
+    $approvalCount     = (in_array($role, ['admin', 'manager']) && auth()->check()) ? \App\Models\Task::where('status','submitted')->count() : 0;
     $userProjectCount  = ($role === 'user'  && auth()->check()) ? auth()->user()->projects()->count() : 0;
+    $unreadMsgCount    = auth()->check() ? \App\Models\Message::where('receiver_id', auth()->id())->whereNull('read_at')->whereNull('group_id')->count() : 0;
 @endphp
 
 <div style="display:flex;flex-direction:column;height:100%;">
@@ -48,10 +49,12 @@
     </style>
 
     {{-- Nav --}}
+    @php $navHidden = json_decode($appSettings['nav_hidden'] ?? '[]', true) ?: []; @endphp
     <nav class="sidebar-nav">
 
-        {{-- Top item: Overview for admin, My Tasks for everyone else --}}
-        @if($role === 'admin')
+        {{-- Overview / My Tasks --}}
+        @if(in_array($role, ['admin', 'manager']))
+        @if(!in_array('nav_overview', $navHidden))
         <a href="{{ route($dashRoute) }}"
            class="nav-item {{ request()->routeIs($dashRoute) ? 'active' : '' }}">
             <div class="nav-left">
@@ -59,7 +62,9 @@
                 Overview
             </div>
         </a>
+        @endif
         @else
+        @if(!in_array('nav_my_tasks', $navHidden))
         <a href="{{ route($tasksRoute) }}"
            class="nav-item {{ request()->routeIs($tasksRoute) ? 'active' : '' }}">
             <div class="nav-left">
@@ -71,8 +76,10 @@
             @endif
         </a>
         @endif
+        @endif
 
         {{-- Activities --}}
+        @if(!in_array('nav_activities', $navHidden))
         <a href="{{ route('activities.index') }}"
            class="nav-item {{ request()->routeIs('activities.*') ? 'active' : '' }}">
             <div class="nav-left">
@@ -80,35 +87,27 @@
                 Activities
             </div>
         </a>
+        @endif
 
         {{-- MENU section --}}
         <div class="sidebar-section">Menu</div>
 
-        {{-- Overview for manager only (admin already has it at top) --}}
-        @if($role === 'manager')
-        <a href="{{ route($dashRoute) }}"
-           class="nav-item {{ request()->routeIs($dashRoute) ? 'active' : '' }}">
-            <div class="nav-left">
-                <i class="fas fa-table-cells-large nav-icon"></i>
-                Overview
-            </div>
-        </a>
-        @endif
-
         {{-- Messages --}}
-        @if(auth()->user()->hasPermission('view_messages'))
+        @if(auth()->user()->hasPermission('view_messages') && !in_array('nav_messages', $navHidden))
         <a href="{{ route('messages.index') }}"
            class="nav-item {{ request()->routeIs('messages.*') ? 'active' : '' }}">
             <div class="nav-left">
                 <i class="fas fa-comment-dots nav-icon"></i>
                 Messages
             </div>
-            <span class="nav-badge nav-badge-red">8</span>
+            @if($unreadMsgCount > 0)
+            <span class="nav-badge nav-badge-red">{{ $unreadMsgCount > 99 ? '99+' : $unreadMsgCount }}</span>
+            @endif
         </a>
         @endif
 
         {{-- Team Members --}}
-        @if(auth()->user()->hasPermission('view_team'))
+        @if(auth()->user()->hasPermission('view_team') && !in_array('nav_team', $navHidden))
         <a href="{{ route('team.index') }}"
            class="nav-item {{ request()->routeIs('team.*') ? 'active' : '' }}">
             <div class="nav-left">
@@ -119,7 +118,7 @@
         @endif
 
         {{-- Calendar --}}
-        @if(auth()->user()->hasPermission('view_calendar'))
+        @if(auth()->user()->hasPermission('view_calendar') && !in_array('nav_calendar', $navHidden))
         <a href="{{ route('calendar.index') }}"
            class="nav-item {{ request()->routeIs('calendar.*') ? 'active' : '' }}">
             <div class="nav-left">
@@ -130,7 +129,7 @@
         @endif
 
         {{-- User-only: My Projects --}}
-        @if($role === 'user' && auth()->user()->hasPermission('view_projects'))
+        @if($role === 'user' && auth()->user()->hasPermission('view_projects') && !in_array('nav_my_projects', $navHidden))
         <a href="{{ route('user.projects.index') }}"
            class="nav-item {{ request()->routeIs('user.projects.*') ? 'active' : '' }}">
             <div class="nav-left">
@@ -143,18 +142,33 @@
         </a>
         @endif
 
-        {{-- Admin-only --}}
-        @if($role === 'admin')
+        {{-- User-only: My Reports --}}
+        @if($role === 'user' && auth()->user()->hasPermission('view_reports') && !in_array('nav_user_reports', $navHidden))
+        <a href="{{ route('user.reports.index') }}"
+           class="nav-item {{ request()->routeIs('user.reports.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-chart-bar nav-icon"></i>
+                My Reports
+            </div>
+        </a>
+        @endif
+
+        {{-- Admin & Manager section --}}
+        @php $hasAnyAdminPerm = in_array($role, ['admin', 'manager']); @endphp
+        @if($hasAnyAdminPerm)
         <div class="sidebar-section">Admin</div>
 
-<a href="{{ route('admin.projects.index') }}"
-           class="nav-item {{ request()->routeIs('admin.projects.*') ? 'active' : '' }}">
+        @if(auth()->user()->hasPermission('manage_projects') && !in_array('nav_projects', $navHidden))
+        <a href="{{ route('admin.projects.index') }}"
+           class="nav-item {{ request()->routeIs('admin.projects.*') || request()->routeIs('manager.projects.*') ? 'active' : '' }}">
             <div class="nav-left">
                 <i class="fas fa-diagram-project nav-icon"></i>
                 Projects
             </div>
         </a>
+        @endif
 
+        @if(auth()->user()->hasPermission('manage_tasks') && !in_array('nav_tasks', $navHidden))
         <a href="{{ route('admin.tasks.index') }}"
            class="nav-item {{ request()->routeIs('admin.tasks.index') ? 'active' : '' }}">
             <div class="nav-left">
@@ -162,7 +176,9 @@
                 Tasks
             </div>
         </a>
+        @endif
 
+        @if(auth()->user()->hasPermission('view_approvals') && !in_array('nav_approvals', $navHidden))
         <a href="{{ route('admin.approvals.index') }}"
            class="nav-item {{ request()->routeIs('admin.approvals.*') ? 'active' : '' }}">
             <div class="nav-left">
@@ -173,7 +189,9 @@
             <span class="nav-badge nav-badge-red">{{ $approvalCount }}</span>
             @endif
         </a>
+        @endif
 
+        @if(auth()->user()->hasPermission('view_audit_log') && !in_array('nav_audit', $navHidden))
         <a href="{{ route('admin.audit.index') }}"
            class="nav-item {{ request()->routeIs('admin.audit.*') ? 'active' : '' }}">
             <div class="nav-left">
@@ -181,7 +199,9 @@
                 Audit Log
             </div>
         </a>
+        @endif
 
+        @if(auth()->user()->hasPermission('view_reports') && !in_array('nav_reports', $navHidden))
         <a href="{{ route('admin.reports.index') }}"
            class="nav-item {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">
             <div class="nav-left">
@@ -190,13 +210,14 @@
             </div>
         </a>
         @endif
+        @endif
 
-        {{-- Recent Projects (from View Composer) --}}
-        @if(isset($recentProjects) && $recentProjects->count())
+        {{-- Recent Projects --}}
+        @if(isset($recentProjects) && $recentProjects->count() && !in_array('nav_recent_projects', $navHidden))
         <div class="sidebar-section">Recent Project</div>
         @foreach($recentProjects as $rp)
         @php $dotColors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6']; @endphp
-        <a href="{{ $role === 'admin' ? route('admin.projects.show', $rp) : '#' }}"
+        <a href="{{ in_array($role, ['admin', 'manager']) ? route('admin.projects.show', $rp) : '#' }}"
            class="recent-proj-link">
             <span style="width:8px;height:8px;border-radius:50%;background:{{ $dotColors[$rp->id % 5] }};flex-shrink:0;"></span>
             <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $rp->name }}</span>
@@ -208,7 +229,7 @@
 
     {{-- Footer --}}
     <div class="sidebar-footer">
-        @if($role === 'admin')
+        @if(auth()->user()->hasPermission('manage_settings') && !in_array('nav_settings', $navHidden))
         <a href="{{ route('admin.settings.index') }}"
            class="nav-item {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}">
             <div class="nav-left">

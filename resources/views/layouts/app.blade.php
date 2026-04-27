@@ -12,7 +12,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="/css/fa-all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 
@@ -145,6 +145,8 @@
                     <input type="text" placeholder="What are you looking for?">
                 </div>
                 {{-- Notification Bell --}}
+                @php $headerHidden = json_decode($appSettings['nav_hidden'] ?? '[]', true) ?: []; @endphp
+                @if(!in_array('nav_notifications', $headerHidden))
                 <div x-data="notifBell()" x-init="init()" @click.outside="open = false" style="position:relative;">
 
                     {{-- Bell button --}}
@@ -236,18 +238,91 @@
 
                     </div>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;margin-left:4px;">
-                    @if(auth()->user()?->avatarUrl())
-                        <img src="{{ auth()->user()->avatarUrl() }}" alt="{{ auth()->user()->name }}"
-                             style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;">
-                    @else
-                        <div class="user-avatar">
-                            {{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}
+                @endif
+                {{-- Who's Online (admin/manager only) --}}
+                @if(in_array(auth()->user()?->role, ['admin','manager']) && !in_array('nav_online_users', $headerHidden))
+                <div x-data="onlineUsers()" x-init="init()" @click.outside="open=false" style="position:relative;">
+                    <button @click="open=!open" class="icon-btn" title="Who's online" style="position:relative;">
+                        <i class="fas fa-circle-dot" style="color:#10B981;font-size:13px;"></i>
+                        <span x-show="count>0"
+                              style="position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:#10B981;border-radius:999px;font-size:9px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 3px;border:2px solid #fff;line-height:1;"
+                              x-text="count>9?'9+':count"></span>
+                    </button>
+                    <div x-show="open" x-cloak
+                         style="position:absolute;right:0;top:calc(100% + 8px);width:280px;background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.12);border:1px solid #F0F0F0;z-index:200;overflow:hidden;">
+                        <div style="padding:12px 16px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
+                            <span style="font-size:14px;font-weight:700;color:#111827;">Who's Online</span>
+                            <span x-show="count>0" style="background:#ECFDF5;color:#059669;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;" x-text="count+' online'"></span>
+                            <span x-show="count===0" style="font-size:11px;color:#9CA3AF;">No one online</span>
                         </div>
-                    @endif
-                    <div class="user-info" id="user-info-block">
+                        <div style="max-height:300px;overflow-y:auto;">
+                            <template x-for="u in users" :key="u.id">
+                                <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid #F9FAFB;">
+                                    <div style="position:relative;flex-shrink:0;">
+                                        <template x-if="u.avatar">
+                                            <img :src="u.avatar" :alt="u.name" style="width:34px;height:34px;border-radius:50%;object-fit:cover;">
+                                        </template>
+                                        <template x-if="!u.avatar">
+                                            <div style="width:34px;height:34px;border-radius:50%;background:#6366F1;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:600;" x-text="u.initials"></div>
+                                        </template>
+                                        <span :style="'position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;border:2px solid #fff;background:'+u.dot_color"></span>
+                                    </div>
+                                    <div style="flex:1;min-width:0;">
+                                        <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="u.name"></p>
+                                        <p style="font-size:11px;color:#9CA3AF;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="u.job_title||u.role"></p>
+                                    </div>
+                                    <span :style="'font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:'+statusBg(u.presence_status)+';color:'+u.dot_color"
+                                          x-text="u.presence_status.charAt(0).toUpperCase()+u.presence_status.slice(1)"></span>
+                                    <a :href="'/messages?user='+u.id"
+                                       style="width:28px;height:28px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;text-decoration:none;transition:background .15s;"
+                                       onmouseover="this.style.background='#C7D2FE'" onmouseout="this.style.background='#EEF2FF'"
+                                       title="Send message">
+                                        <i class="fas fa-comment-dots" style="font-size:11px;color:#6366F1;"></i>
+                                    </a>
+                                </div>
+                            </template>
+                            <div x-show="users.length===0" style="text-align:center;padding:24px 16px;">
+                                <i class="fas fa-moon" style="color:#D1D5DB;font-size:22px;"></i>
+                                <p style="font-size:12px;color:#9CA3AF;margin:8px 0 0;">Everyone is offline</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
+                {{-- User avatar + status dot --}}
+                <div x-data="statusPicker()" @click.outside="open=false" style="display:flex;align-items:center;gap:8px;margin-left:4px;position:relative;">
+                    <div style="position:relative;cursor:pointer;" @click="open=!open" title="Change your status">
+                        @if(auth()->user()?->avatarUrl())
+                            <img src="{{ auth()->user()->avatarUrl() }}" alt="{{ auth()->user()->name }}"
+                                 style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                        @else
+                            <div class="user-avatar">
+                                {{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}
+                            </div>
+                        @endif
+                        <span :style="'position:absolute;bottom:-1px;right:-1px;width:11px;height:11px;border-radius:50%;border:2px solid #fff;background:'+dotColor(current)"></span>
+                    </div>
+                    <div class="user-info" id="user-info-block" style="cursor:pointer;" @click="open=!open">
                         <p class="user-name">{{ auth()->user()->name ?? '' }}</p>
-                        <p class="user-email">{{ auth()->user()->email ?? '' }}</p>
+                        <p class="user-email" :style="'color:'+dotColor(current)+';font-weight:600;'" x-text="label(current)"></p>
+                    </div>
+                    {{-- Status dropdown --}}
+                    <div x-show="open" x-cloak
+                         style="position:absolute;top:calc(100% + 8px);right:0;width:180px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.12);border:1px solid #F0F0F0;z-index:300;overflow:hidden;">
+                        <div style="padding:8px 12px;border-bottom:1px solid #F3F4F6;">
+                            <p style="font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0;">Set status</p>
+                        </div>
+                        <template x-for="opt in options" :key="opt.value">
+                            <button @click="setStatus(opt.value)"
+                                    style="width:100%;display:flex;align-items:center;gap:10px;padding:9px 14px;background:none;border:none;cursor:pointer;text-align:left;transition:background .12s;"
+                                    onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='none'"
+                                    :style="current===opt.value?'background:#F5F3FF;':''">
+                                <span :style="'width:10px;height:10px;border-radius:50%;flex-shrink:0;background:'+opt.color"></span>
+                                <span style="font-size:13px;color:#374151;" x-text="opt.label"></span>
+                                <i x-show="current===opt.value" class="fas fa-check" style="margin-left:auto;color:#6366F1;font-size:11px;"></i>
+                            </button>
+                        </template>
                     </div>
                 </div>
             </div>
@@ -300,45 +375,15 @@ function notifBell() {
         open:         false,
         count:        {{ $notificationCount }},
         soundEnabled: localStorage.getItem('notif_sound') !== 'false',
-        _es:          null,
-        _fallback:    null,
+        _timer:       null,
 
         init() {
-            this._connect();
-            // Re-poll immediately when the user returns to this tab
+            this._timer = setInterval(() => this._poll(), 3000);
+
+            // Immediate poll when the user returns to this tab
             document.addEventListener('visibilitychange', () => {
                 if (!document.hidden) this._poll();
             });
-        },
-
-        _connect() {
-            if (!window.EventSource) { this._startFallback(); return; }
-
-            this._es = new EventSource('{{ route("notifications.stream") }}');
-
-            this._es.onmessage = (e) => {
-                const data = JSON.parse(e.data);
-                if (data.reconnect) {
-                    // Server asked us to reconnect — EventSource does this automatically
-                    return;
-                }
-                if (data.count > this.count && this.soundEnabled) {
-                    this.playSound();
-                }
-                this.count = data.count;
-            };
-
-            this._es.onerror = () => {
-                // SSE failed — close and fall back to polling
-                this._es.close();
-                this._es = null;
-                this._startFallback();
-            };
-        },
-
-        _startFallback() {
-            if (this._fallback) return;
-            this._fallback = setInterval(() => this._poll(), 5000);
         },
 
         async _poll() {
@@ -384,6 +429,129 @@ function notifBell() {
 }
 </script>
 
+<script>
+function statusPicker() {
+    return {
+        open:    false,
+        current: '{{ auth()->user()?->presence_status ?? "offline" }}',
+        options: [
+            { value: 'online',  label: 'Online',  color: '#10B981' },
+            { value: 'away',    label: 'Away',    color: '#F59E0B' },
+            { value: 'busy',    label: 'Busy',    color: '#EF4444' },
+            { value: 'offline', label: 'Offline', color: '#9CA3AF' },
+        ],
+        dotColor(s) {
+            return { online:'#10B981', away:'#F59E0B', busy:'#EF4444', offline:'#9CA3AF' }[s] || '#9CA3AF';
+        },
+        label(s) {
+            return s.charAt(0).toUpperCase() + s.slice(1);
+        },
+        async setStatus(val) {
+            this.current = val;
+            this.open    = false;
+            await fetch('{{ route("user.presence") }}', {
+                method:  'POST',
+                headers: { 'Content-Type':'application/json', 'X-CSRF-TOKEN':'{{ csrf_token() }}' },
+                body:    JSON.stringify({ status: val }),
+            });
+        },
+    };
+}
+
+function onlineUsers() {
+    return {
+        open:  false,
+        count: 0,
+        users: [],
+        _timer: null,
+        init() {
+            this._fetch();
+            this._timer = setInterval(() => this._fetch(), 15000);
+        },
+        async _fetch() {
+            try {
+                const res  = await fetch('{{ route("online.users") }}', { headers:{ 'X-Requested-With':'XMLHttpRequest' } });
+                if (!res.ok) return;
+                this.users = await res.json();
+                this.count = this.users.length;
+            } catch(e) {}
+        },
+        statusBg(s) {
+            return { online:'#ECFDF5', away:'#FFFBEB', busy:'#FEF2F2', offline:'#F3F4F6' }[s] || '#F3F4F6';
+        },
+    };
+}
+</script>
+
 @stack('scripts')
+
+@if(($appSettings['developer_mode'] ?? '0') === '1' && auth()->check() && auth()->user()->hasPermission('manage_settings'))
+<script>
+(function() {
+    const TOGGLE_URL   = '{{ route('admin.settings.elements.toggle') }}';
+    const SETTINGS_URL = '{{ route('admin.settings.index') }}?tab=developer';
+    const CSRF         = '{{ csrf_token() }}';
+    const DEV_LABELS   = @json($appSettings['hidden_elements'] ?? '[]');
+
+    const ELEMENT_LABELS = {
+        dash_stats: 'Overview Cards',
+        dash_task_analytics: 'Task Analytics',
+        dash_working_hours: 'Working Hours Chart',
+        dash_project_stats: 'Project Statistics',
+        dash_workload: 'Task Workload Chart',
+        dash_calendar: 'Calendar & Meetings',
+    };
+
+    function hideElement(key, isExtra) {
+        fetch(TOGGLE_URL, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': CSRF, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key, action: isExtra ? 'remove' : 'hide' })
+        }).then(() => { location.reload(); });
+    }
+
+    function init() {
+        // Dev banner
+        const banner = document.createElement('div');
+        banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#1E1B4B;color:#C7D2FE;font-size:12px;font-weight:600;padding:8px 20px;z-index:88888;display:flex;align-items:center;justify-content:space-between;gap:12px;';
+        banner.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="width:8px;height:8px;border-radius:50%;background:#6366F1;display:inline-block;animation:devpulse 1.5s infinite;"></span>
+                <span>Developer Mode — click <strong style="color:#fff;">✕</strong> on any section to hide it</span>
+            </div>
+            <a href="${SETTINGS_URL}" style="display:flex;align-items:center;gap:6px;padding:5px 14px;background:rgba(99,102,241,.3);color:#A5B4FC;border-radius:7px;font-size:11px;text-decoration:none;border:1px solid rgba(99,102,241,.4);">
+                <i class="fas fa-plus"></i> Restore sections
+            </a>`;
+        document.body.appendChild(banner);
+
+        // Inject × buttons on each dev-keyed element
+        document.querySelectorAll('[data-dev-key]').forEach(function(el) {
+            el.style.position = 'relative';
+            const key   = el.getAttribute('data-dev-key');
+            const label = el.getAttribute('data-dev-label') || ELEMENT_LABELS[key] || key;
+            const btn   = document.createElement('button');
+            btn.title   = 'Hide "' + label + '"';
+            btn.style.cssText = 'position:absolute;top:8px;right:8px;z-index:9999;width:26px;height:26px;border-radius:50%;background:#1E1B4B;color:#C7D2FE;border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;opacity:.8;transition:opacity .15s,transform .15s;';
+            btn.innerHTML = '✕';
+            btn.onmouseover = function() { this.style.opacity = '1'; this.style.transform = 'scale(1.1)'; };
+            btn.onmouseout  = function() { this.style.opacity = '.8'; this.style.transform = ''; };
+            var isExtra = el.getAttribute('data-dev-type') === 'extra';
+            btn.onclick = function(e) { e.preventDefault(); e.stopPropagation(); hideElement(key, isExtra); };
+            el.appendChild(btn);
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>
+<style>
+@keyframes devpulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+</style>
+@endif
+
 </body>
 </html>

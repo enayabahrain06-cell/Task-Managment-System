@@ -27,6 +27,178 @@
     $tagColors = ['#EEF2FF:#4F46E5','#FEF3C7:#D97706','#FEE2E2:#DC2626','#D1FAE5:#059669','#FCE7F3:#BE185D','#E0E7FF:#3730A3'];
 @endphp
 
+{{-- ═══════════ APPROVAL MODAL ═══════════ --}}
+<div x-data="taskApprovalPage()" @keydown.escape.window="if(approvalModal) approvalModal=false; else if(rejectModal) rejectModal=false;">
+
+<template x-teleport="body">
+    <div x-show="approvalModal" x-cloak
+         style="position:fixed;inset:0;z-index:99999;backdrop-filter:blur(4px);background:rgba(15,18,40,.6);">
+        <div @click.self="approvalModal=false"
+             style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:#fff;border-radius:22px;width:100%;max-width:500px;box-shadow:0 28px 80px rgba(0,0,0,.25);overflow:hidden;display:flex;flex-direction:column;">
+            <div style="padding:22px 26px 18px;border-bottom:1px solid #F0F4F8;background:linear-gradient(135deg,#F0FDF4,#fff);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#10B981,#059669);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(16,185,129,.3);">
+                        <i class="fas fa-circle-check" style="color:#fff;font-size:16px;"></i>
+                    </div>
+                    <div>
+                        <h3 style="font-size:16px;font-weight:700;color:#111827;margin:0;">Approve Submission</h3>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;" x-text="'Submitted by ' + (approvalTask?.assignee ?? '')"></p>
+                    </div>
+                </div>
+                <button @click="approvalModal=false"
+                        style="width:32px;height:32px;border-radius:9px;background:#F3F4F6;border:none;cursor:pointer;color:#6B7280;font-size:13px;display:flex;align-items:center;justify-content:center;transition:background .15s;"
+                        onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div style="padding:14px 26px;background:#F8FAFF;border-bottom:1px solid #F0F4F8;">
+                <p style="font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px;">Task</p>
+                <p style="font-size:14px;font-weight:600;color:#111827;margin:0;line-height:1.4;" x-text="approvalTask?.title"></p>
+            </div>
+            <form :action="approvalTask ? approvalTask.url : '#'" method="POST" style="padding:20px 26px 24px;overflow-y:auto;">
+                @csrf
+                <div style="margin-bottom:20px;">
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
+                        Approval Note <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span>
+                    </label>
+                    <input type="text" name="note" x-model="approvalNote"
+                           placeholder="Great work! The deliverable looks perfect..."
+                           style="width:100%;padding:10px 13px;border:1.5px solid #BBF7D0;background:#F0FDF4;border-radius:10px;font-size:13px;color:#111827;outline:none;box-sizing:border-box;transition:border-color .15s,box-shadow .15s;"
+                           onfocus="this.style.borderColor='#34D399';this.style.boxShadow='0 0 0 3px rgba(52,211,153,.12)'"
+                           onblur="this.style.borderColor='#BBF7D0';this.style.boxShadow='none'">
+                </div>
+                <div style="background:#F8FAFF;border:1px solid #EEF2FF;border-radius:14px;padding:18px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                        <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#EEF2FF,#DDD6FE);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas fa-share-nodes" style="color:#6366F1;font-size:11px;"></i>
+                        </div>
+                        <div>
+                            <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">Social Media Posting</p>
+                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Does this task need to be posted on social media?</p>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
+                        <button type="button" @click="approvalSocial = 'yes'"
+                                :style="approvalSocial === 'yes'
+                                    ? 'padding:10px 6px;border-radius:10px;border:2px solid #6366F1;background:#EEF2FF;color:#4F46E5;font-size:12px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all .15s;'
+                                    : 'padding:10px 6px;border-radius:10px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;font-size:12px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all .15s;'">
+                            <i class="fas fa-check-circle" :style="approvalSocial === 'yes' ? 'font-size:16px;color:#6366F1;' : 'font-size:16px;color:#D1D5DB;'"></i>
+                            Yes, assign
+                        </button>
+                        <button type="button" @click="approvalSocial = 'no'"
+                                :style="approvalSocial === 'no'
+                                    ? 'padding:10px 6px;border-radius:10px;border:2px solid #6B7280;background:#F3F4F6;color:#374151;font-size:12px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all .15s;'
+                                    : 'padding:10px 6px;border-radius:10px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;font-size:12px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all .15s;'">
+                            <i class="fas fa-ban" :style="approvalSocial === 'no' ? 'font-size:16px;color:#6B7280;' : 'font-size:16px;color:#D1D5DB;'"></i>
+                            Not needed
+                        </button>
+                        <button type="button" @click="approvalSocial = 'later'"
+                                :style="approvalSocial === 'later'
+                                    ? 'padding:10px 6px;border-radius:10px;border:2px solid #D97706;background:#FFFBEB;color:#D97706;font-size:12px;font-weight:700;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all .15s;'
+                                    : 'padding:10px 6px;border-radius:10px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;font-size:12px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;transition:all .15s;'">
+                            <i class="fas fa-clock" :style="approvalSocial === 'later' ? 'font-size:16px;color:#D97706;' : 'font-size:16px;color:#D1D5DB;'"></i>
+                            Decide later
+                        </button>
+                    </div>
+                    <div x-show="approvalSocial === 'yes'" x-transition style="margin-top:4px;">
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
+                            Assign social post to <span style="color:#EF4444;">*</span>
+                        </label>
+                        <select name="social_assigned_to" x-model="approvalSocialUser"
+                                style="width:100%;padding:9px 12px;border:1.5px solid #C7D2FE;background:#fff;border-radius:10px;font-size:13px;color:#374151;outline:none;cursor:pointer;box-sizing:border-box;"
+                                onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,.12)'"
+                                onblur="this.style.borderColor='#C7D2FE';this.style.boxShadow='none'">
+                            <option value="">— Select team member —</option>
+                            @foreach($socialUsers as $su)
+                            <option value="{{ $su->id }}">{{ $su->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <input type="hidden" name="social_required"
+                           :value="approvalSocial === 'yes' ? '1' : (approvalSocial === 'no' ? '0' : '')">
+                </div>
+                <div style="display:flex;gap:10px;margin-top:20px;">
+                    <button type="button" @click="approvalModal=false"
+                            style="flex:1;padding:11px;background:#F3F4F6;color:#374151;border:none;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;"
+                            onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            :disabled="approvalSocial === 'yes' && !approvalSocialUser"
+                            :style="(approvalSocial === 'yes' && !approvalSocialUser)
+                                ? 'flex:2;padding:11px;background:#D1FAE5;color:#6EE7B7;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:7px;'
+                                : 'flex:2;padding:11px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 4px 14px rgba(16,185,129,.35);transition:opacity .15s;'">
+                        <i class="fas fa-circle-check"></i>
+                        <span x-text="approvalSocial === 'yes' && !approvalSocialUser ? 'Select a team member first' : 'Confirm Approval'"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+        </div>
+    </div>
+</template>
+
+{{-- ═══════════ REJECT MODAL ═══════════ --}}
+<template x-teleport="body">
+    <div x-show="rejectModal" x-cloak
+         style="position:fixed;inset:0;z-index:99999;backdrop-filter:blur(4px);background:rgba(15,18,40,.6);">
+        <div @click.self="rejectModal=false"
+             style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div style="background:#fff;border-radius:22px;width:100%;max-width:440px;box-shadow:0 28px 80px rgba(0,0,0,.25);overflow:hidden;display:flex;flex-direction:column;">
+            <div style="padding:22px 26px 18px;border-bottom:1px solid #F0F4F8;background:linear-gradient(135deg,#FFF8F8,#fff);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#EF4444,#DC2626);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(239,68,68,.3);">
+                        <i class="fas fa-rotate-left" style="color:#fff;font-size:15px;"></i>
+                    </div>
+                    <div>
+                        <h3 style="font-size:16px;font-weight:700;color:#111827;margin:0;">Request Revision</h3>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;" x-text="'Submitted by ' + (rejectTask?.assignee ?? '')"></p>
+                    </div>
+                </div>
+                <button @click="rejectModal=false"
+                        style="width:32px;height:32px;border-radius:9px;background:#F3F4F6;border:none;cursor:pointer;color:#6B7280;font-size:13px;display:flex;align-items:center;justify-content:center;transition:background .15s;"
+                        onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div style="padding:14px 26px;background:#FFF8F8;border-bottom:1px solid #FEE2E2;">
+                <p style="font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px;">Task</p>
+                <p style="font-size:14px;font-weight:600;color:#111827;margin:0;line-height:1.4;" x-text="rejectTask?.title"></p>
+            </div>
+            <form :action="rejectTask ? rejectTask.url : '#'" method="POST" style="padding:20px 26px 24px;">
+                @csrf
+                <div style="margin-bottom:20px;">
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
+                        Reason for revision <span style="color:#EF4444;">*</span>
+                    </label>
+                    <textarea name="note" required x-model="rejectNote" rows="3"
+                              placeholder="Explain what needs to be changed..."
+                              style="width:100%;padding:10px 13px;border:1.5px solid #FECACA;background:#FEF2F2;border-radius:10px;font-size:13px;color:#111827;outline:none;box-sizing:border-box;resize:vertical;transition:border-color .15s,box-shadow .15s;font-family:inherit;"
+                              onfocus="this.style.borderColor='#F87171';this.style.boxShadow='0 0 0 3px rgba(248,113,113,.12)'"
+                              onblur="this.style.borderColor='#FECACA';this.style.boxShadow='none'"></textarea>
+                </div>
+                <div style="display:flex;gap:10px;">
+                    <button type="button" @click="rejectModal=false"
+                            style="flex:1;padding:11px;background:#F3F4F6;color:#374151;border:none;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;"
+                            onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            :disabled="!rejectNote.trim()"
+                            :style="!rejectNote.trim()
+                                ? 'flex:2;padding:11px;background:#FEE2E2;color:#FCA5A5;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:7px;'
+                                : 'flex:2;padding:11px;background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 4px 14px rgba(239,68,68,.35);transition:opacity .15s;'">
+                        <i class="fas fa-rotate-left"></i>
+                        Request Revision
+                    </button>
+                </div>
+            </form>
+        </div>
+        </div>
+    </div>
+</template>
+
 {{-- Header --}}
 <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
     <a href="{{ url()->previous() }}"
@@ -137,42 +309,46 @@
                 <i class="fa fa-gavel" style="color:#7C3AED;"></i> Review Submission
             </h2>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                <form method="POST" action="{{ route('admin.tasks.approve', $task) }}">
-                    @csrf
-                    <input type="text" name="note" placeholder="Optional approval note..."
-                           style="width:100%;padding:8px 12px;border:1.5px solid #A7F3D0;border-radius:8px;font-size:12px;color:#111827;box-sizing:border-box;outline:none;background:#F0FDF4;margin-bottom:8px;">
-                    <button type="submit"
-                            style="width:100%;background:#10B981;color:#fff;border:none;padding:10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
-                        <i class="fa fa-circle-check"></i> Approve
-                    </button>
-                </form>
-                <form method="POST" action="{{ route('admin.tasks.reject', $task) }}">
-                    @csrf
-                    <input type="text" name="note" required placeholder="Reason for rejection (required)..."
-                           style="width:100%;padding:8px 12px;border:1.5px solid #FECACA;border-radius:8px;font-size:12px;color:#111827;box-sizing:border-box;outline:none;background:#FEF2F2;margin-bottom:8px;">
-                    <button type="submit"
-                            style="width:100%;background:#EF4444;color:#fff;border:none;padding:10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
-                        <i class="fa fa-rotate-left"></i> Request Revision
-                    </button>
-                </form>
+                <button type="button"
+                        @click="openApprovalModal({
+                            id:       {{ $task->id }},
+                            title:    @js($task->title),
+                            assignee: @js($task->assignee->name ?? 'Unknown'),
+                            url:      '{{ route('admin.tasks.approve', $task) }}'
+                        })"
+                        style="width:100%;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;padding:10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(16,185,129,.25);transition:opacity .15s;"
+                        onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+                    <i class="fa fa-circle-check"></i> Approve
+                </button>
+                <button type="button"
+                        @click="openRejectModal({
+                            id:       {{ $task->id }},
+                            title:    @js($task->title),
+                            assignee: @js($task->assignee->name ?? 'Unknown'),
+                            url:      '{{ route('admin.tasks.reject', $task) }}'
+                        })"
+                        style="width:100%;background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff;border:none;padding:10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(239,68,68,.25);transition:opacity .15s;"
+                        onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+                    <i class="fa fa-rotate-left"></i> Request Revision
+                </button>
             </div>
         </div>
         @endif
 
-        {{-- Deliver (only when approved) --}}
-        @if($task->status === 'approved')
-        <div style="background:#fff;border-radius:14px;border:1.5px solid #A7F3D0;box-shadow:0 4px 16px rgba(5,150,105,.06);padding:24px;">
-            <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 12px;display:flex;align-items:center;gap:8px;">
-                <i class="fa fa-truck" style="color:#059669;"></i> Mark as Delivered
+
+        {{-- Reopen (when approved, delivered, or archived) --}}
+        @if(in_array($task->status, ['approved','delivered','archived']))
+        <div style="background:#fff;border-radius:14px;border:1.5px solid #FCD34D;box-shadow:0 4px 16px rgba(217,119,6,.06);padding:24px;">
+            <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 8px;display:flex;align-items:center;gap:8px;">
+                <i class="fa fa-rotate-right" style="color:#D97706;"></i> Reopen Task
             </h2>
-            <p style="font-size:13px;color:#6B7280;margin:0 0 14px;">Notify the assignee that the final work has been delivered to the client.</p>
-            <form method="POST" action="{{ route('admin.tasks.deliver', $task) }}" style="display:flex;gap:10px;">
+            <p style="font-size:13px;color:#6B7280;margin:0 0 14px;">Send this task back to <strong>In Progress</strong> so the assignee can continue working on it.</p>
+            <form method="POST" action="{{ route('admin.tasks.reopen', $task) }}"
+                  onsubmit="return confirm('Reopen this task and set it back to In Progress?')">
                 @csrf
-                <input type="text" name="note" placeholder="Optional delivery note..."
-                       style="flex:1;padding:9px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;outline:none;">
                 <button type="submit"
-                        style="background:#059669;color:#fff;border:none;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;">
-                    <i class="fa fa-truck"></i> Deliver
+                        style="background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;padding:9px 22px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(217,119,6,.3);">
+                    <i class="fa fa-rotate-right"></i> Reopen Task
                 </button>
             </form>
         </div>
@@ -383,11 +559,13 @@
             <form method="POST" action="{{ route('admin.tasks.reassign', $task) }}">
                 @csrf
                 <select name="assigned_to" required
-                        style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;background:#fff;outline:none;margin-bottom:10px;">
+                        style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;background:#fff;outline:none;margin-bottom:8px;">
                     @foreach($users as $u)
                     <option value="{{ $u->id }}" {{ $u->id == $task->assigned_to ? 'selected' : '' }}>{{ $u->name }}</option>
                     @endforeach
                 </select>
+                <textarea name="reason" rows="2" placeholder="Reason for reassignment (optional)"
+                          style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:12px;color:#111827;background:#fff;outline:none;resize:none;margin-bottom:8px;font-family:inherit;"></textarea>
                 <button type="submit"
                         style="width:100%;background:#F3F4F6;color:#374151;border:none;padding:9px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
                     <i class="fa fa-arrows-rotate" style="margin-right:5px;"></i> Reassign
@@ -465,7 +643,50 @@
         </form>
         @endif
 
+        {{-- Move to Recycle Bin --}}
+        <form method="POST" action="{{ route('admin.tasks.destroy', $task) }}"
+              onsubmit="return confirm('Move this task to the Recycle Bin? You can restore it later.')">
+            @csrf @method('DELETE')
+            <button type="submit"
+                    style="width:100%;background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;padding:10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .15s;"
+                    onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
+                <i class="fa fa-trash-can"></i> Move to Recycle Bin
+            </button>
+        </form>
+
     </div>{{-- /right --}}
 
-</div>
+</div>{{-- /grid --}}
+
+</div>{{-- /x-data taskApprovalPage --}}
+
+<script>
+function taskApprovalPage() {
+    return {
+        approvalModal:      false,
+        approvalTask:       null,
+        approvalNote:       '',
+        approvalSocial:     null,
+        approvalSocialUser: '',
+
+        openApprovalModal(task) {
+            this.approvalTask       = task;
+            this.approvalNote       = '';
+            this.approvalSocial     = null;
+            this.approvalSocialUser = '';
+            this.approvalModal      = true;
+        },
+
+        rejectModal: false,
+        rejectTask:  null,
+        rejectNote:  '',
+
+        openRejectModal(task) {
+            this.rejectTask  = task;
+            this.rejectNote  = '';
+            this.rejectModal = true;
+        },
+    };
+}
+</script>
 @endsection

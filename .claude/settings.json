@@ -7,7 +7,24 @@
       "Read(//etc/apache2/sites-enabled/**)",
       "Read(//etc/nginx/**)",
       "Bash(php -r \"echo php_sapi_name\\(\\);\")",
-      "Bash(apache2ctl -M)"
+      "Bash(apache2ctl -M)",
+      "Read(//etc/apache2/mods-available/**)",
+      "Read(//etc/apache2/mods-enabled/**)",
+      "Bash(apache2ctl -V)",
+      "Bash(php -l /var/www/Task-Managment-System/app/Http/Controllers/Admin/SettingsController.php)",
+      "Bash(php -l /var/www/Task-Managment-System/app/Http/Controllers/Manager/DashboardController.php)",
+      "Bash(php -l /var/www/Task-Managment-System/app/Http/Controllers/Admin/DashboardController.php)",
+      "Bash(curl -s -o /tmp/fa-check.txt -I \"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css\")",
+      "Bash(echo \"exit: $?\")",
+      "Bash(curl -sL \"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css\" -o /var/www/Task-Managment-System/public/css/fa-all.min.css)",
+      "Bash(curl -sL __TRACKED_VAR__/__TRACKED_VAR__ -o /var/www/Task-Managment-System/public/webfonts/__TRACKED_VAR__)",
+      "Bash(php -r \"require '/var/www/Task-Managment-System/vendor/autoload.php';\")",
+      "Bash(php -r \"require 'vendor/autoload.php'; echo 'ok';\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost/admin/reports -H \"Cookie: $\\(php artisan tinker --execute=\"echo 'laravel_session='.session\\(\\)->getId\\(\\);\" \\)\")",
+      "Bash(php /var/www/Task-Managment-System/artisan migrate:status)",
+      "Bash(php -l /var/www/Task-Managment-System/app/Http/Controllers/Admin/TaskApprovalController.php)",
+      "Bash(php -r \"require 'vendor/autoload.php'; echo 'syntax ok';\")",
+      "Bash(php -l resources/views/admin/approvals/index.blade.php)"
     ]
   }
 }

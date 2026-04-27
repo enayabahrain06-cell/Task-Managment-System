@@ -13,15 +13,15 @@
 {{-- Mini Stats --}}
 <div class="grid grid-cols-3 gap-4 mb-6">
     <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-        <p class="text-2xl font-bold text-gray-600">{{ auth()->user()->tasks()->where('status','pending')->count() }}</p>
+        <p class="text-2xl font-bold text-gray-600">{{ auth()->user()->tasks()->whereIn('status',['draft','assigned','viewed','revision_requested'])->count() }}</p>
         <p class="text-xs text-gray-400 mt-1">Pending</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-        <p class="text-2xl font-bold text-amber-500">{{ auth()->user()->tasks()->where('status','in_progress')->count() }}</p>
+        <p class="text-2xl font-bold text-amber-500">{{ auth()->user()->tasks()->whereIn('status',['in_progress','submitted'])->count() }}</p>
         <p class="text-xs text-gray-400 mt-1">In Progress</p>
     </div>
     <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-        <p class="text-2xl font-bold text-emerald-500">{{ auth()->user()->tasks()->where('status','completed')->count() }}</p>
+        <p class="text-2xl font-bold text-emerald-500">{{ auth()->user()->tasks()->whereIn('status',['approved','delivered','archived'])->count() }}</p>
         <p class="text-xs text-gray-400 mt-1">Completed</p>
     </div>
 </div>
@@ -30,12 +30,13 @@
     <div class="divide-y divide-gray-50">
         @forelse($tasks as $task)
         <a href="{{ route('user.tasks.show', $task) }}"
-           class="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/70 transition group {{ $task->deadline < now() && $task->status !== 'completed' ? 'bg-red-50/30' : '' }}">
+           @php $isDone = in_array($task->status, ['approved','delivered','archived']); @endphp
+           class="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/70 transition group {{ $task->deadline && $task->deadline < now() && !$isDone ? 'bg-red-50/30' : '' }}">
             <div class="w-2.5 h-2.5 rounded-full flex-shrink-0
-                {{ $task->status === 'completed' ? 'bg-emerald-400' : ($task->status === 'in_progress' ? 'bg-amber-400' : ($task->deadline < now() ? 'bg-red-400' : 'bg-gray-300')) }}">
+                {{ $isDone ? 'bg-emerald-400' : ($task->status === 'in_progress' ? 'bg-amber-400' : ($task->deadline && $task->deadline < now() ? 'bg-red-400' : 'bg-gray-300')) }}">
             </div>
             <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 truncate group-hover:text-indigo-600 transition {{ $task->status === 'completed' ? 'line-through text-gray-400' : '' }}">
+                <p class="text-sm font-medium text-gray-900 truncate group-hover:text-indigo-600 transition {{ $isDone ? 'line-through text-gray-400' : '' }}">
                     {{ $task->title }}
                 </p>
                 <p class="text-xs text-gray-400 mt-0.5">{{ $task->project->name }}</p>
@@ -44,11 +45,11 @@
                 {{ $task->priority === 'high' ? 'bg-red-100 text-red-600' : ($task->priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700') }}">
                 {{ ucfirst($task->priority) }}
             </span>
-            <span class="text-xs flex-shrink-0 {{ $task->deadline < now() && $task->status !== 'completed' ? 'text-red-500 font-semibold' : 'text-gray-400' }}">
+            <span class="text-xs flex-shrink-0 {{ $task->deadline && $task->deadline < now() && !$isDone ? 'text-red-500 font-semibold' : 'text-gray-400' }}">
                 {{ $task->deadline->format('M d, Y') }}
             </span>
             <span class="text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0
-                {{ $task->status === 'completed' ? 'bg-emerald-100 text-emerald-700' : ($task->status === 'in_progress' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600') }}">
+                {{ $isDone ? 'bg-emerald-100 text-emerald-700' : ($task->status === 'in_progress' ? 'bg-amber-100 text-amber-700' : ($task->status === 'submitted' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600')) }}">
                 {{ str_replace('_', ' ', ucfirst($task->status)) }}
             </span>
             <i class="fa fa-chevron-right text-gray-300 text-xs flex-shrink-0 group-hover:text-indigo-400 transition"></i>

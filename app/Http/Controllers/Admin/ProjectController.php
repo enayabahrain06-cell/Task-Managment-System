@@ -9,18 +9,28 @@ use App\Models\Setting;
 use App\Models\Task;
 use App\Models\User;
 use App\Notifications\TaskAssigned;
+use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 
 class ProjectController extends Controller
 {
     public function index(\Illuminate\Http\Request $request)
     {
+        if (!auth()->user()->hasPermission('manage_projects')) {
+            abort(403, 'You do not have permission to manage Projects.');
+        }
+
         $query = Project::withCount('tasks')
             ->withCount(['tasks as completed_tasks_count' => fn($q) => $q->whereIn('status', ['completed', 'delivered', 'approved'])])
             ->with(['members' => fn($q) => $q->select('users.id','users.name','users.avatar')->limit(5)]);
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
+        }
+        if ($request->boolean('overdue')) {
+            $query->whereNotNull('deadline')
+                  ->where('deadline', '<', now())
+                  ->where('status', '!=', 'completed');
         }
 
         $projects = $query
@@ -33,7 +43,10 @@ class ProjectController extends Controller
             'total'     => Project::count(),
             'active'    => Project::where('status', 'active')->count(),
             'completed' => Project::where('status', 'completed')->count(),
-            'overdue'   => Project::where('status', 'overdue')->count(),
+            'overdue'   => Project::whereNotNull('deadline')
+                ->where('deadline', '<', now())
+                ->where('status', '!=', 'completed')
+                ->count(),
         ];
         return view('admin.projects.index', compact('projects', 'users', 'stats'));
     }
@@ -180,6 +193,13 @@ class ProjectController extends Controller
             ? "Project created with {$taskCount} task(s) assigned."
             : 'Project created successfully.';
 
+        AuditLogger::log(
+            'project.created',
+            $project,
+            'Project "' . $project->name . '" created' . ($taskCount > 0 ? " with {$taskCount} task(s)" : ''),
+            ['project_id' => $project->id, 'project_name' => $project->name, 'task_count' => $taskCount]
+        );
+
         return redirect()->route('admin.projects.show', $project)->with('success', $msg);
     }
 
@@ -211,11 +231,61 @@ class ProjectController extends Controller
         $project->update($request->only('name', 'description', 'deadline', 'status'));
         $project->members()->sync($request->members ?? []);
 
+        AuditLogger::log(
+            'project.updated',
+            $project,
+            'Project "' . $project->name . '" updated',
+            ['project_id' => $project->id, 'project_name' => $project->name, 'status' => $project->status]
+        );
+
         return redirect()->route('admin.projects.index')->with('success', 'Project updated.');
+    }
+
+    public function reopen(Project $project)
+    {
+        if ($project->status !== 'completed') {
+            return back()->with('error', 'Only completed projects can be reopened.');
+        }
+
+        $project->update(['status' => 'active']);
+
+        AuditLogger::log(
+            'project.reopened',
+            $project,
+            'Project "' . $project->name . '" reopened',
+            ['project_id' => $project->id, 'project_name' => $project->name]
+        );
+
+        return back()->with('success', 'Project "' . $project->name . '" has been reopened and set back to Active.');
+    }
+
+    public function close(Project $project)
+    {
+        if ($project->status === 'completed') {
+            return back()->with('error', 'Project is already completed.');
+        }
+
+        $project->update(['status' => 'completed']);
+
+        AuditLogger::log(
+            'project.closed',
+            $project,
+            'Project "' . $project->name . '" closed and marked as Completed',
+            ['project_id' => $project->id, 'project_name' => $project->name]
+        );
+
+        return back()->with('success', 'Project "' . $project->name . '" has been closed and marked as Completed.');
     }
 
     public function destroy(Project $project)
     {
+        $name = $project->name;
+        AuditLogger::log(
+            'project.deleted',
+            $project,
+            'Project "' . $name . '" deleted',
+            ['project_id' => $project->id, 'project_name' => $name]
+        );
         $project->delete();
         return redirect()->route('admin.projects.index')->with('success', 'Project deleted.');
     }

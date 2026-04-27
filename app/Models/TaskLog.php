@@ -32,6 +32,16 @@ class TaskLog extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function reactions()
+    {
+        return $this->hasMany(ActivityReaction::class, 'task_log_id');
+    }
+
+    public function replies()
+    {
+        return $this->hasMany(ActivityReply::class, 'task_log_id')->with('user')->oldest();
+    }
+
     public function isComment(): bool
     {
         return $this->action === 'comment_added';
@@ -50,6 +60,7 @@ class TaskLog extends Model
             'status_updated_approved'             => 'Approved',
             'status_updated_delivered'            => 'Delivered',
             'status_updated_archived'             => 'Archived',
+            'status_updated_reopened'             => 'Reopened',
             // legacy labels (backward compat)
             'status_updated_pending'              => 'Set to Pending',
             'status_updated_pending_approval'     => 'Submitted for Review',
@@ -75,6 +86,7 @@ class TaskLog extends Model
             'status_updated_approved'             => ['fa-circle-check',         '#059669', '#D1FAE5'],
             'status_updated_delivered'            => ['fa-truck',                '#047857', '#ECFDF5'],
             'status_updated_archived'             => ['fa-box-archive',          '#6B7280', '#F3F4F6'],
+            'status_updated_reopened'             => ['fa-rotate-right',         '#D97706', '#FEF3C7'],
             // legacy
             'status_updated_pending'              => ['fa-circle-pause',         '#6B7280', '#F3F4F6'],
             'status_updated_pending_approval'     => ['fa-hourglass-half',       '#7C3AED', '#EDE9FE'],

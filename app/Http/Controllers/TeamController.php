@@ -31,10 +31,9 @@ class TeamController extends Controller
         ];
 
         $query = User::withCount([
-            'assignedTasks as total_tasks',
-            'assignedTasks as completed_tasks' => fn($q) => $q->whereIn('status', $doneStatuses),
-            'assignedTasks as pending_tasks'   => fn($q) => $q->whereNotIn('status', $doneStatuses),
-            'tasks',
+            'tasks as total_tasks',
+            'tasks as completed_tasks' => fn($q) => $q->whereIn('status', $doneStatuses),
+            'tasks as pending_tasks'   => fn($q) => $q->whereNotIn('status', $doneStatuses),
         ]);
 
         if ($request->filled('search')) {
@@ -54,15 +53,33 @@ class TeamController extends Controller
         $query->where('status', '!=', 'archived');
         $members = $query->orderBy('role')->paginate(20)->withQueryString();
 
+        // Admin/Manager: replace counts with tasks they created instead of tasks assigned to them
+        $members->getCollection()->transform(function ($member) use ($doneStatuses) {
+            if (in_array($member->role, ['admin', 'manager'])) {
+                $base = Task::where('created_by', $member->id);
+                $member->total_tasks     = (clone $base)->count();
+                $member->completed_tasks = (clone $base)->whereIn('status', $doneStatuses)->count();
+                $member->pending_tasks   = (clone $base)->whereNotIn('status', $doneStatuses)->count();
+            }
+            return $member;
+        });
+
         $doneFormer = ['delivered', 'approved', 'archived'];
         $formerEmployees = User::where('status', 'archived')
             ->withCount([
-                'assignedTasks as total_tasks',
-                'assignedTasks as completed_tasks' => fn($q) => $q->whereIn('status', $doneFormer),
+                'tasks as total_tasks',
+                'tasks as completed_tasks' => fn($q) => $q->whereIn('status', $doneFormer),
             ])
             ->with('archivedBy')
             ->orderByDesc('archived_at')
-            ->get();
+            ->get()
+            ->each(function ($former) use ($doneFormer) {
+                if (in_array($former->role, ['admin', 'manager'])) {
+                    $base = Task::where('created_by', $former->id);
+                    $former->total_tasks     = (clone $base)->count();
+                    $former->completed_tasks = (clone $base)->whereIn('status', $doneFormer)->count();
+                }
+            });
 
         $totalMembers   = $stats['total'] - ($stats['archived'] ?? 0);
         $activeMembers  = $stats['active'];

@@ -22,10 +22,10 @@ class TaskReassigned extends Notification
     {
         if ($this->isNewAssignee) {
             return [
-                'title'   => 'Task Assigned to You',
-                'message' => 'You have been assigned: ' . $this->task->title,
+                'title'   => 'Task Reassigned to You',
+                'message' => '"' . $this->task->title . '" has been reassigned to you.',
                 'url'     => route('user.tasks.show', $this->task->id),
-                'icon'    => 'fa-list-check',
+                'icon'    => 'fa-arrows-rotate',
                 'color'   => 'indigo',
             ];
         }

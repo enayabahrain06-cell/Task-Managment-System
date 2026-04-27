@@ -19,7 +19,15 @@
       "Bash(grep -n 'former --\\\\|FORMER EMPLOYEES\\\\|@if\\($view === '\\\\''former'\\\\''\\)\\\\|@endif {{-- former' c:/Users/it/Desktop/task-managment-system/resources/views/team/index.blade.php)",
       "Bash(python3 -c ' *)",
       "Bash(node -e ' *)",
-      "Bash(php -l app/Http/Controllers/NotificationsController.php)"
+      "Bash(php -l app/Http/Controllers/NotificationsController.php)",
+      "Bash(php -r \"echo 'PHP OK';\")",
+      "Bash(xargs -I {} basename {})",
+      "Bash(php -r \"require '/var/www/Task-Managment-System/vendor/autoload.php'; echo 'OK';\")",
+      "Bash(php -l /var/www/Task-Managment-System/app/Http/Controllers/Admin/TaskController.php)",
+      "Bash(php -l /var/www/Task-Managment-System/resources/views/admin/dashboard.blade.php)",
+      "Read(//tmp/**)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost/admin/dashboard/analytics-tasks?filter=pending -H \"Cookie: $\\(grep -o 'laravel_session=[^;]*' /tmp/sess.txt 2>/dev/null || echo ''\\)\")",
+      "Bash(php -l /var/www/Task-Managment-System/resources/views/admin/approvals/index.blade.php)"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory"

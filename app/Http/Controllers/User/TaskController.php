@@ -109,9 +109,9 @@ class TaskController extends Controller
             abort(403);
         }
 
-        $notSubmittable = ['submitted', 'approved', 'delivered', 'archived'];
-        if (in_array($task->status, $notSubmittable)) {
-            return back()->with('error', 'This task cannot receive new submissions at this stage.');
+        $submittable = ['in_progress', 'revision_requested'];
+        if (!in_array($task->status, $submittable)) {
+            return back()->with('error', 'You must start working on the task before submitting.');
         }
 
         $request->validate([
