@@ -153,7 +153,7 @@ class OffboardingController extends Controller
                 ]);
             }
 
-            if ($transferredCount > 0) {
+            if ($transferredCount > 0 && \App\Models\Setting::get('notify_on_transfer', '1') === '1') {
                 $toUser->notify(new \App\Notifications\TaskTransferred($transferredCount, $user));
             }
         }

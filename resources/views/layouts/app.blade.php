@@ -140,12 +140,61 @@
                 </div>
             </div>
             <div class="topbar-right">
+                @php $headerHidden = json_decode($appSettings['nav_hidden'] ?? '[]', true) ?: []; @endphp
+                @if(!in_array('nav_search', $headerHidden))
                 <div class="topbar-search" id="topbar-search-wrap">
                     <i class="fas fa-search"></i>
                     <input type="text" placeholder="What are you looking for?">
                 </div>
+                @endif
+                {{-- Page History --}}
+                @if(!in_array('nav_history', $headerHidden))
+                <div x-data="navHistory()" x-init="init()" @click.outside="open=false" style="position:relative;">
+                    <button @click="open=!open; if(open) load()" class="icon-btn" title="Recently viewed" style="position:relative;">
+                        <i class="fas fa-clock-rotate-left"></i>
+                        <span x-show="items.length>0 && !open"
+                              style="position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:#6366F1;border-radius:999px;font-size:9px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 3px;border:2px solid #fff;line-height:1;"
+                              x-text="items.length>9?'9+':items.length"></span>
+                    </button>
+                    <div x-show="open" x-cloak
+                         style="position:absolute;right:0;top:calc(100% + 8px);width:320px;background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.12);border:1px solid #F0F0F0;z-index:200;overflow:hidden;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #F3F4F6;">
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <span style="font-size:14px;font-weight:700;color:#111827;">Recently Viewed</span>
+                                <span x-show="items.length>0" style="background:#EEF2FF;color:#4F46E5;font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;" x-text="items.length"></span>
+                            </div>
+                            <button x-show="items.length>0" @click.stop="clear()"
+                                    style="font-size:11px;color:#9CA3AF;font-weight:500;background:none;border:none;cursor:pointer;padding:0;"
+                                    onmouseover="this.style.color='#EF4444'" onmouseout="this.style.color='#9CA3AF'">Clear all</button>
+                        </div>
+                        <div style="max-height:380px;overflow-y:auto;">
+                            <template x-for="item in items" :key="item.url">
+                                <a :href="item.url" @click="open=false"
+                                   style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid #F9FAFB;text-decoration:none;background:#fff;transition:background .1s;"
+                                   onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='#fff'">
+                                    <div :style="'width:34px;height:34px;border-radius:9px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:'+iconBg(item.url)">
+                                        <i :class="'fas '+pageIcon(item.url)" :style="'font-size:13px;color:'+iconColor(item.url)"></i>
+                                    </div>
+                                    <div style="flex:1;min-width:0;">
+                                        <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="item.title"></p>
+                                        <p style="font-size:10px;color:#9CA3AF;margin:2px 0 0;" x-text="timeAgo(item.at)"></p>
+                                    </div>
+                                    <i class="fas fa-arrow-up-right-from-square" style="color:#D1D5DB;font-size:10px;flex-shrink:0;"></i>
+                                </a>
+                            </template>
+                            <div x-show="items.length===0" style="text-align:center;padding:32px 16px;">
+                                <div style="width:44px;height:44px;background:#F3F4F6;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
+                                    <i class="fas fa-clock-rotate-left" style="color:#D1D5DB;font-size:18px;"></i>
+                                </div>
+                                <p style="font-size:12px;font-weight:600;color:#9CA3AF;margin:0;">No history yet</p>
+                                <p style="font-size:11px;color:#C4C4C4;margin:4px 0 0;">Pages you visit will appear here</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
                 {{-- Notification Bell --}}
-                @php $headerHidden = json_decode($appSettings['nav_hidden'] ?? '[]', true) ?: []; @endphp
                 @if(!in_array('nav_notifications', $headerHidden))
                 <div x-data="notifBell()" x-init="init()" @click.outside="open = false" style="position:relative;">
 
@@ -239,6 +288,18 @@
                     </div>
                 </div>
                 @endif
+                {{-- Dev Mode pill (admin only) --}}
+                @if(auth()->check() && auth()->user()->role === 'admin')
+                @php $devOn = ($appSettings['developer_mode'] ?? '0') === '1'; @endphp
+                <button id="global-dev-mode-btn" onclick="typeof toggleGlobalDevMode!=='undefined'&&toggleGlobalDevMode(this)"
+                        title="{{ $devOn ? 'Developer Mode ON — click to disable' : 'Developer Mode OFF — click to enable' }}"
+                        style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1.5px solid {{ $devOn ? '#C7D2FE' : '#E5E7EB' }};cursor:pointer;transition:all .2s;flex-shrink:0;{{ $devOn ? 'background:#EEF2FF;color:#4F46E5;' : 'background:#F9FAFB;color:#9CA3AF;' }}">
+                    <i class="fas fa-code" style="font-size:9px;"></i>
+                    <span id="global-dev-label">{{ $devOn ? 'Dev On' : 'Dev' }}</span>
+                    <span id="global-dev-dot" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;background:{{ $devOn ? '#4F46E5' : '#D1D5DB' }};"></span>
+                </button>
+                @endif
+
                 {{-- Who's Online (admin/manager only) --}}
                 @if(in_array(auth()->user()?->role, ['admin','manager']) && !in_array('nav_online_users', $headerHidden))
                 <div x-data="onlineUsers()" x-init="init()" @click.outside="open=false" style="position:relative;">
@@ -309,7 +370,7 @@
                     </div>
                     {{-- Status dropdown --}}
                     <div x-show="open" x-cloak
-                         style="position:absolute;top:calc(100% + 8px);right:0;width:180px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.12);border:1px solid #F0F0F0;z-index:300;overflow:hidden;">
+                         style="position:absolute;top:calc(100% + 8px);right:0;width:190px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.12);border:1px solid #F0F0F0;z-index:300;overflow:hidden;">
                         <div style="padding:8px 12px;border-bottom:1px solid #F3F4F6;">
                             <p style="font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0;">Set status</p>
                         </div>
@@ -323,6 +384,13 @@
                                 <i x-show="current===opt.value" class="fas fa-check" style="margin-left:auto;color:#6366F1;font-size:11px;"></i>
                             </button>
                         </template>
+                        <div style="height:1px;background:#F3F4F6;margin:2px 0;"></div>
+                        <button @click="open=false; document.getElementById('global-profile-modal').style.display='flex'"
+                                style="width:100%;display:flex;align-items:center;gap:10px;padding:9px 14px;background:none;border:none;cursor:pointer;text-align:left;transition:background .12s;"
+                                onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='none'">
+                            <i class="fa fa-user-pen" style="font-size:12px;color:#6366F1;width:10px;text-align:center;"></i>
+                            <span style="font-size:13px;color:#374151;">Edit Profile</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -356,6 +424,155 @@
 
     </div>
 </div>
+
+{{-- ═══════════ GLOBAL EDIT PROFILE MODAL ═══════════ --}}
+@php $profileUser = auth()->user(); @endphp
+<div id="global-profile-modal"
+     style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.5);"
+     onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,.2);width:100%;max-width:460px;overflow:hidden;">
+
+        <div style="padding:20px 24px 16px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:34px;height:34px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;">
+                    <i class="fa fa-user-pen" style="color:#6366F1;font-size:14px;"></i>
+                </div>
+                <div>
+                    <p style="font-size:15px;font-weight:700;color:#111827;margin:0;">Edit Profile</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;">Update your photo, email or password</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('global-profile-modal').style.display='none'"
+                    style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;">
+                <i class="fa fa-times"></i>
+            </button>
+        </div>
+
+        @if(session('profile_success'))
+        <div style="margin:16px 24px 0;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:10px 14px;font-size:12px;color:#166534;display:flex;align-items:center;gap:8px;">
+            <i class="fa fa-circle-check"></i> {{ session('profile_success') }}
+        </div>
+        @endif
+        @if($errors->has('current_password') || $errors->has('email') || $errors->has('password') || $errors->has('avatar'))
+        <div style="margin:16px 24px 0;background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:10px 14px;font-size:12px;color:#DC2626;display:flex;align-items:center;gap:8px;">
+            <i class="fa fa-exclamation-circle"></i>
+            {{ $errors->first('current_password') ?: ($errors->first('email') ?: ($errors->first('password') ?: $errors->first('avatar'))) }}
+        </div>
+        @endif
+
+        <form method="POST" action="{{ route('user.profile.update') }}" enctype="multipart/form-data">
+            @csrf
+            <div style="padding:20px 24px;display:flex;flex-direction:column;gap:16px;">
+
+                {{-- Avatar --}}
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:10px;">Profile Picture</label>
+                    <div style="display:flex;align-items:center;gap:14px;">
+                        <div style="width:64px;height:64px;flex-shrink:0;" id="gp-preview-wrap">
+                            @if($profileUser->avatarUrl())
+                                <img src="{{ $profileUser->avatarUrl() }}" id="gp-preview"
+                                     style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid #E5E7EB;">
+                            @else
+                                <div style="width:64px;height:64px;border-radius:50%;background:#6366F1;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;border:2px solid #E5E7EB;">
+                                    {{ strtoupper(substr($profileUser->name, 0, 1)) }}
+                                </div>
+                            @endif
+                        </div>
+                        <div>
+                            <label for="gp-avatar-input"
+                                   style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#EEF2FF;color:#4F46E5;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid #C7D2FE;">
+                                <i class="fa fa-upload" style="font-size:10px;"></i> Choose Photo
+                            </label>
+                            <input type="file" id="gp-avatar-input" name="avatar" accept="image/*" style="display:none;"
+                                   onchange="gpPreviewAvatar(this)">
+                            <p style="font-size:11px;color:#9CA3AF;margin:5px 0 0;">JPG, PNG or WebP · max 2MB</p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Email --}}
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Email Address</label>
+                    <div style="position:relative;">
+                        <i class="fa fa-envelope" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;"></i>
+                        <input type="email" name="email" value="{{ old('email', $profileUser->email) }}"
+                               style="width:100%;padding:10px 10px 10px 32px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
+                               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                    </div>
+                </div>
+
+                {{-- Current Password --}}
+                <div x-data="{show:false}">
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Current Password <span style="color:#EF4444;">*</span></label>
+                    <div style="position:relative;">
+                        <i class="fa fa-lock" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;z-index:1;"></i>
+                        <input :type="show?'text':'password'" name="current_password" required placeholder="Enter current password"
+                               style="width:100%;padding:10px 32px 10px 32px;border:1.5px solid {{ $errors->has('current_password') ? '#FCA5A5' : '#E5E7EB' }};border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
+                               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                        <button type="button" @click="show=!show" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9CA3AF;padding:0;">
+                            <i :class="show?'fa fa-eye-slash':'fa fa-eye'" style="font-size:12px;"></i>
+                        </button>
+                    </div>
+                </div>
+
+                {{-- New Password --}}
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">New Password <span style="font-weight:400;color:#9CA3AF;">(leave blank to keep current)</span></label>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                        <div x-data="{show:false}" style="position:relative;">
+                            <i class="fa fa-lock" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;z-index:1;"></i>
+                            <input :type="show?'text':'password'" name="password" placeholder="New password"
+                                   style="width:100%;padding:10px 32px 10px 32px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
+                                   onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                            <button type="button" @click="show=!show" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9CA3AF;padding:0;">
+                                <i :class="show?'fa fa-eye-slash':'fa fa-eye'" style="font-size:12px;"></i>
+                            </button>
+                        </div>
+                        <div x-data="{show:false}" style="position:relative;">
+                            <i class="fa fa-lock" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;z-index:1;"></i>
+                            <input :type="show?'text':'password'" name="password_confirmation" placeholder="Confirm"
+                                   style="width:100%;padding:10px 32px 10px 32px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
+                                   onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                            <button type="button" @click="show=!show" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9CA3AF;padding:0;">
+                                <i :class="show?'fa fa-eye-slash':'fa fa-eye'" style="font-size:12px;"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div style="padding:16px 24px;border-top:1px solid #F3F4F6;display:flex;justify-content:flex-end;gap:10px;">
+                <button type="button" onclick="document.getElementById('global-profile-modal').style.display='none'"
+                        style="padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;background:#F3F4F6;color:#374151;border:none;cursor:pointer;">
+                    Cancel
+                </button>
+                <button type="submit"
+                        style="padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;border:none;cursor:pointer;box-shadow:0 4px 12px rgba(79,70,229,.3);">
+                    <i class="fa fa-check" style="font-size:11px;margin-right:5px;"></i> Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function gpPreviewAvatar(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            document.getElementById('gp-preview-wrap').innerHTML =
+                `<img src="${e.target.result}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid #E5E7EB;">`;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+@if(session('profile_success') || $errors->has('current_password') || $errors->has('email') || $errors->has('password') || $errors->has('avatar'))
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('global-profile-modal').style.display = 'flex';
+});
+@endif
+</script>
 
 <script>
 // Close sidebar when a nav link is clicked on mobile (Alpine v3 compatible)
@@ -458,6 +675,69 @@ function statusPicker() {
     };
 }
 
+function navHistory() {
+    return {
+        open:  false,
+        items: [],
+        init() {
+            // Record this page visit
+            const KEY = '_navHist', MAX = 20;
+            const hist  = JSON.parse(localStorage.getItem(KEY) || '[]');
+            const title = document.title.replace(/\s*[\-–|].*$/, '').trim() || document.title;
+            const entry = { url: location.href, title, at: Date.now() };
+            const deduped = hist.filter(h => h.url !== entry.url);
+            deduped.unshift(entry);
+            localStorage.setItem(KEY, JSON.stringify(deduped.slice(0, MAX)));
+            this.load();
+        },
+        load() {
+            const raw = JSON.parse(localStorage.getItem('_navHist') || '[]');
+            // Exclude current page from the visible list
+            this.items = raw.filter(h => h.url !== location.href);
+        },
+        clear() {
+            const raw     = JSON.parse(localStorage.getItem('_navHist') || '[]');
+            const current = raw.find(h => h.url === location.href);
+            localStorage.setItem('_navHist', JSON.stringify(current ? [current] : []));
+            this.items = [];
+        },
+        timeAgo(ts) {
+            const s = Math.floor((Date.now() - ts) / 1000);
+            if (s < 60)   return 'just now';
+            const m = Math.floor(s / 60);
+            if (m < 60)   return m + 'm ago';
+            const h = Math.floor(m / 60);
+            if (h < 24)   return h + 'h ago';
+            return Math.floor(h / 24) + 'd ago';
+        },
+        pageIcon(url) {
+            if (/\/tasks\/\d/.test(url))    return 'fa-list-check';
+            if (/\/projects\/\d/.test(url)) return 'fa-folder';
+            if (/\/messages/.test(url))     return 'fa-comment-dots';
+            if (/\/reports/.test(url))      return 'fa-chart-bar';
+            if (/\/users\/\d/.test(url))    return 'fa-user';
+            if (/\/settings/.test(url))     return 'fa-gear';
+            if (/\/calendar/.test(url))     return 'fa-calendar';
+            if (/\/activities/.test(url))   return 'fa-timeline';
+            return 'fa-house';
+        },
+        iconBg(url) {
+            if (/\/tasks\/\d/.test(url))    return '#EEF2FF';
+            if (/\/projects\/\d/.test(url)) return '#FEF3C7';
+            if (/\/messages/.test(url))     return '#ECFDF5';
+            if (/\/reports/.test(url))      return '#F0F9FF';
+            return '#F3F4F6';
+        },
+        iconColor(url) {
+            if (/\/tasks\/\d/.test(url))    return '#6366F1';
+            if (/\/projects\/\d/.test(url)) return '#D97706';
+            if (/\/messages/.test(url))     return '#059669';
+            if (/\/reports/.test(url))      return '#0EA5E9';
+            return '#6B7280';
+        },
+    };
+}
+
 function onlineUsers() {
     return {
         open:  false,
@@ -485,73 +765,155 @@ function onlineUsers() {
 
 @stack('scripts')
 
-@if(($appSettings['developer_mode'] ?? '0') === '1' && auth()->check() && auth()->user()->hasPermission('manage_settings'))
+@auth
+@if(auth()->user()->role === 'admin')
+<style>@keyframes devpulse { 0%,100%{opacity:1} 50%{opacity:.3} }</style>
 <script>
-(function() {
-    const TOGGLE_URL   = '{{ route('admin.settings.elements.toggle') }}';
-    const SETTINGS_URL = '{{ route('admin.settings.index') }}?tab=developer';
-    const CSRF         = '{{ csrf_token() }}';
-    const DEV_LABELS   = @json($appSettings['hidden_elements'] ?? '[]');
+(function () {
+    window.DEV_MODE = {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'true' : 'false' }};
+    const _DEV_TOGGLE_URL   = '{{ route('admin.settings.dev-mode') }}';
+    const _DEV_EL_URL       = '{{ route('admin.settings.elements.toggle') }}';
+    const _DEV_SETTINGS_URL = '{{ route('admin.settings.index') }}?tab=developer';
+    const _DEV_CSRF         = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
 
-    const ELEMENT_LABELS = {
-        dash_stats: 'Overview Cards',
-        dash_task_analytics: 'Task Analytics',
-        dash_working_hours: 'Working Hours Chart',
-        dash_project_stats: 'Project Statistics',
-        dash_workload: 'Task Workload Chart',
-        dash_calendar: 'Calendar & Meetings',
-    };
+    let _devFooter = null;
 
-    function hideElement(key, isExtra) {
-        fetch(TOGGLE_URL, {
-            method: 'POST',
-            headers: { 'X-CSRF-TOKEN': CSRF, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key, action: isExtra ? 'remove' : 'hide' })
-        }).then(() => { location.reload(); });
+    function _devToast(msg) {
+        var t = document.createElement('div');
+        t.innerHTML = '<i class="fas fa-eye-slash" style="margin-right:6px;font-size:11px;"></i>' + msg;
+        t.style.cssText = 'position:fixed;bottom:52px;right:24px;z-index:99999;background:#1E1B4B;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.2);opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;';
+        document.body.appendChild(t);
+        requestAnimationFrame(function () { t.style.opacity='1'; t.style.transform='translateY(0)'; });
+        setTimeout(function () { t.style.opacity='0'; t.style.transform='translateY(8px)'; setTimeout(function () { t.remove(); }, 220); }, 2500);
     }
 
-    function init() {
-        // Dev banner
-        const banner = document.createElement('div');
-        banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#1E1B4B;color:#C7D2FE;font-size:12px;font-weight:600;padding:8px 20px;z-index:88888;display:flex;align-items:center;justify-content:space-between;gap:12px;';
-        banner.innerHTML = `
-            <div style="display:flex;align-items:center;gap:10px;">
-                <span style="width:8px;height:8px;border-radius:50%;background:#6366F1;display:inline-block;animation:devpulse 1.5s infinite;"></span>
-                <span>Developer Mode — click <strong style="color:#fff;">✕</strong> on any section to hide it</span>
-            </div>
-            <a href="${SETTINGS_URL}" style="display:flex;align-items:center;gap:6px;padding:5px 14px;background:rgba(99,102,241,.3);color:#A5B4FC;border-radius:7px;font-size:11px;text-decoration:none;border:1px solid rgba(99,102,241,.4);">
-                <i class="fas fa-plus"></i> Restore sections
-            </a>`;
-        document.body.appendChild(banner);
-
-        // Inject × buttons on each dev-keyed element
-        document.querySelectorAll('[data-dev-key]').forEach(function(el) {
-            el.style.position = 'relative';
-            const key   = el.getAttribute('data-dev-key');
-            const label = el.getAttribute('data-dev-label') || ELEMENT_LABELS[key] || key;
-            const btn   = document.createElement('button');
-            btn.title   = 'Hide "' + label + '"';
-            btn.style.cssText = 'position:absolute;top:8px;right:8px;z-index:9999;width:26px;height:26px;border-radius:50%;background:#1E1B4B;color:#C7D2FE;border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;opacity:.8;transition:opacity .15s,transform .15s;';
-            btn.innerHTML = '✕';
-            btn.onmouseover = function() { this.style.opacity = '1'; this.style.transform = 'scale(1.1)'; };
-            btn.onmouseout  = function() { this.style.opacity = '.8'; this.style.transform = ''; };
+    function _devInitOverlays() {
+        document.querySelectorAll('[data-dev-key]').forEach(function (el) {
+            if (el.closest('.dev-ow')) return;
+            var key     = el.getAttribute('data-dev-key');
+            var label   = el.getAttribute('data-dev-label') || key;
             var isExtra = el.getAttribute('data-dev-type') === 'extra';
-            btn.onclick = function(e) { e.preventDefault(); e.stopPropagation(); hideElement(key, isExtra); };
-            el.appendChild(btn);
+
+            var wrap = document.createElement('div');
+            wrap.className = 'dev-ow';
+            wrap.style.cssText = 'position:relative;';
+            el.parentNode.insertBefore(wrap, el);
+            wrap.appendChild(el);
+
+            var ov = document.createElement('div');
+            ov.style.cssText = 'position:absolute;inset:0;z-index:50;border-radius:inherit;cursor:pointer;transition:background .15s,outline .15s;outline:2px dashed transparent;';
+
+            var badge = document.createElement('div');
+            badge.innerHTML = '<i class="fas fa-eye-slash" style="font-size:10px;margin-right:5px;"></i>' + label;
+            badge.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(79,70,229,.92);color:#fff;padding:7px 16px;border-radius:8px;font-size:12px;font-weight:700;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;box-shadow:0 4px 16px rgba(79,70,229,.35);';
+            ov.appendChild(badge);
+            wrap.appendChild(ov);
+
+            ov.addEventListener('mouseenter', function () { ov.style.background='rgba(79,70,229,.08)'; ov.style.outline='2px dashed #6366F1'; badge.style.opacity='1'; });
+            ov.addEventListener('mouseleave', function () { ov.style.background=''; ov.style.outline='2px dashed transparent'; badge.style.opacity='0'; });
+            ov.addEventListener('click', function () {
+                ov.style.pointerEvents='none';
+                badge.innerHTML='<i class="fas fa-spinner fa-spin" style="font-size:10px;margin-right:5px;"></i>Hiding…';
+                badge.style.opacity='1';
+                fetch(_DEV_EL_URL, { method:'POST', headers:{'X-CSRF-TOKEN':_DEV_CSRF,'Content-Type':'application/json'}, body:JSON.stringify({key:key, action:isExtra?'remove':'hide'}) })
+                    .then(function(r){return r.json();})
+                    .then(function(){
+                        wrap.style.transition='opacity .3s,transform .3s'; wrap.style.opacity='0'; wrap.style.transform='scale(.97)';
+                        setTimeout(function(){ wrap.remove(); _devToast(label+' hidden'); }, 320);
+                    })
+                    .catch(function(){ ov.style.pointerEvents=''; badge.style.opacity='0'; });
+            });
         });
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
+    function _devDestroyOverlays() {
+        document.querySelectorAll('.dev-ow').forEach(function (wrap) {
+            var el = wrap.querySelector('[data-dev-key]');
+            if (el) { wrap.replaceWith(el); } else { wrap.remove(); }
+        });
     }
+
+    function _devShowFooter() {
+        if (document.getElementById('dev-mode-global-footer')) return;
+        _devFooter = document.createElement('div');
+        _devFooter.id = 'dev-mode-global-footer';
+        _devFooter.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#1E1B4B;color:#C7D2FE;font-size:12px;font-weight:600;padding:8px 20px;z-index:88888;display:flex;align-items:center;justify-content:space-between;gap:12px;';
+        _devFooter.innerHTML =
+            '<div style="display:flex;align-items:center;gap:10px;"><span style="width:8px;height:8px;border-radius:50%;background:#6366F1;display:inline-block;animation:devpulse 1.5s infinite;"></span><span>Developer Mode Active — hover over any dashboard section to hide it</span></div>' +
+            '<a href="'+_DEV_SETTINGS_URL+'" style="display:flex;align-items:center;gap:6px;padding:5px 14px;background:rgba(99,102,241,.3);color:#A5B4FC;border-radius:7px;font-size:11px;text-decoration:none;border:1px solid rgba(99,102,241,.4);"><i class="fas fa-gear"></i> Manage Sections</a>';
+        document.body.appendChild(_devFooter);
+    }
+
+    function _devHideFooter() {
+        var f = document.getElementById('dev-mode-global-footer');
+        if (f) { f.remove(); _devFooter = null; }
+    }
+
+    function _devActivate() {
+        _devShowFooter();
+        _devInitOverlays();
+        var banner = document.getElementById('dev-mode-banner');
+        if (banner) banner.style.display = 'flex';
+    }
+
+    function _devDeactivate() {
+        _devHideFooter();
+        _devDestroyOverlays();
+        var banner = document.getElementById('dev-mode-banner');
+        if (banner) banner.style.display = 'none';
+    }
+
+    function _devUpdatePill(on) {
+        var btn = document.getElementById('global-dev-mode-btn');
+        if (!btn) return;
+        btn.style.background  = on ? '#EEF2FF' : '#F9FAFB';
+        btn.style.color       = on ? '#4F46E5' : '#9CA3AF';
+        btn.style.borderColor = on ? '#C7D2FE' : '#E5E7EB';
+        btn.title = on ? 'Developer Mode ON — click to disable' : 'Developer Mode OFF — click to enable';
+        var dot = document.getElementById('global-dev-dot');
+        if (dot) dot.style.background = on ? '#4F46E5' : '#D1D5DB';
+        var lbl = document.getElementById('global-dev-label');
+        if (lbl) lbl.textContent = on ? 'Dev On' : 'Dev';
+    }
+
+    window.toggleGlobalDevMode = function (btn) {
+        btn.disabled = true;
+        fetch(_DEV_TOGGLE_URL, { method:'POST', headers:{'X-CSRF-TOKEN':_DEV_CSRF,'Content-Type':'application/json'} })
+            .then(function(r){return r.json();})
+            .then(function(d){
+                btn.disabled = false;
+                window.DEV_MODE = d.developer_mode;
+                _devUpdatePill(d.developer_mode);
+                window.dispatchEvent(new CustomEvent('devmode-changed', { detail: { on: d.developer_mode } }));
+                try { localStorage.setItem('dev_mode', d.developer_mode ? '1' : '0'); } catch(e){}
+                if (d.developer_mode) _devActivate(); else _devDeactivate();
+            })
+            .catch(function(){ btn.disabled = false; });
+    };
+
+    window._devModeChanged = function (on) {
+        window.DEV_MODE = on;
+        _devUpdatePill(on);
+        if (on) _devActivate(); else _devDeactivate();
+    };
+
+    window.addEventListener('storage', function (e) {
+        if (e.key !== 'dev_mode') return;
+        var on = e.newValue === '1';
+        if (on === window.DEV_MODE) return;
+        window.DEV_MODE = on;
+        _devUpdatePill(on);
+        window.dispatchEvent(new CustomEvent('devmode-changed', { detail: { on: on } }));
+        if (on) _devActivate(); else _devDeactivate();
+    });
+
+    function _onReady() { if (window.DEV_MODE) _devActivate(); }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _onReady);
+    else _onReady();
 })();
 </script>
-<style>
-@keyframes devpulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-</style>
 @endif
+@endauth
 
 </body>
 </html>

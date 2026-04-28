@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Role;
+use App\Models\Setting;
 use App\Models\Task;
 use App\Models\TaskLog;
 use App\Models\TaskTransfer;
@@ -59,9 +60,23 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name'        => 'required|string|max:255',
+            'name' => [
+                'required', 'string', 'max:255',
+                function ($attribute, $value, $fail) {
+                    if (User::whereRaw('LOWER(name) = ?', [strtolower($value)])->exists()) {
+                        $fail('A user with this name already exists.');
+                    }
+                },
+            ],
             'username'    => 'nullable|string|max:60|unique:users|alpha_dash',
-            'email'       => 'required|email|max:255|unique:users',
+            'email' => [
+                'required', 'email', 'max:255',
+                function ($attribute, $value, $fail) {
+                    if (User::whereRaw('LOWER(email) = ?', [strtolower($value)])->exists()) {
+                        $fail('A user with this email address already exists.');
+                    }
+                },
+            ],
             'password'    => 'required|string|min:8|confirmed',
             'role'        => ['required', Rule::in(Role::pluck('name'))],
             'phone'       => 'nullable|string|max:30',
@@ -83,7 +98,7 @@ class UserController extends Controller
         $data = [
             'name'        => $request->name,
             'username'    => $request->username ?: null,
-            'email'       => $request->email,
+            'email'       => strtolower($request->email),
             'password'    => $request->password,
             'role'        => $request->role,
             'phone'       => $request->phone,
@@ -122,10 +137,28 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
+        if (auth()->user()->role === 'manager' && $user->role === 'admin' && Setting::get('manager_can_edit_admin', '0') !== '1') {
+            return back()->with('error', 'Managers cannot edit administrator accounts.');
+        }
+
         $request->validate([
-            'name'        => 'required|string|max:255',
+            'name' => [
+                'required', 'string', 'max:255',
+                function ($attribute, $value, $fail) use ($user) {
+                    if (User::whereRaw('LOWER(name) = ?', [strtolower($value)])->where('id', '!=', $user->id)->exists()) {
+                        $fail('A user with this name already exists.');
+                    }
+                },
+            ],
             'username'    => 'nullable|string|max:60|alpha_dash|unique:users,username,' . $user->id,
-            'email'       => 'required|email|max:255|unique:users,email,' . $user->id,
+            'email' => [
+                'required', 'email', 'max:255',
+                function ($attribute, $value, $fail) use ($user) {
+                    if (User::whereRaw('LOWER(email) = ?', [strtolower($value)])->where('id', '!=', $user->id)->exists()) {
+                        $fail('A user with this email address already exists.');
+                    }
+                },
+            ],
             'role'        => ['required', Rule::in(Role::pluck('name'))],
             'password'    => 'nullable|string|min:8|confirmed',
             'phone'       => 'nullable|string|max:30',
@@ -152,7 +185,7 @@ class UserController extends Controller
         $data = [
             'name'        => $request->name,
             'username'    => $request->username ?: null,
-            'email'       => $request->email,
+            'email'       => strtolower($request->email),
             'role'        => $request->role,
             'phone'       => $request->phone,
             'job_title'   => $request->job_title,
@@ -232,6 +265,10 @@ class UserController extends Controller
 
     public function updatePermissions(Request $request, User $user)
     {
+        if (auth()->user()->role === 'manager' && $user->role === 'admin' && Setting::get('manager_can_edit_admin', '0') !== '1') {
+            return response()->json(['error' => 'Managers cannot edit administrator permissions.'], 403);
+        }
+
         $allKeys = array_keys(User::ALL_PERMISSIONS);
         $submitted = $request->input('permissions', []);
 
@@ -249,6 +286,10 @@ class UserController extends Controller
     {
         if ($user->id === auth()->id()) {
             return back()->with('error', 'You cannot archive your own account.');
+        }
+
+        if (auth()->user()->role === 'manager' && $user->role === 'admin' && Setting::get('manager_can_edit_admin', '0') !== '1') {
+            return back()->with('error', 'Managers cannot archive administrator accounts.');
         }
 
         $user->update([
@@ -285,10 +326,57 @@ class UserController extends Controller
         return back()->with('success', $user->name . ' has been restored to the team.');
     }
 
+    public function permanentDelete(User $user)
+    {
+        if ($user->id === auth()->id()) {
+            return back()->with('error', 'You cannot delete your own account.');
+        }
+
+        if (auth()->user()->role === 'manager' && $user->role === 'admin' && Setting::get('manager_can_edit_admin', '0') !== '1') {
+            return back()->with('error', 'Managers cannot delete administrator accounts.');
+        }
+
+        $name  = $user->name;
+        $email = $user->email;
+
+        // Null out task primary assignments so tasks aren't orphaned
+        \Illuminate\Support\Facades\DB::table('tasks')
+            ->where('assigned_to', $user->id)
+            ->update(['assigned_to' => null, 'status' => 'draft']);
+
+        \Illuminate\Support\Facades\DB::table('tasks')
+            ->where('social_assigned_to', $user->id)
+            ->update(['social_assigned_to' => null]);
+
+        // Remove pivot entries not covered by cascades
+        \Illuminate\Support\Facades\DB::table('project_user')->where('user_id', $user->id)->delete();
+        \Illuminate\Support\Facades\DB::table('message_group_users')->where('user_id', $user->id)->delete();
+
+        // Delete avatar file
+        if ($user->avatar) {
+            Storage::disk('public')->delete($user->avatar);
+        }
+
+        AuditLogger::log(
+            'user.permanently_deleted',
+            null,
+            'Account permanently deleted for ' . $name . ' (' . $email . ')',
+            ['user_name' => $name, 'user_email' => $email]
+        );
+
+        $user->delete();
+
+        return redirect()->route('team.index')->with('success', $name . ' has been permanently deleted from the system.');
+    }
+
     public function hold(User $user)
     {
         if ($user->id === auth()->id()) {
             return back()->with('error', 'You cannot hold your own account.');
+        }
+
+        if (auth()->user()->role === 'manager' && $user->role === 'admin' && Setting::get('manager_can_edit_admin', '0') !== '1') {
+            return back()->with('error', 'Managers cannot put administrator accounts on hold.');
         }
 
         $wasHeld = $user->status === 'inactive';
@@ -412,13 +500,19 @@ class UserController extends Controller
             ]
         );
 
-        $toUser->notify(new TaskTransferred($tasks->count(), $user));
+        if (Setting::get('notify_on_transfer', '1') === '1') {
+            $toUser->notify(new TaskTransferred($tasks->count(), $user));
+        }
 
         return back()->with('success', $tasks->count() . ' task(s) transferred from ' . $user->name . ' to ' . $toUser->name . '.');
     }
 
     public function viewDashboard(User $user)
     {
+        if (auth()->user()->role === 'manager' && $user->role === 'admin') {
+            return redirect()->route('team.index')->with('error', 'You do not have permission to view an administrator\'s dashboard.');
+        }
+
         $doneStatuses   = ['approved', 'delivered', 'archived'];
         $activeStatuses = ['draft', 'assigned', 'viewed', 'in_progress', 'submitted', 'revision_requested'];
         $isAdminOrManager = in_array($user->role, ['admin', 'manager']);

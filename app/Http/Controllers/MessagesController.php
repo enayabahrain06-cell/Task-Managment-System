@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Message;
 use App\Models\MessageGroup;
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -60,7 +61,7 @@ class MessagesController extends Controller
         $request->validate([
             'receiver_id' => 'required|exists:users,id',
             'body'        => 'nullable|string|max:2000',
-            'file'        => 'nullable|file|max:20480',
+            'file'        => 'nullable|file|max:' . ((int) Setting::get('max_upload_mb', 20) * 1024),
             'reply_to_id' => 'nullable|exists:messages,id',
             'is_voice'    => 'nullable|boolean',
         ]);
@@ -108,8 +109,8 @@ class MessagesController extends Controller
     /** POST /messages/groups */
     public function createGroup(Request $request)
     {
-        if (auth()->user()->role !== 'admin') {
-            abort(403, 'Only admins can create groups.');
+        if (!in_array(auth()->user()->role, ['admin', 'manager'])) {
+            abort(403, 'Only admins and managers can create groups.');
         }
 
         $request->validate([
@@ -155,7 +156,7 @@ class MessagesController extends Controller
         $members = $group->members()->select('users.id', 'users.name', 'users.role')->get()
             ->map(fn($u) => ['id' => $u->id, 'name' => $u->name, 'role' => ucfirst($u->role)]);
 
-        $canManage = $group->created_by === $me || auth()->user()->role === 'admin';
+        $canManage = $group->created_by === $me || in_array(auth()->user()->role, ['admin', 'manager']);
 
         return response()->json(['messages' => $messages, 'members' => $members, 'canManage' => $canManage]);
     }
@@ -171,7 +172,7 @@ class MessagesController extends Controller
 
         $request->validate([
             'body'        => 'nullable|string|max:2000',
-            'file'        => 'nullable|file|max:20480',
+            'file'        => 'nullable|file|max:' . ((int) Setting::get('max_upload_mb', 20) * 1024),
             'reply_to_id' => 'nullable|exists:messages,id',
             'is_voice'    => 'nullable|boolean',
         ]);
@@ -202,8 +203,8 @@ class MessagesController extends Controller
     public function addGroupMember(MessageGroup $group, Request $request)
     {
         $me = auth()->id();
-        if ($group->created_by !== $me && auth()->user()->role !== 'admin') {
-            abort(403, 'Only the group creator or an admin can add members.');
+        if ($group->created_by !== $me && !in_array(auth()->user()->role, ['admin', 'manager'])) {
+            abort(403, 'Only the group creator, an admin, or a manager can add members.');
         }
 
         $request->validate(['user_id' => 'required|exists:users,id']);

@@ -21,9 +21,21 @@
         <i class="fa fa-arrow-left" style="font-size:13px;"></i>
     </a>
     <div style="flex:1;min-width:0;">
-        <h1 style="font-size:20px;font-weight:700;color:#111827;margin:0;">{{ $project->name }}</h1>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <h1 style="font-size:20px;font-weight:700;color:#111827;margin:0;">{{ $project->name }}</h1>
+            @if($project->customer)
+            <a href="{{ route('admin.customers.show', $project->customer) }}"
+               style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;background:#EEF2FF;color:#4F46E5;font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap;">
+                <i class="fas fa-building" style="font-size:10px;"></i>
+                {{ $project->customer->name }}
+                @if($project->customer->company)
+                <span style="color:#818CF8;">· {{ $project->customer->company }}</span>
+                @endif
+            </a>
+            @endif
+        </div>
         @if($project->description)
-        <p style="font-size:13px;color:#9CA3AF;margin:2px 0 0;">{{ $project->description }}</p>
+        <p style="font-size:13px;color:#9CA3AF;margin:4px 0 0;">{{ $project->description }}</p>
         @endif
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">

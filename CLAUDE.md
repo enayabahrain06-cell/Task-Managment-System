@@ -86,6 +86,10 @@ App configuration is stored as key-value pairs in the `settings` table (`Setting
 
 `AuditLogger` is a static service class. Call `AuditLogger::log(actor, action, subject, description, metadata)` to create an `AuditLog` record that captures action type, subject entity (type + ID), description, JSON metadata, and IP address.
 
+### Quick Tasks Project
+
+A special internal project named **"Quick Tasks"** exists with `is_quick = true`. It is used to hold tasks that are not associated with any real project. This project must **always be excluded** from any project counts, lists, stats, or queries shown to users. Every query on the `projects` table that is displayed in the UI — counts, dropdowns, charts, reports, index pages — must include `.where('is_quick', false)`. Never count or display the Quick Tasks project as a real project.
+
 ### Multi-Assignee Tasks
 
 Tasks have a legacy `assigned_to` FK plus a `task_assignees` pivot table that supports multiple assignees with a `role_in_task` column. New code should prefer the pivot; `assigned_to` is kept for backward compatibility.

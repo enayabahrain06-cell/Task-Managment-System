@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Models\Task;
 use App\Models\TaskComment;
+use App\Models\TaskCommentEdit;
 use App\Models\TaskLog;
 use App\Models\TaskSubmission;
+use App\Models\TaskSubmissionEdit;
 use App\Models\TaskTransfer;
 use App\Models\User;
 use App\Notifications\TaskCommentPosted;
@@ -49,12 +51,14 @@ class TaskController extends Controller
                 ],
             ]);
 
-            User::where('role', 'admin')->each(
-                fn($admin) => $admin->notify(new TaskViewed($task, auth()->user()))
-            );
+            if (Setting::get('notify_on_viewed', '0') === '1') {
+                User::where('role', 'admin')->each(
+                    fn($admin) => $admin->notify(new TaskViewed($task, auth()->user()))
+                );
+            }
         }
 
-        $task->load('project', 'assignees', 'reviewer', 'creator', 'logs.user', 'submissions.user', 'submissions.reviewer', 'comments.user', 'transfers.fromUser', 'transfers.transferredBy');
+        $task->load('project.attachments', 'project.customer', 'assignees', 'reviewer', 'creator', 'customer', 'logs.user', 'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor', 'comments.user', 'comments.edits.editor', 'transfers.fromUser', 'transfers.transferredBy');
 
         // Find the transfer that handed this task TO the current user
         $incomingTransfer = $task->transfers
@@ -109,18 +113,33 @@ class TaskController extends Controller
             abort(403);
         }
 
-        $submittable = ['in_progress', 'revision_requested'];
+        $submittable = ['viewed', 'in_progress', 'revision_requested'];
         if (!in_array($task->status, $submittable)) {
-            return back()->with('error', 'You must start working on the task before submitting.');
+            return back()->with('error', 'You cannot submit at this stage.');
+        }
+
+        // Auto-advance from viewed → in_progress on first submission
+        if ($task->status === 'viewed') {
+            $task->update(['status' => 'in_progress']);
+            TaskLog::create([
+                'task_id'  => $task->id,
+                'user_id'  => auth()->id(),
+                'action'   => 'status_updated_in_progress',
+                'note'     => 'Started working (triggered by first submission)',
+                'metadata' => ['old_status' => 'viewed', 'new_status' => 'in_progress'],
+            ]);
         }
 
         $request->validate([
             'note' => 'nullable|string|max:1000',
-            'file' => 'nullable|file|max:20480',
+            'body' => 'nullable|string|max:1000',
+            'file' => 'nullable|file|max:' . ((int) Setting::get('max_upload_mb', 20) * 1024),
         ]);
 
-        if (!$request->filled('note') && !$request->hasFile('file')) {
-            return back()->withErrors(['note' => 'Please add a note or attach a file.']);
+        $note = $request->body ?? $request->note;
+
+        if (!$request->filled('note') && !$request->filled('body') && !$request->hasFile('file')) {
+            return back()->withErrors(['body' => 'Please add a note or attach a file.']);
         }
 
         $version = TaskSubmission::where('task_id', $task->id)->max('version') + 1;
@@ -137,7 +156,7 @@ class TaskController extends Controller
             'task_id'           => $task->id,
             'user_id'           => auth()->id(),
             'version'           => $version,
-            'note'              => $request->note,
+            'note'              => $note,
             'file_path'         => $filePath,
             'original_filename' => $originalFilename,
             'status'            => 'submitted',
@@ -150,14 +169,14 @@ class TaskController extends Controller
             'task_id'  => $task->id,
             'user_id'  => auth()->id(),
             'action'   => 'status_updated_submitted',
-            'note'     => 'Submitted version ' . $version . ($request->note ? ': ' . $request->note : ''),
+            'note'     => 'Submitted version ' . $version . ($note ? ': ' . $note : ''),
             'metadata' => [
                 'old_status'      => $oldStatus,
                 'new_status'      => 'submitted',
                 'version'         => $version,
                 'has_file'        => !is_null($filePath),
                 'filename'        => $originalFilename,
-                'submission_note' => $request->note,
+                'submission_note' => $note,
             ],
         ]);
 
@@ -176,12 +195,37 @@ class TaskController extends Controller
             abort(403);
         }
 
-        $request->validate(['body' => 'required|string|max:1000']);
+        $request->validate([
+            'body' => 'required|string|max:1000',
+            'file' => 'nullable|file|max:' . ((int) Setting::get('max_upload_mb', 20) * 1024),
+        ]);
+
+        $filePath = null;
+        $originalFilename = null;
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $originalFilename = $file->getClientOriginalName();
+            $filePath = $file->store("task-comment-files/{$task->id}", 'public');
+        }
+
+        // Auto-advance from viewed → in_progress on first comment
+        if ($task->status === 'viewed') {
+            $task->update(['status' => 'in_progress']);
+            TaskLog::create([
+                'task_id'  => $task->id,
+                'user_id'  => auth()->id(),
+                'action'   => 'status_updated_in_progress',
+                'note'     => 'Started working (triggered by first comment)',
+                'metadata' => ['old_status' => 'viewed', 'new_status' => 'in_progress'],
+            ]);
+        }
 
         $comment = TaskComment::create([
-            'task_id' => $task->id,
-            'user_id' => auth()->id(),
-            'body'    => $request->body,
+            'task_id'           => $task->id,
+            'user_id'           => auth()->id(),
+            'body'              => $request->body,
+            'file_path'         => $filePath,
+            'original_filename' => $originalFilename,
         ]);
 
         TaskLog::create([
@@ -193,8 +237,44 @@ class TaskController extends Controller
         ]);
 
         $comment->load('user');
-        User::where('role', 'admin')->each(fn($admin) => $admin->notify(new TaskCommentPosted($task, $comment)));
+        if (Setting::get('notify_on_comment', '1') === '1') {
+            User::where('role', 'admin')->each(fn($admin) => $admin->notify(new TaskCommentPosted($task, $comment)));
+        }
 
         return back()->with('success', 'Comment posted.');
+    }
+
+    public function editComment(Request $request, Task $task, TaskComment $comment)
+    {
+        if ($comment->task_id !== $task->id || $comment->user_id !== auth()->id()) {
+            abort(403);
+        }
+        $request->validate(['body' => 'required|string|max:1000']);
+        TaskCommentEdit::create([
+            'task_comment_id'       => $comment->id,
+            'old_body'              => $comment->body,
+            'old_file_path'         => $comment->file_path,
+            'old_original_filename' => $comment->original_filename,
+            'edited_by_id'          => auth()->id(),
+            'created_at'            => now(),
+        ]);
+        $comment->update(['body' => $request->body]);
+        return back()->with('success', 'Comment updated.');
+    }
+
+    public function editSubmissionNote(Request $request, Task $task, TaskSubmission $submission)
+    {
+        if ($submission->task_id !== $task->id || $submission->user_id !== auth()->id()) {
+            abort(403);
+        }
+        $request->validate(['note' => 'nullable|string|max:1000']);
+        TaskSubmissionEdit::create([
+            'task_submission_id' => $submission->id,
+            'old_note'           => $submission->note,
+            'edited_by_id'       => auth()->id(),
+            'created_at'         => now(),
+        ]);
+        $submission->update(['note' => $request->note]);
+        return back()->with('success', 'Submission note updated.');
     }
 }

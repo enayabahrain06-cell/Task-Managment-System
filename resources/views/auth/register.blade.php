@@ -20,8 +20,18 @@
             <span style="font-size:15px;font-weight:700;color:#111827;">{{ $appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name','Dash') }}</span>
         </div>
 
-        <h1 style="font-size:22px;font-weight:800;color:#111827;margin:0 0 6px;">Create your account!</h1>
-        <p style="font-size:13px;color:#9CA3AF;margin:0 0 24px;">Fill in your details to get started</p>
+        @if($isSetup)
+            {{-- Setup mode badge --}}
+            <div style="display:inline-flex;align-items:center;gap:6px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:8px;padding:5px 10px;margin-bottom:14px;width:fit-content;">
+                <i class="fa fa-shield-alt" style="color:#4F46E5;font-size:11px;"></i>
+                <span style="font-size:11px;font-weight:600;color:#4F46E5;">Initial System Setup</span>
+            </div>
+            <h1 style="font-size:22px;font-weight:800;color:#111827;margin:0 0 6px;">Create Administrator Account</h1>
+            <p style="font-size:13px;color:#9CA3AF;margin:0 0 24px;">You are the first user — you will become the system administrator.</p>
+        @else
+            <h1 style="font-size:22px;font-weight:800;color:#111827;margin:0 0 6px;">Create your account!</h1>
+            <p style="font-size:13px;color:#9CA3AF;margin:0 0 24px;">Fill in your details to get started</p>
+        @endif
 
         @if ($errors->any())
         <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#DC2626;display:flex;align-items:center;gap:8px;">
@@ -32,29 +42,14 @@
         <form method="POST" action="{{ route('register') }}">
             @csrf
 
-            {{-- Name + Role row --}}
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
-                <div>
-                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Full name</label>
-                    <div style="position:relative;">
-                        <i class="fa fa-user" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;"></i>
-                        <input type="text" name="name" value="{{ old('name') }}" required placeholder="John Doe"
-                               style="width:100%;padding:10px 10px 10px 32px;border:1.5px solid {{ $errors->has('name') ? '#FCA5A5':'#E5E7EB' }};border-radius:10px;font-size:13px;font-family:'Inter',sans-serif;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
-                               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
-                    </div>
-                </div>
-                <div>
-                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Role</label>
-                    <div style="position:relative;">
-                        <i class="fa fa-id-badge" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;"></i>
-                        <select name="role" required
-                                style="width:100%;padding:10px 10px 10px 32px;border:1.5px solid {{ $errors->has('role') ? '#FCA5A5':'#E5E7EB' }};border-radius:10px;font-size:13px;font-family:'Inter',sans-serif;background:#F9FAFB;color:#111827;outline:none;appearance:none;box-sizing:border-box;"
-                                onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
-                            <option value="">Select role</option>
-                            <option value="user"    {{ old('role')==='user'    ? 'selected':'' }}>User</option>
-                            <option value="manager" {{ old('role')==='manager' ? 'selected':'' }}>Manager</option>
-                        </select>
-                    </div>
+            {{-- Full Name --}}
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Full name</label>
+                <div style="position:relative;">
+                    <i class="fa fa-user" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;"></i>
+                    <input type="text" name="name" value="{{ old('name') }}" required placeholder="John Doe"
+                           style="width:100%;padding:10px 10px 10px 32px;border:1.5px solid {{ $errors->has('name') ? '#FCA5A5':'#E5E7EB' }};border-radius:10px;font-size:13px;font-family:'Inter',sans-serif;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
+                           onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
                 </div>
             </div>
 
@@ -100,7 +95,7 @@
             <button type="submit"
                     style="width:100%;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;font-size:14px;font-weight:600;padding:12px;border:none;border-radius:12px;cursor:pointer;box-shadow:0 6px 20px rgba(79,70,229,0.35);font-family:'Inter',sans-serif;"
                     onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
-                Create Account
+                {{ $isSetup ? 'Create Administrator Account' : 'Create Account' }}
             </button>
         </form>
 
@@ -110,15 +105,22 @@
         </p>
     </div>
 
-    {{-- ── Right: Illustration (same as login) ── --}}
-    <div style="width:340px;flex-shrink:0;background:linear-gradient(145deg,#6EE7F7 0%,#818CF8 40%,#4F46E5 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 28px;position:relative;overflow:hidden;">
+    {{-- ── Right: Illustration ── --}}
+    <div style="width:340px;flex-shrink:0;background:linear-gradient(145deg,{{ $isSetup ? '#6EE7B7 0%,#34D399 40%,#059669' : '#6EE7F7 0%,#818CF8 40%,#4F46E5' }} 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 28px;position:relative;overflow:hidden;">
         <div style="position:absolute;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,0.06);top:-80px;right:-80px;"></div>
         <div style="position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,0.06);bottom:-60px;left:-60px;"></div>
 
-        <h2 style="color:#fff;font-size:20px;font-weight:800;text-align:center;margin:0 0 8px;position:relative;z-index:1;line-height:1.3;">
-            Join the Team<br><span style="color:#BAE6FD;">Today</span>
-        </h2>
-        <p style="color:rgba(255,255,255,0.65);font-size:12px;text-align:center;margin:0 0 44px;position:relative;z-index:1;">Start managing tasks and projects<br>with your team instantly.</p>
+        @if($isSetup)
+            <h2 style="color:#fff;font-size:20px;font-weight:800;text-align:center;margin:0 0 8px;position:relative;z-index:1;line-height:1.3;">
+                Welcome,<br><span style="color:#D1FAE5;">Administrator</span>
+            </h2>
+            <p style="color:rgba(255,255,255,0.75);font-size:12px;text-align:center;margin:0 0 44px;position:relative;z-index:1;">Set up your system and start<br>managing your team.</p>
+        @else
+            <h2 style="color:#fff;font-size:20px;font-weight:800;text-align:center;margin:0 0 8px;position:relative;z-index:1;line-height:1.3;">
+                Join the Team<br><span style="color:#BAE6FD;">Today</span>
+            </h2>
+            <p style="color:rgba(255,255,255,0.65);font-size:12px;text-align:center;margin:0 0 44px;position:relative;z-index:1;">Start managing tasks and projects<br>with your team instantly.</p>
+        @endif
 
         <div style="position:relative;width:200px;height:200px;flex-shrink:0;">
             <div style="position:absolute;inset:0;border-radius:50%;border:1px solid rgba(255,255,255,0.15);"></div>
@@ -126,8 +128,8 @@
             <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
                 <div class="pulse-ring"></div><div class="pulse-ring pulse-ring2"></div><div class="pulse-ring pulse-ring3"></div>
             </div>
-            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:50px;height:50px;background:linear-gradient(135deg,#818CF8,#4F46E5);border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 30px rgba(0,0,0,0.25);z-index:2;">
-                <i class="fa fa-user-plus" style="color:#fff;font-size:18px;"></i>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:50px;height:50px;background:rgba(255,255,255,0.2);border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 30px rgba(0,0,0,0.25);z-index:2;">
+                <i class="fa {{ $isSetup ? 'fa-crown' : 'fa-user-plus' }}" style="color:#fff;font-size:18px;"></i>
             </div>
             <div class="orbit-icon o1" style="background:#fff;"><i class="fa fa-check-circle" style="color:#10B981;font-size:15px;"></i></div>
             <div class="orbit-icon o2" style="background:#EFF6FF;"><i class="fa fa-tasks" style="color:#3B82F6;font-size:14px;"></i></div>

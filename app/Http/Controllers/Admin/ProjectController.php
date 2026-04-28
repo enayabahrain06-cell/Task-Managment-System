@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\Project;
 use App\Models\ProjectAttachment;
 use App\Models\Setting;
@@ -20,12 +21,18 @@ class ProjectController extends Controller
             abort(403, 'You do not have permission to manage Projects.');
         }
 
-        $query = Project::withCount('tasks')
+        $query = Project::where('is_quick', false)
+            ->withCount('tasks')
             ->withCount(['tasks as completed_tasks_count' => fn($q) => $q->whereIn('status', ['completed', 'delivered', 'approved'])])
-            ->with(['members' => fn($q) => $q->select('users.id','users.name','users.avatar')->limit(5)]);
+            ->with([
+                'members'  => fn($q) => $q->select('users.id','users.name','users.avatar')->limit(5),
+                'customer' => fn($q) => $q->select('id','name','company'),
+            ]);
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
+        } elseif (!$request->boolean('overdue')) {
+            $query->where('status', '!=', 'completed');
         }
         if ($request->boolean('overdue')) {
             $query->whereNotNull('deadline')
@@ -40,10 +47,10 @@ class ProjectController extends Controller
             ->withQueryString();
         $users = User::whereIn('role', ['user', 'manager'])->orderBy('name')->get();
         $stats = [
-            'total'     => Project::count(),
-            'active'    => Project::where('status', 'active')->count(),
-            'completed' => Project::where('status', 'completed')->count(),
-            'overdue'   => Project::whereNotNull('deadline')
+            'total'     => Project::where('is_quick', false)->count(),
+            'active'    => Project::where('status', 'active')->where('is_quick', false)->count(),
+            'completed' => Project::where('status', 'completed')->where('is_quick', false)->count(),
+            'overdue'   => Project::where('is_quick', false)->whereNotNull('deadline')
                 ->where('deadline', '<', now())
                 ->where('status', '!=', 'completed')
                 ->count(),
@@ -53,8 +60,9 @@ class ProjectController extends Controller
 
     public function create()
     {
-        $users = User::whereIn('role', ['user', 'manager'])->orderBy('name')->get();
-        return view('admin.projects.create', compact('users'));
+        $users     = User::whereIn('role', ['user', 'manager'])->orderBy('name')->get();
+        $customers = Customer::orderBy('name')->get();
+        return view('admin.projects.create', compact('users', 'customers'));
     }
 
     public function store(Request $request)
@@ -64,6 +72,7 @@ class ProjectController extends Controller
             'description'                     => 'nullable|string',
             'deadline'                        => 'nullable|date|after:now',
             'first_review_date'               => 'nullable|date',
+            'customer_id'                     => 'nullable|exists:customers,id',
             'members'                         => 'nullable|array',
             'members.*'                       => 'exists:users,id',
             'tasks'                           => 'nullable|array',
@@ -79,7 +88,7 @@ class ProjectController extends Controller
             'tasks.*.assignees.*.role'        => 'nullable|string|max:255',
             // Attachments
             'attachments'                     => 'nullable|array',
-            'attachments.*'                   => 'file|max:20480',
+            'attachments.*'                   => 'file|max:' . ((int) Setting::get('max_upload_mb', 20) * 1024),
             'links'                           => 'nullable|array',
             'links.*.url'                     => 'nullable|url|max:500',
             'links.*.label'                   => 'nullable|string|max:200',
@@ -92,6 +101,7 @@ class ProjectController extends Controller
             'first_review_date' => $request->first_review_date ?: null,
             'status'            => $request->input('status', 'active'),
             'created_by'        => auth()->id(),
+            'customer_id'       => $request->customer_id ?: null,
         ]);
 
         if ($request->filled('members')) {
@@ -153,7 +163,7 @@ class ProjectController extends Controller
                 'title'       => $taskData['title'],
                 'description' => $taskData['description'] ?? null,
                 'assigned_to' => $primaryAssigneeId,
-                'priority'    => $taskData['priority'] ?? 'medium',
+                'priority'    => $taskData['priority'] ?? Setting::get('default_task_priority', 'medium'),
                 'deadline'    => $taskData['deadline'] ?? $request->deadline,
                 'project_id'  => $project->id,
                 'status'      => $primaryAssigneeId ? 'assigned' : 'draft',
@@ -205,16 +215,17 @@ class ProjectController extends Controller
 
     public function show(Project $project)
     {
-        $project->load('tasks.assignee', 'members');
+        $project->load('tasks.assignee', 'members', 'customer');
         $pendingApprovalCount = $project->tasks()->where('status', 'submitted')->count();
         return view('admin.projects.show', compact('project', 'pendingApprovalCount'));
     }
 
     public function edit(Project $project)
     {
-        $users          = User::whereIn('role', ['user', 'manager'])->orderBy('name')->get();
-        $memberIds      = $project->members()->pluck('users.id')->toArray();
-        return view('admin.projects.edit', compact('project', 'users', 'memberIds'));
+        $users     = User::whereIn('role', ['user', 'manager'])->orderBy('name')->get();
+        $memberIds = $project->members()->pluck('users.id')->toArray();
+        $customers = Customer::orderBy('name')->get();
+        return view('admin.projects.edit', compact('project', 'users', 'memberIds', 'customers'));
     }
 
     public function update(Request $request, Project $project)
@@ -224,11 +235,15 @@ class ProjectController extends Controller
             'description' => 'nullable|string',
             'deadline'    => 'required|date',
             'status'      => 'required|in:active,completed,overdue',
+            'customer_id' => 'nullable|exists:customers,id',
             'members'     => 'nullable|array',
             'members.*'   => 'exists:users,id',
         ]);
 
-        $project->update($request->only('name', 'description', 'deadline', 'status'));
+        $project->update(array_merge(
+            $request->only('name', 'description', 'deadline', 'status'),
+            ['customer_id' => $request->customer_id ?: null]
+        ));
         $project->members()->sync($request->members ?? []);
 
         AuditLogger::log(
@@ -293,11 +308,11 @@ class ProjectController extends Controller
     public function tasksCreate(Project $project)
     {
         $members = $project->members()->get();
-        // Fall back to all non-admin users if no members assigned yet
         if ($members->isEmpty()) {
             $members = User::where('role', '!=', 'admin')->get();
         }
-        return view('admin.projects.tasks-create', compact('project', 'members'));
+        $customers = Customer::orderBy('name')->get();
+        return view('admin.projects.tasks-create', compact('project', 'members', 'customers'));
     }
 
     public function tasksStore(Request $request, Project $project)
@@ -307,6 +322,7 @@ class ProjectController extends Controller
             'description'            => 'nullable|string',
             'task_type'              => 'nullable|string|max:100',
             'tags'                   => 'nullable|string|max:500',
+            'customer_id'            => 'nullable|exists:customers,id',
             'reviewer_id'            => 'nullable|exists:users,id',
             'priority'               => 'required|in:low,medium,high',
             'deadline'               => 'required|date',
@@ -337,6 +353,7 @@ class ProjectController extends Controller
             'priority'    => $request->priority,
             'deadline'    => $request->deadline,
             'project_id'  => $project->id,
+            'customer_id' => $request->customer_id ?: null,
             'status'      => $primaryAssigneeId ? 'assigned' : 'draft',
             'created_by'  => auth()->id(),
             'reviewer_id' => $request->reviewer_id,
@@ -377,6 +394,7 @@ class ProjectController extends Controller
             'title'       => 'required|string|max:255',
             'description' => 'nullable|string',
             'project_id'  => 'nullable|exists:projects,id',
+            'customer_id' => 'nullable|exists:customers,id',
             'assigned_to' => 'required|exists:users,id',
             'priority'    => 'required|in:low,medium,high',
             'deadline'    => 'required|date',
@@ -389,16 +407,25 @@ class ProjectController extends Controller
                 [
                     'description' => 'Auto-created project for standalone quick tasks.',
                     'status'      => 'active',
+                    'is_quick'    => true,
                     'deadline'    => now()->addYears(10),
                     'created_by'  => auth()->id(),
                 ]
             );
+            if (!$quickProject->is_quick) {
+                $quickProject->update(['is_quick' => true]);
+            }
             $projectId = $quickProject->id;
         }
 
         $task = Task::create(array_merge(
             $request->only('title', 'description', 'assigned_to', 'priority', 'deadline'),
-            ['project_id' => $projectId, 'status' => 'assigned', 'created_by' => auth()->id()]
+            [
+                'project_id'  => $projectId,
+                'customer_id' => $request->customer_id ?: null,
+                'status'      => 'assigned',
+                'created_by'  => auth()->id(),
+            ]
         ));
 
         if (Setting::get('notify_on_assign', '1') === '1') {

@@ -28,6 +28,20 @@
                           style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;color:#111827;box-sizing:border-box;outline:none;resize:vertical;font-family:'Inter',sans-serif;">{{ old('description', $project->description) }}</textarea>
             </div>
 
+            {{-- Customer --}}
+            <div style="margin-bottom:18px;">
+                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Customer <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
+                <select name="customer_id"
+                        style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;color:#111827;background:#fff;outline:none;">
+                    <option value="">— No customer —</option>
+                    @foreach($customers as $c)
+                    <option value="{{ $c->id }}" {{ old('customer_id', $project->customer_id) == $c->id ? 'selected' : '' }}>
+                        {{ $c->name }}{{ $c->company ? ' ('.$c->company.')' : '' }}
+                    </option>
+                    @endforeach
+                </select>
+            </div>
+
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Deadline <span style="color:#EF4444;">*</span></label>

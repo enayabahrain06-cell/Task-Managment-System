@@ -33,19 +33,35 @@ class SettingsController extends Controller
         'login_bg_type'         => 'gradient',
         'login_bg_color'        => '#e8eaf6',
         'login_bg_image'        => '',
-        // Team
+        // Team & Files
         'default_role'          => 'user',
-        'allow_registration'    => '1',
+        'allow_registration'       => '0',
+        'manager_can_edit_admin'   => '0',
+        'manager_can_view_roles'   => '0',
         'max_tasks_per_user'    => '50',
+        'default_task_priority' => 'medium',
+        'max_upload_mb'         => '20',
         // Notifications
         'email_notifications'   => '1',
         'task_reminder_days'    => '2',
         'notify_on_assign'      => '1',
         'notify_on_complete'    => '1',
+        'notify_on_approve'     => '1',
+        'notify_on_reject'      => '1',
+        'notify_on_comment'     => '1',
+        'notify_on_deliver'     => '1',
+        'notify_on_reassign'    => '1',
+        'notify_on_transfer'    => '1',
+        'notify_on_social'      => '1',
+        'notify_on_report'      => '1',
+        'notify_on_viewed'      => '0',
         // Security
-        'min_password_length'   => '8',
-        'session_timeout'       => '120',
-        'require_strong_password' => '0',
+        'min_password_length'      => '8',
+        'session_timeout'          => '120',
+        'require_strong_password'  => '0',
+        'max_login_attempts'       => '5',
+        // System
+        'maintenance_mode'         => '0',
     ];
 
     public function index()
@@ -83,6 +99,33 @@ class SettingsController extends Controller
         $new     = $current === '1' ? '0' : '1';
         Setting::set('developer_mode', $new);
         return response()->json(['developer_mode' => $new === '1']);
+    }
+
+    public function toggleMaintenance()
+    {
+        $current = Setting::get('maintenance_mode', '0');
+        $new     = $current === '1' ? '0' : '1';
+        Setting::set('maintenance_mode', $new);
+        AuditLogger::log('settings.updated', null, 'Maintenance mode ' . ($new === '1' ? 'enabled' : 'disabled'), ['maintenance_mode' => $new]);
+        return response()->json(['maintenance_mode' => $new === '1']);
+    }
+
+    public function toggleManagerRolesAccess()
+    {
+        $current = Setting::get('manager_can_view_roles', '0');
+        $new     = $current === '1' ? '0' : '1';
+        Setting::set('manager_can_view_roles', $new);
+        AuditLogger::log('settings.updated', null, 'Manager roles access ' . ($new === '1' ? 'enabled' : 'disabled'), ['manager_can_view_roles' => $new]);
+        return response()->json(['manager_can_view_roles' => $new === '1']);
+    }
+
+    public function toggleManagerAdminAccess()
+    {
+        $current = Setting::get('manager_can_edit_admin', '0');
+        $new     = $current === '1' ? '0' : '1';
+        Setting::set('manager_can_edit_admin', $new);
+        AuditLogger::log('settings.updated', null, 'Manager admin access ' . ($new === '1' ? 'enabled' : 'disabled'), ['manager_can_edit_admin' => $new]);
+        return response()->json(['manager_can_edit_admin' => $new === '1']);
     }
 
     public function toggleElement(Request $request)
@@ -216,15 +259,19 @@ class SettingsController extends Controller
     public function updateTeam(Request $request)
     {
         $request->validate([
-            'default_role'       => 'required|in:user,manager',
-            'allow_registration' => 'nullable|boolean',
-            'max_tasks_per_user' => 'required|integer|min:1|max:500',
+            'default_role'          => 'required|in:user,manager',
+            'allow_registration'    => 'nullable|boolean',
+            'max_tasks_per_user'    => 'required|integer|min:1|max:500',
+            'default_task_priority' => 'required|in:low,medium,high',
+            'max_upload_mb'         => 'required|integer|min:1|max:100',
         ]);
 
         Setting::setMany([
-            'default_role'       => $request->default_role,
-            'allow_registration' => $request->boolean('allow_registration') ? '1' : '0',
-            'max_tasks_per_user' => $request->max_tasks_per_user,
+            'default_role'          => $request->default_role,
+            'allow_registration'    => $request->boolean('allow_registration') ? '1' : '0',
+            'max_tasks_per_user'    => $request->max_tasks_per_user,
+            'default_task_priority' => $request->default_task_priority,
+            'max_upload_mb'         => $request->max_upload_mb,
         ]);
 
         AuditLogger::log('settings.updated', null, 'Team settings updated', ['section' => 'team']);
@@ -234,12 +281,19 @@ class SettingsController extends Controller
 
     public function updateNotifications(Request $request)
     {
-        Setting::setMany([
-            'email_notifications' => $request->boolean('email_notifications') ? '1' : '0',
-            'task_reminder_days'  => $request->input('task_reminder_days', 2),
-            'notify_on_assign'    => $request->boolean('notify_on_assign') ? '1' : '0',
-            'notify_on_complete'  => $request->boolean('notify_on_complete') ? '1' : '0',
-        ]);
+        $boolKeys = [
+            'email_notifications', 'notify_on_assign', 'notify_on_complete',
+            'notify_on_approve', 'notify_on_reject', 'notify_on_comment',
+            'notify_on_deliver', 'notify_on_reassign', 'notify_on_transfer',
+            'notify_on_social', 'notify_on_report', 'notify_on_viewed',
+        ];
+
+        $data = ['task_reminder_days' => $request->input('task_reminder_days', 2)];
+        foreach ($boolKeys as $key) {
+            $data[$key] = $request->boolean($key) ? '1' : '0';
+        }
+
+        Setting::setMany($data);
 
         AuditLogger::log('settings.updated', null, 'Notification settings updated', ['section' => 'notifications']);
 
@@ -331,12 +385,14 @@ class SettingsController extends Controller
         $request->validate([
             'min_password_length'    => 'required|integer|min:6|max:32',
             'session_timeout'        => 'required|integer|min:15|max:1440',
+            'max_login_attempts'     => 'required|integer|min:3|max:20',
         ]);
 
         Setting::setMany([
             'min_password_length'      => $request->min_password_length,
             'session_timeout'          => $request->session_timeout,
             'require_strong_password'  => $request->boolean('require_strong_password') ? '1' : '0',
+            'max_login_attempts'       => $request->max_login_attempts,
         ]);
 
         AuditLogger::log('settings.updated', null, 'Security settings updated', ['section' => 'security']);
@@ -659,5 +715,22 @@ class SettingsController extends Controller
         } catch (\Throwable) {
             return 0;
         }
+    }
+
+    private function updateEnvKey(string $key, string $value): void
+    {
+        $path    = base_path('.env');
+        $content = file_get_contents($path);
+        $escaped = preg_quote('=' . env($key), '/');
+
+        if (preg_match("/^{$key}={$escaped}/m", $content)) {
+            $content = preg_replace("/^{$key}=.*/m", "{$key}={$value}", $content);
+        } elseif (preg_match("/^{$key}=/m", $content)) {
+            $content = preg_replace("/^{$key}=.*/m", "{$key}={$value}", $content);
+        } else {
+            $content .= "\n{$key}={$value}";
+        }
+
+        file_put_contents($path, $content);
     }
 }

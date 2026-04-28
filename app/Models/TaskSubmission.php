@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
 class TaskSubmission extends Model
@@ -36,5 +37,15 @@ class TaskSubmission extends Model
     public function fileUrl(): ?string
     {
         return $this->file_path ? Storage::url($this->file_path) : null;
+    }
+
+    public function noteEdits(): HasMany
+    {
+        return $this->hasMany(TaskSubmissionEdit::class)->latest('created_at');
+    }
+
+    public function isNoteEdited(): bool
+    {
+        return $this->noteEdits()->exists();
     }
 }

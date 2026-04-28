@@ -11,10 +11,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call([
-            AdminSeeder::class,
-            DemoSeeder::class,
-        ]);
+        // No seeders — first user to register becomes admin
     }
 }
 

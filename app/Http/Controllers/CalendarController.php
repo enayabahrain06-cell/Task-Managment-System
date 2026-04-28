@@ -21,7 +21,8 @@ class CalendarController extends Controller
             default            => $user->tasks()->with('project')->get(),
         };
 
-        $isAdmin = $user->role === 'admin';
+        $canManageMeetings = in_array($user->role, ['admin', 'manager']);
+        $meetingsBaseUrl   = $user->role === 'manager' ? '/manager/meetings' : '/admin/meetings';
 
         $events = $tasks->map(fn($task) => [
             'id'       => $task->id,
@@ -52,7 +53,7 @@ class CalendarController extends Controller
             'title'    => '📅 ' . $m->title,
             'start'    => $m->meeting_date->format('Y-m-d'),
             'color'    => $m->color,
-            'editable' => $isAdmin,
+            'editable' => $canManageMeetings,
             'display'  => 'block',
             'extendedProps' => [
                 'type'       => 'meeting',
@@ -71,8 +72,8 @@ class CalendarController extends Controller
         $todayMeetings    = $allMeetings->filter(fn($m) => $m->meeting_date->isToday())->sortBy('start_time');
         $upcomingMeetings = $allMeetings->filter(fn($m) => $m->meeting_date->isFuture())->sortBy('meeting_date')->take(3);
 
-        $teamMembers = $user->role === 'admin' ? User::where('id', '!=', $user->id)->orderBy('name')->get() : collect();
+        $teamMembers = $canManageMeetings ? User::where('id', '!=', $user->id)->orderBy('name')->get() : collect();
 
-        return view('calendar.index', compact('events', 'todayTasks', 'upcomingTasks', 'todayMeetings', 'upcomingMeetings', 'teamMembers', 'allMeetings'));
+        return view('calendar.index', compact('events', 'todayTasks', 'upcomingTasks', 'todayMeetings', 'upcomingMeetings', 'teamMembers', 'allMeetings', 'canManageMeetings', 'meetingsBaseUrl'));
     }
 }

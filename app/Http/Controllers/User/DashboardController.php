@@ -9,6 +9,9 @@ use App\Models\TaskTransfer;
 use App\Models\User;
 use App\Notifications\UserReportSubmitted;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rules;
 
 class DashboardController extends Controller
 {
@@ -178,15 +181,52 @@ class DashboardController extends Controller
         ));
     }
 
+    public function updateProfile(Request $request)
+    {
+        $user = auth()->user();
+
+        $request->validate([
+            'current_password' => 'required|string',
+            'email'            => 'nullable|email|max:255|unique:users,email,' . $user->id,
+            'password'         => 'nullable|confirmed|min:8',
+            'avatar'           => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+        ]);
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return back()->withErrors(['current_password' => 'Current password is incorrect.'])->withInput();
+        }
+
+        if ($request->filled('email') && $request->email !== $user->email) {
+            $user->email = $request->email;
+        }
+
+        if ($request->filled('password')) {
+            $user->password = Hash::make($request->password);
+        }
+
+        if ($request->hasFile('avatar')) {
+            if ($user->avatar) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+            $user->avatar = $request->file('avatar')->store('avatars', 'public');
+        }
+
+        $user->save();
+
+        return back()->with('profile_success', 'Profile updated successfully.');
+    }
+
     public function submitReport(Request $request)
     {
         $request->validate([
             'report' => 'required|string|min:10|max:1000',
         ]);
 
-        $admins = User::where('role', 'admin')->get();
-        foreach ($admins as $admin) {
-            $admin->notify(new UserReportSubmitted(auth()->user(), $request->report));
+        if (\App\Models\Setting::get('notify_on_report', '1') === '1') {
+            $admins = User::where('role', 'admin')->get();
+            foreach ($admins as $admin) {
+                $admin->notify(new UserReportSubmitted(auth()->user(), $request->report));
+            }
         }
 
         return back()->with('success', 'Progress report submitted successfully.');
@@ -218,7 +258,9 @@ class DashboardController extends Controller
                 ->whereDate('created_at', $date)
                 ->pluck('task_id')
                 ->unique();
-            $base->whereIn('id', $taskIds);
+            // Query all tasks from that day's logs — not restricted to current assignee,
+            // so the modal count matches what the chart bar shows.
+            $base = Task::whereIn('id', $taskIds)->with(['project:id,name']);
         } elseif ($filter === 'received') {
             $inheritedIds  = \App\Models\TaskTransfer::where('to_user_id', $user->id)->pluck('task_id');
             $reassignedIds = TaskLog::where('action', 'task_reassigned')

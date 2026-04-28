@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Setting;
 use App\Models\Task;
 use App\Models\TaskLog;
 use App\Models\TaskSocialPost;
@@ -135,7 +136,7 @@ class TaskApprovalController extends Controller
             ['task_id' => $task->id, 'task_title' => $task->title, 'note' => $request->note]
         );
 
-        if ($task->assignee) {
+        if ($task->assignee && Setting::get('notify_on_approve', '1') === '1') {
             $task->assignee->notify(new TaskApproved($task, $request->note));
         }
 
@@ -158,7 +159,9 @@ class TaskApprovalController extends Controller
                         'action'  => 'social_assigned',
                         'note'    => 'Assigned to ' . $socialUser->name . ' for social media posting',
                     ]);
-                    $socialUser->notify(new SocialMediaAssigned($task, auth()->user()));
+                    if (Setting::get('notify_on_social', '1') === '1') {
+                        $socialUser->notify(new SocialMediaAssigned($task, auth()->user()));
+                    }
                 }
             }
         }
@@ -218,7 +221,7 @@ class TaskApprovalController extends Controller
             ['task_id' => $task->id, 'task_title' => $task->title, 'reason' => $request->note]
         );
 
-        if ($task->assignee) {
+        if ($task->assignee && Setting::get('notify_on_reject', '1') === '1') {
             $task->assignee->notify(new TaskRejected($task, $request->note));
         }
 
@@ -259,7 +262,9 @@ class TaskApprovalController extends Controller
             'note'    => 'Assigned to ' . $user->name . ' for social media posting',
         ]);
 
-        $user->notify(new SocialMediaAssigned($task, auth()->user()));
+        if (Setting::get('notify_on_social', '1') === '1') {
+            $user->notify(new SocialMediaAssigned($task, auth()->user()));
+        }
 
         return back()->with('success', '"' . $task->title . '" assigned to ' . $user->name . ' for social media posting.');
     }
@@ -364,11 +369,13 @@ class TaskApprovalController extends Controller
             $task->update(['social_posted_at' => now()]);
         }
 
-        User::whereIn('role', ['admin', 'manager'])->get()
-            ->each(fn($u) => $u->notify(new SocialMediaPosted($task, auth()->user())));
+        if (Setting::get('notify_on_social', '1') === '1') {
+            User::whereIn('role', ['admin', 'manager'])->get()
+                ->each(fn($u) => $u->notify(new SocialMediaPosted($task, auth()->user())));
 
-        if ($task->assignee && $task->assignee->id !== auth()->id()) {
-            $task->assignee->notify(new SocialMediaPosted($task, auth()->user()));
+            if ($task->assignee && $task->assignee->id !== auth()->id()) {
+                $task->assignee->notify(new SocialMediaPosted($task, auth()->user()));
+            }
         }
 
         $summary = count($recorded) === 1

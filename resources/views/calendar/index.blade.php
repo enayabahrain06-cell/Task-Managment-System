@@ -5,7 +5,7 @@
 @section('content')
 
 @php
-$isAdmin = auth()->user()->role === 'admin';
+$isAdmin = $canManageMeetings;
 $allMeetingsJson = $allMeetings->map(fn($m) => [
     'id'               => $m->id,
     'title'            => $m->title,
@@ -48,7 +48,7 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
                 </div>
 
                 {{-- Form --}}
-                <form :action="editId ? '/admin/meetings/' + editId : '{{ route('admin.meetings.store') }}'"
+                <form :action="editId ? '{{ $meetingsBaseUrl }}/' + editId : '{{ $meetingsBaseUrl }}'"
                       method="POST" class="p-5 space-y-4">
                     @csrf
                     <input type="hidden" name="_method" :value="editId ? 'PUT' : 'POST'">
@@ -564,7 +564,7 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
                                     title="Edit meeting">
                                 <i class="fas fa-pen" style="font-size:9px;"></i>
                             </button>
-                            <form method="POST" action="{{ route('admin.meetings.destroy', $m) }}"
+                            <form method="POST" action="{{ $meetingsBaseUrl }}/{{ $m->id }}"
                                   onsubmit="return confirm('Delete this meeting?')">
                                 @csrf @method('DELETE')
                                 <button type="submit"
@@ -675,7 +675,8 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 <script>
-const csrfToken = '{{ csrf_token() }}';
+const csrfToken    = '{{ csrf_token() }}';
+const meetingsBase = '{{ $meetingsBaseUrl }}';
 
 document.addEventListener('DOMContentLoaded', function () {
     const calendarEl  = document.getElementById('calendar');
@@ -804,7 +805,7 @@ function meetingDetailModal() {
             fd.append('_token', csrfToken);
             ['title','description','meeting_date','start_time','duration_minutes','location','color'].forEach(k => fd.append(k, this.form[k]));
             this.form.attendees.forEach(id => fd.append('attendees[]', id));
-            await fetch('/admin/meetings/' + this.meeting.id, { method:'POST', body:fd });
+            await fetch(meetingsBase + '/' + this.meeting.id, { method:'POST', body:fd });
             window.location.reload();
         },
 
@@ -813,13 +814,13 @@ function meetingDetailModal() {
             const fd = new FormData();
             fd.append('_method', 'DELETE');
             fd.append('_token', csrfToken);
-            await fetch('/admin/meetings/' + this.meeting.id, { method:'POST', body:fd });
+            await fetch(meetingsBase + '/' + this.meeting.id, { method:'POST', body:fd });
             window.location.reload();
         },
 
         async confirmReschedule() {
             this.saving = true;
-            const r = await fetch('/admin/meetings/' + this.reschedule.id + '/reschedule', {
+            const r = await fetch(meetingsBase + '/' + this.reschedule.id + '/reschedule', {
                 method:  'PATCH',
                 headers: { 'Content-Type':'application/json', 'X-CSRF-TOKEN': csrfToken },
                 body:    JSON.stringify({ meeting_date: this.reschedule.new_date, start_time: this.reschedule.start_time })

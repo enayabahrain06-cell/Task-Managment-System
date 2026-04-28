@@ -61,47 +61,81 @@ $avatarColors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6','#E
 .proj-stat-card-label { font-size:12px; font-weight:500; color:rgba(255,255,255,0.75); margin:0 0 8px; }
 .proj-stat-card-value { font-size:34px; font-weight:700; line-height:1; margin:0; }
 .proj-stat-card-sub   { font-size:11px; color:rgba(255,255,255,0.6); margin:6px 0 0; }
-.proj-stat-card-menu  { position:absolute; top:14px; right:14px; background:rgba(255,255,255,0.15); border:none; border-radius:6px; width:26px; height:26px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; }
 </style>
 
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;">
-    <a href="{{ route('admin.tasks.index') }}" style="text-decoration:none;display:flex;">
-        <div class="proj-stat-card" style="flex:1;background:linear-gradient(135deg,#4F46E5,#6366F1);" onmouseover="this.style.boxShadow='0 8px 24px rgba(79,70,229,.4)'" onmouseout="this.style.boxShadow=''">
-            <div class="proj-stat-card-blob"></div>
-            <p class="proj-stat-card-label">All Tasks</p>
-            <p class="proj-stat-card-value">{{ $stats['total'] }}</p>
-            <p class="proj-stat-card-sub">Total Tasks</p>
-        </div>
+@php $isDoneTab = (request('tab') === 'done'); @endphp
+
+{{-- Tab Bar --}}
+<div style="display:flex;align-items:center;gap:3px;background:#F3F4F6;border-radius:12px;padding:4px;width:fit-content;margin-bottom:20px;">
+    <a href="{{ route('admin.tasks.index') }}"
+       style="display:flex;align-items:center;gap:8px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;{{ !$isDoneTab ? 'background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);' : 'background:transparent;color:#6B7280;' }}">
+        <i class="fa fa-circle-play" style="font-size:11px;"></i>
+        Active
+        <span style="font-size:11px;font-weight:700;padding:1px 8px;border-radius:20px;{{ !$isDoneTab ? 'background:#EEF2FF;color:#4F46E5;' : 'background:#E5E7EB;color:#9CA3AF;' }}">
+            {{ $stats['active'] }}
+        </span>
     </a>
-    <a href="{{ route('admin.tasks.index', ['status'=>'in_progress']) }}" style="text-decoration:none;display:flex;">
-        <div class="proj-stat-card" style="flex:1;background:linear-gradient(135deg,#D97706,#F59E0B);" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(217,119,6,.4)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-            <div class="proj-stat-card-blob"></div>
-            <p class="proj-stat-card-label">In Progress</p>
-            <p class="proj-stat-card-value">{{ $stats['in_progress'] }}</p>
-            <p class="proj-stat-card-sub">Active Tasks</p>
-        </div>
-    </a>
-    <a href="{{ route('admin.tasks.index', ['filter'=>'done']) }}" style="text-decoration:none;display:flex;">
-        <div class="proj-stat-card" style="flex:1;background:linear-gradient(135deg,#059669,#10B981);" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(5,150,105,.4)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-            <div class="proj-stat-card-blob"></div>
-            <p class="proj-stat-card-label">Completed</p>
-            <p class="proj-stat-card-value">{{ $stats['done'] }}</p>
-            <p class="proj-stat-card-sub">Approved / Delivered</p>
-        </div>
-    </a>
-    <a href="{{ route('admin.tasks.index') }}?overdue=1" style="text-decoration:none;display:flex;">
-        <div class="proj-stat-card" style="flex:1;background:linear-gradient(135deg,#DC2626,#EF4444);" onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(220,38,38,.4)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
-            <div class="proj-stat-card-blob"></div>
-            <p class="proj-stat-card-label">Overdue</p>
-            <p class="proj-stat-card-value">{{ $stats['overdue'] }}</p>
-            <p class="proj-stat-card-sub">Past Deadline</p>
-        </div>
+    <a href="{{ route('admin.tasks.index', ['tab'=>'done']) }}"
+       style="display:flex;align-items:center;gap:8px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;{{ $isDoneTab ? 'background:#fff;color:#059669;box-shadow:0 1px 4px rgba(0,0,0,.08);' : 'background:transparent;color:#6B7280;' }}">
+        <i class="fa fa-circle-check" style="font-size:11px;"></i>
+        Completed
+        <span style="font-size:11px;font-weight:700;padding:1px 8px;border-radius:20px;{{ $isDoneTab ? 'background:#DCFCE7;color:#059669;' : 'background:#E5E7EB;color:#9CA3AF;' }}">
+            {{ $stats['done'] }}
+        </span>
     </a>
 </div>
+
+@if(!$isDoneTab)
+{{-- Active tab: 3 stat cards --}}
+@php
+$activeStatDefs = [
+    ['label'=>'All Active',  'value'=>$stats['active'],      'sub'=>'Non-completed',  'grad'=>'linear-gradient(135deg,#4F46E5,#6366F1)', 'shadow'=>'rgba(79,70,229,.4)',   'url'=> route('admin.tasks.index'),                           'active'=> !request('status') && !request('overdue') && !request('filter')],
+    ['label'=>'In Progress', 'value'=>$stats['in_progress'], 'sub'=>'Working Now',    'grad'=>'linear-gradient(135deg,#D97706,#F59E0B)', 'shadow'=>'rgba(217,119,6,.4)',   'url'=> route('admin.tasks.index', ['status'=>'in_progress']), 'active'=> request('status')==='in_progress'],
+    ['label'=>'Overdue',     'value'=>$stats['overdue'],     'sub'=>'Past Deadline',  'grad'=>'linear-gradient(135deg,#DC2626,#EF4444)', 'shadow'=>'rgba(220,38,38,.4)',   'url'=> route('admin.tasks.index') . '?overdue=1',            'active'=> request()->boolean('overdue')],
+    ['label'=>'Completed',   'value'=>$stats['done'],        'sub'=>'All time done',  'grad'=>'linear-gradient(135deg,#7C3AED,#8B5CF6)', 'shadow'=>'rgba(124,58,237,.4)',  'url'=> route('admin.tasks.index', ['tab'=>'done']),           'active'=> false],
+];
+@endphp
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;">
+    @foreach($activeStatDefs as $card)
+    @php $isActive = $card['active']; @endphp
+    <a href="{{ $card['url'] }}" style="text-decoration:none;display:flex;">
+        <div class="proj-stat-card"
+             style="flex:1;background:{{ $card['grad'] }};{{ $isActive ? 'transform:translateY(-3px);box-shadow:0 8px 24px '.$card['shadow'].';outline:3px solid rgba(255,255,255,0.4);' : '' }}"
+             onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px {{ $card['shadow'] }}'"
+             onmouseout="this.style.transform='{{ $isActive ? 'translateY(-3px)' : '' }}';this.style.boxShadow='{{ $isActive ? '0 8px 24px '.$card['shadow'] : '' }}'">
+            <div class="proj-stat-card-blob"></div>
+            <p class="proj-stat-card-label">{{ $card['label'] }}</p>
+            <p class="proj-stat-card-value">{{ $card['value'] }}</p>
+            <p class="proj-stat-card-sub">{{ $card['sub'] }}</p>
+        </div>
+    </a>
+    @endforeach
+</div>
+@else
+{{-- Done tab: summary banner with breakdown --}}
+<div style="display:flex;align-items:center;gap:14px;padding:16px 20px;background:linear-gradient(135deg,#F0FDF4,#DCFCE7);border-radius:14px;border:1px solid #BBF7D0;margin-bottom:24px;">
+    <div style="width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#059669,#10B981);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(5,150,105,.3);">
+        <i class="fa fa-circle-check" style="color:#fff;font-size:18px;"></i>
+    </div>
+    <div style="flex:1;">
+        <p style="font-size:15px;font-weight:700;color:#14532D;margin:0;">{{ $stats['done'] }} Completed Task{{ $stats['done'] !== 1 ? 's' : '' }}</p>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:4px;">
+            <span style="font-size:12px;color:#15803D;"><i class="fa fa-circle-check" style="font-size:10px;margin-right:3px;color:#22C55E;"></i>{{ $stats['approved'] }} approved</span>
+            <span style="font-size:12px;color:#15803D;"><i class="fa fa-truck" style="font-size:10px;margin-right:3px;color:#16A34A;"></i>{{ $stats['delivered'] }} delivered</span>
+            <span style="font-size:12px;color:#6B7280;"><i class="fa fa-box-archive" style="font-size:10px;margin-right:3px;color:#9CA3AF;"></i>{{ $stats['archived'] }} archived</span>
+        </div>
+    </div>
+    <a href="{{ route('admin.tasks.index') }}"
+       style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#15803D;text-decoration:none;background:rgba(255,255,255,.6);border:1px solid #86EFAC;padding:7px 14px;border-radius:8px;">
+        <i class="fa fa-arrow-left" style="font-size:10px;"></i> Back to Active
+    </a>
+</div>
+@endif
 
 {{-- ── Filters ── --}}
 <div class="mb-6">
     <form method="GET" action="{{ route('admin.tasks.index') }}">
+        @if($isDoneTab)<input type="hidden" name="tab" value="done">@endif
         <div class="bg-white/80 backdrop-blur-sm border border-gray-100 rounded-2xl shadow-sm p-4">
             <div class="flex flex-wrap items-center gap-3">
 
@@ -193,8 +227,8 @@ $avatarColors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6','#E
                         <i class="fas fa-sliders-h text-xs"></i>
                         Apply
                     </button>
-                    @if(request()->hasAny(['search','status','priority','project']))
-                    <a href="{{ route('admin.tasks.index') }}"
+                    @if(request()->hasAny(['search','status','priority','project','overdue','filter']))
+                    <a href="{{ $isDoneTab ? route('admin.tasks.index', ['tab'=>'done']) : route('admin.tasks.index') }}"
                        class="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200
                               text-gray-600 text-sm font-semibold rounded-xl
                               transition-all duration-200 active:scale-95">
@@ -227,8 +261,8 @@ $avatarColors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6','#E
         <i class="fas fa-list-check text-2xl text-gray-300"></i>
     </div>
     <p class="text-gray-500 font-semibold">No tasks found</p>
-    @if(request()->hasAny(['search','status','priority','project']))
-    <a href="{{ route('admin.tasks.index') }}" class="mt-3 inline-block text-sm text-indigo-500 hover:underline">Clear filters</a>
+    @if(request()->hasAny(['search','status','priority','project','overdue','filter']))
+    <a href="{{ $isDoneTab ? route('admin.tasks.index', ['tab'=>'done']) : route('admin.tasks.index') }}" class="mt-3 inline-block text-sm text-indigo-500 hover:underline">Clear filters</a>
     @endif
 </div>
 @else

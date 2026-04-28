@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\AuditLogController as AdminAuditLogController;
 use App\Http\Controllers\Admin\OffboardingController as AdminOffboardingController;
 use App\Http\Controllers\Admin\RoleController as AdminRoleController;
 use App\Http\Controllers\Admin\ReportsController as AdminReportsController;
+use App\Http\Controllers\Admin\CustomerController as AdminCustomerController;
 use App\Http\Controllers\User\ProjectController as UserProjectController;
 use App\Http\Controllers\User\ReportsController as UserReportsController;
 use App\Http\Middleware\AdminMiddleware;
@@ -43,6 +44,9 @@ require __DIR__.'/auth.php';
 
 // Shared authenticated routes (accessible by all roles)
 Route::middleware(['auth'])->group(function () {
+    // Profile update (all roles)
+    Route::post('/profile/update', [UserDashboard::class, 'updateProfile'])->name('user.profile.update');
+
     // Presence / online status
     Route::post('/user/presence', function (\Illuminate\Http\Request $request) {
         $allowed = ['online', 'away', 'busy', 'offline'];
@@ -125,6 +129,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::get('projects/{project}/tasks/create', [AdminProjectController::class, 'tasksCreate'])->name('projects.tasks.create');
     Route::post('projects/{project}/tasks', [AdminProjectController::class, 'tasksStore'])->name('projects.tasks.store');
     Route::post('tasks/quick', [AdminProjectController::class, 'quickTaskStore'])->name('tasks.quick');
+    Route::resource('customers', AdminCustomerController::class);
 
     // Settings
     Route::get('settings',                        [AdminSettingsController::class, 'index'])->name('settings.index');
@@ -136,6 +141,9 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('settings/mail',                  [AdminSettingsController::class, 'updateMail'])->name('settings.mail');
     Route::post('settings/mail/test',             [AdminSettingsController::class, 'testMail'])->name('settings.mail.test');
     Route::post('settings/dev-mode',              [AdminSettingsController::class, 'toggleDevMode'])->name('settings.dev-mode');
+    Route::post('settings/maintenance',           [AdminSettingsController::class, 'toggleMaintenance'])->name('settings.maintenance');
+    Route::post('settings/manager-admin-access',  [AdminSettingsController::class, 'toggleManagerAdminAccess'])->name('settings.manager-admin-access');
+    Route::post('settings/manager-roles-access',  [AdminSettingsController::class, 'toggleManagerRolesAccess'])->name('settings.manager-roles-access');
     Route::post('settings/elements/toggle',       [AdminSettingsController::class, 'toggleElement'])->name('settings.elements.toggle');
     Route::post('settings/nav/toggle',            [AdminSettingsController::class, 'toggleNavItem'])->name('settings.nav.toggle');
     Route::post('meetings',                        [AdminMeetingController::class, 'store'])->name('meetings.store');
@@ -170,10 +178,14 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::get('tasks/{task}/panel',               [AdminTaskController::class, 'panel'])->name('tasks.panel');
     Route::get('tasks/{task}',                     [AdminTaskController::class, 'show'])->name('tasks.show');
     Route::post('tasks/{task}/comment',            [AdminTaskController::class, 'comment'])->name('tasks.comment');
+    Route::patch('tasks/{task}/comments/{comment}',              [AdminTaskController::class, 'editComment'])->name('tasks.comments.edit');
+    Route::patch('tasks/{task}/submissions/{submission}/note',   [AdminTaskController::class, 'editSubmissionNote'])->name('tasks.submissions.note');
     Route::post('tasks/{task}/deliver',            [AdminTaskController::class, 'deliver'])->name('tasks.deliver');
     Route::post('tasks/{task}/reassign',           [AdminTaskController::class, 'reassign'])->name('tasks.reassign');
+    Route::patch('tasks/{task}/deadline',          [AdminTaskController::class, 'updateDeadline'])->name('tasks.deadline');
     Route::post('tasks/{task}/archive',            [AdminTaskController::class, 'archive'])->name('tasks.archive');
     Route::post('tasks/{task}/reopen',             [AdminTaskController::class, 'reopen'])->name('tasks.reopen');
+    Route::post('tasks/{task}/force-close',        [AdminTaskController::class, 'forceClose'])->name('tasks.forceClose');
     Route::delete('tasks/{task}',                  [AdminTaskController::class, 'destroy'])->name('tasks.destroy');
 
     // User task transfer
@@ -182,6 +194,8 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('users/{user}/hold',               [AdminUserController::class, 'hold'])->name('users.hold');
     // Restore archived user
     Route::post('users/{user}/restore',            [AdminUserController::class, 'restore'])->name('users.restore');
+    // Permanently delete user
+    Route::delete('users/{user}/permanent',        [AdminUserController::class, 'permanentDelete'])->name('users.permanent-delete');
     // View user's dashboard (admin preview)
     Route::get('users/{user}/dashboard',           [AdminUserController::class, 'viewDashboard'])->name('users.dashboard');
     // Performance data (JSON)
@@ -193,6 +207,20 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
 
     // Audit log
     Route::get('audit',                            [AdminAuditLogController::class, 'index'])->name('audit.index');
+
+    // Project attachment download
+    Route::get('attachments/{attachment}/download', function (\App\Models\ProjectAttachment $attachment) {
+        abort_unless($attachment->isFile(), 404);
+        return \Illuminate\Support\Facades\Storage::disk('public')
+            ->download($attachment->path, $attachment->name);
+    })->name('attachments.download');
+
+    // Task submission file download
+    Route::get('submissions/{submission}/download', function (\App\Models\TaskSubmission $submission) {
+        abort_unless($submission->file_path, 404);
+        return \Illuminate\Support\Facades\Storage::disk('public')
+            ->download($submission->file_path, $submission->original_filename ?? 'file');
+    })->name('submissions.download');
 });
 
 // Manager routes
@@ -201,6 +229,10 @@ Route::middleware([ManagerMiddleware::class])->prefix('manager')->name('manager.
     Route::get('/dashboard/refresh', [ManagerDashboard::class, 'refresh'])->name('dashboard.refresh');
     Route::resource('projects', AdminProjectController::class)->only(['index', 'store']);
     Route::post('/tasks/quick',      [AdminProjectController::class, 'quickTaskStore'])->name('tasks.quick');
+    Route::post('meetings',                       [AdminMeetingController::class, 'store'])->name('meetings.store');
+    Route::put('meetings/{meeting}',              [AdminMeetingController::class, 'update'])->name('meetings.update');
+    Route::patch('meetings/{meeting}/reschedule', [AdminMeetingController::class, 'reschedule'])->name('meetings.reschedule');
+    Route::delete('meetings/{meeting}',           [AdminMeetingController::class, 'destroy'])->name('meetings.destroy');
 });
 
 // User routes
@@ -213,8 +245,20 @@ Route::middleware([UserMiddleware::class])->prefix('user')->name('user.')->group
     Route::patch('/tasks/{task}/status', [UserTaskController::class, 'updateStatus'])->name('tasks.updateStatus');
     Route::post('/tasks/{task}/submit', [UserTaskController::class, 'submitVersion'])->name('tasks.submit');
     Route::post('/tasks/{task}/comment', [UserTaskController::class, 'addComment'])->name('tasks.comment');
+    Route::patch('/tasks/{task}/comments/{comment}',             [UserTaskController::class, 'editComment'])->name('tasks.comments.edit');
+    Route::patch('/tasks/{task}/submissions/{submission}/note',  [UserTaskController::class, 'editSubmissionNote'])->name('tasks.submissions.note');
     Route::get('/projects', [UserProjectController::class, 'index'])->name('projects.index');
     Route::get('/projects/{project}', [UserProjectController::class, 'show'])->name('projects.show');
     Route::get('/reports', [UserReportsController::class, 'index'])->name('reports.index');
     Route::get('/reports/export', [UserReportsController::class, 'exportTasks'])->name('reports.export');
+    Route::get('/attachments/{attachment}/download', function (\App\Models\ProjectAttachment $attachment) {
+        // Only allow users assigned to a task in that project
+        $allowed = auth()->user()->tasks()
+            ->where('project_id', $attachment->project_id)
+            ->exists();
+        abort_unless($allowed, 403);
+        abort_unless($attachment->isFile(), 404);
+        return \Illuminate\Support\Facades\Storage::disk('public')
+            ->download($attachment->path, $attachment->name);
+    })->name('attachments.download');
 });

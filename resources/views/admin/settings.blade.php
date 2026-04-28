@@ -158,11 +158,135 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         <div class="sf-row">
                             <div class="sf-group" style="margin-bottom:0;">
                                 <label class="sf-label">Timezone</label>
-                                <select name="timezone" class="sf-input sf-select">
-                                    @foreach(['UTC','Asia/Riyadh','Asia/Dubai','Asia/Kuwait','Europe/London','America/New_York','America/Los_Angeles','Asia/Tokyo','Australia/Sydney'] as $tz)
-                                    <option value="{{ $tz }}" {{ $settings['timezone'] === $tz ? 'selected' : '' }}>{{ $tz }}</option>
-                                    @endforeach
-                                </select>
+                                @php
+                                    $popularTzKeys = ['UTC','Asia/Bahrain','Asia/Riyadh','Asia/Dubai','Asia/Kuwait','Asia/Qatar','Asia/Amman','Africa/Cairo','Asia/Beirut','Europe/London','America/New_York','America/Los_Angeles','Asia/Tokyo','Asia/Singapore','Europe/Paris','Asia/Kolkata'];
+                                    $allTimezones  = collect(\DateTimeZone::listIdentifiers())->map(function($tz) use ($popularTzKeys) {
+                                        $dt     = new \DateTime('now', new \DateTimeZone($tz));
+                                        $offset = $dt->getOffset();
+                                        $sign   = $offset >= 0 ? '+' : '-';
+                                        $h      = intdiv(abs($offset), 3600);
+                                        $m      = (abs($offset) % 3600) / 60;
+                                        $parts  = explode('/', $tz);
+                                        return [
+                                            'value'    => $tz,
+                                            'city'     => str_replace('_', ' ', end($parts)),
+                                            'region'   => count($parts) > 1 ? str_replace('_', ' ', $parts[0]) : '',
+                                            'offset'   => sprintf('UTC%s%02d:%02d', $sign, $h, $m),
+                                            'offsetN'  => $offset,
+                                            'popular'  => in_array($tz, $popularTzKeys),
+                                        ];
+                                    })->sortBy([['offsetN','asc'],['value','asc']])->values()->toArray();
+                                    $currentTz = collect($allTimezones)->firstWhere('value', $settings['timezone']);
+                                @endphp
+                                <div x-data="{
+                                    query: '',
+                                    selected: '{{ $settings['timezone'] }}',
+                                    selectedLabel: '{{ $currentTz ? $currentTz['city'].' — '.$currentTz['offset'] : $settings['timezone'] }}',
+                                    open: false,
+                                    activeIdx: -1,
+                                    dropTop: 0,
+                                    dropLeft: 0,
+                                    dropWidth: 0,
+                                    allTz: {{ json_encode($allTimezones) }},
+                                    get filtered() {
+                                        const q = this.query.trim().toLowerCase();
+                                        if (!q) return this.allTz.filter(t => t.popular);
+                                        return this.allTz.filter(t =>
+                                            t.city.toLowerCase().includes(q) ||
+                                            t.value.toLowerCase().includes(q.replace(/ /g,'_')) ||
+                                            t.region.toLowerCase().includes(q) ||
+                                            t.offset.toLowerCase().includes(q)
+                                        ).slice(0, 60);
+                                    },
+                                    pick(tz) {
+                                        this.selected      = tz.value;
+                                        this.selectedLabel = tz.city + ' — ' + tz.offset;
+                                        this.query         = '';
+                                        this.open          = false;
+                                        this.activeIdx     = -1;
+                                    },
+                                    openDrop() {
+                                        const rect = this.$refs.tzTrigger.getBoundingClientRect();
+                                        this.dropTop   = rect.bottom + window.scrollY + 4;
+                                        this.dropLeft  = rect.left  + window.scrollX;
+                                        this.dropWidth = rect.width;
+                                        this.open      = true;
+                                        this.activeIdx = -1;
+                                    },
+                                    onKey(e) {
+                                        if (!this.open) { this.openDrop(); return; }
+                                        const len = this.filtered.length;
+                                        if (e.key === 'ArrowDown') { e.preventDefault(); this.activeIdx = (this.activeIdx + 1) % len; this.scrollActive(); }
+                                        else if (e.key === 'ArrowUp') { e.preventDefault(); this.activeIdx = (this.activeIdx - 1 + len) % len; this.scrollActive(); }
+                                        else if (e.key === 'Enter') { e.preventDefault(); if (this.activeIdx >= 0 && this.filtered[this.activeIdx]) this.pick(this.filtered[this.activeIdx]); }
+                                        else if (e.key === 'Escape') { this.open = false; this.activeIdx = -1; }
+                                    },
+                                    scrollActive() {
+                                        this.$nextTick(() => { const el = document.getElementById('tz-opt-'+this.activeIdx); if(el) el.scrollIntoView({block:'nearest'}); });
+                                    }
+                                }" @click.outside="open=false; query=''">
+
+                                    <input type="hidden" name="timezone" :value="selected">
+
+                                    {{-- Trigger --}}
+                                    <div x-ref="tzTrigger"
+                                         @click="openDrop(); $nextTick(()=>$refs.tzInput.focus())"
+                                         style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;cursor:pointer;background:#fff;transition:border-color .15s;"
+                                         :style="open ? 'border-color:#6366F1;box-shadow:0 0 0 3px rgba(99,102,241,0.1);' : ''">
+                                        <i class="fas fa-globe" style="color:#9CA3AF;font-size:12px;flex-shrink:0;"></i>
+                                        <input type="text" x-ref="tzInput" x-model="query"
+                                               :placeholder="selectedLabel"
+                                               @focus="openDrop()" @input="open=true; activeIdx=-1"
+                                               @keydown="onKey($event)"
+                                               style="flex:1;border:none;outline:none;font-size:13px;color:#111827;background:transparent;min-width:0;"
+                                               autocomplete="off" spellcheck="false">
+                                        <i class="fas fa-chevron-down" style="color:#9CA3AF;font-size:10px;flex-shrink:0;transition:transform .15s;"
+                                           :style="open ? 'transform:rotate(180deg)' : ''"></i>
+                                    </div>
+
+                                    {{-- Dropdown — fixed to escape overflow:hidden --}}
+                                    <template x-teleport="body">
+                                        <div x-show="open"
+                                             x-transition:enter="transition ease-out duration-100"
+                                             x-transition:enter-start="opacity-0 -translate-y-1"
+                                             x-transition:enter-end="opacity-100 translate-y-0"
+                                             :style="`position:absolute;top:${dropTop}px;left:${dropLeft}px;width:${dropWidth}px;z-index:99999;background:#fff;border:1.5px solid #E5E7EB;border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,0.12);overflow:hidden;`">
+
+                                            <div style="padding:7px 12px 4px;font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #F3F4F6;">
+                                                <span x-text="query.trim() ? 'Results' : 'Popular timezones'"></span>
+                                            </div>
+
+                                            <div style="max-height:220px;overflow-y:auto;">
+                                                <template x-for="(tz, idx) in filtered" :key="tz.value">
+                                                    <div :id="'tz-opt-'+idx"
+                                                         @click="pick(tz)"
+                                                         @mouseenter="activeIdx = idx"
+                                                         :style="activeIdx === idx ? 'background:#EEF2FF;' : (selected === tz.value ? 'background:#F5F3FF;' : '')"
+                                                         style="padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .1s;">
+                                                        <div style="flex:1;min-width:0;">
+                                                            <div style="display:flex;align-items:center;gap:6px;">
+                                                                <span x-text="tz.city" style="font-size:13px;font-weight:500;color:#111827;"></span>
+                                                                <span x-show="tz.region" x-text="tz.region" style="font-size:11px;color:#9CA3AF;"></span>
+                                                            </div>
+                                                        </div>
+                                                        <span x-text="tz.offset"
+                                                              style="font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px;flex-shrink:0;"
+                                                              :style="selected === tz.value ? 'background:#EDE9FE;color:#6D28D9;' : 'background:#F3F4F6;color:#6B7280;'"></span>
+                                                        <i x-show="selected === tz.value" class="fas fa-check" style="color:#6366F1;font-size:10px;flex-shrink:0;"></i>
+                                                    </div>
+                                                </template>
+                                                <div x-show="filtered.length === 0" style="padding:20px;text-align:center;font-size:13px;color:#9CA3AF;">
+                                                    No timezones match "<span x-text="query"></span>"
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                </div>
+                                <p class="sf-hint" x-data style="margin-top:5px;">
+                                    Currently set to <strong>{{ $settings['timezone'] }}</strong>
+                                    @if($currentTz) <span style="color:#9CA3AF;">({{ $currentTz['offset'] }})</span>@endif
+                                </p>
                             </div>
                             <div class="sf-group" style="margin-bottom:0;">
                                 <label class="sf-label">Date Format</label>
@@ -452,6 +576,22 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 <input type="number" name="max_tasks_per_user" class="sf-input" value="{{ $settings['max_tasks_per_user'] }}" min="1" max="500">
                             </div>
                         </div>
+                        <div class="sf-row" style="margin-top:2px;">
+                            <div class="sf-group" style="margin-bottom:0;">
+                                <label class="sf-label">Default Task Priority</label>
+                                <select name="default_task_priority" class="sf-input sf-select">
+                                    <option value="low"    {{ ($settings['default_task_priority'] ?? 'medium') === 'low'    ? 'selected' : '' }}>Low</option>
+                                    <option value="medium" {{ ($settings['default_task_priority'] ?? 'medium') === 'medium' ? 'selected' : '' }}>Medium</option>
+                                    <option value="high"   {{ ($settings['default_task_priority'] ?? 'medium') === 'high'   ? 'selected' : '' }}>High</option>
+                                </select>
+                                <p class="sf-hint">Applied when creating tasks without an explicit priority.</p>
+                            </div>
+                            <div class="sf-group" style="margin-bottom:0;">
+                                <label class="sf-label">Max File Upload Size (MB)</label>
+                                <input type="number" name="max_upload_mb" class="sf-input" value="{{ $settings['max_upload_mb'] ?? 20 }}" min="1" max="100">
+                                <p class="sf-hint">Applies to task attachments and message files.</p>
+                            </div>
+                        </div>
                         <div class="sf-toggle-row">
                             <div>
                                 <p class="sf-toggle-label">Allow Self-Registration</p>
@@ -484,45 +624,55 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                 <form method="POST" action="{{ route('admin.settings.notifications') }}">
                     @csrf
                     <div class="scard-body">
+
+                        @php
+                        $notifGroups = [
+                            'Task Lifecycle' => [
+                                ['key'=>'notify_on_assign',   'label'=>'Task Assigned',         'hint'=>'Notify user when a task is assigned to them'],
+                                ['key'=>'notify_on_approve',  'label'=>'Task Approved',          'hint'=>'Notify user when their submission is approved'],
+                                ['key'=>'notify_on_reject',   'label'=>'Revision Requested',     'hint'=>'Notify user when a revision is requested'],
+                                ['key'=>'notify_on_deliver',  'label'=>'Task Delivered',         'hint'=>'Notify user when admin marks the task as delivered'],
+                                ['key'=>'notify_on_complete', 'label'=>'Task Submitted',         'hint'=>'Notify admin when a user submits work for review'],
+                            ],
+                            'Team Activity' => [
+                                ['key'=>'notify_on_reassign', 'label'=>'Task Reassigned',        'hint'=>'Notify users when a task is reassigned or deadline changed'],
+                                ['key'=>'notify_on_transfer', 'label'=>'Task Transferred',       'hint'=>'Notify recipient when tasks are bulk-transferred to them'],
+                                ['key'=>'notify_on_comment',  'label'=>'Comment Posted',         'hint'=>'Notify the other party when a comment is added to a task'],
+                                ['key'=>'notify_on_viewed',   'label'=>'Task Viewed',            'hint'=>'Notify admin when a user first opens an assigned task (off by default)'],
+                            ],
+                            'Social & Reports' => [
+                                ['key'=>'notify_on_social',   'label'=>'Social Media Events',    'hint'=>'Notify on social media assignment and post recording'],
+                                ['key'=>'notify_on_report',   'label'=>'User Progress Reports',  'hint'=>'Notify admin when a user submits a progress report'],
+                            ],
+                        ];
+                        @endphp
+
+                        @foreach($notifGroups as $groupLabel => $items)
+                        <p style="font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 2px;{{ !$loop->first ? 'margin-top:16px;padding-top:16px;border-top:1px solid #F3F4F6;' : '' }}">{{ $groupLabel }}</p>
+                        @foreach($items as $item)
                         <div class="sf-toggle-row">
                             <div>
-                                <p class="sf-toggle-label">Email Notifications</p>
-                                <p class="sf-toggle-hint">Send email alerts for important events</p>
+                                <p class="sf-toggle-label">{{ $item['label'] }}</p>
+                                <p class="sf-toggle-hint">{{ $item['hint'] }}</p>
                             </div>
                             <label class="toggle">
-                                <input type="checkbox" name="email_notifications" value="1"
-                                       {{ $settings['email_notifications'] === '1' ? 'checked' : '' }}>
+                                <input type="checkbox" name="{{ $item['key'] }}" value="1"
+                                       {{ ($settings[$item['key']] ?? '1') === '1' ? 'checked' : '' }}>
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
-                        <div class="sf-toggle-row">
-                            <div>
-                                <p class="sf-toggle-label">Notify on Task Assignment</p>
-                                <p class="sf-toggle-hint">User receives email when a task is assigned to them</p>
+                        @endforeach
+                        @endforeach
+
+                        <div style="margin-top:16px;padding-top:16px;border-top:1px solid #F3F4F6;">
+                            <div class="sf-group" style="margin-bottom:0;">
+                                <label class="sf-label">Deadline Reminder (days before)</label>
+                                <input type="number" name="task_reminder_days" class="sf-input" style="max-width:120px;"
+                                       value="{{ $settings['task_reminder_days'] }}" min="0" max="30">
+                                <p class="sf-hint">Send a reminder this many days before a task deadline. Set 0 to disable.</p>
                             </div>
-                            <label class="toggle">
-                                <input type="checkbox" name="notify_on_assign" value="1"
-                                       {{ $settings['notify_on_assign'] === '1' ? 'checked' : '' }}>
-                                <span class="toggle-slider"></span>
-                            </label>
                         </div>
-                        <div class="sf-toggle-row">
-                            <div>
-                                <p class="sf-toggle-label">Notify on Task Completion</p>
-                                <p class="sf-toggle-hint">Admin receives email when a task is marked complete</p>
-                            </div>
-                            <label class="toggle">
-                                <input type="checkbox" name="notify_on_complete" value="1"
-                                       {{ $settings['notify_on_complete'] === '1' ? 'checked' : '' }}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="sf-group" style="margin-top:16px;margin-bottom:0;">
-                            <label class="sf-label">Deadline Reminder (days before)</label>
-                            <input type="number" name="task_reminder_days" class="sf-input" style="max-width:120px;"
-                                   value="{{ $settings['task_reminder_days'] }}" min="0" max="30">
-                            <p class="sf-hint">Send a reminder this many days before a task deadline. Set 0 to disable.</p>
-                        </div>
+
                     </div>
                     <div class="scard-footer">
                         <button type="submit" class="btn-save"><i class="fas fa-check" style="font-size:11px;margin-right:5px;"></i>Save Preferences</button>
@@ -732,6 +882,14 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 <p class="sf-hint">Users are logged out after this period of inactivity.</p>
                             </div>
                         </div>
+                        <div class="sf-row" style="margin-top:2px;">
+                            <div class="sf-group" style="margin-bottom:0;">
+                                <label class="sf-label">Max Login Attempts</label>
+                                <input type="number" name="max_login_attempts" class="sf-input"
+                                       value="{{ $settings['max_login_attempts'] ?? 5 }}" min="3" max="20">
+                                <p class="sf-hint">Failed attempts before the account is temporarily locked. Default: 5.</p>
+                            </div>
+                        </div>
                         <div class="sf-toggle-row">
                             <div>
                                 <p class="sf-toggle-label">Require Strong Passwords</p>
@@ -754,289 +912,147 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
         {{-- ════ BACKUP & EXPORT ════ --}}
         <div x-show="tab === 'backup'" x-cloak>
 
-            {{-- Data overview --}}
-            <div class="scard" style="margin-bottom:0;">
-                <div class="scard-header">
-                    <div class="scard-icon" style="background:#EFF6FF;color:#2563EB;"><i class="fas fa-database"></i></div>
-                    <div>
-                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Backup & Export</p>
-                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Download your data as CSV files</p>
+            <div class="scard" x-data="{ showRestore: false }" style="margin-bottom:16px;">
+
+                {{-- Backup banner --}}
+                <div style="background:linear-gradient(135deg,#1E1B4B 0%,#312E81 100%);border-radius:12px;padding:14px 18px;margin:20px 20px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <div style="width:36px;height:36px;border-radius:9px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas fa-server" style="color:#fff;font-size:15px;"></i>
+                        </div>
+                        <div>
+                            <p style="font-size:13px;font-weight:700;color:#fff;margin:0 0 2px;">Full System Backup</p>
+                            <p style="font-size:11px;color:rgba(255,255,255,.55);margin:0;">All users, projects, tasks, settings &amp; notifications</p>
+                        </div>
+                    </div>
+                    <a href="{{ route('admin.settings.backup.download') }}"
+                       style="display:flex;align-items:center;gap:7px;padding:8px 16px;background:#fff;color:#4F46E5;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;flex-shrink:0;transition:opacity .15s;"
+                       onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+                        <i class="fas fa-download" style="font-size:10px;"></i> Download Backup
+                    </a>
+                </div>
+
+                {{-- Stats strip (horizontal) --}}
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px 20px;">
+                    @foreach([['users','#4F46E5','Users'],['projects','#10B981','Projects'],['tasks','#F59E0B','Tasks']] as [$sk,$sc,$sl])
+                    <div style="background:#F9FAFB;border:1.5px solid #F0F0F0;border-radius:10px;padding:10px 14px;text-align:center;">
+                        <p style="font-size:20px;font-weight:700;color:{{ $sc }};margin:0;line-height:1.1;">{{ $stats[$sk] }}</p>
+                        <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;text-transform:uppercase;letter-spacing:.04em;">{{ $sl }}</p>
+                    </div>
+                    @endforeach
+                    <div style="background:#F9FAFB;border:1.5px solid #F0F0F0;border-radius:10px;padding:10px 14px;text-align:center;">
+                        <p style="font-size:18px;font-weight:700;color:#6366F1;margin:0;line-height:1.1;">{{ $stats['db_size'] }}<span style="font-size:10px;font-weight:500;">KB</span></p>
+                        <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;text-transform:uppercase;letter-spacing:.04em;">DB Size</p>
                     </div>
                 </div>
-                <div class="scard-body">
 
-                    {{-- ── Full System Backup ── --}}
-                    <div style="background:linear-gradient(135deg,#1E1B4B 0%,#312E81 100%);border-radius:14px;padding:22px 24px;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
-                        <div style="display:flex;align-items:center;gap:14px;">
-                            <div style="width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                <i class="fas fa-server" style="color:#fff;font-size:20px;"></i>
+                {{-- Full System Restore (collapsible row) --}}
+                <div style="border-top:1px solid #F3F4F6;padding:14px 20px 16px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:32px;height:32px;border-radius:8px;background:#FEE2E2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-rotate-left" style="color:#DC2626;font-size:13px;"></i>
                             </div>
                             <div>
-                                <p style="font-size:15px;font-weight:700;color:#fff;margin:0 0 3px;">Full System Backup</p>
-                                <p style="font-size:12px;color:rgba(255,255,255,.6);margin:0;">Downloads the entire database — all users, projects, tasks, settings, notifications</p>
+                                <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">Full System Restore</p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Replace entire database with a <code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">.sqlite</code> backup</p>
                             </div>
                         </div>
-                        <a href="{{ route('admin.settings.backup.download') }}"
-                           style="display:flex;align-items:center;gap:8px;padding:11px 22px;background:#fff;color:#4F46E5;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;flex-shrink:0;transition:opacity .15s;"
-                           onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">
-                            <i class="fas fa-download" style="font-size:12px;"></i> Download Backup
-                        </a>
+                        <button type="button" @click="showRestore = !showRestore"
+                                style="display:flex;align-items:center;gap:6px;padding:7px 14px;background:#DC2626;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;"
+                                onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
+                            <i class="fas fa-upload" style="font-size:10px;"></i>
+                            <span x-text="showRestore ? 'Cancel' : 'Restore'"></span>
+                        </button>
                     </div>
-
-                    {{-- ── Full System Restore ── --}}
-                    <div style="border:2px solid #FEE2E2;border-radius:14px;padding:20px 22px;margin-bottom:22px;background:#FFF8F8;" x-data="{ show: false }">
-                        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-                            <div style="display:flex;align-items:center;gap:12px;">
-                                <div style="width:42px;height:42px;border-radius:10px;background:#FEE2E2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                    <i class="fas fa-rotate-left" style="color:#DC2626;font-size:17px;"></i>
-                                </div>
-                                <div>
-                                    <p style="font-size:14px;font-weight:700;color:#111827;margin:0 0 2px;">Full System Restore</p>
-                                    <p style="font-size:12px;color:#9CA3AF;margin:0;">Upload a <code style="background:#F3F4F6;padding:1px 5px;border-radius:4px;">.sqlite</code> backup file to completely replace the current database</p>
-                                </div>
-                            </div>
-                            <button type="button" @click="show = !show"
-                                    style="display:flex;align-items:center;gap:6px;padding:9px 18px;background:#DC2626;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0;"
-                                    onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
-                                <i class="fas fa-upload" style="font-size:11px;"></i>
-                                <span x-text="show ? 'Cancel' : 'Restore System'"></span>
-                            </button>
-                        </div>
-
-                        <div x-show="show" x-cloak style="margin-top:16px;padding-top:16px;border-top:1px solid #FECACA;">
-                            <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;gap:8px;align-items:flex-start;">
-                                <i class="fas fa-triangle-exclamation" style="color:#DC2626;flex-shrink:0;margin-top:1px;"></i>
-                                <p style="font-size:12px;color:#7F1D1D;margin:0;line-height:1.6;">
-                                    <strong>Warning:</strong> This will permanently replace ALL current data with the backup. This action cannot be undone. Make sure to download a backup of the current state first.
-                                </p>
-                            </div>
-                            <form method="POST" action="{{ route('admin.settings.backup.restore') }}" enctype="multipart/form-data"
-                                  onsubmit="return confirm('Are you sure? This will replace ALL system data with the uploaded backup. This cannot be undone.')">
-                                @csrf
-                                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                                    <label style="flex:1;min-width:200px;display:flex;align-items:center;gap:8px;padding:10px 14px;border:2px dashed #FECACA;border-radius:8px;cursor:pointer;background:#fff;"
-                                           onmouseover="this.style.borderColor='#DC2626'" onmouseout="this.style.borderColor='#FECACA'">
-                                        <i class="fas fa-file" style="color:#DC2626;font-size:14px;flex-shrink:0;"></i>
-                                        <span style="font-size:13px;color:#9CA3AF;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="backup-file-name">Choose .sqlite backup file…</span>
-                                        <input type="file" name="backup_file" accept=".sqlite" required style="display:none;"
-                                               onchange="document.getElementById('backup-file-name').textContent = this.files[0]?.name || 'Choose .sqlite backup file…'">
-                                    </label>
-                                    <button type="submit"
-                                            style="padding:10px 22px;background:#DC2626;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0;"
-                                            onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
-                                        <i class="fas fa-rotate-left" style="font-size:11px;"></i> Restore Now
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                    <hr style="border:none;border-top:1px solid #F3F4F6;margin-bottom:22px;">
-
-                    {{-- Stats strip --}}
-                    <div class="stat-strip" style="margin-bottom:22px;">
-                        <div class="stat-pill">
-                            <p style="font-size:22px;font-weight:700;color:#4F46E5;margin:0;">{{ $stats['users'] }}</p>
-                            <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">Users</p>
-                        </div>
-                        <div class="stat-pill">
-                            <p style="font-size:22px;font-weight:700;color:#10B981;margin:0;">{{ $stats['projects'] }}</p>
-                            <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">Projects</p>
-                        </div>
-                        <div class="stat-pill">
-                            <p style="font-size:22px;font-weight:700;color:#F59E0B;margin:0;">{{ $stats['tasks'] }}</p>
-                            <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">Tasks</p>
-                        </div>
-                        <div class="stat-pill">
-                            <p style="font-size:22px;font-weight:700;color:#6366F1;margin:0;">{{ $stats['db_size'] }} KB</p>
-                            <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">DB Size</p>
-                        </div>
-                    </div>
-
-                    {{-- Export cards --}}
-                    <div class="export-grid">
-
-                        <div class="export-card">
-                            <div class="export-icon" style="background:#EEF2FF;color:#4F46E5;">
-                                <i class="fas fa-users"></i>
-                            </div>
-                            <div>
-                                <p style="font-size:13px;font-weight:700;color:#111827;margin:0 0 3px;">Users Export</p>
-                                <p style="font-size:11px;color:#9CA3AF;margin:0;">All users with roles and task counts</p>
-                            </div>
-                            <a href="{{ route('admin.settings.export.users') }}"
-                               class="btn-export" style="color:#4F46E5;border-color:#C7D2FE;background:#EEF2FF;">
-                                <i class="fas fa-download" style="font-size:11px;"></i> Download CSV
-                            </a>
-                        </div>
-
-                        <div class="export-card">
-                            <div class="export-icon" style="background:#F0FDF4;color:#16A34A;">
-                                <i class="fas fa-square-check"></i>
-                            </div>
-                            <div>
-                                <p style="font-size:13px;font-weight:700;color:#111827;margin:0 0 3px;">Tasks Export</p>
-                                <p style="font-size:11px;color:#9CA3AF;margin:0;">All tasks with status, assignee and deadline</p>
-                            </div>
-                            <a href="{{ route('admin.settings.export.tasks') }}"
-                               class="btn-export" style="color:#16A34A;border-color:#BBF7D0;background:#F0FDF4;">
-                                <i class="fas fa-download" style="font-size:11px;"></i> Download CSV
-                            </a>
-                        </div>
-
-                        <div class="export-card">
-                            <div class="export-icon" style="background:#FFFBEB;color:#D97706;">
-                                <i class="fas fa-diagram-project"></i>
-                            </div>
-                            <div>
-                                <p style="font-size:13px;font-weight:700;color:#111827;margin:0 0 3px;">Projects Export</p>
-                                <p style="font-size:11px;color:#9CA3AF;margin:0;">All projects with status and task counts</p>
-                            </div>
-                            <a href="{{ route('admin.settings.export.projects') }}"
-                               class="btn-export" style="color:#D97706;border-color:#FDE68A;background:#FFFBEB;">
-                                <i class="fas fa-download" style="font-size:11px;"></i> Download CSV
-                            </a>
-                        </div>
-
-                    </div>
-
-                    {{-- Info note --}}
-                    <div style="margin-top:20px;background:#F8FAFC;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;display:flex;align-items:flex-start;gap:10px;">
-                        <i class="fas fa-circle-info" style="color:#6366F1;margin-top:1px;flex-shrink:0;"></i>
-                        <p style="font-size:12px;color:#6B7280;margin:0;line-height:1.6;">
-                            Exports download instantly as <strong>.csv</strong> files. They include all records at the time of download. For a full database backup, copy the <code style="background:#E5E7EB;padding:1px 5px;border-radius:4px;font-size:11px;">database/database.sqlite</code> file directly from the server.
+                    <div x-show="showRestore" x-cloak style="margin-top:12px;padding-top:12px;border-top:1px solid #FECACA;">
+                        <p style="font-size:11px;color:#7F1D1D;background:#FEF2F2;border:1px solid #FECACA;border-radius:7px;padding:8px 12px;margin:0 0 10px;line-height:1.5;">
+                            <i class="fas fa-triangle-exclamation" style="margin-right:5px;"></i><strong>Warning:</strong> This permanently replaces ALL current data. Download a backup first.
                         </p>
+                        <form method="POST" action="{{ route('admin.settings.backup.restore') }}" enctype="multipart/form-data"
+                              onsubmit="return confirm('Are you sure? This will replace ALL system data with the uploaded backup. This cannot be undone.')">
+                            @csrf
+                            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                <label style="flex:1;min-width:180px;display:flex;align-items:center;gap:8px;padding:8px 12px;border:2px dashed #FECACA;border-radius:8px;cursor:pointer;background:#fff;"
+                                       onmouseover="this.style.borderColor='#DC2626'" onmouseout="this.style.borderColor='#FECACA'">
+                                    <i class="fas fa-file" style="color:#DC2626;font-size:13px;flex-shrink:0;"></i>
+                                    <span style="font-size:12px;color:#9CA3AF;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="backup-file-name">Choose .sqlite file…</span>
+                                    <input type="file" name="backup_file" accept=".sqlite" required style="display:none;"
+                                           onchange="document.getElementById('backup-file-name').textContent = this.files[0]?.name || 'Choose .sqlite file…'">
+                                </label>
+                                <button type="submit"
+                                        style="padding:8px 18px;background:#DC2626;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0;"
+                                        onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
+                                    <i class="fas fa-rotate-left" style="font-size:10px;"></i> Restore Now
+                                </button>
+                            </div>
+                        </form>
                     </div>
-
                 </div>
+
             </div>
 
-            {{-- ── Restore ── --}}
-            <div class="scard" style="margin-top:20px;">
-                <div class="scard-header">
-                    <div class="scard-icon" style="background:#FEF3C7;color:#D97706;"><i class="fas fa-rotate-left"></i></div>
+            {{-- Export + Restore CSV --}}
+            <div class="scard">
+                <div class="scard-header" style="padding-bottom:0;">
+                    <div class="scard-icon" style="background:#F0FDF4;color:#16A34A;"><i class="fas fa-file-csv"></i></div>
                     <div>
-                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Restore from CSV</p>
-                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Import data back from a previously exported CSV file</p>
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Export & Restore CSV</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Download CSVs or import them back — restore is non-destructive</p>
                     </div>
                 </div>
-                <div class="scard-body">
 
-                    @if($errors->any())
-                    <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#DC2626;">
-                        <i class="fas fa-exclamation-circle" style="margin-right:6px;"></i>{{ $errors->first() }}
-                    </div>
-                    @endif
-
-                    <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px;">
-                        <i class="fas fa-triangle-exclamation" style="color:#D97706;margin-top:1px;flex-shrink:0;"></i>
-                        <p style="font-size:12px;color:#92400E;margin:0;line-height:1.6;">
-                            Restore is <strong>non-destructive</strong> — it adds missing records and updates existing ones. It never deletes data. Use the same CSV format as the exports above.
-                        </p>
-                    </div>
-
-                    <div class="export-grid">
-
-                        {{-- Restore Users --}}
-                        <div class="export-card" style="background:#FAFBFF;">
-                            <div class="export-icon" style="background:#EEF2FF;color:#4F46E5;">
-                                <i class="fas fa-users"></i>
-                            </div>
-                            <div>
-                                <p style="font-size:13px;font-weight:700;color:#111827;margin:0 0 3px;">Restore Users</p>
-                                <p style="font-size:11px;color:#9CA3AF;margin:0;">Upload users CSV — creates new users, updates existing by email</p>
-                            </div>
-                            <form method="POST" action="{{ route('admin.settings.restore.users') }}" enctype="multipart/form-data" style="width:100%;">
-                                @csrf
-                                <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px dashed #C7D2FE;border-radius:8px;cursor:pointer;background:#fff;margin-bottom:8px;"
-                                       onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#C7D2FE'">
-                                    <i class="fas fa-file-csv" style="color:#6366F1;font-size:13px;flex-shrink:0;"></i>
-                                    <span style="font-size:12px;color:#6B7280;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="users-csv-name">Choose CSV file…</span>
-                                    <input type="file" name="file" accept=".csv,.txt" style="display:none;"
-                                           onchange="document.getElementById('users-csv-name').textContent = this.files[0]?.name || 'Choose CSV file…'">
-                                </label>
-                                <button type="submit"
-                                        style="width:100%;background:#4F46E5;color:#fff;border:none;padding:8px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"
-                                        onmouseover="this.style.background='#4338CA'" onmouseout="this.style.background='#4F46E5'">
-                                    <i class="fas fa-rotate-left" style="font-size:10px;"></i> Restore Users
-                                </button>
-                            </form>
-                        </div>
-
-                        {{-- Restore Tasks --}}
-                        <div class="export-card" style="background:#F0FDF4;">
-                            <div class="export-icon" style="background:#D1FAE5;color:#059669;">
-                                <i class="fas fa-square-check"></i>
-                            </div>
-                            <div>
-                                <p style="font-size:13px;font-weight:700;color:#111827;margin:0 0 3px;">Restore Tasks</p>
-                                <p style="font-size:11px;color:#9CA3AF;margin:0;">Upload tasks CSV — skips duplicates, matches by project &amp; title</p>
-                            </div>
-                            <form method="POST" action="{{ route('admin.settings.restore.tasks') }}" enctype="multipart/form-data" style="width:100%;">
-                                @csrf
-                                <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px dashed #BBF7D0;border-radius:8px;cursor:pointer;background:#fff;margin-bottom:8px;"
-                                       onmouseover="this.style.borderColor='#16A34A'" onmouseout="this.style.borderColor='#BBF7D0'">
-                                    <i class="fas fa-file-csv" style="color:#16A34A;font-size:13px;flex-shrink:0;"></i>
-                                    <span style="font-size:12px;color:#6B7280;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="tasks-csv-name">Choose CSV file…</span>
-                                    <input type="file" name="file" accept=".csv,.txt" style="display:none;"
-                                           onchange="document.getElementById('tasks-csv-name').textContent = this.files[0]?.name || 'Choose CSV file…'">
-                                </label>
-                                <button type="submit"
-                                        style="width:100%;background:#16A34A;color:#fff;border:none;padding:8px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"
-                                        onmouseover="this.style.background='#15803D'" onmouseout="this.style.background='#16A34A'">
-                                    <i class="fas fa-rotate-left" style="font-size:10px;"></i> Restore Tasks
-                                </button>
-                            </form>
-                        </div>
-
-                        {{-- Restore Projects --}}
-                        <div class="export-card" style="background:#FFFBEB;">
-                            <div class="export-icon" style="background:#FEF3C7;color:#D97706;">
-                                <i class="fas fa-diagram-project"></i>
-                            </div>
-                            <div>
-                                <p style="font-size:13px;font-weight:700;color:#111827;margin:0 0 3px;">Restore Projects</p>
-                                <p style="font-size:11px;color:#9CA3AF;margin:0;">Upload projects CSV — creates new, updates existing by name</p>
-                            </div>
-                            <form method="POST" action="{{ route('admin.settings.restore.projects') }}" enctype="multipart/form-data" style="width:100%;">
-                                @csrf
-                                <label style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px dashed #FDE68A;border-radius:8px;cursor:pointer;background:#fff;margin-bottom:8px;"
-                                       onmouseover="this.style.borderColor='#D97706'" onmouseout="this.style.borderColor='#FDE68A'">
-                                    <i class="fas fa-file-csv" style="color:#D97706;font-size:13px;flex-shrink:0;"></i>
-                                    <span style="font-size:12px;color:#6B7280;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="projects-csv-name">Choose CSV file…</span>
-                                    <input type="file" name="file" accept=".csv,.txt" style="display:none;"
-                                           onchange="document.getElementById('projects-csv-name').textContent = this.files[0]?.name || 'Choose CSV file…'">
-                                </label>
-                                <button type="submit"
-                                        style="width:100%;background:#D97706;color:#fff;border:none;padding:8px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"
-                                        onmouseover="this.style.background='#B45309'" onmouseout="this.style.background='#D97706'">
-                                    <i class="fas fa-rotate-left" style="font-size:10px;"></i> Restore Projects
-                                </button>
-                            </form>
-                        </div>
-
-                    </div>
-
-                    {{-- Format guide --}}
-                    <div style="margin-top:16px;background:#F8FAFC;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;">
-                        <p style="font-size:12px;font-weight:600;color:#374151;margin:0 0 8px;"><i class="fas fa-circle-info" style="color:#6366F1;margin-right:6px;"></i>Required CSV columns</p>
-                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
-                            <div>
-                                <p style="font-size:11px;font-weight:600;color:#4F46E5;margin:0 0 4px;">Users</p>
-                                <p style="font-size:11px;color:#6B7280;margin:0;line-height:1.8;">name, email, role<br><span style="color:#9CA3AF;">(role: user/manager/admin)</span></p>
-                            </div>
-                            <div>
-                                <p style="font-size:11px;font-weight:600;color:#16A34A;margin:0 0 4px;">Tasks</p>
-                                <p style="font-size:11px;color:#6B7280;margin:0;line-height:1.8;">title, project, assigned to,<br>deadline, priority, status</p>
-                            </div>
-                            <div>
-                                <p style="font-size:11px;font-weight:600;color:#D97706;margin:0 0 4px;">Projects</p>
-                                <p style="font-size:11px;color:#6B7280;margin:0;line-height:1.8;">name, deadline, status<br><span style="color:#9CA3AF;">(status: active/completed/overdue)</span></p>
-                            </div>
-                        </div>
-                    </div>
-
+                @if($errors->any())
+                <div style="margin:0 20px;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:10px 14px;font-size:12px;color:#DC2626;">
+                    <i class="fas fa-exclamation-circle" style="margin-right:6px;"></i>{{ $errors->first() }}
                 </div>
+                @endif
+
+                {{-- Entity rows --}}
+                @php
+                    $csvEntities = [
+                        ['icon'=>'fa-users',          'label'=>'Users',    'desc'=>'Roles, task counts',              'color'=>'#4F46E5','bg'=>'#EEF2FF','border'=>'#C7D2FE','exportRoute'=>'admin.settings.export.users',    'restoreRoute'=>'admin.settings.restore.users',    'fileId'=>'users-csv',     'columns'=>'name, email, role'],
+                        ['icon'=>'fa-square-check',   'label'=>'Tasks',    'desc'=>'Status, assignee, deadline',      'color'=>'#16A34A','bg'=>'#F0FDF4','border'=>'#BBF7D0','exportRoute'=>'admin.settings.export.tasks',    'restoreRoute'=>'admin.settings.restore.tasks',    'fileId'=>'tasks-csv',     'columns'=>'title, project, assigned to, deadline, priority, status'],
+                        ['icon'=>'fa-diagram-project','label'=>'Projects', 'desc'=>'Status, task counts',             'color'=>'#D97706','bg'=>'#FFFBEB','border'=>'#FDE68A','exportRoute'=>'admin.settings.export.projects', 'restoreRoute'=>'admin.settings.restore.projects', 'fileId'=>'projects-csv',  'columns'=>'name, deadline, status'],
+                    ];
+                @endphp
+
+                @foreach($csvEntities as $ent)
+                <div style="display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:14px;padding:14px 20px;border-top:1px solid #F3F4F6;">
+                    {{-- Icon + label --}}
+                    <div style="width:36px;height:36px;border-radius:9px;background:{{ $ent['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="fas {{ $ent['icon'] }}" style="font-size:14px;color:{{ $ent['color'] }};"></i>
+                    </div>
+                    <div>
+                        <p style="font-size:13px;font-weight:600;color:#111827;margin:0;">{{ $ent['label'] }}</p>
+                        <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">{{ $ent['desc'] }} · <code style="font-size:10px;background:#F3F4F6;padding:1px 4px;border-radius:3px;">{{ $ent['columns'] }}</code></p>
+                    </div>
+                    {{-- Export button --}}
+                    <a href="{{ route($ent['exportRoute']) }}"
+                       style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;border:1.5px solid {{ $ent['border'] }};background:{{ $ent['bg'] }};color:{{ $ent['color'] }};white-space:nowrap;transition:opacity .15s;"
+                       onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+                        <i class="fas fa-download" style="font-size:10px;"></i> Export CSV
+                    </a>
+                    {{-- Restore form --}}
+                    <form method="POST" action="{{ route($ent['restoreRoute']) }}" enctype="multipart/form-data"
+                          style="display:flex;align-items:center;gap:6px;">
+                        @csrf
+                        <label style="display:flex;align-items:center;gap:6px;padding:7px 12px;border:1.5px dashed {{ $ent['border'] }};border-radius:8px;cursor:pointer;background:#fff;white-space:nowrap;"
+                               onmouseover="this.style.borderColor='{{ $ent['color'] }}'" onmouseout="this.style.borderColor='{{ $ent['border'] }}'">
+                            <i class="fas fa-file-csv" style="color:{{ $ent['color'] }};font-size:11px;flex-shrink:0;"></i>
+                            <span style="font-size:11px;color:#9CA3AF;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="{{ $ent['fileId'] }}-name">Choose CSV…</span>
+                            <input type="file" name="file" accept=".csv,.txt" style="display:none;"
+                                   onchange="document.getElementById('{{ $ent['fileId'] }}-name').textContent = this.files[0]?.name || 'Choose CSV…'">
+                        </label>
+                        <button type="submit"
+                                style="display:flex;align-items:center;gap:5px;padding:7px 12px;background:{{ $ent['bg'] }};color:{{ $ent['color'] }};border:1.5px solid {{ $ent['border'] }};border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;"
+                                onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+                            <i class="fas fa-rotate-left" style="font-size:10px;"></i> Restore
+                        </button>
+                    </form>
+                </div>
+                @endforeach
+
             </div>
 
         </div>
@@ -1044,91 +1060,180 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
         {{-- ════ DEVELOPER ════ --}}
         <div x-show="tab === 'developer'" x-cloak>
 
-            <div class="scard">
-                <div class="scard-header">
-                    <div class="scard-icon" style="background:#EEF2FF;color:#6366F1;"><i class="fas fa-code"></i></div>
-                    <div>
-                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Developer Mode</p>
-                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Customise which sections appear on the dashboard. Toggle off to return to normal view.</p>
+            {{-- Row 1: System Controls + Manager Access side by side --}}
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+
+                {{-- System Controls --}}
+                <div class="scard" style="margin:0;">
+                    <div class="scard-header" style="padding-bottom:0;">
+                        <div class="scard-icon" style="background:#FEF3C7;color:#D97706;"><i class="fas fa-sliders"></i></div>
+                        <div>
+                            <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">System Controls</p>
+                            <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Global system switches</p>
+                        </div>
                     </div>
-                </div>
-
-                {{-- Toggle row --}}
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-top:1px solid #F3F4F6;margin-top:4px;">
-                    <div>
-                        <p style="font-size:13px;font-weight:600;color:#111827;margin:0;">Developer Mode</p>
-                        <p style="font-size:12px;color:#9CA3AF;margin:3px 0 0;" id="dev-mode-status">
-                            {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'Active — click sections on the dashboard to remove them' : 'Inactive — enable to customise the dashboard layout' }}
-                        </p>
-                    </div>
-                    <button id="dev-mode-toggle"
-                            onclick="toggleDevMode(this)"
-                            style="display:flex;align-items:center;gap:8px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .2s;
-                                   {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'background:#6366F1;color:#fff;' : 'background:#F3F4F6;color:#374151;' }}">
-                        <i class="fas {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'fa-toggle-on' : 'fa-toggle-off' }}" id="dev-mode-icon"></i>
-                        <span id="dev-mode-label">{{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'Enabled' : 'Disabled' }}</span>
-                    </button>
-                </div>
-
-                {{-- Hidden (default-visible) elements --}}
-                @php
-                    $hiddenKeys  = json_decode($appSettings['hidden_elements'] ?? '[]', true) ?: [];
-                    $shownExtras = json_decode($appSettings['shown_extras']    ?? '[]', true) ?: [];
-                    $defaultVisibleLabels = ['dash_stats'=>'Overview Cards','dash_task_analytics'=>'Task Analytics','dash_working_hours'=>'Working Hours Chart','dash_project_stats'=>'Project Statistics','dash_workload'=>'Task Workload Chart','dash_calendar'=>'Calendar & Meetings'];
-                    $extraLabels = ['dash_priority_chart'=>'Tasks by Priority','dash_team_performance'=>'Team Performance','dash_project_progress'=>'Project Progress'];
-                @endphp
-
-                @if(count($hiddenKeys) > 0)
-                <div style="border-top:1px solid #F3F4F6;padding-top:16px;">
-                    <p style="font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;">Hidden Sections</p>
-                    <div style="display:flex;flex-direction:column;gap:8px;" id="hidden-list">
-                        @foreach($hiddenKeys as $hk)
-                        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#F8FAFF;border-radius:10px;border:1px solid #EEF0FA;" id="hidden-row-{{ $hk }}">
+                    <div style="padding:0 20px 16px;display:flex;flex-direction:column;gap:0;">
+                        {{-- Maintenance Mode --}}
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;">
                             <div style="display:flex;align-items:center;gap:10px;">
-                                <i class="fas fa-eye-slash" style="color:#C4B5FD;font-size:12px;"></i>
-                                <span style="font-size:13px;font-weight:500;color:#374151;">{{ $defaultVisibleLabels[$hk] ?? $hk }}</span>
+                                <div style="width:28px;height:28px;border-radius:8px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-triangle-exclamation" style="font-size:11px;color:#D97706;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Maintenance Mode</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;" id="maintenance-status">
+                                        {{ ($appSettings['maintenance_mode'] ?? '0') === '1' ? 'Active — admins only' : 'Inactive' }}
+                                    </p>
+                                </div>
                             </div>
-                            <button onclick="restoreElement('{{ $hk }}', this)"
-                                    style="display:flex;align-items:center;gap:5px;padding:6px 14px;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;"
-                                    onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'">
-                                <i class="fas fa-eye" style="font-size:10px;"></i> Restore
+                            <button id="maintenance-toggle" onclick="toggleMaintenance(this)"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;
+                                           {{ ($appSettings['maintenance_mode'] ?? '0') === '1' ? 'background:#D97706;color:#fff;' : 'background:#F3F4F6;color:#374151;' }}">
+                                <i class="fas {{ ($appSettings['maintenance_mode'] ?? '0') === '1' ? 'fa-toggle-on' : 'fa-toggle-off' }}" id="maintenance-icon"></i>
+                                <span id="maintenance-label">{{ ($appSettings['maintenance_mode'] ?? '0') === '1' ? 'On' : 'Off' }}</span>
                             </button>
+                        </div>
+                        {{-- Developer Mode --}}
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="width:28px;height:28px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-code" style="font-size:11px;color:#6366F1;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Developer Mode</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;" id="dev-mode-status">
+                                        {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'Active — click to hide sections' : 'Inactive' }}
+                                    </p>
+                                </div>
+                            </div>
+                            <button id="dev-mode-toggle" onclick="toggleDevMode(this)"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;
+                                           {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'background:#6366F1;color:#fff;' : 'background:#F3F4F6;color:#374151;' }}">
+                                <i class="fas {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'fa-toggle-on' : 'fa-toggle-off' }}" id="dev-mode-icon"></i>
+                                <span id="dev-mode-label">{{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'On' : 'Off' }}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Manager Access Controls --}}
+                <div class="scard" style="margin:0;position:relative;overflow:hidden;"
+                     id="manager-access-card"
+                     x-data="{ rolesOn: {{ ($appSettings['manager_can_view_roles'] ?? '0') === '1' ? 'true' : 'false' }}, adminOn: {{ ($appSettings['manager_can_edit_admin'] ?? '0') === '1' ? 'true' : 'false' }} }">
+                    <div class="scard-header" style="padding-bottom:0;">
+                        <div class="scard-icon" style="background:#FEF2F2;color:#EF4444;"><i class="fas fa-shield-halved"></i></div>
+                        <div>
+                            <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Manager Access</p>
+                            <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">What managers can access</p>
+                        </div>
+                    </div>
+                    <div style="padding:0 20px 16px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="width:28px;height:28px;border-radius:8px;background:#F5F3FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-id-badge" style="font-size:11px;color:#7C3AED;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">View Roles Page</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Roles tab in Team page</p>
+                                </div>
+                            </div>
+                            <button type="button"
+                                    @click="fetch('{{ route('admin.settings.manager-roles-access') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ rolesOn = d.manager_can_view_roles })"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                    :style="rolesOn ? 'background:#6366F1;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                                <i class="fas" :class="rolesOn ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                                <span x-text="rolesOn ? 'On' : 'Off'"></span>
+                            </button>
+                        </div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="width:28px;height:28px;border-radius:8px;background:#FEF2F2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-user-pen" style="font-size:11px;color:#EF4444;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Edit Admin Users</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Edit, reset & deactivate admins</p>
+                                </div>
+                            </div>
+                            <button type="button"
+                                    @click="fetch('{{ route('admin.settings.manager-admin-access') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ adminOn = d.manager_can_edit_admin })"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                    :style="adminOn ? 'background:#EF4444;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                                <i class="fas" :class="adminOn ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                                <span x-text="adminOn ? 'On' : 'Off'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Row 2: Dashboard Sections --}}
+            @php
+                $hiddenKeys  = json_decode($appSettings['hidden_elements'] ?? '[]', true) ?: [];
+                $shownExtras = json_decode($appSettings['shown_extras']    ?? '[]', true) ?: [];
+                $defaultVisibleLabels = ['dash_stats'=>'Overview Cards','dash_task_analytics'=>'Task Analytics','dash_working_hours'=>'Working Hours','dash_project_stats'=>'Project Stats','dash_workload'=>'Task Workload','dash_customers'=>'Tasks by Customer','dash_recent_tasks'=>'Recent Tasks'];
+                $extraLabels = ['dash_priority_chart'=>'Tasks by Priority','dash_team_performance'=>'Team Performance','dash_project_progress'=>'Project Progress'];
+            @endphp
+            <div class="scard" style="margin-bottom:16px;" id="dashboard-sections-card">
+                <div class="scard-header" style="padding-bottom:0;">
+                    <div class="scard-icon" style="background:#EEF2FF;color:#6366F1;"><i class="fas fa-table-cells-large"></i></div>
+                    <div>
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Dashboard Sections</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Hide default widgets or enable extra charts</p>
+                    </div>
+                </div>
+
+                {{-- Default sections as chips --}}
+                <div style="border-top:1px solid #F3F4F6;padding:14px 20px 4px;">
+                    <p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;">Default Sections</p>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;" id="hidden-list">
+                        @foreach($defaultVisibleLabels as $hk => $hlabel)
+                        @php $isHidden = in_array($hk, $hiddenKeys); @endphp
+                        <div id="hidden-row-{{ $hk }}"
+                             style="display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:500;border:1.5px solid {{ $isHidden ? '#FECACA' : '#E0E7FF' }};background:{{ $isHidden ? '#FEF2F2' : '#EEF2FF' }};color:{{ $isHidden ? '#DC2626' : '#4F46E5' }};">
+                            <i class="fas {{ $isHidden ? 'fa-eye-slash' : 'fa-eye' }}" style="font-size:10px;" id="chip-icon-{{ $hk }}"></i>
+                            <span>{{ $hlabel }}</span>
+                            @if($isHidden)
+                            <button onclick="restoreElement('{{ $hk }}', this)"
+                                    style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#FECACA;border:none;cursor:pointer;padding:0;margin-left:2px;font-size:9px;color:#DC2626;"
+                                    title="Restore">
+                                <i class="fas fa-xmark"></i>
+                            </button>
+                            @else
+                            <button onclick="hideElement('{{ $hk }}', this)"
+                                    style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#C7D2FE;border:none;cursor:pointer;padding:0;margin-left:2px;font-size:9px;color:#4F46E5;"
+                                    title="Hide">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            @endif
                         </div>
                         @endforeach
                     </div>
                 </div>
-                @else
-                <div style="border-top:1px solid #F3F4F6;padding-top:16px;text-align:center;padding-bottom:4px;">
-                    <i class="fas fa-check-circle" style="font-size:20px;margin-bottom:6px;display:block;color:#6EE7B7;"></i>
-                    <p style="font-size:12px;color:#9CA3AF;margin:0;">All default sections are visible.</p>
-                </div>
-                @endif
 
-                {{-- Extra (opt-in) charts --}}
-                <div style="border-top:1px solid #F3F4F6;padding-top:16px;margin-top:16px;">
-                    <p style="font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;">Additional Charts</p>
-                    <div style="display:flex;flex-direction:column;gap:8px;">
+                {{-- Extra charts as chips --}}
+                <div style="border-top:1px solid #F3F4F6;padding:14px 20px 16px;margin-top:4px;">
+                    <p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;">Additional Charts</p>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;">
                         @foreach($extraLabels as $ek => $elabel)
                         @php $isAdded = in_array($ek, $shownExtras); @endphp
-                        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:{{ $isAdded ? '#F0FDF4' : '#F9FAFB' }};border-radius:10px;border:1px solid {{ $isAdded ? '#BBF7D0' : '#F0F0F0' }};" id="extra-row-{{ $ek }}">
-                            <div style="display:flex;align-items:center;gap:10px;">
-                                <i class="fas {{ $isAdded ? 'fa-eye' : 'fa-plus-circle' }}" style="color:{{ $isAdded ? '#10B981' : '#A5B4FC' }};font-size:12px;" id="extra-icon-{{ $ek }}"></i>
-                                <span style="font-size:13px;font-weight:500;color:#374151;">{{ $elabel }}</span>
-                                @if($isAdded)
-                                <span style="font-size:10px;font-weight:700;background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:20px;">Active</span>
-                                @endif
-                            </div>
+                        <div id="extra-row-{{ $ek }}"
+                             style="display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:500;border:1.5px solid {{ $isAdded ? '#BBF7D0' : '#E5E7EB' }};background:{{ $isAdded ? '#F0FDF4' : '#F9FAFB' }};color:{{ $isAdded ? '#059669' : '#6B7280' }};">
+                            <i class="fas {{ $isAdded ? 'fa-eye' : 'fa-plus-circle' }}" style="font-size:10px;" id="extra-icon-{{ $ek }}"></i>
+                            <span>{{ $elabel }}</span>
                             @if($isAdded)
+                            <span style="font-size:9px;font-weight:700;background:#D1FAE5;color:#065F46;padding:1px 6px;border-radius:20px;">Active</span>
                             <button onclick="removeExtra('{{ $ek }}', this)"
-                                    style="display:flex;align-items:center;gap:5px;padding:6px 14px;background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;"
-                                    onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
-                                <i class="fas fa-times" style="font-size:10px;"></i> Remove
+                                    style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#BBF7D0;border:none;cursor:pointer;padding:0;margin-left:2px;font-size:9px;color:#059669;"
+                                    title="Remove">
+                                <i class="fas fa-xmark"></i>
                             </button>
                             @else
                             <button onclick="addExtra('{{ $ek }}', this)"
-                                    style="display:flex;align-items:center;gap:5px;padding:6px 14px;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;"
-                                    onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'">
-                                <i class="fas fa-plus" style="font-size:10px;"></i> Add
+                                    style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#E5E7EB;border:none;cursor:pointer;padding:0;margin-left:2px;font-size:9px;color:#6B7280;"
+                                    title="Add">
+                                <i class="fas fa-plus"></i>
                             </button>
                             @endif
                         </div>
@@ -1137,7 +1242,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                 </div>
             </div>
 
-            {{-- ── Sidebar Navigation Control ── --}}
+            {{-- Row 3: Sidebar Navigation + Header Elements side by side --}}
             @php
                 $navHiddenKeys = json_decode($appSettings['nav_hidden'] ?? '[]', true) ?: [];
                 $navItems = [
@@ -1148,118 +1253,108 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         ['key'=>'nav_calendar',    'icon'=>'fa-calendar-days',   'label'=>'Calendar'],
                     ],
                     'admin'   => [
-                        ['key'=>'nav_overview',        'icon'=>'fa-table-cells-large', 'label'=>'Overview (Admin/Manager)'],
+                        ['key'=>'nav_overview',        'icon'=>'fa-table-cells-large', 'label'=>'Overview'],
                         ['key'=>'nav_projects',        'icon'=>'fa-diagram-project',   'label'=>'Projects'],
                         ['key'=>'nav_tasks',           'icon'=>'fa-list-check',        'label'=>'Tasks'],
                         ['key'=>'nav_approvals',       'icon'=>'fa-clipboard-check',   'label'=>'Approvals'],
+                        ['key'=>'nav_customers',       'icon'=>'fa-building',          'label'=>'Customers'],
                         ['key'=>'nav_audit',           'icon'=>'fa-shield-halved',     'label'=>'Audit Log'],
                         ['key'=>'nav_reports',         'icon'=>'fa-chart-bar',         'label'=>'Reports'],
-                        ['key'=>'nav_recent_projects', 'icon'=>'fa-clock-rotate-left', 'label'=>'Recent Projects Section'],
+                        ['key'=>'nav_recent_projects', 'icon'=>'fa-clock-rotate-left', 'label'=>'Recent Projects'],
                     ],
                     'user'    => [
-                        ['key'=>'nav_my_tasks',      'icon'=>'fa-square-check',    'label'=>'My Tasks (User)'],
-                        ['key'=>'nav_my_projects',   'icon'=>'fa-diagram-project', 'label'=>'My Projects (User)'],
-                        ['key'=>'nav_user_reports',  'icon'=>'fa-chart-bar',       'label'=>'My Reports (User)'],
+                        ['key'=>'nav_my_tasks',      'icon'=>'fa-square-check',    'label'=>'My Tasks'],
+                        ['key'=>'nav_my_projects',   'icon'=>'fa-diagram-project', 'label'=>'My Projects'],
+                        ['key'=>'nav_user_reports',  'icon'=>'fa-chart-bar',       'label'=>'My Reports'],
                     ],
                     'footer'  => [
                         ['key'=>'nav_settings',    'icon'=>'fa-gear',            'label'=>'Settings Link'],
                     ],
                 ];
-            @endphp
-            <div class="scard" style="margin-top:20px;">
-                <div class="scard-header">
-                    <div class="scard-icon" style="background:#F5F3FF;color:#7C3AED;"><i class="fas fa-sidebar"></i></div>
-                    <div>
-                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Sidebar Navigation</p>
-                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Show or hide individual items in the left sidebar. Hidden items are removed for all users.</p>
-                    </div>
-                </div>
-
-                @foreach(['all'=>'All Roles','admin'=>'Admin / Manager','user'=>'User Only','footer'=>'Sidebar Footer'] as $grp => $grpLabel)
-                <div style="border-top:1px solid #F3F4F6;padding:14px 0 6px;">
-                    <p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.07em;margin:0 0 10px;">{{ $grpLabel }}</p>
-                    <div style="display:flex;flex-direction:column;gap:6px;">
-                        @foreach($navItems[$grp] as $ni)
-                        @php $niHidden = in_array($ni['key'], $navHiddenKeys); @endphp
-                        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:{{ $niHidden ? '#FEF2F2' : '#F9FAFB' }};border-radius:10px;border:1px solid {{ $niHidden ? '#FECACA' : '#F0F0F0' }};" id="navrow-{{ $ni['key'] }}">
-                            <div style="display:flex;align-items:center;gap:10px;">
-                                <div style="width:30px;height:30px;border-radius:8px;background:{{ $niHidden ? '#FEE2E2' : '#EEF2FF' }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                    <i class="fas {{ $ni['icon'] }}" style="font-size:11px;color:{{ $niHidden ? '#DC2626' : '#6366F1' }};"></i>
-                                </div>
-                                <span style="font-size:13px;font-weight:500;color:#374151;">{{ $ni['label'] }}</span>
-                                @if($niHidden)
-                                <span style="font-size:10px;font-weight:700;background:#FEE2E2;color:#DC2626;padding:2px 8px;border-radius:20px;">Hidden</span>
-                                @endif
-                            </div>
-                            @if($niHidden)
-                            <button onclick="toggleNavItem('{{ $ni['key'] }}','show',this)"
-                                    style="display:flex;align-items:center;gap:5px;padding:6px 14px;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;"
-                                    onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'">
-                                <i class="fas fa-eye" style="font-size:10px;"></i> Show
-                            </button>
-                            @else
-                            <button onclick="toggleNavItem('{{ $ni['key'] }}','hide',this)"
-                                    style="display:flex;align-items:center;gap:5px;padding:6px 14px;background:#F9FAFB;color:#6B7280;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;"
-                                    onmouseover="this.style.background='#FEF2F2';this.style.color='#DC2626';this.style.borderColor='#FECACA';"
-                                    onmouseout="this.style.background='#F9FAFB';this.style.color='#6B7280';this.style.borderColor='#E5E7EB';">
-                                <i class="fas fa-eye-slash" style="font-size:10px;"></i> Hide
-                            </button>
-                            @endif
-                        </div>
-                        @endforeach
-                    </div>
-                </div>
-                @endforeach
-            </div>
-
-            {{-- ── Header Elements Control ── --}}
-            @php
                 $headerItems = [
-                    ['key'=>'nav_notifications', 'icon'=>'fa-bell',       'label'=>'Notifications Bell',  'desc'=>'The notification bell icon in the top bar'],
-                    ['key'=>'nav_online_users',  'icon'=>'fa-circle-dot', 'label'=>"Who's Online Button", 'desc'=>'Online users indicator (Admin/Manager only)'],
+                    ['key'=>'nav_search',        'icon'=>'fa-magnifying-glass',  'label'=>'Search Bar'],
+                    ['key'=>'nav_history',        'icon'=>'fa-clock-rotate-left', 'label'=>'Page History'],
+                    ['key'=>'nav_notifications', 'icon'=>'fa-bell',               'label'=>'Notifications Bell'],
+                    ['key'=>'nav_online_users',  'icon'=>'fa-circle-dot',         'label'=>"Who's Online"],
                 ];
             @endphp
-            <div class="scard" style="margin-top:20px;">
-                <div class="scard-header">
-                    <div class="scard-icon" style="background:#FFF7ED;color:#EA580C;"><i class="fas fa-bars-staggered"></i></div>
-                    <div>
-                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Header Elements</p>
-                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Control visibility of icons and buttons in the top navigation bar.</p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" id="nav-controls-grid">
+
+                {{-- Sidebar Navigation --}}
+                <div class="scard" style="margin:0;position:relative;overflow:hidden;" id="sidebar-nav-card">
+                    <div class="scard-header" style="padding-bottom:0;">
+                        <div class="scard-icon" style="background:#F5F3FF;color:#7C3AED;"><i class="fas fa-sidebar"></i></div>
+                        <div>
+                            <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Sidebar Navigation</p>
+                            <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Show or hide sidebar links</p>
+                        </div>
                     </div>
-                </div>
-                <div style="border-top:1px solid #F3F4F6;padding:14px 0 6px;">
-                    <div style="display:flex;flex-direction:column;gap:6px;">
-                        @foreach($headerItems as $hi)
-                        @php $hiHidden = in_array($hi['key'], $navHiddenKeys); @endphp
-                        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:{{ $hiHidden ? '#FEF2F2' : '#F9FAFB' }};border-radius:10px;border:1px solid {{ $hiHidden ? '#FECACA' : '#F0F0F0' }};" id="navrow-{{ $hi['key'] }}">
-                            <div style="display:flex;align-items:center;gap:10px;">
-                                <div style="width:30px;height:30px;border-radius:8px;background:{{ $hiHidden ? '#FEE2E2' : '#FFF7ED' }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                    <i class="fas {{ $hi['icon'] }}" style="font-size:11px;color:{{ $hiHidden ? '#DC2626' : '#EA580C' }};"></i>
+                    @foreach(['all'=>'All Roles','admin'=>'Admin / Manager','user'=>'User Only','footer'=>'Footer'] as $grp => $grpLabel)
+                    <div style="border-top:1px solid #F3F4F6;padding:10px 20px 6px;">
+                        <p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.07em;margin:0 0 8px;">{{ $grpLabel }}</p>
+                        <div style="display:flex;flex-direction:column;gap:4px;">
+                            @foreach($navItems[$grp] as $ni)
+                            @php $niHidden = in_array($ni['key'], $navHiddenKeys); @endphp
+                            <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:{{ $niHidden ? '#FEF2F2' : '#F9FAFB' }};border-radius:8px;border:1px solid {{ $niHidden ? '#FECACA' : '#F0F0F0' }};" id="navrow-{{ $ni['key'] }}" data-active-color="#7C3AED">
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <i class="fas {{ $ni['icon'] }}" style="font-size:10px;color:{{ $niHidden ? '#DC2626' : '#7C3AED' }};width:12px;text-align:center;"></i>
+                                    <span style="font-size:12px;font-weight:500;color:{{ $niHidden ? '#DC2626' : '#374151' }};">{{ $ni['label'] }}</span>
                                 </div>
-                                <div>
-                                    <span style="font-size:13px;font-weight:500;color:#374151;">{{ $hi['label'] }}</span>
-                                    <span style="display:block;font-size:11px;color:#9CA3AF;">{{ $hi['desc'] }}</span>
-                                </div>
-                                @if($hiHidden)
-                                <span style="font-size:10px;font-weight:700;background:#FEE2E2;color:#DC2626;padding:2px 8px;border-radius:20px;">Hidden</span>
+                                @if($niHidden)
+                                <button onclick="toggleNavItem('{{ $ni['key'] }}','show',this)"
+                                        style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:#EEF2FF;color:#4F46E5;border:1px solid #C7D2FE;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">
+                                    <i class="fas fa-eye" style="font-size:9px;"></i> Show
+                                </button>
+                                @else
+                                <button onclick="toggleNavItem('{{ $ni['key'] }}','hide',this)"
+                                        style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:#F9FAFB;color:#9CA3AF;border:1px solid #E5E7EB;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;"
+                                        onmouseover="this.style.background='#FEF2F2';this.style.color='#DC2626';this.style.borderColor='#FECACA';"
+                                        onmouseout="this.style.background='#F9FAFB';this.style.color='#9CA3AF';this.style.borderColor='#E5E7EB';">
+                                    <i class="fas fa-eye-slash" style="font-size:9px;"></i> Hide
+                                </button>
                                 @endif
                             </div>
-                            @if($hiHidden)
-                            <button onclick="toggleNavItem('{{ $hi['key'] }}','show',this)"
-                                    style="display:flex;align-items:center;gap:5px;padding:6px 14px;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;"
-                                    onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'">
-                                <i class="fas fa-eye" style="font-size:10px;"></i> Show
-                            </button>
-                            @else
-                            <button onclick="toggleNavItem('{{ $hi['key'] }}','hide',this)"
-                                    style="display:flex;align-items:center;gap:5px;padding:6px 14px;background:#F9FAFB;color:#6B7280;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;"
-                                    onmouseover="this.style.background='#FEF2F2';this.style.color='#DC2626';this.style.borderColor='#FECACA';"
-                                    onmouseout="this.style.background='#F9FAFB';this.style.color='#6B7280';this.style.borderColor='#E5E7EB';">
-                                <i class="fas fa-eye-slash" style="font-size:10px;"></i> Hide
-                            </button>
-                            @endif
+                            @endforeach
                         </div>
-                        @endforeach
+                    </div>
+                    @endforeach
+                    <div style="height:6px;"></div>
+                </div>
+
+                {{-- Header Elements --}}
+                <div class="scard" style="margin:0;position:relative;overflow:hidden;" id="header-elements-card">
+                    <div class="scard-header" style="padding-bottom:0;">
+                        <div class="scard-icon" style="background:#FFF7ED;color:#EA580C;"><i class="fas fa-bars-staggered"></i></div>
+                        <div>
+                            <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Header Elements</p>
+                            <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Top navigation bar controls</p>
+                        </div>
+                    </div>
+                    <div style="border-top:1px solid #F3F4F6;padding:10px 20px 16px;">
+                        <div style="display:flex;flex-direction:column;gap:4px;">
+                            @foreach($headerItems as $hi)
+                            @php $hiHidden = in_array($hi['key'], $navHiddenKeys); @endphp
+                            <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:{{ $hiHidden ? '#FEF2F2' : '#F9FAFB' }};border-radius:8px;border:1px solid {{ $hiHidden ? '#FECACA' : '#F0F0F0' }};" id="navrow-{{ $hi['key'] }}" data-active-color="#EA580C">
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <i class="fas {{ $hi['icon'] }}" style="font-size:10px;color:{{ $hiHidden ? '#DC2626' : '#EA580C' }};width:12px;text-align:center;"></i>
+                                    <span style="font-size:12px;font-weight:500;color:{{ $hiHidden ? '#DC2626' : '#374151' }};">{{ $hi['label'] }}</span>
+                                </div>
+                                @if($hiHidden)
+                                <button onclick="toggleNavItem('{{ $hi['key'] }}','show',this)"
+                                        style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:#EEF2FF;color:#4F46E5;border:1px solid #C7D2FE;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">
+                                    <i class="fas fa-eye" style="font-size:9px;"></i> Show
+                                </button>
+                                @else
+                                <button onclick="toggleNavItem('{{ $hi['key'] }}','hide',this)"
+                                        style="display:flex;align-items:center;gap:4px;padding:4px 10px;background:#F9FAFB;color:#9CA3AF;border:1px solid #E5E7EB;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;"
+                                        onmouseover="this.style.background='#FEF2F2';this.style.color='#DC2626';this.style.borderColor='#FECACA';"
+                                        onmouseout="this.style.background='#F9FAFB';this.style.color='#9CA3AF';this.style.borderColor='#E5E7EB';">
+                                    <i class="fas fa-eye-slash" style="font-size:9px;"></i> Hide
+                                </button>
+                                @endif
+                            </div>
+                            @endforeach
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1406,9 +1501,77 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 </div>{{-- end settings-wrap --}}
 
 <script>
-const _devToggleUrl   = '{{ route('admin.settings.dev-mode') }}';
-const _devElementsUrl = '{{ route('admin.settings.elements.toggle') }}';
-const _csrfToken      = '{{ csrf_token() }}';
+const _devToggleUrl         = '{{ route('admin.settings.dev-mode') }}';
+const _maintenanceToggleUrl = '{{ route('admin.settings.maintenance') }}';
+const _devElementsUrl       = '{{ route('admin.settings.elements.toggle') }}';
+const _csrfToken            = '{{ csrf_token() }}';
+
+function _lockCard(id, message) {
+    const card = document.getElementById(id);
+    if (!card || card.getAttribute('data-locked') === '1') return;
+    card.setAttribute('data-locked', '1');
+
+    // Lock badge in header
+    const header = card.querySelector('.scard-header');
+    if (header && !header.querySelector('.lock-badge')) {
+        const badge = document.createElement('span');
+        badge.className = 'lock-badge';
+        badge.style.cssText = 'display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:#F3F4F6;border-radius:20px;font-size:11px;font-weight:600;color:#9CA3AF;margin-left:auto;flex-shrink:0;';
+        badge.innerHTML = '<i class="fas fa-lock" style="font-size:9px;"></i> Locked';
+        badge.title = message;
+        header.style.alignItems = 'center';
+        header.appendChild(badge);
+    }
+
+    // Disable all action buttons inside the card body
+    card.querySelectorAll('button').forEach(function (btn) {
+        // Skip the scard-header itself (no buttons there, but safety check)
+        if (header && header.contains(btn)) return;
+        btn.setAttribute('data-was-disabled', btn.disabled ? '1' : '0');
+        btn.disabled = true;
+        btn.style.opacity = '0.38';
+        btn.style.cursor  = 'not-allowed';
+        btn.style.pointerEvents = 'none';
+    });
+}
+
+function _unlockCard(id) {
+    const card = document.getElementById(id);
+    if (!card || card.getAttribute('data-locked') !== '1') return;
+    card.removeAttribute('data-locked');
+
+    // Remove lock badge
+    const badge = card.querySelector('.lock-badge');
+    if (badge) badge.remove();
+
+    // Re-enable buttons
+    card.querySelectorAll('button').forEach(function (btn) {
+        if (btn.getAttribute('data-was-disabled') !== '1') {
+            btn.disabled = false;
+            btn.style.opacity = '';
+            btn.style.cursor  = '';
+            btn.style.pointerEvents = '';
+        }
+        btn.removeAttribute('data-was-disabled');
+    });
+}
+
+function toggleMaintenance(btn) {
+    fetch(_maintenanceToggleUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': _csrfToken, 'Content-Type': 'application/json' } })
+        .then(r => r.json())
+        .then(d => {
+            const on = d.maintenance_mode;
+            btn.style.background = on ? '#D97706' : '#F3F4F6';
+            btn.style.color      = on ? '#fff'    : '#374151';
+            document.getElementById('maintenance-icon').className  = 'fas ' + (on ? 'fa-toggle-on' : 'fa-toggle-off');
+            document.getElementById('maintenance-label').textContent = on ? 'On' : 'Off';
+            document.getElementById('maintenance-status').textContent = on
+                ? 'Active — admins only'
+                : 'Inactive';
+            if (on) _unlockCard('manager-access-card');
+            else    _lockCard('manager-access-card', 'Enable Maintenance Mode to edit manager access');
+        });
+}
 
 function toggleDevMode(btn) {
     fetch(_devToggleUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': _csrfToken, 'Content-Type': 'application/json' } })
@@ -1418,36 +1581,148 @@ function toggleDevMode(btn) {
             btn.style.background = on ? '#6366F1' : '#F3F4F6';
             btn.style.color      = on ? '#fff'    : '#374151';
             document.getElementById('dev-mode-icon').className  = 'fas ' + (on ? 'fa-toggle-on' : 'fa-toggle-off');
-            document.getElementById('dev-mode-label').textContent = on ? 'Enabled' : 'Disabled';
+            document.getElementById('dev-mode-label').textContent = on ? 'On' : 'Off';
             document.getElementById('dev-mode-status').textContent = on
                 ? 'Active — click sections on the dashboard to remove them'
                 : 'Inactive — enable to customise the dashboard layout';
+            if (on) { _unlockCard('sidebar-nav-card'); _unlockCard('header-elements-card'); _unlockCard('dashboard-sections-card'); }
+            else    { _lockCard('sidebar-nav-card', 'Enable Developer Mode to edit navigation'); _lockCard('header-elements-card', 'Enable Developer Mode to edit navigation'); _lockCard('dashboard-sections-card', 'Enable Developer Mode to edit dashboard sections'); }
+            if (typeof window._devModeChanged === 'function') window._devModeChanged(on);
         });
 }
 
+// Initialise lock state on page load
+document.addEventListener('DOMContentLoaded', function () {
+    @if(($appSettings['developer_mode'] ?? '0') !== '1')
+    _lockCard('sidebar-nav-card',        'Enable Developer Mode to edit navigation');
+    _lockCard('header-elements-card',    'Enable Developer Mode to edit navigation');
+    _lockCard('dashboard-sections-card', 'Enable Developer Mode to edit dashboard sections');
+    @endif
+    @if(($appSettings['maintenance_mode'] ?? '0') !== '1')
+    _lockCard('manager-access-card', 'Enable Maintenance Mode to edit manager access');
+    @endif
+});
+
 function restoreElement(key, btn) {
-    fetch(_devElementsUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': _csrfToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ key, action: 'restore' }) })
+    btn.disabled = true;
+    fetch(_devElementsUrl, { method:'POST', headers:{'X-CSRF-TOKEN':_csrfToken,'Content-Type':'application/json'}, body:JSON.stringify({key, action:'restore'}) })
         .then(r => r.json())
-        .then(() => {
-            const row = document.getElementById('hidden-row-' + key);
-            if (row) row.remove();
-            const list = document.getElementById('hidden-list');
-            if (list && list.children.length === 0) {
-                list.closest('div').innerHTML = '<div style="text-align:center;padding-bottom:4px;"><i class="fas fa-check-circle" style="font-size:20px;margin-bottom:6px;display:block;color:#6EE7B7;"></i><p style="font-size:12px;color:#9CA3AF;margin:0;">All default sections are visible.</p></div>';
-            }
-        });
+        .then(() => { _chipSetVisible(key); })
+        .catch(() => { btn.disabled = false; });
+}
+
+function hideElement(key, btn) {
+    btn.disabled = true;
+    fetch(_devElementsUrl, { method:'POST', headers:{'X-CSRF-TOKEN':_csrfToken,'Content-Type':'application/json'}, body:JSON.stringify({key, action:'hide'}) })
+        .then(r => r.json())
+        .then(() => { _chipSetHidden(key); })
+        .catch(() => { btn.disabled = false; });
 }
 
 function addExtra(key, btn) {
-    fetch(_devElementsUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': _csrfToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ key, action: 'add' }) })
+    btn.disabled = true;
+    fetch(_devElementsUrl, { method:'POST', headers:{'X-CSRF-TOKEN':_csrfToken,'Content-Type':'application/json'}, body:JSON.stringify({key, action:'add'}) })
         .then(r => r.json())
-        .then(() => { location.reload(); });
+        .then(() => { _extraSetActive(key); })
+        .catch(() => { btn.disabled = false; });
 }
 
 function removeExtra(key, btn) {
-    fetch(_devElementsUrl, { method: 'POST', headers: { 'X-CSRF-TOKEN': _csrfToken, 'Content-Type': 'application/json' }, body: JSON.stringify({ key, action: 'remove' }) })
+    btn.disabled = true;
+    fetch(_devElementsUrl, { method:'POST', headers:{'X-CSRF-TOKEN':_csrfToken,'Content-Type':'application/json'}, body:JSON.stringify({key, action:'remove'}) })
         .then(r => r.json())
-        .then(() => { location.reload(); });
+        .then(() => { _extraSetInactive(key); })
+        .catch(() => { btn.disabled = false; });
+}
+
+// Update a default-section chip to VISIBLE state
+function _chipSetVisible(key) {
+    const chip = document.getElementById('hidden-row-' + key);
+    if (!chip) return;
+    chip.style.background  = '#EEF2FF';
+    chip.style.borderColor = '#E0E7FF';
+    chip.style.color       = '#4F46E5';
+    const icon = chip.querySelector('i');
+    if (icon) { icon.className = 'fas fa-eye'; icon.style.fontSize = '10px'; }
+    const xBtn = chip.querySelector('button');
+    if (xBtn) {
+        xBtn.style.background = '#C7D2FE';
+        xBtn.style.color      = '#4F46E5';
+        xBtn.innerHTML        = '<i class="fas fa-minus"></i>';
+        xBtn.title            = 'Hide';
+        xBtn.onclick          = function() { hideElement(key, this); };
+        xBtn.disabled         = false;
+    }
+}
+
+// Update a default-section chip to HIDDEN state
+function _chipSetHidden(key) {
+    const chip = document.getElementById('hidden-row-' + key);
+    if (!chip) return;
+    chip.style.background  = '#FEF2F2';
+    chip.style.borderColor = '#FECACA';
+    chip.style.color       = '#DC2626';
+    const icon = chip.querySelector('i');
+    if (icon) { icon.className = 'fas fa-eye-slash'; icon.style.fontSize = '10px'; }
+    const xBtn = chip.querySelector('button');
+    if (xBtn) {
+        xBtn.style.background = '#FECACA';
+        xBtn.style.color      = '#DC2626';
+        xBtn.innerHTML        = '<i class="fas fa-xmark"></i>';
+        xBtn.title            = 'Restore';
+        xBtn.onclick          = function() { restoreElement(key, this); };
+        xBtn.disabled         = false;
+    }
+}
+
+// Update an extra-chart chip to ACTIVE state
+function _extraSetActive(key) {
+    const chip = document.getElementById('extra-row-' + key);
+    if (!chip) return;
+    chip.style.background  = '#F0FDF4';
+    chip.style.borderColor = '#BBF7D0';
+    chip.style.color       = '#059669';
+    const icon = document.getElementById('extra-icon-' + key);
+    if (icon) { icon.className = 'fas fa-eye'; icon.style.color = '#059669'; }
+    const btn = chip.querySelector('button');
+    if (btn) {
+        btn.style.background = '#BBF7D0';
+        btn.style.color      = '#059669';
+        btn.innerHTML        = '<i class="fas fa-xmark" style="font-size:9px;"></i>';
+        btn.title            = 'Remove';
+        btn.onclick          = function() { removeExtra(key, this); };
+        btn.disabled         = false;
+    }
+    // Add Active badge if not present
+    if (!chip.querySelector('.extra-active-badge')) {
+        const badge = document.createElement('span');
+        badge.className   = 'extra-active-badge';
+        badge.textContent = 'Active';
+        badge.style.cssText = 'font-size:9px;font-weight:700;background:#D1FAE5;color:#065F46;padding:1px 6px;border-radius:20px;';
+        btn.insertAdjacentElement('beforebegin', badge);
+    }
+}
+
+// Update an extra-chart chip to INACTIVE state
+function _extraSetInactive(key) {
+    const chip = document.getElementById('extra-row-' + key);
+    if (!chip) return;
+    chip.style.background  = '#F9FAFB';
+    chip.style.borderColor = '#E5E7EB';
+    chip.style.color       = '#6B7280';
+    const icon = document.getElementById('extra-icon-' + key);
+    if (icon) { icon.className = 'fas fa-plus-circle'; icon.style.color = '#A5B4FC'; }
+    const btn = chip.querySelector('button');
+    if (btn) {
+        btn.style.background = '#E5E7EB';
+        btn.style.color      = '#6B7280';
+        btn.innerHTML        = '<i class="fas fa-plus" style="font-size:9px;"></i>';
+        btn.title            = 'Add';
+        btn.onclick          = function() { addExtra(key, this); };
+        btn.disabled         = false;
+    }
+    const badge = chip.querySelector('.extra-active-badge');
+    if (badge) badge.remove();
 }
 
 const _navToggleUrl = '{{ route('admin.settings.nav.toggle') }}';
@@ -1460,7 +1735,34 @@ function toggleNavItem(key, action, btn) {
         body: JSON.stringify({ key, action })
     })
     .then(r => r.json())
-    .then(() => { location.reload(); })
+    .then(() => {
+        const row        = document.getElementById('navrow-' + key);
+        if (!row) return;
+        const isNowHidden = action === 'hide';
+        const activeColor = row.getAttribute('data-active-color') || '#6366F1';
+        const icon  = row.querySelector('i');
+        const label = row.querySelector('span');
+
+        row.style.background   = isNowHidden ? '#FEF2F2' : '#F9FAFB';
+        row.style.borderColor  = isNowHidden ? '#FECACA' : '#F0F0F0';
+        if (icon)  icon.style.color  = isNowHidden ? '#DC2626' : activeColor;
+        if (label) label.style.color = isNowHidden ? '#DC2626' : '#374151';
+
+        if (isNowHidden) {
+            btn.style.cssText = 'display:flex;align-items:center;gap:4px;padding:4px 10px;background:#EEF2FF;color:#4F46E5;border:1px solid #C7D2FE;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;';
+            btn.innerHTML     = '<i class="fas fa-eye" style="font-size:9px;"></i> Show';
+            btn.onclick       = function() { toggleNavItem(key, 'show', this); };
+            btn.onmouseover   = null;
+            btn.onmouseout    = null;
+        } else {
+            btn.style.cssText = 'display:flex;align-items:center;gap:4px;padding:4px 10px;background:#F9FAFB;color:#9CA3AF;border:1px solid #E5E7EB;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;';
+            btn.innerHTML     = '<i class="fas fa-eye-slash" style="font-size:9px;"></i> Hide';
+            btn.onclick       = function() { toggleNavItem(key, 'hide', this); };
+            btn.onmouseover   = function() { this.style.background='#FEF2F2'; this.style.color='#DC2626'; this.style.borderColor='#FECACA'; };
+            btn.onmouseout    = function() { this.style.background='#F9FAFB'; this.style.color='#9CA3AF'; this.style.borderColor='#E5E7EB'; };
+        }
+        btn.disabled = false;
+    })
     .catch(() => { btn.disabled = false; });
 }
 </script>

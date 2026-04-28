@@ -833,6 +833,147 @@ document.addEventListener('keydown', function(e) {
 </div>{{-- /x-data --}}
 
 {{-- ═══════════════════════════════
+     EDIT PROFILE MODAL
+════════════════════════════════ --}}
+@unless($isPreview)
+<div id="profile-modal"
+     style="display:none;position:fixed;inset:0;z-index:50;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.5);"
+     onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,.2);width:100%;max-width:460px;overflow:hidden;">
+
+        {{-- Header --}}
+        <div style="padding:20px 24px 16px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:34px;height:34px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;">
+                    <i class="fa fa-user-pen" style="color:#6366F1;font-size:14px;"></i>
+                </div>
+                <div>
+                    <p style="font-size:15px;font-weight:700;color:#111827;margin:0;">Edit Profile</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;">Update your photo, email or password</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('profile-modal').style.display='none'"
+                    style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;">
+                <i class="fa fa-times text-sm"></i>
+            </button>
+        </div>
+
+        @if(session('profile_success'))
+        <div style="margin:16px 24px 0;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:10px 14px;font-size:12px;color:#166534;display:flex;align-items:center;gap:8px;">
+            <i class="fa fa-circle-check"></i> {{ session('profile_success') }}
+        </div>
+        @endif
+
+        @if($errors->any())
+        <div style="margin:16px 24px 0;background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:10px 14px;font-size:12px;color:#DC2626;display:flex;align-items:center;gap:8px;">
+            <i class="fa fa-exclamation-circle"></i> {{ $errors->first() }}
+        </div>
+        @endif
+
+        <form method="POST" action="{{ route('user.profile.update') }}" enctype="multipart/form-data">
+            @csrf
+            <div style="padding:20px 24px;display:flex;flex-direction:column;gap:18px;">
+
+                {{-- Profile Picture --}}
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:10px;">Profile Picture</label>
+                    <div style="display:flex;align-items:center;gap:14px;">
+                        <div style="position:relative;width:64px;height:64px;flex-shrink:0;" id="avatar-preview-wrap">
+                            @if(auth()->user()->avatarUrl())
+                            <img id="avatar-preview" src="{{ auth()->user()->avatarUrl() }}"
+                                 style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid #E5E7EB;">
+                            @else
+                            <div id="avatar-preview-initials"
+                                 style="width:64px;height:64px;border-radius:50%;background:#6366F1;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;border:2px solid #E5E7EB;">
+                                {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                            </div>
+                            @endif
+                        </div>
+                        <div>
+                            <label for="avatar-input"
+                                   style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#EEF2FF;color:#4F46E5;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid #C7D2FE;">
+                                <i class="fa fa-upload" style="font-size:10px;"></i> Choose Photo
+                            </label>
+                            <input type="file" id="avatar-input" name="avatar" accept="image/*" style="display:none;"
+                                   onchange="previewAvatar(this)">
+                            <p style="font-size:11px;color:#9CA3AF;margin:5px 0 0;">JPG, PNG or WebP · max 2MB</p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Email --}}
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Email Address</label>
+                    <div style="position:relative;">
+                        <i class="fa fa-envelope" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;"></i>
+                        <input type="email" name="email" value="{{ old('email', auth()->user()->email) }}"
+                               placeholder="{{ auth()->user()->email }}"
+                               style="width:100%;padding:10px 10px 10px 32px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
+                               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                    </div>
+                </div>
+
+                {{-- New Password --}}
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">New Password <span style="font-weight:400;color:#9CA3AF;">(leave blank to keep current)</span></label>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                        <div x-data="{show:false}" style="position:relative;">
+                            <i class="fa fa-lock" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;z-index:1;"></i>
+                            <input :type="show?'text':'password'" name="password" placeholder="New password"
+                                   style="width:100%;padding:10px 32px 10px 32px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
+                                   onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                            <button type="button" @click="show=!show" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9CA3AF;padding:0;">
+                                <i :class="show?'fa fa-eye-slash':'fa fa-eye'" style="font-size:12px;"></i>
+                            </button>
+                        </div>
+                        <div x-data="{show:false}" style="position:relative;">
+                            <i class="fa fa-lock" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;z-index:1;"></i>
+                            <input :type="show?'text':'password'" name="password_confirmation" placeholder="Confirm"
+                                   style="width:100%;padding:10px 32px 10px 32px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
+                                   onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                            <button type="button" @click="show=!show" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9CA3AF;padding:0;">
+                                <i :class="show?'fa fa-eye-slash':'fa fa-eye'" style="font-size:12px;"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div style="padding:16px 24px;border-top:1px solid #F3F4F6;display:flex;justify-content:flex-end;gap:10px;">
+                <button type="button" onclick="document.getElementById('profile-modal').style.display='none'"
+                        style="padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;background:#F3F4F6;color:#374151;border:none;cursor:pointer;">
+                    Cancel
+                </button>
+                <button type="submit"
+                        style="padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;border:none;cursor:pointer;box-shadow:0 4px 12px rgba(79,70,229,.3);">
+                    <i class="fa fa-check" style="font-size:11px;margin-right:5px;"></i> Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+@endunless
+
+<script>
+function previewAvatar(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            const wrap = document.getElementById('avatar-preview-wrap');
+            wrap.innerHTML = `<img id="avatar-preview" src="${e.target.result}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid #E5E7EB;">`;
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+@if(session('profile_success') || $errors->any())
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('profile-modal').style.display = 'flex';
+});
+@endif
+</script>
+
+{{-- ═══════════════════════════════
      SUBMIT REPORT MODAL
 ════════════════════════════════ --}}
 @unless($isPreview)

@@ -3,9 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Setting;
 use App\Models\Task;
 use App\Models\TaskComment;
+use App\Models\TaskCommentEdit;
 use App\Models\TaskLog;
+use App\Models\TaskSubmission;
+use App\Models\TaskSubmissionEdit;
+use App\Models\TaskTransfer;
 use App\Models\User;
 use App\Notifications\TaskCommentPosted;
 use App\Notifications\TaskDelivered;
@@ -38,20 +43,31 @@ class TaskController extends Controller
         if ($request->filled('project')) {
             $query->where('project_id', $request->project);
         }
+        $doneStatuses   = ['approved', 'delivered', 'archived'];
+        $isDoneTab      = ($request->get('tab') === 'done');
+
         if ($request->boolean('overdue')) {
             $query->whereNotNull('deadline')
                   ->where('deadline', '<', now())
-                  ->whereNotIn('status', ['approved','delivered','archived']);
+                  ->whereNotIn('status', $doneStatuses);
         }
         if ($request->filled('filter')) {
             match($request->filter) {
                 'pending'       => $query->whereIn('status', ['draft','assigned','viewed']),
-                'done'          => $query->whereIn('status', ['approved','delivered']),
                 'due_this_week' => $query->whereNotNull('deadline')
                                          ->whereBetween('deadline', [now()->startOfWeek(\Carbon\Carbon::MONDAY), now()->endOfWeek(\Carbon\Carbon::SUNDAY)])
-                                         ->whereNotIn('status', ['approved','delivered','archived']),
+                                         ->whereNotIn('status', $doneStatuses),
                 default         => null,
             };
+        }
+
+        // Tab-based separation: active tab hides done, done tab shows only done
+        if (!$request->filled('status')) {
+            if ($isDoneTab) {
+                $query->whereIn('status', $doneStatuses);
+            } else {
+                $query->whereNotIn('status', $doneStatuses);
+            }
         }
 
         $tasks = $query->orderByRaw('CASE WHEN deadline IS NULL THEN 1 ELSE 0 END')
@@ -63,12 +79,16 @@ class TaskController extends Controller
 
         $stats = [
             'total'       => Task::count(),
+            'active'      => Task::whereNotIn('status', $doneStatuses)->count(),
             'in_progress' => Task::where('status', 'in_progress')->count(),
             'overdue'     => Task::whereNotNull('deadline')
                 ->where('deadline', '<', now())
-                ->whereNotIn('status', ['approved','delivered','archived'])
+                ->whereNotIn('status', $doneStatuses)
                 ->count(),
-            'done'        => Task::whereIn('status', ['approved','delivered'])->count(),
+            'done'        => Task::whereIn('status', $doneStatuses)->count(),
+            'approved'    => Task::where('status', 'approved')->count(),
+            'delivered'   => Task::where('status', 'delivered')->count(),
+            'archived'    => Task::where('status', 'archived')->count(),
         ];
 
         return view('admin.tasks.index', compact('tasks', 'projects', 'stats'));
@@ -76,7 +96,7 @@ class TaskController extends Controller
 
     public function show(Task $task)
     {
-        $task->load('project', 'assignee', 'assignees', 'reviewer', 'creator', 'logs.user', 'submissions.user', 'submissions.reviewer', 'comments.user', 'transfers.fromUser', 'transfers.toUser', 'transfers.transferredBy');
+        $task->load('project.attachments', 'project.members', 'project.customer', 'assignee', 'assignees', 'reviewer', 'creator', 'customer', 'logs.user', 'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor', 'comments.user', 'comments.edits.editor', 'transfers.fromUser', 'transfers.toUser', 'transfers.transferredBy');
         $users       = User::whereIn('role', ['user', 'manager'])->orderBy('name')->get();
         $socialUsers = User::where('role', 'user')->orderBy('name')->get();
         return view('admin.tasks.show', compact('task', 'users', 'socialUsers'));
@@ -84,12 +104,25 @@ class TaskController extends Controller
 
     public function comment(Request $request, Task $task)
     {
-        $request->validate(['body' => 'required|string|max:1000']);
+        $request->validate([
+            'body' => 'required|string|max:1000',
+            'file' => 'nullable|file|max:' . ((int) Setting::get('max_upload_mb', 20) * 1024),
+        ]);
+
+        $filePath = null;
+        $originalFilename = null;
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $originalFilename = $file->getClientOriginalName();
+            $filePath = $file->store("task-comment-files/{$task->id}", 'public');
+        }
 
         $comment = TaskComment::create([
-            'task_id' => $task->id,
-            'user_id' => auth()->id(),
-            'body'    => $request->body,
+            'task_id'           => $task->id,
+            'user_id'           => auth()->id(),
+            'body'              => $request->body,
+            'file_path'         => $filePath,
+            'original_filename' => $originalFilename,
         ]);
 
         TaskLog::create([
@@ -102,11 +135,45 @@ class TaskController extends Controller
 
         $comment->load('user');
 
-        if ($task->assignee) {
+        if ($task->assignee && Setting::get('notify_on_comment', '1') === '1') {
             $task->assignee->notify(new TaskCommentPosted($task, $comment));
         }
 
         return back()->with('success', 'Comment posted.');
+    }
+
+    public function editComment(Request $request, Task $task, TaskComment $comment)
+    {
+        if ($comment->task_id !== $task->id || $comment->user_id !== auth()->id()) {
+            abort(403);
+        }
+        $request->validate(['body' => 'required|string|max:1000']);
+        TaskCommentEdit::create([
+            'task_comment_id'       => $comment->id,
+            'old_body'              => $comment->body,
+            'old_file_path'         => $comment->file_path,
+            'old_original_filename' => $comment->original_filename,
+            'edited_by_id'          => auth()->id(),
+            'created_at'            => now(),
+        ]);
+        $comment->update(['body' => $request->body]);
+        return back()->with('success', 'Comment updated.');
+    }
+
+    public function editSubmissionNote(Request $request, Task $task, TaskSubmission $submission)
+    {
+        if ($submission->task_id !== $task->id) {
+            abort(403);
+        }
+        $request->validate(['note' => 'nullable|string|max:1000']);
+        TaskSubmissionEdit::create([
+            'task_submission_id' => $submission->id,
+            'old_note'           => $submission->note,
+            'edited_by_id'       => auth()->id(),
+            'created_at'         => now(),
+        ]);
+        $submission->update(['note' => $request->note]);
+        return back()->with('success', 'Submission note updated.');
     }
 
     public function deliver(Request $request, Task $task)
@@ -140,13 +207,53 @@ class TaskController extends Controller
             ['task_id' => $task->id, 'task_title' => $task->title, 'note' => $request->note]
         );
 
-        if ($task->assignee) {
+        if ($task->assignee && Setting::get('notify_on_deliver', '1') === '1') {
             $task->assignee->notify(new TaskDelivered($task, $request->note));
         }
 
         $task->project?->autoComplete();
 
         return back()->with('success', 'Task marked as delivered — ' . ($task->assignee->name ?? 'assignee') . ' has been notified.');
+    }
+
+    public function forceClose(Request $request, Task $task)
+    {
+        $closeable = ['assigned', 'viewed', 'in_progress', 'submitted', 'revision_requested', 'approved'];
+        if (!in_array($task->status, $closeable)) {
+            return back()->with('error', 'This task is already closed or archived.');
+        }
+
+        $oldStatus = $task->status;
+        $task->update(['status' => 'delivered']);
+
+        TaskLog::create([
+            'task_id'  => $task->id,
+            'user_id'  => auth()->id(),
+            'action'   => 'status_updated_delivered',
+            'note'     => 'Task force-closed by ' . auth()->user()->name . ($request->note ? ': ' . $request->note : ''),
+            'metadata' => [
+                'old_status'        => $oldStatus,
+                'new_status'        => 'delivered',
+                'delivered_by_id'   => auth()->id(),
+                'delivered_by_name' => auth()->user()->name,
+                'force_closed'      => true,
+            ],
+        ]);
+
+        AuditLogger::log(
+            'task.delivered',
+            $task,
+            'Task "' . $task->title . '" force-closed by admin (was ' . $oldStatus . ')',
+            ['task_id' => $task->id, 'task_title' => $task->title, 'old_status' => $oldStatus]
+        );
+
+        if ($task->assignee && Setting::get('notify_on_deliver', '1') === '1') {
+            $task->assignee->notify(new TaskDelivered($task, $request->note));
+        }
+
+        $task->project?->autoComplete();
+
+        return back()->with('success', 'Task closed successfully.');
     }
 
     public function destroy(Task $task)
@@ -233,8 +340,13 @@ class TaskController extends Controller
             ['task_id' => $task->id, 'task_title' => $task->title, 'old_status' => $oldStatus]
         );
 
-        if ($task->assignee) {
+        if ($task->assignee && Setting::get('notify_on_reassign', '1') === '1') {
             $task->assignee->notify(new \App\Notifications\TaskReassigned($task, true));
+        }
+
+        // If the project was auto-completed, reopen it
+        if ($task->project && $task->project->status === 'completed') {
+            $task->project->update(['status' => 'active']);
         }
 
         return back()->with('success', 'Task "' . $task->title . '" has been reopened and is now In Progress.');
@@ -263,6 +375,8 @@ class TaskController extends Controller
             'Task "' . $task->title . '" archived',
             ['task_id' => $task->id, 'task_title' => $task->title]
         );
+
+        $task->project?->autoComplete();
 
         return back()->with('success', 'Task archived.');
     }
@@ -375,6 +489,10 @@ class TaskController extends Controller
 
     public function reassign(Request $request, Task $task)
     {
+        if (in_array($task->status, ['approved', 'delivered', 'archived'])) {
+            return back()->with('error', 'This task is closed. Reopen it before reassigning.');
+        }
+
         $request->validate([
             'assigned_to' => 'required|exists:users,id',
         ]);
@@ -404,6 +522,15 @@ class TaskController extends Controller
             ],
         ]);
 
+        TaskTransfer::create([
+            'task_id'        => $task->id,
+            'from_user_id'   => $oldAssignee?->id,
+            'to_user_id'     => $newAssignee?->id,
+            'transferred_by' => auth()->id(),
+            'reason'         => $reason ?: null,
+            'transferred_at' => now(),
+        ]);
+
         AuditLogger::log(
             'task.reassigned',
             $task,
@@ -417,14 +544,66 @@ class TaskController extends Controller
             ]
         );
 
-        if ($newAssignee) {
+        if ($newAssignee && Setting::get('notify_on_reassign', '1') === '1') {
             $newAssignee->notify(new TaskReassigned($task, true));
         }
 
-        if ($oldAssignee && $oldAssignee->id !== (int) $request->assigned_to) {
+        if ($oldAssignee && $oldAssignee->id !== (int) $request->assigned_to && Setting::get('notify_on_reassign', '1') === '1') {
             $oldAssignee->notify(new TaskReassigned($task, false));
         }
 
         return back()->with('success', 'Task reassigned to ' . ($newAssignee->name ?? 'user') . '.');
+    }
+
+    public function updateDeadline(Request $request, Task $task)
+    {
+        if (in_array($task->status, ['approved', 'delivered', 'archived'])) {
+            return back()->with('error', 'Cannot change the deadline of a closed task.');
+        }
+
+        if ($task->project && $task->project->status === 'completed') {
+            return back()->with('error', 'Cannot change the deadline — the project is already completed.');
+        }
+
+        $request->validate([
+            'deadline' => 'required|date',
+            'reason'   => 'nullable|string|max:500',
+        ]);
+
+        $oldDeadline = $task->deadline->format('M d, Y');
+        $newDeadline = \Illuminate\Support\Carbon::parse($request->deadline);
+
+        if ($newDeadline->toDateString() === $task->deadline->toDateString()) {
+            return back()->with('error', 'The new deadline is the same as the current one.');
+        }
+
+        $task->update(['deadline' => $newDeadline]);
+
+        $reason = trim($request->input('reason', ''));
+        TaskLog::create([
+            'task_id'  => $task->id,
+            'user_id'  => auth()->id(),
+            'action'   => 'deadline_updated',
+            'note'     => $reason ?: null,
+            'metadata' => [
+                'old_deadline'    => $oldDeadline,
+                'new_deadline'    => $newDeadline->format('M d, Y'),
+                'changed_by_name' => auth()->user()->name,
+                'reason'          => $reason ?: null,
+            ],
+        ]);
+
+        AuditLogger::log(
+            'task.deadline_updated',
+            $task,
+            'Deadline changed from ' . $oldDeadline . ' to ' . $newDeadline->format('M d, Y'),
+            ['task_id' => $task->id, 'old_deadline' => $oldDeadline, 'new_deadline' => $newDeadline->format('M d, Y')]
+        );
+
+        if ($task->assignee && Setting::get('notify_on_reassign', '1') === '1') {
+            $task->assignee->notify(new \App\Notifications\TaskReassigned($task, true));
+        }
+
+        return back()->with('success', 'Deadline updated to ' . $newDeadline->format('M d, Y') . '.');
     }
 }

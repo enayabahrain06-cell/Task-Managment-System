@@ -19,16 +19,24 @@ class Project extends Model
         'first_review_date',
         'created_by',
         'status',
+        'customer_id',
+        'is_quick',
     ];
 
     protected $casts = [
         'deadline'          => 'date',
         'first_review_date' => 'date',
+        'is_quick'          => 'boolean',
     ];
 
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     public function attachments(): \Illuminate\Database\Eloquent\Relations\HasMany

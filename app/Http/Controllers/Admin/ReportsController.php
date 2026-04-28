@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskLog;
+use App\Models\TaskTransfer;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -19,8 +21,9 @@ class ReportsController extends Controller
             abort(403, 'You do not have permission to view Reports.');
         }
 
-        $range     = $request->input('range', '30');
-        $projectId = $request->input('project_id');
+        $range      = $request->input('range', '30');
+        $projectId  = $request->input('project_id');
+        $customerId = $request->input('customer_id');
 
         $from = match ($range) {
             '7'   => now()->subDays(7)->startOfDay(),
@@ -34,18 +37,20 @@ class ReportsController extends Controller
         $nonDoneStatuses  = ['draft', 'assigned', 'viewed', 'in_progress', 'submitted', 'revision_requested'];
 
         // ── Base scoped query helper ───────────────────────────────────────────
-        $scoped = function () use ($from, $projectId) {
+        $scoped = function () use ($from, $projectId, $customerId) {
             return Task::when($from, fn($q) => $q->where('tasks.created_at', '>=', $from))
-                       ->when($projectId, fn($q) => $q->where('tasks.project_id', $projectId));
+                       ->when($projectId, fn($q) => $q->where('tasks.project_id', $projectId))
+                       ->when($customerId, fn($q) => $q->where('tasks.customer_id', $customerId));
         };
 
         // ── Summary KPIs ───────────────────────────────────────────────────────
         $totalTasks     = $scoped()->count();
         $completedTasks = $scoped()->whereIn('status', $doneStatuses)->count();
-        // Overdue is a current state — do not filter by created_at, only by project
+        // Overdue is a current state — do not filter by created_at, only by project/customer
         $overdueTasks   = Task::where('deadline', '<', now())
                               ->whereIn('status', $nonDoneStatuses)
                               ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+                              ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
                               ->count();
         $completionRate = $totalTasks > 0 ? round($completedTasks / $totalTasks * 100) : 0;
 
@@ -57,13 +62,15 @@ class ReportsController extends Controller
             })->count();
         $onTimeRate = $completedTasks > 0 ? round($onTimeCount / $completedTasks * 100) : 0;
 
-        $activeProjects = Project::where('status', 'active')
+        $activeProjects = Project::where('status', 'active')->where('is_quick', false)
             ->when($projectId, fn($q) => $q->where('id', $projectId))
+            ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
             ->count();
 
-        // Pending review is a current queue — do not filter by created_at, only by project
+        // Pending review is a current queue — do not filter by created_at, only by project/customer
         $pendingReview = Task::where('status', 'submitted')
                              ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+                             ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
                              ->count();
 
         // All active non-admin users regardless of task count in period
@@ -110,6 +117,7 @@ class ReportsController extends Controller
         // ── Project Performance ───────────────────────────────────────────────
         $projects = Project::with('tasks')
             ->when($projectId, fn($q) => $q->where('id', $projectId))
+            ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
             ->orderByDesc('created_at')
             ->get()
             ->map(function ($proj) use ($from, $doneStatuses, $nonDoneStatuses) {
@@ -184,6 +192,8 @@ class ReportsController extends Controller
                     'overdue'          => $overdue,
                     'rate'             => $grandTotal > 0 ? round($grandDone / $grandTotal * 100) : 0,
                     'projects_created' => 0,
+                    'tasks_reopened'   => 0,
+                    'tasks_reassigned' => 0,
                 ];
             });
 
@@ -210,6 +220,15 @@ class ReportsController extends Controller
 
                 $projectsCreated = Project::where('created_by', $user->id)->count();
 
+                $tasksReopened = TaskLog::where('user_id', $user->id)
+                    ->where('action', 'status_updated_reopened')
+                    ->when($from, fn($q) => $q->where('task_logs.created_at', '>=', $from))
+                    ->count();
+
+                $tasksReassigned = TaskTransfer::where('transferred_by', $user->id)
+                    ->when($from, fn($q) => $q->where('transferred_at', '>=', $from))
+                    ->count();
+
                 return [
                     'id'               => $user->id,
                     'name'             => $user->name,
@@ -222,6 +241,8 @@ class ReportsController extends Controller
                     'overdue'          => $overdue,
                     'rate'             => $totalCreated > 0 ? round($approved / $totalCreated * 100) : ($approved > 0 ? 100 : 0),
                     'projects_created' => $projectsCreated,
+                    'tasks_reopened'   => $tasksReopened,
+                    'tasks_reassigned' => $tasksReassigned,
                 ];
             });
 
@@ -237,12 +258,34 @@ class ReportsController extends Controller
             $monthlyCreated[]   = Task::whereYear('created_at', $month->year)
                                       ->whereMonth('created_at', $month->month)
                                       ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+                                      ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
                                       ->count();
             $monthlyCompleted[] = Task::whereYear('updated_at', $month->year)
                                       ->whereMonth('updated_at', $month->month)
                                       ->whereIn('status', $doneStatuses)
                                       ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+                                      ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
                                       ->count();
+        }
+
+        // ── Monthly Balance (last 12 months) for diverging bar chart ──────────
+        $balanceLabels  = [];
+        $balanceCreated = [];
+        $balanceDone    = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $month = now()->subMonths($i);
+            $balanceLabels[]  = $month->format('M');
+            $balanceCreated[] = Task::whereYear('created_at', $month->year)
+                                    ->whereMonth('created_at', $month->month)
+                                    ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+                                    ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
+                                    ->count();
+            $balanceDone[]    = Task::whereYear('updated_at', $month->year)
+                                    ->whereMonth('updated_at', $month->month)
+                                    ->whereIn('status', $doneStatuses)
+                                    ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+                                    ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
+                                    ->count();
         }
 
         // ── Overdue Task List ─────────────────────────────────────────────────
@@ -251,6 +294,7 @@ class ReportsController extends Controller
             ->whereIn('status', $nonDoneStatuses)
             ->when($from, fn($q) => $q->where('tasks.created_at', '>=', $from))
             ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+            ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
             ->orderBy('deadline')
             ->take(50)
             ->get()
@@ -259,29 +303,29 @@ class ReportsController extends Controller
                 'project'     => $t->project->name ?? '—',
                 'assignee'    => $t->assignee->name ?? 'Unassigned',
                 'deadline'    => $t->deadline->format('M d, Y'),
-                'days_late'   => abs(now()->diffInDays($t->deadline)),
+                'days_late'   => (int) abs(now()->diffInDays($t->deadline)),
                 'priority'    => $t->priority ?? 'medium',
                 'status'      => $t->status,
             ]);
 
         // ── Reassigned Task List ──────────────────────────────────────────────
-        $reassignedList = TaskLog::with(['task.project', 'user'])
-            ->whereIn('action', ['task_reassigned', 'task_transferred'])
-            ->when($from, fn($q) => $q->where('task_logs.created_at', '>=', $from))
+        $reassignedList = TaskTransfer::with(['task.project', 'fromUser', 'toUser', 'transferredBy'])
+            ->when($from, fn($q) => $q->where('transferred_at', '>=', $from))
             ->when($projectId, fn($q) => $q->whereHas('task', fn($tq) => $tq->where('project_id', $projectId)))
-            ->orderByDesc('task_logs.created_at')
+            ->when($customerId, fn($q) => $q->whereHas('task', fn($tq) => $tq->where('customer_id', $customerId)))
+            ->orderByDesc('transferred_at')
             ->take(100)
             ->get()
-            ->map(fn($log) => [
-                'task'          => $log->task?->title ?? '—',
-                'task_id'       => $log->task_id,
-                'project'       => $log->task?->project?->name ?? '—',
-                'from_user'     => $log->metadata['from_user_name'] ?? '—',
-                'to_user'       => $log->metadata['to_user_name']   ?? '—',
-                'by'            => $log->metadata['reassigned_by'] ?? $log->user?->name ?? '—',
-                'reason'        => $log->metadata['reason'] ?? null,
-                'date'          => $log->created_at->format('M d, Y'),
-                'time'          => $log->created_at->format('H:i'),
+            ->map(fn($t) => [
+                'task'      => $t->task?->title ?? '—',
+                'task_id'   => $t->task_id,
+                'project'   => $t->task?->project?->name ?? '—',
+                'from_user' => $t->fromUser?->name ?? '—',
+                'to_user'   => $t->toUser?->name ?? '—',
+                'by'        => $t->transferredBy?->name ?? '—',
+                'reason'    => $t->reason,
+                'date'      => $t->transferred_at->format('M d, Y'),
+                'time'      => $t->transferred_at->format('H:i'),
             ]);
 
         // ── Reopened Task List ────────────────────────────────────────────────
@@ -289,6 +333,7 @@ class ReportsController extends Controller
             ->where('action', 'status_updated_reopened')
             ->when($from, fn($q) => $q->where('task_logs.created_at', '>=', $from))
             ->when($projectId, fn($q) => $q->whereHas('task', fn($tq) => $tq->where('project_id', $projectId)))
+            ->when($customerId, fn($q) => $q->whereHas('task', fn($tq) => $tq->where('customer_id', $customerId)))
             ->orderByDesc('task_logs.created_at')
             ->take(100)
             ->get()
@@ -305,14 +350,42 @@ class ReportsController extends Controller
         // ── Project list for filter dropdown ─────────────────────────────────
         $allProjects = Project::orderBy('name')->get(['id', 'name']);
 
+        // ── Customer list for filter dropdown ────────────────────────────────
+        $allCustomers = Customer::orderBy('name')->get(['id', 'name', 'company']);
+
+        // ── Customer Performance ──────────────────────────────────────────────
+        $customerStats = Customer::withCount([
+                'projects',
+                'tasks',
+                'tasks as completed_tasks_count' => fn($q) => $q->whereIn('status', $doneStatuses),
+                'tasks as overdue_tasks_count'   => fn($q) => $q->where('deadline', '<', now())->whereIn('status', $nonDoneStatuses),
+                'tasks as active_tasks_count'    => fn($q) => $q->whereIn('status', ['assigned', 'viewed', 'in_progress']),
+            ])
+            ->when($from, fn($q) => $q->whereHas('tasks', fn($tq) => $tq->where('tasks.created_at', '>=', $from)))
+            ->orderBy('name')
+            ->get()
+            ->map(fn($c) => [
+                'id'         => $c->id,
+                'name'       => $c->name,
+                'company'    => $c->company,
+                'projects'   => $c->projects_count,
+                'total'      => $c->tasks_count,
+                'completed'  => $c->completed_tasks_count,
+                'active'     => $c->active_tasks_count,
+                'overdue'    => $c->overdue_tasks_count,
+                'rate'       => $c->tasks_count > 0 ? round($c->completed_tasks_count / $c->tasks_count * 100) : 0,
+            ]);
+
         return view('admin.reports.index', compact(
-            'range', 'projectId',
+            'range', 'projectId', 'customerId',
             'totalTasks', 'completedTasks', 'overdueTasks', 'completionRate',
             'onTimeRate', 'activeProjects', 'pendingReview', 'teamMemberCount',
             'statusBreakdown', 'priorityBreakdown',
             'projects', 'teamMembers',
             'monthLabels', 'monthlyCreated', 'monthlyCompleted',
-            'overdueList', 'reassignedList', 'reopenedList', 'allProjects', 'from'
+            'balanceLabels', 'balanceCreated', 'balanceDone',
+            'overdueList', 'reassignedList', 'reopenedList',
+            'allProjects', 'allCustomers', 'customerStats', 'from'
         ));
     }
 

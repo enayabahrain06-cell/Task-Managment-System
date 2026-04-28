@@ -11,7 +11,7 @@
     step: 1,
     totalSteps: 3,
 
-    allUsers: {{ $users->map(fn($u) => ['id' => (string)$u->id, 'name' => $u->name, 'role' => ucfirst($u->role), 'job' => $u->job_title ?? ''])->toJson() }},
+    allUsers: {{ $users->map(fn($u) => ['id' => (string)$u->id, 'name' => $u->name, 'email' => $u->email, 'role' => ucfirst($u->role), 'job' => $u->job_title ?? ''])->toJson() }},
 
     _blankTask() {
         return { title:'', task_type:'', tags:'', assignees:[{user_id:'',role:''}], reviewer_id:'', priority:'medium', deadline:'', description:'',
@@ -146,14 +146,14 @@
 <div class="flex items-center justify-between mb-6">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Projects</h1>
-        <p class="text-sm text-gray-500 mt-0.5">{{ $projects->total() }} total projects</p>
+        <p class="text-sm text-gray-500 mt-0.5">{{ $projects->total() }} {{ request('status') === 'completed' ? 'completed' : 'active' }} project{{ $projects->total() !== 1 ? 's' : '' }}</p>
     </div>
     <div class="flex items-center gap-2">
-        <button @click="quickOpen = true" class="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition border border-gray-200 shadow-sm">
-            <i class="fa fa-bolt text-amber-500"></i> Quick Task
-        </button>
         <button @click="openWizard()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm shadow-indigo-200">
             <i class="fa fa-plus"></i> New Project
+        </button>
+        <button @click="quickOpen = true" class="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition border border-gray-200 shadow-sm">
+            <i class="fa fa-bolt text-amber-500"></i> Quick Task
         </button>
     </div>
 </div>
@@ -166,44 +166,82 @@
 .proj-stat-card-label { font-size:12px; font-weight:500; color:rgba(255,255,255,0.75); margin:0 0 8px; }
 .proj-stat-card-value { font-size:34px; font-weight:700; line-height:1; margin:0; }
 .proj-stat-card-sub   { font-size:11px; color:rgba(255,255,255,0.6); margin:6px 0 0; }
-.proj-stat-card-menu  { position:absolute; top:14px; right:14px; background:rgba(255,255,255,0.15); border:none; border-radius:6px; width:26px; height:26px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; }
 </style>
 
 @php
-$currentStatus = request('status', '');
+$currentStatus   = request('status', '');
 $isOverdueFilter = request()->boolean('overdue');
+$isCompletedTab  = ($currentStatus === 'completed');
+@endphp
+
+{{-- Tab Bar --}}
+<div style="display:flex;align-items:center;gap:3px;background:#F3F4F6;border-radius:12px;padding:4px;width:fit-content;margin-bottom:20px;">
+    <a href="{{ route('admin.projects.index') }}"
+       style="display:flex;align-items:center;gap:8px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;{{ !$isCompletedTab ? 'background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);' : 'background:transparent;color:#6B7280;' }}">
+        <i class="fa fa-circle-play" style="font-size:11px;"></i>
+        Active
+        <span style="font-size:11px;font-weight:700;padding:1px 8px;border-radius:20px;{{ !$isCompletedTab ? 'background:#EEF2FF;color:#4F46E5;' : 'background:#E5E7EB;color:#9CA3AF;' }}">
+            {{ $stats['total'] - $stats['completed'] }}
+        </span>
+    </a>
+    <a href="{{ route('admin.projects.index', ['status'=>'completed']) }}"
+       style="display:flex;align-items:center;gap:8px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;{{ $isCompletedTab ? 'background:#fff;color:#7C3AED;box-shadow:0 1px 4px rgba(0,0,0,.08);' : 'background:transparent;color:#6B7280;' }}">
+        <i class="fa fa-circle-check" style="font-size:11px;"></i>
+        Completed
+        <span style="font-size:11px;font-weight:700;padding:1px 8px;border-radius:20px;{{ $isCompletedTab ? 'background:#EDE9FE;color:#7C3AED;' : 'background:#E5E7EB;color:#9CA3AF;' }}">
+            {{ $stats['completed'] }}
+        </span>
+    </a>
+</div>
+
+@if(!$isCompletedTab)
+{{-- Active tab: 3 stat cards (All Active / Active only / Overdue) --}}
+@php
 $statDefs = [
-    ['label'=>'Projects',  'value'=>$stats['total'],     'sub'=>'Total Projects',  'grad'=>'linear-gradient(135deg,#4F46E5,#6366F1)', 'shadow'=>'rgba(79,70,229,.4)',   'url'=> route('admin.projects.index'),                         'active'=> !$currentStatus && !$isOverdueFilter],
-    ['label'=>'Active',    'value'=>$stats['active'],    'sub'=>'Active Projects', 'grad'=>'linear-gradient(135deg,#059669,#10B981)', 'shadow'=>'rgba(5,150,105,.4)',   'url'=> route('admin.projects.index', ['status'=>'active']),    'active'=> $currentStatus === 'active'],
-    ['label'=>'Completed', 'value'=>$stats['completed'], 'sub'=>'Completed',       'grad'=>'linear-gradient(135deg,#7C3AED,#8B5CF6)', 'shadow'=>'rgba(124,58,237,.4)',  'url'=> route('admin.projects.index', ['status'=>'completed']), 'active'=> $currentStatus === 'completed'],
-    ['label'=>'Overdue',   'value'=>$stats['overdue'],   'sub'=>'Past Deadline',   'grad'=>'linear-gradient(135deg,#DC2626,#EF4444)', 'shadow'=>'rgba(220,38,38,.4)',   'url'=> route('admin.projects.index') . '?overdue=1',          'active'=> $isOverdueFilter],
+    ['label'=>'All Active',  'value'=>$stats['total'] - $stats['completed'], 'sub'=>'Non-completed',   'grad'=>'linear-gradient(135deg,#4F46E5,#6366F1)', 'shadow'=>'rgba(79,70,229,.4)',   'url'=> route('admin.projects.index'),                       'active'=> !$currentStatus && !$isOverdueFilter],
+    ['label'=>'Active',      'value'=>$stats['active'],                      'sub'=>'Currently Active', 'grad'=>'linear-gradient(135deg,#059669,#10B981)', 'shadow'=>'rgba(5,150,105,.4)',   'url'=> route('admin.projects.index', ['status'=>'active']),  'active'=> $currentStatus === 'active'],
+    ['label'=>'Overdue',     'value'=>$stats['overdue'],                     'sub'=>'Past Deadline',    'grad'=>'linear-gradient(135deg,#DC2626,#EF4444)', 'shadow'=>'rgba(220,38,38,.4)',   'url'=> route('admin.projects.index') . '?overdue=1',        'active'=> $isOverdueFilter],
+    ['label'=>'Completed',   'value'=>$stats['completed'],                   'sub'=>'All time done',    'grad'=>'linear-gradient(135deg,#7C3AED,#8B5CF6)', 'shadow'=>'rgba(124,58,237,.4)',  'url'=> route('admin.projects.index', ['status'=>'completed']),'active'=> false],
 ];
 @endphp
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;">
     @foreach($statDefs as $card)
     @php $isActive = $card['active']; @endphp
-    <a href="{{ $card['url'] }}"
-       style="text-decoration:none;display:flex;">
+    <a href="{{ $card['url'] }}" style="text-decoration:none;display:flex;">
         <div class="proj-stat-card"
              style="flex:1;background:{{ $card['grad'] }};{{ $isActive ? 'transform:translateY(-3px);box-shadow:0 8px 24px '.$card['shadow'].';outline:3px solid rgba(255,255,255,0.4);' : '' }}"
              onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px {{ $card['shadow'] }}'"
              onmouseout="this.style.transform='{{ $isActive ? 'translateY(-3px)' : '' }}';this.style.boxShadow='{{ $isActive ? '0 8px 24px '.$card['shadow'] : '' }}'">
             <div class="proj-stat-card-blob"></div>
-            <div style="display:flex;align-items:center;justify-content:space-between;">
-                <p class="proj-stat-card-label">{{ $card['label'] }}</p>
-                <button class="proj-stat-card-menu" onclick="event.preventDefault()"><i class="fas fa-ellipsis-h"></i></button>
-            </div>
+            <p class="proj-stat-card-label">{{ $card['label'] }}</p>
             <p class="proj-stat-card-value">{{ $card['value'] }}</p>
             <p class="proj-stat-card-sub">{{ $card['sub'] }}</p>
         </div>
     </a>
     @endforeach
 </div>
-@if($currentStatus || $isOverdueFilter)
+@if($currentStatus === 'active' || $isOverdueFilter)
 <div style="margin-bottom:16px;display:flex;align-items:center;gap:8px;">
-    <span style="font-size:13px;color:#6B7280;">Showing: <strong style="color:#111827;">{{ $isOverdueFilter ? 'Overdue' : ucfirst($currentStatus) }}</strong> projects</span>
+    <span style="font-size:13px;color:#6B7280;">Filtering: <strong style="color:#111827;">{{ $isOverdueFilter ? 'Overdue only' : 'Active only' }}</strong></span>
     <a href="{{ route('admin.projects.index') }}" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:#EF4444;text-decoration:none;background:#FEF2F2;border:1px solid #FECACA;padding:3px 9px;border-radius:6px;">
-        <i class="fas fa-times" style="font-size:10px;"></i> Clear
+        <i class="fas fa-times" style="font-size:10px;"></i> Clear filter
+    </a>
+</div>
+@endif
+
+@else
+{{-- Completed tab: summary banner instead of stat cards --}}
+<div style="display:flex;align-items:center;gap:14px;padding:16px 20px;background:linear-gradient(135deg,#F5F3FF,#EDE9FE);border-radius:14px;border:1px solid #DDD6FE;margin-bottom:24px;">
+    <div style="width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#7C3AED,#8B5CF6);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(124,58,237,.3);">
+        <i class="fa fa-circle-check" style="color:#fff;font-size:18px;"></i>
+    </div>
+    <div style="flex:1;">
+        <p style="font-size:15px;font-weight:700;color:#5B21B6;margin:0;">{{ $stats['completed'] }} Completed Project{{ $stats['completed'] !== 1 ? 's' : '' }}</p>
+        <p style="font-size:12px;color:#7C3AED;margin:3px 0 0;opacity:.8;">Archived work — these projects have been closed and marked as done.</p>
+    </div>
+    <a href="{{ route('admin.projects.index') }}"
+       style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#7C3AED;text-decoration:none;background:rgba(255,255,255,.6);border:1px solid #C4B5FD;padding:7px 14px;border-radius:8px;">
+        <i class="fa fa-arrow-left" style="font-size:10px;"></i> Back to Active
     </a>
 </div>
 @endif
@@ -248,7 +286,12 @@ $statDefs = [
                     <a href="{{ route('admin.projects.show', $project) }}" class="text-sm font-semibold text-gray-900 hover:text-indigo-600 transition">
                         {{ $project->name }}
                     </a>
-                    @if($project->description)
+                    @if($project->customer)
+                    <div class="flex items-center gap-1 mt-1">
+                        <i class="fas fa-building" style="font-size:9px;color:#818CF8;"></i>
+                        <span class="text-xs font-medium" style="color:#4F46E5;">{{ $project->customer->name }}{{ $project->customer->company ? ' · '.$project->customer->company : '' }}</span>
+                    </div>
+                    @elseif($project->description)
                     <p class="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{{ $project->description }}</p>
                     @endif
                 </td>
@@ -357,6 +400,12 @@ $statDefs = [
                 <h3 class="text-sm font-semibold text-gray-800 leading-snug group-hover:text-indigo-600 transition line-clamp-2">
                     {{ $project->name }}
                 </h3>
+                @if($project->customer)
+                <div class="flex items-center gap-1" style="margin-top:-2px;">
+                    <i class="fas fa-building" style="font-size:9px;color:#818CF8;"></i>
+                    <span class="text-xs font-medium" style="color:#4F46E5;">{{ $project->customer->name }}{{ $project->customer->company ? ' · '.$project->customer->company : '' }}</span>
+                </div>
+                @endif
 
                 {{-- Progress bar --}}
                 <div>
@@ -517,7 +566,7 @@ $statDefs = [
                         style="width:100%;padding:9px 13px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;background:#fff;box-sizing:border-box;outline:none;">
                     <option value="">— Select team member —</option>
                     @foreach($users as $u)
-                    <option value="{{ $u->id }}">{{ $u->name }} ({{ ucfirst($u->role) }})</option>
+                    <option value="{{ $u->id }}">{{ $u->name }} ({{ ucfirst($u->role) }}) — {{ $u->email }}</option>
                     @endforeach
                 </select>
             </div>
@@ -739,7 +788,7 @@ $statDefs = [
                                                             : 'width:100%;padding:7px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#111827;background:#fff;outline:none;box-sizing:border-box;'">
                                                     <option value="">— Select person —</option>
                                                     <template x-for="u in allUsers" :key="u.id">
-                                                        <option :value="u.id" x-text="u.name + ' (' + u.role + ')'"></option>
+                                                        <option :value="u.id" x-text="u.name + ' (' + u.role + ') — ' + u.email"></option>
                                                     </template>
                                                 </select>
                                                 <input type="text" :name="'tasks['+i+'][assignees]['+j+'][role]'" x-model="assignee.role"
@@ -766,7 +815,7 @@ $statDefs = [
                                                 style="width:100%;padding:7px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#111827;background:#fff;outline:none;box-sizing:border-box;">
                                             <option value="">— None —</option>
                                             <template x-for="u in allUsers" :key="u.id">
-                                                <option :value="u.id" x-text="u.name"></option>
+                                                <option :value="u.id" x-text="u.name + ' — ' + u.email"></option>
                                             </template>
                                         </select>
                                     </div>

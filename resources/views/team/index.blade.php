@@ -66,11 +66,13 @@
        class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition {{ $view === 'permissions' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
         <i class="fa fa-shield-halved text-xs"></i> Permissions
     </a>
+    @if(auth()->user()->role === 'admin' || \App\Models\Setting::get('manager_can_view_roles', '0') === '1')
     <a href="{{ route('team.index', ['view' => 'roles']) }}"
        class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition {{ $view === 'roles' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
         <i class="fa fa-tag text-xs"></i> Roles
         <span class="text-xs font-bold px-1.5 py-0.5 rounded-full {{ $view === 'roles' ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-200 text-gray-500' }}">{{ $allRoles->count() }}</span>
     </a>
+    @endif
     <a href="{{ route('team.index', ['view' => 'former']) }}"
        class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition {{ $view === 'former' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
         <i class="fa fa-user-slash text-xs"></i> Former Employees
@@ -203,6 +205,7 @@
     $roleColors = ['admin' => '#EF4444', 'manager' => '#6366F1', 'user' => '#10B981'];
     $roleBg     = ['admin' => 'bg-red-100 text-red-600', 'manager' => 'bg-indigo-100 text-indigo-600', 'user' => 'bg-emerald-100 text-emerald-700'];
     $avatarColors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6','#EC4899','#06B6D4'];
+    $natFlags = ['Afghan'=>'🇦🇫','Albanian'=>'🇦🇱','Algerian'=>'🇩🇿','American'=>'🇺🇸','Argentinian'=>'🇦🇷','Australian'=>'🇦🇺','Austrian'=>'🇦🇹','Bahraini'=>'🇧🇭','Bangladeshi'=>'🇧🇩','Belgian'=>'🇧🇪','Brazilian'=>'🇧🇷','British'=>'🇬🇧','Bulgarian'=>'🇧🇬','Cambodian'=>'🇰🇭','Canadian'=>'🇨🇦','Chilean'=>'🇨🇱','Chinese'=>'🇨🇳','Colombian'=>'🇨🇴','Croatian'=>'🇭🇷','Czech'=>'🇨🇿','Danish'=>'🇩🇰','Dutch'=>'🇳🇱','Egyptian'=>'🇪🇬','Emirati'=>'🇦🇪','Estonian'=>'🇪🇪','Ethiopian'=>'🇪🇹','Filipino'=>'🇵🇭','Finnish'=>'🇫🇮','French'=>'🇫🇷','German'=>'🇩🇪','Ghanaian'=>'🇬🇭','Greek'=>'🇬🇷','Hungarian'=>'🇭🇺','Indian'=>'🇮🇳','Indonesian'=>'🇮🇩','Iranian'=>'🇮🇷','Iraqi'=>'🇮🇶','Irish'=>'🇮🇪','Israeli'=>'🇮🇱','Italian'=>'🇮🇹','Japanese'=>'🇯🇵','Jordanian'=>'🇯🇴','Kenyan'=>'🇰🇪','Korean'=>'🇰🇷','Kuwaiti'=>'🇰🇼','Lebanese'=>'🇱🇧','Libyan'=>'🇱🇾','Malaysian'=>'🇲🇾','Mexican'=>'🇲🇽','Moroccan'=>'🇲🇦','Nigerian'=>'🇳🇬','Norwegian'=>'🇳🇴','Omani'=>'🇴🇲','Pakistani'=>'🇵🇰','Palestinian'=>'🇵🇸','Polish'=>'🇵🇱','Portuguese'=>'🇵🇹','Qatari'=>'🇶🇦','Romanian'=>'🇷🇴','Russian'=>'🇷🇺','Saudi'=>'🇸🇦','Serbian'=>'🇷🇸','Singaporean'=>'🇸🇬','South African'=>'🇿🇦','Spanish'=>'🇪🇸','Sri Lankan'=>'🇱🇰','Sudanese'=>'🇸🇩','Swedish'=>'🇸🇪','Swiss'=>'🇨🇭','Syrian'=>'🇸🇾','Thai'=>'🇹🇭','Tunisian'=>'🇹🇳','Turkish'=>'🇹🇷','Ukrainian'=>'🇺🇦','Yemeni'=>'🇾🇪'];
 @endphp
 
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -211,13 +214,26 @@
         $color     = $avatarColors[$loop->index % count($avatarColors)];
         $progress  = $member->total_tasks > 0 ? round(($member->completed_tasks / $member->total_tasks) * 100) : 0;
     @endphp
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md hover:border-indigo-200 transition group cursor-pointer"
-         onclick="window.location.href='{{ route('admin.users.dashboard', $member) }}'">
+    @php $canViewDash = !(auth()->user()->role === 'manager' && $member->role === 'admin'); @endphp
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 transition group {{ $canViewDash ? 'hover:shadow-md hover:border-indigo-200 cursor-pointer' : 'cursor-default' }}"
+         @if($canViewDash) onclick="window.location.href='{{ route('admin.users.dashboard', $member) }}'" @endif>
         {{-- Avatar + Name --}}
         <div class="flex flex-col items-center text-center mb-4">
-            <div class="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-3 group-hover:scale-105 transition"
-                 style="background: {{ $color }}">
-                {{ strtoupper(substr($member->name, 0, 1)) }}
+            <div class="relative mb-3 group-hover:scale-105 transition" style="width:64px;height:64px;flex-shrink:0;">
+                @if($member->avatarUrl())
+                <img src="{{ $member->avatarUrl() }}" alt="{{ $member->name }}"
+                     class="w-16 h-16 rounded-full object-cover"
+                     style="background:{{ $color }};">
+                @else
+                <div class="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold"
+                     style="background: {{ $color }}">
+                    {{ strtoupper(substr($member->name, 0, 1)) }}
+                </div>
+                @endif
+                @if(!empty($member->nationality) && isset($natFlags[$member->nationality]))
+                <span title="{{ $member->nationality }}"
+                      style="position:absolute;bottom:0;right:0;font-size:16px;line-height:1;background:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.18);ring:2px solid #fff;">{{ $natFlags[$member->nationality] }}</span>
+                @endif
             </div>
             <h3 class="font-semibold text-gray-900 text-sm">{{ $member->name }}</h3>
             <p class="text-xs text-gray-400 mt-0.5 truncate w-full">{{ $member->email }}</p>
@@ -251,15 +267,27 @@
 
         {{-- Actions (admin/manager) --}}
         @if(in_array(auth()->user()->role, ['admin', 'manager']))
+        @php $isAdminTarget = $member->role === 'admin'; $isManager = auth()->user()->role === 'manager'; $managerBlocked = $isManager && $isAdminTarget; @endphp
         <div class="flex gap-2 mt-4" onclick="event.stopPropagation()">
             {{-- Edit --}}
+            @if($managerBlocked)
+            <div class="flex-1 text-center text-xs bg-gray-50 text-gray-300 py-1.5 rounded-lg font-medium cursor-not-allowed select-none" title="Cannot edit admin accounts">
+                <i class="fa fa-pen text-xs mr-1"></i> Edit
+            </div>
+            @else
             <button type="button"
                     onclick='window.dispatchEvent(new CustomEvent("open-edit-user",{detail:{{ json_encode(['id'=>$member->id,'name'=>$member->name,'username'=>$member->username??'','email'=>$member->email,'phone'=>$member->phone??'','job_title'=>$member->job_title??'','nationality'=>$member->nationality??'','role'=>$member->role,'status'=>$member->status,'avatar'=>$member->avatarUrl()??'']) }}}))'
                     class="flex-1 text-center text-xs bg-gray-100 hover:bg-indigo-100 text-gray-600 hover:text-indigo-600 py-1.5 rounded-lg transition font-medium">
                 <i class="fa fa-pen text-xs mr-1"></i> Edit
             </button>
+            @endif
             {{-- Actions dropdown --}}
             <div x-data="{ open: false }" class="relative flex-1">
+                @if($managerBlocked)
+                <div class="w-full text-xs bg-gray-50 text-gray-300 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 cursor-not-allowed select-none" title="Cannot perform actions on admin accounts">
+                    Actions <i class="fa fa-chevron-down text-xs"></i>
+                </div>
+                @else
                 <button type="button" @click="open = !open" @click.outside="open = false"
                         class="w-full text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 py-1.5 rounded-lg transition font-medium flex items-center justify-center gap-1">
                     Actions <i class="fa fa-chevron-down text-xs" :class="open ? 'rotate-180' : ''" style="transition:transform .15s;"></i>
@@ -291,7 +319,17 @@
                             class="w-full text-left px-4 py-2.5 text-xs font-medium text-amber-600 hover:bg-amber-50 flex items-center gap-2.5 transition">
                         <i class="fa fa-user-slash text-xs w-3"></i> Archive Employee
                     </button>
+                    {{-- Permanent Delete (admin only) --}}
+                    @if(auth()->user()->role === 'admin')
+                    <button type="button"
+                            onclick="openPermanentDeleteConfirm('{{ route('admin.users.permanent-delete', $member) }}','{{ addslashes($member->name) }}')"
+                            @click="open = false"
+                            class="w-full text-left px-4 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition">
+                        <i class="fa fa-trash text-xs w-3"></i> Delete Permanently
+                    </button>
+                    @endif
                 </div>
+                @endif
             </div>
         </div>
         @endif
@@ -690,6 +728,45 @@ function permsApp() {
 @if(session('role_error'))
 <div class="mb-4 flex items-center gap-3 bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl">
     <i class="fa fa-circle-exclamation"></i> {{ session('role_error') }}
+</div>
+@endif
+
+@if(auth()->user()->role === 'admin')
+@php $managerCanEditAdmin = \App\Models\Setting::get('manager_can_edit_admin', '0') === '1'; @endphp
+<div x-data="{ enabled: {{ $managerCanEditAdmin ? 'true' : 'false' }} }"
+     class="bg-white rounded-2xl border border-gray-100 shadow-sm mb-6 overflow-hidden">
+    <div class="h-1 w-full bg-gradient-to-r from-red-400 to-orange-400"></div>
+    <div class="px-5 py-4">
+        <div class="flex items-center gap-3 mb-1">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background:#FEF2F2;">
+                <i class="fa fa-shield-halved text-red-500 text-sm"></i>
+            </div>
+            <div>
+                <p class="text-sm font-bold text-gray-900">System Access Controls</p>
+                <p class="text-xs text-gray-400">Restrict what managers can do to administrator accounts</p>
+            </div>
+        </div>
+        <div class="mt-3 flex items-center justify-between py-3 border-t border-gray-50">
+            <div>
+                <p class="text-sm font-medium text-gray-700">Allow managers to edit / disable admin accounts</p>
+                <p class="text-xs text-gray-400 mt-0.5">When off, managers cannot edit, hold, archive or delete any admin user</p>
+            </div>
+            <button type="button"
+                    @click="
+                        fetch('{{ route('admin.settings.manager-admin-access') }}', {
+                            method: 'POST',
+                            headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' }
+                        })
+                        .then(r => r.json())
+                        .then(d => { enabled = d.manager_can_edit_admin })
+                    "
+                    :class="enabled ? 'bg-indigo-600' : 'bg-gray-200'"
+                    class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none">
+                <span :class="enabled ? 'translate-x-5' : 'translate-x-0'"
+                      class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200"></span>
+            </button>
+        </div>
+    </div>
 </div>
 @endif
 
@@ -1098,6 +1175,14 @@ function rolesTab() {
                     class="flex-1 text-center text-xs bg-gray-100 hover:bg-indigo-100 text-gray-600 hover:text-indigo-600 py-1.5 rounded-lg transition font-medium">
                 <i class="fa fa-right-left text-xs mr-1"></i> Transfer
             </button>
+            {{-- Permanent Delete (admin only) --}}
+            @if(auth()->user()->role === 'admin')
+            <button type="button"
+                    onclick="openPermanentDeleteConfirm('{{ route('admin.users.permanent-delete', $former) }}','{{ addslashes($former->name) }}')"
+                    class="flex-1 text-center text-xs bg-red-50 hover:bg-red-100 text-red-600 py-1.5 rounded-lg transition font-medium">
+                <i class="fa fa-trash text-xs mr-1"></i> Delete
+            </button>
+            @endif
         </div>
     </div>
     @endforeach
@@ -1227,85 +1312,49 @@ function rolesTab() {
 
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Nationality</label>
-                        <select name="nationality" x-model="nationality"
-                                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;cursor:pointer;">
-                            <option value="">— Select country —</option>
-                            <option value="Afghan">🇦🇫 Afghan</option>
-                            <option value="Albanian">🇦🇱 Albanian</option>
-                            <option value="Algerian">🇩🇿 Algerian</option>
-                            <option value="American">🇺🇸 American</option>
-                            <option value="Argentinian">🇦🇷 Argentinian</option>
-                            <option value="Australian">🇦🇺 Australian</option>
-                            <option value="Austrian">🇦🇹 Austrian</option>
-                            <option value="Bahraini">🇧🇭 Bahraini</option>
-                            <option value="Bangladeshi">🇧🇩 Bangladeshi</option>
-                            <option value="Belgian">🇧🇪 Belgian</option>
-                            <option value="Brazilian">🇧🇷 Brazilian</option>
-                            <option value="British">🇬🇧 British</option>
-                            <option value="Bulgarian">🇧🇬 Bulgarian</option>
-                            <option value="Cambodian">🇰🇭 Cambodian</option>
-                            <option value="Canadian">🇨🇦 Canadian</option>
-                            <option value="Chilean">🇨🇱 Chilean</option>
-                            <option value="Chinese">🇨🇳 Chinese</option>
-                            <option value="Colombian">🇨🇴 Colombian</option>
-                            <option value="Croatian">🇭🇷 Croatian</option>
-                            <option value="Czech">🇨🇿 Czech</option>
-                            <option value="Danish">🇩🇰 Danish</option>
-                            <option value="Dutch">🇳🇱 Dutch</option>
-                            <option value="Egyptian">🇪🇬 Egyptian</option>
-                            <option value="Emirati">🇦🇪 Emirati</option>
-                            <option value="Estonian">🇪🇪 Estonian</option>
-                            <option value="Ethiopian">🇪🇹 Ethiopian</option>
-                            <option value="Filipino">🇵🇭 Filipino</option>
-                            <option value="Finnish">🇫🇮 Finnish</option>
-                            <option value="French">🇫🇷 French</option>
-                            <option value="German">🇩🇪 German</option>
-                            <option value="Ghanaian">🇬🇭 Ghanaian</option>
-                            <option value="Greek">🇬🇷 Greek</option>
-                            <option value="Hungarian">🇭🇺 Hungarian</option>
-                            <option value="Indian">🇮🇳 Indian</option>
-                            <option value="Indonesian">🇮🇩 Indonesian</option>
-                            <option value="Iranian">🇮🇷 Iranian</option>
-                            <option value="Iraqi">🇮🇶 Iraqi</option>
-                            <option value="Irish">🇮🇪 Irish</option>
-                            <option value="Israeli">🇮🇱 Israeli</option>
-                            <option value="Italian">🇮🇹 Italian</option>
-                            <option value="Jordanian">🇯🇴 Jordanian</option>
-                            <option value="Japanese">🇯🇵 Japanese</option>
-                            <option value="Kenyan">🇰🇪 Kenyan</option>
-                            <option value="Korean">🇰🇷 Korean</option>
-                            <option value="Kuwaiti">🇰🇼 Kuwaiti</option>
-                            <option value="Lebanese">🇱🇧 Lebanese</option>
-                            <option value="Libyan">🇱🇾 Libyan</option>
-                            <option value="Malaysian">🇲🇾 Malaysian</option>
-                            <option value="Mexican">🇲🇽 Mexican</option>
-                            <option value="Moroccan">🇲🇦 Moroccan</option>
-                            <option value="Nigerian">🇳🇬 Nigerian</option>
-                            <option value="Norwegian">🇳🇴 Norwegian</option>
-                            <option value="Omani">🇴🇲 Omani</option>
-                            <option value="Pakistani">🇵🇰 Pakistani</option>
-                            <option value="Palestinian">🇵🇸 Palestinian</option>
-                            <option value="Polish">🇵🇱 Polish</option>
-                            <option value="Portuguese">🇵🇹 Portuguese</option>
-                            <option value="Qatari">🇶🇦 Qatari</option>
-                            <option value="Romanian">🇷🇴 Romanian</option>
-                            <option value="Russian">🇷🇺 Russian</option>
-                            <option value="Saudi">🇸🇦 Saudi</option>
-                            <option value="Serbian">🇷🇸 Serbian</option>
-                            <option value="Singaporean">🇸🇬 Singaporean</option>
-                            <option value="South African">🇿🇦 South African</option>
-                            <option value="Spanish">🇪🇸 Spanish</option>
-                            <option value="Sri Lankan">🇱🇰 Sri Lankan</option>
-                            <option value="Sudanese">🇸🇩 Sudanese</option>
-                            <option value="Swedish">🇸🇪 Swedish</option>
-                            <option value="Swiss">🇨🇭 Swiss</option>
-                            <option value="Syrian">🇸🇾 Syrian</option>
-                            <option value="Thai">🇹🇭 Thai</option>
-                            <option value="Tunisian">🇹🇳 Tunisian</option>
-                            <option value="Turkish">🇹🇷 Turkish</option>
-                            <option value="Ukrainian">🇺🇦 Ukrainian</option>
-                            <option value="Yemeni">🇾🇪 Yemeni</option>
-                        </select>
+                        <input type="hidden" name="nationality" :value="nationality">
+                        <div x-ref="natTrigger"
+                             @click="natOpenDrop(); $nextTick(()=>$refs.natInput.focus())"
+                             @click.outside="natOpen=false; natQuery=''"
+                             style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;cursor:pointer;background:#F9FAFB;transition:border-color .15s;box-sizing:border-box;"
+                             :style="natOpen ? 'border-color:#6366F1;box-shadow:0 0 0 3px rgba(99,102,241,0.1);' : ''">
+                            <span x-text="nationalityList.find(n=>n.value===nationality)?.flag ?? '🌍'"
+                                  style="font-size:15px;flex-shrink:0;line-height:1;width:20px;text-align:center;"></span>
+                            <input type="text" x-ref="natInput" x-model="natQuery"
+                                   :placeholder="nationality || 'Search nationality…'"
+                                   @focus="natOpenDrop()" @input="natOpen=true; natActiveIdx=-1"
+                                   @keydown="natOnKey($event)"
+                                   style="flex:1;border:none;outline:none;font-size:13px;color:#111827;background:transparent;min-width:0;cursor:pointer;"
+                                   autocomplete="off" spellcheck="false">
+                            <button type="button" x-show="nationality" @click.stop="nationality=''; natQuery=''; natOpen=false;"
+                                    style="background:none;border:none;cursor:pointer;color:#9CA3AF;padding:0;font-size:16px;line-height:1;flex-shrink:0;" title="Clear">×</button>
+                            <i class="fas fa-chevron-down" style="color:#9CA3AF;font-size:10px;flex-shrink:0;transition:transform .15s;"
+                               :style="natOpen ? 'transform:rotate(180deg)' : ''"></i>
+                        </div>
+                        <template x-teleport="body">
+                            <div x-show="natOpen"
+                                 x-transition:enter="transition ease-out duration-100"
+                                 x-transition:enter-start="opacity-0 -translate-y-1"
+                                 x-transition:enter-end="opacity-100 translate-y-0"
+                                 :style="`position:absolute;top:${natDropTop}px;left:${natDropLeft}px;width:${natDropWidth}px;z-index:99999;background:#fff;border:1.5px solid #E5E7EB;border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,0.12);overflow:hidden;`">
+                                <div style="max-height:220px;overflow-y:auto;">
+                                    <template x-for="(item, idx) in natFiltered" :key="item.value">
+                                        <div :id="'nat-opt-'+idx"
+                                             @click="natPick(item)"
+                                             @mouseenter="natActiveIdx = idx"
+                                             :style="natActiveIdx===idx ? 'background:#EEF2FF;' : (nationality===item.value ? 'background:#F5F3FF;' : '')"
+                                             style="padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .1s;">
+                                            <span x-text="item.flag" style="font-size:16px;width:24px;text-align:center;flex-shrink:0;"></span>
+                                            <span x-text="item.label" style="font-size:13px;font-weight:500;color:#111827;flex:1;"></span>
+                                            <i x-show="nationality===item.value" class="fas fa-check" style="color:#6366F1;font-size:10px;flex-shrink:0;"></i>
+                                        </div>
+                                    </template>
+                                    <div x-show="natFiltered.length===0" style="padding:20px;text-align:center;font-size:13px;color:#9CA3AF;">
+                                        No results for "<span x-text="natQuery"></span>"
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
                     </div>
 
                     <div>
@@ -1366,6 +1415,49 @@ function rolesTab() {
 </div>
 
 <script>
+window.nationalityList = [
+    {value:'Afghan',flag:'🇦🇫',label:'Afghan'},{value:'Albanian',flag:'🇦🇱',label:'Albanian'},
+    {value:'Algerian',flag:'🇩🇿',label:'Algerian'},{value:'American',flag:'🇺🇸',label:'American'},
+    {value:'Argentinian',flag:'🇦🇷',label:'Argentinian'},{value:'Australian',flag:'🇦🇺',label:'Australian'},
+    {value:'Austrian',flag:'🇦🇹',label:'Austrian'},{value:'Bahraini',flag:'🇧🇭',label:'Bahraini'},
+    {value:'Bangladeshi',flag:'🇧🇩',label:'Bangladeshi'},{value:'Belgian',flag:'🇧🇪',label:'Belgian'},
+    {value:'Brazilian',flag:'🇧🇷',label:'Brazilian'},{value:'British',flag:'🇬🇧',label:'British'},
+    {value:'Bulgarian',flag:'🇧🇬',label:'Bulgarian'},{value:'Cambodian',flag:'🇰🇭',label:'Cambodian'},
+    {value:'Canadian',flag:'🇨🇦',label:'Canadian'},{value:'Chilean',flag:'🇨🇱',label:'Chilean'},
+    {value:'Chinese',flag:'🇨🇳',label:'Chinese'},{value:'Colombian',flag:'🇨🇴',label:'Colombian'},
+    {value:'Croatian',flag:'🇭🇷',label:'Croatian'},{value:'Czech',flag:'🇨🇿',label:'Czech'},
+    {value:'Danish',flag:'🇩🇰',label:'Danish'},{value:'Dutch',flag:'🇳🇱',label:'Dutch'},
+    {value:'Egyptian',flag:'🇪🇬',label:'Egyptian'},{value:'Emirati',flag:'🇦🇪',label:'Emirati'},
+    {value:'Estonian',flag:'🇪🇪',label:'Estonian'},{value:'Ethiopian',flag:'🇪🇹',label:'Ethiopian'},
+    {value:'Filipino',flag:'🇵🇭',label:'Filipino'},{value:'Finnish',flag:'🇫🇮',label:'Finnish'},
+    {value:'French',flag:'🇫🇷',label:'French'},{value:'German',flag:'🇩🇪',label:'German'},
+    {value:'Ghanaian',flag:'🇬🇭',label:'Ghanaian'},{value:'Greek',flag:'🇬🇷',label:'Greek'},
+    {value:'Hungarian',flag:'🇭🇺',label:'Hungarian'},{value:'Indian',flag:'🇮🇳',label:'Indian'},
+    {value:'Indonesian',flag:'🇮🇩',label:'Indonesian'},{value:'Iranian',flag:'🇮🇷',label:'Iranian'},
+    {value:'Iraqi',flag:'🇮🇶',label:'Iraqi'},{value:'Irish',flag:'🇮🇪',label:'Irish'},
+    {value:'Israeli',flag:'🇮🇱',label:'Israeli'},{value:'Italian',flag:'🇮🇹',label:'Italian'},
+    {value:'Japanese',flag:'🇯🇵',label:'Japanese'},{value:'Jordanian',flag:'🇯🇴',label:'Jordanian'},
+    {value:'Kenyan',flag:'🇰🇪',label:'Kenyan'},{value:'Korean',flag:'🇰🇷',label:'Korean'},
+    {value:'Kuwaiti',flag:'🇰🇼',label:'Kuwaiti'},{value:'Lebanese',flag:'🇱🇧',label:'Lebanese'},
+    {value:'Libyan',flag:'🇱🇾',label:'Libyan'},{value:'Malaysian',flag:'🇲🇾',label:'Malaysian'},
+    {value:'Mexican',flag:'🇲🇽',label:'Mexican'},{value:'Moroccan',flag:'🇲🇦',label:'Moroccan'},
+    {value:'Nigerian',flag:'🇳🇬',label:'Nigerian'},{value:'Norwegian',flag:'🇳🇴',label:'Norwegian'},
+    {value:'Omani',flag:'🇴🇲',label:'Omani'},{value:'Pakistani',flag:'🇵🇰',label:'Pakistani'},
+    {value:'Palestinian',flag:'🇵🇸',label:'Palestinian'},{value:'Polish',flag:'🇵🇱',label:'Polish'},
+    {value:'Portuguese',flag:'🇵🇹',label:'Portuguese'},{value:'Qatari',flag:'🇶🇦',label:'Qatari'},
+    {value:'Romanian',flag:'🇷🇴',label:'Romanian'},{value:'Russian',flag:'🇷🇺',label:'Russian'},
+    {value:'Saudi',flag:'🇸🇦',label:'Saudi'},{value:'Serbian',flag:'🇷🇸',label:'Serbian'},
+    {value:'Singaporean',flag:'🇸🇬',label:'Singaporean'},{value:'South African',flag:'🇿🇦',label:'South African'},
+    {value:'Spanish',flag:'🇪🇸',label:'Spanish'},{value:'Sri Lankan',flag:'🇱🇰',label:'Sri Lankan'},
+    {value:'Sudanese',flag:'🇸🇩',label:'Sudanese'},{value:'Swedish',flag:'🇸🇪',label:'Swedish'},
+    {value:'Swiss',flag:'🇨🇭',label:'Swiss'},{value:'Syrian',flag:'🇸🇾',label:'Syrian'},
+    {value:'Thai',flag:'🇹🇭',label:'Thai'},{value:'Tunisian',flag:'🇹🇳',label:'Tunisian'},
+    {value:'Turkish',flag:'🇹🇷',label:'Turkish'},{value:'Ukrainian',flag:'🇺🇦',label:'Ukrainian'},
+    {value:'Yemeni',flag:'🇾🇪',label:'Yemeni'},
+];
+</script>
+
+<script>
 function editUserModal() {
     return {
         show:         false,
@@ -1380,6 +1472,30 @@ function editUserModal() {
         role:         '',
         status:       '',
         avatarPreview: null,
+        natQuery: '', natOpen: false, natActiveIdx: -1,
+        natDropTop: 0, natDropLeft: 0, natDropWidth: 0,
+        get natFiltered() {
+            const q = this.natQuery.trim().toLowerCase();
+            return q ? window.nationalityList.filter(n => n.label.toLowerCase().includes(q)) : window.nationalityList;
+        },
+        natOpenDrop() {
+            const rect = this.$refs.natTrigger.getBoundingClientRect();
+            this.natDropTop = rect.bottom + window.scrollY + 4;
+            this.natDropLeft = rect.left + window.scrollX;
+            this.natDropWidth = rect.width;
+            this.natOpen = true; this.natActiveIdx = -1;
+        },
+        natPick(item) {
+            this.nationality = item.value; this.natQuery = ''; this.natOpen = false; this.natActiveIdx = -1;
+        },
+        natOnKey(e) {
+            if (!this.natOpen) { this.natOpenDrop(); return; }
+            const len = this.natFiltered.length;
+            if (e.key === 'ArrowDown') { e.preventDefault(); this.natActiveIdx = (this.natActiveIdx + 1) % len; this.$nextTick(() => { const el = document.getElementById('nat-opt-'+this.natActiveIdx); if(el) el.scrollIntoView({block:'nearest'}); }); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); this.natActiveIdx = (this.natActiveIdx - 1 + len) % len; this.$nextTick(() => { const el = document.getElementById('nat-opt-'+this.natActiveIdx); if(el) el.scrollIntoView({block:'nearest'}); }); }
+            else if (e.key === 'Enter') { e.preventDefault(); if (this.natActiveIdx >= 0 && this.natFiltered[this.natActiveIdx]) this.natPick(this.natFiltered[this.natActiveIdx]); }
+            else if (e.key === 'Escape') { this.natOpen = false; this.natActiveIdx = -1; }
+        },
 
         open(u) {
             this.userId        = u.id;
@@ -1526,85 +1642,49 @@ function editUserModal() {
                     </div>
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Nationality</label>
-                        <select name="nationality" x-model="nationality"
-                                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;cursor:pointer;">
-                            <option value="">— Select country —</option>
-                            <option value="Afghan">🇦🇫 Afghan</option>
-                            <option value="Albanian">🇦🇱 Albanian</option>
-                            <option value="Algerian">🇩🇿 Algerian</option>
-                            <option value="American">🇺🇸 American</option>
-                            <option value="Argentinian">🇦🇷 Argentinian</option>
-                            <option value="Australian">🇦🇺 Australian</option>
-                            <option value="Austrian">🇦🇹 Austrian</option>
-                            <option value="Bahraini">🇧🇭 Bahraini</option>
-                            <option value="Bangladeshi">🇧🇩 Bangladeshi</option>
-                            <option value="Belgian">🇧🇪 Belgian</option>
-                            <option value="Brazilian">🇧🇷 Brazilian</option>
-                            <option value="British">🇬🇧 British</option>
-                            <option value="Bulgarian">🇧🇬 Bulgarian</option>
-                            <option value="Cambodian">🇰🇭 Cambodian</option>
-                            <option value="Canadian">🇨🇦 Canadian</option>
-                            <option value="Chilean">🇨🇱 Chilean</option>
-                            <option value="Chinese">🇨🇳 Chinese</option>
-                            <option value="Colombian">🇨🇴 Colombian</option>
-                            <option value="Croatian">🇭🇷 Croatian</option>
-                            <option value="Czech">🇨🇿 Czech</option>
-                            <option value="Danish">🇩🇰 Danish</option>
-                            <option value="Dutch">🇳🇱 Dutch</option>
-                            <option value="Egyptian">🇪🇬 Egyptian</option>
-                            <option value="Emirati">🇦🇪 Emirati</option>
-                            <option value="Estonian">🇪🇪 Estonian</option>
-                            <option value="Ethiopian">🇪🇹 Ethiopian</option>
-                            <option value="Filipino">🇵🇭 Filipino</option>
-                            <option value="Finnish">🇫🇮 Finnish</option>
-                            <option value="French">🇫🇷 French</option>
-                            <option value="German">🇩🇪 German</option>
-                            <option value="Ghanaian">🇬🇭 Ghanaian</option>
-                            <option value="Greek">🇬🇷 Greek</option>
-                            <option value="Hungarian">🇭🇺 Hungarian</option>
-                            <option value="Indian">🇮🇳 Indian</option>
-                            <option value="Indonesian">🇮🇩 Indonesian</option>
-                            <option value="Iranian">🇮🇷 Iranian</option>
-                            <option value="Iraqi">🇮🇶 Iraqi</option>
-                            <option value="Irish">🇮🇪 Irish</option>
-                            <option value="Israeli">🇮🇱 Israeli</option>
-                            <option value="Italian">🇮🇹 Italian</option>
-                            <option value="Jordanian">🇯🇴 Jordanian</option>
-                            <option value="Japanese">🇯🇵 Japanese</option>
-                            <option value="Kenyan">🇰🇪 Kenyan</option>
-                            <option value="Korean">🇰🇷 Korean</option>
-                            <option value="Kuwaiti">🇰🇼 Kuwaiti</option>
-                            <option value="Lebanese">🇱🇧 Lebanese</option>
-                            <option value="Libyan">🇱🇾 Libyan</option>
-                            <option value="Malaysian">🇲🇾 Malaysian</option>
-                            <option value="Mexican">🇲🇽 Mexican</option>
-                            <option value="Moroccan">🇲🇦 Moroccan</option>
-                            <option value="Nigerian">🇳🇬 Nigerian</option>
-                            <option value="Norwegian">🇳🇴 Norwegian</option>
-                            <option value="Omani">🇴🇲 Omani</option>
-                            <option value="Pakistani">🇵🇰 Pakistani</option>
-                            <option value="Palestinian">🇵🇸 Palestinian</option>
-                            <option value="Polish">🇵🇱 Polish</option>
-                            <option value="Portuguese">🇵🇹 Portuguese</option>
-                            <option value="Qatari">🇶🇦 Qatari</option>
-                            <option value="Romanian">🇷🇴 Romanian</option>
-                            <option value="Russian">🇷🇺 Russian</option>
-                            <option value="Saudi">🇸🇦 Saudi</option>
-                            <option value="Serbian">🇷🇸 Serbian</option>
-                            <option value="Singaporean">🇸🇬 Singaporean</option>
-                            <option value="South African">🇿🇦 South African</option>
-                            <option value="Spanish">🇪🇸 Spanish</option>
-                            <option value="Sri Lankan">🇱🇰 Sri Lankan</option>
-                            <option value="Sudanese">🇸🇩 Sudanese</option>
-                            <option value="Swedish">🇸🇪 Swedish</option>
-                            <option value="Swiss">🇨🇭 Swiss</option>
-                            <option value="Syrian">🇸🇾 Syrian</option>
-                            <option value="Thai">🇹🇭 Thai</option>
-                            <option value="Tunisian">🇹🇳 Tunisian</option>
-                            <option value="Turkish">🇹🇷 Turkish</option>
-                            <option value="Ukrainian">🇺🇦 Ukrainian</option>
-                            <option value="Yemeni">🇾🇪 Yemeni</option>
-                        </select>
+                        <input type="hidden" name="nationality" :value="nationality">
+                        <div x-ref="natTrigger"
+                             @click="natOpenDrop(); $nextTick(()=>$refs.natInput.focus())"
+                             @click.outside="natOpen=false; natQuery=''"
+                             style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;cursor:pointer;background:#F9FAFB;transition:border-color .15s;box-sizing:border-box;"
+                             :style="natOpen ? 'border-color:#6366F1;box-shadow:0 0 0 3px rgba(99,102,241,0.1);' : ''">
+                            <span x-text="nationalityList.find(n=>n.value===nationality)?.flag ?? '🌍'"
+                                  style="font-size:15px;flex-shrink:0;line-height:1;width:20px;text-align:center;"></span>
+                            <input type="text" x-ref="natInput" x-model="natQuery"
+                                   :placeholder="nationality || 'Search nationality…'"
+                                   @focus="natOpenDrop()" @input="natOpen=true; natActiveIdx=-1"
+                                   @keydown="natOnKey($event)"
+                                   style="flex:1;border:none;outline:none;font-size:13px;color:#111827;background:transparent;min-width:0;cursor:pointer;"
+                                   autocomplete="off" spellcheck="false">
+                            <button type="button" x-show="nationality" @click.stop="nationality=''; natQuery=''; natOpen=false;"
+                                    style="background:none;border:none;cursor:pointer;color:#9CA3AF;padding:0;font-size:16px;line-height:1;flex-shrink:0;" title="Clear">×</button>
+                            <i class="fas fa-chevron-down" style="color:#9CA3AF;font-size:10px;flex-shrink:0;transition:transform .15s;"
+                               :style="natOpen ? 'transform:rotate(180deg)' : ''"></i>
+                        </div>
+                        <template x-teleport="body">
+                            <div x-show="natOpen"
+                                 x-transition:enter="transition ease-out duration-100"
+                                 x-transition:enter-start="opacity-0 -translate-y-1"
+                                 x-transition:enter-end="opacity-100 translate-y-0"
+                                 :style="`position:absolute;top:${natDropTop}px;left:${natDropLeft}px;width:${natDropWidth}px;z-index:99999;background:#fff;border:1.5px solid #E5E7EB;border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,0.12);overflow:hidden;`">
+                                <div style="max-height:220px;overflow-y:auto;">
+                                    <template x-for="(item, idx) in natFiltered" :key="item.value">
+                                        <div :id="'nat-opt-'+idx"
+                                             @click="natPick(item)"
+                                             @mouseenter="natActiveIdx = idx"
+                                             :style="natActiveIdx===idx ? 'background:#EEF2FF;' : (nationality===item.value ? 'background:#F5F3FF;' : '')"
+                                             style="padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .1s;">
+                                            <span x-text="item.flag" style="font-size:16px;width:24px;text-align:center;flex-shrink:0;"></span>
+                                            <span x-text="item.label" style="font-size:13px;font-weight:500;color:#111827;flex:1;"></span>
+                                            <i x-show="nationality===item.value" class="fas fa-check" style="color:#6366F1;font-size:10px;flex-shrink:0;"></i>
+                                        </div>
+                                    </template>
+                                    <div x-show="natFiltered.length===0" style="padding:20px;text-align:center;font-size:13px;color:#9CA3AF;">
+                                        No results for "<span x-text="natQuery"></span>"
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
                     </div>
                 </div>
 
@@ -1633,8 +1713,8 @@ function editUserModal() {
                     </div>
                 </div>
 
-                {{-- Permissions (user role only) --}}
-                <div x-show="role === 'user'" style="border:1.5px solid #F3F4F6;border-radius:12px;overflow:hidden;margin-bottom:4px;">
+                {{-- Permissions (all non-privileged roles) --}}
+                <div x-show="role && !['admin','manager'].includes(role)" style="border:1.5px solid #F3F4F6;border-radius:12px;overflow:hidden;margin-bottom:4px;">
                     <input type="hidden" name="_perms_sent" value="1">
 
                     {{-- Full access toggle --}}
@@ -1714,6 +1794,30 @@ function addUserModal() {
         perms:        [...defaultPerms],
         avatarPreview: null,
         nationality:   '',
+        natQuery: '', natOpen: false, natActiveIdx: -1,
+        natDropTop: 0, natDropLeft: 0, natDropWidth: 0,
+        get natFiltered() {
+            const q = this.natQuery.trim().toLowerCase();
+            return q ? window.nationalityList.filter(n => n.label.toLowerCase().includes(q)) : window.nationalityList;
+        },
+        natOpenDrop() {
+            const rect = this.$refs.natTrigger.getBoundingClientRect();
+            this.natDropTop = rect.bottom + window.scrollY + 4;
+            this.natDropLeft = rect.left + window.scrollX;
+            this.natDropWidth = rect.width;
+            this.natOpen = true; this.natActiveIdx = -1;
+        },
+        natPick(item) {
+            this.nationality = item.value; this.natQuery = ''; this.natOpen = false; this.natActiveIdx = -1;
+        },
+        natOnKey(e) {
+            if (!this.natOpen) { this.natOpenDrop(); return; }
+            const len = this.natFiltered.length;
+            if (e.key === 'ArrowDown') { e.preventDefault(); this.natActiveIdx = (this.natActiveIdx + 1) % len; this.$nextTick(() => { const el = document.getElementById('nat-opt-'+this.natActiveIdx); if(el) el.scrollIntoView({block:'nearest'}); }); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); this.natActiveIdx = (this.natActiveIdx - 1 + len) % len; this.$nextTick(() => { const el = document.getElementById('nat-opt-'+this.natActiveIdx); if(el) el.scrollIntoView({block:'nearest'}); }); }
+            else if (e.key === 'Enter') { e.preventDefault(); if (this.natActiveIdx >= 0 && this.natFiltered[this.natActiveIdx]) this.natPick(this.natFiltered[this.natActiveIdx]); }
+            else if (e.key === 'Escape') { this.natOpen = false; this.natActiveIdx = -1; }
+        },
 
         open() {
             this.show          = true;
@@ -1723,6 +1827,7 @@ function addUserModal() {
             this.perms         = [...defaultPerms];
             this.avatarPreview = null;
             this.nationality   = '';
+            this.natQuery = ''; this.natOpen = false; this.natActiveIdx = -1;
             document.body.style.overflow = 'hidden';
         },
 
@@ -1749,6 +1854,19 @@ function openDeleteConfirm(action, name) {
 }
 function closeDeleteConfirm() {
     document.getElementById('delete-confirm-modal').style.display = 'none';
+}
+
+function openPermanentDeleteConfirm(action, name) {
+    document.getElementById('pd-username').textContent = name;
+    document.getElementById('pd-input').value = '';
+    document.getElementById('pd-confirm-btn').disabled = true;
+    document.getElementById('pd-confirm-btn').style.opacity = '0.4';
+    document.getElementById('pd-form').action = action;
+    document.getElementById('permanent-delete-modal').style.display = 'flex';
+    setTimeout(() => document.getElementById('pd-input').focus(), 80);
+}
+function closePermanentDeleteConfirm() {
+    document.getElementById('permanent-delete-modal').style.display = 'none';
 }
 </script>
 
@@ -1785,6 +1903,51 @@ function closeDeleteConfirm() {
                         style="flex:1;padding:10px;background:#D97706;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;opacity:0.4;transition:opacity 0.15s;"
                         onmouseenter="if(!this.disabled)this.style.opacity='0.85'" onmouseleave="if(!this.disabled)this.style.opacity='1'">
                     <i class="fa fa-user-slash" style="margin-right:5px;"></i> Archive Employee
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- Permanent Delete confirmation modal --}}
+<div id="permanent-delete-modal"
+     style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;"
+     onclick="if(event.target===this)closePermanentDeleteConfirm()">
+    <div style="background:#fff;border-radius:16px;padding:28px 28px 24px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+            <div style="width:42px;height:42px;border-radius:12px;background:#FEE2E2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fa fa-trash" style="color:#DC2626;font-size:18px;"></i>
+            </div>
+            <div>
+                <p style="font-size:15px;font-weight:700;color:#111827;margin:0;">Delete Permanently</p>
+                <p style="font-size:12px;color:#EF4444;margin:0;font-weight:500;">This action cannot be undone</p>
+            </div>
+        </div>
+        <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:12px 14px;margin-bottom:16px;">
+            <p style="font-size:12px;color:#B91C1C;margin:0;line-height:1.6;">
+                <i class="fa fa-triangle-exclamation" style="margin-right:5px;"></i>
+                The account, avatar, and all related data will be <strong>permanently erased</strong>. Active tasks assigned to this user will be unassigned and moved to draft.
+            </p>
+        </div>
+        <p style="font-size:13px;color:#374151;margin:0 0 6px;">
+            Type <strong id="pd-username" style="color:#DC2626;"></strong> to confirm:
+        </p>
+        <input id="pd-input" type="text" placeholder="Enter name to confirm"
+               oninput="const btn=document.getElementById('pd-confirm-btn');const match=this.value===document.getElementById('pd-username').textContent;btn.disabled=!match;btn.style.opacity=match?'1':'0.4';"
+               style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;outline:none;box-sizing:border-box;margin-bottom:18px;"
+               onfocus="this.style.borderColor='#EF4444'" onblur="this.style.borderColor='#E5E7EB'">
+        <form id="pd-form" method="POST">
+            @csrf
+            @method('DELETE')
+            <div style="display:flex;gap:10px;">
+                <button type="button" onclick="closePermanentDeleteConfirm()"
+                        style="flex:1;padding:10px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
+                    Cancel
+                </button>
+                <button id="pd-confirm-btn" type="submit" disabled
+                        style="flex:1;padding:10px;background:#DC2626;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;opacity:0.4;transition:opacity 0.15s;"
+                        onmouseenter="if(!this.disabled)this.style.opacity='0.85'" onmouseleave="if(!this.disabled)this.style.opacity='1'">
+                    <i class="fa fa-trash" style="margin-right:5px;"></i> Delete Permanently
                 </button>
             </div>
         </form>

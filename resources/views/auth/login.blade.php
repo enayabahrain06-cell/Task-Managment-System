@@ -25,6 +25,14 @@
         <h1 style="font-size:22px;font-weight:800;color:#111827;margin:0 0 6px;">Login to your account!</h1>
         <p style="font-size:13px;color:#9CA3AF;margin:0 0 28px;">Enter your registered email address and password to login</p>
 
+        {{-- Status / info message (e.g. registration closed redirect) --}}
+        @if (session('status'))
+        <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:10px 14px;margin-bottom:18px;font-size:12px;color:#1D4ED8;display:flex;align-items:center;gap:8px;">
+            <i class="fa fa-info-circle"></i>
+            {{ session('status') }}
+        </div>
+        @endif
+
         {{-- Errors --}}
         @if ($errors->any())
         <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:10px 14px;margin-bottom:18px;font-size:12px;color:#DC2626;display:flex;align-items:center;gap:8px;">

@@ -241,16 +241,31 @@
                     </div>
                 </div>
 
-                <div style="margin-bottom:20px;">
-                    <label class="form-label">Link to Project <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
-                    <select name="project_id" class="form-input form-select">
-                        <option value="">— No project (standalone) —</option>
-                        @foreach($allProjects as $proj)
-                        <option value="{{ $proj->id }}" {{ old('project_id') == $proj->id ? 'selected' : '' }}>
-                            {{ $proj->name }}
-                        </option>
-                        @endforeach
-                    </select>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+                    <div>
+                        <label class="form-label">Link to Project <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
+                        <select name="project_id" class="form-input form-select">
+                            <option value="">— No project —</option>
+                            @foreach($allProjects as $proj)
+                            <option value="{{ $proj->id }}" {{ old('project_id') == $proj->id ? 'selected' : '' }}>
+                                {{ $proj->name }}
+                            </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Customer <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
+                        <select name="customer_id" class="form-input form-select"
+                                onfocus="this.style.borderColor='#F59E0B';this.style.boxShadow='0 0 0 3px rgba(245,158,11,0.12)'"
+                                onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">
+                            <option value="">— No customer —</option>
+                            @foreach($customers as $c)
+                            <option value="{{ $c->id }}" {{ old('customer_id') == $c->id ? 'selected' : '' }}>
+                                {{ $c->name }}{{ $c->company ? ' ('.$c->company.')' : '' }}
+                            </option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
 
                 <button type="submit"
@@ -340,7 +355,7 @@
                                       style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;color:#111827;box-sizing:border-box;outline:none;resize:none;font-family:'Inter',sans-serif;"
                                       onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">{{ old('description') }}</textarea>
                         </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px;">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
                             <div>
                                 <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
                                     First Review Date
@@ -363,6 +378,28 @@
                                     <i class="fa fa-circle-exclamation" style="margin-right:3px;"></i>Deadline is required.
                                 </p>
                             </div>
+                        </div>
+                        <div style="margin-bottom:8px;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                                <label style="font-size:12px;font-weight:600;color:#374151;">
+                                    Customer
+                                    <span style="font-size:10px;font-weight:400;color:#9CA3AF;">— optional</span>
+                                </label>
+                                <a href="{{ route('admin.customers.create') }}" target="_blank"
+                                   style="font-size:11px;font-weight:600;color:#4F46E5;text-decoration:none;display:flex;align-items:center;gap:3px;">
+                                    <i class="fas fa-plus" style="font-size:9px;"></i> New customer
+                                </a>
+                            </div>
+                            <select name="customer_id"
+                                    style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;color:#111827;background:#fff;outline:none;box-sizing:border-box;"
+                                    onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                                <option value="">— No customer —</option>
+                                @foreach($customers as $c)
+                                <option value="{{ $c->id }}" {{ old('customer_id') == $c->id ? 'selected' : '' }}>
+                                    {{ $c->name }}{{ $c->company ? ' ('.$c->company.')' : '' }}
+                                </option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
 
@@ -783,6 +820,24 @@ function dashModals() {
     ];
 @endphp
 
+{{-- ══ Dev Mode Banner (always rendered, shown/hidden via JS) ══ --}}
+<div id="dev-mode-banner" style="display:{{ $devMode ? 'flex' : 'none' }};align-items:center;justify-content:space-between;gap:12px;padding:10px 18px;background:linear-gradient(90deg,#4F46E5,#7C3AED);border-radius:12px;margin-bottom:16px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fas fa-code" style="color:#fff;font-size:13px;"></i>
+        </div>
+        <div>
+            <p style="font-size:13px;font-weight:700;color:#fff;margin:0;">Developer Mode Active</p>
+            <p style="font-size:11px;color:rgba(255,255,255,.7);margin:0;">Click any dashboard section to hide it. Go to Settings → Developer to restore hidden sections.</p>
+        </div>
+    </div>
+    <a href="{{ route('admin.settings.index') }}#developer"
+       style="display:flex;align-items:center;gap:6px;padding:7px 14px;background:rgba(255,255,255,.15);color:#fff;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;border:1px solid rgba(255,255,255,.25);flex-shrink:0;transition:background .15s;"
+       onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">
+        <i class="fas fa-gear" style="font-size:10px;"></i> Manage Sections
+    </a>
+</div>
+
 {{-- ══ Stats Row ══ --}}
 @if(!in_array('dash_stats', $devHidden))
 <div class="stats-grid" data-dev-key="dash_stats" data-dev-label="Overview Cards">
@@ -884,7 +939,7 @@ function dashModals() {
             ['label'=>'Pending',        'value'=>$taskOverview['pending'],                                       'key'=>'pending',       'icon'=>'fa-clock',               'bg'=>'#F3F4F6','color'=>'#6B7280', 'url'=>$tasksBase.'?filter=pending'],
             ['label'=>'In Progress',    'value'=>$taskOverview['in_progress'],                                   'key'=>'in_progress',   'icon'=>'fa-spinner',             'bg'=>'#FEF3C7','color'=>'#D97706', 'url'=>$tasksBase.'?status=in_progress'],
             ['label'=>'Waiting Review', 'value'=>$taskOverview['in_review'],                                     'key'=>'in_review',     'icon'=>'fa-gavel',               'bg'=>'#EDE9FE','color'=>'#7C3AED', 'url'=>$tasksBase.'?status=submitted'],
-            ['label'=>'Done',           'value'=>$taskOverview['completed'] + $taskOverview['delivered'],        'key'=>'done',          'icon'=>'fa-circle-check',        'bg'=>'#D1FAE5','color'=>'#059669', 'url'=>$tasksBase.'?filter=done'],
+            ['label'=>'Done',           'value'=>$taskOverview['completed'] + $taskOverview['delivered'] + ($taskOverview['archived'] ?? 0), 'key'=>'done', 'icon'=>'fa-circle-check', 'bg'=>'#D1FAE5','color'=>'#059669', 'url'=>$tasksBase.'?filter=done'],
             ['label'=>'Overdue',        'value'=>$taskOverview['overdue'],                                       'key'=>'overdue',       'icon'=>'fa-triangle-exclamation','bg'=>'#FEE2E2','color'=>'#DC2626', 'url'=>$tasksBase.'?overdue=1'],
             ['label'=>'Due This Week',  'value'=>$taskOverview['due_this_week'],                                 'key'=>'due_this_week', 'icon'=>'fa-calendar-week',       'bg'=>'#F0F9FF','color'=>'#0284C7', 'url'=>$tasksBase.'?filter=due_this_week'],
             ['label'=>'Reopened',       'value'=>$taskOverview['reopened'],                                      'key'=>'reopened',      'icon'=>'fa-rotate-right',        'bg'=>'#FFF7ED','color'=>'#EA580C', 'url'=>$tasksBase.'?filter=reopened'],
@@ -926,7 +981,7 @@ function dashModals() {
             </div>
             <div>
                 <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">Completion Rate</p>
-                <p id="rateSubCompletion" style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">{{ $taskOverview['completed'] + $taskOverview['delivered'] }} of {{ $taskOverview['total'] }} tasks done</p>
+                <p id="rateSubCompletion" style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">{{ $taskOverview['completed'] + $taskOverview['delivered'] + ($taskOverview['archived'] ?? 0) }} of {{ $taskOverview['total'] }} tasks done</p>
             </div>
         </div>
 
@@ -1007,27 +1062,31 @@ function dashModals() {
             <div style="position:relative;width:140px;height:140px;-ms-flex-negative:0;flex-shrink:0;">
                 <canvas id="projectStatsChart" style="width:140px!important;height:140px!important;"></canvas>
                 <div style="position:absolute;top:0;right:0;bottom:0;left:0;display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-orient:vertical;-webkit-box-direction:normal;-ms-flex-direction:column;flex-direction:column;-webkit-box-align:center;-ms-flex-align:center;align-items:center;-webkit-box-pack:center;-ms-flex-pack:center;justify-content:center;pointer-events:none;">
-                    <p style="font-size:26px;font-weight:700;color:#111827;margin:0;line-height:1;">{{ $activeProjects }}</p>
-                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Active</p>
+                    <p style="font-size:26px;font-weight:700;color:#111827;margin:0;line-height:1;" data-rv="projectStats_total">{{ $taskStats['completed'] + $taskStats['in_progress'] + $taskStats['pending'] + $taskStats['overdue'] }}</p>
+                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Projects</p>
                 </div>
             </div>
             <div style="-webkit-box-flex:1;-ms-flex:1;flex:1;min-width:0;">
                 <div style="display:-webkit-box;display:-ms-flexbox;display:flex;gap:20px;margin-bottom:14px;-ms-flex-wrap:wrap;flex-wrap:wrap;">
                     <div style="text-align:center;">
-                        <p style="font-size:22px;font-weight:700;color:#10B981;margin:0;line-height:1;">{{ $taskStats['completed'] }}</p>
-                        <p style="font-size:11px;color:#9CA3AF;margin:4px 0 0;">Success</p>
+                        <p style="font-size:22px;font-weight:700;color:#10B981;margin:0;line-height:1;" data-rv="projectStats_completed">{{ $taskStats['completed'] }}</p>
+                        <p style="font-size:11px;color:#9CA3AF;margin:4px 0 0;">Completed</p>
                     </div>
                     <div style="text-align:center;">
-                        <p style="font-size:22px;font-weight:700;color:#F59E0B;margin:0;line-height:1;">{{ $taskStats['pending'] }}</p>
+                        <p style="font-size:22px;font-weight:700;color:#6366F1;margin:0;line-height:1;" data-rv="projectStats_in_progress">{{ $taskStats['in_progress'] }}</p>
+                        <p style="font-size:11px;color:#9CA3AF;margin:4px 0 0;">In Progress</p>
+                    </div>
+                    <div style="text-align:center;">
+                        <p style="font-size:22px;font-weight:700;color:#60A5FA;margin:0;line-height:1;" data-rv="projectStats_pending">{{ $taskStats['pending'] }}</p>
                         <p style="font-size:11px;color:#9CA3AF;margin:4px 0 0;">Pending</p>
                     </div>
                     <div style="text-align:center;">
-                        <p style="font-size:22px;font-weight:700;color:#6366F1;margin:0;line-height:1;">{{ $taskStats['in_progress'] }}</p>
-                        <p style="font-size:11px;color:#9CA3AF;margin:4px 0 0;">On-Going</p>
+                        <p style="font-size:22px;font-weight:700;color:#EF4444;margin:0;line-height:1;" data-rv="projectStats_overdue">{{ $taskStats['overdue'] }}</p>
+                        <p style="font-size:11px;color:#9CA3AF;margin:4px 0 0;">Overdue</p>
                     </div>
                 </div>
                 <div style="display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-orient:vertical;-webkit-box-direction:normal;-ms-flex-direction:column;flex-direction:column;gap:6px;">
-                    @php $legendItems = [['Completed','#10B981'],['In Progress','#F59E0B'],['Pending','#60A5FA'],['Overdue','#EF4444']]; @endphp
+                    @php $legendItems = [['Completed','#10B981'],['In Progress','#6366F1'],['Pending','#60A5FA'],['Overdue','#EF4444']]; @endphp
                     @foreach($legendItems as [$lbl,$lc])
                     <div style="display:-webkit-box;display:-ms-flexbox;display:flex;-webkit-box-align:center;-ms-flex-align:center;align-items:center;gap:6px;">
                         <span style="width:9px;height:9px;border-radius:50%;background:{{ $lc }};display:inline-block;-ms-flex-negative:0;flex-shrink:0;"></span>
@@ -1106,8 +1165,8 @@ function dashModals() {
 </div>
 @endif
 
-{{-- ══ Bottom Row: Workload + Calendar ══ --}}
-@if(!in_array('dash_workload', $devHidden) || !in_array('dash_calendar', $devHidden))
+{{-- ══ Bottom Row: Workload + Customer Tasks ══ --}}
+@if(!in_array('dash_workload', $devHidden) || !in_array('dash_customers', $devHidden))
 <div class="bottom-grid">
 
     {{-- Task Workload Bar Chart --}}
@@ -1133,134 +1192,85 @@ function dashModals() {
     </div>
     @endif
 
-    {{-- Calendar and Meetings dark card --}}
-    @if(!in_array('dash_calendar', $devHidden))
+    {{-- Tasks by Customer donut chart --}}
+    @if(!in_array('dash_customers', $devHidden))
     @php
-        $avatarColors  = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6','#EC4899','#06B6D4'];
-        $meetingColors = ['#1B4D3E','#1E3A5F','#3B1F5E','#4A1942','#1A3A4A'];
-        $allMeetings   = $todayMeetings->count() ? $todayMeetings : $todayTaskEvents;
-        $showMore      = max(0, $allMeetings->count() - 2);
+        $custColors      = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6','#EC4899','#06B6D4','#F97316','#14B8A6'];
+        $custTotal       = $customerTaskDist->sum('tasks_count') + $unassignedTaskCount;
+        $hasAnyCust      = $customerTaskDist->isNotEmpty() || $unassignedTaskCount > 0;
+        $custLegColorIdx = 0;
     @endphp
 
-    <div class="cal-card" data-dev-key="dash_calendar" data-dev-label="Calendar &amp; Meetings">
+    <div class="dash-card anim-card anim-d6" style="display:flex;flex-direction:column;" data-dev-key="dash_customers" data-dev-label="Tasks by Customer">
 
         {{-- Header --}}
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
-            <div style="width:32px;height:32px;background:rgba(99,102,241,0.3);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <i class="fas fa-calendar-days" style="color:#A5B4FC;font-size:13px;"></i>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <div>
+                <h3 style="font-size:14px;font-weight:600;color:#111827;margin:0;">Tasks by Customer</h3>
+                <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">Current task distribution across clients</p>
             </div>
-            <span style="font-size:15px;font-weight:700;color:#fff;">Calendar and Meetings</span>
+            <a href="{{ route('admin.customers.index') }}" style="font-size:11px;color:#4F46E5;text-decoration:none;font-weight:500;">View all →</a>
         </div>
 
-        <div style="display:flex;gap:20px;flex-wrap:wrap;">
+        @if(!$hasAnyCust)
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;min-height:220px;color:#D1D5DB;">
+            <i class="fas fa-building" style="font-size:28px;margin-bottom:8px;"></i>
+            <p style="font-size:12px;margin:0;">No customer data yet</p>
+        </div>
+        @else
 
-            {{-- Mini Calendar --}}
-            <div style="min-width:220px;flex:0 0 220px;">
+        {{-- Donut + legend side by side --}}
+        <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;flex:1;">
 
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                    <div style="display:flex;align-items:center;gap:6px;">
-                        <span style="font-size:13px;font-weight:600;color:#E0E7FF;">{{ $calMonthLabel }}</span>
-                        <button style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.1);border:none;color:#A5B4FC;cursor:pointer;font-size:9px;display:flex;align-items:center;justify-content:center;">
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                        <button style="width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,0.1);border:none;color:#A5B4FC;cursor:pointer;font-size:9px;display:flex;align-items:center;justify-content:center;">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
-                    </div>
-                    <span style="font-size:10px;color:#6B7CB9;background:rgba(255,255,255,0.07);padding:2px 8px;border-radius:20px;">{{ $calWeekCount }} weeks</span>
-                </div>
-
-                <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:5px;">
-                    @foreach(['MO','TU','WE','TH','FR','SA','SU'] as $dh)
-                    <div style="text-align:center;font-size:9px;font-weight:600;color:#6B7CB9;">{{ $dh }}</div>
-                    @endforeach
-                </div>
-
-                <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;">
-                    @foreach($calWeeks as $week)
-                    @foreach($week as $day)
-                    @php
-                        $dk      = $day->format('Y-m-d');
-                        $isToday = $dk === $calTodayKey;
-                        $inMonth = $day->month === $firstOfMonth->month;
-                        $dots    = $taskDotMap[$dk] ?? [];
-                    @endphp
-                    <div style="text-align:center;padding:1px 0;">
-                        <div style="width:22px;height:22px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:{{ $isToday ? '700' : '400' }};{{ $isToday ? 'background:#6366F1;color:#fff;' : ($inMonth ? 'color:#C7D2FE;' : 'color:#3A4570;') }}">{{ $day->format('j') }}</div>
-                        @if(count($dots))
-                        <div style="display:flex;justify-content:center;gap:1px;margin-top:1px;">
-                            @foreach(array_slice($dots,0,3) as $dot)
-                            <span style="width:3px;height:3px;border-radius:50%;background:{{ $dot }};display:inline-block;"></span>
-                            @endforeach
-                        </div>
-                        @else
-                        <div style="height:4px;"></div>
-                        @endif
-                    </div>
-                    @endforeach
-                    @endforeach
+            {{-- Donut --}}
+            <div style="position:relative;width:150px;height:150px;flex-shrink:0;">
+                <canvas id="customerTasksChart" style="width:150px!important;height:150px!important;"></canvas>
+                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
+                    <p style="font-size:26px;font-weight:700;color:#111827;margin:0;line-height:1;">{{ $custTotal }}</p>
+                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Total</p>
                 </div>
             </div>
 
-            {{-- Today Meetings --}}
-            <div style="flex:1;min-width:0;">
-                <div style="font-size:11px;font-weight:700;color:#6B7CB9;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;">Today meetings</div>
-
-                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;align-items:start;">
-
-                    @forelse($allMeetings->take(2) as $i => $event)
-                    @php
-                        $bg      = $meetingColors[$i % count($meetingColors)];
-                        $isEvent = $event instanceof \App\Models\CalendarEvent;
-                        $title   = $event->title;
-                        $desc    = $isEvent ? ($event->description ?? '') : ('Project: '.($event->project->name ?? ''));
-                        $time    = $isEvent ? $event->start_date->format('H:i') : now()->format('H:i');
-                        $person  = $isEvent ? $event->user : ($event->assignee ?? null);
-                    @endphp
-                    <div style="background:{{ $bg }};border-radius:10px;padding:12px;min-height:100px;display:flex;flex-direction:column;gap:6px;">
-                        <div style="display:flex;align-items:center;justify-content:space-between;">
-                            <span style="font-size:11px;color:rgba(255,255,255,0.6);">{{ $time }}</span>
-                            @if($person)
-                            <div style="width:20px;height:20px;border-radius:50%;background:{{ $avatarColors[$i % count($avatarColors)] }};display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;">
-                                {{ strtoupper(substr($person->name ?? 'U',0,1)) }}
-                            </div>
-                            @endif
-                        </div>
-                        <p style="font-size:13px;font-weight:700;color:#fff;margin:0;line-height:1.3;">{{ $title }}</p>
-                        @if($desc)
-                        <p style="font-size:10px;color:rgba(255,255,255,0.5);margin:0;line-height:1.4;">{{ Str::limit($desc,45) }}</p>
-                        @endif
-                    </div>
-                    @empty
-                    <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:14px;text-align:center;color:rgba(255,255,255,0.35);font-size:11px;grid-column:1/-1;">
-                        <i class="fas fa-calendar-check" style="font-size:20px;margin-bottom:6px;display:block;"></i>
-                        No meetings today
-                    </div>
-                    @endforelse
-
-                    {{-- X More --}}
-                    @if($showMore > 0)
-                    <div style="background:rgba(255,255,255,0.07);border-radius:10px;padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:80px;cursor:pointer;"
-                         onclick="window.location='{{ route('calendar.index') }}'">
-                        <span style="font-size:18px;font-weight:700;color:#E0E7FF;">{{ $showMore }}</span>
-                        <span style="font-size:10px;color:rgba(255,255,255,0.4);">More</span>
-                    </div>
+            {{-- Legend --}}
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:7px;overflow-y:auto;max-height:200px;">
+                @foreach($customerTaskDist as $cust)
+                @php
+                    if ($cust->tasks_count > 0) {
+                        $cc = $custColors[$custLegColorIdx % count($custColors)];
+                        $custLegColorIdx++;
+                    } else {
+                        $cc = '#E5E7EB';
+                    }
+                    $pct = $custTotal > 0 ? round($cust->tasks_count / $custTotal * 100) : 0;
+                @endphp
+                <a href="{{ route('admin.customers.show', $cust->id) }}" style="text-decoration:none;display:block;">
+                <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;transition:background .12s;"
+                     onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                    <span style="width:10px;height:10px;border-radius:50%;background:{{ $cc }};flex-shrink:0;display:inline-block;{{ $cust->tasks_count === 0 ? 'border:1px solid #D1D5DB;' : '' }}"></span>
+                    <span style="flex:1;font-size:12px;font-weight:600;color:{{ $cust->tasks_count > 0 ? '#374151' : '#9CA3AF' }};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $cust->name }}</span>
+                    <span style="font-size:12px;font-weight:700;color:{{ $cust->tasks_count > 0 ? '#111827' : '#9CA3AF' }};flex-shrink:0;">{{ $cust->tasks_count }}</span>
+                    @if($cust->tasks_count > 0)
+                    <span style="font-size:10px;color:#9CA3AF;min-width:30px;text-align:right;flex-shrink:0;">{{ $pct }}%</span>
+                    @else
+                    <span style="font-size:10px;color:#D1D5DB;min-width:30px;text-align:right;flex-shrink:0;">—</span>
                     @endif
-
-                    {{-- Add New Meeting --}}
-                    <a href="{{ route('calendar.index') }}"
-                       style="background:rgba(255,255,255,0.07);border-radius:10px;padding:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:80px;text-decoration:none;transition:background 0.15s;"
-                       onmouseover="this.style.background='rgba(99,102,241,0.3)'"
-                       onmouseout="this.style.background='rgba(255,255,255,0.07)'">
-                        <div style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;">
-                            <i class="fas fa-plus" style="color:#A5B4FC;font-size:12px;"></i>
-                        </div>
-                        <span style="font-size:10px;color:rgba(255,255,255,0.45);text-align:center;line-height:1.3;">Add new<br>meeting</span>
-                    </a>
-
                 </div>
+                </a>
+                @endforeach
+
+                @if($unassignedTaskCount > 0)
+                @php $pct = $custTotal > 0 ? round($unassignedTaskCount / $custTotal * 100) : 0; @endphp
+                <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;">
+                    <span style="width:10px;height:10px;border-radius:50%;background:#E5E7EB;border:1px solid #D1D5DB;flex-shrink:0;display:inline-block;"></span>
+                    <span style="flex:1;font-size:12px;font-weight:600;color:#9CA3AF;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">No customer</span>
+                    <span style="font-size:12px;font-weight:700;color:#6B7280;flex-shrink:0;">{{ $unassignedTaskCount }}</span>
+                    <span style="font-size:10px;color:#9CA3AF;min-width:30px;text-align:right;flex-shrink:0;">{{ $pct }}%</span>
+                </div>
+                @endif
             </div>
         </div>
+
+        @endif
     </div>
     @endif
 
@@ -1350,6 +1360,209 @@ function dashModals() {
         <p style="font-size:12px;color:#9CA3AF;text-align:center;margin:0;">No projects yet</p>
         @endforelse
     </div>
+</div>
+@endif
+
+{{-- ══ Recent Tasks ══ --}}
+@if(!in_array('dash_recent_tasks', $devHidden))
+<div x-data="{
+        view: localStorage.getItem('dash_tasks_view') || 'table',
+        setView(v) { this.view = v; localStorage.setItem('dash_tasks_view', v); }
+     }" style="margin-top:16px;" data-dev-key="dash_recent_tasks" data-dev-label="Recent Tasks">
+
+    {{-- Header --}}
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+        <div>
+            <h3 style="font-size:15px;font-weight:700;color:#111827;margin:0;display:flex;align-items:center;gap:8px;">
+                <i class="fas fa-list-check" style="color:#6366F1;font-size:13px;"></i> Recent Tasks
+            </h3>
+            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Last 12 updated tasks across all projects</p>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+            {{-- Toggle --}}
+            <div style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;">
+                <button @click="setView('table')" :style="view==='table'
+                            ? 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);'
+                            : 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:transparent;color:#6B7280;'" style="display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+                    <i class="fa fa-table-list" style="font-size:11px;"></i> Table
+                </button>
+                <button @click="setView('cards')" :style="view==='cards'
+                            ? 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);'
+                            : 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:transparent;color:#6B7280;'" style="display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:transparent;color:#6B7280;">
+                    <i class="fa fa-grip" style="font-size:11px;"></i> Cards
+                </button>
+            </div>
+            <a href="{{ route('admin.tasks.index') }}"
+               style="font-size:12px;font-weight:600;color:#4F46E5;text-decoration:none;white-space:nowrap;">View all →</a>
+        </div>
+    </div>
+
+    @php
+    $statusMeta = [
+        'draft'              => ['label'=>'Draft',       'bg'=>'#F3F4F6','color'=>'#6B7280'],
+        'assigned'           => ['label'=>'Assigned',    'bg'=>'#EEF2FF','color'=>'#4F46E5'],
+        'viewed'             => ['label'=>'Viewed',      'bg'=>'#E0F2FE','color'=>'#0369A1'],
+        'in_progress'        => ['label'=>'In Progress', 'bg'=>'#FEF3C7','color'=>'#D97706'],
+        'submitted'          => ['label'=>'In Review',   'bg'=>'#EDE9FE','color'=>'#7C3AED'],
+        'revision_requested' => ['label'=>'Revision',    'bg'=>'#FEE2E2','color'=>'#DC2626'],
+        'approved'           => ['label'=>'Approved',    'bg'=>'#D1FAE5','color'=>'#059669'],
+        'delivered'          => ['label'=>'Delivered',   'bg'=>'#ECFDF5','color'=>'#047857'],
+        'archived'           => ['label'=>'Archived',    'bg'=>'#F3F4F6','color'=>'#6B7280'],
+    ];
+    $priorityMeta = [
+        'high'   => ['label'=>'High',   'bg'=>'#FEE2E2','color'=>'#DC2626'],
+        'medium' => ['label'=>'Med',    'bg'=>'#FEF3C7','color'=>'#D97706'],
+        'low'    => ['label'=>'Low',    'bg'=>'#D1FAE5','color'=>'#059669'],
+    ];
+    @endphp
+
+    @if($recentTasks->isEmpty())
+    <div class="dash-card" style="text-align:center;padding:40px;color:#9CA3AF;">
+        <i class="fas fa-list-check" style="font-size:28px;margin-bottom:10px;display:block;"></i>
+        <p style="margin:0;font-size:13px;">No tasks yet.</p>
+    </div>
+    @else
+
+    {{-- TABLE VIEW --}}
+    <div x-show="view==='table'">
+        <div class="dash-card" style="padding:0;overflow:hidden;">
+            <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                    <tr style="border-bottom:1.5px solid #F3F4F6;background:#FAFAFA;">
+                        <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Task</th>
+                        <th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Project</th>
+                        <th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Assignee</th>
+                        <th style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Status</th>
+                        <th style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Priority</th>
+                        <th style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Deadline</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($recentTasks as $task)
+                    @php
+                        $sm = $statusMeta[$task->status] ?? ['label'=>ucfirst($task->status),'bg'=>'#F3F4F6','color'=>'#6B7280'];
+                        $pm = $priorityMeta[$task->priority ?? 'medium'] ?? null;
+                        $isOverdue = $task->deadline && $task->deadline->isPast() && !in_array($task->status, ['approved','delivered','archived']);
+                    @endphp
+                    <tr style="border-bottom:1px solid #F9FAFB;transition:background .1s;"
+                        onmouseover="this.style.background='#FAFBFF'" onmouseout="this.style.background=''">
+                        <td style="padding:11px 16px;max-width:220px;">
+                            <a href="{{ route('admin.tasks.show', $task) }}"
+                               style="font-size:13px;font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                               onmouseover="this.style.color='#4F46E5'" onmouseout="this.style.color='#111827'">
+                                {{ $task->title }}
+                            </a>
+                        </td>
+                        <td style="padding:11px 14px;">
+                            <span style="font-size:12px;color:#6B7280;">{{ $task->project->name ?? '—' }}</span>
+                        </td>
+                        <td style="padding:11px 14px;">
+                            @if($task->assignee)
+                            <div style="display:flex;align-items:center;gap:7px;">
+                                <div style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0;">
+                                    {{ strtoupper(substr($task->assignee->name, 0, 1)) }}
+                                </div>
+                                <span style="font-size:12px;color:#374151;">{{ $task->assignee->name }}</span>
+                            </div>
+                            @else
+                            <span style="font-size:12px;color:#D1D5DB;">Unassigned</span>
+                            @endif
+                        </td>
+                        <td style="padding:11px 14px;text-align:center;">
+                            <span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:{{ $sm['bg'] }};color:{{ $sm['color'] }};">
+                                {{ $sm['label'] }}
+                            </span>
+                        </td>
+                        <td style="padding:11px 14px;text-align:center;">
+                            @if($pm)
+                            <span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:{{ $pm['bg'] }};color:{{ $pm['color'] }};">
+                                {{ $pm['label'] }}
+                            </span>
+                            @else
+                            <span style="color:#D1D5DB;font-size:12px;">—</span>
+                            @endif
+                        </td>
+                        <td style="padding:11px 14px;text-align:center;">
+                            @if($task->deadline)
+                            <span style="font-size:12px;font-weight:600;color:{{ $isOverdue ? '#EF4444' : '#374151' }};">
+                                {{ $isOverdue ? '⚠ ' : '' }}{{ $task->deadline->format('M d, Y') }}
+                            </span>
+                            @else
+                            <span style="color:#D1D5DB;font-size:12px;">—</span>
+                            @endif
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {{-- CARD VIEW --}}
+    <div x-show="view==='cards'">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">
+            @foreach($recentTasks as $task)
+            @php
+                $sm = $statusMeta[$task->status] ?? ['label'=>ucfirst($task->status),'bg'=>'#F3F4F6','color'=>'#6B7280'];
+                $pm = $priorityMeta[$task->priority ?? 'medium'] ?? null;
+                $isOverdue = $task->deadline && $task->deadline->isPast() && !in_array($task->status, ['approved','delivered','archived']);
+            @endphp
+            <a href="{{ route('admin.tasks.show', $task) }}" style="text-decoration:none;display:block;">
+                <div class="dash-card" style="padding:16px;cursor:pointer;transition:box-shadow .15s,transform .15s;"
+                     onmouseover="this.style.boxShadow='0 6px 24px rgba(0,0,0,.1)';this.style.transform='translateY(-2px)'"
+                     onmouseout="this.style.boxShadow='';this.style.transform=''">
+
+                    {{-- Top: status + priority --}}
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                        <span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:{{ $sm['bg'] }};color:{{ $sm['color'] }};">
+                            {{ $sm['label'] }}
+                        </span>
+                        @if($pm)
+                        <span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;background:{{ $pm['bg'] }};color:{{ $pm['color'] }};">
+                            {{ $pm['label'] }}
+                        </span>
+                        @endif
+                    </div>
+
+                    {{-- Title --}}
+                    <p style="font-size:13px;font-weight:700;color:#111827;margin:0 0 8px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
+                        {{ $task->title }}
+                    </p>
+
+                    {{-- Project --}}
+                    @if($task->project)
+                    <p style="font-size:11px;color:#6B7280;margin:0 0 10px;display:flex;align-items:center;gap:4px;">
+                        <i class="fas fa-diagram-project" style="font-size:10px;color:#9CA3AF;"></i>
+                        {{ $task->project->name }}
+                    </p>
+                    @endif
+
+                    {{-- Footer: assignee + deadline --}}
+                    <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid #F3F4F6;padding-top:10px;">
+                        @if($task->assignee)
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <div style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;flex-shrink:0;">
+                                {{ strtoupper(substr($task->assignee->name, 0, 1)) }}
+                            </div>
+                            <span style="font-size:11px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">{{ $task->assignee->name }}</span>
+                        </div>
+                        @else
+                        <span style="font-size:11px;color:#D1D5DB;">Unassigned</span>
+                        @endif
+
+                        @if($task->deadline)
+                        <span style="font-size:11px;font-weight:600;color:{{ $isOverdue ? '#EF4444' : '#9CA3AF' }};">
+                            {{ $isOverdue ? '⚠ ' : '' }}{{ $task->deadline->format('M d') }}
+                        </span>
+                        @endif
+                    </div>
+                </div>
+            </a>
+            @endforeach
+        </div>
+    </div>
+
+    @endif
 </div>
 @endif
 
@@ -2116,7 +2329,7 @@ var chartProjectStats = new Chart(document.getElementById('projectStatsChart'), 
                 {{ $taskStats['pending'] }},
                 {{ $taskStats['overdue'] }}
             ],
-            backgroundColor: ['#10B981','#F59E0B','#60A5FA','#EF4444'],
+            backgroundColor: ['#10B981','#6366F1','#60A5FA','#EF4444'],
             borderWidth: 2,
             borderColor: '#fff',
             hoverOffset: 6,
@@ -2132,6 +2345,54 @@ var chartProjectStats = new Chart(document.getElementById('projectStatsChart'), 
         }
     }
 });
+
+// Donut Chart — Tasks by Customer
+(function() {
+    var el = document.getElementById('customerTasksChart');
+    if (!el) return;
+    @php
+        $custChartLabels = [];
+        $custChartData   = [];
+        $custChartColors = [];
+        $palette  = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6','#EC4899','#06B6D4','#F97316','#14B8A6'];
+        $chartIdx = 0;
+        foreach ($customerTaskDist as $c) {
+            if ($c->tasks_count > 0) {
+                $custChartLabels[] = $c->name;
+                $custChartData[]   = $c->tasks_count;
+                $custChartColors[] = $palette[$chartIdx % count($palette)];
+                $chartIdx++;
+            }
+        }
+        if ($unassignedTaskCount > 0) {
+            $custChartLabels[] = 'No customer';
+            $custChartData[]   = $unassignedTaskCount;
+            $custChartColors[] = '#E5E7EB';
+        }
+    @endphp
+    new Chart(el, {
+        type: 'doughnut',
+        data: {
+            labels: @json($custChartLabels),
+            datasets: [{
+                data: @json($custChartData),
+                backgroundColor: @json($custChartColors),
+                borderWidth: 2,
+                borderColor: '#fff',
+                hoverOffset: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            cutout: '70%',
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: function(ctx) { return ' ' + ctx.label + ': ' + ctx.parsed + ' tasks'; } } }
+            }
+        }
+    });
+})();
 
 // Bar Chart — Task Workload
 var chartWorkload = null;
@@ -2217,7 +2478,7 @@ chartWorkload = new Chart(document.getElementById('workloadChart'), {
                 setRV('overview_pending',        ov.pending);
                 setRV('overview_in_progress',    ov.in_progress);
                 setRV('overview_in_review',      ov.in_review);
-                setRV('overview_done',           (ov.completed || 0) + (ov.delivered || 0));
+                setRV('overview_done',           (ov.completed || 0) + (ov.delivered || 0) + (ov.archived || 0));
                 setRV('overview_overdue',        ov.overdue);
                 setRV('overview_due_today',      ov.due_today);
                 setRV('overview_due_this_week',  ov.due_this_week);
@@ -2230,7 +2491,7 @@ chartWorkload = new Chart(document.getElementById('workloadChart'), {
                 var rcEl = document.getElementById('reviewCyclesVal');
                 if (rcEl) rcEl.textContent = d.reviewCycles;
                 var rsSub = document.getElementById('rateSubCompletion');
-                if (rsSub) rsSub.textContent = (ov.completed + ov.delivered) + ' of ' + ov.total + ' tasks done';
+                if (rsSub) rsSub.textContent = ((ov.completed || 0) + (ov.delivered || 0) + (ov.archived || 0)) + ' of ' + ov.total + ' tasks done';
 
                 // ── Social Media stats ──
                 if (d.socialPostsTotal !== undefined) setRV('socialPostsTotal', d.socialPostsTotal);
@@ -2245,13 +2506,15 @@ chartWorkload = new Chart(document.getElementById('workloadChart'), {
                 }
 
                 // ── Project Stats donut ──
-                if (typeof chartProjectStats !== 'undefined' && chartProjectStats) {
+                if (typeof chartProjectStats !== 'undefined' && chartProjectStats && d.taskStats) {
                     var ts = d.taskStats;
                     chartProjectStats.data.datasets[0].data = [ts.completed, ts.in_progress, ts.pending, ts.overdue];
                     chartProjectStats.update('none');
-                    // update center label
-                    var centerEl = document.querySelector('#projectStatsChart').parentNode.querySelector('p');
-                    if (centerEl) centerEl.textContent = d.activeProjects;
+                    setRV('projectStats_completed',  ts.completed);
+                    setRV('projectStats_in_progress',ts.in_progress);
+                    setRV('projectStats_pending',    ts.pending);
+                    setRV('projectStats_overdue',    ts.overdue);
+                    setRV('projectStats_total', (ts.completed||0)+(ts.in_progress||0)+(ts.pending||0)+(ts.overdue||0));
                 }
 
                 // ── Workload bar chart ──

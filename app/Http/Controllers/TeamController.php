@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Role;
+use App\Models\Setting;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -17,6 +18,10 @@ class TeamController extends Controller
 
         $allowedViews = ['team', 'permissions', 'roles', 'former'];
         $view = in_array($request->input('view'), $allowedViews) ? $request->input('view') : 'team';
+
+        if ($view === 'roles' && auth()->user()->role === 'manager' && Setting::get('manager_can_view_roles', '0') !== '1') {
+            return redirect()->route('team.index')->with('error', 'You do not have permission to view Roles.');
+        }
 
         $doneStatuses = ['delivered', 'approved', 'archived'];
         $allRoles     = Role::ordered();

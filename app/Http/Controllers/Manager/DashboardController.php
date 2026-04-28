@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Manager;
 
 use App\Http\Controllers\Controller;
 use App\Models\CalendarEvent;
+use App\Models\Customer;
 use App\Models\Project;
 use App\Models\Task;
+use App\Models\TaskSocialPost;
 use App\Models\TaskSubmission;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -18,7 +20,7 @@ class DashboardController extends Controller
         $analyticsNonDone = ['draft', 'assigned', 'viewed', 'in_progress', 'submitted', 'revision_requested'];
 
         $totalTasks     = Task::count();
-        $activeProjects = Project::where('status', 'active')->count();
+        $activeProjects = Project::where('status', 'active')->where('is_quick', false)->count();
         $overdueTasks   = Task::where('deadline', '<', now())->whereNotIn('status', $doneStatuses)->count();
 
         $taskOverview = [
@@ -29,6 +31,7 @@ class DashboardController extends Controller
             'in_review'     => Task::where('status', 'submitted')->count(),
             'completed'     => Task::where('status', 'approved')->count(),
             'delivered'     => Task::where('status', 'delivered')->count(),
+            'archived'      => Task::where('status', 'archived')->count(),
             'overdue'       => $overdueTasks,
             'due_today'     => Task::whereDate('deadline', today())->whereIn('status', $analyticsNonDone)->count(),
             'due_this_week' => Task::whereBetween('deadline', [now()->startOfWeek(Carbon::MONDAY), now()->endOfWeek(Carbon::SUNDAY)])->whereIn('status', $analyticsNonDone)->count(),
@@ -36,7 +39,7 @@ class DashboardController extends Controller
             'reassigned'    => \App\Models\TaskLog::whereIn('action', ['task_reassigned', 'task_transferred'])->distinct('task_id')->count('task_id'),
         ];
 
-        $totalDone      = $taskOverview['completed'] + $taskOverview['delivered'];
+        $totalDone      = $taskOverview['completed'] + $taskOverview['delivered'] + $taskOverview['archived'];
         $completionRate = $totalTasks > 0 ? round($totalDone / $totalTasks * 100) : 0;
 
         $onTimeCount = Task::whereIn('status', ['approved', 'delivered'])
@@ -94,13 +97,13 @@ class DashboardController extends Controller
         $users       = User::paginate(10);
         $projects    = Project::withCount('tasks')->paginate(10);
         $allUsers    = User::where('role', 'user')->orderBy('name')->get();
-        $allProjects = Project::where('status', 'active')->orderBy('name')->get();
+        $allProjects = Project::where('status', 'active')->where('is_quick', false)->orderBy('name')->get();
 
         $doneStatuses   = ['approved', 'delivered', 'archived'];
         $overdueTasks   = Task::where('deadline', '<', now())->whereNotIn('status', $doneStatuses)->count();
         $completedTasks = Task::where('status', 'approved')->count();
         $totalTasks     = Task::count();
-        $activeProjects = Project::where('status', 'active')->count();
+        $activeProjects = Project::where('status', 'active')->where('is_quick', false)->count();
 
         $analyticsNonDone = ['draft', 'assigned', 'viewed', 'in_progress', 'submitted', 'revision_requested'];
 
@@ -113,6 +116,7 @@ class DashboardController extends Controller
             'revision_requested' => Task::where('status', 'revision_requested')->count(),
             'completed'          => Task::where('status', 'approved')->count(),
             'delivered'          => Task::where('status', 'delivered')->count(),
+            'archived'           => Task::where('status', 'archived')->count(),
             'overdue'            => Task::where('deadline', '<', now())->whereIn('status', $analyticsNonDone)->count(),
             'due_today'          => Task::whereDate('deadline', today())->whereIn('status', $analyticsNonDone)->count(),
             'due_this_week'      => Task::whereBetween('deadline', [now()->startOfWeek(Carbon::MONDAY), now()->endOfWeek(Carbon::SUNDAY)])->whereIn('status', $analyticsNonDone)->count(),
@@ -120,7 +124,7 @@ class DashboardController extends Controller
             'reassigned'         => \App\Models\TaskLog::whereIn('action', ['task_reassigned', 'task_transferred'])->distinct('task_id')->count('task_id'),
         ];
 
-        $totalDone      = $taskOverview['completed'] + $taskOverview['delivered'];
+        $totalDone      = $taskOverview['completed'] + $taskOverview['delivered'] + $taskOverview['archived'];
         $completionRate = $totalTasks > 0 ? round($totalDone / $totalTasks * 100) : 0;
 
         $onTimeCount = Task::whereIn('status', ['approved', 'delivered'])
@@ -204,6 +208,14 @@ class DashboardController extends Controller
         $calTodayKey   = $calNow->format('Y-m-d');
         $calWeekCount  = count($calWeeks);
 
+        // Social media stats
+        $socialPostsTotal    = TaskSocialPost::count();
+        $socialPostsMonth    = TaskSocialPost::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count();
+        $socialPending       = Task::where('social_required', true)->whereNull('social_posted_at')->count();
+        $socialRequired      = Task::where('social_required', true)->count();
+        $socialPlatformStats = TaskSocialPost::selectRaw('platform, count(*) as total')
+            ->groupBy('platform')->orderByDesc('total')->get();
+
         // Extra charts
         $priorityCounts = Task::selectRaw("priority, count(*) as total")
             ->groupBy('priority')->pluck('total', 'priority');
@@ -233,8 +245,17 @@ class DashboardController extends Controller
         $dashProjectStoreUrl = route('manager.projects.store');
         $dashQuickTaskUrl    = route('manager.tasks.quick');
 
+        $customers           = Customer::orderBy('name')->get();
+        $customerTaskDist    = Customer::withCount('tasks')->orderBy('name')->get(['id', 'name', 'tasks_count']);
+        $unassignedTaskCount = Task::whereNull('customer_id')->count();
+        $recentTasks         = Task::with(['project:id,name', 'assignee:id,name,avatar'])
+            ->orderByDesc('updated_at')
+            ->take(12)
+            ->get();
+
         return view('admin.dashboard', compact(
             'users', 'projects', 'allUsers', 'allProjects',
+            'customers', 'recentTasks', 'customerTaskDist', 'unassignedTaskCount',
             'overdueTasks', 'completedTasks', 'totalTasks', 'activeProjects',
             'scheduledMeetings',
             'weekLabels', 'weekData',
@@ -245,6 +266,7 @@ class DashboardController extends Controller
             'calMonthLabel', 'calTodayKey', 'calWeekCount', 'firstOfMonth',
             'taskOverview', 'completionRate', 'onTimeRate', 'reviewCycles',
             'priorityData', 'teamPerfData', 'projectProgressData',
+            'socialPostsTotal', 'socialPostsMonth', 'socialPending', 'socialRequired', 'socialPlatformStats',
             'dashRefreshUrl', 'dashHomeUrl', 'dashProjectsUrl', 'dashProjectStoreUrl', 'dashQuickTaskUrl'
         ));
     }

@@ -5,11 +5,8 @@ namespace App\Observers;
 use App\Models\CalendarEvent;
 use App\Models\Setting;
 use App\Models\Task;
-<<<<<<< Updated upstream
 use App\Models\TaskLog;
-=======
 use App\Notifications\TaskAssigned;
->>>>>>> Stashed changes
 
 class TaskObserver
 {

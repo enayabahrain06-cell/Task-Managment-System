@@ -70,18 +70,66 @@
 
 {{-- ══ Print Header (hidden on screen) ══ --}}
 <div id="rpt-print-header">
-    <div style="height:4px;background:linear-gradient(90deg,#4F46E5,#7C3AED);border-radius:3px;margin-bottom:16px;"></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <div>
-            <div style="font-size:18px;font-weight:800;color:#111827;">My Performance Report</div>
-            <div style="font-size:11px;color:#9CA3AF;margin-top:2px;">{{ auth()->user()->name }} &mdash; {{ auth()->user()->job_title ?? ucfirst(auth()->user()->role) }}</div>
+    {{-- Top accent bar --}}
+    <div style="height:5px;background:linear-gradient(90deg,#4F46E5,#6366F1,#818CF8);border-radius:3px;margin-bottom:20px;"></div>
+
+    {{-- Logo + company block --}}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        {{-- Left: logo + company name --}}
+        <div style="display:flex;align-items:center;gap:14px;">
+            @if(!empty($appSettings['logo_path']))
+                <img src="{{ Storage::url($appSettings['logo_path']) }}"
+                     alt="{{ $appSettings['company_name'] ?? $appSettings['app_name'] ?? 'Logo' }}"
+                     style="height:48px;width:auto;max-width:160px;object-fit:contain;"
+                     crossorigin="anonymous">
+            @else
+                <div style="width:44px;height:44px;background:#4F46E5;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <span style="color:#fff;font-size:20px;font-weight:800;line-height:1;">
+                        {{ strtoupper(substr($appSettings['company_name'] ?? $appSettings['app_name'] ?? 'D', 0, 1)) }}
+                    </span>
+                </div>
+            @endif
+            <div>
+                <div style="font-size:18px;font-weight:800;color:#111827;line-height:1.2;">
+                    {{ $appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name') }}
+                </div>
+                @if(!empty($appSettings['app_tagline']))
+                <div style="font-size:11px;color:#9CA3AF;margin-top:2px;">{{ $appSettings['app_tagline'] }}</div>
+                @endif
+            </div>
         </div>
+        {{-- Right: report label --}}
         <div style="text-align:right;">
-            <div style="font-size:11px;color:#6B7280;">Generated {{ now()->format('F d, Y') }} at {{ now()->format('H:i') }}</div>
-            <div style="font-size:11px;color:#6B7280;">Period: {{ $from ? $from->format('M d, Y').' – '.now()->format('M d, Y') : 'All Time' }}</div>
+            <div style="font-size:20px;font-weight:800;color:#4F46E5;line-height:1.2;">My Performance Report</div>
+            <div style="font-size:11px;color:#9CA3AF;margin-top:3px;">Confidential — Internal Use Only</div>
         </div>
     </div>
-    <div style="border-top:1.5px solid #E5E7EB;"></div>
+
+    {{-- Divider --}}
+    <div style="border-top:1.5px solid #E5E7EB;margin-bottom:14px;"></div>
+
+    {{-- Meta row --}}
+    <div style="display:flex;gap:32px;flex-wrap:wrap;">
+        <div>
+            <span style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em;">Employee</span>
+            <div style="font-size:12px;font-weight:600;color:#374151;margin-top:2px;">{{ auth()->user()->name }}</div>
+        </div>
+        <div>
+            <span style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em;">Role</span>
+            <div style="font-size:12px;font-weight:600;color:#374151;margin-top:2px;">{{ auth()->user()->job_title ?? ucfirst(auth()->user()->role) }}</div>
+        </div>
+        <div>
+            <span style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em;">Generated</span>
+            <div style="font-size:12px;font-weight:600;color:#374151;margin-top:2px;">{{ now()->format('F d, Y') }} at {{ now()->format('H:i') }}</div>
+        </div>
+        <div>
+            <span style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em;">Period</span>
+            <div style="font-size:12px;font-weight:600;color:#374151;margin-top:2px;">{{ $from ? $from->format('M d, Y').' – '.now()->format('M d, Y') : 'All Time' }}</div>
+        </div>
+    </div>
+
+    {{-- Bottom divider --}}
+    <div style="border-top:1.5px solid #E5E7EB;margin-top:14px;"></div>
 </div>
 
 {{-- ══ Header ══ --}}
@@ -551,32 +599,6 @@
             <input type="text" id="atSearch" placeholder="Search tasks or projects…"
                    oninput="filterAllTasks(this.value)"
                    style="width:100%;padding:8px 10px 8px 30px;border:1px solid #E5E7EB;border-radius:9px;font-size:13px;color:#374151;outline:none;background:#F9FAFB;box-sizing:border-box;">
-        </div>
-        {{-- Export dropdown --}}
-        <div x-data="{ exportOpen: false }" style="position:relative;flex-shrink:0;" @click.outside="exportOpen=false">
-            <button @click="exportOpen=!exportOpen"
-                    style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;background:#4F46E5;color:#fff;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:background .15s;"
-                    onmouseover="this.style.background='#4338CA'" onmouseout="this.style.background='#4F46E5'">
-                <i class="fas fa-file-export" style="font-size:11px;"></i>
-                Export
-                <i class="fas fa-chevron-down" style="font-size:9px;" :style="exportOpen ? 'transform:rotate(180deg)' : ''"></i>
-            </button>
-            <div x-show="exportOpen" x-transition
-                 style="position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:170px;z-index:50;overflow:hidden;">
-                <a href="{{ route('user.reports.export') }}" @click="exportOpen=false"
-                   style="display:flex;align-items:center;gap:9px;padding:10px 14px;font-size:13px;color:#374151;text-decoration:none;"
-                   onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='transparent'">
-                    <i class="fas fa-file-csv" style="font-size:12px;color:#16A34A;"></i>
-                    Export as CSV
-                </a>
-                <div style="height:1px;background:#F3F4F6;"></div>
-                <button onclick="exportTasksPDF()" @click="exportOpen=false"
-                        style="display:flex;align-items:center;gap:9px;padding:10px 14px;font-size:13px;color:#374151;width:100%;border:none;background:transparent;cursor:pointer;text-align:left;"
-                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='transparent'">
-                    <i class="fas fa-file-pdf" style="font-size:12px;color:#DC2626;"></i>
-                    Export as PDF
-                </button>
-            </div>
         </div>
     </div>
 

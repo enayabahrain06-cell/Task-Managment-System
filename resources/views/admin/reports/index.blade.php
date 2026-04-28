@@ -197,6 +197,17 @@
                 <option value="{{ $p->id }}" {{ $projectId == $p->id ? 'selected' : '' }}>{{ $p->name }}</option>
                 @endforeach
             </select>
+
+            {{-- Customer filter --}}
+            @if($allCustomers->isNotEmpty())
+            <select name="customer_id" onchange="this.form.submit()"
+                    style="font-size:12px;border:1px solid #E5E7EB;border-radius:8px;padding:7px 28px 7px 10px;background:#fff;color:#374151;outline:none;-webkit-appearance:none;appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
+                <option value="">All Customers</option>
+                @foreach($allCustomers as $c)
+                <option value="{{ $c->id }}" {{ $customerId == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
+                @endforeach
+            </select>
+            @endif
         </form>
 
         {{-- Export dropdown --}}
@@ -438,7 +449,7 @@
 
 </div>
 
-{{-- ══ Row 4+5: Project Performance + Team Productivity (2-col) ══ --}}
+{{-- ══ Row 4: Project Performance (full width) ══ --}}
 <div class="rpt-grid-2">
 
     {{-- Project Performance --}}
@@ -503,8 +514,77 @@
         @endif
     </div>
 
-    {{-- Team Productivity --}}
-    <div class="rpt-card">
+    {{-- Monthly Task Balance Chart --}}
+    @php
+        $totalCreated12   = array_sum($balanceCreated);
+        $totalDone12      = array_sum($balanceDone);
+        $netBalance12     = $totalDone12 - $totalCreated12;
+        $bestMonthIdx     = array_search(max($balanceDone ?: [0]), $balanceDone ?: [0]);
+        $bestMonth        = $balanceLabels[$bestMonthIdx] ?? '—';
+        $avgCompletion    = count($balanceDone) > 0 ? round(array_sum($balanceDone) / count($balanceDone), 1) : 0;
+        $completionRate12 = $totalCreated12 > 0 ? round($totalDone12 / $totalCreated12 * 100) : 0;
+    @endphp
+    <div class="rpt-card" style="display:flex;flex-direction:column;">
+        {{-- Header --}}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <p class="rpt-section-title" style="margin:0;">
+                <span style="width:22px;height:22px;border-radius:6px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-chart-line" style="color:#6366F1;font-size:10px;"></i>
+                </span>
+                Monthly Task Balance
+            </p>
+            <div style="display:flex;align-items:center;gap:10px;font-size:10px;color:#6B7280;">
+                <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(16,185,129,.85);margin-right:4px;"></span>Completed</span>
+                <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(99,102,241,.85);margin-right:4px;"></span>Created</span>
+            </div>
+        </div>
+
+        {{-- Stat pills --}}
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
+            <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:10px 12px;">
+                <p style="font-size:10px;font-weight:600;color:#6B7280;margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em;">Completed</p>
+                <p style="font-size:22px;font-weight:800;color:#059669;margin:0;line-height:1;">{{ $totalDone12 }}</p>
+                <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">last 12 months</p>
+            </div>
+            <div style="background:#EEF2FF;border:1px solid #C7D2FE;border-radius:10px;padding:10px 12px;">
+                <p style="font-size:10px;font-weight:600;color:#6B7280;margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em;">Created</p>
+                <p style="font-size:22px;font-weight:800;color:#4F46E5;margin:0;line-height:1;">{{ $totalCreated12 }}</p>
+                <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">last 12 months</p>
+            </div>
+            <div style="background:{{ $netBalance12 >= 0 ? '#F0FDF4' : '#FEF2F2' }};border:1px solid {{ $netBalance12 >= 0 ? '#BBF7D0' : '#FECACA' }};border-radius:10px;padding:10px 12px;">
+                <p style="font-size:10px;font-weight:600;color:#6B7280;margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em;">Net Balance</p>
+                <p style="font-size:22px;font-weight:800;color:{{ $netBalance12 >= 0 ? '#059669' : '#DC2626' }};margin:0;line-height:1;">
+                    {{ $netBalance12 >= 0 ? '+' : '' }}{{ $netBalance12 }}
+                </p>
+                <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">{{ $netBalance12 >= 0 ? 'ahead of backlog' : 'backlog growing' }}</p>
+            </div>
+            <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:10px 12px;">
+                <p style="font-size:10px;font-weight:600;color:#6B7280;margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em;">Best Month</p>
+                <p style="font-size:16px;font-weight:800;color:#EA580C;margin:0;line-height:1.2;">{{ $bestMonth }}</p>
+                <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">{{ max($balanceDone ?: [0]) }} tasks done</p>
+            </div>
+        </div>
+
+        {{-- Completion rate bar --}}
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 12px;background:#F9FAFB;border-radius:10px;border:1px solid #F0F0F0;">
+            <span style="font-size:11px;font-weight:600;color:#374151;white-space:nowrap;">12-Month Rate</span>
+            <div style="flex:1;height:7px;background:#E5E7EB;border-radius:99px;overflow:hidden;">
+                <div style="height:7px;width:{{ $completionRate12 }}%;background:{{ $completionRate12 >= 80 ? 'linear-gradient(90deg,#059669,#10B981)' : ($completionRate12 >= 50 ? 'linear-gradient(90deg,#D97706,#F59E0B)' : 'linear-gradient(90deg,#DC2626,#EF4444)') }};border-radius:99px;transition:width .6s;"></div>
+            </div>
+            <span style="font-size:12px;font-weight:700;color:{{ $completionRate12 >= 80 ? '#059669' : ($completionRate12 >= 50 ? '#D97706' : '#DC2626') }};min-width:34px;text-align:right;">{{ $completionRate12 }}%</span>
+            <span style="font-size:10px;color:#9CA3AF;">avg {{ $avgCompletion }}/mo</span>
+        </div>
+
+        {{-- Chart --}}
+        <div style="flex:1;position:relative;min-height:180px;">
+            <canvas id="projCompletionChart"></canvas>
+        </div>
+    </div>
+
+</div>
+
+{{-- ══ Row 5: Team Productivity (full width) ══ --}}
+<div class="rpt-card">
         <p class="rpt-section-title">
             <span style="width:22px;height:22px;border-radius:6px;background:#EDE9FE;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fas fa-users" style="color:#7C3AED;font-size:10px;"></i>
@@ -518,25 +598,27 @@
             <i class="fas fa-circle-info" style="margin-right:3px;"></i>
             Admin/Manager: counted by tasks <strong>created</strong> &amp; tasks <strong>approved</strong>. &nbsp;Users: counted by assigned tasks.
         </div>
-        <div class="rpt-scroll-wrap" style="overflow-x:auto;">
-            <table class="rpt-table" id="team-table">
+        <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;" id="team-table">
                 <thead>
-                    <tr>
-                        <th>Member</th>
-                        <th style="text-align:center;">Created</th>
-                        <th style="text-align:center;">Done</th>
-                        <th style="text-align:center;">Active</th>
-                        <th style="text-align:center;">OD</th>
-                        <th style="text-align:center;">Projects</th>
-                        <th style="min-width:90px;">Rate</th>
+                    <tr style="background:#F9FAFB;border-bottom:1px solid #E5E7EB;">
+                        <th style="text-align:left;padding:7px 12px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Member</th>
+                        <th style="text-align:center;padding:7px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Created</th>
+                        <th style="text-align:center;padding:7px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Done</th>
+                        <th style="text-align:center;padding:7px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Active</th>
+                        <th style="text-align:center;padding:7px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;" title="Overdue">OD</th>
+                        <th style="text-align:center;padding:7px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Projects</th>
+                        <th style="text-align:center;padding:7px 10px;font-size:10px;font-weight:700;color:#F59E0B;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;" title="Tasks reopened by this admin/manager">Reopened</th>
+                        <th style="text-align:center;padding:7px 10px;font-size:10px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;" title="Tasks reassigned by this admin/manager">Reassigned</th>
+                        <th style="padding:7px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;min-width:110px;">Rate</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($teamMembers->sortByDesc('completed') as $member)
                     @php $isAdmin = ($member['member_type'] ?? 'user') === 'admin'; @endphp
-                    <tr style="{{ $isAdmin ? 'background:#F5F3FF;' : '' }}">
-                        <td>
-                            <p style="font-weight:600;color:#111827;margin:0;font-size:12px;">{{ $member['name'] }}</p>
+                    <tr style="{{ $isAdmin ? 'background:#F5F3FF;' : '' }}border-bottom:1px solid #F3F4F6;">
+                        <td style="padding:8px 12px;">
+                            <p style="font-weight:600;color:#111827;margin:0;font-size:12px;white-space:nowrap;">{{ $member['name'] }}</p>
                             <span style="font-size:10px;color:{{ $isAdmin ? '#7C3AED' : '#9CA3AF' }};">
                                 {{ $member['role'] }}
                                 @if($isAdmin)
@@ -544,26 +626,38 @@
                                 @endif
                             </span>
                         </td>
-                        <td style="text-align:center;">
-                            <span style="color:{{ $isAdmin ? '#7C3AED' : '#6B7280' }};font-weight:700;">
-                                {{ $isAdmin ? $member['total'] : $member['total'] }}
-                            </span>
+                        <td style="text-align:center;padding:8px 10px;">
+                            <span style="color:{{ $isAdmin ? '#7C3AED' : '#6B7280' }};font-weight:700;">{{ $member['total'] }}</span>
                         </td>
-                        <td style="text-align:center;">
+                        <td style="text-align:center;padding:8px 10px;">
                             <span style="color:#10B981;font-weight:700;" title="{{ $isAdmin ? 'Tasks Approved' : 'Tasks Completed' }}">{{ $member['completed'] }}</span>
                         </td>
-                        <td style="text-align:center;"><span style="color:#F59E0B;font-weight:700;">{{ $member['in_progress'] }}</span></td>
-                        <td style="text-align:center;">
+                        <td style="text-align:center;padding:8px 10px;"><span style="color:#F59E0B;font-weight:700;">{{ $member['in_progress'] }}</span></td>
+                        <td style="text-align:center;padding:8px 10px;">
                             <span style="color:{{ $member['overdue'] > 0 ? '#EF4444' : '#9CA3AF' }};font-weight:700;">{{ $member['overdue'] }}</span>
                         </td>
-                        <td style="text-align:center;">
+                        <td style="text-align:center;padding:8px 10px;">
                             @if($isAdmin && $member['projects_created'] > 0)
                             <span style="color:#4F46E5;font-weight:700;">{{ $member['projects_created'] }}</span>
                             @else
                             <span style="color:#D1D5DB;">—</span>
                             @endif
                         </td>
-                        <td>
+                        <td style="text-align:center;padding:8px 10px;">
+                            @if($isAdmin)
+                            <span style="color:{{ $member['tasks_reopened'] > 0 ? '#F59E0B' : '#9CA3AF' }};font-weight:700;">{{ $member['tasks_reopened'] }}</span>
+                            @else
+                            <span style="color:#D1D5DB;">—</span>
+                            @endif
+                        </td>
+                        <td style="text-align:center;padding:8px 10px;">
+                            @if($isAdmin)
+                            <span style="color:{{ $member['tasks_reassigned'] > 0 ? '#6366F1' : '#9CA3AF' }};font-weight:700;">{{ $member['tasks_reassigned'] }}</span>
+                            @else
+                            <span style="color:#D1D5DB;">—</span>
+                            @endif
+                        </td>
+                        <td style="padding:8px 10px;min-width:110px;">
                             <div style="display:flex;align-items:center;gap:6px;">
                                 <div style="flex:1;height:5px;background:#F3F4F6;border-radius:3px;overflow:hidden;">
                                     <div style="height:5px;width:{{ $member['rate'] }}%;background:{{ $member['rate'] >= 80 ? '#10B981' : ($member['rate'] >= 40 ? '#F59E0B' : '#EF4444') }};border-radius:3px;"></div>
@@ -577,11 +671,70 @@
             </table>
         </div>
         @endif
-    </div>
-
 </div>
 
-{{-- ══ Row 6: Overdue Tasks ══ --}}
+{{-- ══ Row 6: Customer Performance ══ --}}
+@if($customerStats->isNotEmpty())
+<div class="rpt-card" style="margin-bottom:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px;">
+        <p class="rpt-section-title" style="margin:0;">
+            <span style="width:22px;height:22px;border-radius:6px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-building" style="color:#4F46E5;font-size:10px;"></i>
+            </span>
+            Customer Performance
+        </p>
+        <span style="font-size:11px;color:#4F46E5;background:#EEF2FF;padding:2px 9px;border-radius:20px;font-weight:600;">{{ $customerStats->count() }} Customers</span>
+    </div>
+    <div style="overflow-x:auto;">
+        <table class="rpt-table" id="customer-table">
+            <thead>
+                <tr>
+                    <th>Customer</th>
+                    <th style="text-align:center;">Projects</th>
+                    <th style="text-align:center;">Tasks</th>
+                    <th style="text-align:center;">Done</th>
+                    <th style="text-align:center;">Active</th>
+                    <th style="text-align:center;" title="Overdue">OD</th>
+                    <th style="min-width:110px;">Rate</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($customerStats->sortByDesc('total') as $cust)
+                <tr>
+                    <td>
+                        <a href="{{ route('admin.customers.show', $cust['id']) }}"
+                           style="font-weight:600;color:#4F46E5;text-decoration:none;font-size:12px;"
+                           onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+                            {{ $cust['name'] }}
+                        </a>
+                        @if($cust['company'])
+                        <p style="margin:1px 0 0;font-size:10px;color:#9CA3AF;">{{ $cust['company'] }}</p>
+                        @endif
+                    </td>
+                    <td style="text-align:center;font-weight:600;color:#374151;">{{ $cust['projects'] }}</td>
+                    <td style="text-align:center;font-weight:600;color:#374151;">{{ $cust['total'] }}</td>
+                    <td style="text-align:center;"><span style="color:#10B981;font-weight:700;">{{ $cust['completed'] }}</span></td>
+                    <td style="text-align:center;"><span style="color:#F59E0B;font-weight:700;">{{ $cust['active'] }}</span></td>
+                    <td style="text-align:center;">
+                        <span style="color:{{ $cust['overdue'] > 0 ? '#EF4444' : '#9CA3AF' }};font-weight:700;">{{ $cust['overdue'] }}</span>
+                    </td>
+                    <td style="min-width:110px;">
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <div style="flex:1;height:5px;background:#F3F4F6;border-radius:3px;overflow:hidden;">
+                                <div style="height:5px;width:{{ $cust['rate'] }}%;background:{{ $cust['rate'] >= 80 ? '#10B981' : ($cust['rate'] >= 40 ? '#F59E0B' : '#EF4444') }};border-radius:3px;"></div>
+                            </div>
+                            <span style="font-size:11px;font-weight:700;color:#374151;min-width:26px;">{{ $cust['rate'] }}%</span>
+                        </div>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+@endif
+
+{{-- ══ Row 7: Overdue Tasks ══ --}}
 @if($overdueList->isNotEmpty())
 <div class="rpt-card" style="margin-bottom:10px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px;">
@@ -634,64 +787,6 @@
 </div>
 @endif
 
-{{-- ══ Row 7: Reassigned Tasks ══ --}}
-@if($reassignedList->isNotEmpty())
-<div class="rpt-card" style="margin-bottom:10px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px;">
-        <p class="rpt-section-title" style="margin:0;">
-            <span style="width:22px;height:22px;border-radius:6px;background:#F0FDF4;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <i class="fas fa-arrows-rotate" style="color:#16A34A;font-size:10px;"></i>
-            </span>
-            Reassigned Tasks ({{ $reassignedList->count() }})
-        </p>
-        <span style="font-size:11px;color:#16A34A;background:#F0FDF4;padding:2px 9px;border-radius:20px;font-weight:600;">Assignment History</span>
-    </div>
-    <div class="rpt-scroll-wrap" style="overflow-x:auto;">
-        <table class="rpt-table" id="reassigned-table">
-            <thead>
-                <tr>
-                    <th>Task</th>
-                    <th>Project</th>
-                    <th style="text-align:center;">From</th>
-                    <th style="text-align:center;">To</th>
-                    <th style="text-align:center;">By</th>
-                    <th>Reason</th>
-                    <th style="text-align:center;">Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($reassignedList as $row)
-                <tr>
-                    <td style="font-weight:600;color:#111827;font-size:12px;">{{ Str::limit($row['task'], 40) }}</td>
-                    <td style="font-size:12px;color:#6B7280;">{{ $row['project'] }}</td>
-                    <td style="text-align:center;">
-                        <span style="font-size:11px;background:#FEE2E2;color:#DC2626;padding:2px 8px;border-radius:6px;font-weight:600;white-space:nowrap;">{{ $row['from_user'] }}</span>
-                    </td>
-                    <td style="text-align:center;">
-                        <span style="font-size:11px;background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:6px;font-weight:600;white-space:nowrap;">{{ $row['to_user'] }}</span>
-                    </td>
-                    <td style="text-align:center;">
-                        <span style="font-size:11px;color:#6B7280;white-space:nowrap;">{{ $row['by'] }}</span>
-                    </td>
-                    <td style="font-size:11px;color:#374151;max-width:200px;">
-                        @if($row['reason'])
-                            <span style="font-style:italic;">{{ Str::limit($row['reason'], 80) }}</span>
-                        @else
-                            <span style="color:#D1D5DB;">—</span>
-                        @endif
-                    </td>
-                    <td style="text-align:center;white-space:nowrap;">
-                        <span style="font-size:11px;color:#6B7280;">{{ $row['date'] }}</span>
-                        <span style="font-size:10px;color:#9CA3AF;display:block;">{{ $row['time'] }}</span>
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-    </div>
-</div>
-@endif
-
 {{-- ══ Row 8: Reopened Tasks ══ --}}
 @if($reopenedList->isNotEmpty())
 <div class="rpt-card" style="margin-bottom:10px;">
@@ -725,6 +820,78 @@
                     </td>
                     <td style="text-align:center;">
                         <span style="font-size:11px;color:#EA580C;font-weight:600;white-space:nowrap;">{{ $row['by'] }}</span>
+                    </td>
+                    <td style="text-align:center;white-space:nowrap;">
+                        <span style="font-size:11px;color:#6B7280;">{{ $row['date'] }}</span>
+                        <span style="font-size:10px;color:#9CA3AF;display:block;">{{ $row['time'] }}</span>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+@endif
+
+{{-- ══ Row 9: Reassigned Tasks ══ --}}
+@if($reassignedList->isNotEmpty())
+<div class="rpt-card" style="margin-bottom:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px;">
+        <p class="rpt-section-title" style="margin:0;">
+            <span style="width:22px;height:22px;border-radius:6px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-arrows-rotate" style="color:#4F46E5;font-size:10px;"></i>
+            </span>
+            Reassigned Tasks ({{ $reassignedList->count() }})
+        </p>
+        <span style="font-size:11px;color:#4F46E5;background:#EEF2FF;padding:2px 9px;border-radius:20px;font-weight:600;">Assignment Changes</span>
+    </div>
+    <div class="rpt-scroll-wrap" style="overflow-x:auto;">
+        <table class="rpt-table" id="reassigned-bottom-table">
+            <thead>
+                <tr>
+                    <th>Task</th>
+                    <th>Project</th>
+                    <th style="text-align:center;">From</th>
+                    <th style="text-align:center;"><i class="fas fa-arrow-right" style="font-size:9px;"></i></th>
+                    <th style="text-align:center;">To</th>
+                    <th style="text-align:center;">Reassigned By</th>
+                    <th>Reason</th>
+                    <th style="text-align:center;">Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($reassignedList as $row)
+                <tr>
+                    <td>
+                        <a href="{{ route('admin.tasks.show', $row['task_id']) }}"
+                           style="font-weight:600;color:#4F46E5;font-size:12px;text-decoration:none;"
+                           onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+                            {{ Str::limit($row['task'], 40) }}
+                        </a>
+                    </td>
+                    <td style="font-size:12px;color:#6B7280;">{{ $row['project'] }}</td>
+                    <td style="text-align:center;">
+                        <span style="font-size:11px;background:#FEE2E2;color:#DC2626;padding:2px 8px;border-radius:6px;font-weight:600;white-space:nowrap;">
+                            {{ $row['from_user'] }}
+                        </span>
+                    </td>
+                    <td style="text-align:center;">
+                        <i class="fas fa-arrow-right" style="color:#9CA3AF;font-size:9px;"></i>
+                    </td>
+                    <td style="text-align:center;">
+                        <span style="font-size:11px;background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:6px;font-weight:600;white-space:nowrap;">
+                            {{ $row['to_user'] }}
+                        </span>
+                    </td>
+                    <td style="text-align:center;">
+                        <span style="font-size:11px;font-weight:600;color:#4F46E5;white-space:nowrap;">{{ $row['by'] }}</span>
+                    </td>
+                    <td style="font-size:11px;color:#374151;max-width:200px;">
+                        @if($row['reason'])
+                            <span style="font-style:italic;">{{ Str::limit($row['reason'], 80) }}</span>
+                        @else
+                            <span style="color:#D1D5DB;">—</span>
+                        @endif
                     </td>
                     <td style="text-align:center;white-space:nowrap;">
                         <span style="font-size:11px;color:#6B7280;">{{ $row['date'] }}</span>
@@ -803,6 +970,74 @@ new Chart(document.getElementById('trendChart'), {
         scales: {
             x: { grid: { display: false }, border: { display: false } },
             y: { grid: { color: '#F3F4F6' }, border: { display: false }, beginAtZero: true, ticks: { stepSize: 1, maxTicksLimit: 6 } }
+        }
+    }
+});
+
+new Chart(document.getElementById('projCompletionChart'), {
+    type: 'line',
+    data: {
+        labels: @json($balanceLabels),
+        datasets: [
+            {
+                label: 'Completed',
+                data: @json($balanceDone),
+                borderColor: 'rgba(16,185,129,1)',
+                backgroundColor: 'rgba(16,185,129,0.08)',
+                pointBackgroundColor: 'rgba(16,185,129,1)',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                borderWidth: 2.5,
+                tension: 0.4,
+                fill: true,
+            },
+            {
+                label: 'Created',
+                data: @json($balanceCreated),
+                borderColor: 'rgba(99,102,241,1)',
+                backgroundColor: 'rgba(99,102,241,0.08)',
+                pointBackgroundColor: 'rgba(99,102,241,1)',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                borderWidth: 2.5,
+                tension: 0.4,
+                fill: true,
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+            legend: { display: false },
+            tooltip: {
+                backgroundColor: '#1F2937',
+                titleColor: '#F9FAFB',
+                bodyColor: '#D1D5DB',
+                padding: 10,
+                cornerRadius: 8,
+                callbacks: {
+                    label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}`
+                }
+            }
+        },
+        scales: {
+            x: {
+                grid: { display: false },
+                border: { display: false },
+                ticks: { font: { size: 11 } }
+            },
+            y: {
+                grid: { color: '#F3F4F6' },
+                border: { display: false },
+                beginAtZero: true,
+                ticks: { stepSize: 1, maxTicksLimit: 6 }
+            }
         }
     }
 });
@@ -1170,6 +1405,12 @@ async function exportUsersPDF() {
         const projCell = isAdm
             ? `<td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;color:#4F46E5;font-weight:700;">${u.projects_created}</td>`
             : `<td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;color:#D1D5DB;">—</td>`;
+        const reopenedCell = isAdm
+            ? `<td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;color:${u.tasks_reopened > 0 ? '#F59E0B' : '#9CA3AF'};font-weight:700;">${u.tasks_reopened}</td>`
+            : `<td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;color:#D1D5DB;">—</td>`;
+        const reassignedCell = isAdm
+            ? `<td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;color:${u.tasks_reassigned > 0 ? '#6366F1' : '#9CA3AF'};font-weight:700;">${u.tasks_reassigned}</td>`
+            : `<td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;color:#D1D5DB;">—</td>`;
         return `
         <tr style="background:${rowBg}">
             <td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;font-weight:600;color:#111827;">${u.name}</td>
@@ -1180,6 +1421,8 @@ async function exportUsersPDF() {
             <td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;color:#8B5CF6;font-weight:700;">${u.in_review}</td>
             <td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;color:${u.overdue > 0 ? '#EF4444' : '#9CA3AF'};font-weight:700;">${u.overdue}</td>
             ${projCell}
+            ${reopenedCell}
+            ${reassignedCell}
             <td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;">
                 <span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700;
                     background:${u.rate >= 80 ? '#D1FAE5' : u.rate >= 40 ? '#FEF3C7' : '#FEE2E2'};
@@ -1218,6 +1461,8 @@ async function exportUsersPDF() {
                     <th style="padding:9px 10px;text-align:center;font-size:10px;font-weight:700;color:#8B5CF6;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #E5E7EB;">Review</th>
                     <th style="padding:9px 10px;text-align:center;font-size:10px;font-weight:700;color:#EF4444;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #E5E7EB;">Overdue</th>
                     <th style="padding:9px 10px;text-align:center;font-size:10px;font-weight:700;color:#4F46E5;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #E5E7EB;">Projects</th>
+                    <th style="padding:9px 10px;text-align:center;font-size:10px;font-weight:700;color:#F59E0B;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #E5E7EB;">Reopened</th>
+                    <th style="padding:9px 10px;text-align:center;font-size:10px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #E5E7EB;">Reassigned</th>
                     <th style="padding:9px 10px;text-align:center;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #E5E7EB;">Rate</th>
                 </tr>
             </thead>

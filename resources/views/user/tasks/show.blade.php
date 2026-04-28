@@ -23,8 +23,7 @@
     $p = $priorityMap[$task->priority] ?? $priorityMap['medium'];
 
     $latestSubmission = $task->submissions->first();
-    $canSubmit = in_array($task->status, ['in_progress', 'revision_requested']);
-    $canStartWork = in_array($task->status, ['viewed', 'revision_requested']);
+    $canSubmit = in_array($task->status, ['viewed', 'in_progress', 'revision_requested']);
 
     // Workflow step index (for stepper)
     $stepOrder = ['draft'=>0,'assigned'=>1,'viewed'=>2,'in_progress'=>3,'submitted'=>4,'approved'=>5,'delivered'=>6];
@@ -221,6 +220,109 @@
             </div>
         </div>
 
+        {{-- Project Attachments --}}
+        @if($task->project->attachments->isNotEmpty())
+        @php
+            $attachmentsJson = $task->project->attachments->map(fn($a) => [
+                'name'    => $a->name,
+                'size'    => $a->humanSize(),
+                'url'     => $a->url(),
+                'icon'    => $a->iconClass(),
+                'isLink'  => $a->isLink(),
+                'isImage' => in_array(strtolower(pathinfo($a->name, PATHINFO_EXTENSION)), ['jpg','jpeg','png','gif','webp','svg']),
+            ])->values();
+        @endphp
+        <div x-data="{
+                open: false,
+                att: null,
+                show(item) { this.att = item; this.open = true; },
+                close() { this.open = false; this.att = null; }
+             }"
+             @keydown.escape.window="close()">
+
+            <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
+                <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 16px;display:flex;align-items:center;gap:8px;">
+                    <i class="fa fa-paperclip" style="color:#6366F1;"></i> Attachments
+                    <span style="margin-left:auto;font-size:12px;font-weight:400;color:#9CA3AF;">{{ $task->project->attachments->count() }} {{ Str::plural('file', $task->project->attachments->count()) }}</span>
+                </h2>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    @foreach($task->project->attachments as $att)
+                    @php $item = ['name'=>$att->name,'size'=>$att->humanSize(),'url'=>$att->url(),'downloadUrl'=>$att->isFile()?route('user.attachments.download',$att):$att->url(),'icon'=>$att->iconClass(),'isLink'=>$att->isLink(),'isImage'=>in_array(strtolower(pathinfo($att->name,PATHINFO_EXTENSION)),['jpg','jpeg','png','gif','webp','svg'])]; @endphp
+                    <button type="button" @click="show({{ json_encode($item) }})"
+                            style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:#FAFAFA;border:1px solid #F3F4F6;border-radius:10px;width:100%;text-align:left;cursor:pointer;transition:border-color .15s,background .15s;"
+                            onmouseover="this.style.background='#F0F0FF';this.style.borderColor='#C7D2FE'" onmouseout="this.style.background='#FAFAFA';this.style.borderColor='#F3F4F6'">
+                        <div style="width:36px;height:36px;border-radius:9px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fa {{ $att->iconClass() }}" style="color:#6366F1;font-size:14px;"></i>
+                        </div>
+                        <div style="flex:1;min-width:0;">
+                            <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $att->name }}</p>
+                            @if($att->isFile() && $att->size)
+                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">{{ $att->humanSize() }}</p>
+                            @endif
+                        </div>
+                        <i class="fa fa-eye" style="color:#9CA3AF;font-size:13px;flex-shrink:0;"></i>
+                    </button>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- Attachment preview modal --}}
+            <template x-teleport="body">
+                <div x-show="open" x-cloak
+                     @keydown.escape.window="close()"
+                     style="position:fixed;inset:0;z-index:9999;">
+                    <div @click.self="close()"
+                         style="width:100%;height:100%;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;">
+                    <div x-transition
+                         style="background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:min(90vw,900px);overflow:hidden;">
+                        <template x-if="att">
+                        <div>
+                            {{-- Header --}}
+                            <div style="padding:20px 24px 16px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;gap:12px;">
+                                <div style="width:40px;height:40px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i :class="'fa '+att.icon" style="color:#6366F1;font-size:16px;"></i>
+                                </div>
+                                <div style="flex:1;min-width:0;">
+                                    <p style="font-size:14px;font-weight:700;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="att.name"></p>
+                                    <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;" x-text="att.size || (att.isLink ? 'External link' : '')"></p>
+                                </div>
+                                <button @click="close()" style="width:32px;height:32px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fa fa-xmark" style="color:#6B7280;font-size:13px;"></i>
+                                </button>
+                            </div>
+
+                            {{-- Image preview --}}
+                            <template x-if="att.isImage">
+                                <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#F9FAFB;display:flex;justify-content:center;">
+                                    <img :src="att.url" :alt="att.name" style="max-width:100%;max-height:75vh;border-radius:10px;object-fit:contain;display:block;">
+                                </div>
+                            </template>
+
+                            {{-- Action footer --}}
+                            <div style="padding:16px 24px;display:flex;gap:10px;justify-content:flex-end;">
+                                <button @click="close()"
+                                        style="padding:9px 18px;background:#F3F4F6;color:#6B7280;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">
+                                    Close
+                                </button>
+                                <a :href="att.downloadUrl"
+                                   :target="att.isLink ? '_blank' : '_self'"
+                                   :rel="att.isLink ? 'noopener' : ''"
+                                   style="display:inline-flex;align-items:center;gap:6px;padding:9px 20px;background:#6366F1;color:#fff;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;transition:background .15s;"
+                                   onmouseover="this.style.background='#4F46E5'" onmouseout="this.style.background='#6366F1'">
+                                    <i :class="'fa '+(att.isLink ? 'fa-arrow-up-right-from-square' : 'fa-download')" style="font-size:11px;"></i>
+                                    <span x-text="att.isLink ? 'Open Link' : 'Download'"></span>
+                                </a>
+                            </div>
+                        </div>
+                        </template>
+                    </div>
+                    </div>
+                </div>
+            </template>
+
+        </div>
+        @endif
+
         {{-- Status Banner --}}
         @if($task->status === 'submitted')
         <div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:14px;padding:20px;display:flex;align-items:flex-start;gap:16px;">
@@ -290,25 +392,15 @@
             </div>
         </div>
 
-        @elseif($canStartWork)
-        {{-- Employee: start work button --}}
-        <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
-            <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 12px;display:flex;align-items:center;gap:8px;">
-                <i class="fa fa-pen-to-square" style="color:#6366F1;"></i> Update Status
-            </h2>
-            <form method="POST" action="{{ route('user.tasks.updateStatus', $task) }}" style="display:flex;gap:10px;align-items:flex-end;">
-                @csrf @method('PATCH')
-                <input type="hidden" name="status" value="in_progress">
-                <div style="flex:1;">
-                    <label style="font-size:12px;font-weight:600;color:#6B7280;display:block;margin-bottom:6px;">Optional note</label>
-                    <input type="text" name="note" placeholder="e.g. Starting work on this now..."
-                           style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;">
-                </div>
-                <button type="submit"
-                        style="background:#6366F1;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;">
-                    <i class="fa fa-play"></i> Start Working
-                </button>
-            </form>
+        @elseif($task->status === 'viewed')
+        <div style="background:#EEF2FF;border:1px solid #C7D2FE;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:12px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:#E0E7FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fa fa-lightbulb" style="color:#6366F1;font-size:15px;"></i>
+            </div>
+            <div>
+                <p style="font-size:14px;font-weight:700;color:#3730A3;margin:0;">Ready to begin?</p>
+                <p style="font-size:12px;color:#6366F1;margin:0;opacity:.85;">Hit <strong>Start</strong> below to mark this task as in progress. A note or file is optional.</p>
+            </div>
         </div>
 
         @elseif($task->status === 'in_progress')
@@ -323,298 +415,466 @@
         </div>
         @endif
 
-        {{-- Submit Work --}}
-        @if($canSubmit && auth()->user()->hasPermission('submit_work'))
-        <div style="background:#fff;border-radius:14px;border:1.5px solid #6366F1;box-shadow:0 4px 16px rgba(99,102,241,.08);padding:24px;">
+        {{-- Unified: Comment + Submit --}}
+        @if($task->status !== 'revision_requested' && (auth()->user()->hasPermission('view_comments') || ($canSubmit && auth()->user()->hasPermission('submit_work'))))
+        <div x-data="{ uFile: '', showModal: false, body: '{{ old('body') }}' }" style="background:#fff;border-radius:14px;border:1.5px solid #6366F1;box-shadow:0 4px 16px rgba(99,102,241,.08);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 4px;display:flex;align-items:center;gap:8px;">
-                <i class="fa fa-upload" style="color:#6366F1;"></i>
-                @if($task->submissions->count() > 0) Submit New Version @else Submit Your Work @endif
+                <i class="fa fa-comment" style="color:#6366F1;"></i>
+                @if($task->status === 'viewed')
+                    Start Working
+                @elseif($canSubmit && auth()->user()->hasPermission('submit_work'))
+                    Comment or Submit Work
+                @else
+                    Add a Comment
+                @endif
             </h2>
             <p style="font-size:12px;color:#9CA3AF;margin:0 0 16px;">
-                @if($task->submissions->count() > 0)
-                You're submitting version {{ $task->submissions->count() + 1 }}. Previous versions are kept.
+                @if($task->status === 'viewed')
+                    Click <strong style="color:#6366F1;">Start</strong> to begin — or add a note or file first if you'd like.
+                @elseif($canSubmit && auth()->user()->hasPermission('submit_work'))
+                    Post a comment to discuss, or attach your work and submit it for review.
                 @else
-                Upload a file and/or add a note explaining your work.
+                    Ask a question, share an update, or leave a note.
                 @endif
             </p>
-            <form method="POST" action="{{ route('user.tasks.submit', $task) }}" enctype="multipart/form-data">
+            <form method="POST" enctype="multipart/form-data">
                 @csrf
+                <textarea name="body" rows="3" x-model="body"
+                          @if($task->status !== 'viewed') required @endif
+                          placeholder="{{ $task->status === 'viewed' ? 'Optional — add a note before starting...' : (($canSubmit && auth()->user()->hasPermission('submit_work')) ? 'Describe your work or write a comment...' : 'Write your comment...') }}"
+                          style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;resize:vertical;font-family:'Inter',sans-serif;line-height:1.5;margin-bottom:10px;"
+                          onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">{{ old('body') }}</textarea>
+                @error('body')<p style="font-size:11px;color:#DC2626;margin:-6px 0 8px;">{{ $message }}</p>@enderror
                 <div style="margin-bottom:14px;">
-                    <label style="font-size:12px;font-weight:600;color:#6B7280;display:block;margin-bottom:6px;">Note / Description</label>
-                    <textarea name="note" rows="3" placeholder="Describe what you've done, what's included in the file..."
-                              style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;resize:vertical;font-family:'Inter',sans-serif;line-height:1.5;"
-                              onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">{{ old('note') }}</textarea>
-                    @error('note')<p style="font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</p>@enderror
-                </div>
-                <div style="margin-bottom:16px;" x-data="{ filename: '' }">
-                    <label style="font-size:12px;font-weight:600;color:#6B7280;display:block;margin-bottom:6px;">
-                        Attach File <span style="font-weight:400;color:#9CA3AF;">(optional, max 20MB)</span>
-                    </label>
-                    <label style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px dashed #D1D5DB;border-radius:10px;cursor:pointer;transition:border-color .15s;background:#FAFAFA;"
+                    <label style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px dashed #D1D5DB;border-radius:10px;cursor:pointer;background:#FAFAFA;"
                            onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#D1D5DB'">
-                        <i class="fas fa-paperclip" style="color:#9CA3AF;font-size:18px;"></i>
+                        <i class="fa fa-paperclip" style="color:#9CA3AF;font-size:16px;"></i>
                         <div style="flex:1;">
-                            <p x-text="filename || 'Click to choose a file'" style="font-size:13px;font-weight:500;color:#374151;margin:0;"></p>
-                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">PDF, DOC, ZIP, images and more</p>
+                            <p x-text="uFile || 'Attach a file (optional)'" style="font-size:13px;font-weight:500;color:#374151;margin:0;"></p>
+                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Images, PDF, ZIP and more · max 20MB</p>
                         </div>
-                        <input type="file" name="file" @change="filename = $event.target.files[0]?.name || ''" style="display:none;">
+                        <input type="file" name="file" @change="uFile = $event.target.files[0]?.name || ''" style="display:none;">
                     </label>
                     @error('file')<p style="font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</p>@enderror
                 </div>
-                <button type="submit"
-                        style="width:100%;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(99,102,241,.3);">
-                    <i class="fas fa-paper-plane" style="margin-right:6px;"></i> Submit for Review
-                </button>
+
+                {{-- Hidden real submit targets --}}
+                @if(auth()->user()->hasPermission('view_comments'))
+                <button type="submit" x-ref="commentBtn" formaction="{{ route('user.tasks.comment', $task) }}" style="display:none;" aria-hidden="true"></button>
+                @endif
+                @if($canSubmit && auth()->user()->hasPermission('submit_work'))
+                <button type="submit" x-ref="submitBtn" formaction="{{ route('user.tasks.submit', $task) }}" style="display:none;" aria-hidden="true"></button>
+                @endif
+
+                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    <button type="button"
+                            @click="@if($task->status === 'viewed')
+                                uFile
+                                    ? (showModal = true)
+                                    : (body.trim()
+                                        ? $refs.commentBtn.click()
+                                        : document.getElementById('_startForm').submit())
+                            @elseif($canSubmit && auth()->user()->hasPermission('submit_work'))
+                                uFile ? (showModal = true) : $refs.commentBtn.click()
+                            @else
+                                $refs.commentBtn?.click()
+                            @endif"
+                            style="background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:10px 22px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 4px 12px rgba(99,102,241,.3);">
+                        @if($task->status === 'viewed')
+                            <i class="fa fa-play"></i> Start
+                        @else
+                            <i class="fa fa-paper-plane"></i> Send
+                        @endif
+                    </button>
+                </div>
             </form>
+
+            {{-- Hidden start form (only when task is in viewed state) --}}
+            @if($task->status === 'viewed')
+            <form id="_startForm" method="POST" action="{{ route('user.tasks.updateStatus', $task) }}" style="display:none;">
+                @csrf @method('PATCH')
+                <input type="hidden" name="status" value="in_progress">
+            </form>
+            @endif
+
+            @if($canSubmit && auth()->user()->hasPermission('submit_work'))
+            {{-- Smart modal: only appears when a file is attached --}}
+            <div x-show="showModal" x-transition
+                 @click.self="showModal = false"
+                 style="position:fixed;inset:0;background:rgba(17,24,39,.5);backdrop-filter:blur(3px);z-index:9999;">
+                <div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:20px;">
+                    <div x-show="showModal" x-transition
+                         style="background:#fff;border-radius:20px;padding:28px 24px;max-width:380px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.18);">
+                        <div style="text-align:center;margin-bottom:22px;">
+                            <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#EEF2FF,#C7D2FE);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+                                <i class="fa fa-paper-plane" style="color:#6366F1;font-size:20px;"></i>
+                            </div>
+                            <h3 style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">What are you sending?</h3>
+                            <p style="font-size:12px;color:#9CA3AF;margin:0;line-height:1.5;">You attached a file — is this a comment with an attachment, or your work deliverable?</p>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:10px;">
+                            <button type="button" @click="showModal=false; $refs.commentBtn.click()"
+                                    style="display:flex;align-items:center;gap:14px;padding:14px 16px;border:1.5px solid #E5E7EB;border-radius:12px;background:#fff;cursor:pointer;text-align:left;width:100%;"
+                                    onmouseover="this.style.borderColor='#6366F1';this.style.background='#F9FAFB'" onmouseout="this.style.borderColor='#E5E7EB';this.style.background='#fff'">
+                                <div style="width:40px;height:40px;border-radius:10px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fa fa-comment" style="color:#6B7280;font-size:15px;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:13px;font-weight:600;color:#111827;margin:0 0 2px;">Just a Comment</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:0;">The file is a reference, not the deliverable</p>
+                                </div>
+                            </button>
+                            <button type="button" @click="showModal=false; $refs.submitBtn.click()"
+                                    style="display:flex;align-items:center;gap:14px;padding:14px 16px;border:1.5px solid #C7D2FE;border-radius:12px;background:linear-gradient(135deg,#F5F3FF,#EEF2FF);cursor:pointer;text-align:left;width:100%;"
+                                    onmouseover="this.style.borderColor='#6366F1';this.style.background='#EDE9FE'" onmouseout="this.style.borderColor='#C7D2FE';this.style.background='linear-gradient(135deg,#F5F3FF,#EEF2FF)'">
+                                <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#6366F1,#4F46E5);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fa fa-upload" style="color:#fff;font-size:15px;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:13px;font-weight:600;color:#4F46E5;margin:0 0 2px;">Submit for Review</p>
+                                    <p style="font-size:11px;color:#6366F1;margin:0;opacity:.8;">This file is my deliverable — send for admin review</p>
+                                </div>
+                            </button>
+                        </div>
+                        <button type="button" @click="showModal = false"
+                                style="display:block;margin:16px auto 0;background:none;border:none;font-size:12px;color:#9CA3AF;cursor:pointer;padding:4px 12px;border-radius:6px;"
+                                onmouseover="this.style.color='#6B7280'" onmouseout="this.style.color='#9CA3AF'">Cancel</button>
+                    </div>
+                </div>
+            </div>
+            @endif
         </div>
         @endif
 
-        {{-- Submission history --}}
-        @if($task->submissions->count() && auth()->user()->hasPermission('view_version_history'))
+        {{-- ══ Unified Timeline ══ --}}
         @php
-            $subColorMap = [
+            $tlSubMap = [
                 'submitted' => ['#EEF2FF','#4F46E5','fa-hourglass-half','In Review'],
-                'approved'  => ['#D1FAE5','#059669','fa-circle-check','Approved'],
-                'rejected'  => ['#FEE2E2','#DC2626','fa-rotate-left','Revision Requested'],
+                'approved'  => ['#D1FAE5','#059669','fa-circle-check',   'Approved'],
+                'rejected'  => ['#FEE2E2','#DC2626','fa-rotate-left',    'Revision Requested'],
             ];
-            $subsJson = $task->submissions->map(function($sub) use ($subColorMap) {
-                [$sbg,$sco,$sico,$slbl] = $subColorMap[$sub->status] ?? $subColorMap['submitted'];
-                return [
-                    'version'       => $sub->version,
-                    'statusLabel'   => $slbl,
-                    'statusBg'      => $sbg,
-                    'statusColor'   => $sco,
-                    'icon'          => $sico,
-                    'time'          => $sub->created_at->format('M d, Y · H:i'),
-                    'timeAgo'       => $sub->created_at->diffForHumans(),
-                    'note'          => $sub->note,
-                    'fileUrl'       => $sub->file_path ? $sub->fileUrl() : null,
-                    'fileName'      => $sub->original_filename ?? 'Download file',
-                    'adminNote'     => $sub->admin_note,
-                    'adminName'     => $sub->reviewer?->name ?? 'Admin',
-                    'adminApproved' => $sub->status === 'approved',
-                ];
-            })->values();
+            $timeline = collect();
+
+            if (auth()->user()->hasPermission('view_version_history')) {
+                foreach ($task->submissions as $sub) {
+                    [$sbg,$sco,$sico,$slbl] = $tlSubMap[$sub->status] ?? $tlSubMap['submitted'];
+                    $timeline->push(['type'=>'submission','at'=>$sub->created_at,'sub'=>$sub,'sbg'=>$sbg,'sco'=>$sco,'sico'=>$sico,'slbl'=>$slbl]);
+                }
+            }
+            if (auth()->user()->hasPermission('view_activity_log')) {
+                foreach ($task->logs->whereNotIn('action', ['comment_added', 'status_updated_submitted', 'status_updated_in_progress', 'status_updated_revision_requested', 'status_updated_approved']) as $log) {
+                    [$aico,$aco,$abg] = $log->actionStyle();
+                    $timeline->push(['type'=>'log','at'=>$log->created_at,'log'=>$log,'aico'=>$aico,'aco'=>$aco,'abg'=>$abg]);
+                }
+            }
+            if (auth()->user()->hasPermission('view_comments')) {
+                foreach ($task->comments as $comment) {
+                    $timeline->push(['type'=>'comment','at'=>$comment->created_at,'comment'=>$comment,'isAdmin'=>in_array($comment->user->role ?? 'user',['admin','manager'])]);
+                }
+            }
+            $timeline = $timeline->sortByDesc('at')->values();
+
+            // Find the chronologically first submission or assignee comment
+            $firstWorkEntry = $timeline
+                ->filter(fn($e) =>
+                    $e['type'] === 'submission' ||
+                    ($e['type'] === 'comment' && ($e['comment']->user_id ?? null) === $task->assigned_to)
+                )
+                ->sortBy('at')
+                ->first();
+            $firstWorkKey = $firstWorkEntry ? $firstWorkEntry['at']->toDateTimeString() : null;
         @endphp
-        <script>
-        function versionHistoryData() {
-            return {
-                subs: {!! json_encode($subsJson) !!},
-                open: false,
-                sel: null,
-                show(i) { this.sel = this.subs[i]; this.open = true; },
-                close() { this.open = false; this.sel = null; }
-            };
-        }
-        </script>
-        <div x-data="versionHistoryData()"
-             style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
+
+        <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 16px;display:flex;align-items:center;gap:8px;">
-                <i class="fa fa-clock-rotate-left" style="color:#6366F1;"></i> Version History
-                <span style="margin-left:auto;font-size:12px;font-weight:500;color:#9CA3AF;">{{ $task->submissions->count() }} {{ Str::plural('version', $task->submissions->count()) }}</span>
+                <i class="fa fa-timeline" style="color:#6366F1;"></i> Timeline
+                <span style="margin-left:auto;font-size:12px;font-weight:500;color:#9CA3AF;">{{ $timeline->count() }} {{ Str::plural('event', $timeline->count()) }}</span>
             </h2>
 
-            @foreach($task->submissions as $i => $sub)
-            @php [$sbg2,$sco2,$sico,$slbl2] = $subColorMap[$sub->status] ?? $subColorMap['submitted']; @endphp
-            <div @click="show({{ $i }})"
-                 style="display:flex;align-items:center;gap:14px;padding:12px;border-radius:10px;cursor:pointer;transition:background .15s;border:1px solid transparent;margin-bottom:6px;"
-                 @mouseenter="$el.style.background='#F9FAFB';$el.style.borderColor='#E5E7EB'"
-                 @mouseleave="$el.style.background='transparent';$el.style.borderColor='transparent'">
-                <div style="width:38px;height:38px;border-radius:50%;background:{{ $sbg2 }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <i class="fa {{ $sico }}" style="color:{{ $sco2 }};font-size:14px;"></i>
-                </div>
-                <div style="flex:1;min-width:0;">
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <span style="font-size:13px;font-weight:700;color:#111827;">Version {{ $sub->version }}</span>
-                        <span style="font-size:11px;font-weight:600;padding:2px 9px;border-radius:10px;background:{{ $sbg2 }};color:{{ $sco2 }};">{{ $slbl2 }}</span>
-                    </div>
-                    <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">{{ $sub->created_at->diffForHumans() }}
-                        @if($sub->file_path) &middot; <i class="fa fa-paperclip"></i> Attachment @endif
-                        @if($sub->admin_note) &middot; <i class="fa fa-comment-dots"></i> Admin feedback @endif
-                    </p>
-                </div>
-                <i class="fa fa-chevron-right" style="color:#D1D5DB;font-size:11px;flex-shrink:0;"></i>
-            </div>
-            @endforeach
+            @if($timeline->isNotEmpty())
+            <div>
+                @foreach($timeline as $entry)
+                @php $isLast = $loop->last; @endphp
 
-            {{-- Version detail modal --}}
-            <template x-teleport="body">
-                {{-- Outer: position:fixed overlay. x-show only toggles display on this div,
-                     so we keep display:flex on the INNER centering wrapper, not here. --}}
-                <div x-show="open" x-cloak
-                     @keydown.escape.window="close()"
-                     style="position:fixed;inset:0;z-index:9999;">
-                    {{-- Backdrop + centering wrapper (always display:flex once outer is visible) --}}
-                    <div @click.self="close()"
-                         style="width:100%;height:100%;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;">
-                        <div x-transition
-                             style="background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.18);width:100%;max-width:460px;overflow:hidden;">
-                            <template x-if="sel">
-                            <div>
-                                {{-- Modal header --}}
-                                <div style="padding:20px 24px 16px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;gap:12px;">
-                                    <div :style="'width:40px;height:40px;border-radius:50%;background:'+sel.statusBg+';display:flex;align-items:center;justify-content:center;flex-shrink:0;'">
-                                        <i :class="'fa '+sel.icon" :style="'color:'+sel.statusColor+';font-size:15px;'"></i>
+                @if($entry['type'] === 'log')
+                @php $log = $entry['log']; $meta = $log->metadata ?? []; @endphp
+                <div style="display:flex;gap:14px;">
+                    <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px;">
+                        <div style="width:32px;height:32px;border-radius:50%;background:{{ $entry['abg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;z-index:1;">
+                            <i class="fa {{ $entry['aico'] }}" style="color:{{ $entry['aco'] }};font-size:12px;"></i>
+                        </div>
+                        @if(!$isLast)<div style="width:2px;flex:1;min-height:20px;background:#EBEBEB;margin:4px 0;"></div>@endif
+                    </div>
+                    <div style="flex:1;min-width:0;padding-bottom:{{ $isLast ? '0' : '20px' }};">
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">
+                            <span style="font-size:12px;font-weight:600;color:#111827;">{{ $log->user?->name ?? 'System' }}</span>
+                            <span style="font-size:11px;font-weight:600;padding:1px 7px;border-radius:8px;background:{{ $entry['abg'] }};color:{{ $entry['aco'] }};">{{ $log->actionLabel() }}</span>
+                            <span style="font-size:11px;color:#9CA3AF;margin-left:auto;" title="{{ $log->created_at->format('Y-m-d H:i') }}">{{ $log->created_at->format('M d, H:i') }}</span>
+                        </div>
+                        @if(in_array($log->action, ['task_reassigned','task_transferred']) && isset($meta['from_user_name'], $meta['to_user_name']))
+                        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;">
+                            <span style="font-size:11px;background:#FEF3C7;color:#D97706;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                                <span style="text-decoration:line-through;opacity:.7;">{{ $meta['from_user_name'] }}</span>
+                                <i class="fa fa-arrow-right" style="font-size:9px;"></i>
+                                <strong>{{ $meta['to_user_name'] }}</strong>
+                            </span>
+                            @if(!empty($meta['reassigned_by'] ?? $meta['performed_by'] ?? null))
+                            <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;">by {{ $meta['reassigned_by'] ?? $meta['performed_by'] }}</span>
+                            @endif
+                        </div>
+                        @elseif($log->action === 'deadline_updated' && isset($meta['old_deadline'], $meta['new_deadline']))
+                        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;">
+                            <span style="font-size:11px;background:#FEE2E2;color:#DC2626;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                                <span style="text-decoration:line-through;opacity:.7;">{{ $meta['old_deadline'] }}</span>
+                                <i class="fa fa-arrow-right" style="font-size:9px;"></i>
+                                <strong>{{ $meta['new_deadline'] }}</strong>
+                            </span>
+                            @if(!empty($meta['reason']))
+                            <span style="font-size:11px;background:#FEF3C7;color:#D97706;padding:2px 8px;border-radius:6px;">{{ Str::limit($meta['reason'], 80) }}</span>
+                            @endif
+                        </div>
+                        @elseif(isset($meta['old_status'], $meta['new_status']))
+                        <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;display:inline-block;margin-top:3px;">
+                            {{ str_replace('_',' ',$meta['old_status']) }} → <strong>{{ str_replace('_',' ',$meta['new_status']) }}</strong>
+                        </span>
+                        @endif
+                        @if(isset($meta['rejection_reason']))
+                        <p style="font-size:12px;color:#DC2626;background:#FEF2F2;padding:6px 10px;border-radius:8px;border-left:3px solid #EF4444;margin:5px 0 0;">"{{ $meta['rejection_reason'] }}"</p>
+                        @endif
+                        @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','task_reassigned','task_transferred','deadline_updated']))
+                        <p style="font-size:12px;color:#6B7280;background:#F9FAFB;padding:6px 10px;border-radius:8px;border-left:3px solid #E5E7EB;margin:5px 0 0;">"{{ $log->note }}"</p>
+                        @endif
+                    </div>
+                </div>
+
+                @elseif($entry['type'] === 'submission')
+                @php
+                    $sub = $entry['sub'];
+                    $subExt = strtolower(pathinfo($sub->original_filename ?? '', PATHINFO_EXTENSION));
+                    $subIsImage = in_array($subExt, ['jpg','jpeg','png','gif','webp','svg']);
+                    $subIsVideo = in_array($subExt, ['mp4','mov','avi','webm','mkv']);
+                    $subUrl = $sub->fileUrl();
+                    $subIconMap = ['pdf'=>'fa-file-pdf','doc'=>'fa-file-word','docx'=>'fa-file-word','xls'=>'fa-file-excel','xlsx'=>'fa-file-excel','ppt'=>'fa-file-powerpoint','pptx'=>'fa-file-powerpoint','zip'=>'fa-file-zipper','rar'=>'fa-file-zipper','txt'=>'fa-file-lines'];
+                    $subIcon = $subIconMap[$subExt] ?? 'fa-file';
+                    $isFirstWork = $firstWorkKey && $entry['at']->toDateTimeString() === $firstWorkKey;
+                @endphp
+                <div x-data="{ expanded: false, editingNote: false, showNoteHistory: false, note: {{ json_encode($sub->note ?? '') }} }" style="display:flex;gap:14px;">
+                    <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px;">
+                        <div style="width:32px;height:32px;border-radius:50%;background:{{ $entry['sbg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;z-index:1;box-shadow:0 0 0 3px {{ $entry['sbg'] }};">
+                            <i class="fa {{ $entry['sico'] }}" style="color:{{ $entry['sco'] }};font-size:12px;"></i>
+                        </div>
+                        @if(!$isLast)<div style="width:2px;flex:1;min-height:20px;background:#EBEBEB;margin:4px 0;"></div>@endif
+                    </div>
+                    <div style="flex:1;min-width:0;padding-bottom:{{ $isLast ? '0' : '20px' }};">
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                            <span style="font-size:12px;font-weight:700;color:#111827;">Version {{ $sub->version }}</span>
+                            <span style="font-size:11px;font-weight:600;padding:1px 8px;border-radius:8px;background:{{ $entry['sbg'] }};color:{{ $entry['sco'] }};">{{ $entry['slbl'] }}</span>
+                            @if($isFirstWork)<span style="font-size:10px;font-weight:700;padding:1px 8px;border-radius:10px;background:#D1FAE5;color:#059669;display:inline-flex;align-items:center;gap:3px;"><i class="fa fa-circle-play" style="font-size:9px;"></i> Started Working</span>@endif
+                            <span style="font-size:11px;color:#9CA3AF;margin-left:auto;" title="{{ $sub->created_at->format('Y-m-d H:i') }}">{{ $sub->created_at->format('M d, H:i') }}</span>
+                        </div>
+                        <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;">
+                            @if($sub->note || $sub->user_id === auth()->id())
+                            <div style="margin-bottom:10px;">
+                                <div style="display:flex;align-items:flex-start;gap:6px;">
+                                    <p x-show="!editingNote" style="font-size:13px;color:#374151;margin:0;line-height:1.6;flex:1;" x-text="note || ''"></p>
+                                    @if($sub->user_id === auth()->id())
+                                    <button @click="editingNote=!editingNote" style="font-size:10px;background:none;border:none;color:#9CA3AF;cursor:pointer;padding:0;flex-shrink:0;margin-top:2px;" title="Edit note">
+                                        <i class="fa fa-pencil" style="font-size:10px;"></i>
+                                    </button>
+                                    @if($sub->noteEdits->isNotEmpty())
+                                    <button @click="showNoteHistory=!showNoteHistory" style="font-size:10px;background:#F3F4F6;color:#9CA3AF;border:none;padding:1px 6px;border-radius:4px;cursor:pointer;flex-shrink:0;">edited</button>
+                                    @endif
+                                    @endif
+                                </div>
+                                <div x-show="editingNote">
+                                    <form method="POST" action="{{ route('user.tasks.submissions.note', [$task, $sub]) }}">
+                                        @csrf @method('PATCH')
+                                        <textarea name="note" x-model="note" rows="3"
+                                                  style="width:100%;padding:10px 14px;border:1.5px solid #6366F1;border-radius:10px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;resize:vertical;font-family:'Inter',sans-serif;line-height:1.5;margin-top:6px;"></textarea>
+                                        <div style="display:flex;gap:8px;margin-top:8px;">
+                                            <button type="submit" style="background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">Save</button>
+                                            <button type="button" @click="editingNote=false" style="background:#F3F4F6;color:#374151;border:none;padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">Cancel</button>
+                                        </div>
+                                    </form>
+                                </div>
+                                @if($sub->noteEdits->isNotEmpty())
+                                <div x-show="showNoteHistory" style="background:#fff;border:1px solid #E5E7EB;border-radius:8px;padding:10px;margin-top:6px;">
+                                    @foreach($sub->noteEdits as $noteEdit)
+                                    <div style="border-bottom:1px solid #F3F4F6;padding:6px 0;font-size:12px;color:#6B7280;">
+                                        <span style="color:#9CA3AF;font-size:11px;">{{ $noteEdit->created_at->format('M d, Y · H:i') }}</span>
+                                        <p style="margin:3px 0 0;color:#374151;">{{ $noteEdit->old_note ?? '(empty)' }}</p>
+                                    </div>
+                                    @endforeach
+                                </div>
+                                @endif
+                            </div>
+                            @endif
+                            @if($sub->file_path)
+                                @if($subIsImage)
+                                <a href="{{ $subUrl }}" target="_blank" style="display:block;margin-bottom:10px;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:300px;text-decoration:none;">
+                                    <img src="{{ $subUrl }}" alt="{{ $sub->original_filename }}" style="width:100%;max-height:160px;object-fit:cover;display:block;">
+                                    <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
+                                        <i class="fa fa-image" style="color:#6366F1;font-size:10px;"></i>
+                                        <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $sub->original_filename }}</span>
+                                        <i class="fa fa-arrow-up-right-from-square" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
+                                    </div>
+                                </a>
+                                @elseif($subIsVideo)
+                                <a href="{{ $subUrl }}" target="_blank" style="display:block;margin-bottom:10px;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:300px;text-decoration:none;">
+                                    <div style="background:#1F2937;height:110px;display:flex;align-items:center;justify-content:center;">
+                                        <div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;">
+                                            <i class="fa fa-play" style="color:#fff;font-size:15px;margin-left:3px;"></i>
+                                        </div>
+                                    </div>
+                                    <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
+                                        <i class="fa fa-video" style="color:#6366F1;font-size:10px;"></i>
+                                        <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $sub->original_filename }}</span>
+                                        <i class="fa fa-arrow-up-right-from-square" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
+                                    </div>
+                                </a>
+                                @else
+                                <a href="{{ $subUrl }}" target="_blank" style="display:inline-flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 14px;background:#fff;border:1px solid #E5E7EB;border-radius:9px;text-decoration:none;max-width:300px;transition:border-color .15s;"
+                                   onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
+                                    <div style="width:36px;height:36px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                        <i class="fa {{ $subIcon }}" style="color:#6366F1;font-size:16px;"></i>
                                     </div>
                                     <div style="flex:1;min-width:0;">
-                                        <div style="display:flex;align-items:center;gap:8px;">
-                                            <span style="font-size:15px;font-weight:700;color:#111827;" x-text="'Version '+sel.version"></span>
-                                            <span :style="'font-size:11px;font-weight:600;padding:2px 9px;border-radius:10px;background:'+sel.statusBg+';color:'+sel.statusColor+';'" x-text="sel.statusLabel"></span>
-                                        </div>
-                                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;" x-text="sel.time"></p>
+                                        <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $sub->original_filename }}</p>
+                                        <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;text-transform:uppercase;">{{ $subExt ?: 'file' }}</p>
                                     </div>
-                                    <button @click="close()" style="width:32px;height:32px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                        <i class="fa fa-xmark" style="color:#6B7280;font-size:13px;"></i>
-                                    </button>
+                                    <i class="fa fa-arrow-up-right-from-square" style="font-size:11px;color:#9CA3AF;flex-shrink:0;"></i>
+                                </a>
+                                @endif
+                            @endif
+                            @if($sub->status !== 'submitted')
+                            <div style="background:{{ $sub->status === 'approved' ? '#F0FDF4' : '#FEF2F2' }};border-radius:8px;padding:8px 12px;border-left:3px solid {{ $sub->status === 'approved' ? '#10B981' : '#EF4444' }};">
+                                <div style="display:flex;align-items:center;gap:6px;margin-bottom:{{ $sub->admin_note ? '4px' : '0' }};">
+                                    <i class="fa {{ $sub->status === 'approved' ? 'fa-circle-check' : 'fa-rotate-left' }}" style="font-size:10px;color:{{ $sub->status === 'approved' ? '#059669' : '#DC2626' }};"></i>
+                                    <span style="font-size:11px;font-weight:700;color:{{ $sub->status === 'approved' ? '#065F46' : '#991B1B' }};">{{ $sub->status === 'approved' ? 'Approved' : 'Revision Requested' }}</span>
+                                    <span style="font-size:11px;color:{{ $sub->status === 'approved' ? '#059669' : '#DC2626' }};opacity:.7;">by {{ $sub->reviewer?->name ?? 'Admin' }}</span>
+                                    @if($sub->reviewed_at)
+                                    <span style="font-size:10px;color:#9CA3AF;margin-left:auto;">{{ $sub->reviewed_at->format('M d, H:i') }}</span>
+                                    @endif
                                 </div>
-                                {{-- Modal body --}}
-                                <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px;max-height:60vh;overflow-y:auto;">
-                                    {{-- Submission note --}}
-                                    <template x-if="sel.note">
-                                    <div>
-                                        <p style="font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;">Submission Note</p>
-                                        <p style="font-size:13px;color:#374151;margin:0;line-height:1.6;background:#F9FAFB;padding:10px 14px;border-radius:10px;" x-text="sel.note"></p>
-                                    </div>
-                                    </template>
-                                    {{-- File attachment --}}
-                                    <template x-if="sel.fileUrl">
-                                    <div>
-                                        <p style="font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;">Attachment</p>
-                                        <a :href="sel.fileUrl" target="_blank"
-                                           style="display:inline-flex;align-items:center;gap:8px;font-size:13px;color:#6366F1;text-decoration:none;background:#EEF2FF;padding:8px 14px;border-radius:10px;font-weight:500;">
-                                            <i class="fa fa-paperclip"></i>
-                                            <span x-text="sel.fileName"></span>
-                                            <i class="fa fa-arrow-up-right-from-square" style="font-size:10px;opacity:.7;"></i>
-                                        </a>
-                                    </div>
-                                    </template>
-                                    {{-- Admin feedback --}}
-                                    <template x-if="sel.adminNote">
-                                    <div>
-                                        <p style="font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;">Admin Feedback</p>
-                                        <div :style="'background:'+(sel.adminApproved?'#F0FDF4':'#FEF2F2')+';border-radius:10px;padding:12px 14px;border-left:3px solid '+(sel.adminApproved?'#10B981':'#EF4444')+';'">
-                                            <p :style="'font-size:11px;font-weight:600;color:'+(sel.adminApproved?'#065F46':'#991B1B')+';margin:0 0 4px;'" x-text="sel.adminName"></p>
-                                            <p :style="'font-size:13px;color:'+(sel.adminApproved?'#047857':'#B91C1C')+';margin:0;line-height:1.5;'" x-text="sel.adminNote"></p>
-                                        </div>
-                                    </div>
-                                    </template>
-                                    {{-- Fallback --}}
-                                    <template x-if="!sel.note && !sel.fileUrl && !sel.adminNote">
-                                    <p style="font-size:13px;color:#9CA3AF;text-align:center;padding:10px 0;">No additional details for this version.</p>
-                                    </template>
-                                </div>
+                                @if($sub->admin_note)
+                                <p style="font-size:12px;color:{{ $sub->status === 'approved' ? '#047857' : '#B91C1C' }};margin:0;line-height:1.5;">{{ $sub->admin_note }}</p>
+                                @endif
                             </div>
-                            </template>
+                            @endif
                         </div>
                     </div>
                 </div>
-            </template>
-        </div>
-        @endif
 
-        {{-- Activity log --}}
-        @if(auth()->user()->hasPermission('view_activity_log'))
-        <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
-            <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 20px;display:flex;align-items:center;gap:8px;">
-                <i class="fa fa-timeline" style="color:#6366F1;"></i> Activity Log
-                <span style="margin-left:auto;font-size:12px;font-weight:500;color:#9CA3AF;">{{ $task->logs->count() }} {{ Str::plural('entry', $task->logs->count()) }}</span>
-            </h2>
-            @forelse($task->logs->sortByDesc('created_at') as $log)
-            @php
-                [$aico, $aco, $abg] = $log->actionStyle();
-                $meta = $log->metadata ?? [];
-            @endphp
-            <div style="display:flex;gap:12px;padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid #F9FAFB;">
-                <div style="flex-shrink:0;">
-                    <div style="width:32px;height:32px;border-radius:50%;background:{{ $abg }};display:flex;align-items:center;justify-content:center;">
-                        <i class="fa {{ $aico }}" style="color:{{ $aco }};font-size:12px;"></i>
+                @elseif($entry['type'] === 'comment')
+                @php
+                    $comment = $entry['comment'];
+                    $isAdmin = $entry['isAdmin'];
+                    $cExt = strtolower(pathinfo($comment->original_filename ?? '', PATHINFO_EXTENSION));
+                    $cIsImage = in_array($cExt, ['jpg','jpeg','png','gif','webp','svg']);
+                    $cIsVideo = in_array($cExt, ['mp4','mov','avi','webm','mkv']);
+                    $cUrl = $comment->fileUrl();
+                    $cIconMap = ['pdf'=>'fa-file-pdf','doc'=>'fa-file-word','docx'=>'fa-file-word','xls'=>'fa-file-excel','xlsx'=>'fa-file-excel','ppt'=>'fa-file-powerpoint','pptx'=>'fa-file-powerpoint','zip'=>'fa-file-zipper','rar'=>'fa-file-zipper','txt'=>'fa-file-lines'];
+                    $cIcon = $cIconMap[$cExt] ?? 'fa-file';
+                    $isFirstWork = $firstWorkKey && $entry['at']->toDateTimeString() === $firstWorkKey;
+                @endphp
+                <div x-data="{ editing: false, showHistory: false, body: {{ json_encode($comment->body) }} }" style="display:flex;gap:14px;">
+                    <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px;">
+                        <div style="width:32px;height:32px;border-radius:50%;background:{{ $isAdmin ? 'linear-gradient(135deg,#6366F1,#8B5CF6)' : 'linear-gradient(135deg,#10B981,#059669)' }};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;z-index:1;">
+                            {{ strtoupper(substr($comment->user->name ?? 'U', 0, 1)) }}
+                        </div>
+                        @if(!$isLast)<div style="width:2px;flex:1;min-height:20px;background:#EBEBEB;margin:4px 0;"></div>@endif
                     </div>
-                </div>
-                <div style="flex:1;min-width:0;">
-                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">
-                        <span style="font-size:12px;font-weight:600;color:#111827;">{{ $log->user?->name ?? 'System' }}</span>
-                        <span style="font-size:11px;font-weight:600;padding:1px 7px;border-radius:8px;background:{{ $abg }};color:{{ $aco }};">{{ $log->actionLabel() }}</span>
-                        <span style="font-size:11px;color:#9CA3AF;margin-left:auto;">{{ $log->created_at->format('M d, H:i') }}</span>
-                    </div>
-                    @if(in_array($log->action, ['task_reassigned','task_transferred']) && isset($meta['from_user_name'], $meta['to_user_name']))
-                    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;">
-                        <span style="font-size:11px;background:#FEF3C7;color:#D97706;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
-                            <span style="text-decoration:line-through;opacity:.7;">{{ $meta['from_user_name'] }}</span>
-                            <i class="fa fa-arrow-right" style="font-size:9px;"></i>
-                            <strong>{{ $meta['to_user_name'] }}</strong>
-                        </span>
-                        @if(!empty($meta['reassigned_by'] ?? $meta['performed_by'] ?? null))
-                        <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;">by {{ $meta['reassigned_by'] ?? $meta['performed_by'] }}</span>
+                    <div style="flex:1;min-width:0;padding-bottom:{{ $isLast ? '0' : '20px' }};">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                            <span style="font-size:12px;font-weight:600;color:#111827;">{{ $comment->user->name ?? 'Unknown' }}</span>
+                            @if($isAdmin)<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:#EEF2FF;color:#4F46E5;">Admin</span>@endif
+                            @if($isFirstWork)<span style="font-size:10px;font-weight:700;padding:1px 8px;border-radius:10px;background:#D1FAE5;color:#059669;display:inline-flex;align-items:center;gap:3px;"><i class="fa fa-circle-play" style="font-size:9px;"></i> Started Working</span>@endif
+                            @if($comment->edits->isNotEmpty())
+                            <button @click="showHistory=!showHistory" style="font-size:10px;background:#F3F4F6;color:#9CA3AF;border:none;padding:1px 6px;border-radius:4px;cursor:pointer;">edited</button>
+                            @endif
+                            @if(auth()->id() === $comment->user_id)
+                            <button @click="editing=!editing" style="font-size:10px;background:none;border:none;color:#9CA3AF;cursor:pointer;padding:0;display:flex;align-items:center;gap:3px;" title="Edit comment">
+                                <i class="fa fa-pencil" style="font-size:10px;"></i>
+                            </button>
+                            @endif
+                            <span style="font-size:11px;color:#9CA3AF;margin-left:auto;" title="{{ $comment->created_at->format('Y-m-d H:i') }}">{{ $comment->created_at->format('M d, H:i') }}</span>
+                        </div>
+                        <div style="background:{{ $isAdmin ? '#F5F3FF' : '#F9FAFB' }};border:1px solid {{ $isAdmin ? '#EDE9FE' : '#E5E7EB' }};border-radius:10px;padding:10px 14px;{{ $isAdmin ? 'border-left:3px solid #8B5CF6;' : '' }}">
+                            <div x-show="!editing">
+                                <p style="font-size:13px;color:#374151;margin:0{{ $comment->file_path ? ' 0 10px' : '' }};line-height:1.6;" x-text="body"></p>
+                                @if($comment->file_path)
+                                    @if($cIsImage)
+                                    <a href="{{ $cUrl }}" target="_blank" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;text-decoration:none;">
+                                        <img src="{{ $cUrl }}" alt="{{ $comment->original_filename }}" style="width:100%;max-height:140px;object-fit:cover;display:block;">
+                                        <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
+                                            <i class="fa fa-image" style="color:#6366F1;font-size:10px;"></i>
+                                            <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $comment->original_filename }}</span>
+                                            <i class="fa fa-arrow-up-right-from-square" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
+                                        </div>
+                                    </a>
+                                    @elseif($cIsVideo)
+                                    <a href="{{ $cUrl }}" target="_blank" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;text-decoration:none;">
+                                        <div style="background:#1F2937;height:90px;display:flex;align-items:center;justify-content:center;">
+                                            <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;">
+                                                <i class="fa fa-play" style="color:#fff;font-size:13px;margin-left:2px;"></i>
+                                            </div>
+                                        </div>
+                                        <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
+                                            <i class="fa fa-video" style="color:#6366F1;font-size:10px;"></i>
+                                            <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $comment->original_filename }}</span>
+                                            <i class="fa fa-arrow-up-right-from-square" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
+                                        </div>
+                                    </a>
+                                    @else
+                                    <a href="{{ $cUrl }}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;text-decoration:none;max-width:280px;transition:border-color .15s;"
+                                       onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
+                                        <div style="width:30px;height:30px;border-radius:7px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                            <i class="fa {{ $cIcon }}" style="color:#6366F1;font-size:13px;"></i>
+                                        </div>
+                                        <div style="flex:1;min-width:0;">
+                                            <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $comment->original_filename }}</p>
+                                            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;text-transform:uppercase;">{{ $cExt ?: 'file' }}</p>
+                                        </div>
+                                        <i class="fa fa-arrow-up-right-from-square" style="font-size:10px;color:#9CA3AF;flex-shrink:0;"></i>
+                                    </a>
+                                    @endif
+                                @endif
+                            </div>
+                            <div x-show="editing">
+                                <form method="POST" action="{{ route('user.tasks.comments.edit', [$task, $comment]) }}">
+                                    @csrf @method('PATCH')
+                                    <textarea name="body" x-model="body" rows="3"
+                                              style="width:100%;padding:10px 14px;border:1.5px solid #6366F1;border-radius:10px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;resize:vertical;font-family:'Inter',sans-serif;line-height:1.5;"></textarea>
+                                    <div style="display:flex;gap:8px;margin-top:8px;">
+                                        <button type="submit" style="background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">Save</button>
+                                        <button type="button" @click="editing=false" style="background:#F3F4F6;color:#374151;border:none;padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">Cancel</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        @if($comment->edits->isNotEmpty())
+                        <div x-show="showHistory" style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:10px;margin-top:6px;">
+                            @foreach($comment->edits as $editEntry)
+                            <div style="border-bottom:1px solid #F3F4F6;padding:6px 0;font-size:12px;color:#6B7280;">
+                                <span style="color:#9CA3AF;font-size:11px;">{{ $editEntry->created_at->format('M d, Y · H:i') }}</span>
+                                <p style="margin:3px 0 0;color:#374151;">{{ $editEntry->old_body }}</p>
+                            </div>
+                            @endforeach
+                        </div>
                         @endif
                     </div>
-                    @elseif(isset($meta['old_status'], $meta['new_status']))
-                    <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;">
-                        {{ str_replace('_',' ',$meta['old_status']) }} → <strong>{{ str_replace('_',' ',$meta['new_status']) }}</strong>
-                    </span>
-                    @endif
-                    @if(isset($meta['rejection_reason']))
-                    <p style="font-size:12px;color:#DC2626;background:#FEF2F2;padding:6px 10px;border-radius:8px;border-left:3px solid #EF4444;margin:5px 0 0;">"{{ $meta['rejection_reason'] }}"</p>
-                    @endif
-                    @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','task_reassigned','task_transferred']))
-                    <p style="font-size:12px;color:#6B7280;background:#F9FAFB;padding:6px 10px;border-radius:8px;border-left:3px solid #E5E7EB;margin:5px 0 0;">"{{ $log->note }}"</p>
-                    @endif
                 </div>
-            </div>
-            @empty
-            <p style="font-size:14px;color:#9CA3AF;text-align:center;padding:24px 0;margin:0;">No activity recorded yet.</p>
-            @endforelse
-        </div>
-        @endif {{-- view_activity_log --}}
+                @endif
 
-        {{-- Comments --}}
-        @if(auth()->user()->hasPermission('view_comments'))
-        <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
-            <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 16px;display:flex;align-items:center;gap:8px;">
-                <i class="fa fa-comments" style="color:#6366F1;"></i> Comments & Updates
-                <span style="margin-left:auto;font-size:12px;font-weight:500;color:#9CA3AF;">{{ $task->comments->count() }}</span>
-            </h2>
-            <form method="POST" action="{{ route('user.tasks.comment', $task) }}" style="margin-bottom:20px;">
-                @csrf
-                <div style="display:flex;gap:10px;align-items:flex-start;">
-                    <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#10B981,#059669);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">
-                        {{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}
-                    </div>
-                    <div style="flex:1;">
-                        <textarea name="body" rows="2" required placeholder="Ask a question or post an update..."
-                                  style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;resize:vertical;font-family:'Inter',sans-serif;line-height:1.5;"
-                                  onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">{{ old('body') }}</textarea>
-                        @error('body')<p style="font-size:11px;color:#DC2626;margin:3px 0 0;">{{ $message }}</p>@enderror
-                        <button type="submit"
-                                style="margin-top:8px;background:#6366F1;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;">
-                            <i class="fa fa-paper-plane"></i> Post Comment
-                        </button>
-                    </div>
-                </div>
-            </form>
-            @forelse($task->comments as $comment)
-            @php $isAdmin = in_array($comment->user->role ?? 'user', ['admin','manager']); @endphp
-            <div style="display:flex;gap:10px;padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid #F9FAFB;">
-                <div style="width:34px;height:34px;border-radius:50%;background:{{ $isAdmin ? 'linear-gradient(135deg,#6366F1,#8B5CF6)' : 'linear-gradient(135deg,#10B981,#059669)' }};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">
-                    {{ strtoupper(substr($comment->user->name ?? 'U', 0, 1)) }}
-                </div>
-                <div style="flex:1;min-width:0;">
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
-                        <span style="font-size:13px;font-weight:600;color:#111827;">{{ $comment->user->name ?? 'Unknown' }}</span>
-                        @if($isAdmin)<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:#EEF2FF;color:#4F46E5;">Admin</span>@endif
-                        <span style="font-size:11px;color:#9CA3AF;">{{ $comment->created_at->diffForHumans() }}</span>
-                    </div>
-                    <p style="font-size:13px;color:#374151;margin:0;line-height:1.6;">{{ $comment->body }}</p>
-                </div>
+                @endforeach
             </div>
-            @empty
-            <div style="text-align:center;padding:24px;color:#9CA3AF;">
-                <i class="fa fa-comment-slash" style="font-size:22px;margin-bottom:8px;display:block;color:#E5E7EB;"></i>
-                <p style="font-size:13px;margin:0;">No comments yet.</p>
+            @else
+            <div style="text-align:center;padding:32px 0;color:#9CA3AF;">
+                <i class="fa fa-timeline" style="font-size:24px;margin-bottom:10px;display:block;color:#E5E7EB;"></i>
+                <p style="font-size:13px;margin:0;">No activity yet.</p>
             </div>
-            @endforelse
+            @endif
         </div>
-
-        @endif {{-- view_comments --}}
 
     </div>{{-- /left --}}
 
@@ -629,6 +889,13 @@
                     <span style="font-size:13px;color:#6B7280;"><i class="fa fa-folder" style="width:16px;color:#9CA3AF;margin-right:6px;"></i>Project</span>
                     <span style="font-size:13px;font-weight:600;color:#111827;">{{ Str::limit($task->project->name,18) }}</span>
                 </div>
+                @php $resolvedCustomer = $task->customer ?? $task->project?->customer; @endphp
+                @if($resolvedCustomer)
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:13px;color:#6B7280;"><i class="fa fa-building" style="width:16px;color:#9CA3AF;margin-right:6px;"></i>Customer</span>
+                    <span style="font-size:13px;font-weight:600;color:#111827;">{{ Str::limit($resolvedCustomer->name, 18) }}</span>
+                </div>
+                @endif
                 <div style="display:flex;justify-content:space-between;align-items:center;">
                     <span style="font-size:13px;color:#6B7280;"><i class="fa fa-calendar" style="width:16px;color:#9CA3AF;margin-right:6px;"></i>Deadline</span>
                     <span style="font-size:13px;font-weight:600;color:{{ $isOverdue ? '#DC2626' : '#111827' }};">{{ $task->deadline->format('M d, Y') }}</span>

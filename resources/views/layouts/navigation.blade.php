@@ -178,6 +178,16 @@
         </a>
         @endif
 
+        @if(in_array($role, ['admin', 'manager']) && !in_array('nav_customers', $navHidden))
+        <a href="{{ route('admin.customers.index') }}"
+           class="nav-item {{ request()->routeIs('admin.customers.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-building nav-icon"></i>
+                Customers
+            </div>
+        </a>
+        @endif
+
         @if(auth()->user()->hasPermission('view_approvals') && !in_array('nav_approvals', $navHidden))
         <a href="{{ route('admin.approvals.index') }}"
            class="nav-item {{ request()->routeIs('admin.approvals.*') ? 'active' : '' }}">
@@ -229,7 +239,15 @@
 
     {{-- Footer --}}
     <div class="sidebar-footer">
-        @if(auth()->user()->hasPermission('manage_settings') && !in_array('nav_settings', $navHidden))
+        @php
+            // Admins and managers always see Settings.
+            // Regular users only see it if they have been explicitly granted manage_settings
+            // at the user level (admin granted it via the Permissions page).
+            $canSeeSettings = in_array($role, ['admin', 'manager'])
+                ? auth()->user()->hasPermission('manage_settings')
+                : (!is_null(auth()->user()->permissions) && in_array('manage_settings', auth()->user()->permissions ?? []));
+        @endphp
+        @if($canSeeSettings && !in_array('nav_settings', $navHidden))
         <a href="{{ route('admin.settings.index') }}"
            class="nav-item {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}">
             <div class="nav-left">

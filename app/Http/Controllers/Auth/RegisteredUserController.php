@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Providers\RouteServiceProvider;
+use App\Models\Setting;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,40 +15,47 @@ use Illuminate\View\View;
 
 class RegisteredUserController extends Controller
 {
-    /**
-     * Display the registration view.
-     */
-    public function create(): View
+    public function create(): View|RedirectResponse
     {
-        return view('auth.register');
+        $isSetup = User::count() === 0;
+
+        if (!$isSetup && Setting::get('allow_registration', '0') !== '1') {
+            return redirect()->route('login')->with('status', 'Registration is currently closed. Please contact your administrator.');
+        }
+
+        return view('auth.register', compact('isSetup'));
     }
 
-    /**
-     * Handle an incoming registration request.
-     *
-     * @throws \Illuminate\Validation\ValidationException
-     */
     public function store(Request $request): RedirectResponse
     {
+        $isSetup = User::count() === 0;
+
+        if (!$isSetup && Setting::get('allow_registration', '0') !== '1') {
+            return redirect()->route('login')->with('status', 'Registration is currently closed.');
+        }
+
         $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class],
+            'name'     => ['required', 'string', 'max:255'],
+            'email'    => ['required', 'string', 'email', 'max:255', 'unique:' . User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'role' => ['required', 'in:user,manager'], // No admin registration
         ]);
 
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
+            'name'     => $request->name,
+            'email'    => $request->email,
             'password' => Hash::make($request->password),
-            'role' => $request->role,
+            'role'     => $isSetup ? 'admin' : 'user',
         ]);
 
         event(new Registered($user));
 
         Auth::login($user);
 
-        return redirect(RouteServiceProvider::HOME);
+        return redirect()->route(match($user->role) {
+            'admin'   => 'admin.dashboard',
+            'manager' => 'manager.dashboard',
+            default   => 'user.dashboard',
+        });
     }
 }
 
