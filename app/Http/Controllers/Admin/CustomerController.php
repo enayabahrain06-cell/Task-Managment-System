@@ -36,15 +36,13 @@ class CustomerController extends Controller
 
     public function store(Request $request)
     {
-        $maxMb = (int) Setting::get('max_upload_mb', 5);
-
         $request->validate([
             'name'    => 'required|string|max:255',
             'company' => 'nullable|string|max:255',
             'email'   => 'nullable|email|max:255',
             'phone'   => 'nullable|string|max:50',
             'notes'   => 'nullable|string',
-            'logo'    => 'nullable|image|mimes:jpg,jpeg,png,webp,svg|max:' . ($maxMb * 1024),
+            'logo'    => 'nullable|image|mimes:jpg,jpeg,png,webp,svg',
         ]);
 
         $data = [
@@ -102,15 +100,13 @@ class CustomerController extends Controller
 
     public function update(Request $request, Customer $customer)
     {
-        $maxMb = (int) Setting::get('max_upload_mb', 5);
-
         $request->validate([
             'name'        => 'required|string|max:255',
             'company'     => 'nullable|string|max:255',
             'email'       => 'nullable|email|max:255',
             'phone'       => 'nullable|string|max:50',
             'notes'       => 'nullable|string',
-            'logo'        => 'nullable|image|mimes:jpg,jpeg,png,webp,svg|max:' . ($maxMb * 1024),
+            'logo'        => 'nullable|image|mimes:jpg,jpeg,png,webp,svg',
             'remove_logo' => 'nullable|boolean',
         ]);
 

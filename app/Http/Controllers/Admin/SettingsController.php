@@ -41,7 +41,7 @@ class SettingsController extends Controller
         'manager_can_view_roles'   => '0',
         'max_tasks_per_user'    => '50',
         'default_task_priority' => 'medium',
-        'max_upload_mb'         => '20',
+        'max_upload_mb'         => '0',
         // Notifications
         'email_notifications'   => '1',
         'task_reminder_days'    => '2',
@@ -295,7 +295,7 @@ class SettingsController extends Controller
             'allow_registration'    => 'nullable|boolean',
             'max_tasks_per_user'    => 'required|integer|min:1|max:500',
             'default_task_priority' => 'required|in:low,medium,high',
-            'max_upload_mb'         => 'required|integer|min:1|max:100',
+            'max_upload_mb'         => 'nullable|integer|min:0',
             'work_start_time'       => ['nullable', 'regex:/^\d{2}:\d{2}$/'],
             'work_end_time'         => ['nullable', 'regex:/^\d{2}:\d{2}$/'],
             'work_days'             => 'nullable|array',

@@ -89,7 +89,7 @@ class ProjectController extends Controller
             'tasks.*.assignees.*.role'        => 'nullable|string|max:255',
             // Attachments
             'attachments'                     => 'nullable|array',
-            'attachments.*'                   => 'file|max:' . ((int) Setting::get('max_upload_mb', 20) * 1024),
+            'attachments.*'                   => 'file',
             'links'                           => 'nullable|array',
             'links.*.url'                     => 'nullable|url|max:500',
             'links.*.label'                   => 'nullable|string|max:200',

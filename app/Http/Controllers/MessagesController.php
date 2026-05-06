@@ -61,7 +61,7 @@ class MessagesController extends Controller
         $request->validate([
             'receiver_id' => 'required|exists:users,id',
             'body'        => 'nullable|string|max:2000',
-            'file'        => 'nullable|file|max:' . ((int) Setting::get('max_upload_mb', 20) * 1024),
+            'file'        => 'nullable|file',
             'reply_to_id' => 'nullable|exists:messages,id',
             'is_voice'    => 'nullable|boolean',
         ]);
@@ -172,7 +172,7 @@ class MessagesController extends Controller
 
         $request->validate([
             'body'        => 'nullable|string|max:2000',
-            'file'        => 'nullable|file|max:' . ((int) Setting::get('max_upload_mb', 20) * 1024),
+            'file'        => 'nullable|file',
             'reply_to_id' => 'nullable|exists:messages,id',
             'is_voice'    => 'nullable|boolean',
         ]);
