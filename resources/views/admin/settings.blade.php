@@ -605,9 +605,10 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 <p class="sf-hint">Applied when creating tasks without an explicit priority.</p>
                             </div>
                             <div class="sf-group" style="margin-bottom:0;">
-                                <label class="sf-label">Max File Upload Size (MB)</label>
-                                <input type="number" name="max_upload_mb" class="sf-input" value="{{ $settings['max_upload_mb'] ?? 20 }}" min="1" max="100">
-                                <p class="sf-hint">Applies to task attachments and message files.</p>
+                                <label class="sf-label">Max File Upload Size</label>
+                                <input type="text" class="sf-input" value="Unlimited" disabled style="opacity:0.6;cursor:not-allowed;">
+                                <input type="hidden" name="max_upload_mb" value="0">
+                                <p class="sf-hint">File uploads are unlimited. Configured at the server level.</p>
                             </div>
                         </div>
                         <div class="sf-toggle-row">
