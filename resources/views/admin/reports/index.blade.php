@@ -167,16 +167,21 @@
 {{-- ══ Filter / Action Bar ══ --}}
 <div id="rpt-filter-bar" class="no-print" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
     <div>
-        <h1 style="font-size:18px;font-weight:700;color:#111827;margin:0;">Reports & Analytics</h1>
+        <h1 style="font-size:18px;font-weight:700;color:#111827;margin:0;">
+            @if($selectedUser) {{ $selectedUser->name }} — Employee Report
+            @else Reports & Analytics
+            @endif
+        </h1>
         <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">
             {{ $from ? 'From '.$from->format('M d, Y').' to '.now()->format('M d, Y') : 'All time data' }}
+            @if($selectedUser) · {{ ucfirst($selectedUser->role) }}@endif
         </p>
     </div>
     <div id="rpt-actions-bar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
 
         {{-- Range selector --}}
         <form method="GET" action="{{ route('admin.reports.index') }}" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-            {{-- Hidden range input — set by buttons below, preserved when project filter changes --}}
+            {{-- Hidden range input — set by buttons below, preserved when other filters change --}}
             <input type="hidden" id="rpt-range-input" name="range" value="{{ $range }}">
 
             <div style="display:flex;align-items:center;gap:2px;background:#F3F4F6;border-radius:9px;padding:3px;">
@@ -208,6 +213,19 @@
                 @endforeach
             </select>
             @endif
+
+            {{-- User filter --}}
+            <select name="user_id" onchange="this.form.submit()"
+                    style="font-size:12px;border:1px solid {{ $userId ? '#A5B4FC' : '#E5E7EB' }};border-radius:8px;padding:7px 28px 7px 10px;background:{{ $userId ? '#EEF2FF' : '#fff' }};color:{{ $userId ? '#4F46E5' : '#374151' }};font-weight:{{ $userId ? '600' : 'normal' }};outline:none;-webkit-appearance:none;appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
+                <option value="">All Members</option>
+                @foreach($allUsers->groupBy('role') as $role => $members)
+                <optgroup label="{{ ucfirst($role) }}s">
+                    @foreach($members as $u)
+                    <option value="{{ $u->id }}" {{ $userId == $u->id ? 'selected' : '' }}>{{ $u->name }}</option>
+                    @endforeach
+                </optgroup>
+                @endforeach
+            </select>
         </form>
 
         {{-- Export dropdown --}}
@@ -266,8 +284,8 @@
         {{-- Header --}}
         <div style="padding:16px 20px;border-bottom:1px solid #E5E7EB;display:flex;align-items:center;justify-content:space-between;">
             <div>
-                <p style="font-size:15px;font-weight:700;color:#111827;margin:0;">Export User Performance</p>
-                <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Export a summary PDF or a detailed CSV for each selected user</p>
+                <p style="font-size:15px;font-weight:700;color:#111827;margin:0;">Export HR Performance Report</p>
+                <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Full HR-ready CSV: profile, project history, workload &amp; task details per employee</p>
             </div>
             <button onclick="closeUserExport()" style="background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:18px;line-height:1;padding:2px 4px;">&times;</button>
         </div>
@@ -343,15 +361,24 @@
 {{-- ══ KPI Summary Row ══ --}}
 <div class="rpt-grid-4">
     @php
+    $empName = $selectedUser ? $selectedUser->name : null;
     $kpis = [
-        ['label'=>'Total Tasks',      'value'=>$totalTasks,        'icon'=>'fa-list-check',          'color'=>'#6366F1','bg'=>'#EEF2FF', 'sub'=>'In selected period'],
+        ['label' => $empName ? 'Assigned Tasks'   : 'Total Tasks',
+         'value' => $totalTasks,        'icon'=>'fa-list-check',          'color'=>'#6366F1','bg'=>'#EEF2FF',
+         'sub'   => $empName ? 'Tasks assigned to '.$empName : 'In selected period'],
         ['label'=>'Completed',        'value'=>$completedTasks,    'icon'=>'fa-circle-check',        'color'=>'#10B981','bg'=>'#D1FAE5', 'sub'=>'Approved + Delivered'],
         ['label'=>'Completion Rate',  'value'=>$completionRate.'%','icon'=>'fa-chart-pie',            'color'=>'#F59E0B','bg'=>'#FEF3C7', 'sub'=>'Of all tasks done'],
         ['label'=>'On-time Rate',     'value'=>$onTimeRate.'%',    'icon'=>'fa-clock',               'color'=>'#8B5CF6','bg'=>'#EDE9FE', 'sub'=>'Before deadline'],
         ['label'=>'Overdue',          'value'=>$overdueTasks,      'icon'=>'fa-triangle-exclamation','color'=>'#EF4444','bg'=>'#FEE2E2', 'sub'=>'Need attention'],
-        ['label'=>'Active Projects',  'value'=>$activeProjects,    'icon'=>'fa-diagram-project',     'color'=>'#3B82F6','bg'=>'#DBEAFE', 'sub'=>'Currently running'],
-        ['label'=>'Pending Review',   'value'=>$pendingReview,     'icon'=>'fa-gavel',               'color'=>'#7C3AED','bg'=>'#EDE9FE', 'sub'=>'Awaiting approval'],
-        ['label'=>'Team Members',     'value'=>$teamMemberCount,   'icon'=>'fa-users',               'color'=>'#059669','bg'=>'#ECFDF5', 'sub'=>'Active contributors'],
+        ...($empName ? [] : [
+            ['label'=>'Active Projects','value'=>$activeProjects,  'icon'=>'fa-diagram-project',     'color'=>'#3B82F6','bg'=>'#DBEAFE', 'sub'=>'Currently running'],
+        ]),
+        ['label' => $empName ? 'Submitted Tasks'  : 'Pending Review',
+         'value' => $pendingReview,     'icon'=>'fa-gavel',               'color'=>'#7C3AED','bg'=>'#EDE9FE',
+         'sub'   => $empName ? 'Awaiting admin approval' : 'Awaiting approval'],
+        ...($empName ? [] : [
+            ['label'=>'Team Members',  'value'=>$teamMemberCount,  'icon'=>'fa-users',               'color'=>'#059669','bg'=>'#ECFDF5', 'sub'=>'Active contributors'],
+        ]),
     ];
     @endphp
     @foreach($kpis as $kpi)
@@ -377,7 +404,7 @@
             <span style="width:22px;height:22px;border-radius:6px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fas fa-bars-progress" style="color:#6366F1;font-size:10px;"></i>
             </span>
-            Status Breakdown
+            @if($selectedUser) {{ $selectedUser->name }}'s Task Status @else Status Breakdown @endif
         </p>
         <div style="display:flex;flex-direction:column;gap:8px;">
             @foreach($statusBreakdown as $key => $s)
@@ -406,7 +433,7 @@
             <span style="width:22px;height:22px;border-radius:6px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fas fa-flag" style="color:#F59E0B;font-size:10px;"></i>
             </span>
-            Priority Distribution
+            @if($selectedUser) Priority — {{ $selectedUser->name }}'s Tasks @else Priority Distribution @endif
         </p>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">
             @foreach($priorityBreakdown as $p => $data)
@@ -458,7 +485,7 @@
             <span style="width:22px;height:22px;border-radius:6px;background:#D1FAE5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fas fa-diagram-project" style="color:#10B981;font-size:10px;"></i>
             </span>
-            Project Performance
+            @if($selectedUser) Projects Involving {{ $selectedUser->name }} @else Project Performance @endif
         </p>
         @if($projects->isEmpty())
         <p style="text-align:center;color:#9CA3AF;font-size:12px;padding:20px 0;">No project data available.</p>
@@ -531,7 +558,7 @@
                 <span style="width:22px;height:22px;border-radius:6px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <i class="fas fa-chart-line" style="color:#6366F1;font-size:10px;"></i>
                 </span>
-                Monthly Task Balance
+                @if($selectedUser) {{ $selectedUser->name }}'s Monthly Balance @else Monthly Task Balance @endif
             </p>
             <div style="display:flex;align-items:center;gap:10px;font-size:10px;color:#6B7280;">
                 <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:rgba(16,185,129,.85);margin-right:4px;"></span>Completed</span>
@@ -583,13 +610,13 @@
 
 </div>
 
-{{-- ══ Row 5: Team Productivity (full width) ══ --}}
-<div class="rpt-card">
+{{-- ══ Row 5: Team Productivity / Employee Performance (full width) ══ --}}
+<div class="rpt-card" style="margin-bottom:10px;">
         <p class="rpt-section-title">
             <span style="width:22px;height:22px;border-radius:6px;background:#EDE9FE;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <i class="fas fa-users" style="color:#7C3AED;font-size:10px;"></i>
+                <i class="fas {{ $selectedUser ? 'fa-user' : 'fa-users' }}" style="color:#7C3AED;font-size:10px;"></i>
             </span>
-            Team Productivity
+            @if($selectedUser) {{ $selectedUser->name }} — Performance Summary @else Team Productivity @endif
         </p>
         @if($teamMembers->isEmpty())
         <p style="text-align:center;color:#9CA3AF;font-size:12px;padding:20px 0;">No team data for this period.</p>
@@ -674,7 +701,7 @@
 </div>
 
 {{-- ══ Row 6: Customer Performance ══ --}}
-@if($customerStats->isNotEmpty())
+@if($customerStats->isNotEmpty() && !$selectedUser)
 <div class="rpt-card" style="margin-bottom:10px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px;">
         <p class="rpt-section-title" style="margin:0;">
@@ -742,7 +769,7 @@
             <span style="width:22px;height:22px;border-radius:6px;background:#FEE2E2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fas fa-triangle-exclamation" style="color:#EF4444;font-size:10px;"></i>
             </span>
-            Overdue Tasks ({{ $overdueList->count() }})
+            @if($selectedUser) {{ $selectedUser->name }}'s Overdue Tasks ({{ $overdueList->count() }}) @else Overdue Tasks ({{ $overdueList->count() }}) @endif
         </p>
         <span style="font-size:11px;color:#EF4444;background:#FEE2E2;padding:2px 9px;border-radius:20px;font-weight:600;">Needs Attention</span>
     </div>
@@ -795,7 +822,7 @@
             <span style="width:22px;height:22px;border-radius:6px;background:#FFF7ED;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fas fa-rotate-right" style="color:#EA580C;font-size:10px;"></i>
             </span>
-            Reopened Tasks ({{ $reopenedList->count() }})
+            @if($selectedUser) Tasks Reopened by {{ $selectedUser->name }} ({{ $reopenedList->count() }}) @else Reopened Tasks ({{ $reopenedList->count() }}) @endif
         </p>
         <span style="font-size:11px;color:#EA580C;background:#FFF7ED;padding:2px 9px;border-radius:20px;font-weight:600;">Needs Attention</span>
     </div>
@@ -841,7 +868,7 @@
             <span style="width:22px;height:22px;border-radius:6px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fas fa-arrows-rotate" style="color:#4F46E5;font-size:10px;"></i>
             </span>
-            Reassigned Tasks ({{ $reassignedList->count() }})
+            @if($selectedUser) Reassignments Involving {{ $selectedUser->name }} ({{ $reassignedList->count() }}) @else Reassigned Tasks ({{ $reassignedList->count() }}) @endif
         </p>
         <span style="font-size:11px;color:#4F46E5;background:#EEF2FF;padding:2px 9px;border-radius:20px;font-weight:600;">Assignment Changes</span>
     </div>
@@ -904,6 +931,346 @@
     </div>
 </div>
 @endif
+
+{{-- ══ Time Tracking & Billing ══ --}}
+@if($billingUsers->isNotEmpty() || $billingCustomers->isNotEmpty())
+@php
+    $phaseColors = [
+        'work'     => ['bg'=>'#FEF3C7','color'=>'#D97706'],
+        'revision' => ['bg'=>'#FEE2E2','color'=>'#DC2626'],
+        'review'   => ['bg'=>'#EDE9FE','color'=>'#7C3AED'],
+        'social'   => ['bg'=>'#E0F2FE','color'=>'#0284C7'],
+    ];
+@endphp
+
+{{-- Phase legend (shared) --}}
+@php
+    $phaseLegend = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">';
+    foreach($phaseLabels as $phaseKey => $phaseLabel) {
+        $pc = $phaseColors[$phaseKey] ?? ['bg'=>'#F3F4F6','color'=>'#6B7280'];
+        $phaseLegend .= '<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:'.$pc['bg'].';color:'.$pc['color'].';"><span style="width:6px;height:6px;border-radius:50%;background:'.$pc['color'].';display:inline-block;"></span>'.$phaseLabel.'</span>';
+    }
+    $phaseLegend .= '</div>';
+@endphp
+
+{{-- Card 1: By Employee --}}
+@if($billingUsers->isNotEmpty())
+<div class="rpt-card" style="margin-bottom:10px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fa fa-users" style="color:#6366F1;font-size:15px;"></i>
+        </div>
+        <div>
+            <p class="rpt-section-title" style="margin:0;">
+                @if($selectedUser) {{ $selectedUser->name }}'s Time by Phase @else Time Tracking — By Employee @endif
+            </p>
+            <p style="font-size:11px;color:#9CA3AF;margin:0;">
+                @if($selectedUser) Tracked hours for {{ $selectedUser->name }} @else Hours logged per employee, broken down by work phase @endif
+                · {{ $from ? 'From '.$from->format('M d, Y') : 'All time' }}
+            </p>
+        </div>
+    </div>
+
+    {{-- Phase legend --}}
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+        @foreach($phaseLabels as $phaseKey => $phaseLabel)
+        @php $pc = $phaseColors[$phaseKey] ?? ['bg'=>'#F3F4F6','color'=>'#6B7280']; @endphp
+        <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:{{ $pc['bg'] }};color:{{ $pc['color'] }};">
+            <span style="width:6px;height:6px;border-radius:50%;background:{{ $pc['color'] }};display:inline-block;"></span>
+            {{ $phaseLabel }}
+        </span>
+        @endforeach
+        <span style="font-size:11px;color:#9CA3AF;align-self:center;margin-left:4px;">
+            Work &amp; Revision = employee timer · Admin Review = auto-tracked · Social = auto-tracked when posted
+        </span>
+    </div>
+
+    <div style="overflow-x:auto;">
+    <table class="rpt-table" id="billing-user-table">
+        <thead>
+            <tr>
+                <th>Employee</th>
+                <th>Role</th>
+                @foreach($phaseLabels as $phaseKey => $phaseLabel)
+                @php $pc = $phaseColors[$phaseKey] ?? ['bg'=>'#F3F4F6','color'=>'#6B7280']; @endphp
+                <th style="color:{{ $pc['color'] }};">{{ $phaseLabel }}</th>
+                @endforeach
+                <th>Total Hours</th>
+                @if(($appSettings['hide_hourly_rate'] ?? '0') !== '1')
+                <th>Hourly Rate</th>
+                <th style="text-align:right;">Est. Pay</th>
+                @endif
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($billingUsers as $bu)
+            @php $hasRate = $bu['hourly_rate'] > 0; @endphp
+            <tr>
+                <td><span style="font-weight:600;color:#111827;">{{ $bu['name'] }}</span></td>
+                <td><span class="rpt-badge" style="background:#EEF2FF;color:#4F46E5;">{{ ucfirst($bu['role']) }}</span></td>
+                @foreach(array_keys($phaseLabels) as $phaseKey)
+                @php $secs = $bu['phases'][$phaseKey] ?? 0; $pc = $phaseColors[$phaseKey] ?? ['bg'=>'#F3F4F6','color'=>'#6B7280']; @endphp
+                <td>
+                    @if($secs > 0)<span style="font-size:12px;font-weight:600;color:{{ $pc['color'] }};">{{ round($secs/3600,1) }}h</span>
+                    @else<span style="color:#E5E7EB;">—</span>@endif
+                </td>
+                @endforeach
+                <td><strong>{{ $bu['hours'] }}h</strong></td>
+                @if(($appSettings['hide_hourly_rate'] ?? '0') !== '1')
+                <td>
+                    @if($hasRate)<span style="color:#059669;font-weight:600;">${{ number_format($bu['hourly_rate'],2) }}/hr</span>
+                    @else<span style="color:#9CA3AF;font-size:11px;">Not set</span>@endif
+                </td>
+                <td style="text-align:right;">
+                    @if($bu['estimated_pay'])<span style="font-weight:700;color:#111827;">${{ number_format($bu['estimated_pay'],2) }}</span>
+                    @else<span style="color:#D1D5DB;">—</span>@endif
+                </td>
+                @endif
+            </tr>
+            @endforeach
+            <tr style="background:#F9FAFB;">
+                <td colspan="{{ 2 + count($phaseLabels) }}"><strong style="color:#374151;">Total</strong></td>
+                <td><strong>{{ round($billingUsers->sum('total_seconds') / 3600, 1) }}h</strong></td>
+                @if(($appSettings['hide_hourly_rate'] ?? '0') !== '1')
+                <td></td>
+                <td style="text-align:right;">
+                    @php $totalPay = $billingUsers->whereNotNull('estimated_pay')->sum('estimated_pay'); @endphp
+                    @if($totalPay > 0)<strong style="color:#6366F1;">${{ number_format($totalPay,2) }}</strong>
+                    @else<span style="color:#D1D5DB;">—</span>@endif
+                </td>
+                @endif
+            </tr>
+        </tbody>
+    </table>
+    </div>
+
+    <p style="font-size:10px;color:#9CA3AF;margin:10px 0 0;font-style:italic;">
+        <i class="fa fa-circle-info" style="margin-right:3px;"></i>
+        Hourly rates are set per employee in <a href="{{ route('team.index') }}" style="color:#6366F1;text-decoration:none;">Team → edit user</a>.
+    </p>
+</div>
+@endif
+
+{{-- Card 2: By Customer --}}
+@if($billingCustomers->isNotEmpty())
+<div class="rpt-card" style="margin-bottom:10px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <div style="width:36px;height:36px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fa fa-building" style="color:#6366F1;font-size:15px;"></i>
+        </div>
+        <div>
+            <p class="rpt-section-title" style="margin:0;">Billing — By Customer</p>
+            <p style="font-size:11px;color:#9CA3AF;margin:0;">
+                Estimated cost per customer based on hours × hourly rate
+                · {{ $from ? 'From '.$from->format('M d, Y') : 'All time' }}
+            </p>
+        </div>
+    </div>
+
+    {{-- Phase legend --}}
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+        @foreach($phaseLabels as $phaseKey => $phaseLabel)
+        @php $pc = $phaseColors[$phaseKey] ?? ['bg'=>'#F3F4F6','color'=>'#6B7280']; @endphp
+        <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:{{ $pc['bg'] }};color:{{ $pc['color'] }};">
+            <span style="width:6px;height:6px;border-radius:50%;background:{{ $pc['color'] }};display:inline-block;"></span>
+            {{ $phaseLabel }}
+        </span>
+        @endforeach
+    </div>
+
+    <div style="overflow-x:auto;">
+    <table class="rpt-table" id="billing-customer-table">
+        <thead>
+            <tr>
+                <th>Customer</th>
+                @foreach($phaseLabels as $phaseKey => $phaseLabel)
+                @php $pc = $phaseColors[$phaseKey] ?? ['bg'=>'#F3F4F6','color'=>'#6B7280']; @endphp
+                <th style="color:{{ $pc['color'] }};">{{ $phaseLabel }}</th>
+                @endforeach
+                <th>Total Hours</th>
+                @if(($appSettings['hide_hourly_rate'] ?? '0') !== '1')
+                <th style="text-align:right;">Est. Cost</th>
+                @endif
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($billingCustomers->sortByDesc('total_seconds') as $bc)
+            <tr>
+                <td>
+                    <span style="font-weight:600;color:#111827;">{{ $bc['customer_name'] }}</span>
+                    <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;">
+                        @foreach($bc['by_user'] as $uName => $ud)
+                        <span style="font-size:10px;background:#F3F4F6;color:#374151;padding:1px 6px;border-radius:8px;white-space:nowrap;">
+                            {{ $uName }} · {{ round($ud['seconds']/3600,1) }}h
+                            @if(($appSettings['hide_hourly_rate'] ?? '0') !== '1' && $ud['rate'] > 0)<span style="color:#059669;"> · ${{ $ud['rate'] }}/hr</span>@endif
+                        </span>
+                        @endforeach
+                    </div>
+                </td>
+                @foreach(array_keys($phaseLabels) as $phaseKey)
+                @php $secs = $bc['phases'][$phaseKey] ?? 0; $pc = $phaseColors[$phaseKey] ?? ['bg'=>'#F3F4F6','color'=>'#6B7280']; @endphp
+                <td>
+                    @if($secs > 0)<span style="font-size:12px;font-weight:600;color:{{ $pc['color'] }};">{{ round($secs/3600,1) }}h</span>
+                    @else<span style="color:#E5E7EB;">—</span>@endif
+                </td>
+                @endforeach
+                <td><strong>{{ $bc['hours'] }}h</strong></td>
+                @if(($appSettings['hide_hourly_rate'] ?? '0') !== '1')
+                <td style="text-align:right;">
+                    @if($bc['estimated_cost'])<span style="font-weight:700;color:#111827;">${{ number_format($bc['estimated_cost'],2) }}</span>
+                    @else<span style="color:#D1D5DB;">—</span>@endif
+                </td>
+                @endif
+            </tr>
+            @endforeach
+            <tr style="background:#F9FAFB;">
+                <td colspan="{{ 1 + count($phaseLabels) }}"><strong style="color:#374151;">Total</strong></td>
+                <td><strong>{{ round($billingCustomers->sum('total_seconds') / 3600, 1) }}h</strong></td>
+                @if(($appSettings['hide_hourly_rate'] ?? '0') !== '1')
+                <td style="text-align:right;">
+                    @php $grandTotal = $billingCustomers->whereNotNull('estimated_cost')->sum('estimated_cost'); @endphp
+                    @if($grandTotal > 0)<strong style="color:#6366F1;">${{ number_format($grandTotal,2) }}</strong>
+                    @else<span style="color:#D1D5DB;">—</span>@endif
+                </td>
+                @endif
+            </tr>
+        </tbody>
+    </table>
+    </div>
+
+    <p style="font-size:10px;color:#9CA3AF;margin:10px 0 0;font-style:italic;">
+        <i class="fa fa-circle-info" style="margin-right:3px;"></i>
+        Review &amp; Social times are recorded automatically — no employee action required.
+    </p>
+</div>
+@endif
+
+@endif
+
+{{-- ══ Ad Budget Monitor ══ --}}
+@php
+    $budgetPosted  = $adBudgetTasks->where('posted', true)->count();
+    $budgetPending = $adBudgetTasks->where('posted', false)->count();
+    $budgetTotal   = $adBudgetTasks->count();
+@endphp
+<div class="rpt-card" style="margin-bottom:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:36px;height:36px;border-radius:10px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-wallet" style="color:#D97706;font-size:15px;"></i>
+            </div>
+            <div>
+                <p class="rpt-section-title" style="margin:0;">Ad Budget Monitor</p>
+                <p style="font-size:11px;color:#9CA3AF;margin:0;">
+                    Social media tasks — {{ $budgetPosted }} posted · {{ $budgetPending }} pending
+                    · {{ $from ? 'From '.$from->format('M d, Y') : 'All time' }}
+                </p>
+            </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#FEF3C7;color:#D97706;">
+                    <i class="fas fa-hashtag" style="font-size:10px;"></i> {{ $budgetTotal }} tasks
+                </span>
+                <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#D1FAE5;color:#059669;">
+                    <i class="fas fa-circle-check" style="font-size:10px;"></i> {{ $budgetPosted }} posted
+                </span>
+                <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#FEE2E2;color:#DC2626;">
+                    <i class="fas fa-clock" style="font-size:10px;"></i> {{ $budgetPending }} pending
+                </span>
+            </div>
+            <a href="{{ route('admin.social-budget.index') }}"
+               style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:#FEF3C7;color:#D97706;border:1.5px solid #FDE68A;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;"
+               onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+                <i class="fas fa-arrow-up-right-from-square" style="font-size:10px;"></i> Full page
+            </a>
+        </div>
+    </div>
+
+    <div style="overflow-x:auto;">
+    <table class="rpt-table" id="ad-budget-table">
+        <thead>
+            <tr>
+                <th>Task</th>
+                <th>Project</th>
+                <th>Customer</th>
+                <th>Assigned To</th>
+                <th>Ad Budget</th>
+                <th>Caption</th>
+                <th>Status</th>
+                <th>Posted On</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($adBudgetTasks as $at)
+            <tr>
+                <td>
+                    <a href="{{ route('admin.tasks.show', $at['id']) }}"
+                       style="font-weight:600;color:#111827;text-decoration:none;"
+                       onmouseover="this.style.color='#4F46E5'" onmouseout="this.style.color='#111827'">
+                        {{ $at['title'] }}
+                    </a>
+                </td>
+                <td style="color:#374151;">{{ $at['project'] }}</td>
+                <td style="color:#374151;">{{ $at['customer'] }}</td>
+                <td>
+                    @if($at['social_user'] !== '—')
+                        <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:8px;background:#E0F2FE;color:#0284C7;font-size:11px;font-weight:600;">
+                            <i class="fas fa-share-nodes" style="font-size:9px;"></i>
+                            {{ $at['social_user'] }}
+                        </span>
+                    @else
+                        <span style="color:#D1D5DB;">—</span>
+                    @endif
+                </td>
+                <td>
+                    @if(!empty($at['budget']))
+                        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:8px;background:#FEF3C7;color:#D97706;font-size:12px;font-weight:700;">
+                            <i class="fas fa-wallet" style="font-size:10px;"></i>
+                            {{ $at['budget'] }}
+                        </span>
+                    @else
+                        <span style="color:#D1D5DB;font-size:11px;">—</span>
+                    @endif
+                </td>
+                <td style="max-width:200px;">
+                    @if(!empty($at['caption']))
+                        <span style="display:block;font-size:11px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;"
+                              title="{{ $at['caption'] }}">{{ $at['caption'] }}</span>
+                    @else
+                        <span style="color:#D1D5DB;">—</span>
+                    @endif
+                </td>
+                <td>
+                    @if($at['posted'])
+                        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:8px;background:#D1FAE5;color:#059669;font-size:11px;font-weight:600;">
+                            <i class="fas fa-circle-check" style="font-size:9px;"></i> Posted
+                        </span>
+                    @else
+                        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:8px;background:#FEF3C7;color:#D97706;font-size:11px;font-weight:600;">
+                            <i class="fas fa-clock" style="font-size:9px;"></i> Pending
+                        </span>
+                    @endif
+                </td>
+                <td style="color:#6B7280;font-size:11px;">{{ $at['posted_at'] ?? '—' }}</td>
+            </tr>
+            @empty
+            <tr>
+                <td colspan="8" style="text-align:center;padding:32px 16px;">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+                        <div style="width:44px;height:44px;border-radius:12px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;">
+                            <i class="fas fa-wallet" style="color:#D97706;font-size:18px;"></i>
+                        </div>
+                        <p style="font-size:13px;font-weight:600;color:#374151;margin:0;">No social media tasks yet</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:0;">When a task is approved with "Yes, assign" for social posting, it will appear here.</p>
+                    </div>
+                </td>
+            </tr>
+            @endforelse
+        </tbody>
+    </table>
+    </div>
+</div>
 
 {{-- ══ Footer ══ --}}
 <div style="text-align:center;padding:8px 0;color:#9CA3AF;font-size:10px;" class="no-print">
@@ -1389,92 +1756,347 @@ async function exportUsersPDF() {
     const selectedIds = [...document.querySelectorAll('.user-export-cb:checked')].map(cb => parseInt(cb.value));
     if (selectedIds.length === 0) return;
 
-    const pdfBtn = document.getElementById('user-pdf-btn');
-    pdfBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:11px;"></i><span> Generating…</span>';
-    pdfBtn.disabled = true;
+    const pdfBtn  = document.getElementById('user-pdf-btn');
+    pdfBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:11px;"></i><span> Fetching data…</span>';
+    pdfBtn.disabled  = true;
 
-    const users   = teamMembersData.filter(m => selectedIds.includes(m.id));
     const period  = '{{ $from ? $from->format('M d, Y').' – '.now()->format('M d, Y') : 'All Time' }}';
     const company = '{{ addslashes($appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name')) }}';
     const dateStr = '{{ now()->format('F d, Y') }}';
+    const range   = '{{ $range }}';
 
-    /* ── Build styled HTML ── */
-    let rows = users.map(u => {
-        const isAdm = u.member_type === 'admin';
-        const rowBg = isAdm ? '#F5F3FF' : '#fff';
-        const projCell = isAdm
-            ? `<td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;color:#4F46E5;font-weight:700;">${u.projects_created}</td>`
-            : `<td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;color:#D1D5DB;">—</td>`;
-        const reopenedCell = isAdm
-            ? `<td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;color:${u.tasks_reopened > 0 ? '#F59E0B' : '#9CA3AF'};font-weight:700;">${u.tasks_reopened}</td>`
-            : `<td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;color:#D1D5DB;">—</td>`;
-        const reassignedCell = isAdm
-            ? `<td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;color:${u.tasks_reassigned > 0 ? '#6366F1' : '#9CA3AF'};font-weight:700;">${u.tasks_reassigned}</td>`
-            : `<td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;color:#D1D5DB;">—</td>`;
-        return `
-        <tr style="background:${rowBg}">
-            <td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;font-weight:600;color:#111827;">${u.name}</td>
-            <td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;color:${isAdm ? '#7C3AED' : '#6B7280'};">${u.role}</td>
-            <td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;font-weight:700;color:${isAdm ? '#7C3AED' : '#374151'};" title="${isAdm ? 'Tasks Created' : 'Total Assigned'}">${u.total}</td>
-            <td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;color:#10B981;font-weight:700;" title="${isAdm ? 'Tasks Approved' : 'Tasks Completed'}">${u.completed}</td>
-            <td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;color:#F59E0B;font-weight:700;">${u.in_progress}</td>
-            <td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;color:#8B5CF6;font-weight:700;">${u.in_review}</td>
-            <td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;color:${u.overdue > 0 ? '#EF4444' : '#9CA3AF'};font-weight:700;">${u.overdue}</td>
-            ${projCell}
-            ${reopenedCell}
-            ${reassignedCell}
-            <td style="padding:9px 10px;border-bottom:1px solid #F3F4F6;text-align:center;">
-                <span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700;
-                    background:${u.rate >= 80 ? '#D1FAE5' : u.rate >= 40 ? '#FEF3C7' : '#FEE2E2'};
-                    color:${u.rate >= 80 ? '#065F46' : u.rate >= 40 ? '#92400E' : '#991B1B'};">
-                    ${u.rate}%
-                </span>
-            </td>
-        </tr>`;
-    }).join('');
+    // Fetch rich per-user detail from backend
+    let users;
+    try {
+        const qs = selectedIds.map(id => 'user_ids[]=' + id).join('&') + '&range=' + range;
+        const r  = await fetch('{{ route('admin.reports.user-detail') }}?' + qs, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        users = await r.json();
+    } catch (e) {
+        alert('Could not fetch user data: ' + e.message);
+        pdfBtn.innerHTML = '<i class="fas fa-file-pdf" style="font-size:11px;"></i><span>Export PDF (' + selectedIds.length + ')</span>';
+        pdfBtn.disabled = false;
+        return;
+    }
 
-    const area = document.getElementById('user-perf-pdf-area');
-    area.innerHTML = `
-        <div style="margin-bottom:22px;">
-            <div style="height:4px;background:linear-gradient(90deg,#4F46E5,#818CF8);border-radius:3px;margin-bottom:18px;"></div>
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-                <div>
-                    <div style="font-size:20px;font-weight:800;color:#111827;line-height:1.2;">${company}</div>
-                    <div style="font-size:13px;font-weight:700;color:#4F46E5;margin-top:4px;">User Performance Report</div>
+    pdfBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:11px;"></i><span> Generating PDF…</span>';
+
+    // ── helpers ─────────────────────────────────────────────────────────────
+    function rateColor(r)    { return r >= 80 ? '#065F46' : r >= 40 ? '#92400E' : '#991B1B'; }
+    function rateBg(r)       { return r >= 80 ? '#D1FAE5' : r >= 40 ? '#FEF3C7' : '#FEE2E2'; }
+    function statusColor(s) {
+        const map = { in_progress:'#F59E0B', submitted:'#8B5CF6', revision_requested:'#8B5CF6',
+                      approved:'#10B981', delivered:'#047857', archived:'#047857',
+                      assigned:'#6B7280', viewed:'#6B7280', draft:'#6B7280' };
+        return map[s] || '#6B7280';
+    }
+    function priorityColor(p) {
+        return p === 'high' ? '#EF4444' : p === 'low' ? '#10B981' : '#F59E0B';
+    }
+    function barRow(label, color, count, total) {
+        const pct = total > 0 ? Math.round(count / total * 100) : 0;
+        return `<div style="margin-bottom:7px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="width:7px;height:7px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0;"></span>
+                    <span style="font-size:11px;font-weight:600;color:#374151;">${label}</span>
                 </div>
-                <div style="text-align:right;">
-                    <div style="font-size:11px;color:#9CA3AF;">Generated ${dateStr}</div>
-                    <div style="font-size:11px;color:#9CA3AF;margin-top:2px;">Period: <strong style="color:#374151;">${period}</strong></div>
-                    <div style="font-size:11px;color:#9CA3AF;margin-top:2px;">Prepared by: <strong style="color:#374151;">{{ auth()->user()->name }}</strong></div>
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:11px;font-weight:700;color:#111827;">${count}</span>
+                    <span style="font-size:9px;color:#9CA3AF;min-width:26px;text-align:right;">${pct}%</span>
                 </div>
             </div>
-            <div style="border-top:1.5px solid #E5E7EB;margin-top:14px;"></div>
-        </div>
-        <table style="width:100%;border-collapse:collapse;font-size:13px;font-family:Inter,system-ui,sans-serif;">
-            <thead>
-                <tr style="background:#F9FAFB;">
-                    <th style="padding:9px 10px;text-align:left;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #E5E7EB;">Member</th>
-                    <th style="padding:9px 10px;text-align:left;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #E5E7EB;">Role</th>
-                    <th style="padding:9px 10px;text-align:center;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #E5E7EB;">Created/Total</th>
-                    <th style="padding:9px 10px;text-align:center;font-size:10px;font-weight:700;color:#10B981;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #E5E7EB;">Done/Approved</th>
-                    <th style="padding:9px 10px;text-align:center;font-size:10px;font-weight:700;color:#F59E0B;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #E5E7EB;">Active</th>
-                    <th style="padding:9px 10px;text-align:center;font-size:10px;font-weight:700;color:#8B5CF6;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #E5E7EB;">Review</th>
-                    <th style="padding:9px 10px;text-align:center;font-size:10px;font-weight:700;color:#EF4444;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #E5E7EB;">Overdue</th>
-                    <th style="padding:9px 10px;text-align:center;font-size:10px;font-weight:700;color:#4F46E5;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #E5E7EB;">Projects</th>
-                    <th style="padding:9px 10px;text-align:center;font-size:10px;font-weight:700;color:#F59E0B;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #E5E7EB;">Reopened</th>
-                    <th style="padding:9px 10px;text-align:center;font-size:10px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #E5E7EB;">Reassigned</th>
-                    <th style="padding:9px 10px;text-align:center;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #E5E7EB;">Rate</th>
-                </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-        </table>
-        <div style="margin-top:24px;padding-top:10px;border-top:1px solid #E5E7EB;display:flex;justify-content:space-between;">
-            <span style="font-size:10px;color:#9CA3AF;">${company} — Confidential, Internal Use Only</span>
-            <span style="font-size:10px;color:#9CA3AF;">${users.length} user${users.length !== 1 ? 's' : ''} included</span>
+            <div style="height:5px;background:#F3F4F6;border-radius:3px;overflow:hidden;">
+                <div style="height:5px;width:${pct}%;background:${color};border-radius:3px;"></div>
+            </div>
         </div>`;
+    }
+
+    // ── SVG mini-bar chart for 6-month trend ────────────────────────────────
+    function svgTrend(labels, created, completed) {
+        const tw = 260, th2 = 100, pad = 20, btmPad = 18;
+        const maxVal = Math.max(...created, ...completed, 1);
+        const n = labels.length;
+        const slotW = (tw - pad * 2) / n;
+        const bw = slotW * 0.32;
+        let bars = '';
+        labels.forEach((lbl, i) => {
+            const x0 = pad + i * slotW + slotW * 0.1;
+            const cH  = Math.round((created[i]   / maxVal) * (th2 - btmPad - 4));
+            const dH  = Math.round((completed[i] / maxVal) * (th2 - btmPad - 4));
+            const yBase = th2 - btmPad;
+            bars += `<rect x="${x0}"           y="${yBase - cH}" width="${bw}" height="${Math.max(cH,1)}" fill="#6366F1" rx="2" opacity=".75"/>`;
+            bars += `<rect x="${x0 + bw + 1}"  y="${yBase - dH}" width="${bw}" height="${Math.max(dH,1)}" fill="#10B981" rx="2" opacity=".75"/>`;
+            bars += `<text x="${x0 + bw}"      y="${th2 - 3}" text-anchor="middle" font-size="6" fill="#9CA3AF" font-family="Inter,sans-serif">${lbl.slice(0,3)}</text>`;
+        });
+        // Legend
+        const leg = `<rect x="${pad}" y="4" width="6" height="6" fill="#6366F1" rx="1" opacity=".75"/>
+            <text x="${pad+8}" y="10" font-size="6.5" fill="#6B7280" font-family="Inter,sans-serif">Created</text>
+            <rect x="${pad+44}" y="4" width="6" height="6" fill="#10B981" rx="1" opacity=".75"/>
+            <text x="${pad+52}" y="10" font-size="6.5" fill="#6B7280" font-family="Inter,sans-serif">Completed</text>`;
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="${tw}" height="${th2}" viewBox="0 0 ${tw} ${th2}" style="width:100%;height:auto;">${leg}${bars}</svg>`;
+    }
+
+    // ── build one HTML block per user ────────────────────────────────────────
+    function buildUserBlock(u, isFirst) {
+        const t      = u.totals;
+        const isPage = !isFirst;
+
+        // helpers
+        const th = (label, color='#6B7280') =>
+            `<th style="padding:7px 8px;text-align:left;font-size:9px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #E5E7EB;background:#F9FAFB;">${label}</th>`;
+        const thC = (label, color='#6B7280') =>
+            `<th style="padding:7px 8px;text-align:center;font-size:9px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #E5E7EB;background:#F9FAFB;">${label}</th>`;
+
+        const sectionTitle = (icon, label, iconColor='#4F46E5') =>
+            `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                <div style="width:22px;height:22px;border-radius:6px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <span style="font-size:10px;font-weight:900;color:${iconColor};">${icon}</span>
+                </div>
+                <span style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.06em;">${label}</span>
+            </div>`;
+
+        // 4 main KPI cards (matching page 2 style)
+        const kpiRows = [
+            [
+                { label:'ASSIGNED TASKS',  value: t.total,              sub:'Tasks assigned to '+u.name.split(' ')[0], color:'#4F46E5', iconBg:'#EEF2FF', icon:'≡' },
+                { label:'COMPLETED',        value: t.done,               sub:'Approved + Delivered',                    color:'#059669', iconBg:'#D1FAE5', icon:'✓' },
+                { label:'COMPLETION RATE',  value: u.rate+'%',           sub:'Of all tasks done',                       color: rateColor(u.rate), iconBg: rateBg(u.rate), icon:'%' },
+                { label:'ON-TIME RATE',     value: u.on_time_rate+'%',   sub:'Before deadline',                         color:'#7C3AED', iconBg:'#F5F3FF', icon:'O' },
+            ],
+            [
+                { label:'OVERDUE',          value: t.overdue,            sub:'Need attention',                          color: t.overdue>0?'#DC2626':'#9CA3AF', iconBg: t.overdue>0?'#FEF2F2':'#F8FAFC', icon:'!' },
+                { label:'SUBMITTED TASKS',  value: t.in_review,          sub:'Awaiting admin approval',                 color:'#7C3AED', iconBg:'#F5F3FF', icon:'S' },
+            ],
+        ];
+
+        const kpiRowHtml = kpiRows.map((row, ri) => {
+            const cols = row.map(k => `
+                <div style="flex:1;background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.04);">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                        <span style="font-size:9px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">${k.label}</span>
+                        <div style="width:28px;height:28px;border-radius:8px;background:${k.iconBg};display:flex;align-items:center;justify-content:center;">
+                            <span style="font-size:12px;font-weight:900;color:${k.color};">${k.icon}</span>
+                        </div>
+                    </div>
+                    <div style="font-size:${ri===0?'28':'22'}px;font-weight:800;color:#111827;line-height:1;margin-bottom:4px;">${k.value}</div>
+                    <div style="font-size:10px;color:#9CA3AF;">${k.sub}</div>
+                </div>`).join('');
+            return `<div style="display:flex;gap:12px;margin-bottom:12px;">${cols}</div>`;
+        }).join('');
+
+        // Status breakdown bars
+        const bars = [
+            barRow('Pending',     '#6B7280', t.pending,   t.total),
+            barRow('In Progress', '#F59E0B', t.in_prog,   t.total),
+            barRow('In Review',   '#8B5CF6', t.in_review, t.total),
+            barRow('Completed',   '#10B981', t.approved,  t.total),
+            barRow('Delivered',   '#047857', t.delivered, t.total),
+            barRow('Overdue',     '#EF4444', t.overdue,   t.total),
+        ].join('');
+
+        // Priority bars + colored boxes
+        const priorityBars = [
+            barRow('Low',    '#10B981', t.p_low,    t.total),
+            barRow('Medium', '#F59E0B', t.p_medium, t.total),
+            barRow('High',   '#EF4444', t.p_high,   t.total),
+        ].join('');
+        const priorityBoxes = [
+            { label:'Low',    color:'#059669', bg:'#D1FAE5', val: t.p_low    },
+            { label:'Medium', color:'#D97706', bg:'#FEF3C7', val: t.p_medium },
+            { label:'High',   color:'#DC2626', bg:'#FEE2E2', val: t.p_high   },
+        ].map(b => `<div style="flex:1;background:${b.bg};border-radius:10px;padding:10px;text-align:center;">
+            <div style="font-size:20px;font-weight:800;color:${b.color};line-height:1;">${b.val}</div>
+            <div style="font-size:9px;font-weight:600;color:${b.color};margin-top:3px;opacity:.8;">${b.label}</div>
+        </div>`).join('');
+
+        // 6-month SVG trend
+        const trendSvg = svgTrend(u.monthly_labels, u.monthly_created, u.monthly_completed);
+
+        // Monthly balance boxes
+        const totalCreated   = u.monthly_created.reduce((a,b)=>a+b,0);
+        const totalCompleted = u.monthly_completed.reduce((a,b)=>a+b,0);
+        const netBalance     = totalCompleted - totalCreated;
+        const balanceBoxes = [
+            { label:'COMPLETED', sub:'last 12 months', val: totalCompleted, color:'#059669', bg:'#D1FAE5' },
+            { label:'CREATED',   sub:'last 12 months', val: totalCreated,   color:'#4F46E5', bg:'#EEF2FF' },
+            { label:'NET BALANCE', sub: netBalance >= 0 ? 'ahead of backlog' : 'behind backlog', val: (netBalance >= 0 ? '+' : '') + netBalance, color: netBalance >= 0 ? '#059669' : '#DC2626', bg: netBalance >= 0 ? '#F0FDF4' : '#FEF2F2' },
+            { label:'BEST MONTH', sub: u.best_month_count + ' tasks done', val: u.best_month, color:'#D97706', bg:'#FEF3C7' },
+        ].map(b => `<div style="flex:1;background:${b.bg};border-radius:12px;padding:14px;text-align:center;">
+            <div style="font-size:10px;font-weight:700;color:${b.color};text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">${b.label}</div>
+            <div style="font-size:22px;font-weight:800;color:#111827;line-height:1;margin-bottom:3px;">${b.val}</div>
+            <div style="font-size:10px;color:#6B7280;">${b.sub}</div>
+        </div>`).join('');
+
+        // Projects table rows
+        const projRows = u.projects.length === 0
+            ? `<tr><td colspan="8" style="padding:14px;text-align:center;color:#9CA3AF;font-size:11px;">No projects in this period</td></tr>`
+            : u.projects.map(p => {
+                const activeTag = p.is_active
+                    ? `<span style="background:#D1FAE5;color:#065F46;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px;">ACTIVE</span>`
+                    : `<span style="background:#F3F4F6;color:#9CA3AF;font-size:9px;padding:1px 5px;border-radius:4px;margin-left:4px;">${p.proj_status}</span>`;
+                return `<tr style="background:${p.is_active ? '#FAFFFE' : '#fff'}">
+                    <td style="padding:7px 8px;border-bottom:1px solid #F3F4F6;font-size:11px;font-weight:600;color:#111827;">${p.name}${activeTag}</td>
+                    <td style="padding:7px 8px;border-bottom:1px solid #F3F4F6;font-size:11px;color:#6B7280;">${p.customer}</td>
+                    <td style="padding:7px 8px;border-bottom:1px solid #F3F4F6;font-size:11px;color:#374151;white-space:nowrap;">${p.first_date}</td>
+                    <td style="padding:7px 8px;border-bottom:1px solid #F3F4F6;font-size:11px;color:#4F46E5;font-weight:600;text-align:center;">${p.days_active}d</td>
+                    <td style="padding:7px 8px;border-bottom:1px solid #F3F4F6;font-size:11px;text-align:center;color:#374151;">${p.total}</td>
+                    <td style="padding:7px 8px;border-bottom:1px solid #F3F4F6;font-size:11px;text-align:center;color:#10B981;font-weight:700;">${p.done}</td>
+                    <td style="padding:7px 8px;border-bottom:1px solid #F3F4F6;font-size:11px;text-align:center;">
+                        <span style="display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;background:${rateBg(p.rate)};color:${rateColor(p.rate)};">${p.rate}%</span>
+                    </td>
+                    <td style="padding:7px 8px;border-bottom:1px solid #F3F4F6;font-size:11px;color:#8B5CF6;text-align:center;">${p.time_spent}</td>
+                </tr>`;
+            }).join('');
+
+        // Active tasks rows
+        const taskRows = u.active_tasks.length === 0
+            ? `<tr><td colspan="6" style="padding:14px;text-align:center;color:#9CA3AF;font-size:11px;">No active tasks in this period</td></tr>`
+            : u.active_tasks.map(t2 => {
+                const dl      = t2.days_left;
+                const dlColor = dl === null ? '#9CA3AF' : dl < 0 ? '#EF4444' : dl <= 3 ? '#F59E0B' : '#10B981';
+                const dlText  = dl === null ? '—' : dl < 0 ? Math.abs(dl)+'d overdue' : dl+'d left';
+                return `<tr>
+                    <td style="padding:6px 8px;border-bottom:1px solid #F3F4F6;font-size:11px;font-weight:600;color:#111827;">${t2.title}</td>
+                    <td style="padding:6px 8px;border-bottom:1px solid #F3F4F6;font-size:11px;color:#6B7280;">${t2.project}</td>
+                    <td style="padding:6px 8px;border-bottom:1px solid #F3F4F6;font-size:11px;color:#6B7280;">${t2.customer}</td>
+                    <td style="padding:6px 8px;border-bottom:1px solid #F3F4F6;font-size:11px;text-align:center;">
+                        <span style="background:${statusColor(t2.status)}22;color:${statusColor(t2.status)};font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;">${t2.status.replace(/_/g,' ')}</span>
+                    </td>
+                    <td style="padding:6px 8px;border-bottom:1px solid #F3F4F6;font-size:11px;text-align:center;">
+                        <span style="color:${priorityColor(t2.priority)};font-weight:700;font-size:10px;">${t2.priority||'—'}</span>
+                    </td>
+                    <td style="padding:6px 8px;border-bottom:1px solid #F3F4F6;font-size:11px;color:${dlColor};font-weight:700;text-align:center;">${dlText}</td>
+                </tr>`;
+            }).join('');
+
+        return `
+        <div style="font-family:Inter,system-ui,sans-serif;${isPage ? 'margin-top:48px;padding-top:32px;border-top:2px solid #E5E7EB;' : ''}">
+
+        ${!isPage ? `
+        ${/* ── accent bar */ ''}
+        <div style="height:5px;background:linear-gradient(90deg,#4F46E5,#6366F1,#818CF8);border-radius:3px;margin-bottom:20px;"></div>
+
+        ${/* ── logo + title header */ ''}
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div>
+                <div style="font-size:20px;font-weight:800;color:#111827;line-height:1.2;">${company}</div>
+                <div style="font-size:11px;color:#9CA3AF;margin-top:2px;">Task Management System</div>
+            </div>
+            <div style="text-align:right;">
+                <div style="font-size:18px;font-weight:800;color:#4F46E5;line-height:1.2;">Reports &amp; Analytics</div>
+                <div style="font-size:10px;color:#9CA3AF;margin-top:3px;">Confidential &mdash; Internal Use Only</div>
+            </div>
+        </div>
+
+        ${/* ── meta row */ ''}
+        <div style="border-top:1.5px solid #E5E7EB;border-bottom:1.5px solid #E5E7EB;padding:10px 0;display:flex;gap:32px;margin-bottom:20px;">
+            <div>
+                <div style="font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em;">Generated</div>
+                <div style="font-size:11px;font-weight:600;color:#374151;margin-top:2px;">${dateStr} at {{ now()->format('H:i') }}</div>
+            </div>
+            <div>
+                <div style="font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em;">Period</div>
+                <div style="font-size:11px;font-weight:600;color:#374151;margin-top:2px;">${period}</div>
+            </div>
+            <div>
+                <div style="font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em;">Prepared By</div>
+                <div style="font-size:11px;font-weight:600;color:#374151;margin-top:2px;">{{ auth()->user()->name }}</div>
+            </div>
+            <div>
+                <div style="font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em;">Department</div>
+                <div style="font-size:11px;font-weight:600;color:#374151;margin-top:2px;">{{ $appSettings['company_name'] ?? config('app.name') }}</div>
+            </div>
+        </div>` : ''}
+
+        ${/* ── employee name card */ ''}
+        <div style="background:linear-gradient(135deg,#EEF2FF,#F5F3FF);border:1.5px solid #E0E7FF;border-radius:14px;padding:18px 22px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:14px;">
+                <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#4F46E5,#7C3AED);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;flex-shrink:0;">
+                    ${u.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                    <div style="font-size:17px;font-weight:800;color:#111827;">${u.name}</div>
+                    <div style="font-size:12px;color:#6B7280;margin-top:2px;">${u.role}${u.job_title?' &middot; '+u.job_title:''}</div>
+                    <div style="font-size:11px;color:#9CA3AF;margin-top:1px;">${u.email}</div>
+                </div>
+            </div>
+            <div style="display:flex;gap:24px;text-align:center;">
+                <div>
+                    <div style="font-size:10px;color:#9CA3AF;margin-bottom:3px;">Member Since</div>
+                    <div style="font-size:13px;font-weight:700;color:#374151;">${u.member_since}</div>
+                </div>
+                <div>
+                    <div style="font-size:10px;color:#9CA3AF;margin-bottom:3px;">Active Time Logged</div>
+                    <div style="font-size:13px;font-weight:700;color:#4F46E5;">${u.time_spent}</div>
+                </div>
+            </div>
+        </div>
+
+        ${/* ── KPI rows */ ''}
+        ${kpiRowHtml}
+
+        ${/* ── 3-col: status | priority | trend */ ''}
+        <div style="display:flex;gap:12px;margin-bottom:14px;">
+
+            ${/* status breakdown */ ''}
+            <div style="flex:1;background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:14px 16px;">
+                ${sectionTitle('=', u.name.split(' ')[0].toUpperCase()+"'S TASK STATUS",'#6366F1')}
+                ${bars}
+            </div>
+
+            ${/* priority breakdown */ ''}
+            <div style="flex:1;background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:14px 16px;">
+                ${sectionTitle('P', 'PRIORITY — '+u.name.split(' ')[0].toUpperCase()+"'S TASKS",'#F59E0B')}
+                ${priorityBars}
+                <div style="display:flex;gap:8px;margin-top:10px;">${priorityBoxes}</div>
+            </div>
+
+            ${/* 6-month trend */ ''}
+            <div style="flex:1;background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:14px 16px;">
+                ${sectionTitle('~', '6-MONTH TREND','#4F46E5')}
+                ${trendSvg}
+            </div>
+        </div>
+
+        ${/* ── projects table */ ''}
+        <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:14px 16px;margin-bottom:14px;">
+            ${sectionTitle('>', 'PROJECTS INVOLVING '+u.name.split(' ')[0].toUpperCase(),'#8B5CF6')}
+            <div style="overflow:hidden;border-radius:8px;border:1px solid #F3F4F6;">
+                <table style="width:100%;border-collapse:collapse;">
+                    <thead><tr>${th('Project')}${th('Customer')}${th('Started')}${thC('Days','#4F46E5')}${thC('Tasks')}${thC('Done','#10B981')}${thC('Rate')}${thC('Time','#8B5CF6')}</tr></thead>
+                    <tbody>${projRows}</tbody>
+                </table>
+            </div>
+        </div>
+
+        ${/* ── monthly balance */ ''}
+        <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:14px 16px;margin-bottom:14px;">
+            ${sectionTitle('~', u.name.split(' ')[0].toUpperCase()+"'S MONTHLY BALANCE",'#10B981')}
+            <div style="display:flex;gap:10px;margin-bottom:14px;">${balanceBoxes}</div>
+        </div>
+
+        ${/* ── active workload */ ''}
+        <div style="background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:14px 16px;">
+            ${sectionTitle('!', 'CURRENT ACTIVE WORKLOAD ('+u.active_tasks.length+' tasks)','#EF4444')}
+            <div style="overflow:hidden;border-radius:8px;border:1px solid #F3F4F6;">
+                <table style="width:100%;border-collapse:collapse;">
+                    <thead><tr style="background:#F9FAFB;">${th('Task')}${th('Project')}${th('Customer')}${thC('Status')}${thC('Priority')}${thC('Deadline','#EF4444')}</tr></thead>
+                    <tbody>${taskRows}</tbody>
+                </table>
+            </div>
+        </div>
+
+        </div>`;
+    }
+
+    const area = document.getElementById('user-perf-pdf-area');
+    area.innerHTML = users.map((u, i) => buildUserBlock(u, i === 0)).join('');
 
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-    await new Promise(r => setTimeout(r, 150));
+    await new Promise(r => setTimeout(r, 200));
 
     let canvas;
     try {
@@ -1486,7 +2108,7 @@ async function exportUsersPDF() {
         });
     } catch (e) {
         alert('PDF generation failed: ' + e.message);
-        pdfBtn.innerHTML = '<i class="fas fa-file-pdf" style="font-size:11px;"></i><span>Export PDF</span>';
+        pdfBtn.innerHTML = '<i class="fas fa-file-pdf" style="font-size:11px;"></i><span>Export PDF (' + selectedIds.length + ')</span>';
         pdfBtn.disabled = false;
         return;
     }
@@ -1497,7 +2119,7 @@ async function exportUsersPDF() {
     const pdf   = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
-    const footH = 6;
+    const footH = 7;
     const contentH = pageH - footH;
 
     const imgW = canvas.width, imgH = canvas.height;
@@ -1519,14 +2141,13 @@ async function exportUsersPDF() {
         pdf.line(0, footerY, pageW, footerY);
         pdf.setFontSize(6.5); pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(79, 70, 229);
-        pdf.text(company + '  —  User Performance', 2, footerY + 4);
+        pdf.text(company + '  —  Employee Performance Report', 2, footerY + 4);
         pdf.setFont('helvetica', 'normal'); pdf.setTextColor(156, 163, 175);
-        pdf.text('Generated ' + dateStr, pageW / 2, footerY + 4, { align: 'center' });
-        pdf.text('Page ' + (p + 1) + (numPages > 1 ? ' of ' + numPages : ''), pageW - 2, footerY + 4, { align: 'right' });
+        pdf.text('Generated ' + dateStr + '  ·  Period: ' + period, pageW / 2, footerY + 4, { align: 'center' });
+        pdf.text('Page ' + (p + 1) + ' of ' + numPages, pageW - 2, footerY + 4, { align: 'right' });
     }
 
-    pdf.save('user-performance-{{ now()->format('Y-m-d') }}.pdf');
-
+    pdf.save('employee-performance-{{ now()->format('Y-m-d') }}.pdf');
     pdfBtn.innerHTML = '<i class="fas fa-file-pdf" style="font-size:11px;"></i><span>Export PDF (' + selectedIds.length + ')</span>';
     pdfBtn.disabled = false;
 }

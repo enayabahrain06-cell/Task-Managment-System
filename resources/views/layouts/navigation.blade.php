@@ -211,6 +211,20 @@
         </a>
         @endif
 
+        @if(auth()->user()->hasPermission('view_reports') && !in_array('nav_social_budget', $navHidden))
+        @php $socialPendingNav = \App\Models\Task::where('social_required', true)->whereNull('social_posted_at')->count(); @endphp
+        <a href="{{ route('admin.social-budget.index') }}"
+           class="nav-item {{ request()->routeIs('admin.social-budget.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-wallet nav-icon"></i>
+                Ad Budget
+            </div>
+            @if($socialPendingNav > 0)
+            <span class="nav-badge nav-badge-red">{{ $socialPendingNav }}</span>
+            @endif
+        </a>
+        @endif
+
         @if(auth()->user()->hasPermission('view_reports') && !in_array('nav_reports', $navHidden))
         <a href="{{ route('admin.reports.index') }}"
            class="nav-item {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">

@@ -100,6 +100,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
             ['id'=>'team',          'icon'=>'fa-users',          'label'=>'Team'],
             ['id'=>'notifications', 'icon'=>'fa-bell',           'label'=>'Notifications'],
             ['id'=>'mail',          'icon'=>'fa-envelope',       'label'=>'Mail / SMTP'],
+            ['id'=>'whatsapp',      'icon'=>'fa-brands fa-whatsapp', 'label'=>'WhatsApp'],
             ['id'=>'security',      'icon'=>'fa-shield-halved',  'label'=>'Security'],
             ['id'=>'backup',        'icon'=>'fa-database',       'label'=>'Backup & Export'],
             ['id'=>'developer',     'icon'=>'fa-code',           'label'=>'Developer'],
@@ -603,6 +604,50 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
+
+                        {{-- Work Hours ──────────────────────────────────────── --}}
+                        <div style="margin-top:18px;padding-top:18px;border-top:1px solid #F3F4F6;">
+                            <p style="font-size:12px;font-weight:700;color:#374151;margin:0 0 12px;display:flex;align-items:center;gap:6px;">
+                                <i class="fa fa-clock" style="color:#6366F1;font-size:11px;"></i>
+                                Work Hours &amp; Timer
+                            </p>
+                            <p style="font-size:11px;color:#9CA3AF;margin:0 0 14px;">
+                                The end-of-day command auto-pauses all running employee timers at the configured end time.
+                                Add <code style="background:#F3F4F6;padding:1px 5px;border-radius:4px;font-size:10px;">* * * * * php /var/www/Task-Managment-System/artisan schedule:run</code> to your server cron.
+                            </p>
+                            <div class="sf-row">
+                                <div class="sf-group">
+                                    <label class="sf-label">Work Start Time</label>
+                                    <input type="time" name="work_start_time" class="sf-input"
+                                           value="{{ $settings['work_start_time'] ?? '09:00' }}">
+                                    <p class="sf-hint">Used for outside-hours warnings when employees start timers early.</p>
+                                </div>
+                                <div class="sf-group">
+                                    <label class="sf-label">Work End Time</label>
+                                    <input type="time" name="work_end_time" class="sf-input"
+                                           value="{{ $settings['work_end_time'] ?? '18:00' }}">
+                                    <p class="sf-hint">All running timers are auto-paused at this time each work day.</p>
+                                </div>
+                            </div>
+                            @php
+                                $savedDays = json_decode($settings['work_days'] ?? '[1,2,3,4,5]', true) ?? [1,2,3,4,5];
+                                $dayNames  = [1=>'Mon',2=>'Tue',3=>'Wed',4=>'Thu',5=>'Fri',6=>'Sat',7=>'Sun'];
+                            @endphp
+                            <div class="sf-group" style="margin-bottom:0;">
+                                <label class="sf-label">Work Days</label>
+                                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;">
+                                    @foreach($dayNames as $num => $name)
+                                    <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#374151;cursor:pointer;">
+                                        <input type="checkbox" name="work_days[]" value="{{ $num }}"
+                                               {{ in_array($num, $savedDays) ? 'checked' : '' }}
+                                               style="width:15px;height:15px;accent-color:#6366F1;cursor:pointer;">
+                                        {{ $name }}
+                                    </label>
+                                    @endforeach
+                                </div>
+                                <p class="sf-hint">End-of-day auto-pause only runs on selected days.</p>
+                            </div>
+                        </div>
                     </div>
                     <div class="scard-footer">
                         <button type="submit" class="btn-save"><i class="fas fa-check" style="font-size:11px;margin-right:5px;"></i>Save Team Settings</button>
@@ -671,6 +716,58 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                        value="{{ $settings['task_reminder_days'] }}" min="0" max="30">
                                 <p class="sf-hint">Send a reminder this many days before a task deadline. Set 0 to disable.</p>
                             </div>
+                        </div>
+
+                        {{-- ── External Channels on Assignment ── --}}
+                        <div style="margin-top:20px;padding-top:20px;border-top:1px solid #F3F4F6;">
+                            <p style="font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px;">External Notifications on Task Assignment</p>
+                            <p style="font-size:11px;color:#9CA3AF;margin:0 0 12px;">Send an email or WhatsApp message to the employee when a task is assigned to them. Requires Mail/SMTP and WhatsApp to be configured.</p>
+
+                            {{-- Email on assign --}}
+                            <div class="sf-toggle-row">
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    <div style="width:32px;height:32px;border-radius:8px;background:#EFF6FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                        <i class="fas fa-envelope" style="color:#2563EB;font-size:13px;"></i>
+                                    </div>
+                                    <div>
+                                        <p class="sf-toggle-label" style="margin:0;">Send Email on Task Assigned</p>
+                                        <p class="sf-toggle-hint" style="margin:0;">Employee receives a formatted email with task details and a link. Requires SMTP configured in Mail tab.</p>
+                                    </div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" name="email_on_assign" value="1"
+                                           {{ ($settings['email_on_assign'] ?? '0') === '1' ? 'checked' : '' }}>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+
+                            {{-- WhatsApp on assign --}}
+                            <div class="sf-toggle-row" style="margin-top:8px;">
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    <div style="width:32px;height:32px;border-radius:8px;background:#DCFCE7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                        <i class="fa-brands fa-whatsapp" style="color:#16A34A;font-size:15px;"></i>
+                                    </div>
+                                    <div>
+                                        <p class="sf-toggle-label" style="margin:0;">Send WhatsApp on Task Assigned</p>
+                                        <p class="sf-toggle-hint" style="margin:0;">Employee receives a WhatsApp message using the template in the WhatsApp tab. Requires WhatsApp enabled and a phone number on the user's profile.</p>
+                                    </div>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" name="wa_on_assign" value="1"
+                                           {{ ($settings['wa_on_assign'] ?? '0') === '1' ? 'checked' : '' }}>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+
+                            @if(($settings['email_on_assign'] ?? '0') === '1' || ($settings['wa_on_assign'] ?? '0') === '1')
+                            <div style="margin-top:10px;padding:10px 12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;font-size:11px;color:#92400E;display:flex;align-items:center;gap:8px;">
+                                <i class="fas fa-circle-info" style="flex-shrink:0;"></i>
+                                <span>
+                                    @if(($settings['email_on_assign'] ?? '0') === '1') Email is active — make sure SMTP is configured in the <strong>Mail</strong> tab. @endif
+                                    @if(($settings['wa_on_assign'] ?? '0') === '1') WhatsApp is active — make sure each employee has a phone number set on their profile. @endif
+                                </span>
+                            </div>
+                            @endif
                         </div>
 
                     </div>
@@ -1113,6 +1210,46 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 <span id="dev-mode-label">{{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'On' : 'Off' }}</span>
                             </button>
                         </div>
+                        {{-- Hide Approval Customer Notify --}}
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
+                             x-data="{ hideNotify: {{ ($appSettings['hide_approval_customer_notify'] ?? '0') === '1' ? 'true' : 'false' }} }">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="width:28px;height:28px;border-radius:8px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-paper-plane" style="font-size:11px;color:#D97706;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Hide "Send to Customer"</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Remove the customer notification section from the approval modal</p>
+                                </div>
+                            </div>
+                            <button type="button"
+                                    @click="fetch('{{ route('admin.settings.approval-customer-notify') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ hideNotify = d.hide_approval_customer_notify })"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                    :style="hideNotify ? 'background:#D97706;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                                <i class="fas" :class="hideNotify ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                                <span x-text="hideNotify ? 'On' : 'Off'"></span>
+                            </button>
+                        </div>
+                        {{-- Hide Hourly Rate --}}
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
+                             x-data="{ hideHourly: {{ ($appSettings['hide_hourly_rate'] ?? '0') === '1' ? 'true' : 'false' }} }">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="width:28px;height:28px;border-radius:8px;background:#ECFDF5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-dollar-sign" style="font-size:11px;color:#059669;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Hide Hourly Rate</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Hide hourly rate field in user edit &amp; billing columns in reports</p>
+                                </div>
+                            </div>
+                            <button type="button"
+                                    @click="fetch('{{ route('admin.settings.hourly-rate') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ hideHourly = d.hide_hourly_rate })"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                    :style="hideHourly ? 'background:#059669;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                                <i class="fas" :class="hideHourly ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                                <span x-text="hideHourly ? 'On' : 'Off'"></span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -1260,6 +1397,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         ['key'=>'nav_customers',       'icon'=>'fa-building',          'label'=>'Customers'],
                         ['key'=>'nav_audit',           'icon'=>'fa-shield-halved',     'label'=>'Audit Log'],
                         ['key'=>'nav_reports',         'icon'=>'fa-chart-bar',         'label'=>'Reports'],
+                        ['key'=>'nav_social_budget',   'icon'=>'fa-wallet',            'label'=>'Ad Budget'],
                         ['key'=>'nav_recent_projects', 'icon'=>'fa-clock-rotate-left', 'label'=>'Recent Projects'],
                     ],
                     'user'    => [
@@ -1355,6 +1493,323 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </div>
                             @endforeach
                         </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        {{-- ════ WHATSAPP ════ --}}
+        <div x-show="tab === 'whatsapp'" x-cloak
+             x-data="{
+                provider: '{{ $settings['wa_provider'] ?? 'ultramsg' }}',
+                waEnabled: {{ ($settings['wa_enabled'] ?? '0') === '1' ? 'true' : 'false' }},
+                bcastRecipients: 'all',
+                bcastBody: `Dear {customer_name},\n\nWe hope you are doing great.\n\nPlease don't hesitate to contact us for any assistance.\n\nBest regards,\n{company}`,
+                get bcastPreview() {
+                    return this.bcastBody
+                        .replace(/\{customer_name\}/g, 'Ahmed Al-Mansoori')
+                        .replace(/\{customer_phone\}/g, '+97312345678')
+                        .replace(/\{customer_email\}/g, 'ahmed@example.com')
+                        .replace(/\{company\}/g, '{{ addslashes($settings['company_name'] ?? config('app.name')) }}');
+                }
+             }">
+
+            <form method="POST" action="{{ route('admin.settings.whatsapp') }}">
+                @csrf
+                <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start;">
+
+                    {{-- LEFT: API Configuration --}}
+                    <div class="scard">
+                        <div class="scard-header">
+                            <div class="scard-icon" style="background:#dcfce7;color:#16a34a;"><i class="fa-brands fa-whatsapp" style="font-size:16px;"></i></div>
+                            <div style="flex:1;">
+                                <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">WhatsApp API Configuration</p>
+                                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Connect your WhatsApp Business account to send messages</p>
+                            </div>
+                            <label class="toggle" style="flex-shrink:0;">
+                                <input type="checkbox" name="wa_enabled" value="1" x-model="waEnabled"
+                                       {{ ($settings['wa_enabled'] ?? '0') === '1' ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="scard-body">
+
+                            {{-- Provider --}}
+                            <div class="sf-group">
+                                <label class="sf-label">Provider</label>
+                                <select name="wa_provider" class="sf-input sf-select" x-model="provider">
+                                    <option value="ultramsg">UltraMsg — Easiest setup</option>
+                                    <option value="twilio">Twilio WhatsApp</option>
+                                    <option value="meta">Meta Cloud API (Official)</option>
+                                </select>
+                            </div>
+
+                            {{-- UltraMsg --}}
+                            <div x-show="provider === 'ultramsg'">
+                                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:#166534;line-height:1.6;">
+                                    <strong>UltraMsg</strong> is the simplest setup: create a free instance at <strong>ultramsg.com</strong>, scan the QR code with your WhatsApp, then paste the Instance ID and Token below.
+                                </div>
+                                <div class="sf-group">
+                                    <label class="sf-label">Instance ID</label>
+                                    <input type="text" name="wa_instance_id" class="sf-input"
+                                           value="{{ $settings['wa_instance_id'] ?? '' }}"
+                                           placeholder="instance12345">
+                                </div>
+                            </div>
+
+                            {{-- Twilio --}}
+                            <div x-show="provider === 'twilio'">
+                                <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:#1e40af;line-height:1.6;">
+                                    <strong>Twilio</strong>: Find your Account SID and Auth Token in the Twilio Console. The From Number should include country code (e.g. <code>+14155238886</code>).
+                                </div>
+                                <div class="sf-row">
+                                    <div class="sf-group">
+                                        <label class="sf-label">Account SID</label>
+                                        <input type="text" name="wa_account_sid" class="sf-input"
+                                               value="{{ $settings['wa_account_sid'] ?? '' }}"
+                                               placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                                    </div>
+                                    <div class="sf-group">
+                                        <label class="sf-label">From Number</label>
+                                        <input type="text" name="wa_from_number" class="sf-input"
+                                               value="{{ $settings['wa_from_number'] ?? '' }}"
+                                               placeholder="+14155238886">
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Meta --}}
+                            <div x-show="provider === 'meta'">
+                                <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:#6b21a8;line-height:1.6;">
+                                    <strong>Meta Cloud API</strong>: Get your credentials from <em>developers.facebook.com</em>. The WABA ID lets you send to any number (bypasses the test whitelist).
+                                </div>
+                                <div class="sf-row">
+                                    <div class="sf-group">
+                                        <label class="sf-label">Phone Number ID</label>
+                                        <input type="text" name="wa_phone_number_id" class="sf-input"
+                                               value="{{ $settings['wa_phone_number_id'] ?? '' }}"
+                                               placeholder="1234567890">
+                                    </div>
+                                    <div class="sf-group">
+                                        <label class="sf-label">WABA ID <span style="font-size:10px;font-weight:400;color:#9CA3AF;">optional</span></label>
+                                        <input type="text" name="wa_waba_id" class="sf-input"
+                                               value="{{ $settings['wa_waba_id'] ?? '' }}"
+                                               placeholder="123456789012345">
+                                        <p class="sf-hint">Found in Meta Business Settings → Accounts → WhatsApp Accounts.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Token --}}
+                            <div class="sf-group" style="margin-bottom:0;">
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                                    <label class="sf-label" style="margin:0;">API Token / Auth Token</label>
+                                    @if(!empty($settings['wa_token']))
+                                        <span style="font-size:11px;color:#16a34a;background:#dcfce7;border:1px solid #bbf7d0;border-radius:6px;padding:2px 8px;"><i class="fas fa-lock" style="font-size:10px;"></i> Token saved</span>
+                                    @endif
+                                </div>
+                                <input type="password" name="wa_token" class="sf-input"
+                                       placeholder="{{ !empty($settings['wa_token']) ? 'Leave blank to keep current token' : 'Paste your API token here' }}"
+                                       autocomplete="new-password">
+                            </div>
+                        </div>
+                        <div class="scard-footer">
+                            <button type="submit" class="btn-save"><i class="fas fa-check" style="margin-right:6px;font-size:11px;"></i>Save WhatsApp Settings</button>
+                        </div>
+                    </div>
+
+                    {{-- RIGHT: Test + Guides --}}
+                    <div style="display:flex;flex-direction:column;gap:16px;">
+
+                        {{-- Test Connection --}}
+                        <div class="scard" style="border-color:#bbf7d0 !important;">
+                            <div class="scard-header" style="background:#f0fdf4;">
+                                <div class="scard-icon" style="background:#dcfce7;color:#16a34a;font-size:13px;"><i class="fa-brands fa-whatsapp"></i></div>
+                                <div>
+                                    <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">Test Connection</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Save settings first, then test</p>
+                                </div>
+                            </div>
+                            <div class="scard-body">
+                                <div x-show="provider === 'meta'" style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:11px;color:#6b21a8;line-height:1.5;">
+                                    <i class="fas fa-info-circle" style="margin-right:4px;"></i>
+                                    <strong>Meta:</strong> Sends the pre-approved <code>hello_world</code> template. Recipient must be in your Meta test whitelist first.
+                                </div>
+                                <div class="sf-group" style="margin-bottom:12px;">
+                                    <label class="sf-label">Test Phone Number</label>
+                                    <input type="text" id="waTestPhone" class="sf-input" placeholder="+97312345678">
+                                </div>
+                                <div id="waTestResult" style="margin-bottom:10px;font-size:12px;"></div>
+                                <button type="button" id="waTestBtn"
+                                        style="width:100%;padding:9px;font-size:13px;font-weight:600;background:#25D366;color:#fff;border:none;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"
+                                        onclick="testWaConnection()">
+                                    <i class="fa-brands fa-whatsapp"></i> Send Test Message
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- Setup Guides --}}
+                        <div class="scard">
+                            <div class="scard-header">
+                                <div class="scard-icon" style="background:#F3F4F6;color:#6B7280;font-size:13px;"><i class="fas fa-book-open"></i></div>
+                                <div>
+                                    <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">Setup Guides</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Official documentation links</p>
+                                </div>
+                            </div>
+                            <div class="scard-body" style="display:flex;flex-direction:column;gap:8px;">
+                                <a href="https://ultramsg.com" target="_blank" rel="noopener"
+                                   style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;font-weight:600;color:#374151;text-decoration:none;transition:border-color .15s;"
+                                   onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
+                                    <i class="fas fa-arrow-up-right-from-square" style="font-size:11px;color:#9CA3AF;"></i>UltraMsg Dashboard
+                                </a>
+                                <a href="https://console.twilio.com" target="_blank" rel="noopener"
+                                   style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;font-weight:600;color:#374151;text-decoration:none;transition:border-color .15s;"
+                                   onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
+                                    <i class="fas fa-arrow-up-right-from-square" style="font-size:11px;color:#9CA3AF;"></i>Twilio Console
+                                </a>
+                                <a href="https://developers.facebook.com/docs/whatsapp" target="_blank" rel="noopener"
+                                   style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;font-weight:600;color:#374151;text-decoration:none;transition:border-color .15s;"
+                                   onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
+                                    <i class="fas fa-arrow-up-right-from-square" style="font-size:11px;color:#9CA3AF;"></i>Meta WhatsApp Docs
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            {{-- Message Templates (full width) --}}
+            <form method="POST" action="{{ route('admin.settings.whatsapp') }}" style="margin-top:20px;">
+                @csrf
+                <input type="hidden" name="wa_provider" value="{{ $settings['wa_provider'] ?? 'ultramsg' }}">
+                <input type="hidden" name="wa_enabled" value="{{ $settings['wa_enabled'] ?? '0' }}">
+                <div class="scard">
+                    <div class="scard-header">
+                        <div class="scard-icon" style="background:#F3F4F6;color:#374151;font-size:13px;"><i class="fas fa-comment-dots"></i></div>
+                        <div style="flex:1;">
+                            <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Message Templates</p>
+                            <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Customise automated messages — variables are replaced per recipient</p>
+                        </div>
+                    </div>
+                    <div class="scard-body">
+
+                        {{-- Variables reference --}}
+                        <div style="background:#f4f7fe;border:1px dashed #c7d2fe;border-radius:10px;padding:12px 16px;margin-bottom:20px;">
+                            <p style="font-size:11px;font-weight:700;color:#4338CA;margin:0 0 6px;">Available variables:</p>
+                            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                                @foreach(['{user_name}','{task_title}','{project_name}','{customer_name}','{deadline}','{days_left}','{status}','{company}'] as $var)
+                                <code style="background:#eef2ff;color:#4338CA;border:1px solid #c7d2fe;border-radius:5px;padding:2px 8px;font-size:11px;cursor:pointer;"
+                                      title="Click to copy" onclick="navigator.clipboard.writeText('{{ $var }}')">{{ $var }}</code>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+                            @php
+                            $templates = [
+                                ['key'=>'wa_tpl_assigned',  'icon'=>'fa-user-plus',         'color'=>'#4F46E5', 'label'=>'Task Assigned',          'hint'=>'Sent to user when a task is assigned to them'],
+                                ['key'=>'wa_tpl_approved',  'icon'=>'fa-circle-check',       'color'=>'#16a34a', 'label'=>'Task Approved',           'hint'=>'Sent when admin approves a submitted task'],
+                                ['key'=>'wa_tpl_reminder',  'icon'=>'fa-clock',              'color'=>'#D97706', 'label'=>'Deadline Reminder',       'hint'=>'Sent X days before the task deadline'],
+                                ['key'=>'wa_tpl_overdue',   'icon'=>'fa-triangle-exclamation','color'=>'#DC2626', 'label'=>'Overdue Alert',           'hint'=>'Automated daily alert for overdue tasks'],
+                                ['key'=>'wa_tpl_social',    'icon'=>'fa-share-nodes',        'color'=>'#7C3AED', 'label'=>'Social Media Assigned',   'hint'=>'Sent when a task is assigned for social posting'],
+                            ];
+                            @endphp
+                            @foreach($templates as $tpl)
+                            <div>
+                                <label class="sf-label" style="display:flex;align-items:center;gap:6px;">
+                                    <i class="fas {{ $tpl['icon'] }}" style="color:{{ $tpl['color'] }};font-size:11px;"></i>
+                                    {{ $tpl['label'] }}
+                                </label>
+                                <p style="font-size:11px;color:#9CA3AF;margin:-4px 0 6px;">{{ $tpl['hint'] }}</p>
+                                <textarea name="{{ $tpl['key'] }}" rows="7"
+                                          style="width:100%;padding:9px 12px;font-size:12px;font-family:monospace;border:1.5px solid #E5E7EB;border-radius:9px;color:#111827;resize:vertical;outline:none;"
+                                          onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">{{ $settings[$tpl['key']] ?? '' }}</textarea>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    <div class="scard-footer">
+                        <button type="submit" class="btn-save"><i class="fas fa-check" style="margin-right:6px;font-size:11px;"></i>Save Templates</button>
+                    </div>
+                </div>
+            </form>
+
+            {{-- Broadcast to Customers (full width) --}}
+            <div class="scard" style="margin-top:20px;border-color:#bbf7d0 !important;">
+                <div class="scard-header" style="justify-content:space-between;">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <div class="scard-icon" style="background:#dcfce7;color:#16a34a;font-size:13px;"><i class="fas fa-bullhorn"></i></div>
+                        <div>
+                            <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Send WhatsApp to Customers</p>
+                            <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Broadcast a personalised message to all customers or custom numbers</p>
+                        </div>
+                    </div>
+                    <div style="font-size:12px;color:#6B7280;">
+                        <i class="fa-brands fa-whatsapp" style="color:#25D366;margin-right:4px;"></i>
+                        {{ \App\Models\Customer::whereNotNull('phone')->where('phone','!=','')->count() }} customers with phone
+                    </div>
+                </div>
+                <div class="scard-body">
+
+                    {{-- Variable reference --}}
+                    <div style="background:#f0fdf4;border:1px dashed #86efac;border-radius:10px;padding:12px 16px;margin-bottom:18px;">
+                        <p style="font-size:11px;font-weight:700;color:#15803d;margin:0 0 8px;"><i class="fas fa-braces" style="margin-right:4px;"></i>Variables replaced per customer:</p>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                            @foreach(['{customer_name}','{customer_phone}','{customer_email}','{company}'] as $var)
+                            <code style="background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:5px;padding:2px 8px;font-size:11px;cursor:pointer;"
+                                  title="Click to insert" onclick="waInsertVar('{{ $var }}')">{{ $var }}</code>
+                            @endforeach
+                        </div>
+                        <p style="font-size:11px;color:#6B7280;margin:8px 0 0;"><i class="fas fa-cursor" style="margin-right:4px;"></i>Click a variable to insert it at the cursor position.</p>
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+                        <div>
+                            <div class="sf-group">
+                                <label class="sf-label">Recipients</label>
+                                <select class="sf-input sf-select" x-model="bcastRecipients">
+                                    <option value="all">All customers with phone ({{ \App\Models\Customer::whereNotNull('phone')->where('phone','!=','')->count() }})</option>
+                                    <option value="custom">Custom phone numbers</option>
+                                </select>
+                            </div>
+
+                            <div x-show="bcastRecipients === 'custom'" class="sf-group">
+                                <label class="sf-label">Phone Numbers <span style="font-weight:400;color:#9CA3AF;">one per line or comma-separated</span></label>
+                                <textarea id="waBcastNumbers" rows="4"
+                                          style="width:100%;padding:9px 12px;font-size:12px;font-family:monospace;border:1.5px solid #E5E7EB;border-radius:9px;resize:vertical;"
+                                          placeholder="+97312345678&#10;+97387654321"></textarea>
+                                <p class="sf-hint" id="waBcastNumCount">0 numbers entered.</p>
+                            </div>
+
+                            <div class="sf-group" style="margin-bottom:0;">
+                                <label class="sf-label">Message</label>
+                                <textarea id="waBcastBody" rows="8"
+                                          style="width:100%;padding:9px 12px;font-size:12px;font-family:monospace;border:1.5px solid #E5E7EB;border-radius:9px;resize:vertical;"
+                                          x-model="bcastBody"
+                                          onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"></textarea>
+                                <p class="sf-hint"><span x-text="bcastBody.length"></span> characters</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="sf-label" style="color:#16a34a;">Live Preview <span style="font-weight:400;color:#9CA3AF;">(sample substitution)</span></label>
+                            <div x-text="bcastPreview"
+                                 style="background:#e9fbe9;border:1.5px solid #86efac;border-radius:10px;padding:14px 16px;font-size:13px;white-space:pre-wrap;min-height:200px;line-height:1.65;color:#1B2559;"></div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top:16px;">
+                        <div id="waBcastResult" style="margin-bottom:10px;font-size:12px;"></div>
+                        <button type="button" id="waBcastBtn"
+                                style="padding:9px 22px;font-size:13px;font-weight:600;background:#25D366;color:#fff;border:none;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;"
+                                onclick="sendWaBroadcast()">
+                            <i class="fa-brands fa-whatsapp"></i> Send WhatsApp Messages
+                        </button>
+                        @if(($settings['wa_enabled'] ?? '0') !== '1')
+                        <span style="font-size:12px;color:#9CA3AF;margin-left:12px;"><i class="fas fa-info-circle" style="margin-right:4px;"></i>Enable and save WhatsApp settings first.</span>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -1765,6 +2220,96 @@ function toggleNavItem(key, action, btn) {
     })
     .catch(() => { btn.disabled = false; });
 }
+
+// ── WhatsApp ──────────────────────────────────────────────────────────────
+
+function testWaConnection() {
+    const phone  = document.getElementById('waTestPhone').value.trim();
+    const result = document.getElementById('waTestResult');
+    const btn    = document.getElementById('waTestBtn');
+    if (!phone) { result.innerHTML = '<span style="color:#DC2626;">Please enter a phone number.</span>'; return; }
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-brands fa-whatsapp"></i> Sending…';
+    result.innerHTML = '';
+
+    fetch('{{ route('admin.settings.whatsapp.test') }}', {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': _csrfToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone })
+    })
+    .then(r => r.json())
+    .then(data => {
+        result.innerHTML = data.ok
+            ? '<span style="color:#16a34a;"><i class="fas fa-check-circle" style="margin-right:4px;"></i>' + data.message + '</span>'
+            : '<span style="color:#DC2626;"><i class="fas fa-times-circle" style="margin-right:4px;"></i>' + data.message + '</span>';
+    })
+    .catch(() => { result.innerHTML = '<span style="color:#DC2626;">Request failed.</span>'; })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-brands fa-whatsapp"></i> Send Test Message';
+    });
+}
+
+function waInsertVar(variable) {
+    const ta = document.getElementById('waBcastBody');
+    if (!ta) return;
+    const s  = ta.selectionStart;
+    const e  = ta.selectionEnd;
+    ta.value = ta.value.substring(0, s) + variable + ta.value.substring(e);
+    ta.selectionStart = ta.selectionEnd = s + variable.length;
+    ta.focus();
+    ta.dispatchEvent(new Event('input'));
+}
+
+function sendWaBroadcast() {
+    const result = document.getElementById('waBcastResult');
+    const btn    = document.getElementById('waBcastBtn');
+    const bodyEl = document.getElementById('waBcastBody');
+    const body   = bodyEl ? bodyEl.value.trim() : '';
+
+    // Read Alpine-bound select via DOM
+    const recipSel = document.querySelector('select[x-model="bcastRecipients"]');
+    const recipients = recipSel ? recipSel.value : 'all';
+    const numbersEl = document.getElementById('waBcastNumbers');
+    const numbers   = numbersEl ? numbersEl.value : '';
+
+    if (!body) { result.innerHTML = '<span style="color:#DC2626;">Please enter a message.</span>'; return; }
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-brands fa-whatsapp"></i> Sending…';
+    result.innerHTML = '';
+
+    fetch('{{ route('admin.settings.whatsapp.broadcast') }}', {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': _csrfToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body, recipients, numbers })
+    })
+    .then(r => r.json())
+    .then(data => {
+        let html = data.ok
+            ? '<span style="color:#16a34a;"><i class="fas fa-check-circle" style="margin-right:4px;"></i>' + data.message + '</span>'
+            : '<span style="color:#DC2626;"><i class="fas fa-times-circle" style="margin-right:4px;"></i>' + data.message + '</span>';
+        if (data.errors && data.errors.length) {
+            html += '<div style="margin-top:6px;font-size:11px;color:#9CA3AF;">' + data.errors.join('<br>') + '</div>';
+        }
+        result.innerHTML = html;
+    })
+    .catch(() => { result.innerHTML = '<span style="color:#DC2626;">Request failed.</span>'; })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-brands fa-whatsapp"></i> Send WhatsApp Messages';
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const numTa = document.getElementById('waBcastNumbers');
+    const count = document.getElementById('waBcastNumCount');
+    if (numTa && count) {
+        numTa.addEventListener('input', function() {
+            const nums = this.value.split(/[\r\n,]+/).map(s => s.trim()).filter(Boolean);
+            count.textContent = nums.length + ' number(s) entered.';
+        });
+    }
+});
 </script>
 
 @endsection

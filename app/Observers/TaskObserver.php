@@ -7,6 +7,7 @@ use App\Models\Setting;
 use App\Models\Task;
 use App\Models\TaskLog;
 use App\Notifications\TaskAssigned;
+use App\Services\AssignmentNotifier;
 
 class TaskObserver
 {
@@ -25,6 +26,9 @@ class TaskObserver
             $assignee = $task->assignee;
             if ($assignee && Setting::get('notify_on_assign') === '1') {
                 $assignee->notify(new TaskAssigned($task));
+            }
+            if ($assignee) {
+                AssignmentNotifier::taskAssigned($task, $assignee);
             }
         }
 
@@ -57,6 +61,31 @@ class TaskObserver
                     'start_date'  => $task->deadline,
                 ]);
             }
+        }
+
+        // When a task goes in_progress, pause any other in_progress tasks for the same assignee
+        // Note: startTimer controller already handles this for timer-triggered transitions;
+        // this observer catches any edge cases (admin overrides, etc.)
+        if ($task->isDirty('status') && $task->status === 'in_progress' && $task->assigned_to) {
+            Task::where('assigned_to', $task->assigned_to)
+                ->where('id', '!=', $task->id)
+                ->where('status', 'in_progress')
+                ->each(function (Task $other) use ($task) {
+                    $other->updateQuietly(['status' => 'paused']);
+
+                    TaskLog::create([
+                        'task_id'  => $other->id,
+                        'user_id'  => auth()->id() ?? $task->assigned_to,
+                        'action'   => 'auto_paused',
+                        'note'     => 'Auto-paused: assignee started working on "' . $task->title . '"',
+                        'metadata' => [
+                            'paused_by_task_id'    => $task->id,
+                            'paused_by_task_title' => $task->title,
+                            'old_status'           => 'in_progress',
+                            'new_status'           => 'paused',
+                        ],
+                    ]);
+                });
         }
     }
 }

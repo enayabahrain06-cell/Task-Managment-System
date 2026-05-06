@@ -4,11 +4,18 @@
 @section('content')
 @php
     $statusMap = [
-        'pending'          => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Pending'],
-        'in_progress'      => ['bg'=>'#FEF3C7','color'=>'#D97706','label'=>'In Progress'],
-        'submitted'        => ['bg'=>'#EDE9FE','color'=>'#7C3AED','label'=>'In Review'],
-        'completed'        => ['bg'=>'#D1FAE5','color'=>'#059669','label'=>'Completed'],
-        'delivered'        => ['bg'=>'#ECFDF5','color'=>'#047857','label'=>'Delivered'],
+        'pending'            => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Pending'],
+        'draft'              => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Draft'],
+        'assigned'           => ['bg'=>'#E0F2FE','color'=>'#0284C7','label'=>'Assigned'],
+        'viewed'             => ['bg'=>'#EEF2FF','color'=>'#4F46E5','label'=>'Viewed'],
+        'in_progress'        => ['bg'=>'#FEF3C7','color'=>'#D97706','label'=>'In Progress'],
+        'paused'             => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Paused'],
+        'submitted'          => ['bg'=>'#EDE9FE','color'=>'#7C3AED','label'=>'In Review'],
+        'revision_requested' => ['bg'=>'#FEE2E2','color'=>'#DC2626','label'=>'Revision Requested'],
+        'completed'          => ['bg'=>'#D1FAE5','color'=>'#059669','label'=>'Completed'],
+        'approved'           => ['bg'=>'#D1FAE5','color'=>'#059669','label'=>'Approved'],
+        'delivered'          => ['bg'=>'#ECFDF5','color'=>'#047857','label'=>'Delivered'],
+        'archived'           => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Archived'],
     ];
     $priorityMap = ['low'=>['#D1FAE5','#059669'],'medium'=>['#FEF3C7','#D97706'],'high'=>['#FEE2E2','#DC2626']];
     $users = \App\Models\User::whereIn('role',['user','manager'])->orderBy('name')->get();
@@ -70,14 +77,22 @@
 </div>
 @endif
 
+@if($pendingSocialCount > 0)
+<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;padding:12px 16px;margin-bottom:20px;color:#92400E;font-size:14px;display:flex;gap:10px;align-items:center;">
+    <i class="fa-brands fa-whatsapp" style="color:#25D366;font-size:16px;flex-shrink:0;"></i>
+    <span><strong>{{ $pendingSocialCount }} task{{ $pendingSocialCount > 1 ? 's' : '' }}</strong> in this project {{ $pendingSocialCount > 1 ? 'have' : 'has' }} pending social media posts that haven't been published yet. This project <strong>cannot be marked as complete</strong> until all social media tasks are posted.</span>
+</div>
+@endif
+
 {{-- Stats row --}}
 @php
-    $total    = $project->tasks->count();
-    $done     = $project->tasks->whereIn('status', ['completed','delivered'])->count();
-    $inReview = $project->tasks->where('status','submitted')->count();
-    $active   = $project->tasks->whereIn('status', ['pending','in_progress'])->count();
+    $total         = $project->tasks->count();
+    $done          = $project->tasks->whereIn('status', ['completed','delivered','approved','archived'])->count();
+    $inReview      = $project->tasks->where('status','submitted')->count();
+    $active        = $project->tasks->whereIn('status', ['pending','in_progress','assigned','viewed'])->count();
+    $socialPending = $project->tasks->filter(fn($t) => $t->social_required && !$t->social_posted_at)->count();
 @endphp
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;">
+<div style="display:grid;grid-template-columns:repeat({{ $socialPending > 0 ? 5 : 4 }},1fr);gap:14px;margin-bottom:24px;">
     @foreach([['Tasks','fa-list-check','#EEF2FF','#6366F1',$total],['In Progress','fa-circle-play','#FEF3C7','#D97706',$active],['In Review','fa-hourglass-half','#EDE9FE','#7C3AED',$inReview],['Completed','fa-circle-check','#D1FAE5','#059669',$done]] as [$label,$icon,$bg,$col,$val])
     <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
@@ -89,6 +104,17 @@
         <p style="font-size:12px;font-weight:500;color:#9CA3AF;margin:0;">{{ $label }}</p>
     </div>
     @endforeach
+    @if($socialPending > 0)
+    <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="width:36px;height:36px;border-radius:10px;background:#F0FDF4;display:flex;align-items:center;justify-content:center;">
+                <i class="fa-brands fa-whatsapp" style="color:#25D366;font-size:16px;"></i>
+            </div>
+            <span style="font-size:22px;font-weight:700;color:#111827;">{{ $socialPending }}</span>
+        </div>
+        <p style="font-size:12px;font-weight:500;color:#9CA3AF;margin:0;">Social Pending</p>
+    </div>
+    @endif
 </div>
 
 {{-- Task list --}}
@@ -101,9 +127,11 @@
     @php
         $s = $statusMap[$task->status] ?? $statusMap['pending'];
         [$pbg,$pco] = $priorityMap[$task->priority] ?? ['#F3F4F6','#6B7280'];
-        $isOverdue = $task->deadline->isPast() && !in_array($task->status, ['completed','delivered','submitted']);
+        $isOverdue       = $task->deadline && $task->deadline->isPast() && !in_array($task->status, ['completed','delivered','approved','archived','submitted']);
+        $hasSocialPending = $task->social_required && !$task->social_posted_at;
+        $hasSocialDone    = $task->social_required && $task->social_posted_at;
     @endphp
-    <div x-data="{ reassignOpen: false }" style="border-bottom:1px solid #F9FAFB;padding:16px 20px;">
+    <div x-data="{ reassignOpen: false, socialOpen: false }" style="border-bottom:1px solid #F9FAFB;padding:16px 20px;">
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
 
             {{-- Avatar --}}
@@ -122,10 +150,28 @@
                     @if($isOverdue)
                     <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:#FEE2E2;color:#DC2626;"><i class="fa fa-clock" style="margin-right:3px;"></i>Overdue</span>
                     @endif
+                    @if($hasSocialPending)
+                    <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:#FFF0E0;color:#B45309;display:inline-flex;align-items:center;gap:4px;">
+                        <i class="fa-brands fa-whatsapp" style="color:#25D366;"></i> Social Pending
+                    </span>
+                    @elseif($hasSocialDone)
+                    <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;background:#F0FDF4;color:#065F46;display:inline-flex;align-items:center;gap:4px;">
+                        <i class="fa-brands fa-whatsapp" style="color:#25D366;"></i> Social Posted
+                    </span>
+                    @endif
                 </div>
                 <p style="font-size:12px;color:#9CA3AF;margin:0;">
                     <i class="fa fa-user" style="margin-right:4px;"></i>{{ $task->assignee->name ?? '—' }}
-                    &nbsp;·&nbsp;<i class="fa fa-calendar" style="margin-right:4px;"></i>Due {{ $task->deadline->format('M d, Y') }}
+                    &nbsp;·&nbsp;<i class="fa fa-calendar" style="margin-right:4px;"></i>Due {{ $task->deadline ? $task->deadline->format('M d, Y') : '—' }}
+                    @if($task->social_required && $task->socialAssignee)
+                    &nbsp;·&nbsp;<i class="fa-brands fa-whatsapp" style="color:#25D366;margin-right:3px;"></i>
+                    <span style="color:#374151;font-weight:500;">{{ $task->socialAssignee->name }}</span>
+                    @if($task->social_posted_at)
+                    <span style="color:#10B981;"> · posted {{ $task->social_posted_at->format('M d') }}</span>
+                    @else
+                    <span style="color:#F59E0B;"> · not posted yet</span>
+                    @endif
+                    @endif
                 </p>
             </div>
 
@@ -150,6 +196,16 @@
                 </form>
                 @endif
 
+                {{-- Assign Social button (shown when social_required but no assignee yet, or to change) --}}
+                @if($task->social_required && !$task->social_posted_at)
+                <button @click="socialOpen = !socialOpen"
+                        style="padding:6px 12px;background:#F0FDF4;color:#065F46;border:1px solid #BBF7D0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;"
+                        onmouseover="this.style.background='#DCFCE7'" onmouseout="this.style.background='#F0FDF4'">
+                    <i class="fa-brands fa-whatsapp" style="color:#25D366;font-size:12px;"></i>
+                    {{ $task->social_assigned_to ? 'Change Social User' : 'Assign Social' }}
+                </button>
+                @endif
+
                 {{-- Reassign toggle --}}
                 <button @click="reassignOpen = !reassignOpen"
                         style="padding:6px 12px;background:#F3F4F6;color:#374151;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;"
@@ -158,6 +214,32 @@
                 </button>
             </div>
         </div>
+
+        {{-- Inline social assign form --}}
+        @if($task->social_required && !$task->social_posted_at)
+        <div x-show="socialOpen" x-cloak style="margin-top:10px;padding:14px;background:#F0FDF4;border-radius:10px;border:1px solid #BBF7D0;">
+            <form method="POST" action="{{ route('admin.tasks.social.assign', $task) }}" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                @csrf
+                <i class="fa-brands fa-whatsapp" style="color:#25D366;font-size:16px;flex-shrink:0;"></i>
+                <label style="font-size:12px;font-weight:600;color:#065F46;white-space:nowrap;">Assign social post to:</label>
+                <select name="social_user_id" required
+                        style="flex:1;min-width:160px;padding:8px 12px;border:1.5px solid #BBF7D0;border-radius:8px;font-size:13px;color:#111827;background:#fff;outline:none;">
+                    <option value="">— Select user —</option>
+                    @foreach($users as $u)
+                    <option value="{{ $u->id }}" {{ $u->id == $task->social_assigned_to ? 'selected' : '' }}>{{ $u->name }}</option>
+                    @endforeach
+                </select>
+                <button type="submit"
+                        style="padding:8px 16px;background:#25D366;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">
+                    Assign
+                </button>
+                <button type="button" @click="socialOpen = false"
+                        style="padding:8px 14px;background:#F3F4F6;color:#6B7280;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
+                    Cancel
+                </button>
+            </form>
+        </div>
+        @endif
 
         {{-- Inline reassign form --}}
         <div x-show="reassignOpen" x-cloak style="margin-top:12px;padding:14px;background:#FAFAFA;border-radius:10px;border:1px solid #F3F4F6;">

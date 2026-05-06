@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\CustomerDesignMail;
 use App\Models\Setting;
 use App\Models\Task;
 use App\Models\TaskLog;
 use App\Models\TaskSocialPost;
 use App\Models\TaskSubmission;
+use App\Models\TaskTimerSegment;
 use App\Models\User;
 use App\Notifications\SocialMediaAssigned;
 use App\Notifications\SocialMediaPosted;
@@ -15,6 +17,8 @@ use App\Notifications\TaskApproved;
 use App\Notifications\TaskRejected;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class TaskApprovalController extends Controller
@@ -28,7 +32,7 @@ class TaskApprovalController extends Controller
         $tab = $request->get('tab', 'pending');
 
         $tasks = Task::where('status', 'submitted')
-            ->with(['project', 'assignee', 'assignees', 'submissions' => fn($q) => $q->latest()])
+            ->with(['project.customer', 'customer', 'assignee', 'assignees', 'submissions' => fn($q) => $q->latest()])
             ->latest()
             ->paginate(20, ['*'], 'page');
 
@@ -90,18 +94,96 @@ class TaskApprovalController extends Controller
         ));
     }
 
+    /**
+     * Record how long the reviewer spent on a review cycle.
+     * started_at = when the task most recently became 'submitted'.
+     */
+    private function recordReviewSegment(Task $task): void
+    {
+        $submittedLog = TaskLog::where('task_id', $task->id)
+            ->where('action', 'status_updated_submitted')
+            ->orderByDesc('created_at')
+            ->first();
+
+        if (!$submittedLog) return;
+
+        $startedAt = $submittedLog->created_at;
+        $endedAt   = now();
+        $seconds   = (int) $startedAt->diffInSeconds($endedAt);
+
+        TaskTimerSegment::create([
+            'task_id'          => $task->id,
+            'user_id'          => auth()->id(),
+            'phase'            => 'review',
+            'started_at'       => $startedAt,
+            'ended_at'         => $endedAt,
+            'duration_seconds' => $seconds,
+            'pause_reason'     => 'system',
+        ]);
+    }
+
+    /**
+     * Record social media phase time for the assignee.
+     * started_at = when social was assigned.
+     */
+    private function recordSocialSegment(Task $task): void
+    {
+        if (!$task->social_assigned_to) return;
+
+        $assignedLog = TaskLog::where('task_id', $task->id)
+            ->where('action', 'social_assigned')
+            ->orderByDesc('created_at')
+            ->first();
+
+        $startedAt = $assignedLog?->created_at ?? $task->created_at;
+        $endedAt   = now();
+        $seconds   = (int) $startedAt->diffInSeconds($endedAt);
+
+        TaskTimerSegment::create([
+            'task_id'          => $task->id,
+            'user_id'          => $task->social_assigned_to,
+            'phase'            => 'social',
+            'started_at'       => $startedAt,
+            'ended_at'         => $endedAt,
+            'duration_seconds' => $seconds,
+            'pause_reason'     => 'system',
+        ]);
+    }
+
     public function approve(Request $request, Task $task)
     {
         $request->validate([
-            'note'               => 'nullable|string|max:500',
-            'social_required'    => 'nullable|in:1,0',
-            'social_assigned_to' => 'nullable|exists:users,id',
+            'note'                      => 'nullable|string|max:500',
+            'social_required'           => 'nullable|in:1,0',
+            'social_assigned_to'        => 'nullable|exists:users,id',
+            'social_description'        => 'nullable|string|max:2000',
+            'social_caption'            => 'nullable|string|max:5000',
+            'social_budget'             => 'nullable|string|max:100',
+            'notify_customer_email'     => 'nullable|in:0,1',
+            'notify_customer_whatsapp'  => 'nullable|in:0,1',
+            'customer_message'          => 'nullable|string|max:2000',
+            'customer_email_override'   => 'nullable|email|max:255',
+            'customer_phone_override'   => 'nullable|string|max:30',
         ]);
 
         $latestSub = TaskSubmission::where('task_id', $task->id)
             ->where('status', 'submitted')
             ->orderByDesc('version')
             ->first();
+
+        // Close any open employee timer segments permanently on approval
+        TaskTimerSegment::where('task_id', $task->id)
+            ->whereNull('ended_at')
+            ->each(function (TaskTimerSegment $seg) {
+                $seg->update([
+                    'ended_at'         => now(),
+                    'duration_seconds' => (int) $seg->started_at->diffInSeconds(now()),
+                    'pause_reason'     => 'approved',
+                ]);
+            });
+
+        // Auto-record how long this review cycle took
+        $this->recordReviewSegment($task);
 
         $task->update(['status' => 'delivered']);
 
@@ -140,6 +222,70 @@ class TaskApprovalController extends Controller
             $task->assignee->notify(new TaskApproved($task, $request->note));
         }
 
+        // Send design to customer via email if requested
+        if ($request->input('notify_customer_email') === '1') {
+            $customer     = $task->customer ?? $task->project?->customer;
+            $toEmail      = $customer?->email ?? $request->input('customer_email_override');
+            $toName       = $customer?->name ?? 'Customer';
+            $customerId   = $customer?->id;
+            if ($toEmail) {
+                $attachmentFiles = [];
+                if ($latestSub?->file_path) {
+                    $attachmentFiles[] = [
+                        'path' => $latestSub->file_path,
+                        'name' => $latestSub->original_filename ?? basename($latestSub->file_path),
+                    ];
+                }
+                try {
+                    Mail::to($toEmail)->send(new CustomerDesignMail(
+                        task:            $task,
+                        customerName:    $toName,
+                        customMessage:   $request->customer_message ?: null,
+                        adminNote:       $request->note ?: null,
+                        senderName:      auth()->user()->name,
+                        attachmentFiles: $attachmentFiles,
+                    ));
+                    TaskLog::create([
+                        'task_id'  => $task->id,
+                        'user_id'  => auth()->id(),
+                        'action'   => 'customer_notified',
+                        'note'     => 'Design sent to ' . $toName . ' <' . $toEmail . '> via email' . ($latestSub?->file_path ? ' with attachment' : ''),
+                        'metadata' => ['customer_id' => $customerId, 'customer_email' => $toEmail, 'has_attachment' => !empty($attachmentFiles)],
+                    ]);
+                } catch (\Throwable $e) {
+                    // Email failed — don't block the approval
+                    \Log::warning('CustomerDesignMail failed: ' . $e->getMessage());
+                }
+            }
+        }
+
+        // Send design to customer via WhatsApp API if requested
+        if ($request->input('notify_customer_whatsapp') === '1' && Setting::get('wa_enabled', '0') === '1') {
+            $customer    = $task->customer ?? $task->project?->customer;
+            $toPhone     = $customer?->phone ?? $request->input('customer_phone_override');
+            $toName      = $customer?->name ?? 'Customer';
+            if ($toPhone) {
+                $digits  = preg_replace('/\D/', '', $toPhone);
+                $company = Setting::get('company_name', config('app.name'));
+                $body    = "Hello {$toName}, your design for \"{$task->title}\" has been approved and is ready for your review."
+                         . ($request->customer_message ? "\n\n" . $request->customer_message : '')
+                         . ($latestSub?->file_path ? "\n\nView design: " . url('storage/' . $latestSub->file_path) : '')
+                         . "\n\n{$company}";
+                try {
+                    $this->dispatchWhatsapp($digits, $body);
+                    TaskLog::create([
+                        'task_id'  => $task->id,
+                        'user_id'  => auth()->id(),
+                        'action'   => 'customer_notified',
+                        'note'     => 'Design sent to ' . $toName . ' via WhatsApp',
+                        'metadata' => ['channel' => 'whatsapp', 'phone' => $toPhone],
+                    ]);
+                } catch (\Throwable $e) {
+                    \Log::warning('Customer WhatsApp send failed: ' . $e->getMessage());
+                }
+            }
+        }
+
         $task->project?->autoComplete();
 
         // Handle social media decision made during approval
@@ -148,16 +294,32 @@ class TaskApprovalController extends Controller
             $task->update(['social_required' => $needed]);
 
             if (!$needed) {
-                $task->update(['social_assigned_to' => null, 'social_posted_at' => null]);
+                $task->update([
+                    'social_assigned_to' => null,
+                    'social_posted_at'   => null,
+                    'social_description' => null,
+                    'social_caption'     => null,
+                    'social_budget'      => null,
+                ]);
             } elseif ($request->filled('social_assigned_to')) {
                 $socialUser = User::find($request->social_assigned_to);
                 if ($socialUser) {
-                    $task->update(['social_assigned_to' => $socialUser->id]);
+                    $task->update([
+                        'social_assigned_to' => $socialUser->id,
+                        'social_description' => $request->social_description ?: null,
+                        'social_caption'     => $request->social_caption     ?: null,
+                        'social_budget'      => $request->social_budget       ?: null,
+                    ]);
                     TaskLog::create([
-                        'task_id' => $task->id,
-                        'user_id' => auth()->id(),
-                        'action'  => 'social_assigned',
-                        'note'    => 'Assigned to ' . $socialUser->name . ' for social media posting',
+                        'task_id'  => $task->id,
+                        'user_id'  => auth()->id(),
+                        'action'   => 'social_assigned',
+                        'note'     => 'Assigned to ' . $socialUser->name . ' for social media posting',
+                        'metadata' => [
+                            'social_description' => $request->social_description ?: null,
+                            'social_caption'     => $request->social_caption     ?: null,
+                            'social_budget'      => $request->social_budget       ?: null,
+                        ],
                     ]);
                     if (Setting::get('notify_on_social', '1') === '1') {
                         $socialUser->notify(new SocialMediaAssigned($task, auth()->user()));
@@ -179,6 +341,93 @@ class TaskApprovalController extends Controller
         return back()->with('success', $successMsg);
     }
 
+    public function sendWhatsappToCustomer(Request $request)
+    {
+        $request->validate([
+            'phone'   => 'required|string|max:30',
+            'message' => 'required|string|max:4000',
+        ]);
+
+        if (Setting::get('wa_enabled', '0') !== '1') {
+            return response()->json(['ok' => false, 'message' => 'WhatsApp API is not enabled. Configure it in Settings → WhatsApp.'], 422);
+        }
+        $token = Setting::get('wa_token', '');
+        if (!$token) {
+            return response()->json(['ok' => false, 'message' => 'WhatsApp API token is not set.'], 422);
+        }
+
+        $digits = preg_replace('/\D/', '', $request->phone);
+        if (!$digits) {
+            return response()->json(['ok' => false, 'message' => 'Invalid phone number.'], 422);
+        }
+
+        try {
+            $result = $this->dispatchWhatsapp($digits, $request->message);
+            return response()->json($result);
+        } catch (\Throwable $e) {
+            return response()->json(['ok' => false, 'message' => $e->getMessage()], 422);
+        }
+    }
+
+    private function dispatchWhatsapp(string $digits, string $body): array
+    {
+        $provider = Setting::get('wa_provider', 'ultramsg');
+        $token    = Setting::get('wa_token', '');
+
+        return match ($provider) {
+            'ultramsg' => $this->sendUltramsg($token, $digits, $body),
+            'twilio'   => $this->sendTwilio($token, $digits, $body),
+            'meta'     => $this->sendMeta($token, $digits, $body),
+            default    => ['ok' => false, 'message' => 'Unknown provider.'],
+        };
+    }
+
+    private function sendUltramsg(string $token, string $phone, string $body): array
+    {
+        $instanceId = Setting::get('wa_instance_id', '');
+        if (!$instanceId) return ['ok' => false, 'message' => 'UltraMsg instance ID not set.'];
+        $response = Http::asForm()->post(
+            "https://api.ultramsg.com/{$instanceId}/messages/chat",
+            ['token' => $token, 'to' => $phone, 'body' => $body]
+        );
+        $data = $response->json();
+        return isset($data['sent']) && $data['sent'] === 'true'
+            ? ['ok' => true, 'message' => 'Sent via UltraMsg.']
+            : ['ok' => false, 'message' => $data['error'] ?? $data['message'] ?? 'UltraMsg error.'];
+    }
+
+    private function sendTwilio(string $token, string $phone, string $body): array
+    {
+        $accountSid = Setting::get('wa_account_sid', '');
+        $fromNumber = Setting::get('wa_from_number', '');
+        if (!$accountSid || !$fromNumber) return ['ok' => false, 'message' => 'Twilio credentials incomplete.'];
+        $response = Http::withBasicAuth($accountSid, $token)->asForm()
+            ->post("https://api.twilio.com/2010-04-01/Accounts/{$accountSid}/Messages.json", [
+                'From' => 'whatsapp:+' . ltrim($fromNumber, '+'),
+                'To'   => 'whatsapp:+' . ltrim($phone, '+'),
+                'Body' => $body,
+            ]);
+        return $response->successful()
+            ? ['ok' => true, 'message' => 'Sent via Twilio.']
+            : ['ok' => false, 'message' => $response->json('message') ?? 'Twilio error.'];
+    }
+
+    private function sendMeta(string $token, string $phone, string $body): array
+    {
+        $phoneNumberId = Setting::get('wa_phone_number_id', '');
+        if (!$phoneNumberId) return ['ok' => false, 'message' => 'Meta phone number ID not set.'];
+        $response = Http::withToken($token)
+            ->post("https://graph.facebook.com/v18.0/{$phoneNumberId}/messages", [
+                'messaging_product' => 'whatsapp',
+                'to'                => $phone,
+                'type'              => 'text',
+                'text'              => ['body' => $body],
+            ]);
+        return $response->successful()
+            ? ['ok' => true, 'message' => 'Sent via Meta API.']
+            : ['ok' => false, 'message' => $response->json('error.message') ?? 'Meta error.'];
+    }
+
     public function reject(Request $request, Task $task)
     {
         $request->validate(['note' => 'required|string|max:500']);
@@ -187,6 +436,9 @@ class TaskApprovalController extends Controller
             ->where('status', 'submitted')
             ->orderByDesc('version')
             ->first();
+
+        // Auto-record review time before changing status
+        $this->recordReviewSegment($task);
 
         $task->update(['status' => 'revision_requested']);
 
@@ -246,20 +498,33 @@ class TaskApprovalController extends Controller
 
     public function assignSocial(Request $request, Task $task)
     {
-        $request->validate(['social_user_id' => 'required|exists:users,id']);
+        $request->validate([
+            'social_user_id'     => 'required|exists:users,id',
+            'social_description' => 'nullable|string|max:2000',
+            'social_caption'     => 'nullable|string|max:5000',
+            'social_budget'      => 'nullable|string|max:100',
+        ]);
 
         $user = User::findOrFail($request->social_user_id);
 
         $task->update([
             'social_assigned_to' => $user->id,
             'social_posted_at'   => null,
+            'social_description' => $request->social_description ?: null,
+            'social_caption'     => $request->social_caption     ?: null,
+            'social_budget'      => $request->social_budget       ?: null,
         ]);
 
         TaskLog::create([
-            'task_id' => $task->id,
-            'user_id' => auth()->id(),
-            'action'  => 'social_assigned',
-            'note'    => 'Assigned to ' . $user->name . ' for social media posting',
+            'task_id'  => $task->id,
+            'user_id'  => auth()->id(),
+            'action'   => 'social_assigned',
+            'note'     => 'Assigned to ' . $user->name . ' for social media posting',
+            'metadata' => [
+                'social_description' => $request->social_description ?: null,
+                'social_caption'     => $request->social_caption     ?: null,
+                'social_budget'      => $request->social_budget       ?: null,
+            ],
         ]);
 
         if (Setting::get('notify_on_social', '1') === '1') {
@@ -366,6 +631,8 @@ class TaskApprovalController extends Controller
         }
 
         if (!$task->social_posted_at) {
+            // First time posting — record social phase duration for billing
+            $this->recordSocialSegment($task);
             $task->update(['social_posted_at' => now()]);
         }
 

@@ -24,6 +24,7 @@ class ProjectController extends Controller
         $query = Project::where('is_quick', false)
             ->withCount('tasks')
             ->withCount(['tasks as completed_tasks_count' => fn($q) => $q->whereIn('status', ['completed', 'delivered', 'approved'])])
+            ->withCount(['tasks as social_pending_count'  => fn($q) => $q->where('social_required', true)->whereNull('social_posted_at')])
             ->with([
                 'members'  => fn($q) => $q->select('users.id','users.name','users.avatar')->limit(5),
                 'customer' => fn($q) => $q->select('id','name','company'),
@@ -70,7 +71,7 @@ class ProjectController extends Controller
         $request->validate([
             'name'                            => 'required|string|max:255',
             'description'                     => 'nullable|string',
-            'deadline'                        => 'nullable|date|after:now',
+            'deadline'                        => 'nullable|date|after_or_equal:today',
             'first_review_date'               => 'nullable|date',
             'customer_id'                     => 'nullable|exists:customers,id',
             'members'                         => 'nullable|array',
@@ -215,9 +216,10 @@ class ProjectController extends Controller
 
     public function show(Project $project)
     {
-        $project->load('tasks.assignee', 'members', 'customer');
+        $project->load('tasks.assignee', 'tasks.socialAssignee', 'members', 'customer');
         $pendingApprovalCount = $project->tasks()->where('status', 'submitted')->count();
-        return view('admin.projects.show', compact('project', 'pendingApprovalCount'));
+        $pendingSocialCount   = $project->tasks()->where('social_required', true)->whereNull('social_posted_at')->count();
+        return view('admin.projects.show', compact('project', 'pendingApprovalCount', 'pendingSocialCount'));
     }
 
     public function edit(Project $project)
@@ -278,6 +280,11 @@ class ProjectController extends Controller
     {
         if ($project->status === 'completed') {
             return back()->with('error', 'Project is already completed.');
+        }
+
+        $pendingSocial = $project->tasks()->where('social_required', true)->whereNull('social_posted_at')->count();
+        if ($pendingSocial > 0) {
+            return back()->with('error', "Cannot complete project: {$pendingSocial} task(s) still have pending social media posts that haven't been published.");
         }
 
         $project->update(['status' => 'completed']);

@@ -75,10 +75,18 @@ class CustomerController extends Controller
     public function show(Customer $customer)
     {
         $customer->load([
-            'projects' => fn($q) => $q->withCount('tasks')->orderBy('created_at', 'desc'),
-            'tasks.assignee',
-            'tasks.project:id,name',
+            'projects' => fn($q) => $q->where('is_quick', false)->withCount('tasks')->orderBy('created_at', 'desc'),
         ]);
+
+        // Load tasks from both direct customer_id and tasks inside the customer's projects
+        $customerTasks = \App\Models\Task::with(['assignee:id,name', 'project:id,name'])
+            ->where(function ($q) use ($customer) {
+                $q->where('customer_id', $customer->id)
+                  ->orWhereHas('project', fn($pq) => $pq->where('customer_id', $customer->id)->where('is_quick', false));
+            })
+            ->get();
+
+        $customer->setRelation('tasks', $customerTasks);
 
         return view('admin.customers.show', compact('customer'));
     }

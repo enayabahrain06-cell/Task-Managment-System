@@ -155,6 +155,49 @@ $pMeta = [
                 </div>
             </div>
 
+            {{-- Posting Instructions / Caption / Budget --}}
+            @if($task->social_description || $task->social_caption || $task->social_budget)
+            <div style="padding:18px 24px;border-bottom:1px solid #F3F4F6;background:linear-gradient(135deg,#F5F3FF,#EEF2FF);display:flex;flex-direction:column;gap:14px;">
+                <p style="font-size:10px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.06em;margin:0;display:flex;align-items:center;gap:5px;">
+                    <i class="fas fa-bullhorn" style="font-size:11px;"></i>Assignment Details
+                </p>
+
+                @if($task->social_budget)
+                <div style="display:flex;align-items:center;gap:10px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:10px 14px;">
+                    <div style="width:30px;height:30px;border-radius:8px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="fas fa-wallet" style="color:#D97706;font-size:12px;"></i>
+                    </div>
+                    <div>
+                        <p style="font-size:10px;font-weight:700;color:#D97706;text-transform:uppercase;letter-spacing:.05em;margin:0 0 2px;">Ad Budget</p>
+                        <p style="font-size:15px;font-weight:800;color:#92400E;margin:0;">{{ $task->social_budget }}</p>
+                    </div>
+                </div>
+                @endif
+
+                @if($task->social_caption)
+                <div>
+                    <p style="font-size:10px;font-weight:700;color:#7C3AED;text-transform:uppercase;letter-spacing:.05em;margin:0 0 8px;display:flex;align-items:center;gap:5px;">
+                        <i class="fas fa-pen-nib" style="font-size:10px;"></i>Ad Caption
+                        <button onclick="navigator.clipboard.writeText(this.closest('div').nextElementSibling.textContent.trim()).then(()=>{this.textContent='Copied!';setTimeout(()=>this.innerHTML='<i class=\'fas fa-copy\' style=\'font-size:9px;\'></i> Copy',1500)})"
+                                style="margin-left:auto;font-size:10px;font-weight:600;padding:2px 8px;background:#EDE9FE;color:#7C3AED;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:3px;">
+                            <i class="fas fa-copy" style="font-size:9px;"></i> Copy
+                        </button>
+                    </p>
+                    <div style="font-size:13px;color:#1E1B4B;line-height:1.75;white-space:pre-line;background:#fff;border-radius:10px;padding:14px 16px;border:1px solid #DDD6FE;font-family:inherit;">{{ $task->social_caption }}</div>
+                </div>
+                @endif
+
+                @if($task->social_description)
+                <div>
+                    <p style="font-size:10px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.05em;margin:0 0 8px;display:flex;align-items:center;gap:5px;">
+                        <i class="fas fa-align-left" style="font-size:10px;"></i>Instructions
+                    </p>
+                    <div style="font-size:13px;color:#1E1B4B;line-height:1.75;white-space:pre-line;background:#fff;border-radius:10px;padding:14px 16px;border:1px solid #C7D2FE;">{{ $task->social_description }}</div>
+                </div>
+                @endif
+            </div>
+            @endif
+
             {{-- Description / Brief --}}
             @if($task->description)
             <div style="padding:18px 24px;border-bottom:1px solid #F3F4F6;">

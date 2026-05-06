@@ -45,7 +45,7 @@ class AppServiceProvider extends ServiceProvider
         // Share global app settings with all views
         View::composer('*', function ($view) {
             try {
-                $appSettings = Setting::getMany(['app_name','app_tagline','company_name','primary_color','department_name','logo_path','favicon_path','login_bg_type','login_bg_color','login_bg_image','copyright','developer_mode','hidden_elements','shown_extras','nav_hidden','maintenance_mode']);
+                $appSettings = Setting::getMany(['app_name','app_tagline','company_name','primary_color','department_name','logo_path','favicon_path','login_bg_type','login_bg_color','login_bg_image','copyright','developer_mode','hidden_elements','shown_extras','nav_hidden','maintenance_mode','hide_approval_customer_notify','hide_hourly_rate']);
                 $view->with('appSettings', array_merge([
                     'app_name'        => 'Dash',
                     'app_tagline'     => '',
@@ -61,7 +61,9 @@ class AppServiceProvider extends ServiceProvider
                     'developer_mode'   => '0',
                     'hidden_elements'  => '[]',
                     'shown_extras'     => '[]',
-                    'maintenance_mode' => '0',
+                    'maintenance_mode'              => '0',
+                    'hide_approval_customer_notify' => '0',
+                    'hide_hourly_rate'              => '0',
                 ], $appSettings));
             } catch (\Throwable) {
                 $view->with('appSettings', [
@@ -79,7 +81,9 @@ class AppServiceProvider extends ServiceProvider
                     'developer_mode'   => '0',
                     'hidden_elements'  => '[]',
                     'shown_extras'     => '[]',
-                    'maintenance_mode' => '0',
+                    'maintenance_mode'              => '0',
+                    'hide_approval_customer_notify' => '0',
+                    'hide_hourly_rate'              => '0',
                 ]);
             }
         });

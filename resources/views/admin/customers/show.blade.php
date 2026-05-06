@@ -2,10 +2,56 @@
 @section('title', $customer->name)
 
 @section('content')
+@php
+    $_tsBg    = ['draft'=>'#F3F4F6','assigned'=>'#EEF2FF','viewed'=>'#E0F2FE','in_progress'=>'#FFF7ED','submitted'=>'#F5F3FF','revision_requested'=>'#FEE2E2','approved'=>'#ECFDF5','delivered'=>'#ECFDF5','archived'=>'#F3F4F6'];
+    $_tsColor = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1','in_progress'=>'#EA580C','submitted'=>'#7C3AED','revision_requested'=>'#DC2626','approved'=>'#16A34A','delivered'=>'#16A34A','archived'=>'#9CA3AF'];
+    $_tsLabel = ['draft'=>'Draft','assigned'=>'Assigned','viewed'=>'Viewed','in_progress'=>'In Progress','submitted'=>'In Review','revision_requested'=>'Revision','approved'=>'Approved','delivered'=>'Delivered','archived'=>'Archived'];
+    $_psBg    = ['active'=>'#EEF2FF','completed'=>'#ECFDF5','pending'=>'#FEF3C7','on_hold'=>'#FEF3C7','cancelled'=>'#FEE2E2'];
+    $_psColor = ['active'=>'#4F46E5','completed'=>'#16A34A','pending'=>'#D97706','on_hold'=>'#D97706','cancelled'=>'#DC2626'];
+    $_psLabel = ['active'=>'Active','completed'=>'Completed','pending'=>'Pending','on_hold'=>'On Hold','cancelled'=>'Cancelled'];
+    $_mapTask = fn($t) => [
+        'title'       => $t->title,
+        'project'     => $t->project->name ?? '—',
+        'assignee'    => $t->assignee->name ?? null,
+        'statusLabel' => $_tsLabel[$t->status] ?? ucfirst(str_replace('_',' ',$t->status)),
+        'statusBg'    => $_tsBg[$t->status]    ?? '#F3F4F6',
+        'statusColor' => $_tsColor[$t->status]  ?? '#374151',
+        'deadline'    => $t->deadline ? $t->deadline->format('M d, Y') : null,
+        'overdue'     => $t->deadline && $t->deadline->isPast() && !in_array($t->status, ['approved','delivered','archived']),
+        'url'         => route('admin.tasks.show', $t->id),
+    ];
+    $_allTasks = $customer->tasks;
+    $taskGroupsJson = json_encode([
+        'pending' => $_allTasks->whereIn('status', ['draft','assigned','viewed'])->map($_mapTask)->values(),
+        'active'  => $_allTasks->whereIn('status', ['in_progress','submitted','revision_requested'])->map($_mapTask)->values(),
+        'done'    => $_allTasks->whereIn('status', ['approved','delivered','archived'])->map($_mapTask)->values(),
+        'overdue' => $_allTasks->filter(fn($t) => $t->deadline && $t->deadline->isPast() && !in_array($t->status, ['approved','delivered','archived']))->map($_mapTask)->values(),
+    ]);
+    $customerProjectsJson = json_encode($customer->projects->map(fn($p) => [
+        'name'        => $p->name,
+        'tasksCount'  => $p->tasks_count ?? 0,
+        'statusLabel' => $_psLabel[$p->status] ?? ucfirst($p->status),
+        'statusBg'    => $_psBg[$p->status]    ?? '#F3F4F6',
+        'statusColor' => $_psColor[$p->status]  ?? '#374151',
+        'deadline'    => $p->deadline ? $p->deadline->format('M d, Y') : null,
+        'overdue'     => $p->deadline && $p->deadline->isPast() && $p->status !== 'completed',
+        'url'         => route('admin.projects.show', $p->id),
+    ])->values());
+@endphp
 <div x-data="{
     task: null,    openTask(t) { this.task = t; document.body.style.overflow='hidden'; },
     project: null, openProject(p) { this.project = p; document.body.style.overflow='hidden'; },
-    close() { this.task = null; this.project = null; document.body.style.overflow=''; }
+    statsModal: null,
+    statsTab: 'tasks',
+    taskGroups: {{ $taskGroupsJson }},
+    customerProjects: {{ $customerProjectsJson }},
+    openStats(group) { this.statsModal = group; this.statsTab = 'tasks'; document.body.style.overflow='hidden'; },
+    get statsModalTasks() { return this.statsModal && this.taskGroups[this.statsModal] ? this.taskGroups[this.statsModal] : []; },
+    get statsModalLabel() {
+        const m = { pending: 'Pending', active: 'In Progress', done: 'Completed', overdue: 'Overdue' };
+        return m[this.statsModal] || '';
+    },
+    close() { this.task = null; this.project = null; this.statsModal = null; document.body.style.overflow=''; }
 }" @keydown.escape.window="close()" style="max-width:900px;">
 
 {{-- Project Preview Modal --}}
@@ -124,6 +170,134 @@
 </div>
 </template>
 
+{{-- Stats Group Modal --}}
+<template x-if="statsModal !== null">
+<div style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;"
+     @click.self="close()">
+    <div style="position:absolute;inset:0;background:rgba(0,0,0,.45);"></div>
+    <div style="position:relative;background:#fff;border-radius:20px;width:100%;max-width:560px;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.22);">
+
+        {{-- Modal header --}}
+        <div style="padding:20px 24px 0;flex-shrink:0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"
+                         :style="statsModal==='pending'?'background:#EEF2FF;':statsModal==='active'?'background:#FFF7ED;':statsModal==='done'?'background:#ECFDF5;':'background:#FEF2F2;'">
+                        <i :class="statsModal==='pending'?'fas fa-clock':statsModal==='active'?'fas fa-spinner':statsModal==='done'?'fas fa-circle-check':'fas fa-triangle-exclamation'"
+                           :style="statsModal==='pending'?'color:#6366F1;font-size:13px;':statsModal==='active'?'color:#EA580C;font-size:13px;':statsModal==='done'?'color:#16A34A;font-size:13px;':'color:#DC2626;font-size:13px;'"></i>
+                    </div>
+                    <h2 x-text="statsModalLabel" style="font-size:15px;font-weight:700;color:#111827;margin:0;"></h2>
+                </div>
+                <button @click="close()"
+                        style="width:32px;height:32px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:16px;">×</button>
+            </div>
+
+            {{-- Tabs --}}
+            <div style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;width:fit-content;">
+                <button @click="statsTab='tasks'"
+                        :style="statsTab==='tasks'
+                            ? 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);'
+                            : 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:transparent;color:#6B7280;'"
+                        style="display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+                    <i class="fas fa-list-check" style="font-size:11px;"></i>
+                    Tasks <span x-text="'('+statsModalTasks.length+')'" style="font-weight:400;opacity:.7;"></span>
+                </button>
+                <button @click="statsTab='projects'"
+                        :style="statsTab==='projects'
+                            ? 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);'
+                            : 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:transparent;color:#6B7280;'"
+                        style="display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:transparent;color:#6B7280;">
+                    <i class="fas fa-folder" style="font-size:11px;"></i>
+                    Projects <span x-text="'('+customerProjects.length+')'" style="font-weight:400;opacity:.7;"></span>
+                </button>
+            </div>
+        </div>
+
+        {{-- Tab content --}}
+        <div style="overflow-y:auto;padding:8px 16px 20px;flex:1;">
+
+            {{-- Tasks tab --}}
+            <div x-show="statsTab==='tasks'">
+                <template x-if="statsModalTasks.length === 0">
+                    <p style="text-align:center;font-size:13px;color:#9CA3AF;padding:24px 0;">No tasks in this category.</p>
+                </template>
+                <template x-for="t in statsModalTasks" :key="t.url">
+                    <a :href="t.url"
+                       style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-bottom:1px solid #F9FAFB;text-decoration:none;border-radius:8px;transition:background .12s;"
+                       onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                        <div style="min-width:0;flex:1;">
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <p x-text="t.title" style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;"></p>
+                                <span x-show="t.overdue" style="font-size:10px;font-weight:600;color:#DC2626;flex-shrink:0;">⚠ Overdue</span>
+                            </div>
+                            <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                <span style="display:flex;align-items:center;gap:3px;">
+                                    <i class="fa fa-folder" style="font-size:9px;"></i><span x-text="t.project"></span>
+                                </span>
+                                <template x-if="t.assignee">
+                                    <span style="display:flex;align-items:center;gap:3px;">
+                                        <i class="fa fa-user" style="font-size:9px;"></i><span x-text="t.assignee"></span>
+                                    </span>
+                                </template>
+                                <template x-if="t.deadline">
+                                    <span style="display:flex;align-items:center;gap:3px;" :style="t.overdue?'color:#DC2626;font-weight:600;':''">
+                                        <i class="fa fa-calendar" style="font-size:9px;"></i><span x-text="t.deadline"></span>
+                                    </span>
+                                </template>
+                            </p>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                            <span x-text="t.statusLabel"
+                                  :style="'font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+t.statusBg+';color:'+t.statusColor+';'"></span>
+                            <i class="fa fa-arrow-up-right-from-square" style="font-size:10px;color:#D1D5DB;"></i>
+                        </div>
+                    </a>
+                </template>
+            </div>
+
+            {{-- Projects tab --}}
+            <div x-show="statsTab==='projects'">
+                <template x-if="customerProjects.length === 0">
+                    <p style="text-align:center;font-size:13px;color:#9CA3AF;padding:24px 0;">No projects linked to this customer.</p>
+                </template>
+                <template x-for="p in customerProjects" :key="p.url">
+                    <a :href="p.url"
+                       style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-bottom:1px solid #F9FAFB;text-decoration:none;border-radius:8px;transition:background .12s;"
+                       onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                        <div style="width:34px;height:34px;border-radius:9px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas fa-folder-open" style="font-size:13px;color:#6B7280;"></i>
+                        </div>
+                        <div style="min-width:0;flex:1;">
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <p x-text="p.name" style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;"></p>
+                                <span x-show="p.overdue" style="font-size:10px;font-weight:600;color:#DC2626;flex-shrink:0;">⚠ Overdue</span>
+                            </div>
+                            <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;display:flex;align-items:center;gap:8px;">
+                                <span style="display:flex;align-items:center;gap:3px;">
+                                    <i class="fa fa-list-check" style="font-size:9px;"></i>
+                                    <span x-text="p.tasksCount+' task'+(p.tasksCount===1?'':'s')"></span>
+                                </span>
+                                <template x-if="p.deadline">
+                                    <span style="display:flex;align-items:center;gap:3px;" :style="p.overdue?'color:#DC2626;font-weight:600;':''">
+                                        <i class="fa fa-calendar" style="font-size:9px;"></i><span x-text="p.deadline"></span>
+                                    </span>
+                                </template>
+                            </p>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                            <span x-text="p.statusLabel"
+                                  :style="'font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+p.statusBg+';color:'+p.statusColor+';'"></span>
+                            <i class="fa fa-arrow-up-right-from-square" style="font-size:10px;color:#D1D5DB;"></i>
+                        </div>
+                    </a>
+                </template>
+            </div>
+
+        </div>
+    </div>
+</div>
+</template>
+
     {{-- Header --}}
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
         <a href="{{ route('admin.customers.index') }}"
@@ -154,6 +328,65 @@
         </a>
     </div>
 
+    {{-- Quick Stats Bar --}}
+    @php
+        $allTasks     = $customer->tasks;
+        $statPending  = $allTasks->whereIn('status', ['draft','assigned','viewed'])->count();
+        $statActive   = $allTasks->whereIn('status', ['in_progress','submitted','revision_requested'])->count();
+        $statDone     = $allTasks->whereIn('status', ['approved','delivered','archived'])->count();
+        $statOverdue  = $allTasks->filter(fn($t) => $t->deadline && $t->deadline->isPast() && !in_array($t->status, ['approved','delivered','archived']))->count();
+    @endphp
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+        <button @click="openStats('pending')"
+                style="background:#fff;border-radius:12px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;transition:box-shadow .15s,border-color .15s;"
+                onmouseover="this.style.boxShadow='0 4px 12px rgba(99,102,241,.15)';this.style.borderColor='#C7D2FE';"
+                onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)';this.style.borderColor='#F0F0F0';">
+            <div style="width:38px;height:38px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-clock" style="color:#6366F1;font-size:14px;"></i>
+            </div>
+            <div>
+                <p style="font-size:20px;font-weight:700;color:#6366F1;margin:0;line-height:1;">{{ $statPending }}</p>
+                <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Pending</p>
+            </div>
+        </button>
+        <button @click="openStats('active')"
+                style="background:#fff;border-radius:12px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;transition:box-shadow .15s,border-color .15s;"
+                onmouseover="this.style.boxShadow='0 4px 12px rgba(234,88,12,.15)';this.style.borderColor='#FED7AA';"
+                onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)';this.style.borderColor='#F0F0F0';">
+            <div style="width:38px;height:38px;border-radius:10px;background:#FFF7ED;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-spinner" style="color:#EA580C;font-size:14px;"></i>
+            </div>
+            <div>
+                <p style="font-size:20px;font-weight:700;color:#EA580C;margin:0;line-height:1;">{{ $statActive }}</p>
+                <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">In Progress</p>
+            </div>
+        </button>
+        <button @click="openStats('done')"
+                style="background:#fff;border-radius:12px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;transition:box-shadow .15s,border-color .15s;"
+                onmouseover="this.style.boxShadow='0 4px 12px rgba(22,163,74,.15)';this.style.borderColor='#A7F3D0';"
+                onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)';this.style.borderColor='#F0F0F0';">
+            <div style="width:38px;height:38px;border-radius:10px;background:#ECFDF5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-circle-check" style="color:#16A34A;font-size:14px;"></i>
+            </div>
+            <div>
+                <p style="font-size:20px;font-weight:700;color:#16A34A;margin:0;line-height:1;">{{ $statDone }}</p>
+                <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Completed</p>
+            </div>
+        </button>
+        <button @click="openStats('overdue')"
+                style="background:#fff;border-radius:12px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;transition:box-shadow .15s,border-color .15s;"
+                onmouseover="this.style.boxShadow='0 4px 12px rgba(220,38,38,.15)';this.style.borderColor='#FECACA';"
+                onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)';this.style.borderColor='#F0F0F0';">
+            <div style="width:38px;height:38px;border-radius:10px;background:#FEF2F2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-triangle-exclamation" style="color:#DC2626;font-size:14px;"></i>
+            </div>
+            <div>
+                <p style="font-size:20px;font-weight:700;color:#DC2626;margin:0;line-height:1;">{{ $statOverdue }}</p>
+                <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Overdue</p>
+            </div>
+        </button>
+    </div>
+
     <div style="display:grid;grid-template-columns:1fr 2fr;gap:20px;align-items:start;">
 
         {{-- Contact card --}}
@@ -175,10 +408,18 @@
                 <div style="width:32px;height:32px;border-radius:8px;background:#F0FDF4;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <i class="fas fa-phone" style="font-size:13px;color:#16A34A;"></i>
                 </div>
-                <div>
+                <div style="flex:1;">
                     <p style="font-size:10px;color:#9CA3AF;margin:0;text-transform:uppercase;letter-spacing:.04em;">Phone</p>
                     <a href="tel:{{ $customer->phone }}" style="font-size:13px;color:#111827;text-decoration:none;">{{ $customer->phone }}</a>
                 </div>
+                @if($customer->whatsappUrl())
+                <a href="{{ $customer->whatsappUrl() }}" target="_blank" rel="noopener"
+                   title="Contact on WhatsApp"
+                   style="display:inline-flex;align-items:center;gap:5px;padding:6px 11px;background:#25D366;color:#fff;border-radius:8px;font-size:11px;font-weight:700;text-decoration:none;flex-shrink:0;transition:opacity .15s;"
+                   onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                    <i class="fab fa-whatsapp" style="font-size:14px;"></i> WhatsApp
+                </a>
+                @endif
             </div>
             @endif
 
@@ -258,22 +499,28 @@
                 @endforelse
             </div>
 
-            {{-- Tasks --}}
+            {{-- Tasks (direct only — tasks in customer projects are shown via the Projects section) --}}
+            @php
+                $directTasks = $customer->tasks->where('customer_id', $customer->id)->values();
+                $tsBg    = ['draft'=>'#F3F4F6','assigned'=>'#EEF2FF','viewed'=>'#E0F2FE','in_progress'=>'#FFF7ED','submitted'=>'#F5F3FF','revision_requested'=>'#FEE2E2','approved'=>'#ECFDF5','delivered'=>'#ECFDF5','archived'=>'#F3F4F6'];
+                $tsColor = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1','in_progress'=>'#EA580C','submitted'=>'#7C3AED','revision_requested'=>'#DC2626','approved'=>'#16A34A','delivered'=>'#16A34A','archived'=>'#9CA3AF'];
+                $tsLabel = ['draft'=>'Draft','assigned'=>'Assigned','viewed'=>'Viewed','in_progress'=>'In Progress','submitted'=>'In Review','revision_requested'=>'Revision','approved'=>'Approved','delivered'=>'Delivered','archived'=>'Archived'];
+                $prBg    = ['high'=>'#FEE2E2','medium'=>'#FEF3C7','low'=>'#DCFCE7'];
+                $prColor = ['high'=>'#DC2626','medium'=>'#D97706','low'=>'#16A34A'];
+            @endphp
             <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;">
-                <h2 style="font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:0 0 16px;">
-                    Tasks <span style="font-weight:500;color:#9CA3AF;">({{ $customer->tasks->count() }})</span>
-                </h2>
-                @php
-                    $tsBg = ['draft'=>'#F3F4F6','assigned'=>'#EEF2FF','viewed'=>'#E0F2FE','in_progress'=>'#FFF7ED','submitted'=>'#F5F3FF','revision_requested'=>'#FEE2E2','approved'=>'#ECFDF5','delivered'=>'#ECFDF5','archived'=>'#F3F4F6'];
-                    $tsColor = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1','in_progress'=>'#EA580C','submitted'=>'#7C3AED','revision_requested'=>'#DC2626','approved'=>'#16A34A','delivered'=>'#16A34A','archived'=>'#9CA3AF'];
-                    $tsLabel = ['draft'=>'Draft','assigned'=>'Assigned','viewed'=>'Viewed','in_progress'=>'In Progress','submitted'=>'In Review','revision_requested'=>'Revision','approved'=>'Approved','delivered'=>'Delivered','archived'=>'Archived'];
-                    $prBg    = ['high'=>'#FEE2E2','medium'=>'#FEF3C7','low'=>'#DCFCE7'];
-                    $prColor = ['high'=>'#DC2626','medium'=>'#D97706','low'=>'#16A34A'];
-                @endphp
-                @forelse($customer->tasks->take(20) as $task)
-                @php
-                    $taskData = json_encode([
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                    <h2 style="font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:0;">
+                        Tasks <span style="font-weight:500;color:#9CA3AF;">({{ $directTasks->count() }})</span>
+                    </h2>
+                </div>
 
+                @forelse($directTasks as $task)
+                @php
+                    $isOverdue = $task->deadline && $task->deadline->isPast() && !in_array($task->status, ['approved','delivered','archived']);
+                    $tGroup    = in_array($task->status, ['draft','assigned','viewed']) ? 'pending'
+                               : (in_array($task->status, ['in_progress','submitted','revision_requested']) ? 'active' : 'done');
+                    $taskData  = json_encode([
                         'title'         => $task->title,
                         'project'       => $task->project->name ?? '—',
                         'assignee'      => $task->assignee->name ?? null,
@@ -285,7 +532,7 @@
                         'priorityBg'    => $prBg[$task->priority]   ?? '#F3F4F6',
                         'priorityColor' => $prColor[$task->priority] ?? '#374151',
                         'deadline'      => $task->deadline ? $task->deadline->format('M d, Y') : null,
-                        'overdue'       => $task->deadline && $task->deadline->isPast() && !in_array($task->status, ['approved','delivered','archived']),
+                        'overdue'       => $isOverdue,
                         'description'   => $task->description ? \Illuminate\Support\Str::limit($task->description, 200) : null,
                         'url'           => route('admin.tasks.show', $task->id),
                     ]);
@@ -294,7 +541,12 @@
                         style="display:flex;align-items:center;justify-content:space-between;padding:10px 8px;border-bottom:1px solid #F9FAFB;width:100%;background:none;border-left:none;border-right:none;border-top:none;cursor:pointer;text-align:left;transition:background .12s;border-radius:6px;"
                         onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
                     <div style="min-width:0;flex:1;padding-right:12px;">
-                        <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $task->title }}</p>
+                        <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                            {{ $task->title }}
+                            @if($isOverdue)
+                            <span style="font-size:10px;font-weight:600;color:#DC2626;margin-left:6px;">⚠ Overdue</span>
+                            @endif
+                        </p>
                         <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">
                             {{ $task->project->name ?? '—' }}
                             @if($task->assignee) · {{ $task->assignee->name }} @endif
@@ -311,6 +563,7 @@
                 @empty
                 <p style="font-size:13px;color:#9CA3AF;text-align:center;padding:16px 0 4px;">No tasks linked yet.</p>
                 @endforelse
+
             </div>
 
         </div>

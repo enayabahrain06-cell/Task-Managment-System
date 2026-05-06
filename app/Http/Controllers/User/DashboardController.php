@@ -60,14 +60,14 @@ class DashboardController extends Controller
         $receivedTotal    = $receivedTasks->count();
         $receivedCompleted = $receivedTasks->whereIn('status', $doneStatuses)->count();
 
-        // My tasks sorted: overdue → in_progress → submitted → upcoming → done
-        $tasks = $allTasks->sortBy(function ($t) use ($doneStatuses) {
-            if (in_array($t->status, $doneStatuses))    return '5_' . ($t->deadline?->format('Y-m-d') ?? '9999');
-            if ($t->status === 'submitted')              return '3_' . ($t->deadline?->format('Y-m-d') ?? '9999');
-            if ($t->deadline && $t->deadline->isPast()) return '1_' . $t->deadline->format('Y-m-d');
-            if ($t->status === 'in_progress')            return '2_' . ($t->deadline?->format('Y-m-d') ?? '9999');
-            return '4_' . ($t->deadline?->format('Y-m-d') ?? '9999');
-        })->values();
+        // Active tasks sorted: overdue → in_progress → submitted → upcoming
+        $tasks = $allTasks->filter(fn($t) => !in_array($t->status, $doneStatuses))
+            ->sortBy(function ($t) {
+                if ($t->status === 'submitted')              return '3_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+                if ($t->deadline && $t->deadline->isPast()) return '1_' . $t->deadline->format('Y-m-d');
+                if ($t->status === 'in_progress')            return '2_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+                return '4_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+            })->values();
 
         // Tag each task — mark received tasks and attach who it came from
         $tasks = $tasks->map(function ($t) use ($inheritedIds, $reassignedLogsToMe, $receivedFromOthersIds) {
@@ -91,6 +91,19 @@ class DashboardController extends Controller
             });
 
         $tasks = $tasks->merge($pendingSocialTasks)->values();
+
+        // Completed tasks (approved / delivered / archived) — most recently updated first
+        $completedTasks = $allTasks->filter(fn($t) => in_array($t->status, $doneStatuses))
+            ->map(function ($t) use ($inheritedIds, $reassignedLogsToMe, $receivedFromOthersIds) {
+                $t->is_inherited  = $inheritedIds->contains($t->id);
+                $t->is_reassigned = $reassignedLogsToMe->has($t->id);
+                $t->from_user     = $reassignedLogsToMe->get($t->id)?->metadata['from_user_name'] ?? null;
+                $t->is_received   = $receivedFromOthersIds->contains($t->id);
+                $t->is_social     = false;
+                return $t;
+            })
+            ->sortByDesc('updated_at')
+            ->values();
 
         // Next 4 upcoming (non-done, future deadline)
         $upcomingTasks = $allTasks
@@ -174,7 +187,7 @@ class DashboardController extends Controller
 
         return view('user.dashboard', compact(
             'total', 'completed', 'inProgress', 'pending', 'pendingApproval', 'overdue', 'rate',
-            'tasks', 'upcomingTasks', 'recentActivity', 'weekActivity',
+            'tasks', 'completedTasks', 'upcomingTasks', 'recentActivity', 'weekActivity',
             'teamTasks', 'myProjects', 'myProjectStats', 'socialTasks',
             'inheritedCount', 'nativeTotal', 'nativeCompleted', 'pendingSocialPosts', 'completedSocialPosts',
             'receivedTotal', 'receivedCompleted'

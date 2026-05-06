@@ -208,6 +208,26 @@
     $natFlags = ['Afghan'=>'🇦🇫','Albanian'=>'🇦🇱','Algerian'=>'🇩🇿','American'=>'🇺🇸','Argentinian'=>'🇦🇷','Australian'=>'🇦🇺','Austrian'=>'🇦🇹','Bahraini'=>'🇧🇭','Bangladeshi'=>'🇧🇩','Belgian'=>'🇧🇪','Brazilian'=>'🇧🇷','British'=>'🇬🇧','Bulgarian'=>'🇧🇬','Cambodian'=>'🇰🇭','Canadian'=>'🇨🇦','Chilean'=>'🇨🇱','Chinese'=>'🇨🇳','Colombian'=>'🇨🇴','Croatian'=>'🇭🇷','Czech'=>'🇨🇿','Danish'=>'🇩🇰','Dutch'=>'🇳🇱','Egyptian'=>'🇪🇬','Emirati'=>'🇦🇪','Estonian'=>'🇪🇪','Ethiopian'=>'🇪🇹','Filipino'=>'🇵🇭','Finnish'=>'🇫🇮','French'=>'🇫🇷','German'=>'🇩🇪','Ghanaian'=>'🇬🇭','Greek'=>'🇬🇷','Hungarian'=>'🇭🇺','Indian'=>'🇮🇳','Indonesian'=>'🇮🇩','Iranian'=>'🇮🇷','Iraqi'=>'🇮🇶','Irish'=>'🇮🇪','Israeli'=>'🇮🇱','Italian'=>'🇮🇹','Japanese'=>'🇯🇵','Jordanian'=>'🇯🇴','Kenyan'=>'🇰🇪','Korean'=>'🇰🇷','Kuwaiti'=>'🇰🇼','Lebanese'=>'🇱🇧','Libyan'=>'🇱🇾','Malaysian'=>'🇲🇾','Mexican'=>'🇲🇽','Moroccan'=>'🇲🇦','Nigerian'=>'🇳🇬','Norwegian'=>'🇳🇴','Omani'=>'🇴🇲','Pakistani'=>'🇵🇰','Palestinian'=>'🇵🇸','Polish'=>'🇵🇱','Portuguese'=>'🇵🇹','Qatari'=>'🇶🇦','Romanian'=>'🇷🇴','Russian'=>'🇷🇺','Saudi'=>'🇸🇦','Serbian'=>'🇷🇸','Singaporean'=>'🇸🇬','South African'=>'🇿🇦','Spanish'=>'🇪🇸','Sri Lankan'=>'🇱🇰','Sudanese'=>'🇸🇩','Swedish'=>'🇸🇪','Swiss'=>'🇨🇭','Syrian'=>'🇸🇾','Thai'=>'🇹🇭','Tunisian'=>'🇹🇳','Turkish'=>'🇹🇷','Ukrainian'=>'🇺🇦','Yemeni'=>'🇾🇪'];
 @endphp
 
+{{-- View Toggle Wrapper --}}
+<div x-data="{ view: localStorage.getItem('team_view') || 'cards', setView(v){ this.view=v; localStorage.setItem('team_view',v); } }">
+
+<div style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;margin-bottom:22px;width:fit-content;">
+    <button @click="setView('table')"
+            :style="view==='table'
+                ? 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);'
+                : 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:transparent;color:#6B7280;'">
+        <i class="fa fa-table-list" style="font-size:11px;"></i> Table
+    </button>
+    <button @click="setView('cards')"
+            :style="view==='cards'
+                ? 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);'
+                : 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:transparent;color:#6B7280;'">
+        <i class="fa fa-grip" style="font-size:11px;"></i> Cards
+    </button>
+</div>
+
+{{-- ══ CARDS VIEW ══ --}}
+<div x-show="view === 'cards'" x-cloak>
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
     @forelse($members as $member)
     @php
@@ -276,25 +296,24 @@
             </div>
             @else
             <button type="button"
-                    onclick='window.dispatchEvent(new CustomEvent("open-edit-user",{detail:{{ json_encode(['id'=>$member->id,'name'=>$member->name,'username'=>$member->username??'','email'=>$member->email,'phone'=>$member->phone??'','job_title'=>$member->job_title??'','nationality'=>$member->nationality??'','role'=>$member->role,'status'=>$member->status,'avatar'=>$member->avatarUrl()??'']) }}}))'
+                    onclick='window.dispatchEvent(new CustomEvent("open-edit-user",{detail:{{ json_encode(['id'=>$member->id,'name'=>$member->name,'username'=>$member->username??'','email'=>$member->email,'phone'=>$member->phone??'','job_title'=>$member->job_title??'','nationality'=>$member->nationality??'','role'=>$member->role,'status'=>$member->status,'avatar'=>$member->avatarUrl()??'','hourly_rate'=>$member->hourly_rate??'']) }}}))'
                     class="flex-1 text-center text-xs bg-gray-100 hover:bg-indigo-100 text-gray-600 hover:text-indigo-600 py-1.5 rounded-lg transition font-medium">
                 <i class="fa fa-pen text-xs mr-1"></i> Edit
             </button>
             @endif
             {{-- Actions dropdown --}}
-            <div x-data="{ open: false }" class="relative flex-1">
+            <div class="flex-1">
                 @if($managerBlocked)
                 <div class="w-full text-xs bg-gray-50 text-gray-300 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 cursor-not-allowed select-none" title="Cannot perform actions on admin accounts">
                     Actions <i class="fa fa-chevron-down text-xs"></i>
                 </div>
                 @else
-                <button type="button" @click="open = !open" @click.outside="open = false"
-                        class="w-full text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 py-1.5 rounded-lg transition font-medium flex items-center justify-center gap-1">
-                    Actions <i class="fa fa-chevron-down text-xs" :class="open ? 'rotate-180' : ''" style="transition:transform .15s;"></i>
+                <button type="button"
+                        onclick="toggleActDrop(this, 'act-card-{{ $member->id }}')"
+                        class="act-drop-trigger w-full text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 py-1.5 rounded-lg transition font-medium flex items-center justify-center gap-1">
+                    Actions <i class="fa fa-chevron-down text-xs"></i>
                 </button>
-                <div x-show="open" x-cloak
-                     style="position:absolute;bottom:calc(100% + 6px);right:0;min-width:180px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.15);border:1px solid #F3F4F6;z-index:50;overflow:hidden;">
-                    {{-- Hold / Release --}}
+                <div id="act-card-{{ $member->id }}" class="act-drop" style="display:none;position:fixed;min-width:180px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.18);border:1px solid #F3F4F6;z-index:9999;overflow:hidden;">
                     <form method="POST" action="{{ route('admin.users.hold', $member) }}">
                         @csrf
                         <button type="submit"
@@ -304,26 +323,20 @@
                             {{ $member->status === 'inactive' ? 'Release Hold' : 'Hold Account' }}
                         </button>
                     </form>
-                    {{-- Transfer Tasks --}}
                     <button type="button"
-                            onclick="openTransferModal({{ $member->id }}, '{{ addslashes($member->name) }}')"
-                            @click="open = false"
+                            onclick="openTransferModal({{ $member->id }}, '{{ addslashes($member->name) }}'); closeActDrop();"
                             class="w-full text-left px-4 py-2.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50 flex items-center gap-2.5 transition">
                         <i class="fa fa-right-left text-xs w-3"></i> Transfer Tasks
                     </button>
                     <div style="height:1px;background:#F3F4F6;margin:2px 0;"></div>
-                    {{-- Archive --}}
                     <button type="button"
-                            onclick="openDeleteConfirm('{{ route('admin.users.destroy', $member) }}','{{ addslashes($member->name) }}')"
-                            @click="open = false"
+                            onclick="openDeleteConfirm('{{ route('admin.users.destroy', $member) }}','{{ addslashes($member->name) }}'); closeActDrop();"
                             class="w-full text-left px-4 py-2.5 text-xs font-medium text-amber-600 hover:bg-amber-50 flex items-center gap-2.5 transition">
                         <i class="fa fa-user-slash text-xs w-3"></i> Archive Employee
                     </button>
-                    {{-- Permanent Delete (admin only) --}}
                     @if(auth()->user()->role === 'admin')
                     <button type="button"
-                            onclick="openPermanentDeleteConfirm('{{ route('admin.users.permanent-delete', $member) }}','{{ addslashes($member->name) }}')"
-                            @click="open = false"
+                            onclick="openPermanentDeleteConfirm('{{ route('admin.users.permanent-delete', $member) }}','{{ addslashes($member->name) }}'); closeActDrop();"
                             class="w-full text-left px-4 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition">
                         <i class="fa fa-trash text-xs w-3"></i> Delete Permanently
                     </button>
@@ -347,6 +360,149 @@
 @if($members->hasPages())
 <div class="mt-5">{{ $members->links() }}</div>
 @endif
+</div>{{-- end cards view --}}
+
+{{-- ══ TABLE VIEW ══ --}}
+<div x-show="view === 'table'" x-cloak>
+<div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+    <table class="w-full">
+        <thead>
+            <tr class="border-b border-gray-100 bg-gray-50/50">
+                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Member</th>
+                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
+                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Open</th>
+                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Done</th>
+                @if(in_array(auth()->user()->role, ['admin', 'manager']))
+                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                @endif
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50">
+            @forelse($members as $member)
+            @php
+                $canViewDash2 = !(auth()->user()->role === 'manager' && $member->role === 'admin');
+                $aColor2      = $avatarColors[$loop->index % count($avatarColors)];
+            @endphp
+            <tr class="hover:bg-gray-50/70 transition {{ $canViewDash2 ? 'cursor-pointer' : '' }}"
+                @if($canViewDash2) onclick="window.location.href='{{ route('admin.users.dashboard', $member) }}'" @endif>
+
+                {{-- Member --}}
+                <td class="px-5 py-3.5">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center"
+                             style="background:{{ $aColor2 }};">
+                            @if($member->avatarUrl())
+                                <img src="{{ $member->avatarUrl() }}" class="w-full h-full object-cover">
+                            @else
+                                <span class="text-white font-bold text-sm">{{ strtoupper(substr($member->name,0,1)) }}</span>
+                            @endif
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900 leading-none">{{ $member->name }}</p>
+                            <p class="text-xs text-gray-400 mt-0.5">{{ $member->email }}</p>
+                            @if($member->job_title)
+                            <p class="text-xs text-indigo-400 mt-0.5">{{ $member->job_title }}</p>
+                            @endif
+                        </div>
+                    </div>
+                </td>
+
+                {{-- Role --}}
+                <td class="px-5 py-3.5">
+                    <span class="text-xs px-2.5 py-1 rounded-full font-medium {{ $roleBg[$member->role] ?? 'bg-gray-100 text-gray-600' }}">
+                        {{ ucfirst($member->role) }}
+                    </span>
+                </td>
+
+                {{-- Status --}}
+                <td class="px-5 py-3.5">
+                    @if($member->status === 'inactive')
+                    <span class="text-xs px-2.5 py-1 rounded-full font-semibold bg-amber-100 text-amber-700">Held</span>
+                    @else
+                    <span class="text-xs px-2.5 py-1 rounded-full font-semibold bg-emerald-100 text-emerald-700">Active</span>
+                    @endif
+                </td>
+
+                {{-- Open Tasks --}}
+                <td class="px-5 py-3.5 text-sm text-gray-700 font-semibold">{{ $member->pending_tasks }}</td>
+
+                {{-- Done Tasks --}}
+                <td class="px-5 py-3.5 text-sm text-gray-500">{{ $member->completed_tasks }}</td>
+
+                {{-- Actions --}}
+                @if(in_array(auth()->user()->role, ['admin', 'manager']))
+                @php $isAdminTarget2 = $member->role === 'admin'; $isManager2 = auth()->user()->role === 'manager'; $managerBlocked2 = $isManager2 && $isAdminTarget2; @endphp
+                <td class="px-5 py-3.5" onclick="event.stopPropagation()">
+                    <div class="flex items-center gap-2">
+                        @if(!$managerBlocked2)
+                        <button type="button"
+                                onclick='window.dispatchEvent(new CustomEvent("open-edit-user",{detail:{{ json_encode(['id'=>$member->id,'name'=>$member->name,'username'=>$member->username??'','email'=>$member->email,'phone'=>$member->phone??'','job_title'=>$member->job_title??'','nationality'=>$member->nationality??'','role'=>$member->role,'status'=>$member->status,'avatar'=>$member->avatarUrl()??'','hourly_rate'=>$member->hourly_rate??'']) }}}))'
+                                class="text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition">
+                            <i class="fa fa-pen text-xs mr-1"></i> Edit
+                        </button>
+                        @endif
+                        <div>
+                            @if($managerBlocked2)
+                            <div class="text-xs bg-gray-50 text-gray-300 px-2.5 py-1.5 rounded-lg font-medium cursor-not-allowed">Actions</div>
+                            @else
+                            <button type="button"
+                                    onclick="toggleActDrop(this, 'act-tbl-{{ $member->id }}')"
+                                    class="act-drop-trigger text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2.5 py-1.5 rounded-lg transition font-medium flex items-center gap-1">
+                                Actions <i class="fa fa-chevron-down text-xs"></i>
+                            </button>
+                            <div id="act-tbl-{{ $member->id }}" class="act-drop" style="display:none;position:fixed;min-width:180px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.18);border:1px solid #F3F4F6;z-index:9999;overflow:hidden;">
+                                <form method="POST" action="{{ route('admin.users.hold', $member) }}">
+                                    @csrf
+                                    <button type="submit"
+                                            class="w-full text-left px-4 py-2.5 text-xs font-medium flex items-center gap-2.5 transition
+                                                   {{ $member->status === 'inactive' ? 'text-emerald-600 hover:bg-emerald-50' : 'text-amber-600 hover:bg-amber-50' }}">
+                                        <i class="fa {{ $member->status === 'inactive' ? 'fa-lock-open' : 'fa-lock' }} text-xs w-3"></i>
+                                        {{ $member->status === 'inactive' ? 'Release Hold' : 'Hold Account' }}
+                                    </button>
+                                </form>
+                                <button type="button"
+                                        onclick="openTransferModal({{ $member->id }}, '{{ addslashes($member->name) }}'); closeActDrop();"
+                                        class="w-full text-left px-4 py-2.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50 flex items-center gap-2.5 transition">
+                                    <i class="fa fa-right-left text-xs w-3"></i> Transfer Tasks
+                                </button>
+                                <div style="height:1px;background:#F3F4F6;margin:2px 0;"></div>
+                                <button type="button"
+                                        onclick="openDeleteConfirm('{{ route('admin.users.destroy', $member) }}','{{ addslashes($member->name) }}'); closeActDrop();"
+                                        class="w-full text-left px-4 py-2.5 text-xs font-medium text-amber-600 hover:bg-amber-50 flex items-center gap-2.5 transition">
+                                    <i class="fa fa-user-slash text-xs w-3"></i> Archive Employee
+                                </button>
+                                @if(auth()->user()->role === 'admin')
+                                <button type="button"
+                                        onclick="openPermanentDeleteConfirm('{{ route('admin.users.permanent-delete', $member) }}','{{ addslashes($member->name) }}'); closeActDrop();"
+                                        class="w-full text-left px-4 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition">
+                                    <i class="fa fa-trash text-xs w-3"></i> Delete Permanently
+                                </button>
+                                @endif
+                            </div>
+                            @endif
+                        </div>
+                    </div>
+                </td>
+                @endif
+            </tr>
+            @empty
+            <tr>
+                <td colspan="{{ in_array(auth()->user()->role, ['admin','manager']) ? 6 : 5 }}" class="px-5 py-12 text-center">
+                    <i class="fa fa-users text-4xl text-gray-200 mb-3"></i>
+                    <p class="text-sm text-gray-400">No team members found</p>
+                </td>
+            </tr>
+            @endforelse
+        </tbody>
+    </table>
+    @if($members->hasPages())
+    <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/50">{{ $members->links() }}</div>
+    @endif
+</div>
+</div>{{-- end table view --}}
+
+</div>{{-- end view toggle wrapper --}}
 
 @endif {{-- team view --}}
 
@@ -1290,8 +1446,38 @@ function rolesTab() {
 
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Phone Number</label>
-                        <input type="tel" name="phone" x-model="phone" maxlength="30"
-                               style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;">
+                        <div style="position:relative;">
+                            <div style="display:flex;border:1.5px solid #E5E7EB;border-radius:10px;overflow:hidden;background:#F9FAFB;">
+                                <button type="button" @click.stop="phoneDropOpen = !phoneDropOpen" @click.outside="phoneDropOpen = false"
+                                        style="display:flex;align-items:center;gap:5px;padding:8px 10px;background:#F3F4F6;border:none;border-right:1.5px solid #E5E7EB;cursor:pointer;outline:none;flex-shrink:0;min-width:80px;">
+                                    <span x-text="dialFlag" style="font-size:15px;line-height:1;"></span>
+                                    <span x-text="dialCode" style="font-size:12px;font-weight:600;color:#374151;"></span>
+                                    <i class="fas fa-chevron-down" style="font-size:9px;color:#9CA3AF;" :style="phoneDropOpen ? 'transform:rotate(180deg);' : ''"></i>
+                                </button>
+                                <input type="tel" x-model="localPhone" placeholder="50 123 4567" maxlength="25"
+                                       style="flex:1;padding:9px 10px;border:none;font-size:13px;background:transparent;color:#111827;outline:none;min-width:0;">
+                            </div>
+                            <input type="hidden" name="phone" :value="fullPhone">
+                            {{-- Dropdown --}}
+                            <div x-show="phoneDropOpen" x-cloak @click.outside="phoneDropOpen = false"
+                                 style="position:absolute;top:calc(100% + 4px);left:0;z-index:200;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,0.13);width:250px;overflow:hidden;">
+                                <div style="padding:7px;">
+                                    <input type="text" x-model="phoneSearch" placeholder="Search country…" @click.stop
+                                           style="width:100%;padding:6px 9px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;outline:none;box-sizing:border-box;">
+                                </div>
+                                <div style="max-height:200px;overflow-y:auto;">
+                                    <template x-for="c in phoneFiltered" :key="c.code">
+                                        <button type="button" @click.stop="pickDial(c)"
+                                                :style="dialCode === c.dial ? 'background:#EEF2FF;' : ''"
+                                                style="width:100%;text-align:left;padding:7px 12px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;gap:8px;">
+                                            <span x-text="c.flag" style="font-size:15px;line-height:1;flex-shrink:0;"></span>
+                                            <span x-text="c.name" style="flex:1;font-size:12px;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+                                            <span x-text="c.dial" style="font-size:11px;color:#9CA3AF;font-weight:600;flex-shrink:0;"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div>
@@ -1365,6 +1551,21 @@ function rolesTab() {
                             <option value="inactive">Inactive</option>
                         </select>
                     </div>
+
+                    @if(($appSettings['hide_hourly_rate'] ?? '0') !== '1')
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">
+                            Hourly Rate
+                            <span style="font-size:10px;font-weight:400;color:#9CA3AF;">— used in billing reports</span>
+                        </label>
+                        <div style="position:relative;">
+                            <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;color:#9CA3AF;font-weight:600;">$</span>
+                            <input type="number" name="hourly_rate" x-model="hourlyRate"
+                                   min="0" max="9999.99" step="0.01" placeholder="0.00"
+                                   style="width:100%;padding:9px 12px 9px 26px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;">
+                        </div>
+                    </div>
+                    @endif
 
                 </div>
 
@@ -1458,6 +1659,106 @@ window.nationalityList = [
 </script>
 
 <script>
+/* ─── Country dial-code list (shared by phonePicker + editUserModal) ─── */
+window.PHONE_COUNTRIES = [
+    /* Priority: Middle East */
+    {code:'AE',flag:'🇦🇪',name:'UAE',          dial:'+971'},
+    {code:'SA',flag:'🇸🇦',name:'Saudi Arabia',  dial:'+966'},
+    {code:'KW',flag:'🇰🇼',name:'Kuwait',        dial:'+965'},
+    {code:'BH',flag:'🇧🇭',name:'Bahrain',       dial:'+973'},
+    {code:'QA',flag:'🇶🇦',name:'Qatar',         dial:'+974'},
+    {code:'OM',flag:'🇴🇲',name:'Oman',          dial:'+968'},
+    {code:'JO',flag:'🇯🇴',name:'Jordan',        dial:'+962'},
+    {code:'LB',flag:'🇱🇧',name:'Lebanon',       dial:'+961'},
+    {code:'EG',flag:'🇪🇬',name:'Egypt',         dial:'+20'},
+    {code:'IQ',flag:'🇮🇶',name:'Iraq',          dial:'+964'},
+    {code:'SY',flag:'🇸🇾',name:'Syria',         dial:'+963'},
+    {code:'YE',flag:'🇾🇪',name:'Yemen',         dial:'+967'},
+    {code:'PS',flag:'🇵🇸',name:'Palestine',     dial:'+970'},
+    {code:'MA',flag:'🇲🇦',name:'Morocco',       dial:'+212'},
+    {code:'TN',flag:'🇹🇳',name:'Tunisia',       dial:'+216'},
+    {code:'LY',flag:'🇱🇾',name:'Libya',         dial:'+218'},
+    {code:'SD',flag:'🇸🇩',name:'Sudan',         dial:'+249'},
+    /* Rest of world */
+    {code:'US',flag:'🇺🇸',name:'United States', dial:'+1'},
+    {code:'GB',flag:'🇬🇧',name:'UK',            dial:'+44'},
+    {code:'IN',flag:'🇮🇳',name:'India',         dial:'+91'},
+    {code:'PK',flag:'🇵🇰',name:'Pakistan',      dial:'+92'},
+    {code:'PH',flag:'🇵🇭',name:'Philippines',   dial:'+63'},
+    {code:'BD',flag:'🇧🇩',name:'Bangladesh',    dial:'+880'},
+    {code:'LK',flag:'🇱🇰',name:'Sri Lanka',     dial:'+94'},
+    {code:'NP',flag:'🇳🇵',name:'Nepal',         dial:'+977'},
+    {code:'ID',flag:'🇮🇩',name:'Indonesia',     dial:'+62'},
+    {code:'MY',flag:'🇲🇾',name:'Malaysia',      dial:'+60'},
+    {code:'SG',flag:'🇸🇬',name:'Singapore',     dial:'+65'},
+    {code:'TH',flag:'🇹🇭',name:'Thailand',      dial:'+66'},
+    {code:'VN',flag:'🇻🇳',name:'Vietnam',       dial:'+84'},
+    {code:'CN',flag:'🇨🇳',name:'China',         dial:'+86'},
+    {code:'JP',flag:'🇯🇵',name:'Japan',         dial:'+81'},
+    {code:'KR',flag:'🇰🇷',name:'South Korea',   dial:'+82'},
+    {code:'TR',flag:'🇹🇷',name:'Turkey',        dial:'+90'},
+    {code:'IR',flag:'🇮🇷',name:'Iran',          dial:'+98'},
+    {code:'NG',flag:'🇳🇬',name:'Nigeria',       dial:'+234'},
+    {code:'GH',flag:'🇬🇭',name:'Ghana',         dial:'+233'},
+    {code:'KE',flag:'🇰🇪',name:'Kenya',         dial:'+254'},
+    {code:'ET',flag:'🇪🇹',name:'Ethiopia',      dial:'+251'},
+    {code:'ZA',flag:'🇿🇦',name:'South Africa',  dial:'+27'},
+    {code:'FR',flag:'🇫🇷',name:'France',        dial:'+33'},
+    {code:'DE',flag:'🇩🇪',name:'Germany',       dial:'+49'},
+    {code:'IT',flag:'🇮🇹',name:'Italy',         dial:'+39'},
+    {code:'ES',flag:'🇪🇸',name:'Spain',         dial:'+34'},
+    {code:'RU',flag:'🇷🇺',name:'Russia',        dial:'+7'},
+    {code:'UA',flag:'🇺🇦',name:'Ukraine',       dial:'+380'},
+    {code:'BR',flag:'🇧🇷',name:'Brazil',        dial:'+55'},
+    {code:'MX',flag:'🇲🇽',name:'Mexico',        dial:'+52'},
+    {code:'CA',flag:'🇨🇦',name:'Canada',        dial:'+1'},
+    {code:'AU',flag:'🇦🇺',name:'Australia',     dial:'+61'},
+];
+
+/* Parse a full phone string into {dial, local} */
+window.parsePhoneNumber = function(full) {
+    if (!full) return { dial: '+971', local: '' };
+    const sorted = [...window.PHONE_COUNTRIES].sort((a, b) => b.dial.length - a.dial.length);
+    for (const c of sorted) {
+        if (full.startsWith(c.dial)) return { dial: c.dial, local: full.slice(c.dial.length).trim() };
+    }
+    return { dial: '+971', local: full };
+};
+
+/* Standalone phonePicker Alpine component (used in add-user modal & other pages) */
+function phonePicker(initialFull) {
+    const p = window.parsePhoneNumber(initialFull || '');
+    const initial = window.PHONE_COUNTRIES.find(c => c.dial === p.dial) || window.PHONE_COUNTRIES[0];
+    return {
+        selected: initial,
+        local:    p.local,
+        search:   '',
+        open:     false,
+        dropTop:  0,
+        dropLeft: 0,
+        dropW:    250,
+        get filtered() {
+            const q = this.search.toLowerCase();
+            return q ? window.PHONE_COUNTRIES.filter(c => c.name.toLowerCase().includes(q) || c.dial.includes(q)) : window.PHONE_COUNTRIES;
+        },
+        get full() {
+            const n = this.local.replace(/[\s\-\(\)]/g,'');
+            return n ? this.selected.dial + n : '';
+        },
+        toggle(btn) {
+            if (!this.open) {
+                const r = btn.getBoundingClientRect();
+                this.dropTop  = r.bottom + 4;
+                this.dropLeft = r.left;
+                const overflow = this.dropLeft + this.dropW - window.innerWidth + 8;
+                if (overflow > 0) this.dropLeft -= overflow;
+            }
+            this.open = !this.open;
+        },
+        pick(c) { this.selected = c; this.search = ''; this.open = false; },
+    };
+}
+
 function editUserModal() {
     return {
         show:         false,
@@ -1471,7 +1772,23 @@ function editUserModal() {
         nationality:  '',
         role:         '',
         status:       '',
+        hourlyRate:   '',
         avatarPreview: null,
+        /* phone picker */
+        dialCode:     '+971',
+        dialFlag:     '🇦🇪',
+        localPhone:   '',
+        phoneSearch:  '',
+        phoneDropOpen:false,
+        get phoneFiltered() {
+            const q = this.phoneSearch.toLowerCase();
+            return q ? window.PHONE_COUNTRIES.filter(c => c.name.toLowerCase().includes(q) || c.dial.includes(q)) : window.PHONE_COUNTRIES;
+        },
+        get fullPhone() {
+            const n = this.localPhone.replace(/[\s\-\(\)]/g,'');
+            return n ? this.dialCode + n : '';
+        },
+        pickDial(c) { this.dialCode = c.dial; this.dialFlag = c.flag; this.phoneSearch = ''; this.phoneDropOpen = false; },
         natQuery: '', natOpen: false, natActiveIdx: -1,
         natDropTop: 0, natDropLeft: 0, natDropWidth: 0,
         get natFiltered() {
@@ -1508,7 +1825,16 @@ function editUserModal() {
             this.role          = u.role;
             this.status        = u.status;
             this.avatarPreview = u.avatar || null;
+            this.hourlyRate    = u.hourly_rate || '';
             this.saving        = false;
+            /* parse phone into dial-code + local */
+            const pp = window.parsePhoneNumber(u.phone || '');
+            const country = window.PHONE_COUNTRIES.find(c => c.dial === pp.dial) || window.PHONE_COUNTRIES[0];
+            this.dialCode      = country.dial;
+            this.dialFlag      = country.flag;
+            this.localPhone    = pp.local;
+            this.phoneSearch   = '';
+            this.phoneDropOpen = false;
             this.show          = true;
             document.body.style.overflow = 'hidden';
         },
@@ -1614,8 +1940,39 @@ function editUserModal() {
                     </div>
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Phone Number</label>
-                        <input type="tel" name="phone" placeholder="+1 555 000 0000" maxlength="30"
-                               style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;">
+                        <div x-data="phonePicker('')" @click.outside="open = false">
+                            <div style="display:flex;border:1.5px solid #E5E7EB;border-radius:10px;overflow:hidden;background:#F9FAFB;">
+                                <button type="button" x-ref="phoneBtn"
+                                        @click.stop="toggle($refs.phoneBtn)"
+                                        style="display:flex;align-items:center;gap:5px;padding:8px 10px;background:#F3F4F6;border:none;border-right:1.5px solid #E5E7EB;cursor:pointer;outline:none;flex-shrink:0;min-width:80px;">
+                                    <span x-text="selected.flag" style="font-size:15px;line-height:1;"></span>
+                                    <span x-text="selected.dial" style="font-size:12px;font-weight:600;color:#374151;"></span>
+                                    <i class="fas fa-chevron-down" style="font-size:9px;color:#9CA3AF;transition:transform .15s;" :style="open ? 'transform:rotate(180deg)' : ''"></i>
+                                </button>
+                                <input type="tel" x-model="local" placeholder="50 123 4567" maxlength="25"
+                                       style="flex:1;padding:9px 10px;border:none;font-size:13px;background:transparent;color:#111827;outline:none;min-width:0;">
+                            </div>
+                            <input type="hidden" name="phone" :value="full">
+                            <div x-show="open" x-cloak
+                                 :style="`position:fixed;top:${dropTop}px;left:${dropLeft}px;width:${dropW}px;`"
+                                 style="z-index:9999;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,0.15);overflow:hidden;">
+                                <div style="padding:7px;">
+                                    <input type="text" x-model="search" placeholder="Search country…" @click.stop
+                                           style="width:100%;padding:6px 9px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;outline:none;box-sizing:border-box;">
+                                </div>
+                                <div style="max-height:200px;overflow-y:auto;">
+                                    <template x-for="c in filtered" :key="c.code">
+                                        <button type="button" @click.stop="pick(c)"
+                                                :style="selected.code === c.code ? 'background:#EEF2FF;' : ''"
+                                                style="width:100%;text-align:left;padding:7px 12px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;gap:8px;">
+                                            <span x-text="c.flag" style="font-size:15px;line-height:1;flex-shrink:0;"></span>
+                                            <span x-text="c.name" style="flex:1;font-size:12px;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+                                            <span x-text="c.dial" style="font-size:11px;color:#9CA3AF;font-weight:600;flex-shrink:0;"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Job Title</label>
@@ -2010,5 +2367,38 @@ function openTransferModal(userId, userName) {
 function closeTransferModal() {
     document.getElementById('transfer-modal').style.display = 'none';
 }
+
+// ── Actions dropdown (fixed-position, escapes overflow:hidden) ────────────
+let _openActDrop = null;
+
+function toggleActDrop(btn, id) {
+    const drop = document.getElementById(id);
+    if (!drop) return;
+    // If this exact drop is already open, close it
+    if (_openActDrop === drop) { closeActDrop(); return; }
+    // Close any other open drop
+    closeActDrop();
+    // Position under the button using fixed coords
+    const r = btn.getBoundingClientRect();
+    drop.style.top   = (r.bottom + 6) + 'px';
+    drop.style.right = (window.innerWidth - r.right) + 'px';
+    drop.style.left  = 'auto';
+    drop.style.display = 'block';
+    _openActDrop = drop;
+}
+
+function closeActDrop() {
+    if (_openActDrop) { _openActDrop.style.display = 'none'; _openActDrop = null; }
+}
+
+document.addEventListener('click', function(e) {
+    if (_openActDrop && !_openActDrop.contains(e.target) && !e.target.closest('.act-drop-trigger')) {
+        closeActDrop();
+    }
+});
+
+// Re-position on scroll/resize so the drop doesn't drift
+window.addEventListener('scroll', closeActDrop, true);
+window.addEventListener('resize', closeActDrop);
 </script>
 @endsection

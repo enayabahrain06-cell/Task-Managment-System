@@ -257,6 +257,18 @@ document.addEventListener('keydown', function(e) {
             </span>
             @endif
         </button>
+        <button id="completed-tab-btn" @click="tab='completed'"
+                :class="tab==='completed'
+                    ? 'bg-white text-green-600 shadow-sm'
+                    : 'bg-transparent text-gray-500 hover:text-gray-700'"
+                class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition border-none cursor-pointer font-sans">
+            <i class="fas fa-circle-check text-xs"></i> Completed
+            @if($completedTasks->count() > 0)
+            <span style="font-size:10px;font-weight:700;background:#D1FAE5;color:#059669;padding:1px 6px;border-radius:20px;line-height:1.6;">
+                {{ $completedTasks->count() }}
+            </span>
+            @endif
+        </button>
     </div>
 
     {{-- ══ MY TASKS ══ --}}
@@ -271,13 +283,13 @@ document.addEventListener('keydown', function(e) {
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #F3F4F6;">
                         <div>
                             <h3 style="font-size:14px;font-weight:700;color:#111827;margin:0;">My Tasks</h3>
-                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Sorted by urgency</p>
+                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Active &amp; in progress</p>
                         </div>
                         @unless($isPreview)
                         <a href="{{ route('user.tasks.index') }}" style="font-size:11px;font-weight:600;color:#6366F1;text-decoration:none;background:#EEF2FF;padding:5px 12px;border-radius:7px;">View all</a>
                         @endunless
                     </div>
-                    @forelse($tasks->take(8) as $task)
+                    @forelse($tasks->take(10) as $task)
                     @php
                         $doneStatuses = ['approved','delivered','archived'];
                         $isDone = in_array($task->status, $doneStatuses);
@@ -344,11 +356,65 @@ document.addEventListener('keydown', function(e) {
                     @endif
                     @empty
                     <div style="text-align:center;padding:48px 20px;">
-                        <i class="fas fa-clipboard-list" style="color:#E5E7EB;font-size:36px;display:block;margin-bottom:12px;"></i>
-                        <p style="font-size:13px;color:#9CA3AF;margin:0;">No tasks assigned yet</p>
+                        <i class="fas fa-circle-check" style="color:#D1FAE5;font-size:36px;display:block;margin-bottom:12px;"></i>
+                        <p style="font-size:13px;font-weight:600;color:#111827;margin:0 0 4px;">All caught up!</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:0;">No active tasks right now</p>
                     </div>
                     @endforelse
                 </div>
+
+                {{-- Completed Tasks --}}
+                @if($completedTasks->isNotEmpty())
+                <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #F3F4F6;">
+                        <div>
+                            <h3 style="font-size:14px;font-weight:700;color:#111827;margin:0;">
+                                <i class="fas fa-circle-check" style="color:#16A34A;margin-right:6px;font-size:13px;"></i>Completed Tasks
+                            </h3>
+                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Approved &amp; delivered by your manager</p>
+                        </div>
+                        <span style="font-size:11px;font-weight:700;color:#16A34A;background:#F0FDF4;padding:4px 12px;border-radius:20px;border:1px solid #BBF7D0;">{{ $completedTasks->count() }} task{{ $completedTasks->count() !== 1 ? 's' : '' }}</span>
+                    </div>
+                    @foreach($completedTasks->take(8) as $task)
+                    @php
+                        $cSm = [
+                            'approved'  => ['#F0FDF4','#16A34A','Approved'],
+                            'delivered' => ['#ECFDF5','#047857','Delivered'],
+                            'archived'  => ['#F3F4F6','#6B7280','Archived'],
+                        ];
+                        [$cBg,$cCo,$cLbl] = $cSm[$task->status] ?? ['#F8FAFC','#9CA3AF',ucfirst($task->status)];
+                        $cPco = ['high'=>'#DC2626','medium'=>'#D97706','low'=>'#16A34A'][$task->priority] ?? '#9CA3AF';
+                    @endphp
+                    <a href="{{ $isPreview ? route('admin.tasks.show',$task) : route('user.tasks.show',$task) }}"
+                       style="display:flex;align-items:center;gap:12px;padding:11px 20px;border-bottom:1px solid #F9FAFB;text-decoration:none;background:#fff;transition:background .1s;"
+                       onmouseover="this.style.background='#F9FFF9'" onmouseout="this.style.background='#fff'">
+                        <div style="width:8px;height:8px;border-radius:50%;background:{{ $cPco }};flex-shrink:0;margin-top:1px;opacity:0.5;"></div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                <p style="font-size:13px;font-weight:500;color:#6B7280;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:line-through;">{{ $task->title }}</p>
+                                @if(!empty($task->is_received))
+                                <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:5px;background:#FEF9C3;color:#854D0E;flex-shrink:0;white-space:nowrap;border:1px solid #FDE68A;">
+                                    <i class="fas fa-arrows-rotate" style="font-size:8px;margin-right:2px;"></i>{{ $task->from_user ? 'from '.$task->from_user : 'Reassigned' }}
+                                </span>
+                                @endif
+                            </div>
+                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">{{ $task->project?->name }}</p>
+                        </div>
+                        <span style="font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;background:{{ $cBg }};color:{{ $cCo }};flex-shrink:0;">{{ $cLbl }}</span>
+                        <span style="font-size:11px;font-weight:500;color:#9CA3AF;flex-shrink:0;white-space:nowrap;min-width:60px;text-align:right;">
+                            <i class="fas fa-check" style="font-size:9px;color:#16A34A;margin-right:2px;"></i>Done
+                        </span>
+                    </a>
+                    @endforeach
+                    @if($completedTasks->count() > 8)
+                    <div style="padding:10px 20px;text-align:center;">
+                        @unless($isPreview)
+                        <a href="{{ route('user.tasks.index') }}" style="font-size:12px;color:#6B7280;text-decoration:none;">+{{ $completedTasks->count() - 8 }} more &mdash; View all tasks</a>
+                        @endunless
+                    </div>
+                    @endif
+                </div>
+                @endif
 
                 {{-- Activity --}}
                 <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
@@ -825,6 +891,110 @@ document.addEventListener('keydown', function(e) {
                 @endforeach
             </div>
             @endif
+
+        </div>
+        @endif
+    </div>
+
+    {{-- ══ COMPLETED TASKS ══ --}}
+    <div x-show="tab==='completed'" x-cloak>
+        @if($completedTasks->isEmpty())
+        <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:64px;text-align:center;">
+            <div style="width:56px;height:56px;border-radius:50%;background:#F0FDF4;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                <i class="fas fa-circle-check" style="color:#BBF7D0;font-size:24px;"></i>
+            </div>
+            <p style="font-size:14px;font-weight:600;color:#374151;margin:0 0 4px;">No completed tasks yet</p>
+            <p style="font-size:12px;color:#9CA3AF;margin:0;">Tasks approved or delivered by your manager will appear here.</p>
+        </div>
+        @else
+        <div style="display:flex;flex-direction:column;gap:18px;">
+
+            {{-- Summary bar --}}
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+                @php
+                    $ctApproved  = $completedTasks->where('status','approved')->count();
+                    $ctDelivered = $completedTasks->where('status','delivered')->count();
+                    $ctArchived  = $completedTasks->where('status','archived')->count();
+                    $ctSummary   = [
+                        ['Approved',  $ctApproved,  'fa-circle-check',  '#F0FDF4','#16A34A','#BBF7D0'],
+                        ['Delivered', $ctDelivered, 'fa-box-open',      '#ECFDF5','#047857','#A7F3D0'],
+                        ['Archived',  $ctArchived,  'fa-archive',       '#F9FAFB','#6B7280','#E5E7EB'],
+                    ];
+                @endphp
+                @foreach($ctSummary as [$ctLabel,$ctCount,$ctIcon,$ctBg,$ctColor,$ctBorder])
+                <div style="background:{{ $ctBg }};border-radius:12px;border:1px solid {{ $ctBorder }};padding:16px 20px;display:flex;align-items:center;gap:12px;">
+                    <div style="width:36px;height:36px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.06);">
+                        <i class="fas {{ $ctIcon }}" style="color:{{ $ctColor }};font-size:15px;"></i>
+                    </div>
+                    <div>
+                        <p style="font-size:20px;font-weight:800;color:{{ $ctColor }};margin:0;line-height:1;">{{ $ctCount }}</p>
+                        <p style="font-size:11px;color:{{ $ctColor }};margin:2px 0 0;opacity:.8;">{{ $ctLabel }}</p>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+
+            {{-- Task list --}}
+            <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
+                <div style="padding:16px 20px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
+                    <div>
+                        <h3 style="font-size:14px;font-weight:700;color:#111827;margin:0;">All Completed Tasks</h3>
+                        <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Tasks approved or delivered by your manager</p>
+                    </div>
+                    <span style="font-size:11px;font-weight:700;color:#16A34A;background:#F0FDF4;padding:4px 12px;border-radius:20px;border:1px solid #BBF7D0;">{{ $completedTasks->count() }} total</span>
+                </div>
+                @foreach($completedTasks as $ct)
+                @php
+                    $ctSm = [
+                        'approved'  => ['#F0FDF4','#16A34A','Approved',  'fa-circle-check'],
+                        'delivered' => ['#ECFDF5','#047857','Delivered', 'fa-box-open'],
+                        'archived'  => ['#F3F4F6','#6B7280','Archived',  'fa-archive'],
+                    ];
+                    [$ctRowBg,$ctRowCo,$ctRowLbl,$ctRowIcon] = $ctSm[$ct->status] ?? ['#F8FAFC','#9CA3AF',ucfirst($ct->status),'fa-check'];
+                    $ctPco = ['high'=>'#DC2626','medium'=>'#D97706','low'=>'#16A34A'][$ct->priority] ?? '#9CA3AF';
+                    $ctPLabel = ['high'=>'High','medium'=>'Medium','low'=>'Low'][$ct->priority] ?? '';
+                @endphp
+                <a href="{{ $isPreview ? route('admin.tasks.show',$ct) : route('user.tasks.show',$ct) }}"
+                   style="display:flex;align-items:center;gap:14px;padding:13px 20px;border-bottom:1px solid #F9FAFB;text-decoration:none;background:#fff;transition:background .15s;"
+                   onmouseover="this.style.background='#F9FFF9'" onmouseout="this.style.background='#fff'">
+
+                    {{-- Status icon --}}
+                    <div style="width:36px;height:36px;border-radius:10px;background:{{ $ctRowBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid {{ $ctRowBg }};">
+                        <i class="fas {{ $ctRowIcon }}" style="color:{{ $ctRowCo }};font-size:14px;"></i>
+                    </div>
+
+                    {{-- Title + project --}}
+                    <div style="flex:1;min-width:0;">
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <p style="font-size:13px;font-weight:600;color:#6B7280;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:line-through;">{{ $ct->title }}</p>
+                            @if(!empty($ct->is_received))
+                            <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:5px;background:#FEF9C3;color:#854D0E;flex-shrink:0;white-space:nowrap;border:1px solid #FDE68A;">
+                                <i class="fas fa-arrows-rotate" style="font-size:8px;margin-right:2px;"></i>{{ $ct->from_user ? 'from '.$ct->from_user : 'Reassigned' }}
+                            </span>
+                            @endif
+                        </div>
+                        <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">
+                            @if($ct->project)<i class="fas fa-folder" style="font-size:9px;margin-right:3px;color:#C4B5FD;"></i>{{ $ct->project->name }}@endif
+                            @if($ct->project && $ctPLabel) &nbsp;·&nbsp; @endif
+                            @if($ctPLabel)<span style="color:{{ $ctPco }};font-weight:600;">{{ $ctPLabel }}</span>@endif
+                        </p>
+                    </div>
+
+                    {{-- Status badge --}}
+                    <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:{{ $ctRowBg }};color:{{ $ctRowCo }};flex-shrink:0;border:1px solid {{ $ctRowBg }};">{{ $ctRowLbl }}</span>
+
+                    {{-- Date --}}
+                    <div style="flex-shrink:0;text-align:right;min-width:64px;">
+                        @if($ct->deadline)
+                        <p style="font-size:11px;font-weight:500;color:#9CA3AF;margin:0;">{{ $ct->deadline->format('M d, Y') }}</p>
+                        <p style="font-size:10px;color:#BBF7D0;margin:2px 0 0;font-weight:600;"><i class="fas fa-check" style="font-size:8px;color:#16A34A;margin-right:2px;"></i>Done</p>
+                        @else
+                        <p style="font-size:11px;color:#9CA3AF;margin:0;"><i class="fas fa-check" style="font-size:9px;color:#16A34A;margin-right:3px;"></i>Done</p>
+                        @endif
+                    </div>
+                </a>
+                @endforeach
+            </div>
 
         </div>
         @endif

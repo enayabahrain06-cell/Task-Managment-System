@@ -21,6 +21,13 @@ class Customer extends Model
         'created_by',
     ];
 
+    public function whatsappUrl(): ?string
+    {
+        if (!$this->phone) return null;
+        $digits = preg_replace('/\D/', '', $this->phone);
+        return $digits ? 'https://wa.me/' . $digits : null;
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

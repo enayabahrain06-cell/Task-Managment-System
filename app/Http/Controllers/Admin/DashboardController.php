@@ -401,7 +401,7 @@ class DashboardController extends Controller
     {
         $users      = User::paginate(10);
         $projects   = Project::where('is_quick', false)->withCount('tasks')->paginate(10);
-        $allUsers   = User::where('role', 'user')->orderBy('name')->get();
+        $allUsers   = User::whereIn('role', ['user', 'manager'])->where('status', 'active')->orderBy('name')->get();
         $allProjects = Project::where('status', 'active')->where('is_quick', false)->orderBy('name')->get();
 
         $doneStatuses   = ['approved', 'delivered', 'archived'];

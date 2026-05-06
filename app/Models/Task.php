@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Collection;
 
 class Task extends Model
 {
@@ -23,6 +24,9 @@ class Task extends Model
         'social_assigned_to',
         'social_posted_at',
         'social_required',
+        'social_description',
+        'social_caption',
+        'social_budget',
         'status',
         'priority',
         'deadline',
@@ -111,6 +115,35 @@ class Task extends Model
     public function latestTransfer(): HasOne
     {
         return $this->hasOne(TaskTransfer::class)->latestOfMany('transferred_at');
+    }
+
+    public function timerSegments(): HasMany
+    {
+        return $this->hasMany(TaskTimerSegment::class)->orderBy('started_at');
+    }
+
+    public function activeTimerSegment(): HasOne
+    {
+        return $this->hasOne(TaskTimerSegment::class)->whereNull('ended_at')->latestOfMany('started_at');
+    }
+
+    /** Total completed seconds for a user (or all users) across all phases. */
+    public function totalTimerSeconds(?int $userId = null, ?string $phase = null): int
+    {
+        $query = $this->timerSegments()->whereNotNull('ended_at');
+        if ($userId) $query->where('user_id', $userId);
+        if ($phase)  $query->where('phase', $phase);
+        return (int) $query->sum('duration_seconds');
+    }
+
+    /** Seconds broken down by user_id for billing reports. */
+    public function timerSecondsByUser(): Collection
+    {
+        return $this->timerSegments()
+            ->selectRaw('user_id, phase, SUM(duration_seconds) as total_seconds')
+            ->whereNotNull('ended_at')
+            ->groupBy('user_id', 'phase')
+            ->get();
     }
 }
 

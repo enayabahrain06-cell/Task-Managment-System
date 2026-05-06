@@ -113,6 +113,14 @@
                                 <div style="display:flex;align-items:center;gap:5px;">
                                     <i class="fas fa-phone" style="font-size:11px;color:#9CA3AF;"></i>
                                     <span>{{ $customer->phone }}</span>
+                                    @if($customer->whatsappUrl())
+                                    <a href="{{ $customer->whatsappUrl() }}" target="_blank" rel="noopener"
+                                       title="WhatsApp"
+                                       style="display:inline-flex;align-items:center;padding:1px 6px;background:#25D366;color:#fff;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;margin-left:2px;"
+                                       onclick="event.stopPropagation()">
+                                        <i class="fab fa-whatsapp" style="font-size:11px;"></i>
+                                    </a>
+                                    @endif
                                 </div>
                                 @endif
                                 @if(!$customer->email && !$customer->phone)
@@ -191,6 +199,13 @@
                     </div>
                     {{-- Action buttons --}}
                     <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+                        @if($customer->whatsappUrl())
+                        <a href="{{ $customer->whatsappUrl() }}" target="_blank" rel="noopener"
+                           title="WhatsApp" onclick="event.stopPropagation()"
+                           style="width:28px;height:28px;border-radius:7px;background:#25D366;color:#fff;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:13px;">
+                            <i class="fab fa-whatsapp"></i>
+                        </a>
+                        @endif
                         <a href="{{ route('admin.customers.edit', $customer) }}"
                            style="width:28px;height:28px;border-radius:7px;background:#EEF2FF;color:#4F46E5;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:11px;">
                             <i class="fas fa-pencil"></i>
@@ -222,7 +237,14 @@
                         <div style="width:24px;height:24px;border-radius:6px;background:#F0FDF4;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                             <i class="fas fa-phone" style="font-size:10px;color:#16A34A;"></i>
                         </div>
-                        <a href="tel:{{ $customer->phone }}" style="font-size:12px;color:#374151;text-decoration:none;">{{ $customer->phone }}</a>
+                        <a href="tel:{{ $customer->phone }}" style="font-size:12px;color:#374151;text-decoration:none;" onclick="event.stopPropagation()">{{ $customer->phone }}</a>
+                        @if($customer->whatsappUrl())
+                        <a href="{{ $customer->whatsappUrl() }}" target="_blank" rel="noopener"
+                           onclick="event.stopPropagation()"
+                           style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;background:#25D366;color:#fff;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;margin-left:2px;">
+                            <i class="fab fa-whatsapp" style="font-size:11px;"></i> Chat
+                        </a>
+                        @endif
                     </div>
                     @endif
                 </div>
@@ -356,9 +378,7 @@
                     </div>
                     <div>
                         <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Phone</label>
-                        <input type="text" name="phone" value="{{ old('phone') }}"
-                               placeholder="+1 555 000 0000"
-                               style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;">
+                        @include('admin.customers._phone_picker', ['initialPhone' => old('phone', '')])
                     </div>
                 </div>
 
@@ -385,3 +405,7 @@
 
 </div>
 @endsection
+
+@push('scripts')
+@include('admin.customers._phone_picker_script')
+@endpush

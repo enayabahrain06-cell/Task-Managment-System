@@ -330,6 +330,18 @@
                 @csrf
                 <div style="flex:1;overflow-y:auto;padding:0 28px 4px;">
 
+                    {{-- Validation errors banner --}}
+                    @if($errors->hasAny(['name','deadline','customer_id']) || preg_grep('/^tasks\./', array_keys($errors->toArray())))
+                    <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px;">
+                        <i class="fas fa-circle-exclamation" style="color:#DC2626;margin-top:1px;font-size:13px;flex-shrink:0;"></i>
+                        <div style="font-size:12px;color:#B91C1C;line-height:1.6;">
+                            @foreach($errors->all() as $error)
+                                <div>{{ $error }}</div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+
                     {{-- Step 1: Details --}}
                     <div x-show="projectStep === 1">
                         <div style="margin-bottom:16px;">
@@ -673,13 +685,13 @@
 function dashModals() {
     return {
         /* ── Quick Task ── */
-        taskOpen:       {{ $errors->any() ? 'true' : 'false' }},
+        taskOpen:       {{ ($errors->any() && !$errors->hasAny(['name','deadline','customer_id']) && !preg_grep('/^tasks\./', array_keys($errors->toArray()))) ? 'true' : 'false' }},
         taskSubmitting: false,
         priority:       '{{ old('priority', 'medium') }}',
 
         /* ── Project Wizard ── */
-        projectOpen:    false,
-        projectStep:    1,
+        projectOpen:    {{ $errors->hasAny(['name','deadline','customer_id']) || $errors->has('tasks') || preg_grep('/^tasks\./', array_keys($errors->toArray())) ? 'true' : 'false' }},
+        projectStep:    {{ preg_grep('/^tasks\./', array_keys($errors->toArray())) ? 2 : ($errors->hasAny(['name','deadline','customer_id']) ? 1 : 1) }},
         pDragover:      false,
         pFiles:         [],
         pLinks:         [],

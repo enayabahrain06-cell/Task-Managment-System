@@ -77,6 +77,18 @@
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition">
                 </div>
 
+                @if(($appSettings['hide_hourly_rate'] ?? '0') !== '1')
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Hourly Rate <span class="text-gray-400 font-normal">(for billing reports)</span></label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-semibold">$</span>
+                        <input type="number" name="hourly_rate" step="0.01" min="0" value="{{ old('hourly_rate', $user->hourly_rate) }}" placeholder="0.00"
+                               class="w-full pl-7 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition">
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">Used to compute estimated cost per customer in time tracking reports.</p>
+                </div>
+                @endif
+
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Role <span class="text-red-400">*</span></label>
                     <select name="role" required

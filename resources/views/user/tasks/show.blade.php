@@ -11,6 +11,7 @@
         'assigned'           => ['bg'=>'#E0F2FE','color'=>'#0284C7','label'=>'Assigned'],
         'viewed'             => ['bg'=>'#EEF2FF','color'=>'#4F46E5','label'=>'Viewed'],
         'in_progress'        => ['bg'=>'#FEF3C7','color'=>'#D97706','label'=>'In Progress'],
+        'paused'             => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Paused'],
         'submitted'          => ['bg'=>'#EDE9FE','color'=>'#7C3AED','label'=>'Submitted for Review'],
         'revision_requested' => ['bg'=>'#FEE2E2','color'=>'#DC2626','label'=>'Revision Requested'],
         'approved'           => ['bg'=>'#D1FAE5','color'=>'#059669','label'=>'Approved'],
@@ -23,10 +24,10 @@
     $p = $priorityMap[$task->priority] ?? $priorityMap['medium'];
 
     $latestSubmission = $task->submissions->first();
-    $canSubmit = in_array($task->status, ['viewed', 'in_progress', 'revision_requested']);
+    $canSubmit = in_array($task->status, ['viewed', 'in_progress', 'paused', 'revision_requested']);
 
     // Workflow step index (for stepper)
-    $stepOrder = ['draft'=>0,'assigned'=>1,'viewed'=>2,'in_progress'=>3,'submitted'=>4,'approved'=>5,'delivered'=>6];
+    $stepOrder = ['draft'=>0,'assigned'=>1,'viewed'=>2,'in_progress'=>3,'paused'=>3,'submitted'=>4,'approved'=>5,'delivered'=>6];
     $currentStep = $stepOrder[$task->status] ?? ($task->status === 'revision_requested' ? 4 : 0);
     $steps = [
         ['key'=>'assigned',    'label'=>'Assigned'],
@@ -163,12 +164,21 @@
 @endif
 
 @if(session('success'))
-<div style="background:#D1FAE5;border:1px solid #A7F3D0;border-radius:10px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px;color:#065F46;font-size:14px;">
+<div style="background:#D1FAE5;border:1px solid #A7F3D0;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px;color:#065F46;font-size:14px;">
     <i class="fa fa-circle-check"></i> {{ session('success') }}
 </div>
 @endif
+@if(session('timer_warning'))
+<div style="background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:10px;color:#92400E;font-size:13px;">
+    <i class="fa fa-triangle-exclamation" style="color:#D97706;margin-top:1px;flex-shrink:0;"></i>
+    <div>
+        <strong style="display:block;margin-bottom:2px;">Outside Work Hours</strong>
+        {{ session('timer_warning') }}
+    </div>
+</div>
+@endif
 @if(session('error'))
-<div style="background:#FEE2E2;border:1px solid #FECACA;border-radius:10px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px;color:#991B1B;font-size:14px;">
+<div style="background:#FEE2E2;border:1px solid #FECACA;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px;color:#991B1B;font-size:14px;">
     <i class="fa fa-circle-exclamation"></i> {{ session('error') }}
 </div>
 @endif
@@ -345,8 +355,8 @@
                     <i class="fa fa-rotate-left" style="color:#DC2626;font-size:18px;"></i>
                 </div>
                 <div>
-                    <p style="font-size:14px;font-weight:700;color:#991B1B;margin:0;">Revision Requested</p>
-                    <p style="font-size:13px;color:#B91C1C;margin:2px 0 0;">Please review the feedback and resubmit your work.</p>
+                    <p style="font-size:14px;font-weight:700;color:#991B1B;margin:0;">Revision Requested — Action Required</p>
+                    <p style="font-size:13px;color:#B91C1C;margin:2px 0 0;">Read the admin feedback below, then confirm to resume your timer.</p>
                 </div>
             </div>
             @if($latestSubmission?->admin_note)
@@ -355,13 +365,32 @@
                 <p style="font-size:13px;color:#374151;margin:0;line-height:1.6;">{{ $latestSubmission->admin_note }}</p>
             </div>
             @endif
-            <form method="POST" action="{{ route('user.tasks.updateStatus', $task) }}">
-                @csrf @method('PATCH')
-                <input type="hidden" name="status" value="in_progress">
-                <input type="hidden" name="note" value="Acknowledged revision request — resuming work.">
+            <div style="background:#FFF7F7;border:1px dashed #FECACA;border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+                <i class="fa fa-lock" style="color:#DC2626;font-size:14px;flex-shrink:0;"></i>
+                <p style="font-size:12px;color:#991B1B;margin:0;line-height:1.5;">Your timer is paused until you acknowledge this revision. Clicking the button below starts your timer and begins tracking revision time.</p>
+            </div>
+            <form method="POST" action="{{ route('user.tasks.acknowledge-revision', $task) }}">
+                @csrf
                 <button type="submit"
-                        style="background:#DC2626;color:#fff;border:none;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;">
-                    <i class="fa fa-play"></i> Acknowledge & Resume Work
+                        style="background:linear-gradient(135deg,#DC2626,#B91C1C);color:#fff;border:none;padding:11px 22px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;box-shadow:0 4px 12px rgba(220,38,38,.25);">
+                    <i class="fa fa-circle-play"></i> I Accept &amp; Start Revision
+                </button>
+            </form>
+        </div>
+
+        @elseif($task->status === 'paused')
+        <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:12px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fa fa-circle-pause" style="color:#6B7280;font-size:16px;"></i>
+            </div>
+            <div style="flex:1;">
+                <p style="font-size:14px;font-weight:700;color:#374151;margin:0;">Timer Paused</p>
+                <p style="font-size:12px;color:#6B7280;margin:0;">Your timer is paused. Resume when you're ready to continue working.</p>
+            </div>
+            <form method="POST" action="{{ route('user.tasks.timer.start', $task) }}">
+                @csrf
+                <button type="submit" style="background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
+                    <i class="fa fa-circle-play"></i> Resume Timer
                 </button>
             </form>
         </div>
@@ -406,17 +435,40 @@
         @elseif($task->status === 'in_progress')
         <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:12px;">
             <div style="width:36px;height:36px;border-radius:50%;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                @if($activeSegment)
+                <span style="width:10px;height:10px;border-radius:50%;background:#D97706;animation:pulse 1.5s infinite;display:block;"></span>
+                @else
                 <i class="fa fa-circle-play" style="color:#D97706;font-size:16px;"></i>
+                @endif
             </div>
-            <div>
-                <p style="font-size:14px;font-weight:700;color:#92400E;margin:0;">Work in progress</p>
-                <p style="font-size:12px;color:#B45309;margin:0;">Submit your work below when you're ready for review.</p>
+            <div style="flex:1;">
+                <p style="font-size:14px;font-weight:700;color:#92400E;margin:0;">
+                    @if($activeSegment) Timer Running @else Work in Progress @endif
+                </p>
+                <p style="font-size:12px;color:#B45309;margin:0;">
+                    @if($activeSegment) Time is being tracked. Pause if you stop working. @else Click Start Timer to begin tracking time. @endif
+                </p>
             </div>
+            @if($activeSegment)
+            <form method="POST" action="{{ route('user.tasks.timer.pause', $task) }}">
+                @csrf
+                <button type="submit" style="background:#F59E0B;color:#fff;border:none;padding:9px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
+                    <i class="fa fa-circle-pause"></i> Pause
+                </button>
+            </form>
+            @else
+            <form method="POST" action="{{ route('user.tasks.timer.start', $task) }}">
+                @csrf
+                <button type="submit" style="background:linear-gradient(135deg,#D97706,#B45309);color:#fff;border:none;padding:9px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
+                    <i class="fa fa-circle-play"></i> Start Timer
+                </button>
+            </form>
+            @endif
         </div>
         @endif
 
         {{-- Unified: Comment + Submit --}}
-        @if($task->status !== 'revision_requested' && (auth()->user()->hasPermission('view_comments') || ($canSubmit && auth()->user()->hasPermission('submit_work'))))
+        @if(!in_array($task->status, ['revision_requested']) && (auth()->user()->hasPermission('view_comments') || ($canSubmit && auth()->user()->hasPermission('submit_work'))))
         <div x-data="{ uFile: '', showModal: false, body: '{{ old('body') }}' }" style="background:#fff;border-radius:14px;border:1.5px solid #6366F1;box-shadow:0 4px 16px rgba(99,102,241,.08);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 4px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-comment" style="color:#6366F1;"></i>
@@ -491,9 +543,8 @@
 
             {{-- Hidden start form (only when task is in viewed state) --}}
             @if($task->status === 'viewed')
-            <form id="_startForm" method="POST" action="{{ route('user.tasks.updateStatus', $task) }}" style="display:none;">
-                @csrf @method('PATCH')
-                <input type="hidden" name="status" value="in_progress">
+            <form id="_startForm" method="POST" action="{{ route('user.tasks.timer.start', $task) }}" style="display:none;">
+                @csrf
             </form>
             @endif
 
@@ -633,6 +684,14 @@
                             <span style="font-size:11px;background:#FEF3C7;color:#D97706;padding:2px 8px;border-radius:6px;">{{ Str::limit($meta['reason'], 80) }}</span>
                             @endif
                         </div>
+                        @elseif($log->action === 'auto_paused' && isset($meta['paused_by_task_id']))
+                        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;">
+                            <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                                <i class="fa fa-circle-pause" style="font-size:9px;"></i>
+                                paused — another task started:
+                                <strong>{{ Str::limit($meta['paused_by_task_title'], 50) }}</strong>
+                            </span>
+                        </div>
                         @elseif(isset($meta['old_status'], $meta['new_status']))
                         <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;display:inline-block;margin-top:3px;">
                             {{ str_replace('_',' ',$meta['old_status']) }} → <strong>{{ str_replace('_',' ',$meta['new_status']) }}</strong>
@@ -641,7 +700,7 @@
                         @if(isset($meta['rejection_reason']))
                         <p style="font-size:12px;color:#DC2626;background:#FEF2F2;padding:6px 10px;border-radius:8px;border-left:3px solid #EF4444;margin:5px 0 0;">"{{ $meta['rejection_reason'] }}"</p>
                         @endif
-                        @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','task_reassigned','task_transferred','deadline_updated']))
+                        @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','task_reassigned','task_transferred','deadline_updated','auto_paused']))
                         <p style="font-size:12px;color:#6B7280;background:#F9FAFB;padding:6px 10px;border-radius:8px;border-left:3px solid #E5E7EB;margin:5px 0 0;">"{{ $log->note }}"</p>
                         @endif
                     </div>
@@ -918,6 +977,86 @@
                 </div>
             </div>
         </div>
+
+        {{-- Timer Widget --}}
+        @php
+            $timerDoneStatuses = ['approved', 'delivered', 'archived'];
+            $showTimer = !in_array($task->status, ['draft', 'assigned']);
+            $timerRunning = $activeSegment !== null;
+            $activeSegmentStartTs = $activeSegment ? $activeSegment->started_at->timestamp : 0;
+        @endphp
+        @if($showTimer)
+        <div id="timerWidget" style="background:#fff;border-radius:14px;border:1px solid {{ $timerRunning ? '#FDE68A' : '#F3F4F6' }};box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;text-align:center;transition:border-color .3s;">
+            <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px;">
+                <i class="fa fa-stopwatch" style="color:{{ $timerRunning ? '#D97706' : '#9CA3AF' }};font-size:13px;"></i>
+                <h3 style="font-size:12px;font-weight:600;color:#6B7280;margin:0;text-transform:uppercase;letter-spacing:.04em;">Time Tracked</h3>
+                @if($timerRunning)
+                <span style="width:8px;height:8px;border-radius:50%;background:#D97706;animation:pulse 1.5s infinite;display:inline-block;margin-left:2px;"></span>
+                @endif
+            </div>
+            <p id="timerDisplay" style="font-size:30px;font-weight:700;color:#111827;margin:8px 0 4px;font-variant-numeric:tabular-nums;letter-spacing:-.5px;">00:00:00</p>
+            <p id="timerSession" style="font-size:11px;color:#9CA3AF;margin:0 0 14px;">
+                @if($timerRunning) Session running @elseif(in_array($task->status, $timerDoneStatuses)) Work complete @else Timer paused @endif
+            </p>
+            @if(!in_array($task->status, $timerDoneStatuses) && !in_array($task->status, ['submitted', 'revision_requested']))
+                @if($timerRunning)
+                <form method="POST" action="{{ route('user.tasks.timer.pause', $task) }}" style="display:inline;">
+                    @csrf
+                    <button type="submit" style="background:#F3F4F6;color:#374151;border:none;padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                        <i class="fa fa-circle-pause"></i> Pause Timer
+                    </button>
+                </form>
+                @elseif(in_array($task->status, ['in_progress', 'paused', 'viewed']))
+                <form method="POST" action="{{ route('user.tasks.timer.start', $task) }}" style="display:inline;">
+                    @csrf
+                    <button type="submit" style="background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(99,102,241,.3);">
+                        <i class="fa fa-circle-play"></i> {{ $task->status === 'viewed' ? 'Start Timer' : ($completedTimerSeconds > 0 ? 'Resume Timer' : 'Start Timer') }}
+                    </button>
+                </form>
+                @endif
+            @endif
+            @if($completedTimerSeconds > 0 && $timerRunning)
+            <p style="font-size:10px;color:#D1D5DB;margin:10px 0 0;">includes previous sessions</p>
+            @endif
+        </div>
+        @endif
+
+        <style>
+            @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+        </style>
+        <script>
+        (function() {
+            var completedSeconds = {{ $completedTimerSeconds }};
+            var activeStartTs    = {{ $activeSegmentStartTs }};
+            var display          = document.getElementById('timerDisplay');
+            var session          = document.getElementById('timerSession');
+            if (!display) return;
+
+            function fmt(s) {
+                var h = Math.floor(s / 3600);
+                var m = Math.floor((s % 3600) / 60);
+                var sec = s % 60;
+                return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (sec < 10 ? '0' : '') + sec;
+            }
+
+            function tick() {
+                var totalSeconds = completedSeconds;
+                if (activeStartTs > 0) {
+                    var now = Math.floor(Date.now() / 1000);
+                    totalSeconds += Math.max(0, now - activeStartTs);
+                }
+                display.textContent = fmt(totalSeconds);
+            }
+
+            tick();
+            if (activeStartTs > 0) {
+                setInterval(tick, 1000);
+                if (session) session.textContent = 'Session running';
+            } else {
+                if (session && completedSeconds === 0) session.textContent = 'No time tracked yet';
+            }
+        })();
+        </script>
 
         {{-- Time remaining --}}
         @php

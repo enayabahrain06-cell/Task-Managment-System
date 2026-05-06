@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -55,6 +56,8 @@ class SettingsController extends Controller
         'notify_on_social'      => '1',
         'notify_on_report'      => '1',
         'notify_on_viewed'      => '0',
+        'email_on_assign'       => '0',
+        'wa_on_assign'          => '0',
         // Security
         'min_password_length'      => '8',
         'session_timeout'          => '120',
@@ -62,6 +65,19 @@ class SettingsController extends Controller
         'max_login_attempts'       => '5',
         // System
         'maintenance_mode'         => '0',
+        // WhatsApp
+        'wa_enabled'               => '0',
+        'wa_provider'              => 'ultramsg',
+        'wa_instance_id'           => '',
+        'wa_account_sid'           => '',
+        'wa_from_number'           => '',
+        'wa_phone_number_id'       => '',
+        'wa_waba_id'               => '',
+        'wa_tpl_assigned'          => "Hello {user_name}!\n\nYou have been assigned a new task:\n📋 {task_title}\n📁 Project: {project_name}\n👤 Customer: {customer_name}\n⏰ Deadline: {deadline}\n\n{company}",
+        'wa_tpl_approved'          => "Hi {user_name},\n\nYour task has been approved! ✅\n📋 {task_title}\n📁 {project_name}\n\nGreat work!\n{company}",
+        'wa_tpl_reminder'          => "Hi {user_name},\n\nReminder: your task deadline is in {days_left} day(s).\n📋 {task_title}\n⏰ Due: {deadline}\n\n{company}",
+        'wa_tpl_overdue'           => "Hi {user_name},\n\n⚠️ Your task is overdue:\n📋 {task_title}\n⏰ Was due: {deadline}\n\nPlease submit as soon as possible.\n{company}",
+        'wa_tpl_social'            => "Hi {user_name},\n\nA task has been assigned to you for social media posting:\n📋 {task_title}\n📁 {project_name}\n👤 Customer: {customer_name}\n\n{company}",
     ];
 
     public function index()
@@ -108,6 +124,22 @@ class SettingsController extends Controller
         Setting::set('maintenance_mode', $new);
         AuditLogger::log('settings.updated', null, 'Maintenance mode ' . ($new === '1' ? 'enabled' : 'disabled'), ['maintenance_mode' => $new]);
         return response()->json(['maintenance_mode' => $new === '1']);
+    }
+
+    public function toggleHourlyRate()
+    {
+        $current = Setting::get('hide_hourly_rate', '0');
+        $new     = $current === '1' ? '0' : '1';
+        Setting::set('hide_hourly_rate', $new);
+        return response()->json(['hide_hourly_rate' => $new === '1']);
+    }
+
+    public function toggleApprovalCustomerNotify()
+    {
+        $current = Setting::get('hide_approval_customer_notify', '0');
+        $new     = $current === '1' ? '0' : '1';
+        Setting::set('hide_approval_customer_notify', $new);
+        return response()->json(['hide_approval_customer_notify' => $new === '1']);
     }
 
     public function toggleManagerRolesAccess()
@@ -264,7 +296,13 @@ class SettingsController extends Controller
             'max_tasks_per_user'    => 'required|integer|min:1|max:500',
             'default_task_priority' => 'required|in:low,medium,high',
             'max_upload_mb'         => 'required|integer|min:1|max:100',
+            'work_start_time'       => ['nullable', 'regex:/^\d{2}:\d{2}$/'],
+            'work_end_time'         => ['nullable', 'regex:/^\d{2}:\d{2}$/'],
+            'work_days'             => 'nullable|array',
+            'work_days.*'           => 'integer|between:1,7',
         ]);
+
+        $workDays = $request->input('work_days', [1,2,3,4,5]);
 
         Setting::setMany([
             'default_role'          => $request->default_role,
@@ -272,6 +310,9 @@ class SettingsController extends Controller
             'max_tasks_per_user'    => $request->max_tasks_per_user,
             'default_task_priority' => $request->default_task_priority,
             'max_upload_mb'         => $request->max_upload_mb,
+            'work_start_time'       => $request->input('work_start_time', '09:00'),
+            'work_end_time'         => $request->input('work_end_time', '18:00'),
+            'work_days'             => json_encode(array_map('intval', $workDays)),
         ]);
 
         AuditLogger::log('settings.updated', null, 'Team settings updated', ['section' => 'team']);
@@ -286,6 +327,7 @@ class SettingsController extends Controller
             'notify_on_approve', 'notify_on_reject', 'notify_on_comment',
             'notify_on_deliver', 'notify_on_reassign', 'notify_on_transfer',
             'notify_on_social', 'notify_on_report', 'notify_on_viewed',
+            'email_on_assign', 'wa_on_assign',
         ];
 
         $data = ['task_reminder_days' => $request->input('task_reminder_days', 2)];
@@ -398,6 +440,205 @@ class SettingsController extends Controller
         AuditLogger::log('settings.updated', null, 'Security settings updated', ['section' => 'security']);
 
         return back()->with('success', 'Security settings saved.')->withFragment('security');
+    }
+
+    // ── WhatsApp ──────────────────────────────────────────────────────────
+
+    public function updateWhatsapp(Request $request)
+    {
+        $request->validate([
+            'wa_provider'        => 'required|in:ultramsg,twilio,meta',
+            'wa_instance_id'     => 'nullable|string|max:80',
+            'wa_account_sid'     => 'nullable|string|max:120',
+            'wa_from_number'     => 'nullable|string|max:30',
+            'wa_phone_number_id' => 'nullable|string|max:60',
+            'wa_waba_id'         => 'nullable|string|max:60',
+            'wa_tpl_assigned'    => 'nullable|string|max:2000',
+            'wa_tpl_approved'    => 'nullable|string|max:2000',
+            'wa_tpl_reminder'    => 'nullable|string|max:2000',
+            'wa_tpl_overdue'     => 'nullable|string|max:2000',
+            'wa_tpl_social'      => 'nullable|string|max:2000',
+        ]);
+
+        $data = [
+            'wa_enabled'         => $request->boolean('wa_enabled') ? '1' : '0',
+            'wa_provider'        => $request->wa_provider,
+            'wa_instance_id'     => $request->input('wa_instance_id', ''),
+            'wa_account_sid'     => $request->input('wa_account_sid', ''),
+            'wa_from_number'     => $request->input('wa_from_number', ''),
+            'wa_phone_number_id' => $request->input('wa_phone_number_id', ''),
+            'wa_waba_id'         => $request->input('wa_waba_id', ''),
+            'wa_tpl_assigned'    => $request->input('wa_tpl_assigned', ''),
+            'wa_tpl_approved'    => $request->input('wa_tpl_approved', ''),
+            'wa_tpl_reminder'    => $request->input('wa_tpl_reminder', ''),
+            'wa_tpl_overdue'     => $request->input('wa_tpl_overdue', ''),
+            'wa_tpl_social'      => $request->input('wa_tpl_social', ''),
+        ];
+
+        if ($request->filled('wa_token')) {
+            $data['wa_token'] = $request->wa_token;
+        }
+
+        Setting::setMany($data);
+
+        AuditLogger::log('settings.updated', null, 'WhatsApp settings updated', ['section' => 'whatsapp', 'provider' => $request->wa_provider]);
+
+        return back()->with('success', 'WhatsApp settings saved.')->withFragment('whatsapp');
+    }
+
+    public function testWhatsapp(Request $request)
+    {
+        $request->validate(['phone' => 'required|string|max:30']);
+
+        $enabled  = Setting::get('wa_enabled', '0') === '1';
+        $provider = Setting::get('wa_provider', 'ultramsg');
+        $token    = Setting::get('wa_token', '');
+        $phone    = preg_replace('/\D/', '', $request->phone);
+
+        if (!$enabled) {
+            return response()->json(['ok' => false, 'message' => 'WhatsApp is disabled. Enable it and save first.'], 422);
+        }
+        if (!$token) {
+            return response()->json(['ok' => false, 'message' => 'API token is not set.'], 422);
+        }
+        if (!$phone) {
+            return response()->json(['ok' => false, 'message' => 'Invalid phone number.'], 422);
+        }
+
+        $appName = Setting::get('app_name', config('app.name'));
+        $body    = "This is a test message from {$appName}. WhatsApp integration is working correctly! ✅";
+
+        try {
+            $result = $this->sendWhatsappMessage($provider, $token, $phone, $body);
+            return response()->json($result);
+        } catch (\Throwable $e) {
+            return response()->json(['ok' => false, 'message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function broadcastWhatsapp(Request $request)
+    {
+        $request->validate([
+            'recipients' => 'required|in:all,custom',
+            'body'       => 'required|string|max:4096',
+            'numbers'    => 'nullable|string',
+        ]);
+
+        $enabled  = Setting::get('wa_enabled', '0') === '1';
+        $provider = Setting::get('wa_provider', 'ultramsg');
+        $token    = Setting::get('wa_token', '');
+
+        if (!$enabled || !$token) {
+            return response()->json(['ok' => false, 'message' => 'WhatsApp is not configured or disabled.'], 422);
+        }
+
+        $appName    = Setting::get('app_name', config('app.name'));
+        $company    = Setting::get('company_name', $appName);
+        $sent       = 0;
+        $failed     = 0;
+        $errors     = [];
+
+        if ($request->recipients === 'custom') {
+            // Parse comma or newline separated numbers
+            $rawNumbers = preg_split('/[\r\n,]+/', $request->input('numbers', ''));
+            foreach ($rawNumbers as $raw) {
+                $digits = preg_replace('/\D/', '', trim($raw));
+                if (!$digits) continue;
+                $body = str_replace(['{company}'], [$company], $request->body);
+                $res = $this->sendWhatsappMessage($provider, $token, $digits, $body);
+                $res['ok'] ? $sent++ : ($failed++ && $errors[] = "+{$digits}: " . $res['message']);
+            }
+        } else {
+            // Send to all customers with phones
+            $customers = \App\Models\Customer::whereNotNull('phone')->where('phone', '!=', '')->get();
+            foreach ($customers as $customer) {
+                $digits = preg_replace('/\D/', '', $customer->phone);
+                if (!$digits) continue;
+                $body = str_replace(
+                    ['{customer_name}', '{customer_phone}', '{customer_email}', '{company}'],
+                    [$customer->name, $customer->phone, $customer->email ?? '', $company],
+                    $request->body
+                );
+                $res = $this->sendWhatsappMessage($provider, $token, $digits, $body);
+                $res['ok'] ? $sent++ : ($failed++ && $errors[] = $customer->name . ': ' . $res['message']);
+            }
+        }
+
+        return response()->json([
+            'ok'     => true,
+            'sent'   => $sent,
+            'failed' => $failed,
+            'errors' => array_slice($errors, 0, 5),
+            'message' => "Done: {$sent} sent" . ($failed ? ", {$failed} failed" : '') . '.',
+        ]);
+    }
+
+    private function sendWhatsappMessage(string $provider, string $token, string $phone, string $body): array
+    {
+        return match ($provider) {
+            'ultramsg' => $this->sendUltramsg($token, $phone, $body),
+            'twilio'   => $this->sendTwilio($token, $phone, $body),
+            'meta'     => $this->sendMeta($token, $phone, $body),
+            default    => ['ok' => false, 'message' => 'Unknown provider.'],
+        };
+    }
+
+    private function sendUltramsg(string $token, string $phone, string $body): array
+    {
+        $instanceId = Setting::get('wa_instance_id', '');
+        if (!$instanceId) return ['ok' => false, 'message' => 'UltraMsg instance ID not set.'];
+
+        $response = Http::asForm()->post(
+            "https://api.ultramsg.com/{$instanceId}/messages/chat",
+            ['token' => $token, 'to' => $phone, 'body' => $body]
+        );
+
+        $data = $response->json();
+        if ($response->successful() && isset($data['sent']) && $data['sent'] === 'true') {
+            return ['ok' => true, 'message' => 'Message sent successfully.'];
+        }
+        return ['ok' => false, 'message' => $data['error'] ?? $data['message'] ?? 'UltraMsg error.'];
+    }
+
+    private function sendTwilio(string $token, string $phone, string $body): array
+    {
+        $accountSid = Setting::get('wa_account_sid', '');
+        $fromNumber = Setting::get('wa_from_number', '');
+        if (!$accountSid || !$fromNumber) return ['ok' => false, 'message' => 'Twilio Account SID / From Number not set.'];
+
+        $response = Http::withBasicAuth($accountSid, $token)
+            ->asForm()
+            ->post("https://api.twilio.com/2010-04-01/Accounts/{$accountSid}/Messages.json", [
+                'From' => 'whatsapp:+' . ltrim($fromNumber, '+'),
+                'To'   => 'whatsapp:+' . ltrim($phone, '+'),
+                'Body' => $body,
+            ]);
+
+        $data = $response->json();
+        if ($response->successful() && isset($data['sid'])) {
+            return ['ok' => true, 'message' => 'Message sent (SID: ' . $data['sid'] . ').'];
+        }
+        return ['ok' => false, 'message' => $data['message'] ?? 'Twilio error.'];
+    }
+
+    private function sendMeta(string $token, string $phone, string $body): array
+    {
+        $phoneNumberId = Setting::get('wa_phone_number_id', '');
+        if (!$phoneNumberId) return ['ok' => false, 'message' => 'Meta Phone Number ID not set.'];
+
+        $response = Http::withToken($token)
+            ->post("https://graph.facebook.com/v18.0/{$phoneNumberId}/messages", [
+                'messaging_product' => 'whatsapp',
+                'to'                => $phone,
+                'type'              => 'text',
+                'text'              => ['body' => $body],
+            ]);
+
+        $data = $response->json();
+        if ($response->successful() && isset($data['messages'])) {
+            return ['ok' => true, 'message' => 'Message sent via Meta Cloud API.'];
+        }
+        return ['ok' => false, 'message' => $data['error']['message'] ?? 'Meta API error.'];
     }
 
     // ── Exports ──────────────────────────────────────────────────────────

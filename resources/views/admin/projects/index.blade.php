@@ -301,9 +301,18 @@ $statDefs = [
                     </span>
                 </td>
                 <td class="px-5 py-3.5">
-                    <span class="text-xs px-2.5 py-1 rounded-full font-medium {{ $statusBg[$project->status] ?? 'bg-gray-100 text-gray-600' }}">
-                        {{ ucfirst($project->status) }}
-                    </span>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="text-xs px-2.5 py-1 rounded-full font-medium {{ $statusBg[$project->status] ?? 'bg-gray-100 text-gray-600' }}">
+                            {{ ucfirst($project->status) }}
+                        </span>
+                        @if($project->social_pending_count > 0)
+                        <span class="text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
+                              style="background:#FFF0E0;color:#B45309;border:1px solid #FED7AA;">
+                            <i class="fa-brands fa-whatsapp" style="color:#25D366;font-size:10px;"></i>
+                            {{ $project->social_pending_count }}
+                        </span>
+                        @endif
+                    </div>
                 </td>
                 <td class="px-5 py-3.5 text-sm {{ $project->deadline < now() && $project->status !== 'completed' ? 'text-red-500 font-semibold' : 'text-gray-500' }}">
                     {{ $project->deadline->format('M d, Y') }}
@@ -384,12 +393,21 @@ $statDefs = [
 
             <div class="p-5 flex flex-col gap-3 flex-1">
 
-                {{-- Top row: status badge + task count --}}
+                {{-- Top row: status badge + social pending + task count --}}
                 <div class="flex items-center justify-between gap-2">
-                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
-                          style="background:{{ $s['bg'] }};color:{{ $s['color'] }};">
-                        {{ $s['label'] }}
-                    </span>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                              style="background:{{ $s['bg'] }};color:{{ $s['color'] }};">
+                            {{ $s['label'] }}
+                        </span>
+                        @if($project->social_pending_count > 0)
+                        <span class="text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
+                              style="background:#FFF0E0;color:#B45309;border:1px solid #FED7AA;">
+                            <i class="fa-brands fa-whatsapp" style="color:#25D366;font-size:10px;"></i>
+                            {{ $project->social_pending_count }} pending
+                        </span>
+                        @endif
+                    </div>
                     <span class="text-xs text-gray-400 flex items-center gap-1">
                         <i class="fas fa-list-check" style="font-size:10px;"></i>
                         {{ $project->tasks_count }}

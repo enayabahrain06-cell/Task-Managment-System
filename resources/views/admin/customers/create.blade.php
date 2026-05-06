@@ -43,9 +43,7 @@
                 </div>
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Phone</label>
-                    <input type="text" name="phone" value="{{ old('phone') }}"
-                           placeholder="+1 555 000 0000"
-                           style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;color:#111827;box-sizing:border-box;outline:none;">
+                    @include('admin.customers._phone_picker', ['initialPhone' => old('phone', '')])
                 </div>
             </div>
 
@@ -69,3 +67,7 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+@include('admin.customers._phone_picker_script')
+@endpush

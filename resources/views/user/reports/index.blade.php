@@ -614,6 +614,7 @@
                         <th>Status</th>
                         <th style="min-width:90px;">Started</th>
                         <th style="min-width:90px;">Completed</th>
+                        <th style="min-width:80px;text-align:center;">Time Spent</th>
                         <th style="min-width:80px;text-align:center;">Days to Submit</th>
                         <th style="min-width:90px;">Deadline</th>
                         <th style="min-width:90px;">Result</th>
@@ -639,6 +640,13 @@
                         <td><span style="padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;background:{{ $sbg }};color:{{ $sfg }};white-space:nowrap;">{{ $sl[$t['status']] ?? ucfirst($t['status']) }}</span></td>
                         <td style="font-size:11px;color:#6B7280;white-space:nowrap;">{{ $t['started_at'] ?? '—' }}</td>
                         <td style="font-size:11px;color:#6B7280;white-space:nowrap;">{{ $t['completed_at'] ?? '—' }}</td>
+                        <td style="text-align:center;white-space:nowrap;">
+                            @if(($t['time_spent_min'] ?? 0) > 0)
+                                <span style="font-size:12px;font-weight:700;color:#4F46E5;">{{ $t['time_spent'] }}</span>
+                            @else
+                                <span style="color:#D1D5DB;">—</span>
+                            @endif
+                        </td>
                         <td style="text-align:center;">
                             @if($t['days_to_submit'] !== null)
                                 <span style="font-size:12px;font-weight:700;color:#374151;">{{ $t['days_to_submit'] }}<span style="font-size:10px;font-weight:400;color:#9CA3AF;">d</span></span>
@@ -663,7 +671,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" style="text-align:center;padding:48px;color:#9CA3AF;">
+                        <td colspan="10" style="text-align:center;padding:48px;color:#9CA3AF;">
                             <i class="fas fa-inbox" style="font-size:28px;opacity:.35;display:block;margin-bottom:10px;"></i>
                             No tasks found.
                         </td>
@@ -774,6 +782,7 @@
                 statusLabels[t.status] || t.status,
                 t.started_at   || '-',
                 t.completed_at || '-',
+                t.time_spent && t.time_spent !== '—' ? t.time_spent : '-',
                 t.days_to_submit !== null ? t.days_to_submit + 'd' : '-',
                 t.deadline || '-',
                 result,
@@ -783,7 +792,7 @@
         doc.autoTable({
             startY: y,
             margin: { left: ml, right: mr },
-            head: [['Task', 'Project', 'Priority', 'Status', 'Started', 'Completed', 'Days\nSubmit', 'Deadline', 'Result']],
+            head: [['Task', 'Project', 'Priority', 'Status', 'Started', 'Completed', 'Time\nSpent', 'Days\nSubmit', 'Deadline', 'Result']],
             body: rows,
             styles: { fontSize: 7, cellPadding: 2, overflow: 'linebreak' },
             headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold', fontSize: 7.5, halign: 'left' },

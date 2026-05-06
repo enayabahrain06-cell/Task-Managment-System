@@ -6,12 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Models\Task;
 use App\Models\TaskComment;
+use Carbon\Carbon;
 use App\Models\TaskCommentEdit;
 use App\Models\TaskLog;
 use App\Models\TaskSubmission;
 use App\Models\TaskSubmissionEdit;
+use App\Models\TaskTimerSegment;
 use App\Models\TaskTransfer;
 use App\Models\User;
+use App\Notifications\TaskAutoPaused;
 use App\Notifications\TaskCommentPosted;
 use App\Notifications\TaskCompleted;
 use App\Notifications\TaskViewed;
@@ -25,6 +28,231 @@ class TaskController extends Controller
         $tasks = auth()->user()->tasks()->with('project')->latest()->paginate(15);
         return view('user.tasks.index', compact('tasks'));
     }
+
+    // ── Timer helpers ────────────────────────────────────────────────────────
+
+    /** Close all open timer segments for this user on this task. */
+    private function closeOpenSegments(Task $task, int $userId, string $reason): void
+    {
+        TaskTimerSegment::where('task_id', $task->id)
+            ->where('user_id', $userId)
+            ->whereNull('ended_at')
+            ->each(function (TaskTimerSegment $seg) use ($reason) {
+                $seconds = (int) $seg->started_at->diffInSeconds(now());
+                $seg->update([
+                    'ended_at'         => now(),
+                    'duration_seconds' => $seconds,
+                    'pause_reason'     => $reason,
+                ]);
+            });
+    }
+
+    /** Auto-pause any other in_progress task this user has a running timer on. */
+    private function autoPauseOtherTasks(Task $currentTask, int $userId): void
+    {
+        $otherSegments = TaskTimerSegment::where('user_id', $userId)
+            ->where('task_id', '!=', $currentTask->id)
+            ->whereNull('ended_at')
+            ->with('task')
+            ->get();
+
+        foreach ($otherSegments as $seg) {
+            $seconds = (int) $seg->started_at->diffInSeconds(now());
+            $seg->update([
+                'ended_at'         => now(),
+                'duration_seconds' => $seconds,
+                'pause_reason'     => 'task_switch',
+            ]);
+
+            if ($seg->task && in_array($seg->task->status, ['in_progress'])) {
+                $seg->task->update(['status' => 'paused']);
+                TaskLog::create([
+                    'task_id'  => $seg->task_id,
+                    'user_id'  => $userId,
+                    'action'   => 'auto_paused',
+                    'note'     => 'Timer auto-paused — another task was started.',
+                    'metadata' => [
+                        'pause_reason'         => 'task_switch',
+                        'paused_by_task_id'    => $currentTask->id,
+                        'paused_by_task_title' => $currentTask->title,
+                    ],
+                ]);
+                $user = \App\Models\User::find($userId);
+                if ($user) {
+                    $user->notify(new TaskAutoPaused($seg->task, 'task_switch', $currentTask->title));
+                }
+            }
+        }
+    }
+
+    // ── Timer endpoints ──────────────────────────────────────────────────────
+
+    /** Check work hours; returns a warning string if outside, null if inside. */
+    private function outsideHoursWarning(): ?string
+    {
+        $timezone  = Setting::get('timezone', 'UTC');
+        $startTime = Setting::get('work_start_time', '09:00');
+        $endTime   = Setting::get('work_end_time', '18:00');
+        $workDays  = json_decode(Setting::get('work_days', '[1,2,3,4,5]'), true) ?? [1,2,3,4,5];
+
+        $now     = Carbon::now($timezone);
+        $nowTime = $now->format('H:i');
+        $isWorkDay = in_array($now->dayOfWeekIso, $workDays);
+
+        if (!$isWorkDay) {
+            return "You're starting the timer on a non-work day ({$now->format('l')}). Time still counts — it's your responsibility.";
+        }
+        if ($nowTime < $startTime) {
+            return "You're starting before work hours begin ({$startTime}). Time still counts — it's your responsibility.";
+        }
+        if ($nowTime >= $endTime) {
+            return "You're starting after work hours ended ({$endTime}). Time still counts — it's your responsibility.";
+        }
+        return null;
+    }
+
+    public function startTimer(Request $request, Task $task)
+    {
+        if ($task->assigned_to != auth()->id()) {
+            abort(403);
+        }
+
+        $startable = ['viewed', 'in_progress', 'paused'];
+        if (!in_array($task->status, $startable)) {
+            return back()->with('error', 'Timer cannot be started at this stage.');
+        }
+
+        $userId = auth()->id();
+
+        // Auto-pause other running tasks
+        $this->autoPauseOtherTasks($task, $userId);
+
+        // If already running on this task, don't create duplicate
+        $alreadyRunning = TaskTimerSegment::where('task_id', $task->id)
+            ->where('user_id', $userId)
+            ->whereNull('ended_at')
+            ->exists();
+
+        if (!$alreadyRunning) {
+            $phase = in_array($task->status, ['revision_requested', 'paused']) ? 'revision' : 'work';
+
+            TaskTimerSegment::create([
+                'task_id'    => $task->id,
+                'user_id'    => $userId,
+                'phase'      => $phase,
+                'started_at' => now(),
+            ]);
+        }
+
+        $oldStatus = $task->status;
+        if (in_array($task->status, ['viewed', 'paused'])) {
+            $task->update(['status' => 'in_progress']);
+        }
+
+        $outsideWarning = $this->outsideHoursWarning();
+
+        TaskLog::create([
+            'task_id'  => $task->id,
+            'user_id'  => $userId,
+            'action'   => 'timer_started',
+            'note'     => 'Timer started' . ($outsideWarning ? ' (outside work hours)' : '') . '.',
+            'metadata' => [
+                'old_status'      => $oldStatus,
+                'new_status'      => $task->fresh()->status,
+                'outside_hours'   => $outsideWarning !== null,
+            ],
+        ]);
+
+        if ($outsideWarning) {
+            return back()
+                ->with('success', 'Timer started.')
+                ->with('timer_warning', $outsideWarning);
+        }
+
+        return back()->with('success', 'Timer started.');
+    }
+
+    public function pauseTimer(Request $request, Task $task)
+    {
+        if ($task->assigned_to != auth()->id()) {
+            abort(403);
+        }
+
+        if (!in_array($task->status, ['in_progress'])) {
+            return back()->with('error', 'Timer is not running.');
+        }
+
+        $this->closeOpenSegments($task, auth()->id(), 'manual');
+
+        $task->update(['status' => 'paused']);
+
+        TaskLog::create([
+            'task_id'  => $task->id,
+            'user_id'  => auth()->id(),
+            'action'   => 'timer_paused',
+            'note'     => 'Timer paused manually.',
+            'metadata' => ['old_status' => 'in_progress', 'new_status' => 'paused'],
+        ]);
+
+        return back()->with('success', 'Timer paused.');
+    }
+
+    public function acknowledgeRevision(Request $request, Task $task)
+    {
+        if ($task->assigned_to != auth()->id()) {
+            abort(403);
+        }
+
+        if ($task->status !== 'revision_requested') {
+            return back()->with('error', 'No pending revision to acknowledge.');
+        }
+
+        $userId = auth()->id();
+
+        TaskLog::create([
+            'task_id'  => $task->id,
+            'user_id'  => $userId,
+            'action'   => 'revision_acknowledged',
+            'note'     => 'Employee acknowledged revision request and resumed work.',
+            'metadata' => ['old_status' => 'revision_requested', 'new_status' => 'in_progress'],
+        ]);
+
+        // Auto-pause other running tasks
+        $this->autoPauseOtherTasks($task, $userId);
+
+        // Start a revision-phase timer segment
+        TaskTimerSegment::create([
+            'task_id'    => $task->id,
+            'user_id'    => $userId,
+            'phase'      => 'revision',
+            'started_at' => now(),
+        ]);
+
+        $task->update(['status' => 'in_progress']);
+
+        $outsideWarning = $this->outsideHoursWarning();
+
+        TaskLog::create([
+            'task_id'  => $task->id,
+            'user_id'  => $userId,
+            'action'   => 'timer_started',
+            'note'     => 'Timer started for revision phase' . ($outsideWarning ? ' (outside work hours)' : '') . '.',
+            'metadata' => [
+                'phase'         => 'revision',
+                'old_status'    => 'revision_requested',
+                'new_status'    => 'in_progress',
+                'outside_hours' => $outsideWarning !== null,
+            ],
+        ]);
+
+        $response = back()->with('success', 'Revision acknowledged — your timer has started.');
+        if ($outsideWarning) {
+            $response = $response->with('timer_warning', $outsideWarning);
+        }
+        return $response;
+    }
+
+    // ── Main CRUD ────────────────────────────────────────────────────────────
 
     public function show(Task $task)
     {
@@ -58,7 +286,7 @@ class TaskController extends Controller
             }
         }
 
-        $task->load('project.attachments', 'project.customer', 'assignees', 'reviewer', 'creator', 'customer', 'logs.user', 'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor', 'comments.user', 'comments.edits.editor', 'transfers.fromUser', 'transfers.transferredBy');
+        $task->load('project.attachments', 'project.customer', 'assignees', 'reviewer', 'creator', 'customer', 'logs.user', 'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor', 'comments.user', 'comments.edits.editor', 'transfers.fromUser', 'transfers.transferredBy', 'timerSegments');
 
         // Find the transfer that handed this task TO the current user
         $incomingTransfer = $task->transfers
@@ -66,7 +294,19 @@ class TaskController extends Controller
             ->sortByDesc('transferred_at')
             ->first();
 
-        return view('user.tasks.show', compact('task', 'incomingTransfer'));
+        // Timer data for the view
+        $userId = auth()->id();
+        $completedTimerSeconds = $task->timerSegments
+            ->where('user_id', $userId)
+            ->whereNotNull('ended_at')
+            ->sum('duration_seconds');
+        $activeSegment = $task->timerSegments
+            ->where('user_id', $userId)
+            ->whereNull('ended_at')
+            ->sortByDesc('started_at')
+            ->first();
+
+        return view('user.tasks.show', compact('task', 'incomingTransfer', 'completedTimerSeconds', 'activeSegment'));
     }
 
     public function updateStatus(Request $request, Task $task)
@@ -113,7 +353,7 @@ class TaskController extends Controller
             abort(403);
         }
 
-        $submittable = ['viewed', 'in_progress', 'revision_requested'];
+        $submittable = ['viewed', 'in_progress', 'paused', 'revision_requested'];
         if (!in_array($task->status, $submittable)) {
             return back()->with('error', 'You cannot submit at this stage.');
         }
@@ -161,6 +401,9 @@ class TaskController extends Controller
             'original_filename' => $originalFilename,
             'status'            => 'submitted',
         ]);
+
+        // Close any open timer segment on submission
+        $this->closeOpenSegments($task, auth()->id(), 'submitted');
 
         $oldStatus = $task->status;
         $task->update(['status' => 'submitted']);

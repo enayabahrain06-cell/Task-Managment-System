@@ -54,7 +54,7 @@ class UserController extends Controller
 
     public function create()
     {
-        return redirect()->route('team.index', ['view' => 'manage']);
+        return view('admin.users.create');
     }
 
     public function store(Request $request)
@@ -132,7 +132,7 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
-        return redirect()->route('team.index', ['view' => 'manage']);
+        return view('admin.users.edit', compact('user'));
     }
 
     public function update(Request $request, User $user)
@@ -164,6 +164,7 @@ class UserController extends Controller
             'phone'       => 'nullable|string|max:30',
             'job_title'   => 'nullable|string|max:80',
             'nationality' => 'nullable|string|max:80',
+            'hourly_rate' => 'nullable|numeric|min:0|max:9999.99',
             'status'      => 'nullable|in:active,inactive',
             'avatar'      => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
@@ -190,6 +191,7 @@ class UserController extends Controller
             'phone'       => $request->phone,
             'job_title'   => $request->job_title,
             'nationality' => $request->nationality,
+            'hourly_rate' => $request->hourly_rate ?: null,
             'status'      => $request->status ?? 'active',
             'permissions' => $perms,
         ];
@@ -673,6 +675,8 @@ class UserController extends Controller
             ];
         });
 
+        $completedTasks = $tasks->filter(fn($t) => in_array($t->status, $doneStatuses))->sortByDesc('updated_at')->values();
+
         $pendingApproval = $inReview;
         $previewUser     = $user;
 
@@ -687,7 +691,7 @@ class UserController extends Controller
 
         return view('user.dashboard', compact(
             'total', 'completed', 'inProgress', 'pending', 'pendingApproval', 'overdue', 'rate',
-            'tasks', 'upcomingTasks', 'recentActivity', 'weekActivity',
+            'tasks', 'completedTasks', 'upcomingTasks', 'recentActivity', 'weekActivity',
             'teamTasks', 'myProjects', 'myProjectStats', 'socialTasks',
             'inheritedCount', 'nativeTotal', 'nativeCompleted', 'pendingSocialPosts', 'completedSocialPosts',
             'receivedTotal', 'receivedCompleted',

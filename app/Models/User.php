@@ -37,6 +37,7 @@ class User extends Authenticatable
         'permissions',
         'archived_at',
         'archived_by',
+        'hourly_rate',
     ];
 
     public const ALL_PERMISSIONS = [

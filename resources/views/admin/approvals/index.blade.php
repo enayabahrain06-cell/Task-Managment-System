@@ -2,6 +2,12 @@
 @section('title', 'Task Approvals')
 
 @section('content')
+@php
+    $waApiEnabled = \App\Models\Setting::get('wa_enabled','0') === '1'
+                 && \App\Models\Setting::get('wa_token','') !== '';
+    $waSendRoute  = route('admin.approvals.whatsapp-customer');
+    $waCsrf       = csrf_token();
+@endphp
 <style>
 /* ── Card ── */
 .apv-card {
@@ -419,6 +425,182 @@
                            onblur="this.style.borderColor='#BBF7D0';this.style.boxShadow='none'">
                 </div>
 
+                {{-- Notify Customer --}}
+                @if(($appSettings['hide_approval_customer_notify'] ?? '0') !== '1')
+                <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:14px;padding:16px;margin-bottom:20px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                        <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#D1FAE5,#A7F3D0);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas fa-paper-plane" style="color:#059669;font-size:11px;"></i>
+                        </div>
+                        <div>
+                            <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">
+                                Send to Customer
+                                <span style="font-size:10px;font-weight:400;color:#9CA3AF;margin-left:4px;">(optional)</span>
+                            </p>
+                            <p style="font-size:11px;color:#6B7280;margin:2px 0 0;">
+                                Send the approved design by email or WhatsApp before social posting
+                            </p>
+                        </div>
+                    </div>
+
+                    {{-- Design file preview --}}
+                    <template x-if="approvalTask?.submission_url">
+                        <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:#fff;border:1px solid #D1FAE5;border-radius:10px;margin-bottom:12px;">
+                            <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#EEF2FF,#DDD6FE);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-file-image" style="color:#6366F1;font-size:13px;"></i>
+                            </div>
+                            <div style="flex:1;min-width:0;">
+                                <p style="margin:0;font-size:11px;font-weight:700;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="approvalTask.submission_name ?? 'Design file'"></p>
+                                <p style="margin:2px 0 0;font-size:10px;color:#9CA3AF;">Latest submission</p>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                                <a :href="approvalTask.submission_url" target="_blank" rel="noopener"
+                                   style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:#EEF2FF;color:#4F46E5;border-radius:7px;font-size:11px;font-weight:600;text-decoration:none;transition:background .15s;"
+                                   onmouseover="this.style.background='#DDD6FE'" onmouseout="this.style.background='#EEF2FF'">
+                                    <i class="fas fa-eye" style="font-size:10px;"></i> View
+                                </a>
+                                <a :href="approvalTask.submission_url" :download="approvalTask.submission_name ?? 'design'"
+                                   style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:#D1FAE5;color:#065F46;border-radius:7px;font-size:11px;font-weight:600;text-decoration:none;transition:background .15s;"
+                                   onmouseover="this.style.background='#A7F3D0'" onmouseout="this.style.background='#D1FAE5'">
+                                    <i class="fas fa-download" style="font-size:10px;"></i> Download
+                                </a>
+                            </div>
+                        </div>
+                    </template>
+
+                    {{-- Channel toggles --}}
+                    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+                        <button type="button"
+                                @click="approvalNotifyEmail = !approvalNotifyEmail"
+                                :style="approvalNotifyEmail
+                                    ? 'padding:7px 14px;border-radius:9px;border:2px solid #059669;background:#D1FAE5;color:#065F46;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;'
+                                    : 'padding:7px 14px;border-radius:9px;border:1.5px solid #BBF7D0;background:#fff;color:#6B7280;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;'">
+                            <i class="fas fa-envelope" :style="approvalNotifyEmail ? 'font-size:11px;color:#059669;' : 'font-size:11px;color:#9CA3AF;'"></i>
+                            <span x-text="approvalNotifyEmail ? '✓ Email' : 'Email'"></span>
+                        </button>
+                        <button type="button"
+                                @click="approvalNotifyWhatsapp = !approvalNotifyWhatsapp"
+                                :style="approvalNotifyWhatsapp
+                                    ? 'padding:7px 14px;border-radius:9px;border:2px solid #25D366;background:#DCFCE7;color:#065F46;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;'
+                                    : 'padding:7px 14px;border-radius:9px;border:1.5px solid #BBF7D0;background:#fff;color:#6B7280;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;'">
+                            <i class="fab fa-whatsapp" :style="approvalNotifyWhatsapp ? 'font-size:12px;color:#25D366;' : 'font-size:12px;color:#9CA3AF;'"></i>
+                            <span x-text="approvalNotifyWhatsapp ? '✓ WhatsApp' : 'WhatsApp'"></span>
+                        </button>
+                    </div>
+
+                    {{-- Email section --}}
+                    <div x-show="approvalNotifyEmail" x-transition style="margin-bottom:10px;">
+                        <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:5px;">
+                            <i class="fas fa-envelope" style="font-size:10px;color:#059669;margin-right:3px;"></i>
+                            Customer Email
+                        </label>
+                        <template x-if="approvalTask?.customer_email">
+                            <div style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:#D1FAE5;border-radius:8px;margin-bottom:6px;">
+                                <i class="fas fa-circle-check" style="font-size:11px;color:#059669;"></i>
+                                <span style="font-size:12px;color:#065F46;font-weight:600;" x-text="approvalTask.customer_email"></span>
+                            </div>
+                        </template>
+                        <template x-if="!approvalTask?.customer_email">
+                            <input type="email" name="customer_email_override" x-model="approvalManualEmail"
+                                   placeholder="Enter customer email address…"
+                                   style="width:100%;padding:8px 12px;border:1.5px solid #BBF7D0;background:#fff;border-radius:9px;font-size:12px;color:#374151;outline:none;box-sizing:border-box;"
+                                   onfocus="this.style.borderColor='#34D399'" onblur="this.style.borderColor='#BBF7D0'">
+                        </template>
+                        <template x-if="approvalTask?.submission_url">
+                            <p style="margin:5px 0 0;font-size:11px;color:#059669;display:flex;align-items:center;gap:4px;">
+                                <i class="fas fa-paperclip" style="font-size:10px;"></i>
+                                Design file will be attached to the email
+                            </p>
+                        </template>
+                    </div>
+
+                    {{-- WhatsApp section --}}
+                    <div x-show="approvalNotifyWhatsapp" x-transition style="margin-bottom:10px;">
+                        <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:5px;">
+                            <i class="fab fa-whatsapp" style="font-size:11px;color:#25D366;margin-right:3px;"></i>
+                            WhatsApp Number
+                        </label>
+                        <template x-if="approvalTask?.customer_phone">
+                            <div style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:#DCFCE7;border-radius:8px;margin-bottom:8px;">
+                                <i class="fas fa-circle-check" style="font-size:11px;color:#25D366;"></i>
+                                <span style="font-size:12px;color:#065F46;font-weight:600;" x-text="approvalTask.customer_phone"></span>
+                            </div>
+                        </template>
+                        <template x-if="!approvalTask?.customer_phone">
+                            <input type="text" x-model="approvalManualPhone"
+                                   placeholder="Enter WhatsApp number (e.g. +971501234567)…"
+                                   style="width:100%;padding:8px 12px;border:1.5px solid #BBF7D0;background:#fff;border-radius:9px;font-size:12px;color:#374151;outline:none;box-sizing:border-box;margin-bottom:8px;"
+                                   onfocus="this.style.borderColor='#25D366'" onblur="this.style.borderColor='#BBF7D0'">
+                        </template>
+                        {{-- Smart WhatsApp send: API if configured, wa.me link as fallback --}}
+                        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;">
+                            @if($waApiEnabled)
+                            <button type="button" @click="sendWhatsAppApi()"
+                                    :disabled="waSendState === 'sending'"
+                                    :style="waSendState === 'sent'
+                                        ? 'display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#16A34A;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:600;cursor:default;box-shadow:0 2px 8px rgba(22,163,74,.25);'
+                                        : waSendState === 'sending'
+                                        ? 'display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#9CA3AF;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:600;cursor:not-allowed;'
+                                        : 'display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#25D366;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(37,211,102,.3);transition:opacity .15s;'"
+                                    style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#25D366;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(37,211,102,.3);">
+                                <i class="fab fa-whatsapp" style="font-size:13px;" x-show="waSendState !== 'sending'"></i>
+                                <i class="fas fa-spinner fa-spin" style="font-size:12px;" x-show="waSendState === 'sending'" x-cloak></i>
+                                <span x-text="waSendState === 'sent' ? '✓ Sent!' : waSendState === 'sending' ? 'Sending…' : 'Send via WhatsApp API'">Send via WhatsApp API</span>
+                            </button>
+                            <a href="#" @click.prevent="openCustomerWhatsApp()"
+                               style="font-size:11px;color:#6B7280;text-decoration:underline;cursor:pointer;">Open link ↗</a>
+                            @else
+                            <button type="button" @click="openCustomerWhatsApp()"
+                                    style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#25D366;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(37,211,102,.3);transition:opacity .15s;"
+                                    onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+                                <i class="fab fa-whatsapp" style="font-size:13px;"></i>
+                                Open WhatsApp ↗
+                            </button>
+                            <a href="{{ route('admin.settings.index') }}#whatsapp"
+                               style="font-size:10px;color:#9CA3AF;text-decoration:none;display:inline-flex;align-items:center;gap:3px;" target="_blank">
+                                <i class="fas fa-gear" style="font-size:9px;"></i> Configure API
+                            </a>
+                            @endif
+                        </div>
+
+                        {{-- API send status message --}}
+                        @if($waApiEnabled)
+                        <div x-show="waSendMsg" x-cloak
+                             :style="waSendState === 'error'
+                                 ? 'margin-top:6px;font-size:11px;color:#DC2626;display:flex;align-items:center;gap:4px;'
+                                 : 'margin-top:6px;font-size:11px;color:#16A34A;display:flex;align-items:center;gap:4px;'">
+                            <i :class="waSendState === 'error' ? 'fas fa-circle-exclamation' : 'fas fa-circle-check'" style="font-size:10px;"></i>
+                            <span x-text="waSendMsg"></span>
+                        </div>
+                        @endif
+
+                        <template x-if="approvalTask?.submission_url">
+                            <p style="margin:6px 0 0;font-size:11px;color:#059669;display:flex;align-items:center;gap:4px;">
+                                <i class="fas fa-paperclip" style="font-size:10px;"></i>
+                                Design link will be included in the message
+                            </p>
+                        </template>
+                    </div>
+
+                    {{-- Shared message --}}
+                    <div x-show="approvalNotifyEmail || approvalNotifyWhatsapp" x-transition>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:5px;">
+                            <i class="fas fa-comment-dots" style="font-size:10px;color:#059669;margin-right:3px;"></i>
+                            Message to Customer <span style="font-weight:400;color:#9CA3AF;">(optional)</span>
+                        </label>
+                        <textarea x-model="approvalCustomerMsg" name="customer_message" rows="2"
+                                  placeholder="Your design is ready for review. Please check and let us know your feedback…"
+                                  style="width:100%;padding:9px 12px;border:1.5px solid #BBF7D0;background:#fff;border-radius:9px;font-size:12px;color:#374151;outline:none;resize:vertical;box-sizing:border-box;line-height:1.55;"
+                                  onfocus="this.style.borderColor='#34D399';this.style.boxShadow='0 0 0 2px rgba(52,211,153,.12)'"
+                                  onblur="this.style.borderColor='#BBF7D0';this.style.boxShadow='none'"></textarea>
+                    </div>
+
+                    <input type="hidden" name="notify_customer_email" :value="approvalNotifyEmail ? '1' : '0'">
+                    <input type="hidden" name="notify_customer_whatsapp" :value="approvalNotifyWhatsapp ? '1' : '0'">
+                    <input type="hidden" name="customer_phone_override" :value="approvalManualPhone">
+                </div>
+                @endif
+
                 {{-- Social media question --}}
                 <div style="background:#F8FAFF;border:1px solid #EEF2FF;border-radius:14px;padding:18px;">
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
@@ -456,20 +638,55 @@
                         </button>
                     </div>
 
-                    {{-- User assignment dropdown (shown only when "Yes") --}}
-                    <div x-show="approvalSocial === 'yes'" x-transition style="margin-top:4px;">
-                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
-                            Assign social post to <span style="color:#EF4444;">*</span>
-                        </label>
-                        <select name="social_assigned_to" x-model="approvalSocialUser"
-                                style="width:100%;padding:9px 12px;border:1.5px solid #C7D2FE;background:#fff;border-radius:10px;font-size:13px;color:#374151;outline:none;cursor:pointer;box-sizing:border-box;"
-                                onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,.12)'"
-                                onblur="this.style.borderColor='#C7D2FE';this.style.boxShadow='none'">
-                            <option value="">— Select team member —</option>
-                            @foreach($socialUsers as $su)
-                            <option value="{{ $su->id }}">{{ $su->name }}</option>
-                            @endforeach
-                        </select>
+                    {{-- User assignment + description (shown only when "Yes") --}}
+                    <div x-show="approvalSocial === 'yes'" x-transition style="margin-top:4px;display:flex;flex-direction:column;gap:10px;">
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
+                                Assign social post to <span style="color:#EF4444;">*</span>
+                            </label>
+                            <select name="social_assigned_to" x-model="approvalSocialUser"
+                                    style="width:100%;padding:9px 12px;border:1.5px solid #C7D2FE;background:#fff;border-radius:10px;font-size:13px;color:#374151;outline:none;cursor:pointer;box-sizing:border-box;"
+                                    onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,.12)'"
+                                    onblur="this.style.borderColor='#C7D2FE';this.style.boxShadow='none'">
+                                <option value="">— Select team member —</option>
+                                @foreach($socialUsers as $su)
+                                <option value="{{ $su->id }}">{{ $su->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
+                                <i class="fas fa-align-left" style="font-size:10px;margin-right:4px;color:#6366F1;"></i>
+                                Posting Instructions <span style="font-weight:400;color:#9CA3AF;">(optional)</span>
+                            </label>
+                            <textarea name="social_description" rows="2"
+                                      placeholder="General notes, tone, hashtags…"
+                                      style="width:100%;padding:10px 12px;border:1.5px solid #C7D2FE;background:#fff;border-radius:10px;font-size:13px;color:#374151;outline:none;resize:vertical;box-sizing:border-box;line-height:1.55;"
+                                      onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,.12)'"
+                                      onblur="this.style.borderColor='#C7D2FE';this.style.boxShadow='none'"></textarea>
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
+                                <i class="fas fa-pen-nib" style="font-size:10px;margin-right:4px;color:#8B5CF6;"></i>
+                                Ad Caption <span style="font-weight:400;color:#9CA3AF;">(optional)</span>
+                            </label>
+                            <textarea name="social_caption" rows="3"
+                                      placeholder="Exact post copy / advertisement caption to publish…"
+                                      style="width:100%;padding:10px 12px;border:1.5px solid #DDD6FE;background:#fff;border-radius:10px;font-size:13px;color:#374151;outline:none;resize:vertical;box-sizing:border-box;line-height:1.55;"
+                                      onfocus="this.style.borderColor='#8B5CF6';this.style.boxShadow='0 0 0 3px rgba(139,92,246,.12)'"
+                                      onblur="this.style.borderColor='#DDD6FE';this.style.boxShadow='none'"></textarea>
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
+                                <i class="fas fa-wallet" style="font-size:10px;margin-right:4px;color:#D97706;"></i>
+                                Ad Budget <span style="font-weight:400;color:#9CA3AF;">(optional)</span>
+                            </label>
+                            <input type="text" name="social_budget"
+                                   placeholder="e.g. $200, 500 AED, unlimited…"
+                                   style="width:100%;padding:10px 12px;border:1.5px solid #FDE68A;background:#fff;border-radius:10px;font-size:13px;color:#374151;outline:none;box-sizing:border-box;"
+                                   onfocus="this.style.borderColor='#F59E0B';this.style.boxShadow='0 0 0 3px rgba(245,158,11,.12)'"
+                                   onblur="this.style.borderColor='#FDE68A';this.style.boxShadow='none'">
+                        </div>
                     </div>
 
                     {{-- Hidden field: social_required value sent based on selection --}}
@@ -746,10 +963,15 @@
             </div>
             <div class="flex items-center gap-1" onclick="event.stopPropagation()">
                 <button @click.stop="openApprovalModal({
-                            id:       {{ $task->id }},
-                            title:    @js($task->title),
-                            assignee: @js($task->assignee->name ?? 'Unknown'),
-                            url:      '{{ route('admin.tasks.approve', $task) }}'
+                            id:              {{ $task->id }},
+                            title:           @js($task->title),
+                            assignee:        @js($task->assignee->name ?? 'Unknown'),
+                            url:             '{{ route('admin.tasks.approve', $task) }}',
+                            customer_name:   @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
+                            customer_email:  @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
+                            customer_phone:  @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
+                            submission_url:  @js($latestSub?->file_path ? Storage::url($latestSub->file_path) : null),
+                            submission_name: @js($latestSub?->original_filename ?? ($latestSub?->file_path ? basename($latestSub->file_path) : null)),
                         })"
                         class="w-6 h-6 rounded-lg bg-green-50 hover:bg-green-100 flex items-center justify-center text-green-500 hover:text-green-600 transition"
                         title="Approve">
@@ -858,10 +1080,15 @@
                     {{-- Approve --}}
                     <button type="button"
                             @click="openApprovalModal({
-                                id:       {{ $task->id }},
-                                title:    @js($task->title),
-                                assignee: @js($task->assignee->name ?? 'Unknown'),
-                                url:      '{{ route('admin.tasks.approve', $task) }}'
+                                id:              {{ $task->id }},
+                                title:           @js($task->title),
+                                assignee:        @js($task->assignee->name ?? 'Unknown'),
+                                url:             '{{ route('admin.tasks.approve', $task) }}',
+                                customer_name:   @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
+                                customer_email:  @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
+                                customer_phone:  @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
+                                submission_url:  @js($latestSub2?->file_path ? Storage::url($latestSub2->file_path) : null),
+                                submission_name: @js($latestSub2?->original_filename ?? ($latestSub2?->file_path ? basename($latestSub2->file_path) : null)),
                             })"
                             style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(16,185,129,.25);transition:opacity .15s;"
                             onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
@@ -1523,18 +1750,33 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
                            onmouseover="this.style.background='#EEF2FF';this.style.color='#4F46E5';this.style.borderColor='#C7D2FE'" onmouseout="this.style.background='#F3F4F6';this.style.color='#6B7280';this.style.borderColor='#E5E7EB'">
                             <i class="fas fa-arrow-up-right-from-square" style="font-size:10px;"></i> Task
                         </a>
-                        <form method="POST" action="{{ route('admin.tasks.social.assign', $st->id) }}" style="display:flex;gap:4px;align-items:center;">
+                        <form method="POST" action="{{ route('admin.tasks.social.assign', $st->id) }}" style="display:flex;flex-direction:column;gap:5px;min-width:220px;">
                             @csrf
-                            <select name="social_user_id" required style="font-size:11px;padding:4px 8px;border:1.5px solid #E5E7EB;border-radius:7px;background:#fff;color:#374151;outline:none;max-width:130px;">
-                                <option value="">Reassign...</option>
-                                @foreach($socialUsers as $su)
-                                <option value="{{ $su->id }}" {{ $su->id == $st->social_assigned_to ? 'selected' : '' }}>{{ $su->name }}</option>
-                                @endforeach
-                            </select>
-                            <button type="submit"
-                                    style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">
-                                <i class="fas fa-arrows-rotate" style="font-size:10px;"></i>
-                            </button>
+                            <div style="display:flex;gap:4px;align-items:center;">
+                                <select name="social_user_id" required style="font-size:11px;padding:4px 8px;border:1.5px solid #E5E7EB;border-radius:7px;background:#fff;color:#374151;outline:none;flex:1;min-width:0;">
+                                    <option value="">Reassign…</option>
+                                    @foreach($socialUsers as $su)
+                                    <option value="{{ $su->id }}" {{ $su->id == $st->social_assigned_to ? 'selected' : '' }}>{{ $su->name }}</option>
+                                    @endforeach
+                                </select>
+                                <button type="submit"
+                                        style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">
+                                    <i class="fas fa-arrows-rotate" style="font-size:10px;"></i>
+                                </button>
+                            </div>
+                            <textarea name="social_description" rows="2"
+                                      placeholder="Posting instructions…"
+                                      style="font-size:11px;padding:5px 8px;border:1.5px solid #E5E7EB;border-radius:7px;background:#fff;color:#374151;outline:none;resize:vertical;width:100%;box-sizing:border-box;line-height:1.45;"
+                                      onfocus="this.style.borderColor='#A5B4FC'" onblur="this.style.borderColor='#E5E7EB'">{{ $st->social_description }}</textarea>
+                            <textarea name="social_caption" rows="2"
+                                      placeholder="Ad caption…"
+                                      style="font-size:11px;padding:5px 8px;border:1.5px solid #DDD6FE;border-radius:7px;background:#fff;color:#374151;outline:none;resize:vertical;width:100%;box-sizing:border-box;line-height:1.45;"
+                                      onfocus="this.style.borderColor='#8B5CF6'" onblur="this.style.borderColor='#DDD6FE'">{{ $st->social_caption }}</textarea>
+                            <input type="text" name="social_budget"
+                                   value="{{ $st->social_budget }}"
+                                   placeholder="Ad budget (e.g. $200)…"
+                                   style="font-size:11px;padding:5px 8px;border:1.5px solid #FDE68A;border-radius:7px;background:#fff;color:#374151;outline:none;width:100%;box-sizing:border-box;"
+                                   onfocus="this.style.borderColor='#F59E0B'" onblur="this.style.borderColor='#FDE68A'">
                         </form>
                     </div>
                 </td>
@@ -1647,18 +1889,76 @@ function approvalPage() {
         viewer: false, viewerFile: null,
 
         // ── Approval modal ──
-        approvalModal: false,
-        approvalTask:       null,
-        approvalNote:       '',
-        approvalSocial:     null,   // 'yes' | 'no' | 'later' | null
-        approvalSocialUser: '',
+        approvalModal:          false,
+        approvalTask:           null,
+        approvalNote:           '',
+        approvalSocial:         null,   // 'yes' | 'no' | 'later' | null
+        approvalSocialUser:     '',
+        approvalNotifyEmail:    false,
+        approvalNotifyWhatsapp: false,
+        approvalCustomerMsg:    '',
+        approvalManualEmail:    '',
+        approvalManualPhone:    '',
+        waSendState:            'idle',   // idle | sending | sent | error
+        waSendMsg:              '',
 
         openApprovalModal(task) {
-            this.approvalTask       = task;
-            this.approvalNote       = '';
-            this.approvalSocial     = null;
-            this.approvalSocialUser = '';
-            this.approvalModal      = true;
+            this.approvalTask           = task;
+            this.approvalNote           = '';
+            this.approvalSocial         = null;
+            this.approvalSocialUser     = '';
+            this.approvalNotifyEmail    = false;
+            this.approvalNotifyWhatsapp = false;
+            this.approvalCustomerMsg    = '';
+            this.approvalManualEmail    = '';
+            this.approvalManualPhone    = '';
+            this.waSendState            = 'idle';
+            this.waSendMsg              = '';
+            this.approvalModal          = true;
+        },
+
+        buildWhatsAppMessage() {
+            const task   = this.approvalTask;
+            const name   = task?.customer_name ?? 'Customer';
+            const base   = `Hello ${name}, your design for "${task?.title ?? ''}" has been approved and is ready for your review.`;
+            const custom = this.approvalCustomerMsg ? `\n\n${this.approvalCustomerMsg}` : '';
+            const file   = task?.submission_url ? `\n\nView design: ${task.submission_url}` : '';
+            return base + custom + file;
+        },
+
+        openCustomerWhatsApp() {
+            const task   = this.approvalTask;
+            const phone  = task?.customer_phone || this.approvalManualPhone;
+            if (!phone) return;
+            const digits = phone.replace(/\D/g, '');
+            if (!digits) return;
+            window.open('https://wa.me/' + digits + '?text=' + encodeURIComponent(this.buildWhatsAppMessage()), '_blank');
+        },
+
+        async sendWhatsAppApi() {
+            const task  = this.approvalTask;
+            const phone = task?.customer_phone || this.approvalManualPhone;
+            if (!phone) { this.waSendState = 'error'; this.waSendMsg = 'No phone number — enter one above.'; return; }
+            this.waSendState = 'sending';
+            this.waSendMsg   = '';
+            try {
+                const res = await fetch('{{ $waSendRoute }}', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ $waCsrf }}', 'Accept': 'application/json' },
+                    body:    JSON.stringify({ phone, message: this.buildWhatsAppMessage() }),
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    this.waSendState = 'sent';
+                    this.waSendMsg   = 'WhatsApp sent successfully!';
+                } else {
+                    this.waSendState = 'error';
+                    this.waSendMsg   = data.message ?? 'Failed to send.';
+                }
+            } catch (e) {
+                this.waSendState = 'error';
+                this.waSendMsg   = 'Network error. Try again.';
+            }
         },
 
         // ── Reject modal ──

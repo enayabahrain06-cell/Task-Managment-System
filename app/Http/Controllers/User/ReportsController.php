@@ -257,21 +257,17 @@ class ReportsController extends Controller
 
         $taskIds = $tasks->pluck('id');
 
+        $endActions = ['auto_paused', 'status_updated_submitted', 'status_updated_approved', 'status_updated_delivered', 'status_updated_completed'];
+
         $logsByTask = TaskLog::whereIn('task_id', $taskIds)
-            ->whereIn('action', [
-                'status_updated_in_progress',
-                'status_updated_submitted',
-                'status_updated_approved',
-                'status_updated_delivered',
-                'status_updated_completed',
-            ])
+            ->whereIn('action', array_merge(['status_updated_in_progress'], $endActions))
             ->orderBy('created_at')
             ->get()
             ->groupBy('task_id');
 
-        return $tasks->map(function ($task) use ($logsByTask, $doneStatuses, $nonDoneStatuses) {
-            $logs        = $logsByTask->get($task->id, collect());
-            $startedLog  = $logs->firstWhere('action', 'status_updated_in_progress');
+        return $tasks->map(function ($task) use ($logsByTask, $doneStatuses, $nonDoneStatuses, $endActions) {
+            $logs         = $logsByTask->get($task->id, collect());
+            $startedLog   = $logs->firstWhere('action', 'status_updated_in_progress');
             $submittedLog = $logs->firstWhere('action', 'status_updated_submitted');
             $completedLog = $logs->first(fn($l) => in_array($l->action, [
                 'status_updated_approved', 'status_updated_delivered', 'status_updated_completed',
@@ -284,6 +280,22 @@ class ReportsController extends Controller
             $daysToSubmit   = ($startedAt && $submittedAt)  ? (int) $startedAt->diffInDays($submittedAt)  : null;
             $daysToComplete = ($startedAt && $completedAt)  ? (int) $startedAt->diffInDays($completedAt)  : null;
 
+            // Sum all contiguous in_progress segments
+            $totalMinutes = 0;
+            $segStart     = null;
+            foreach ($logs as $log) {
+                if ($log->action === 'status_updated_in_progress') {
+                    $segStart = $log->created_at;
+                } elseif ($segStart !== null && in_array($log->action, $endActions)) {
+                    $totalMinutes += (int) $segStart->diffInMinutes($log->created_at);
+                    $segStart = null;
+                }
+            }
+            // Still actively in_progress with no closing event yet
+            if ($segStart !== null && $task->status === 'in_progress') {
+                $totalMinutes += (int) $segStart->diffInMinutes(now());
+            }
+
             $isDone    = in_array($task->status, $doneStatuses);
             $isOverdue = $task->deadline && $task->deadline->isPast() && ! $isDone;
             $isLate    = $isDone && $task->deadline && $completedAt && $completedAt->gt($task->deadline);
@@ -292,25 +304,35 @@ class ReportsController extends Controller
                 ? (int) $completedAt->diffInDays($task->deadline) : null;
 
             return [
-                'id'              => $task->id,
-                'title'           => $task->title,
-                'project'         => $task->project?->name ?? '—',
-                'priority'        => $task->priority ?? 'medium',
-                'status'          => $task->status,
-                'deadline'        => $task->deadline?->format('M d, Y'),
-                'deadline_raw'    => $task->deadline?->toDateString(),
-                'started_at'      => $startedAt?->format('M d, Y'),
-                'submitted_at'    => $submittedAt?->format('M d, Y'),
-                'completed_at'    => $completedAt?->format('M d, Y'),
-                'days_to_submit'  => $daysToSubmit,
-                'days_to_complete'=> $daysToComplete,
-                'is_done'         => $isDone,
-                'is_overdue'      => $isOverdue,
-                'is_late'         => $isLate,
-                'days_late'       => $daysLate,
-                'days_early'      => $daysEarly,
+                'id'               => $task->id,
+                'title'            => $task->title,
+                'project'          => $task->project?->name ?? '—',
+                'priority'         => $task->priority ?? 'medium',
+                'status'           => $task->status,
+                'deadline'         => $task->deadline?->format('M d, Y'),
+                'deadline_raw'     => $task->deadline?->toDateString(),
+                'started_at'       => $startedAt?->format('M d, Y'),
+                'submitted_at'     => $submittedAt?->format('M d, Y'),
+                'completed_at'     => $completedAt?->format('M d, Y'),
+                'days_to_submit'   => $daysToSubmit,
+                'days_to_complete' => $daysToComplete,
+                'time_spent_min'   => $totalMinutes,
+                'time_spent'       => self::fmtMinutes($totalMinutes),
+                'is_done'          => $isDone,
+                'is_overdue'       => $isOverdue,
+                'is_late'          => $isLate,
+                'days_late'        => $daysLate,
+                'days_early'       => $daysEarly,
             ];
         });
+    }
+
+    private static function fmtMinutes(int $minutes): string
+    {
+        if ($minutes <= 0) return '—';
+        $h = intdiv($minutes, 60);
+        $m = $minutes % 60;
+        return $h > 0 ? "{$h}h {$m}m" : "{$m}m";
     }
 
     public function exportTasks()
@@ -348,7 +370,7 @@ class ReportsController extends Controller
             fputcsv($h, ["My Task Report — {$user->name}"]);
             fputcsv($h, ['Generated', now()->format('Y-m-d H:i')]);
             fputcsv($h, []);
-            fputcsv($h, ['Task', 'Project', 'Priority', 'Status', 'Started', 'Submitted', 'Completed', 'Days to Submit', 'Days to Complete', 'Deadline', 'Result']);
+            fputcsv($h, ['Task', 'Project', 'Priority', 'Status', 'Started', 'Submitted', 'Completed', 'Time Spent', 'Days to Submit', 'Days to Complete', 'Deadline', 'Result']);
             foreach ($details as $t) {
                 if ($t['is_overdue'])        $result = 'Overdue';
                 elseif ($t['is_late'])        $result = 'Late (' . $t['days_late'] . 'd)';
@@ -364,6 +386,7 @@ class ReportsController extends Controller
                     $t['started_at']    ?? '—',
                     $t['submitted_at']  ?? '—',
                     $t['completed_at']  ?? '—',
+                    $t['time_spent']    ?? '—',
                     $t['days_to_submit']   !== null ? $t['days_to_submit']   . ' days' : '—',
                     $t['days_to_complete'] !== null ? $t['days_to_complete'] . ' days' : '—',
                     $t['deadline'] ?? '—',

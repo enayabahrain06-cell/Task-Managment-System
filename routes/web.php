@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\AuditLogController as AdminAuditLogController;
 use App\Http\Controllers\Admin\OffboardingController as AdminOffboardingController;
 use App\Http\Controllers\Admin\RoleController as AdminRoleController;
 use App\Http\Controllers\Admin\ReportsController as AdminReportsController;
+use App\Http\Controllers\Admin\SocialBudgetController as AdminSocialBudgetController;
 use App\Http\Controllers\Admin\CustomerController as AdminCustomerController;
 use App\Http\Controllers\User\ProjectController as UserProjectController;
 use App\Http\Controllers\User\ReportsController as UserReportsController;
@@ -116,8 +117,9 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::get('/dashboard/workload-tasks', [AdminDashboard::class, 'workloadTasks'])->name('dashboard.workload-tasks');
     Route::get('/dashboard/social-posts',    [AdminDashboard::class, 'socialPosts'])->name('dashboard.social-posts');
     Route::get('/dashboard/analytics-tasks',[AdminDashboard::class, 'analyticsTasks'])->name('dashboard.analytics-tasks');
-    Route::get('/reports',              [AdminReportsController::class, 'index'])->name('reports.index');
-    Route::get('/reports/export-users', [AdminReportsController::class, 'exportUsers'])->name('reports.export-users');
+    Route::get('/reports',                     [AdminReportsController::class, 'index'])->name('reports.index');
+    Route::get('/reports/export-users',        [AdminReportsController::class, 'exportUsers'])->name('reports.export-users');
+    Route::get('/reports/user-detail',         [AdminReportsController::class, 'userDetail'])->name('reports.user-detail');
     Route::resource('users', AdminUserController::class);
     Route::patch('users/{user}/permissions', [AdminUserController::class, 'updatePermissions'])->name('users.permissions');
     Route::post('roles',              [AdminRoleController::class, 'store'])->name('roles.store');
@@ -144,6 +146,9 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('settings/maintenance',           [AdminSettingsController::class, 'toggleMaintenance'])->name('settings.maintenance');
     Route::post('settings/manager-admin-access',  [AdminSettingsController::class, 'toggleManagerAdminAccess'])->name('settings.manager-admin-access');
     Route::post('settings/manager-roles-access',  [AdminSettingsController::class, 'toggleManagerRolesAccess'])->name('settings.manager-roles-access');
+    Route::post('settings/approval-customer-notify', [AdminSettingsController::class, 'toggleApprovalCustomerNotify'])->name('settings.approval-customer-notify');
+    Route::post('settings/hourly-rate',              [AdminSettingsController::class, 'toggleHourlyRate'])->name('settings.hourly-rate');
+    Route::get('social-budget',                      [AdminSocialBudgetController::class, 'index'])->name('social-budget.index');
     Route::post('settings/elements/toggle',       [AdminSettingsController::class, 'toggleElement'])->name('settings.elements.toggle');
     Route::post('settings/nav/toggle',            [AdminSettingsController::class, 'toggleNavItem'])->name('settings.nav.toggle');
     Route::post('meetings',                        [AdminMeetingController::class, 'store'])->name('meetings.store');
@@ -159,6 +164,9 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::get('settings/backup/download',        [AdminSettingsController::class, 'downloadBackup'])->name('settings.backup.download');
     Route::post('settings/backup/restore',        [AdminSettingsController::class, 'restoreBackup'])->name('settings.backup.restore');
     Route::post('settings/clear',                 [AdminSettingsController::class, 'clearData'])->name('settings.clear');
+    Route::post('settings/whatsapp',              [AdminSettingsController::class, 'updateWhatsapp'])->name('settings.whatsapp');
+    Route::post('settings/whatsapp/test',         [AdminSettingsController::class, 'testWhatsapp'])->name('settings.whatsapp.test');
+    Route::post('settings/whatsapp/broadcast',    [AdminSettingsController::class, 'broadcastWhatsapp'])->name('settings.whatsapp.broadcast');
 
     // Task approvals
     Route::get('approvals',                        [AdminTaskApprovalController::class, 'index'])->name('approvals.index');
@@ -169,6 +177,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::put('social-posts/{post}',              [AdminTaskApprovalController::class, 'updateSocialPost'])->name('social-posts.update');
     Route::delete('social-posts/{post}',           [AdminTaskApprovalController::class, 'deleteSocialPost'])->name('social-posts.destroy');
     Route::post('tasks/{task}/social-reopen',      [AdminTaskApprovalController::class, 'reopenSocial'])->name('tasks.social.reopen');
+    Route::post('approvals/whatsapp-customer',     [AdminTaskApprovalController::class, 'sendWhatsappToCustomer'])->name('approvals.whatsapp-customer');
 
     // Individual task management
     Route::get('tasks',                            [AdminTaskController::class, 'index'])->name('tasks.index');
@@ -247,6 +256,9 @@ Route::middleware([UserMiddleware::class])->prefix('user')->name('user.')->group
     Route::post('/tasks/{task}/comment', [UserTaskController::class, 'addComment'])->name('tasks.comment');
     Route::patch('/tasks/{task}/comments/{comment}',             [UserTaskController::class, 'editComment'])->name('tasks.comments.edit');
     Route::patch('/tasks/{task}/submissions/{submission}/note',  [UserTaskController::class, 'editSubmissionNote'])->name('tasks.submissions.note');
+    Route::post('/tasks/{task}/timer/start',             [UserTaskController::class, 'startTimer'])->name('tasks.timer.start');
+    Route::post('/tasks/{task}/timer/pause',             [UserTaskController::class, 'pauseTimer'])->name('tasks.timer.pause');
+    Route::post('/tasks/{task}/acknowledge-revision',    [UserTaskController::class, 'acknowledgeRevision'])->name('tasks.acknowledge-revision');
     Route::get('/projects', [UserProjectController::class, 'index'])->name('projects.index');
     Route::get('/projects/{project}', [UserProjectController::class, 'show'])->name('projects.show');
     Route::get('/reports', [UserReportsController::class, 'index'])->name('reports.index');

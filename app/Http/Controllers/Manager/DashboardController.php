@@ -61,10 +61,11 @@ class DashboardController extends Controller
         }
 
         $taskStats = [
-            'completed'   => $taskOverview['completed'],
-            'in_progress' => $taskOverview['in_progress'],
-            'pending'     => $taskOverview['pending'],
-            'overdue'     => $overdueTasks,
+            'completed'   => Project::where('is_quick', false)->where('status', 'completed')->count(),
+            'in_progress' => Project::where('is_quick', false)->where('status', 'active')->count(),
+            'pending'     => Project::where('is_quick', false)->where('status', 'pending')->count(),
+            'overdue'     => Project::where('is_quick', false)->where('status', 'active')
+                                ->whereNotNull('deadline')->where('deadline', '<', now())->count(),
         ];
 
         $workloadUsers  = User::withCount(['tasks as open_tasks' => fn($q) => $q->where('status', '!=', 'completed')])->where('role', 'user')->orderByDesc('open_tasks')->take(6)->get();
@@ -95,8 +96,8 @@ class DashboardController extends Controller
     public function index()
     {
         $users       = User::paginate(10);
-        $projects    = Project::withCount('tasks')->paginate(10);
-        $allUsers    = User::where('role', 'user')->orderBy('name')->get();
+        $projects    = Project::where('is_quick', false)->withCount('tasks')->paginate(10);
+        $allUsers    = User::whereIn('role', ['user', 'manager'])->where('status', 'active')->orderBy('name')->get();
         $allProjects = Project::where('status', 'active')->where('is_quick', false)->orderBy('name')->get();
 
         $doneStatuses   = ['approved', 'delivered', 'archived'];
@@ -146,10 +147,11 @@ class DashboardController extends Controller
         }
 
         $taskStats = [
-            'completed'   => Task::where('status', 'approved')->count(),
-            'in_progress' => Task::where('status', 'in_progress')->count(),
-            'pending'     => Task::whereIn('status', ['draft', 'assigned', 'viewed'])->count(),
-            'overdue'     => $overdueTasks,
+            'completed'   => Project::where('is_quick', false)->where('status', 'completed')->count(),
+            'in_progress' => Project::where('is_quick', false)->where('status', 'active')->count(),
+            'pending'     => Project::where('is_quick', false)->where('status', 'pending')->count(),
+            'overdue'     => Project::where('is_quick', false)->where('status', 'active')
+                                ->whereNotNull('deadline')->where('deadline', '<', now())->count(),
         ];
 
         $workloadUsers  = User::withCount(['tasks as open_tasks' => fn($q) => $q->where('status', '!=', 'completed')])->where('role', 'user')->orderByDesc('open_tasks')->take(6)->get();
