@@ -38,6 +38,9 @@
 .role-perm-toggle.is-on{background:#6366F1;border-color:#6366F1;}
 .role-perm-toggle-knob{position:absolute;top:2px;left:2px;width:12px;height:12px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .18s;display:block;}
 .role-perm-toggle.is-on .role-perm-toggle-knob{transform:translateX(16px);}
+.btn-modal-primary { display:inline-flex;align-items:center;gap:7px;padding:9px 24px;background:linear-gradient(135deg,#6366F1,#4F46E5);border:none;border-radius:10px;font-size:13px;font-weight:600;color:#fff;cursor:pointer;box-shadow:0 4px 12px rgba(99,102,241,.3);transition:opacity .15s,box-shadow .15s;font-family:'Inter',sans-serif; }
+.btn-modal-primary:hover:not(:disabled) { box-shadow:0 6px 16px rgba(99,102,241,.4); }
+.btn-modal-primary:disabled { opacity:0.55;cursor:not-allowed; }
 </style>
 
 {{-- ═══════ Page Header ═══════ --}}
@@ -1636,11 +1639,9 @@ function rolesTab() {
                     style="padding:9px 20px;background:#F3F4F6;border:none;border-radius:10px;font-size:13px;font-weight:600;color:#6B7280;cursor:pointer;">
                 Cancel
             </button>
-            <button type="submit" form="edit-user-form" :disabled="saving"
-                    style="padding:9px 24px;background:linear-gradient(135deg,#6366F1,#4F46E5);border:none;border-radius:10px;font-size:13px;font-weight:600;color:#fff;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 4px 12px rgba(99,102,241,.3);"
-                    :style="saving ? 'opacity:0.7;cursor:not-allowed;' : ''">
-                <i x-show="saving" class="fa fa-spinner fa-spin text-xs"></i>
-                <i x-show="!saving" class="fa fa-check text-xs"></i>
+            <button type="submit" form="edit-user-form" class="btn-modal-primary" :disabled="saving">
+                <i x-show="saving" class="fa fa-spinner fa-spin" style="font-size:11px;"></i>
+                <i x-show="!saving" class="fa fa-check" style="font-size:11px;"></i>
                 <span x-text="saving ? 'Saving…' : 'Save Changes'"></span>
             </button>
         </div>
@@ -2282,11 +2283,9 @@ function editUserModal() {
                     style="padding:9px 20px;background:#F3F4F6;border:none;border-radius:10px;font-size:13px;font-weight:600;color:#6B7280;cursor:pointer;">
                 Cancel
             </button>
-            <button type="submit" form="add-user-form" :disabled="saving"
-                    style="padding:9px 24px;background:linear-gradient(135deg,#6366F1,#4F46E5);border:none;border-radius:10px;font-size:13px;font-weight:600;color:#fff;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 4px 12px rgba(99,102,241,.3);"
-                    :style="saving ? 'opacity:0.7;cursor:not-allowed;' : ''">
-                <i x-show="saving" class="fa fa-spinner fa-spin text-xs"></i>
-                <i x-show="!saving" class="fa fa-user-plus text-xs"></i>
+            <button type="submit" form="add-user-form" class="btn-modal-primary" :disabled="saving">
+                <i x-show="saving" class="fa fa-spinner fa-spin" style="font-size:11px;"></i>
+                <i x-show="!saving" class="fa fa-user-plus" style="font-size:11px;"></i>
                 <span x-text="saving ? 'Creating…' : 'Create User'"></span>
             </button>
         </div>

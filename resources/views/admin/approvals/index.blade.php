@@ -3,10 +3,11 @@
 
 @section('content')
 @php
-    $waApiEnabled = \App\Models\Setting::get('wa_enabled','0') === '1'
-                 && \App\Models\Setting::get('wa_token','') !== '';
-    $waSendRoute  = route('admin.approvals.whatsapp-customer');
-    $waCsrf       = csrf_token();
+    $waApiEnabled  = \App\Models\Setting::get('wa_enabled','0') === '1'
+                  && \App\Models\Setting::get('wa_token','') !== '';
+    $waSendRoute   = route('admin.approvals.whatsapp-customer');
+    $waMediaRoute  = route('admin.approvals.whatsapp-customer-media');
+    $waCsrf        = csrf_token();
 @endphp
 <style>
 /* ── Card ── */
@@ -508,26 +509,34 @@
             {{-- ── Footer actions ── --}}
             <template x-if="qvTask">
             <div style="padding:14px 24px;border-top:1px solid #F0F2F8;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#FAFBFF;flex-shrink:0;">
-                <button @click="closeQuickView(); openApprovalModal({ id: qvTask.id, title: qvTask.title, assignee: qvTask.assignee, url: qvTask.approve_url, customer_name: qvTask.customer_name, customer_email: null, customer_phone: qvTask.customer_phone, submission_url: qvTask.submission_url, submission_name: qvTask.submission_name })"
+                <button @click="openApprovalModal({ id: qvTask.id, title: qvTask.title, assignee: qvTask.assignee, url: qvTask.approve_url, customer_name: qvTask.customer_name, customer_email: null, customer_phone: qvTask.customer_phone, submission_url: qvTask.submission_url, submission_name: qvTask.submission_name }); closeQuickView()"
                         style="display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(16,185,129,.28);transition:opacity .15s;white-space:nowrap;"
                         onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
                     <i class="fas fa-circle-check" style="font-size:12px;"></i> Approve
                 </button>
-                <button @click="closeQuickView(); openRejectModal({ id: qvTask.id, title: qvTask.title, assignee: qvTask.assignee, url: qvTask.reject_url })"
+                <button @click="openRejectModal({ id: qvTask.id, title: qvTask.title, assignee: qvTask.assignee, url: qvTask.reject_url }); closeQuickView()"
                         style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;"
                         onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
                     <i class="fas fa-rotate-left" style="font-size:11px;"></i> Request Revision
                 </button>
                 <div style="flex:1;"></div>
                 <template x-if="qvTask.customer_phone">
-                    <a :href="'https://wa.me/'+qvTask.customer_phone.replace(/\D/g,'')+'?text='+encodeURIComponent('Hello '+qvTask.customer_name+', your design for \"'+qvTask.title+'\" has been submitted for review. We\'d love your feedback.\n\n'+(qvTask.submission_url ? 'View design: '+qvTask.submission_url : ''))"
-                       target="_blank" rel="noopener"
-                       style="width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;background:#DCFCE7;border:1.5px solid #BBF7D0;border-radius:10px;text-decoration:none;transition:all .15s;"
-                       onmouseover="this.style.background='#25D366';this.style.borderColor='#25D366'" onmouseout="this.style.background='#DCFCE7';this.style.borderColor='#BBF7D0'"
-                       title="Send preview via WhatsApp">
-                        <i class="fab fa-whatsapp" style="font-size:16px;color:#25D366;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#25D366'"></i>
-                    </a>
+                    <button type="button"
+                            @click="quickWhatsApp(qvTask.customer_phone, qvTask.customer_name, qvTask.title, qvTask.submission_url)"
+                            :disabled="qvWaSending"
+                            :style="qvWaSending ? 'width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;background:#9CA3AF;border:1.5px solid #9CA3AF;border-radius:10px;cursor:not-allowed;' : 'width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;background:#DCFCE7;border:1.5px solid #BBF7D0;border-radius:10px;cursor:pointer;transition:all .15s;'"
+                            onmouseover="if(this.style.cursor!=='not-allowed'){this.style.background='#25D366';this.style.borderColor='#25D366';}"
+                            onmouseout="if(this.style.cursor!=='not-allowed'){this.style.background='#DCFCE7';this.style.borderColor='#BBF7D0';}"
+                            title="Send preview via WhatsApp API">
+                        <i class="fab fa-whatsapp" x-show="!qvWaSending" style="font-size:16px;color:#25D366;"></i>
+                        <i class="fas fa-spinner fa-spin" x-show="qvWaSending" x-cloak style="font-size:14px;color:#fff;"></i>
+                    </button>
                 </template>
+                <div x-show="qvWaResult" x-cloak
+                     :style="qvWaResult?.ok ? 'font-size:11px;color:#16A34A;display:flex;align-items:center;gap:3px;' : 'font-size:11px;color:#DC2626;display:flex;align-items:center;gap:3px;'">
+                    <i :class="qvWaResult?.ok ? 'fas fa-circle-check' : 'fas fa-circle-xmark'" style="font-size:10px;"></i>
+                    <span x-text="qvWaResult?.message ?? ''"></span>
+                </div>
                 <a :href="qvTask.task_url"
                    style="display:inline-flex;align-items:center;gap:6px;padding:9px 14px;background:#F3F4F6;color:#374151;border:1px solid #E5E7EB;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;white-space:nowrap;"
                    onmouseover="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE';this.style.color='#4F46E5'" onmouseout="this.style.background='#F3F4F6';this.style.borderColor='#E5E7EB';this.style.color='#374151'">
@@ -1134,7 +1143,7 @@
                             customer_name:   @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
                             customer_email:  @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
                             customer_phone:  @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
-                            submission_url:  @js($latestSub?->file_path ? Storage::url($latestSub->file_path) : null),
+                            submission_url:  @js($latestSub?->file_path ? url(Storage::url($latestSub->file_path)) : null),
                             submission_name: @js($latestSub?->original_filename ?? ($latestSub?->file_path ? basename($latestSub->file_path) : null)),
                         })"
                         class="w-6 h-6 rounded-lg bg-green-50 hover:bg-green-100 flex items-center justify-center text-green-500 hover:text-green-600 transition"
@@ -1160,8 +1169,8 @@
                     if ($cwFile) $cwMsg .= "\n\nView design: {$cwFile}";
                 @endphp
                 <div x-data="{
-                         waOpen: false, waPhone: @js($cwPhone), waMsg: @js($cwMsg),
-                         waTop: 0, waRight: 0,
+                         waOpen: false, waPhone: @js($cwPhone), waMsg: @js($cwMsg), waFile: @js($cwFile),
+                         waTop: 0, waRight: 0, waSending: false, waResult: null,
                          toggleWa(btn) {
                              if (!this.waOpen) {
                                  const r = btn.getBoundingClientRect();
@@ -1169,6 +1178,27 @@
                                  this.waRight = window.innerWidth - r.right;
                              }
                              this.waOpen = !this.waOpen;
+                         },
+                         async doSend() {
+                             const d = this.waPhone.replace(/\D/g,'');
+                             if (!d) { this.$refs.cwInput.style.borderColor='#EF4444'; this.$refs.cwInput.focus(); return; }
+                             this.waSending = true; this.waResult = null;
+                             const hasFile = !!this.waFile;
+                             const isImage = hasFile && /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(this.waFile);
+                             const baseMsg = this.waMsg.split('\n\nView design:')[0];
+                             const url = hasFile ? '{{ $waMediaRoute }}' : '{{ $waSendRoute }}';
+                             const body = hasFile
+                                 ? { phone: this.waPhone, file_url: this.waFile, filename: this.waFile.split('/').pop(), caption: baseMsg }
+                                 : { phone: this.waPhone, message: this.waMsg };
+                             try {
+                                 const res  = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ $waCsrf }}','Accept':'application/json'}, body: JSON.stringify(body) });
+                                 const data = await res.json();
+                                 this.waResult = { ok: data.ok, message: typeof data.message === 'string' ? data.message : JSON.stringify(data.message) };
+                                 if (data.ok) setTimeout(() => { this.waOpen = false; this.waResult = null; }, 1800);
+                             } catch(e) {
+                                 this.waResult = { ok: false, message: 'Network error. Try again.' };
+                             }
+                             this.waSending = false;
                          }
                      }" @click.stop>
                     <button type="button" @click.stop="toggleWa($event.currentTarget)"
@@ -1184,7 +1214,7 @@
                             <i class="fab fa-whatsapp" style="color:#fff;font-size:18px;flex-shrink:0;"></i>
                             <div>
                                 <p style="font-size:12px;font-weight:700;color:#fff;margin:0;">Send Preview</p>
-                                <p style="font-size:10px;color:rgba(255,255,255,.75);margin:0;">Before approval · opens WhatsApp</p>
+                                <p style="font-size:10px;color:rgba(255,255,255,.75);margin:0;">Before approval · sends via API</p>
                             </div>
                         </div>
                         <div style="padding:13px 14px;">
@@ -1195,12 +1225,18 @@
                             <input type="tel" x-model="waPhone" x-ref="cwInput" placeholder="+971501234567"
                                    style="width:100%;padding:8px 10px;border:1.5px solid #D1FAE5;background:#F0FDF4;border-radius:8px;font-size:12px;color:#111827;outline:none;box-sizing:border-box;margin-bottom:9px;transition:border-color .15s;"
                                    onfocus="this.style.borderColor='#25D366'" onblur="this.style.borderColor='#D1FAE5'">
-                            <button type="button"
-                                    @click="const d=waPhone.replace(/\D/g,''); if(d){ window.open('https://wa.me/'+d+'?text='+encodeURIComponent(waMsg),'_blank'); waOpen=false; } else { $refs.cwInput.style.borderColor='#EF4444'; $refs.cwInput.focus(); }"
-                                    style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(37,211,102,.3);transition:opacity .15s;"
-                                    onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
-                                <i class="fab fa-whatsapp" style="font-size:13px;"></i> Open WhatsApp ↗
+                            <button type="button" @click="doSend()" :disabled="waSending"
+                                    :style="waSending ? 'width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;background:#9CA3AF;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:not-allowed;' : 'width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(37,211,102,.3);transition:opacity .15s;'"
+                                    onmouseover="if(this.style.cursor!=='not-allowed')this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                                <i class="fab fa-whatsapp" style="font-size:13px;" x-show="!waSending"></i>
+                                <i class="fas fa-spinner fa-spin" style="font-size:12px;" x-show="waSending" x-cloak></i>
+                                <span x-text="waSending ? 'Sending…' : (waFile ? 'Send File via WhatsApp' : 'Send via WhatsApp')">Send via WhatsApp</span>
                             </button>
+                            <div x-show="waResult" x-cloak
+                                 :style="waResult?.ok ? 'margin-top:8px;font-size:11px;color:#16A34A;display:flex;align-items:center;gap:4px;' : 'margin-top:8px;font-size:11px;color:#DC2626;display:flex;align-items:center;gap:4px;'">
+                                <i :class="waResult?.ok ? 'fas fa-circle-check' : 'fas fa-circle-xmark'" style="font-size:11px;"></i>
+                                <span x-text="waResult?.message ?? ''"></span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1269,7 +1305,7 @@
                 'deadline'      => $task->deadline?->format(config('app.date_format', 'M d, Y')),
                 'is_overdue'    => $isOverdue2,
                 'versions'      => $task->submissions->count(),
-                'submission_url'  => $latestSub2?->file_path ? Storage::url($latestSub2->file_path) : null,
+                'submission_url'  => $latestSub2?->file_path ? url(Storage::url($latestSub2->file_path)) : null,
                 'submission_name' => $latestSub2?->original_filename ?? ($latestSub2?->file_path ? basename($latestSub2->file_path) : null),
                 'approve_url'   => route('admin.tasks.approve', $task),
                 'reject_url'    => route('admin.tasks.reject', $task),
@@ -1329,7 +1365,7 @@
                                 customer_name:   @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
                                 customer_email:  @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
                                 customer_phone:  @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
-                                submission_url:  @js($latestSub2?->file_path ? Storage::url($latestSub2->file_path) : null),
+                                submission_url:  @js($latestSub2?->file_path ? url(Storage::url($latestSub2->file_path)) : null),
                                 submission_name: @js($latestSub2?->original_filename ?? ($latestSub2?->file_path ? basename($latestSub2->file_path) : null)),
                             })"
                             style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(16,185,129,.25);transition:opacity .15s;white-space:nowrap;"
@@ -1350,8 +1386,39 @@
                         if ($lwFile) $lwMsg .= "\n\nView design: {$lwFile}";
                     @endphp
                     {{-- Quick WhatsApp icon + dropdown --}}
-                    <div x-data="{ waOpen: false, waPhone: @js($lwPhone), waMsg: @js($lwMsg) }" style="position:relative;">
-                        <button type="button" @click.stop="waOpen = !waOpen"
+                    <div x-data="{
+                             waOpen: false, waPhone: @js($lwPhone), waMsg: @js($lwMsg), waFile: @js($lwFile),
+                             waTop: 0, waRight: 0, waSending: false, waResult: null,
+                             toggleWa(btn) {
+                                 if (!this.waOpen) {
+                                     const r = btn.getBoundingClientRect();
+                                     this.waTop   = r.bottom + 7;
+                                     this.waRight = window.innerWidth - r.right;
+                                 }
+                                 this.waOpen = !this.waOpen;
+                             },
+                             async doSend() {
+                                 const d = this.waPhone.replace(/\D/g,'');
+                                 if (!d) { this.$refs.lwInput.style.borderColor='#EF4444'; this.$refs.lwInput.focus(); return; }
+                                 this.waSending = true; this.waResult = null;
+                                 const hasFile = !!this.waFile;
+                                 const baseMsg = this.waMsg.split('\n\nView design:')[0];
+                                 const url = hasFile ? '{{ $waMediaRoute }}' : '{{ $waSendRoute }}';
+                                 const body = hasFile
+                                     ? { phone: this.waPhone, file_url: this.waFile, filename: this.waFile.split('/').pop(), caption: baseMsg }
+                                     : { phone: this.waPhone, message: this.waMsg };
+                                 try {
+                                     const res  = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ $waCsrf }}','Accept':'application/json'}, body: JSON.stringify(body) });
+                                     const data = await res.json();
+                                     this.waResult = { ok: data.ok, message: typeof data.message === 'string' ? data.message : JSON.stringify(data.message) };
+                                     if (data.ok) setTimeout(() => { this.waOpen = false; this.waResult = null; }, 1800);
+                                 } catch(e) {
+                                     this.waResult = { ok: false, message: 'Network error. Try again.' };
+                                 }
+                                 this.waSending = false;
+                             }
+                         }">
+                        <button type="button" @click.stop="toggleWa($event.currentTarget)"
                                 :style="waOpen
                                     ? 'width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;background:#25D366;border:none;border-radius:8px;cursor:pointer;transition:all .15s;'
                                     : 'width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:8px;cursor:pointer;transition:all .15s;'"
@@ -1359,12 +1426,13 @@
                             <i class="fab fa-whatsapp" :style="waOpen ? 'font-size:15px;color:#fff;' : 'font-size:15px;color:#25D366;'"></i>
                         </button>
                         <div x-show="waOpen" x-cloak x-transition @click.outside="waOpen=false"
-                             style="position:absolute;right:0;top:calc(100% + 8px);z-index:9999;background:#fff;border-radius:16px;width:256px;box-shadow:0 20px 50px rgba(0,0,0,.18);border:1px solid #D1FAE5;overflow:hidden;">
+                             :style="`position:fixed;top:${waTop}px;right:${waRight}px;`"
+                             style="z-index:9999;background:#fff;border-radius:16px;width:256px;box-shadow:0 20px 50px rgba(0,0,0,.18);border:1px solid #D1FAE5;overflow:hidden;">
                             <div style="background:linear-gradient(135deg,#25D366,#128C7E);padding:12px 16px;display:flex;align-items:center;gap:10px;">
                                 <i class="fab fa-whatsapp" style="color:#fff;font-size:20px;flex-shrink:0;"></i>
                                 <div>
                                     <p style="font-size:13px;font-weight:700;color:#fff;margin:0;">Send Preview</p>
-                                    <p style="font-size:10px;color:rgba(255,255,255,.75);margin:2px 0 0;">Before approval · opens WhatsApp</p>
+                                    <p style="font-size:10px;color:rgba(255,255,255,.75);margin:2px 0 0;">Before approval · sends via API</p>
                                 </div>
                             </div>
                             <div style="padding:14px 16px;">
@@ -1375,12 +1443,18 @@
                                 <input type="tel" x-model="waPhone" x-ref="lwInput" placeholder="+971501234567"
                                        style="width:100%;padding:9px 11px;border:1.5px solid #D1FAE5;background:#F0FDF4;border-radius:9px;font-size:12px;color:#111827;outline:none;box-sizing:border-box;margin-bottom:10px;transition:border-color .15s;"
                                        onfocus="this.style.borderColor='#25D366'" onblur="this.style.borderColor='#D1FAE5'">
-                                <button type="button"
-                                        @click="const d=waPhone.replace(/\D/g,''); if(d){ window.open('https://wa.me/'+d+'?text='+encodeURIComponent(waMsg),'_blank'); waOpen=false; } else { $refs.lwInput.style.borderColor='#EF4444'; $refs.lwInput.focus(); }"
-                                        style="width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:10px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(37,211,102,.35);transition:opacity .15s;"
-                                        onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
-                                    <i class="fab fa-whatsapp" style="font-size:14px;"></i> Open WhatsApp ↗
+                                <button type="button" @click="doSend()" :disabled="waSending"
+                                        :style="waSending ? 'width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:10px;background:#9CA3AF;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:not-allowed;' : 'width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:10px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(37,211,102,.35);transition:opacity .15s;'"
+                                        onmouseover="if(this.style.cursor!=='not-allowed')this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                                    <i class="fab fa-whatsapp" style="font-size:14px;" x-show="!waSending"></i>
+                                    <i class="fas fa-spinner fa-spin" style="font-size:13px;" x-show="waSending" x-cloak></i>
+                                    <span x-text="waSending ? 'Sending…' : (waFile ? 'Send File via WhatsApp' : 'Send via WhatsApp')">Send via WhatsApp</span>
                                 </button>
+                                <div x-show="waResult" x-cloak
+                                     :style="waResult?.ok ? 'margin-top:8px;font-size:11px;color:#16A34A;display:flex;align-items:center;gap:4px;' : 'margin-top:8px;font-size:11px;color:#DC2626;display:flex;align-items:center;gap:4px;'">
+                                    <i :class="waResult?.ok ? 'fas fa-circle-check' : 'fas fa-circle-xmark'" style="font-size:11px;"></i>
+                                    <span x-text="waResult?.message ?? ''"></span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2196,14 +2270,28 @@ function approvalPage() {
         approvalManualPhone:    '',
         waSendState:            'idle',   // idle | sending | sent | error
         waSendMsg:              '',
+        qvWaSending:            false,
+        qvWaResult:             null,
 
-        quickWhatsApp(phone, name, title, submissionUrl) {
+        async quickWhatsApp(phone, name, title, submissionUrl) {
             if (!phone) { alert('No WhatsApp number on file for this customer.'); return; }
-            const digits = phone.replace(/\D/g, '');
-            if (!digits) return;
+            this.qvWaSending = true; this.qvWaResult = null;
             const base = `Hello ${name}, your design for "${title}" has been submitted for review. We'd love your feedback before we finalize approval.`;
-            const file = submissionUrl ? `\n\nView design: ${submissionUrl}` : '';
-            window.open('https://wa.me/' + digits + '?text=' + encodeURIComponent(base + file), '_blank');
+            const isImage = submissionUrl && /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(submissionUrl);
+            const hasFile = !!submissionUrl;
+            const fetchUrl = hasFile ? '{{ $waMediaRoute }}' : '{{ $waSendRoute }}';
+            const bodyData = hasFile
+                ? { phone, file_url: submissionUrl, filename: submissionUrl.split('/').pop(), caption: base }
+                : { phone, message: base };
+            try {
+                const res  = await fetch(fetchUrl, { method:'POST', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ $waCsrf }}','Accept':'application/json'}, body: JSON.stringify(bodyData) });
+                const data = await res.json();
+                this.qvWaResult = { ok: data.ok, message: typeof data.message === 'string' ? data.message : JSON.stringify(data.message) };
+                if (data.ok) setTimeout(() => { this.qvWaResult = null; }, 2500);
+            } catch(e) {
+                this.qvWaResult = { ok: false, message: 'Network error. Try again.' };
+            }
+            this.qvWaSending = false;
         },
 
         openApprovalModal(task) {
@@ -2224,10 +2312,9 @@ function approvalPage() {
         buildWhatsAppMessage() {
             const task   = this.approvalTask;
             const name   = task?.customer_name ?? 'Customer';
-            const base   = `Hello ${name}, your design for "${task?.title ?? ''}" has been approved and is ready for your review.`;
+            const base   = `Hello ${name}, your design for "${task?.title ?? ''}" has been submitted for review. We'd love your feedback before we finalize approval.`;
             const custom = this.approvalCustomerMsg ? `\n\n${this.approvalCustomerMsg}` : '';
-            const file   = task?.submission_url ? `\n\nView design: ${task.submission_url}` : '';
-            return base + custom + file;
+            return base + custom;
         },
 
         openCustomerWhatsApp() {
@@ -2240,16 +2327,22 @@ function approvalPage() {
         },
 
         async sendWhatsAppApi() {
-            const task  = this.approvalTask;
-            const phone = task?.customer_phone || this.approvalManualPhone;
+            const task    = this.approvalTask;
+            const phone   = task?.customer_phone || this.approvalManualPhone;
             if (!phone) { this.waSendState = 'error'; this.waSendMsg = 'No phone number — enter one above.'; return; }
             this.waSendState = 'sending';
             this.waSendMsg   = '';
+            const fileUrl = task?.submission_url ?? '';
+            const hasFile = !!fileUrl;
+            const fetchUrl = hasFile ? '{{ $waMediaRoute }}' : '{{ $waSendRoute }}';
+            const body = hasFile
+                ? { phone, file_url: fileUrl, filename: fileUrl.split('/').pop(), caption: this.buildWhatsAppMessage() }
+                : { phone, message: this.buildWhatsAppMessage() };
             try {
-                const res = await fetch('{{ $waSendRoute }}', {
+                const res = await fetch(fetchUrl, {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ $waCsrf }}', 'Accept': 'application/json' },
-                    body:    JSON.stringify({ phone, message: this.buildWhatsAppMessage() }),
+                    body:    JSON.stringify(body),
                 });
                 const data = await res.json();
                 if (data.ok) {
@@ -2280,8 +2373,8 @@ function approvalPage() {
         qvModal: false,
         qvTask:  null,
 
-        openQuickView(task) { this.qvTask = task; this.qvModal = true; },
-        closeQuickView()    { this.qvModal = false; this.qvTask = null; },
+        openQuickView(task) { this.qvTask = task; this.qvModal = true; this.qvWaSending = false; this.qvWaResult = null; },
+        closeQuickView()    { this.qvModal = false; this.qvTask = null; this.qvWaSending = false; this.qvWaResult = null; },
 
         openModal(data)  { this.sub = data; this.modal = true; },
         closeModal()     { this.modal = false; this.sub = null; },

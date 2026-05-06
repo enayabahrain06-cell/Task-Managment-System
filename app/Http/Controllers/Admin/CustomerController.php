@@ -79,7 +79,11 @@ class CustomerController extends Controller
         ]);
 
         // Load tasks from both direct customer_id and tasks inside the customer's projects
-        $customerTasks = \App\Models\Task::with(['assignee:id,name', 'project:id,name'])
+        $customerTasks = \App\Models\Task::with([
+            'assignee:id,name',
+            'project:id,name',
+            'submissions' => fn($q) => $q->whereNotNull('file_path')->orderByDesc('version'),
+        ])
             ->where(function ($q) use ($customer) {
                 $q->where('customer_id', $customer->id)
                   ->orWhereHas('project', fn($pq) => $pq->where('customer_id', $customer->id)->where('is_quick', false));

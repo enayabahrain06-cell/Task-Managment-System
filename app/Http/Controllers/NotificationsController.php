@@ -27,6 +27,12 @@ class NotificationsController extends Controller
         return back();
     }
 
+    public function clearAll()
+    {
+        auth()->user()->notifications()->delete();
+        return back();
+    }
+
     public function unreadCount()
     {
         return response()->json([

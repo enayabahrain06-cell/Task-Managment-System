@@ -100,6 +100,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/team', [TeamController::class, 'index'])->name('team.index');
     Route::get('/notifications/read/{id}',    [NotificationsController::class, 'markRead'])->name('notifications.read');
     Route::post('/notifications/mark-all-read', [NotificationsController::class, 'markAllRead'])->name('notifications.mark-all-read');
+    Route::post('/notifications/clear-all',     [NotificationsController::class, 'clearAll'])->name('notifications.clear-all');
     Route::get('/notifications/count',          [NotificationsController::class, 'unreadCount'])->name('notifications.count');
 
     // Social media posting (accessible by any authenticated user)
@@ -177,7 +178,8 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::put('social-posts/{post}',              [AdminTaskApprovalController::class, 'updateSocialPost'])->name('social-posts.update');
     Route::delete('social-posts/{post}',           [AdminTaskApprovalController::class, 'deleteSocialPost'])->name('social-posts.destroy');
     Route::post('tasks/{task}/social-reopen',      [AdminTaskApprovalController::class, 'reopenSocial'])->name('tasks.social.reopen');
-    Route::post('approvals/whatsapp-customer',     [AdminTaskApprovalController::class, 'sendWhatsappToCustomer'])->name('approvals.whatsapp-customer');
+    Route::post('approvals/whatsapp-customer',       [AdminTaskApprovalController::class, 'sendWhatsappToCustomer'])->name('approvals.whatsapp-customer');
+    Route::post('approvals/whatsapp-customer-media', [AdminTaskApprovalController::class, 'sendWhatsappMediaToCustomer'])->name('approvals.whatsapp-customer-media');
 
     // Individual task management
     Route::get('tasks',                            [AdminTaskController::class, 'index'])->name('tasks.index');

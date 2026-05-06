@@ -27,6 +27,21 @@
         'done'    => $_allTasks->whereIn('status', ['approved','delivered','archived'])->map($_mapTask)->values(),
         'overdue' => $_allTasks->filter(fn($t) => $t->deadline && $t->deadline->isPast() && !in_array($t->status, ['approved','delivered','archived']))->map($_mapTask)->values(),
     ]);
+    $customerFilesJson = json_encode($customer->tasks->flatMap(fn($t) =>
+        ($t->submissions ?? collect())->map(fn($s) => [
+            'task_title'   => $t->title,
+            'version'      => $s->version,
+            'filename'     => $s->original_filename ?? basename($s->file_path),
+            'file_url'     => url(\Illuminate\Support\Facades\Storage::url($s->file_path)),
+            'status'       => $s->status,
+            'status_label' => match($s->status) {
+                'approved'  => 'Approved',
+                'rejected'  => 'Revision',
+                'submitted' => 'Submitted',
+                default     => ucfirst($s->status ?? ''),
+            },
+        ])
+    )->values());
     $customerProjectsJson = json_encode($customer->projects->map(fn($p) => [
         'name'        => $p->name,
         'tasksCount'  => $p->tasks_count ?? 0,
@@ -38,6 +53,7 @@
         'url'         => route('admin.projects.show', $p->id),
     ])->values());
 @endphp
+<script>window._reviewSuffix = @json("has been submitted for review. We'd love your feedback before we finalize approval.");</script>
 <div x-data="{
     task: null,    openTask(t) { this.task = t; document.body.style.overflow='hidden'; },
     project: null, openProject(p) { this.project = p; document.body.style.overflow='hidden'; },
@@ -62,8 +78,19 @@
     cName:  @js($customer->name),
     cEmail: @js($customer->email ?? ''),
     cPhone: @js(preg_replace('/\D/', '', $customer->phone ?? '')),
+    sendMode: 'text',
+    selectedFile: null,
+    customerFiles: {{ $customerFilesJson }},
+    fileCaption: '',
+    editableMsg: '',
+    _reviewSuffix: window._reviewSuffix,
 
     get sendMsg() {
+        if (this.sendMode === 'file' && this.selectedFile) {
+            let msg = 'Hello ' + this.cName + ', your design for \x22' + this.selectedFile.task_title + '\x22 ' + this._reviewSuffix;
+            if (this.fileCaption.trim()) msg += '\n\n' + this.fileCaption.trim();
+            return msg;
+        }
         const p = this.sendProject;
         let msg = `Hello ${this.cName},\n\n`;
         if (p) {
@@ -80,29 +107,41 @@
     },
 
     openSend(channel) {
-        this.sendChannel = channel || 'whatsapp';
-        this.sendProject = this.customerProjects.length === 1 ? this.customerProjects[0] : null;
-        this.sendNote    = '';
-        this.sendResult  = null;
-        this.sending     = false;
-        this.sendModal   = true;
+        this.sendChannel  = channel || 'whatsapp';
+        this.sendProject  = this.customerProjects.length === 1 ? this.customerProjects[0] : null;
+        this.sendNote     = '';
+        this.sendResult   = null;
+        this.sending      = false;
+        this.sendMode     = 'text';
+        this.selectedFile = null;
+        this.fileCaption  = '';
+        this.editableMsg  = this.sendMsg;
+        this.sendModal    = true;
         document.body.style.overflow = 'hidden';
     },
     async doSend() {
-        const msg = this.sendMsg;
         this.sendResult = null;
         if (this.sendChannel === 'whatsapp') {
             if (!this.cPhone) { this.sendResult = { ok: false, message: 'No phone number on file for this customer.' }; return; }
+            if (this.sendMode === 'file' && !this.selectedFile) { this.sendResult = { ok: false, message: 'Please select a file to send.' }; return; }
             this.sending = true;
             try {
-                const res = await fetch('{{ route('admin.approvals.whatsapp-customer') }}', {
+                let fetchUrl, bodyData;
+                if (this.sendMode === 'file') {
+                    fetchUrl = '{{ route('admin.approvals.whatsapp-customer-media') }}';
+                    bodyData = { phone: this.cPhone, file_url: this.selectedFile.file_url, filename: this.selectedFile.filename, caption: this.editableMsg };
+                } else {
+                    fetchUrl = '{{ route('admin.approvals.whatsapp-customer') }}';
+                    bodyData = { phone: this.cPhone, message: this.editableMsg };
+                }
+                const res = await fetch(fetchUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                    body: JSON.stringify({ phone: this.cPhone, message: msg })
+                    body: JSON.stringify(bodyData)
                 });
                 const d = await res.json();
                 this.sendResult = d;
-                if (d.ok) { this.sendNote = ''; setTimeout(() => { this.close(); }, 2200); }
+                if (d.ok) { this.sendNote = ''; this.fileCaption = ''; setTimeout(() => { this.close(); }, 2200); }
             } catch(e) {
                 this.sendResult = { ok: false, message: 'Network error. Please try again.' };
             } finally {
@@ -111,12 +150,12 @@
         } else {
             if (!this.cEmail) { this.sendResult = { ok: false, message: 'No email address on file for this customer.' }; return; }
             const subj = this.sendProject ? `Project Update – ${this.sendProject.name}` : `Message for ${this.cName}`;
-            window.location.href = 'mailto:' + this.cEmail + '?subject=' + encodeURIComponent(subj) + '&body=' + encodeURIComponent(msg);
+            window.location.href = 'mailto:' + this.cEmail + '?subject=' + encodeURIComponent(subj) + '&body=' + encodeURIComponent(this.editableMsg);
         }
     },
 
-    close() { this.task = null; this.project = null; this.statsModal = null; this.sendModal = false; this.sendResult = null; this.sending = false; document.body.style.overflow=''; }
-}" @keydown.escape.window="close()" style="max-width:900px;">
+    close() { this.task = null; this.project = null; this.statsModal = null; this.sendModal = false; this.sendResult = null; this.sending = false; this.sendMode = 'text'; this.selectedFile = null; this.fileCaption = ''; document.body.style.overflow=''; }
+}" x-init="editableMsg = sendMsg; $watch('sendMode', () => { editableMsg = sendMsg; }); $watch('selectedFile', () => { editableMsg = sendMsg; }); $watch('sendProject', () => { editableMsg = sendMsg; });" @keydown.escape.window="close()" style="max-width:900px;">
 
 {{-- Project Preview Modal --}}
 <template x-if="project">
@@ -436,65 +475,142 @@
                     </template>
                 </div>
 
-                {{-- Project selector --}}
-                @if($customer->projects->count() > 0)
-                <div style="margin-bottom:16px;">
-                    <label style="display:block;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">
-                        <i class="fas fa-folder" style="color:#A78BFA;font-size:10px;margin-right:3px;"></i> Project (optional)
+                {{-- Mode toggle: Text Update vs Send File (WhatsApp only, only if files exist) --}}
+                <div x-show="sendChannel==='whatsapp' && customerFiles.length > 0" style="margin-bottom:18px;">
+                    <label style="display:block;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;">
+                        <i class="fas fa-paper-plane" style="color:#A78BFA;font-size:10px;margin-right:3px;"></i> What to send
                     </label>
-                    <select @change="sendProject = $event.target.value ? customerProjects.find(p => p.name === $event.target.value) : null"
-                            style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;background:#fff;outline:none;cursor:pointer;transition:border-color .15s;"
-                            onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
-                        <option value="">— No specific project —</option>
-                        @foreach($customer->projects as $proj)
-                        <option value="{{ $proj->name }}" {{ $customer->projects->count() === 1 ? 'selected' : '' }}>
-                            {{ $proj->name }}
-                        </option>
-                        @endforeach
-                    </select>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                        <button type="button" @click="sendMode='text'"
+                                :style="sendMode==='text'
+                                    ? 'display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;border-radius:10px;border:2px solid #6366F1;background:#EEF2FF;color:#4F46E5;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;'
+                                    : 'display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;border-radius:10px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;'">
+                            <i class="fas fa-comment-dots" style="font-size:12px;"></i> Text Update
+                        </button>
+                        <button type="button" @click="sendMode='file'"
+                                :style="sendMode==='file'
+                                    ? 'display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;border-radius:10px;border:2px solid #6366F1;background:#EEF2FF;color:#4F46E5;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;'
+                                    : 'display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;border-radius:10px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;'">
+                            <i class="fas fa-paperclip" style="font-size:12px;"></i> Send File
+                            <span x-text="'(' + customerFiles.length + ')'" style="font-size:10px;font-weight:400;opacity:.7;"></span>
+                        </button>
+                    </div>
                 </div>
 
-                {{-- Selected project preview card --}}
-                <template x-if="sendProject">
-                    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#F8F9FF;border:1.5px solid #EEF2FF;border-radius:10px;margin-bottom:16px;">
-                        <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#EEF2FF,#DDD6FE);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                            <i class="fas fa-folder-open" style="color:#6366F1;font-size:13px;"></i>
-                        </div>
-                        <div style="flex:1;min-width:0;">
-                            <p style="font-size:13px;font-weight:600;color:#111827;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="sendProject.name"></p>
-                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                                <span x-text="sendProject.statusLabel" :style="`padding:1px 7px;border-radius:20px;font-weight:600;background:${sendProject.statusBg};color:${sendProject.statusColor};`"></span>
-                                <span x-text="sendProject.tasksCount+' task'+(sendProject.tasksCount!==1?'s':'')"></span>
-                                <template x-if="sendProject.deadline">
-                                    <span :style="sendProject.overdue?'color:#DC2626;font-weight:600;':''" x-text="sendProject.deadline+(sendProject.overdue?' ⚠':'')"></span>
-                                </template>
-                            </p>
-                        </div>
-                        <a :href="sendProject.url" target="_blank" rel="noopener"
-                           style="font-size:10px;color:#6366F1;text-decoration:none;white-space:nowrap;display:flex;align-items:center;gap:3px;flex-shrink:0;"
-                           onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
-                            <i class="fas fa-arrow-up-right-from-square" style="font-size:9px;"></i> View
-                        </a>
+                {{-- TEXT MODE: Project selector --}}
+                <div x-show="sendMode==='text'">
+                    @if($customer->projects->count() > 0)
+                    <div style="margin-bottom:16px;">
+                        <label style="display:block;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">
+                            <i class="fas fa-folder" style="color:#A78BFA;font-size:10px;margin-right:3px;"></i> Project (optional)
+                        </label>
+                        <select @change="sendProject = $event.target.value ? customerProjects.find(p => p.name === $event.target.value) : null"
+                                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;background:#fff;outline:none;cursor:pointer;transition:border-color .15s;"
+                                onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                            <option value="">— No specific project —</option>
+                            @foreach($customer->projects as $proj)
+                            <option value="{{ $proj->name }}" {{ $customer->projects->count() === 1 ? 'selected' : '' }}>
+                                {{ $proj->name }}
+                            </option>
+                            @endforeach
+                        </select>
                     </div>
-                </template>
-                @endif
 
-                {{-- Message preview --}}
+                    <template x-if="sendProject">
+                        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#F8F9FF;border:1.5px solid #EEF2FF;border-radius:10px;margin-bottom:16px;">
+                            <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#EEF2FF,#DDD6FE);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-folder-open" style="color:#6366F1;font-size:13px;"></i>
+                            </div>
+                            <div style="flex:1;min-width:0;">
+                                <p style="font-size:13px;font-weight:600;color:#111827;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="sendProject.name"></p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                    <span x-text="sendProject.statusLabel" :style="`padding:1px 7px;border-radius:20px;font-weight:600;background:${sendProject.statusBg};color:${sendProject.statusColor};`"></span>
+                                    <span x-text="sendProject.tasksCount+' task'+(sendProject.tasksCount!==1?'s':'')"></span>
+                                    <template x-if="sendProject.deadline">
+                                        <span :style="sendProject.overdue?'color:#DC2626;font-weight:600;':''" x-text="sendProject.deadline+(sendProject.overdue?' ⚠':'')"></span>
+                                    </template>
+                                </p>
+                            </div>
+                            <a :href="sendProject.url" target="_blank" rel="noopener"
+                               style="font-size:10px;color:#6366F1;text-decoration:none;white-space:nowrap;display:flex;align-items:center;gap:3px;flex-shrink:0;"
+                               onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+                                <i class="fas fa-arrow-up-right-from-square" style="font-size:9px;"></i> View
+                            </a>
+                        </div>
+                    </template>
+                    @endif
+                </div>
+
+                {{-- Editable message --}}
                 <div style="margin-bottom:14px;">
                     <label style="display:block;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">
-                        <i class="fas fa-comment-dots" style="color:#A78BFA;font-size:10px;margin-right:3px;"></i> Message Preview
+                        <i class="fas fa-comment-dots" style="color:#A78BFA;font-size:10px;margin-right:3px;"></i>
+                        <span x-text="sendMode==='file' ? 'Message (sent with file)' : 'Message'"></span>
+                        <span style="font-size:10px;font-weight:400;color:#9CA3AF;margin-left:4px;">— editable</span>
                     </label>
-                    <div style="background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:10px;padding:13px 14px;font-size:12px;color:#374151;line-height:1.7;white-space:pre-wrap;word-break:break-word;max-height:150px;overflow-y:auto;" x-text="sendMsg"></div>
+                    <textarea x-model="editableMsg" rows="5"
+                              style="width:100%;padding:13px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:12px;color:#374151;line-height:1.7;resize:vertical;box-sizing:border-box;font-family:inherit;outline:none;transition:border-color .15s;"
+                              onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"></textarea>
                 </div>
 
-                {{-- Personal note --}}
-                <div>
+                {{-- TEXT MODE: Personal note --}}
+                <div x-show="sendMode==='text'">
                     <label style="display:block;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">
                         <i class="fas fa-pen" style="color:#A78BFA;font-size:9px;margin-right:3px;"></i> Add a personal note <span style="font-weight:400;color:#9CA3AF;">(optional)</span>
                     </label>
                     <textarea x-model="sendNote" rows="2" placeholder="e.g. Let us know your thoughts, we're happy to revise…"
                               style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:12px;color:#111827;outline:none;resize:vertical;box-sizing:border-box;line-height:1.6;transition:border-color .15s;font-family:inherit;"
                               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"></textarea>
+                </div>
+
+                {{-- FILE MODE: File picker + extra note --}}
+                <div x-show="sendMode==='file'">
+                    <div style="margin-bottom:16px;">
+                        <label style="display:block;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">
+                            <i class="fas fa-paperclip" style="color:#A78BFA;font-size:10px;margin-right:3px;"></i> Select file to send
+                        </label>
+                        <select @change="selectedFile = $event.target.value ? customerFiles.find(f => f.file_url === $event.target.value) : null"
+                                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:12px;color:#111827;background:#fff;outline:none;cursor:pointer;transition:border-color .15s;"
+                                onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                            <option value="">— Choose a submission file —</option>
+                            @foreach($customer->tasks as $t)
+                                @foreach($t->submissions ?? [] as $sub)
+                                    @if($sub->file_path)
+                                    <option value="{{ url(\Illuminate\Support\Facades\Storage::url($sub->file_path)) }}">
+                                        {{ $t->title }} — v{{ $sub->version }} ({{ $sub->original_filename ?? basename($sub->file_path) }})
+                                    </option>
+                                    @endif
+                                @endforeach
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <template x-if="selectedFile">
+                        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#F8F9FF;border:1.5px solid #EEF2FF;border-radius:10px;margin-bottom:16px;">
+                            <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#EEF2FF,#DDD6FE);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-file" style="color:#6366F1;font-size:13px;"></i>
+                            </div>
+                            <div style="flex:1;min-width:0;">
+                                <p style="font-size:13px;font-weight:600;color:#111827;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="selectedFile.filename"></p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                    <span x-text="selectedFile.task_title"></span>
+                                    <span>·</span>
+                                    <span x-text="'v' + selectedFile.version"></span>
+                                    <span x-text="selectedFile.status_label"
+                                          :style="selectedFile.status==='approved' ? 'padding:1px 7px;border-radius:20px;font-weight:600;background:#D1FAE5;color:#065F46;' : (selectedFile.status==='submitted' ? 'padding:1px 7px;border-radius:20px;font-weight:600;background:#EDE9FE;color:#5B21B6;' : 'padding:1px 7px;border-radius:20px;font-weight:600;background:#FEE2E2;color:#991B1B;')"></span>
+                                </p>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">
+                            <i class="fas fa-pen" style="color:#A78BFA;font-size:9px;margin-right:3px;"></i> Add a personal note <span style="font-weight:400;color:#9CA3AF;">(optional — appended to message)</span>
+                        </label>
+                        <textarea x-model="fileCaption" rows="2" placeholder="e.g. Please let us know if you'd like any changes…"
+                                  style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:12px;color:#111827;outline:none;resize:vertical;box-sizing:border-box;line-height:1.6;transition:border-color .15s;font-family:inherit;"
+                                  onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"></textarea>
+                    </div>
                 </div>
 
             </div>
@@ -505,7 +621,7 @@
                         ? 'display:flex;align-items:center;gap:8px;padding:10px 14px;background:#ECFDF5;border:1px solid #6EE7B7;border-radius:10px;font-size:13px;font-weight:600;color:#065F46;'
                         : 'display:flex;align-items:center;gap:8px;padding:10px 14px;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:10px;font-size:13px;font-weight:600;color:#991B1B;'">
                     <i :class="sendResult && sendResult.ok ? 'fas fa-circle-check' : 'fas fa-circle-exclamation'" style="font-size:14px;flex-shrink:0;"></i>
-                    <span x-text="sendResult ? sendResult.message : ''"></span>
+                    <span x-text="sendResult ? (typeof sendResult.message === 'string' ? sendResult.message : JSON.stringify(sendResult.message)) : ''"></span>
                 </div>
             </div>
 
@@ -516,19 +632,19 @@
                         onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
                     Cancel
                 </button>
-                <button type="button" @click="doSend()" :disabled="sending"
+                <button type="button" @click="doSend()" :disabled="sending || (sendMode==='file' && !selectedFile)"
                         :style="sendChannel==='whatsapp'
-                            ? 'display:inline-flex;align-items:center;gap:7px;padding:9px 22px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(37,211,102,.3);transition:opacity .15s;opacity: sending ? .6 : 1;'
+                            ? 'display:inline-flex;align-items:center;gap:7px;padding:9px 22px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(37,211,102,.3);transition:opacity .15s;'
                             : 'display:inline-flex;align-items:center;gap:7px;padding:9px 22px;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(99,102,241,.3);transition:opacity .15s;'"
                         onmouseover="if(!sending)this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
                     <template x-if="sending">
                         <i class="fas fa-spinner fa-spin" style="font-size:14px;"></i>
                     </template>
                     <template x-if="!sending">
-                        <i :class="sendChannel==='whatsapp' ? 'fab fa-whatsapp' : 'fas fa-paper-plane'"
+                        <i :class="sendChannel==='whatsapp' ? (sendMode==='file' ? 'fas fa-paperclip' : 'fab fa-whatsapp') : 'fas fa-paper-plane'"
                            :style="sendChannel==='whatsapp' ? 'font-size:15px;' : 'font-size:13px;'"></i>
                     </template>
-                    <span x-text="sending ? 'Sending…' : (sendChannel==='whatsapp' ? 'Send via WhatsApp' : 'Open Email Client ↗')"></span>
+                    <span x-text="sending ? 'Sending…' : (sendChannel==='whatsapp' ? (sendMode==='file' ? 'Send File via WhatsApp' : 'Send via WhatsApp') : 'Open Email Client ↗')"></span>
                 </button>
             </div>
 

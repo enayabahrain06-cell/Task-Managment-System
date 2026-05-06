@@ -48,6 +48,11 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 .btn-save:hover { background:#4338CA; }
 .btn-cancel { padding:9px 16px; font-size:13px; font-weight:500; background:#F3F4F6; color:#374151; border:none; border-radius:9px; cursor:pointer; }
 
+/* Confirm-delete modal button */
+.btn-delete-confirm { display:inline-flex;align-items:center;padding:10px 20px;font-size:13px;font-weight:600;background:#DC2626;color:#fff;border:none;border-radius:9px;cursor:pointer;transition:background .15s,opacity .15s;font-family:'Inter',sans-serif; }
+.btn-delete-confirm:hover:not(:disabled) { background:#B91C1C; }
+.btn-delete-confirm:disabled { opacity:0.45;cursor:not-allowed; }
+
 /* Stats strip */
 .stat-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
 .stat-pill  { background:#F9FAFB; border:1px solid #F0F0F0; border-radius:10px; padding:14px 16px; text-align:center; }
@@ -1949,11 +1954,8 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             <input type="hidden" name="type" :value="confirm">
                             <button type="submit"
                                     x-ref="clearBtn"
-                                    :disabled="phrase !== 'DELETE'"
-                                    style="padding:10px 20px;font-size:13px;font-weight:500;background:#DC2626;color:#fff;border:none;border-radius:9px;cursor:pointer;"
-                                    :style="phrase !== 'DELETE' ? 'opacity:0.5;cursor:not-allowed;' : 'opacity:1;cursor:pointer;'"
-                                    onmouseover="if(!this.disabled)this.style.background='#B91C1C'"
-                                    onmouseout="this.style.background='#DC2626'">
+                                    class="btn-delete-confirm"
+                                    :disabled="phrase !== 'DELETE'">
                                 <i class="fas fa-trash" style="font-size:11px;margin-right:6px;"></i>Yes, Delete
                             </button>
                         </form>

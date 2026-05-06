@@ -172,18 +172,24 @@
                                    style="width:100%;padding:8px 12px;border:1.5px solid #BBF7D0;background:#fff;border-radius:9px;font-size:12px;color:#374151;outline:none;box-sizing:border-box;margin-bottom:8px;"
                                    onfocus="this.style.borderColor='#25D366'" onblur="this.style.borderColor='#BBF7D0'">
                         </template>
-                        <button type="button" @click="openCustomerWhatsApp()"
-                                style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#25D366;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(37,211,102,.3);transition:opacity .15s;"
-                                onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
-                            <i class="fab fa-whatsapp" style="font-size:13px;"></i>
-                            Open WhatsApp ↗
+                        <button type="button" @click="sendCustomerWhatsApp()" :disabled="waSending"
+                                :style="waSending ? 'display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#25D366;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:600;cursor:not-allowed;box-shadow:0 2px 8px rgba(37,211,102,.3);opacity:.7;' : 'display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#25D366;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(37,211,102,.3);transition:opacity .15s;'"
+                                onmouseover="if(this.style.cursor!=='not-allowed')this.style.opacity='.88'" onmouseout="this.style.opacity=''">
+                            <template x-if="waSending"><i class="fas fa-spinner fa-spin" style="font-size:13px;"></i></template>
+                            <template x-if="!waSending"><i class="fab fa-whatsapp" style="font-size:13px;"></i></template>
+                            <span x-text="waSending ? 'Sending…' : 'Send via WhatsApp'"></span>
                         </button>
-                        <span style="font-size:10px;color:#6B7280;margin-left:8px;">Opens in a new tab</span>
                         <template x-if="approvalTask?.submission_url">
                             <p style="margin:6px 0 0;font-size:11px;color:#059669;display:flex;align-items:center;gap:4px;">
                                 <i class="fas fa-paperclip" style="font-size:10px;"></i>
                                 Design link will be included in the message
                             </p>
+                        </template>
+                        <template x-if="waResult">
+                            <div :style="waResult.ok ? 'display:flex;align-items:center;gap:6px;margin-top:8px;padding:7px 12px;background:#ECFDF5;border:1px solid #6EE7B7;border-radius:8px;font-size:12px;font-weight:600;color:#065F46;' : 'display:flex;align-items:center;gap:6px;margin-top:8px;padding:7px 12px;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:8px;font-size:12px;font-weight:600;color:#991B1B;'">
+                                <i :class="waResult.ok ? 'fas fa-circle-check' : 'fas fa-circle-exclamation'" style="font-size:12px;flex-shrink:0;"></i>
+                                <span x-text="typeof waResult.message === 'string' ? waResult.message : JSON.stringify(waResult.message)"></span>
+                            </div>
                         </template>
                     </div>
 
@@ -581,7 +587,7 @@
                             customer_name:   @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
                             customer_email:  @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
                             customer_phone:  @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
-                            submission_url:  @js($task->submissions->first()?->file_path ? Storage::url($task->submissions->first()->file_path) : null),
+                            submission_url:  @js($task->submissions->first()?->file_path ? url(Storage::url($task->submissions->first()->file_path)) : null),
                             submission_name: @js($task->submissions->first()?->original_filename ?? ($task->submissions->first()?->file_path ? basename($task->submissions->first()->file_path) : null)),
                         })"
                         style="width:100%;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;padding:10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(16,185,129,.25);transition:opacity .15s;"
@@ -605,7 +611,8 @@
                 $previewName  = $task->customer?->name  ?? $task->project?->customer?->name  ?? 'Customer';
                 $previewSub   = $task->submissions->first();
                 $previewFile  = $previewSub?->file_path ? url(Storage::url($previewSub->file_path)) : null;
-                $previewMsg   = "Hello {$previewName}, your design for \"{$task->title}\" has been submitted for review. We'd love your feedback before we finalize approval.";
+                $previewMsgBase = "Hello {$previewName}, your design for \"{$task->title}\" has been submitted for review. We'd love your feedback before we finalize approval.";
+                $previewMsg     = $previewMsgBase;
                 if ($previewFile) $previewMsg .= "\n\nView design: {$previewFile}";
                 $previewWaLink = $previewPhone
                     ? 'https://wa.me/' . preg_replace('/\D/', '', $previewPhone) . '?text=' . rawurlencode($previewMsg)
@@ -616,14 +623,21 @@
                     <i class="fab fa-whatsapp" style="color:#25D366;"></i>
                     Send design preview to customer <em>before</em> approving
                 </p>
-                @if($previewWaLink)
-                <a href="{{ $previewWaLink }}" target="_blank" rel="noopener"
-                   style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:#25D366;color:#fff;border-radius:9px;font-size:12px;font-weight:600;text-decoration:none;box-shadow:0 2px 8px rgba(37,211,102,.25);transition:opacity .15s;"
-                   onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
-                    <i class="fab fa-whatsapp" style="font-size:13px;"></i>
-                    Send via WhatsApp ↗
-                </a>
+                @if($previewPhone)
+                <button type="button" @click="sendPreviewWhatsApp()" :disabled="waPreviewSending"
+                        :style="waPreviewSending ? 'display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:#25D366;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:600;cursor:not-allowed;box-shadow:0 2px 8px rgba(37,211,102,.25);opacity:.7;' : 'display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:#25D366;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(37,211,102,.25);transition:opacity .15s;'"
+                        onmouseover="if(this.style.cursor!=='not-allowed')this.style.opacity='.88'" onmouseout="this.style.opacity=''">
+                    <template x-if="waPreviewSending"><i class="fas fa-spinner fa-spin" style="font-size:13px;"></i></template>
+                    <template x-if="!waPreviewSending"><i class="fab fa-whatsapp" style="font-size:13px;"></i></template>
+                    <span x-text="waPreviewSending ? 'Sending…' : 'Send via WhatsApp'"></span>
+                </button>
                 <span style="font-size:11px;color:#6B7280;margin-left:6px;">{{ $previewName }}</span>
+                <template x-if="waPreviewResult">
+                    <div :style="waPreviewResult.ok ? 'display:flex;align-items:center;gap:6px;margin-top:8px;padding:7px 12px;background:#ECFDF5;border:1px solid #6EE7B7;border-radius:8px;font-size:12px;font-weight:600;color:#065F46;' : 'display:flex;align-items:center;gap:6px;margin-top:8px;padding:7px 12px;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:8px;font-size:12px;font-weight:600;color:#991B1B;'">
+                        <i :class="waPreviewResult.ok ? 'fas fa-circle-check' : 'fas fa-circle-exclamation'" style="font-size:12px;flex-shrink:0;"></i>
+                        <span x-text="typeof waPreviewResult.message === 'string' ? waPreviewResult.message : JSON.stringify(waPreviewResult.message)"></span>
+                    </div>
+                </template>
                 @else
                 <span style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:#F3F4F6;color:#9CA3AF;border-radius:9px;font-size:12px;font-weight:600;cursor:not-allowed;">
                     <i class="fab fa-whatsapp" style="font-size:13px;"></i>
@@ -670,7 +684,7 @@
                         <i class="fa fa-paperclip" style="color:#9CA3AF;font-size:16px;"></i>
                         <div style="flex:1;">
                             <p x-text="commentFile || 'Attach a file (optional)'" style="font-size:13px;font-weight:500;color:#374151;margin:0;"></p>
-                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Images, PDF, ZIP and more · max 20MB</p>
+                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Images, PDF, ZIP and more</p>
                         </div>
                         <input type="file" name="file" @change="commentFile = $event.target.files[0]?.name || ''" style="display:none;">
                     </label>
@@ -1330,6 +1344,10 @@ function taskApprovalPage() {
         approvalCustomerMsg:    '',
         approvalManualEmail:    '',
         approvalManualPhone:    '',
+        waSending:              false,
+        waResult:               null,
+        waPreviewSending:       false,
+        waPreviewResult:        null,
 
         openApprovalModal(task) {
             this.approvalTask           = task;
@@ -1341,21 +1359,76 @@ function taskApprovalPage() {
             this.approvalCustomerMsg    = '';
             this.approvalManualEmail    = '';
             this.approvalManualPhone    = '';
+            this.waSending              = false;
+            this.waResult               = null;
             this.approvalModal          = true;
         },
 
-        openCustomerWhatsApp() {
-            const task   = this.approvalTask;
-            const phone  = task?.customer_phone || this.approvalManualPhone;
+        async sendCustomerWhatsApp() {
+            const task    = this.approvalTask;
+            const phone   = task?.customer_phone || this.approvalManualPhone;
             if (!phone) return;
-            const digits = phone.replace(/\D/g, '');
+            const digits  = phone.replace(/\D/g, '');
             if (!digits) return;
             const name    = task?.customer_name ?? 'Customer';
             const base    = `Hello ${name}, your design for "${task?.title ?? ''}" has been completed and is ready for your review.`;
-            const fileMsg = task?.submission_url ? `\n\nView / download the design:\n${task.submission_url}` : '';
             const custom  = this.approvalCustomerMsg ? `\n\n${this.approvalCustomerMsg}` : '';
-            const msg     = base + custom + fileMsg;
-            window.open('https://wa.me/' + digits + '?text=' + encodeURIComponent(msg), '_blank');
+            const fileUrl = task?.submission_url ?? '';
+            const isImage = fileUrl && /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(fileUrl);
+            this.waSending = true;
+            this.waResult  = null;
+            try {
+                let fetchUrl, bodyData;
+                if (isImage) {
+                    fetchUrl = '{{ route('admin.approvals.whatsapp-customer-media') }}';
+                    bodyData = { phone: digits, file_url: fileUrl, filename: fileUrl.split('/').pop(), caption: base + custom };
+                } else {
+                    const fileMsg = fileUrl ? `\n\nView / download the design:\n${fileUrl}` : '';
+                    fetchUrl = '{{ route('admin.approvals.whatsapp-customer') }}';
+                    bodyData = { phone: digits, message: base + custom + fileMsg };
+                }
+                const res = await fetch(fetchUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                    body: JSON.stringify(bodyData)
+                });
+                const d = await res.json();
+                this.waResult = d;
+            } catch(e) {
+                this.waResult = { ok: false, message: 'Network error. Please try again.' };
+            } finally {
+                this.waSending = false;
+            }
+        },
+
+        async sendPreviewWhatsApp() {
+            const phone   = @js(preg_replace('/\D/', '', $previewPhone ?? ''));
+            const fileUrl = @js($previewFile ?? '');
+            const msgBase = @js($previewMsgBase ?? '');
+            if (!phone) return;
+            this.waPreviewSending = true;
+            this.waPreviewResult  = null;
+            try {
+                let fetchUrl, bodyData;
+                if (fileUrl) {
+                    fetchUrl = '{{ route('admin.approvals.whatsapp-customer-media') }}';
+                    bodyData = { phone, file_url: fileUrl, filename: fileUrl.split('/').pop(), caption: msgBase };
+                } else {
+                    fetchUrl = '{{ route('admin.approvals.whatsapp-customer') }}';
+                    bodyData = { phone, message: msgBase };
+                }
+                const res = await fetch(fetchUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                    body: JSON.stringify(bodyData)
+                });
+                const d = await res.json();
+                this.waPreviewResult = d;
+            } catch(e) {
+                this.waPreviewResult = { ok: false, message: 'Network error. Please try again.' };
+            } finally {
+                this.waPreviewSending = false;
+            }
         },
 
         rejectModal: false,

@@ -503,7 +503,7 @@
                         <i class="fa fa-paperclip" style="color:#9CA3AF;font-size:16px;"></i>
                         <div style="flex:1;">
                             <p x-text="uFile || 'Attach a file (optional)'" style="font-size:13px;font-weight:500;color:#374151;margin:0;"></p>
-                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Images, PDF, ZIP and more · max 20MB</p>
+                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Images, PDF, ZIP and more</p>
                         </div>
                         <input type="file" name="file" @change="uFile = $event.target.files[0]?.name || ''" style="display:none;">
                     </label>

@@ -94,6 +94,15 @@
         /* Alpine cloak */
         [x-cloak] { display: none !important; }
 
+        /* User dropdown items */
+        .ud-item { width:100%;display:flex;align-items:center;gap:10px;padding:9px 10px;background:none;border:none;border-radius:8px;cursor:pointer;text-align:left;text-decoration:none;font-size:13px;color:#374151;transition:background .15s,color .15s;box-sizing:border-box;line-height:1.4; }
+        .ud-item:hover { background:#F5F5F5;color:#111827; }
+        .ud-item.ud-danger { color:#EF4444; }
+        .ud-item.ud-danger:hover { background:#FEF2F2;color:#DC2626; }
+        .ud-status-opt { width:100%;display:flex;align-items:center;gap:9px;padding:7px 8px;background:none;border:none;border-radius:8px;cursor:pointer;text-align:left;transition:background .15s;box-sizing:border-box; }
+        .ud-status-opt:hover { background:#F3F4F6; }
+        .ud-status-opt.is-active { background:#F5F3FF; }
+
         /* Page content fade-in */
         .app-content { animation: pageFadeIn 0.3s ease both; }
         @keyframes pageFadeIn { from { opacity:0; } to { opacity:1; } }
@@ -272,7 +281,7 @@
                             @endforelse
                         </div>
 
-                        {{-- Sound status footer --}}
+                        {{-- Footer --}}
                         <div style="padding:8px 16px;border-top:1px solid #F3F4F6;display:flex;align-items:center;gap:6px;">
                             <i :class="soundEnabled ? 'fas fa-volume-high' : 'fas fa-volume-xmark'"
                                :style="soundEnabled ? 'color:#6366F1;' : 'color:#9CA3AF;'"
@@ -283,6 +292,14 @@
                                     :style="soundEnabled ? 'color:#DC2626;' : 'color:#6366F1;'"
                                     x-text="soundEnabled ? 'Mute' : 'Unmute'">
                             </button>
+                            @php $hasAnyNotifications = auth()->user()->notifications()->exists(); @endphp
+                            @if($hasAnyNotifications)
+                            <form method="POST" action="{{ route('notifications.clear-all') }}" style="margin-left:8px;">
+                                @csrf
+                                <button type="submit" style="font-size:11px;color:#EF4444;font-weight:600;background:none;border:none;cursor:pointer;padding:0;"
+                                        onclick="return confirm('Clear all notifications?')">Clear all</button>
+                            </form>
+                            @endif
                         </div>
 
                     </div>
@@ -351,46 +368,105 @@
                 </div>
                 @endif
 
-                {{-- User avatar + status dot --}}
-                <div x-data="statusPicker()" @click.outside="open=false" style="display:flex;align-items:center;gap:8px;margin-left:4px;position:relative;">
-                    <div style="position:relative;cursor:pointer;" @click="open=!open" title="Change your status">
-                        @if(auth()->user()?->avatarUrl())
-                            <img src="{{ auth()->user()->avatarUrl() }}" alt="{{ auth()->user()->name }}"
-                                 style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                {{-- User avatar + dropdown --}}
+                @php
+                    $dropUser = auth()->user();
+                    $dropRole = $dropUser?->role ?? 'user';
+                    $dropCanSettings = in_array($dropRole, ['admin', 'manager'])
+                        ? $dropUser->hasPermission('manage_settings')
+                        : (!is_null($dropUser?->permissions) && in_array('manage_settings', $dropUser->permissions ?? []));
+                    $dropRoleLabel = match($dropRole) { 'admin' => 'Administrator', 'manager' => 'Manager', default => ucfirst($dropRole) };
+                @endphp
+                <div x-data="statusPicker()" @click.outside="open=false" style="position:relative;margin-left:4px;">
+
+                    {{-- Trigger: avatar + status dot --}}
+                    <button @click="open=!open" title="{{ $dropUser->name ?? '' }}"
+                            style="width:38px;height:38px;border-radius:50%;padding:0;background:none;cursor:pointer;position:relative;flex-shrink:0;border:2.5px solid transparent;transition:border-color .15s,box-shadow .15s;outline:none;"
+                            :style="open ? 'border-color:#6366F1;box-shadow:0 0 0 3px rgba(99,102,241,.15);' : ''">
+                        @if($dropUser?->avatarUrl())
+                            <img src="{{ $dropUser->avatarUrl() }}" alt="{{ $dropUser->name }}"
+                                 style="width:32px;height:32px;border-radius:50%;object-fit:cover;display:block;">
                         @else
-                            <div class="user-avatar">
-                                {{ strtoupper(substr(auth()->user()->name ?? 'U', 0, 1)) }}
+                            <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;letter-spacing:-.5px;">
+                                {{ strtoupper(substr($dropUser->name ?? 'U', 0, 1)) }}
                             </div>
                         @endif
-                        <span :style="'position:absolute;bottom:-1px;right:-1px;width:11px;height:11px;border-radius:50%;border:2px solid #fff;background:'+dotColor(current)"></span>
-                    </div>
-                    <div class="user-info" id="user-info-block" style="cursor:pointer;" @click="open=!open">
-                        <p class="user-name">{{ auth()->user()->name ?? '' }}</p>
-                        <p class="user-email" :style="'color:'+dotColor(current)+';font-weight:600;'" x-text="label(current)"></p>
-                    </div>
-                    {{-- Status dropdown --}}
+                        <span :style="'position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;border:2px solid #fff;background:'+dotColor(current)"></span>
+                    </button>
+
+                    {{-- Dropdown panel --}}
                     <div x-show="open" x-cloak
-                         style="position:absolute;top:calc(100% + 8px);right:0;width:190px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.12);border:1px solid #F0F0F0;z-index:300;overflow:hidden;">
-                        <div style="padding:8px 12px;border-bottom:1px solid #F3F4F6;">
-                            <p style="font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0;">Set status</p>
+                         style="position:absolute;top:calc(100% + 10px);right:0;width:248px;background:#fff;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.14),0 2px 8px rgba(0,0,0,.06);border:1px solid #E5E7EB;z-index:300;overflow:hidden;">
+
+                        {{-- User card --}}
+                        <div style="padding:16px 16px 14px;border-bottom:1px solid #F3F4F6;background:linear-gradient(135deg,#F8F9FF 0%,#FAFAFA 100%);">
+                            <div style="display:flex;align-items:center;gap:12px;">
+                                <div style="position:relative;flex-shrink:0;">
+                                    @if($dropUser?->avatarUrl())
+                                        <img src="{{ $dropUser->avatarUrl() }}" alt="{{ $dropUser->name }}"
+                                             style="width:46px;height:46px;border-radius:12px;object-fit:cover;border:2px solid #E5E7EB;">
+                                    @else
+                                        <div style="width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:700;letter-spacing:-.5px;">
+                                            {{ strtoupper(substr($dropUser->name ?? 'U', 0, 1)) }}
+                                        </div>
+                                    @endif
+                                    <span :style="'position:absolute;bottom:-2px;right:-2px;width:12px;height:12px;border-radius:50%;border:2.5px solid #fff;background:'+dotColor(current)"></span>
+                                </div>
+                                <div style="min-width:0;flex:1;">
+                                    <p style="font-size:14px;font-weight:700;color:#111827;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $dropUser->name ?? '' }}</p>
+                                    <p style="font-size:11.5px;color:#6B7280;margin:0 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $dropUser->email ?? '' }}</p>
+                                    <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.03em;background:#EEF2FF;color:#4F46E5;">
+                                        <i class="fas fa-shield-halved" style="font-size:8px;"></i>
+                                        {{ $dropRoleLabel }}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                        <template x-for="opt in options" :key="opt.value">
-                            <button @click="setStatus(opt.value)"
-                                    style="width:100%;display:flex;align-items:center;gap:10px;padding:9px 14px;background:none;border:none;cursor:pointer;text-align:left;transition:background .12s;"
-                                    onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='none'"
-                                    :style="current===opt.value?'background:#F5F3FF;':''">
-                                <span :style="'width:10px;height:10px;border-radius:50%;flex-shrink:0;background:'+opt.color"></span>
-                                <span style="font-size:13px;color:#374151;" x-text="opt.label"></span>
-                                <i x-show="current===opt.value" class="fas fa-check" style="margin-left:auto;color:#6366F1;font-size:11px;"></i>
+
+                        {{-- Status --}}
+                        <div style="padding:6px 6px;border-bottom:1px solid #F3F4F6;">
+                            <p style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.07em;padding:5px 6px 3px;margin:0;">Status</p>
+                            <template x-for="opt in options" :key="opt.value">
+                                <button class="ud-status-opt" :class="current===opt.value ? 'is-active' : ''"
+                                        @click="setStatus(opt.value)">
+                                    <span :style="'width:8px;height:8px;border-radius:50%;flex-shrink:0;background:'+opt.color"></span>
+                                    <span style="font-size:13px;color:#374151;flex:1;font-weight:500;" x-text="opt.label"></span>
+                                    <i x-show="current===opt.value" class="fas fa-check" style="color:#6366F1;font-size:10px;flex-shrink:0;"></i>
+                                </button>
+                            </template>
+                        </div>
+
+                        {{-- Actions --}}
+                        <div style="padding:6px 6px;border-bottom:1px solid #F3F4F6;">
+                            <button class="ud-item" @click="open=false; document.getElementById('global-profile-modal').style.display='flex'">
+                                <span style="width:30px;height:30px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fa fa-user-pen" style="font-size:12px;color:#6366F1;"></i>
+                                </span>
+                                <span>Edit Profile</span>
                             </button>
-                        </template>
-                        <div style="height:1px;background:#F3F4F6;margin:2px 0;"></div>
-                        <button @click="open=false; document.getElementById('global-profile-modal').style.display='flex'"
-                                style="width:100%;display:flex;align-items:center;gap:10px;padding:9px 14px;background:none;border:none;cursor:pointer;text-align:left;transition:background .12s;"
-                                onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='none'">
-                            <i class="fa fa-user-pen" style="font-size:12px;color:#6366F1;width:10px;text-align:center;"></i>
-                            <span style="font-size:13px;color:#374151;">Edit Profile</span>
-                        </button>
+                            @if($dropCanSettings)
+                            <a href="{{ route('admin.settings.index') }}" @click="open=false" class="ud-item">
+                                <span style="width:30px;height:30px;border-radius:8px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-gear" style="font-size:12px;color:#6B7280;"></i>
+                                </span>
+                                <span>Settings</span>
+                            </a>
+                            @endif
+                        </div>
+
+                        {{-- Logout --}}
+                        <div style="padding:6px 6px;">
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit" class="ud-item ud-danger">
+                                    <span style="width:30px;height:30px;border-radius:8px;background:#FEF2F2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                        <i class="fas fa-right-from-bracket" style="font-size:12px;color:#EF4444;"></i>
+                                    </span>
+                                    <span style="font-weight:600;">Logout</span>
+                                </button>
+                            </form>
+                        </div>
+
                     </div>
                 </div>
             </div>

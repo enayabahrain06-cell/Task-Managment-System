@@ -373,7 +373,7 @@ class TaskController extends Controller
         $request->validate([
             'note' => 'nullable|string|max:1000',
             'body' => 'nullable|string|max:1000',
-            'file' => 'nullable|file|max:' . ((int) Setting::get('max_upload_mb', 20) * 1024),
+            'file' => 'nullable|file',
         ]);
 
         $note = $request->body ?? $request->note;
@@ -440,7 +440,7 @@ class TaskController extends Controller
 
         $request->validate([
             'body' => 'required|string|max:1000',
-            'file' => 'nullable|file|max:' . ((int) Setting::get('max_upload_mb', 20) * 1024),
+            'file' => 'nullable|file',
         ]);
 
         $filePath = null;

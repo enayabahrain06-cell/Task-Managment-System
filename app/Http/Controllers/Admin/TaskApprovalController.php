@@ -369,6 +369,92 @@ class TaskApprovalController extends Controller
         }
     }
 
+    public function sendWhatsappMediaToCustomer(Request $request)
+    {
+        $request->validate([
+            'phone'    => 'required|string|max:30',
+            'file_url' => 'required|string|max:2000',
+            'filename' => 'required|string|max:255',
+            'caption'  => 'nullable|string|max:1000',
+        ]);
+
+        if (Setting::get('wa_enabled', '0') !== '1') {
+            return response()->json(['ok' => false, 'message' => 'WhatsApp API is not enabled. Configure it in Settings → WhatsApp.'], 422);
+        }
+        $token = Setting::get('wa_token', '');
+        if (!$token) {
+            return response()->json(['ok' => false, 'message' => 'WhatsApp API token is not set.'], 422);
+        }
+        $provider = Setting::get('wa_provider', 'ultramsg');
+        if ($provider !== 'ultramsg') {
+            return response()->json(['ok' => false, 'message' => 'File attachments are only supported with the UltraMsg provider.'], 422);
+        }
+        $instanceId = Setting::get('wa_instance_id', '');
+        if (!$instanceId) {
+            return response()->json(['ok' => false, 'message' => 'UltraMsg instance ID not set.'], 422);
+        }
+
+        $digits = preg_replace('/\D/', '', $request->phone);
+        if (!$digits) {
+            return response()->json(['ok' => false, 'message' => 'Invalid phone number.'], 422);
+        }
+
+        $ext     = strtolower(pathinfo($request->filename, PATHINFO_EXTENSION));
+        $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+
+        try {
+            if ($isImage) {
+                $response = Http::asForm()->post(
+                    "https://api.ultramsg.com/{$instanceId}/messages/image",
+                    ['token' => $token, 'to' => $digits, 'image' => $request->file_url, 'caption' => $request->caption ?? '']
+                );
+            } else {
+                $response = Http::asForm()->post(
+                    "https://api.ultramsg.com/{$instanceId}/messages/document",
+                    ['token' => $token, 'to' => $digits, 'filename' => $request->filename, 'document' => $request->file_url, 'caption' => $request->caption ?? '']
+                );
+            }
+            $data = $response->json() ?? [];
+            $ok   = isset($data['sent']) && $data['sent'] === 'true';
+            return response()->json([
+                'ok'      => $ok,
+                'message' => $ok ? 'File sent via WhatsApp.' : $this->extractUltramsgError($data),
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['ok' => false, 'message' => $e->getMessage()], 422);
+        }
+    }
+
+    private function waErrMsg(mixed $val, string $fallback = 'Unknown error.'): string
+    {
+        if ($val === null || $val === '') return $fallback;
+        if (is_array($val)) {
+            // UltraMsg sometimes returns [{"field": "error message"}]
+            if (isset($val[0]) && is_array($val[0])) {
+                $parts = [];
+                foreach ($val[0] as $v) {
+                    if (is_scalar($v)) $parts[] = (string) $v;
+                }
+                return $parts ? implode('. ', $parts) : $fallback;
+            }
+            return isset($val['message']) ? (string) $val['message'] : json_encode($val);
+        }
+        if (is_object($val)) {
+            $arr = (array) $val;
+            return isset($arr['message']) ? (string) $arr['message'] : json_encode($arr);
+        }
+        return (string) $val;
+    }
+
+    private function extractUltramsgError(array $data): string
+    {
+        // Top-level numeric array: [{"image":"file not exist"}]
+        if (isset($data[0]) && is_array($data[0])) {
+            return $this->waErrMsg($data[0]);
+        }
+        return $this->waErrMsg($data['error'] ?? $data['message'] ?? null, 'UltraMsg error.');
+    }
+
     private function dispatchWhatsapp(string $digits, string $body): array
     {
         $provider = Setting::get('wa_provider', 'ultramsg');
@@ -390,10 +476,10 @@ class TaskApprovalController extends Controller
             "https://api.ultramsg.com/{$instanceId}/messages/chat",
             ['token' => $token, 'to' => $phone, 'body' => $body]
         );
-        $data = $response->json();
+        $data = $response->json() ?? [];
         return isset($data['sent']) && $data['sent'] === 'true'
             ? ['ok' => true, 'message' => 'Sent via UltraMsg.']
-            : ['ok' => false, 'message' => $data['error'] ?? $data['message'] ?? 'UltraMsg error.'];
+            : ['ok' => false, 'message' => $this->extractUltramsgError($data)];
     }
 
     private function sendTwilio(string $token, string $phone, string $body): array
@@ -409,7 +495,7 @@ class TaskApprovalController extends Controller
             ]);
         return $response->successful()
             ? ['ok' => true, 'message' => 'Sent via Twilio.']
-            : ['ok' => false, 'message' => $response->json('message') ?? 'Twilio error.'];
+            : ['ok' => false, 'message' => $this->waErrMsg($response->json('message'), 'Twilio error.')];
     }
 
     private function sendMeta(string $token, string $phone, string $body): array
@@ -425,7 +511,7 @@ class TaskApprovalController extends Controller
             ]);
         return $response->successful()
             ? ['ok' => true, 'message' => 'Sent via Meta API.']
-            : ['ok' => false, 'message' => $response->json('error.message') ?? 'Meta error.'];
+            : ['ok' => false, 'message' => $this->waErrMsg($response->json('error.message') ?? $response->json('error'), 'Meta error.')];
     }
 
     public function reject(Request $request, Task $task)
