@@ -115,7 +115,7 @@ $pMeta = [
                     @php $isOverdue = $task->deadline->isPast() && !in_array($task->status,['approved','delivered','archived']); @endphp
                     <p style="font-size:13px;font-weight:700;color:{{ $isOverdue ? '#DC2626' : '#111827' }};margin:0;display:flex;align-items:center;gap:5px;">
                         <i class="fas fa-calendar-day" style="font-size:11px;color:{{ $isOverdue ? '#EF4444' : '#A5B4FC' }};"></i>
-                        {{ $task->deadline->format('M d, Y') }}
+                        {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
                         @if($isOverdue)<span style="font-size:10px;background:#FEE2E2;color:#DC2626;padding:1px 6px;border-radius:8px;">Overdue</span>@endif
                     </p>
                 </div>
@@ -150,7 +150,7 @@ $pMeta = [
 
                 <div style="padding:14px 24px;">
                     <p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 5px;">Created</p>
-                    <p style="font-size:13px;font-weight:600;color:#111827;margin:0;">{{ $task->created_at->format('M d, Y') }}</p>
+                    <p style="font-size:13px;font-weight:600;color:#111827;margin:0;">{{ $task->created_at->format(config('app.date_format', 'M d, Y')) }}</p>
                     <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">{{ $task->created_at->diffForHumans() }}</p>
                 </div>
             </div>
@@ -482,7 +482,7 @@ $pMeta = [
                 @if($proj->deadline)
                 <div style="display:flex;align-items:center;justify-content:space-between;">
                     <span style="font-size:12px;color:#6B7280;">Deadline</span>
-                    <span style="font-size:12px;font-weight:600;color:#111827;">{{ $proj->deadline->format('M d, Y') }}</span>
+                    <span style="font-size:12px;font-weight:600;color:#111827;">{{ $proj->deadline->format(config('app.date_format', 'M d, Y')) }}</span>
                 </div>
                 @endif
 
@@ -551,7 +551,7 @@ $pMeta = [
             <div style="margin-top:12px;padding:8px 12px;background:linear-gradient(135deg,#ECFDF5,#D1FAE5);border-radius:10px;border:1px solid #A7F3D0;">
                 <p style="font-size:11px;font-weight:600;color:#065F46;margin:0;">
                     <i class="fas fa-circle-check" style="margin-right:4px;"></i>
-                    First posted {{ $task->social_posted_at->format('M d, Y') }}
+                    First posted {{ $task->social_posted_at->format(config('app.date_format', 'M d, Y')) }}
                 </p>
             </div>
             @endif

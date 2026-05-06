@@ -152,7 +152,7 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
                 </td>
                 {{-- Joined --}}
                 <td class="px-5 py-3.5 hidden lg:table-cell text-sm text-gray-400">
-                    {{ $user->created_at->format('M d, Y') }}
+                    {{ $user->created_at->format(config('app.date_format', 'M d, Y')) }}
                 </td>
                 {{-- Actions --}}
                 <td class="px-5 py-3.5 text-right">

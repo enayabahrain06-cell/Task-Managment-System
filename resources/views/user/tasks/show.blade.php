@@ -152,7 +152,7 @@
         <p style="font-size:12px;color:#4F46E5;margin:0;line-height:1.6;">
             Previously assigned to <strong>{{ $incomingTransfer->fromUser?->name ?? 'a former employee' }}</strong>
             · Transferred by <strong>{{ $incomingTransfer->transferredBy?->name ?? 'an admin' }}</strong>
-            on <strong>{{ $incomingTransfer->transferred_at->format('M d, Y') }}</strong>
+            on <strong>{{ $incomingTransfer->transferred_at->format(config('app.date_format', 'M d, Y')) }}</strong>
         </p>
         <p style="font-size:11px;color:#6366F1;margin:5px 0 0;line-height:1.5;">
             <i class="fa fa-clock-rotate-left" style="margin-right:3px;"></i>
@@ -217,7 +217,7 @@
                 <div style="background:#FAFAFA;border-radius:10px;padding:12px;">
                     <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;font-weight:600;margin:0 0 4px;">Deadline</p>
                     <p style="font-size:14px;font-weight:600;color:{{ $isOverdue ? '#DC2626' : '#111827' }};margin:0;">
-                        {{ $task->deadline->format('M d, Y') }}
+                        {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
                         <span style="font-size:11px;font-weight:400;color:{{ $isOverdue ? '#DC2626' : '#9CA3AF' }};"> — {{ $task->deadline->diffForHumans() }}</span>
                     </p>
                 </div>
@@ -957,7 +957,7 @@
                 @endif
                 <div style="display:flex;justify-content:space-between;align-items:center;">
                     <span style="font-size:13px;color:#6B7280;"><i class="fa fa-calendar" style="width:16px;color:#9CA3AF;margin-right:6px;"></i>Deadline</span>
-                    <span style="font-size:13px;font-weight:600;color:{{ $isOverdue ? '#DC2626' : '#111827' }};">{{ $task->deadline->format('M d, Y') }}</span>
+                    <span style="font-size:13px;font-weight:600;color:{{ $isOverdue ? '#DC2626' : '#111827' }};">{{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}</span>
                 </div>
                 <div style="display:flex;justify-content:space-between;align-items:center;">
                     <span style="font-size:13px;color:#6B7280;"><i class="fa fa-flag" style="width:16px;color:#9CA3AF;margin-right:6px;"></i>Priority</span>

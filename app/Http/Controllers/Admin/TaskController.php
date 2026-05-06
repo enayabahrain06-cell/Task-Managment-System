@@ -11,6 +11,8 @@ use App\Models\TaskLog;
 use App\Models\TaskSubmission;
 use App\Models\TaskSubmissionEdit;
 use App\Models\TaskTransfer;
+use App\Models\Customer;
+use App\Models\Project;
 use App\Models\User;
 use App\Notifications\TaskCommentPosted;
 use App\Notifications\TaskDelivered;
@@ -30,6 +32,7 @@ class TaskController extends Controller
 
         $query = Task::with(['project:id,name', 'assignee:id,name,avatar'])
             ->withCount('assignees');
+
 
         if ($request->filled('search')) {
             $query->where('title', 'like', '%' . $request->search . '%');
@@ -75,7 +78,9 @@ class TaskController extends Controller
             ->paginate(24)
             ->withQueryString();
 
-        $projects = \App\Models\Project::orderBy('name')->get(['id','name']);
+        $projects  = \App\Models\Project::where('is_quick', false)->orderBy('name')->get(['id','name']);
+        $customers = \App\Models\Customer::orderBy('name')->get(['id','name']);
+        $assignableUsers = User::whereIn('role', ['user','manager'])->orderBy('name')->get(['id','name']);
 
         $stats = [
             'total'       => Task::count(),
@@ -91,7 +96,7 @@ class TaskController extends Controller
             'archived'    => Task::where('status', 'archived')->count(),
         ];
 
-        return view('admin.tasks.index', compact('tasks', 'projects', 'stats'));
+        return view('admin.tasks.index', compact('tasks', 'projects', 'stats', 'customers', 'assignableUsers'));
     }
 
     public function show(Task $task)
@@ -99,7 +104,69 @@ class TaskController extends Controller
         $task->load('project.attachments', 'project.members', 'project.customer', 'assignee', 'assignees', 'reviewer', 'creator', 'customer', 'logs.user', 'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor', 'comments.user', 'comments.edits.editor', 'transfers.fromUser', 'transfers.toUser', 'transfers.transferredBy');
         $users       = User::whereIn('role', ['user', 'manager'])->orderBy('name')->get();
         $socialUsers = User::where('role', 'user')->orderBy('name')->get();
-        return view('admin.tasks.show', compact('task', 'users', 'socialUsers'));
+        $projects    = Project::where('is_quick', false)->orderBy('name')->get();
+        $customers   = Customer::orderBy('name')->get();
+        return view('admin.tasks.show', compact('task', 'users', 'socialUsers', 'projects', 'customers'));
+    }
+
+    public function update(Request $request, Task $task)
+    {
+        $request->validate([
+            'title'       => 'required|string|max:255',
+            'project_id'  => 'nullable|exists:projects,id',
+            'customer_id' => 'nullable|exists:customers,id',
+            'assigned_to' => 'nullable|exists:users,id',
+            'priority'    => 'nullable|in:high,medium,low',
+            'deadline'    => 'nullable|date',
+            'description' => 'nullable|string',
+        ]);
+
+        $changes = [];
+        $fields = ['title','project_id','customer_id','assigned_to','priority','deadline','description'];
+        foreach ($fields as $field) {
+            $old = $task->$field instanceof \Illuminate\Support\Carbon
+                ? $task->$field->toDateString()
+                : $task->$field;
+            $new = $field === 'deadline' && $request->filled('deadline')
+                ? \Carbon\Carbon::parse($request->deadline)->toDateString()
+                : ($request->input($field) ?: null);
+            if ((string)$old !== (string)($new ?? '')) {
+                $changes[$field] = ['from' => $old, 'to' => $new];
+            }
+        }
+
+        $projectId = $request->project_id
+            ?: Project::where('is_quick', true)->value('id')
+            ?: $task->project_id;
+
+        $task->update([
+            'title'       => $request->title,
+            'project_id'  => $projectId,
+            'customer_id' => $request->customer_id ?: null,
+            'assigned_to' => $request->assigned_to ?: null,
+            'priority'    => $request->priority ?: null,
+            'deadline'    => $request->filled('deadline') ? $request->deadline : null,
+            'description' => $request->description ?: null,
+        ]);
+
+        if (!empty($changes)) {
+            TaskLog::create([
+                'task_id'  => $task->id,
+                'user_id'  => auth()->id(),
+                'action'   => 'task_updated',
+                'note'     => 'Task details updated by ' . auth()->user()->name,
+                'metadata' => ['changes' => $changes, 'changed_by' => auth()->user()->name],
+            ]);
+        }
+
+        AuditLogger::log(
+            'task.updated',
+            $task,
+            'Task "' . $task->title . '" details updated',
+            ['task_id' => $task->id, 'changes' => $changes]
+        );
+
+        return back()->with('success', 'Task "' . $task->title . '" updated successfully.');
     }
 
     public function comment(Request $request, Task $task)
@@ -426,7 +493,7 @@ class TaskController extends Controller
             'statusBg'    => $sm['bg'],
             'priority'    => $task->priority,
             'priorityMeta'=> $pm,
-            'deadline'    => $task->deadline?->format('M d, Y'),
+            'deadline'    => $task->deadline?->format(config('app.date_format', 'M d, Y')),
             'isOverdue'   => $isOverdue,
             'createdAt'   => $task->created_at->format('M d, Y · H:i'),
             'updatedAt'   => $task->updated_at->format('M d, Y · H:i'),
@@ -570,7 +637,7 @@ class TaskController extends Controller
             'reason'   => 'nullable|string|max:500',
         ]);
 
-        $oldDeadline = $task->deadline->format('M d, Y');
+        $oldDeadline = $task->deadline->format(config('app.date_format', 'M d, Y'));
         $newDeadline = \Illuminate\Support\Carbon::parse($request->deadline);
 
         if ($newDeadline->toDateString() === $task->deadline->toDateString()) {
@@ -587,7 +654,7 @@ class TaskController extends Controller
             'note'     => $reason ?: null,
             'metadata' => [
                 'old_deadline'    => $oldDeadline,
-                'new_deadline'    => $newDeadline->format('M d, Y'),
+                'new_deadline'    => $newDeadline->format(config('app.date_format', 'M d, Y')),
                 'changed_by_name' => auth()->user()->name,
                 'reason'          => $reason ?: null,
             ],
@@ -596,14 +663,14 @@ class TaskController extends Controller
         AuditLogger::log(
             'task.deadline_updated',
             $task,
-            'Deadline changed from ' . $oldDeadline . ' to ' . $newDeadline->format('M d, Y'),
-            ['task_id' => $task->id, 'old_deadline' => $oldDeadline, 'new_deadline' => $newDeadline->format('M d, Y')]
+            'Deadline changed from ' . $oldDeadline . ' to ' . $newDeadline->format(config('app.date_format', 'M d, Y')),
+            ['task_id' => $task->id, 'old_deadline' => $oldDeadline, 'new_deadline' => $newDeadline->format(config('app.date_format', 'M d, Y'))]
         );
 
         if ($task->assignee && Setting::get('notify_on_reassign', '1') === '1') {
             $task->assignee->notify(new \App\Notifications\TaskReassigned($task, true));
         }
 
-        return back()->with('success', 'Deadline updated to ' . $newDeadline->format('M d, Y') . '.');
+        return back()->with('success', 'Deadline updated to ' . $newDeadline->format(config('app.date_format', 'M d, Y')) . '.');
     }
 }

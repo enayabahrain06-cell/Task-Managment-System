@@ -75,6 +75,14 @@ class TaskLog extends Model
             'deadline_updated'                    => 'Deadline Changed',
             'first_viewed'                        => 'First Opened by Assignee',
             'comment_added'                       => 'Comment Added',
+            'customer_notified'                   => 'Customer Notified',
+            'social_assigned'                     => 'Assigned for Social Media',
+            'social_posted'                       => 'Posted to Social Media',
+            'social_post_edited'                  => 'Social Post Edited',
+            'social_post_deleted'                 => 'Social Post Deleted',
+            'social_reopened'                     => 'Social Post Reopened',
+            'task_updated'                        => 'Task Details Updated',
+            'release_published'                   => 'Release Published',
             default => ucwords(str_replace(['status_updated_', '_'], ['', ' '], $this->action)),
         };
     }
@@ -108,6 +116,14 @@ class TaskLog extends Model
             'deadline_updated'                    => ['fa-calendar-xmark',       '#DC2626', '#FEE2E2'],
             'first_viewed'                        => ['fa-eye',                  '#0EA5E9', '#E0F2FE'],
             'comment_added'                       => ['fa-comment',              '#6366F1', '#EEF2FF'],
+            'customer_notified'                   => ['fa-paper-plane',          '#0284C7', '#E0F2FE'],
+            'social_assigned'                     => ['fa-share-nodes',          '#7C3AED', '#EDE9FE'],
+            'social_posted'                       => ['fa-share-nodes',          '#059669', '#D1FAE5'],
+            'social_post_edited'                  => ['fa-pen-to-square',        '#D97706', '#FEF3C7'],
+            'social_post_deleted'                 => ['fa-trash',                '#DC2626', '#FEE2E2'],
+            'social_reopened'                     => ['fa-rotate-right',         '#6366F1', '#EEF2FF'],
+            'task_updated'                        => ['fa-pen',                  '#6B7280', '#F3F4F6'],
+            'release_published'                   => ['fa-rocket',               '#6366F1', '#EEF2FF'],
             default                               => ['fa-circle-dot',           '#6366F1', '#EEF2FF'],
         };
     }

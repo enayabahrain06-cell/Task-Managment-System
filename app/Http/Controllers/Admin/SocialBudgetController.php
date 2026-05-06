@@ -40,8 +40,8 @@ class SocialBudgetController extends Controller
             'caption'     => $t->social_caption,
             'description' => $t->social_description,
             'posted'      => (bool) $t->social_posted_at,
-            'posted_at'   => $t->social_posted_at?->format('M d, Y'),
-            'created_at'  => $t->created_at->format('M d, Y'),
+            'posted_at'   => $t->social_posted_at?->format(config('app.date_format', 'M d, Y')),
+            'created_at'  => $t->created_at->format(config('app.date_format', 'M d, Y')),
             'status'      => $t->status,
         ]);
 

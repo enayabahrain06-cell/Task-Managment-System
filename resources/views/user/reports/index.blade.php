@@ -120,11 +120,11 @@
         </div>
         <div>
             <span style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em;">Generated</span>
-            <div style="font-size:12px;font-weight:600;color:#374151;margin-top:2px;">{{ now()->format('F d, Y') }} at {{ now()->format('H:i') }}</div>
+            <div style="font-size:12px;font-weight:600;color:#374151;margin-top:2px;">{{ now()->format(config('app.date_format', 'M d, Y')) }} at {{ now()->format('H:i') }}</div>
         </div>
         <div>
             <span style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em;">Period</span>
-            <div style="font-size:12px;font-weight:600;color:#374151;margin-top:2px;">{{ $from ? $from->format('M d, Y').' – '.now()->format('M d, Y') : 'All Time' }}</div>
+            <div style="font-size:12px;font-weight:600;color:#374151;margin-top:2px;">{{ $from ? $from->format(config('app.date_format', 'M d, Y')).' – '.now()->format(config('app.date_format', 'M d, Y')) : 'All Time' }}</div>
         </div>
     </div>
 
@@ -138,7 +138,7 @@
         <h1 style="font-size:20px;font-weight:800;color:#fff;margin:0 0 4px;">My Reports</h1>
         <p style="font-size:12px;color:rgba(255,255,255,.7);margin:0;">
             Personal performance &amp; task analytics
-            @if($from) &mdash; {{ $from->format('M d, Y') }} to {{ now()->format('M d, Y') }}
+            @if($from) &mdash; {{ $from->format(config('app.date_format', 'M d, Y')) }} to {{ now()->format(config('app.date_format', 'M d, Y')) }}
             @else &mdash; All time
             @endif
         </p>

@@ -761,7 +761,7 @@ document.addEventListener('keydown', function(e) {
                     <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:10px;background:{{ $pcbg }};color:{{ $pcco }};">{{ ucfirst($proj->status) }}</span>
                 </div>
                 <h3 style="font-size:14px;font-weight:700;color:#111827;margin:0 0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $proj->name }}</h3>
-                <p style="font-size:11px;color:#9CA3AF;margin:0 0 14px;">{{ $proj->deadline ? 'Due '.$proj->deadline->format('M d, Y') : 'No deadline' }}</p>
+                <p style="font-size:11px;color:#9CA3AF;margin:0 0 14px;">{{ $proj->deadline ? 'Due '.$proj->deadline->format(config('app.date_format', 'M d, Y')) : 'No deadline' }}</p>
                 <div style="margin-bottom:6px;">
                     <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
                         <span style="font-size:11px;color:#6B7280;">Progress</span>
@@ -835,7 +835,7 @@ document.addEventListener('keydown', function(e) {
                             <i class="fas fa-folder" style="font-size:9px;margin-right:3px;color:#A5B4FC;"></i>{{ $st->project->name }} ·
                             @endif
                             @if($st->deadline)
-                            Due {{ $st->deadline->format('M d, Y') }}
+                            Due {{ $st->deadline->format(config('app.date_format', 'M d, Y')) }}
                             @else
                             No deadline
                             @endif
@@ -873,7 +873,7 @@ document.addEventListener('keydown', function(e) {
                         <p style="font-size:13px;font-weight:600;color:#374151;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $st->title }}</p>
                         <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">
                             @if($st->project)<i class="fas fa-folder" style="font-size:9px;margin-right:3px;color:#A5B4FC;"></i>{{ $st->project->name }} ·@endif
-                            Posted {{ $st->social_posted_at->format('M d, Y') }}
+                            Posted {{ $st->social_posted_at->format(config('app.date_format', 'M d, Y')) }}
                         </p>
                     </div>
                     <div style="flex-shrink:0;display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:flex-end;">
@@ -986,7 +986,7 @@ document.addEventListener('keydown', function(e) {
                     {{-- Date --}}
                     <div style="flex-shrink:0;text-align:right;min-width:64px;">
                         @if($ct->deadline)
-                        <p style="font-size:11px;font-weight:500;color:#9CA3AF;margin:0;">{{ $ct->deadline->format('M d, Y') }}</p>
+                        <p style="font-size:11px;font-weight:500;color:#9CA3AF;margin:0;">{{ $ct->deadline->format(config('app.date_format', 'M d, Y')) }}</p>
                         <p style="font-size:10px;color:#BBF7D0;margin:2px 0 0;font-weight:600;"><i class="fas fa-check" style="font-size:8px;color:#16A34A;margin-right:2px;"></i>Done</p>
                         @else
                         <p style="font-size:11px;color:#9CA3AF;margin:0;"><i class="fas fa-check" style="font-size:9px;color:#16A34A;margin-right:3px;"></i>Done</p>

@@ -174,7 +174,7 @@ class ReportsController extends Controller
                 'id'        => $t->id,
                 'title'     => $t->title,
                 'project'   => $t->project->name ?? '—',
-                'deadline'  => $t->deadline->format('M d, Y'),
+                'deadline'  => $t->deadline->format(config('app.date_format', 'M d, Y')),
                 'days_late' => abs(now()->diffInDays($t->deadline)),
                 'priority'  => $t->priority ?? 'medium',
                 'status'    => $t->status,
@@ -205,7 +205,7 @@ class ReportsController extends Controller
                 'to_user'   => $log->metadata['to_user_name']   ?? '—',
                 'by'        => $log->metadata['reassigned_by']  ?? $log->user?->name ?? '—',
                 'reason'    => $log->metadata['reason'] ?? null,
-                'date'      => $log->created_at->format('M d, Y'),
+                'date'      => $log->created_at->format(config('app.date_format', 'M d, Y')),
                 'time'      => $log->created_at->format('H:i'),
             ]);
 
@@ -223,7 +223,7 @@ class ReportsController extends Controller
                 'project'    => $log->task?->project?->name ?? '—',
                 'old_status' => ucfirst(str_replace('_', ' ', $log->metadata['old_status'] ?? '—')),
                 'by'         => $log->metadata['reopened_by_name'] ?? $log->user?->name ?? '—',
-                'date'       => $log->created_at->format('M d, Y'),
+                'date'       => $log->created_at->format(config('app.date_format', 'M d, Y')),
                 'time'       => $log->created_at->format('H:i'),
             ]);
 
@@ -309,11 +309,11 @@ class ReportsController extends Controller
                 'project'          => $task->project?->name ?? '—',
                 'priority'         => $task->priority ?? 'medium',
                 'status'           => $task->status,
-                'deadline'         => $task->deadline?->format('M d, Y'),
+                'deadline'         => $task->deadline?->format(config('app.date_format', 'M d, Y')),
                 'deadline_raw'     => $task->deadline?->toDateString(),
-                'started_at'       => $startedAt?->format('M d, Y'),
-                'submitted_at'     => $submittedAt?->format('M d, Y'),
-                'completed_at'     => $completedAt?->format('M d, Y'),
+                'started_at'       => $startedAt?->format(config('app.date_format', 'M d, Y')),
+                'submitted_at'     => $submittedAt?->format(config('app.date_format', 'M d, Y')),
+                'completed_at'     => $completedAt?->format(config('app.date_format', 'M d, Y')),
                 'days_to_submit'   => $daysToSubmit,
                 'days_to_complete' => $daysToComplete,
                 'time_spent_min'   => $totalMinutes,

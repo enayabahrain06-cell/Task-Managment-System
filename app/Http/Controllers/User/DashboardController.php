@@ -332,7 +332,7 @@ class DashboardController extends Controller
                     'statusBg'    => $sm['bg'],
                     'priority'    => $task->priority,
                     'priorityMeta'=> $pm,
-                    'deadline'    => $task->deadline?->format('M d, Y'),
+                    'deadline'    => $task->deadline?->format(config('app.date_format', 'M d, Y')),
                     'isOverdue'   => $task->deadline && $task->deadline->isPast() && !in_array($task->status, ['approved', 'delivered', 'archived']),
                     'project'     => $task->project?->name,
                     'url'         => route('user.tasks.show', $task->id),

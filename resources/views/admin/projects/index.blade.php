@@ -315,7 +315,7 @@ $statDefs = [
                     </div>
                 </td>
                 <td class="px-5 py-3.5 text-sm {{ $project->deadline < now() && $project->status !== 'completed' ? 'text-red-500 font-semibold' : 'text-gray-500' }}">
-                    {{ $project->deadline->format('M d, Y') }}
+                    {{ $project->deadline->format(config('app.date_format', 'M d, Y')) }}
                 </td>
                 <td class="px-5 py-3.5 text-sm text-gray-400">{{ $project->created_at->format('M d') }}</td>
                 <td class="px-5 py-3.5">
@@ -478,7 +478,7 @@ $statDefs = [
                         <span class="text-xs font-semibold text-red-500">Overdue · {{ $project->deadline->format('M d') }}</span>
                         @else
                         <i class="fas fa-calendar-days text-gray-300 text-xs"></i>
-                        <span class="text-xs text-gray-400">Due {{ $project->deadline->format('M d, Y') }}</span>
+                        <span class="text-xs text-gray-400">Due {{ $project->deadline->format(config('app.date_format', 'M d, Y')) }}</span>
                         @endif
                     </div>
                     <div class="flex items-center gap-1" onclick="event.stopPropagation()">

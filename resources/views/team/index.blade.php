@@ -1446,37 +1446,70 @@ function rolesTab() {
 
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Phone Number</label>
-                        <div style="position:relative;">
+                        <div @keydown.escape.window="phoneDropOpen = false">
                             <div style="display:flex;border:1.5px solid #E5E7EB;border-radius:10px;overflow:hidden;background:#F9FAFB;">
-                                <button type="button" @click.stop="phoneDropOpen = !phoneDropOpen" @click.outside="phoneDropOpen = false"
+                                <button type="button" @click.stop="phoneDropOpen = true"
                                         style="display:flex;align-items:center;gap:5px;padding:8px 10px;background:#F3F4F6;border:none;border-right:1.5px solid #E5E7EB;cursor:pointer;outline:none;flex-shrink:0;min-width:80px;">
                                     <span x-text="dialFlag" style="font-size:15px;line-height:1;"></span>
                                     <span x-text="dialCode" style="font-size:12px;font-weight:600;color:#374151;"></span>
-                                    <i class="fas fa-chevron-down" style="font-size:9px;color:#9CA3AF;" :style="phoneDropOpen ? 'transform:rotate(180deg);' : ''"></i>
+                                    <i class="fas fa-chevron-down" style="font-size:9px;color:#9CA3AF;transition:transform .15s;" :style="phoneDropOpen ? 'transform:rotate(180deg)' : ''"></i>
                                 </button>
                                 <input type="tel" x-model="localPhone" placeholder="50 123 4567" maxlength="25"
                                        style="flex:1;padding:9px 10px;border:none;font-size:13px;background:transparent;color:#111827;outline:none;min-width:0;">
                             </div>
                             <input type="hidden" name="phone" :value="fullPhone">
-                            {{-- Dropdown --}}
-                            <div x-show="phoneDropOpen" x-cloak @click.outside="phoneDropOpen = false"
-                                 style="position:absolute;top:calc(100% + 4px);left:0;z-index:200;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,0.13);width:250px;overflow:hidden;">
-                                <div style="padding:7px;">
-                                    <input type="text" x-model="phoneSearch" placeholder="Search country…" @click.stop
-                                           style="width:100%;padding:6px 9px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;outline:none;box-sizing:border-box;">
-                                </div>
-                                <div style="max-height:200px;overflow-y:auto;">
-                                    <template x-for="c in phoneFiltered" :key="c.code">
-                                        <button type="button" @click.stop="pickDial(c)"
-                                                :style="dialCode === c.dial ? 'background:#EEF2FF;' : ''"
-                                                style="width:100%;text-align:left;padding:7px 12px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;gap:8px;">
-                                            <span x-text="c.flag" style="font-size:15px;line-height:1;flex-shrink:0;"></span>
-                                            <span x-text="c.name" style="flex:1;font-size:12px;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
-                                            <span x-text="c.dial" style="font-size:11px;color:#9CA3AF;font-weight:600;flex-shrink:0;"></span>
+                            {{-- Backdrop --}}
+                            <div x-show="phoneDropOpen" x-cloak @click="phoneDropOpen=false; phoneSearch=''"
+                                 style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:10000;"></div>
+                            {{-- Country picker panel: x-show on wrapper; flex centering on inner div --}}
+                            <div x-show="phoneDropOpen" x-cloak style="position:fixed;inset:0;z-index:10001;">
+                                <div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:16px;">
+                                <div @click.stop
+                                     style="background:#fff;border-radius:18px;width:100%;max-width:420px;max-height:min(620px,88vh);display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,0.22);overflow:hidden;">
+                                    {{-- Header --}}
+                                    <div style="display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid #F3F4F6;flex-shrink:0;">
+                                        <button type="button" @click="phoneDropOpen=false; phoneSearch=''"
+                                                style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border:none;background:#F3F4F6;border-radius:8px;cursor:pointer;color:#374151;flex-shrink:0;">
+                                            <i class="fas fa-arrow-left" style="font-size:12px;"></i>
                                         </button>
-                                    </template>
+                                        <span style="font-size:15px;font-weight:700;color:#111827;flex:1;text-align:center;">Select your country code</span>
+                                        <div style="width:32px;"></div>
+                                    </div>
+                                    {{-- Search --}}
+                                    <div style="padding:12px 16px;border-bottom:1px solid #F3F4F6;flex-shrink:0;">
+                                        <div style="position:relative;">
+                                            <i class="fas fa-search" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:13px;pointer-events:none;"></i>
+                                            <input type="text" x-model="phoneSearch" @click.stop
+                                                   placeholder="Enter country code to filter"
+                                                   x-ref="phoneSearchInput"
+                                                   x-effect="if(phoneDropOpen) $nextTick(()=>{ $refs.phoneSearchInput && $refs.phoneSearchInput.focus(); })"
+                                                   style="width:100%;padding:9px 12px 9px 34px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box;background:#F9FAFB;color:#111827;">
+                                        </div>
+                                    </div>
+                                    {{-- List --}}
+                                    <div style="flex:1;overflow-y:auto;">
+                                        <template x-for="group in phoneGrouped" :key="group.letter">
+                                            <div>
+                                                <div x-show="group.letter" x-text="group.letter"
+                                                     style="padding:4px 20px;font-size:11px;font-weight:700;color:#9CA3AF;background:#F9FAFB;letter-spacing:.06em;position:sticky;top:0;z-index:1;"></div>
+                                                <template x-for="c in group.items" :key="c.code">
+                                                    <button type="button" @click.stop="pickDial(c)"
+                                                            :style="dialCode === c.dial ? 'background:#EEF2FF;' : ''"
+                                                            style="display:block;width:100%;border:none;border-bottom:1px solid #F3F4F6;background:transparent;cursor:pointer;padding:0;text-align:left;box-sizing:border-box;">
+                                                        <div style="display:flex;align-items:center;gap:14px;padding:11px 20px;">
+                                                        <span x-text="c.dial" style="font-size:13px;font-weight:700;color:#111827;min-width:50px;flex-shrink:0;"></span>
+                                                        <span x-text="c.flag" style="font-size:20px;flex-shrink:0;line-height:1;"></span>
+                                                        <span x-text="c.name" style="font-size:13px;color:#374151;flex:1;"></span>
+                                                        <i x-show="dialCode === c.dial" class="fas fa-check" style="font-size:11px;color:#6366F1;flex-shrink:0;"></i>
+                                                        </div>
+                                                    </button>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
                                 </div>
-                            </div>
+                                </div>{{-- /flex center --}}
+                            </div>{{-- /panel wrapper --}}
                         </div>
                     </div>
 
@@ -1659,63 +1692,139 @@ window.nationalityList = [
 </script>
 
 <script>
-/* ─── Country dial-code list (shared by phonePicker + editUserModal) ─── */
+/* ─── Country dial-code list ─── */
+if (!window.PHONE_COUNTRIES) {
 window.PHONE_COUNTRIES = [
-    /* Priority: Middle East */
-    {code:'AE',flag:'🇦🇪',name:'UAE',          dial:'+971'},
-    {code:'SA',flag:'🇸🇦',name:'Saudi Arabia',  dial:'+966'},
-    {code:'KW',flag:'🇰🇼',name:'Kuwait',        dial:'+965'},
-    {code:'BH',flag:'🇧🇭',name:'Bahrain',       dial:'+973'},
-    {code:'QA',flag:'🇶🇦',name:'Qatar',         dial:'+974'},
-    {code:'OM',flag:'🇴🇲',name:'Oman',          dial:'+968'},
-    {code:'JO',flag:'🇯🇴',name:'Jordan',        dial:'+962'},
-    {code:'LB',flag:'🇱🇧',name:'Lebanon',       dial:'+961'},
-    {code:'EG',flag:'🇪🇬',name:'Egypt',         dial:'+20'},
-    {code:'IQ',flag:'🇮🇶',name:'Iraq',          dial:'+964'},
-    {code:'SY',flag:'🇸🇾',name:'Syria',         dial:'+963'},
-    {code:'YE',flag:'🇾🇪',name:'Yemen',         dial:'+967'},
-    {code:'PS',flag:'🇵🇸',name:'Palestine',     dial:'+970'},
-    {code:'MA',flag:'🇲🇦',name:'Morocco',       dial:'+212'},
-    {code:'TN',flag:'🇹🇳',name:'Tunisia',       dial:'+216'},
-    {code:'LY',flag:'🇱🇾',name:'Libya',         dial:'+218'},
-    {code:'SD',flag:'🇸🇩',name:'Sudan',         dial:'+249'},
-    /* Rest of world */
-    {code:'US',flag:'🇺🇸',name:'United States', dial:'+1'},
-    {code:'GB',flag:'🇬🇧',name:'UK',            dial:'+44'},
-    {code:'IN',flag:'🇮🇳',name:'India',         dial:'+91'},
-    {code:'PK',flag:'🇵🇰',name:'Pakistan',      dial:'+92'},
-    {code:'PH',flag:'🇵🇭',name:'Philippines',   dial:'+63'},
-    {code:'BD',flag:'🇧🇩',name:'Bangladesh',    dial:'+880'},
-    {code:'LK',flag:'🇱🇰',name:'Sri Lanka',     dial:'+94'},
-    {code:'NP',flag:'🇳🇵',name:'Nepal',         dial:'+977'},
-    {code:'ID',flag:'🇮🇩',name:'Indonesia',     dial:'+62'},
-    {code:'MY',flag:'🇲🇾',name:'Malaysia',      dial:'+60'},
-    {code:'SG',flag:'🇸🇬',name:'Singapore',     dial:'+65'},
-    {code:'TH',flag:'🇹🇭',name:'Thailand',      dial:'+66'},
-    {code:'VN',flag:'🇻🇳',name:'Vietnam',       dial:'+84'},
-    {code:'CN',flag:'🇨🇳',name:'China',         dial:'+86'},
-    {code:'JP',flag:'🇯🇵',name:'Japan',         dial:'+81'},
-    {code:'KR',flag:'🇰🇷',name:'South Korea',   dial:'+82'},
-    {code:'TR',flag:'🇹🇷',name:'Turkey',        dial:'+90'},
-    {code:'IR',flag:'🇮🇷',name:'Iran',          dial:'+98'},
-    {code:'NG',flag:'🇳🇬',name:'Nigeria',       dial:'+234'},
-    {code:'GH',flag:'🇬🇭',name:'Ghana',         dial:'+233'},
-    {code:'KE',flag:'🇰🇪',name:'Kenya',         dial:'+254'},
-    {code:'ET',flag:'🇪🇹',name:'Ethiopia',      dial:'+251'},
-    {code:'ZA',flag:'🇿🇦',name:'South Africa',  dial:'+27'},
-    {code:'FR',flag:'🇫🇷',name:'France',        dial:'+33'},
-    {code:'DE',flag:'🇩🇪',name:'Germany',       dial:'+49'},
-    {code:'IT',flag:'🇮🇹',name:'Italy',         dial:'+39'},
-    {code:'ES',flag:'🇪🇸',name:'Spain',         dial:'+34'},
-    {code:'RU',flag:'🇷🇺',name:'Russia',        dial:'+7'},
-    {code:'UA',flag:'🇺🇦',name:'Ukraine',       dial:'+380'},
-    {code:'BR',flag:'🇧🇷',name:'Brazil',        dial:'+55'},
-    {code:'MX',flag:'🇲🇽',name:'Mexico',        dial:'+52'},
-    {code:'CA',flag:'🇨🇦',name:'Canada',        dial:'+1'},
-    {code:'AU',flag:'🇦🇺',name:'Australia',     dial:'+61'},
+    {code:'AF',flag:'🇦🇫',name:'Afghanistan',     dial:'+93'},
+    {code:'AL',flag:'🇦🇱',name:'Albania',          dial:'+355'},
+    {code:'DZ',flag:'🇩🇿',name:'Algeria',          dial:'+213'},
+    {code:'AD',flag:'🇦🇩',name:'Andorra',          dial:'+376'},
+    {code:'AO',flag:'🇦🇴',name:'Angola',           dial:'+244'},
+    {code:'AR',flag:'🇦🇷',name:'Argentina',        dial:'+54'},
+    {code:'AM',flag:'🇦🇲',name:'Armenia',          dial:'+374'},
+    {code:'AU',flag:'🇦🇺',name:'Australia',        dial:'+61'},
+    {code:'AT',flag:'🇦🇹',name:'Austria',          dial:'+43'},
+    {code:'AZ',flag:'🇦🇿',name:'Azerbaijan',       dial:'+994'},
+    {code:'BH',flag:'🇧🇭',name:'Bahrain',          dial:'+973'},
+    {code:'BD',flag:'🇧🇩',name:'Bangladesh',       dial:'+880'},
+    {code:'BY',flag:'🇧🇾',name:'Belarus',          dial:'+375'},
+    {code:'BE',flag:'🇧🇪',name:'Belgium',          dial:'+32'},
+    {code:'BO',flag:'🇧🇴',name:'Bolivia',          dial:'+591'},
+    {code:'BA',flag:'🇧🇦',name:'Bosnia',           dial:'+387'},
+    {code:'BR',flag:'🇧🇷',name:'Brazil',           dial:'+55'},
+    {code:'BG',flag:'🇧🇬',name:'Bulgaria',         dial:'+359'},
+    {code:'KH',flag:'🇰🇭',name:'Cambodia',         dial:'+855'},
+    {code:'CM',flag:'🇨🇲',name:'Cameroon',         dial:'+237'},
+    {code:'CA',flag:'🇨🇦',name:'Canada',           dial:'+1'},
+    {code:'CL',flag:'🇨🇱',name:'Chile',            dial:'+56'},
+    {code:'CN',flag:'🇨🇳',name:'China',            dial:'+86'},
+    {code:'CO',flag:'🇨🇴',name:'Colombia',         dial:'+57'},
+    {code:'CR',flag:'🇨🇷',name:'Costa Rica',       dial:'+506'},
+    {code:'HR',flag:'🇭🇷',name:'Croatia',          dial:'+385'},
+    {code:'CU',flag:'🇨🇺',name:'Cuba',             dial:'+53'},
+    {code:'CY',flag:'🇨🇾',name:'Cyprus',           dial:'+357'},
+    {code:'CZ',flag:'🇨🇿',name:'Czech Republic',   dial:'+420'},
+    {code:'DK',flag:'🇩🇰',name:'Denmark',          dial:'+45'},
+    {code:'EC',flag:'🇪🇨',name:'Ecuador',          dial:'+593'},
+    {code:'EG',flag:'🇪🇬',name:'Egypt',            dial:'+20'},
+    {code:'SV',flag:'🇸🇻',name:'El Salvador',      dial:'+503'},
+    {code:'EE',flag:'🇪🇪',name:'Estonia',          dial:'+372'},
+    {code:'ET',flag:'🇪🇹',name:'Ethiopia',         dial:'+251'},
+    {code:'FI',flag:'🇫🇮',name:'Finland',          dial:'+358'},
+    {code:'FR',flag:'🇫🇷',name:'France',           dial:'+33'},
+    {code:'GE',flag:'🇬🇪',name:'Georgia',          dial:'+995'},
+    {code:'DE',flag:'🇩🇪',name:'Germany',          dial:'+49'},
+    {code:'GH',flag:'🇬🇭',name:'Ghana',            dial:'+233'},
+    {code:'GR',flag:'🇬🇷',name:'Greece',           dial:'+30'},
+    {code:'GT',flag:'🇬🇹',name:'Guatemala',        dial:'+502'},
+    {code:'HN',flag:'🇭🇳',name:'Honduras',         dial:'+504'},
+    {code:'HK',flag:'🇭🇰',name:'Hong Kong',        dial:'+852'},
+    {code:'HU',flag:'🇭🇺',name:'Hungary',          dial:'+36'},
+    {code:'IN',flag:'🇮🇳',name:'India',            dial:'+91'},
+    {code:'ID',flag:'🇮🇩',name:'Indonesia',        dial:'+62'},
+    {code:'IR',flag:'🇮🇷',name:'Iran',             dial:'+98'},
+    {code:'IQ',flag:'🇮🇶',name:'Iraq',             dial:'+964'},
+    {code:'IE',flag:'🇮🇪',name:'Ireland',          dial:'+353'},
+    {code:'IL',flag:'🇮🇱',name:'Israel',           dial:'+972'},
+    {code:'IT',flag:'🇮🇹',name:'Italy',            dial:'+39'},
+    {code:'JP',flag:'🇯🇵',name:'Japan',            dial:'+81'},
+    {code:'JO',flag:'🇯🇴',name:'Jordan',           dial:'+962'},
+    {code:'KZ',flag:'🇰🇿',name:'Kazakhstan',       dial:'+7'},
+    {code:'KE',flag:'🇰🇪',name:'Kenya',            dial:'+254'},
+    {code:'KW',flag:'🇰🇼',name:'Kuwait',           dial:'+965'},
+    {code:'KG',flag:'🇰🇬',name:'Kyrgyzstan',       dial:'+996'},
+    {code:'LV',flag:'🇱🇻',name:'Latvia',           dial:'+371'},
+    {code:'LB',flag:'🇱🇧',name:'Lebanon',          dial:'+961'},
+    {code:'LY',flag:'🇱🇾',name:'Libya',            dial:'+218'},
+    {code:'LT',flag:'🇱🇹',name:'Lithuania',        dial:'+370'},
+    {code:'LU',flag:'🇱🇺',name:'Luxembourg',       dial:'+352'},
+    {code:'MY',flag:'🇲🇾',name:'Malaysia',         dial:'+60'},
+    {code:'MV',flag:'🇲🇻',name:'Maldives',         dial:'+960'},
+    {code:'MT',flag:'🇲🇹',name:'Malta',            dial:'+356'},
+    {code:'MX',flag:'🇲🇽',name:'Mexico',           dial:'+52'},
+    {code:'MD',flag:'🇲🇩',name:'Moldova',          dial:'+373'},
+    {code:'MN',flag:'🇲🇳',name:'Mongolia',         dial:'+976'},
+    {code:'ME',flag:'🇲🇪',name:'Montenegro',       dial:'+382'},
+    {code:'MA',flag:'🇲🇦',name:'Morocco',          dial:'+212'},
+    {code:'MZ',flag:'🇲🇿',name:'Mozambique',       dial:'+258'},
+    {code:'MM',flag:'🇲🇲',name:'Myanmar',          dial:'+95'},
+    {code:'NP',flag:'🇳🇵',name:'Nepal',            dial:'+977'},
+    {code:'NL',flag:'🇳🇱',name:'Netherlands',      dial:'+31'},
+    {code:'NZ',flag:'🇳🇿',name:'New Zealand',      dial:'+64'},
+    {code:'NI',flag:'🇳🇮',name:'Nicaragua',        dial:'+505'},
+    {code:'NG',flag:'🇳🇬',name:'Nigeria',          dial:'+234'},
+    {code:'NO',flag:'🇳🇴',name:'Norway',           dial:'+47'},
+    {code:'OM',flag:'🇴🇲',name:'Oman',             dial:'+968'},
+    {code:'PK',flag:'🇵🇰',name:'Pakistan',         dial:'+92'},
+    {code:'PS',flag:'🇵🇸',name:'Palestine',        dial:'+970'},
+    {code:'PA',flag:'🇵🇦',name:'Panama',           dial:'+507'},
+    {code:'PY',flag:'🇵🇾',name:'Paraguay',         dial:'+595'},
+    {code:'PE',flag:'🇵🇪',name:'Peru',             dial:'+51'},
+    {code:'PH',flag:'🇵🇭',name:'Philippines',      dial:'+63'},
+    {code:'PL',flag:'🇵🇱',name:'Poland',           dial:'+48'},
+    {code:'PT',flag:'🇵🇹',name:'Portugal',         dial:'+351'},
+    {code:'QA',flag:'🇶🇦',name:'Qatar',            dial:'+974'},
+    {code:'RO',flag:'🇷🇴',name:'Romania',          dial:'+40'},
+    {code:'RU',flag:'🇷🇺',name:'Russia',           dial:'+7'},
+    {code:'SA',flag:'🇸🇦',name:'Saudi Arabia',     dial:'+966'},
+    {code:'SN',flag:'🇸🇳',name:'Senegal',          dial:'+221'},
+    {code:'RS',flag:'🇷🇸',name:'Serbia',           dial:'+381'},
+    {code:'SG',flag:'🇸🇬',name:'Singapore',        dial:'+65'},
+    {code:'SK',flag:'🇸🇰',name:'Slovakia',         dial:'+421'},
+    {code:'SI',flag:'🇸🇮',name:'Slovenia',         dial:'+386'},
+    {code:'SO',flag:'🇸🇴',name:'Somalia',          dial:'+252'},
+    {code:'ZA',flag:'🇿🇦',name:'South Africa',     dial:'+27'},
+    {code:'KR',flag:'🇰🇷',name:'South Korea',      dial:'+82'},
+    {code:'ES',flag:'🇪🇸',name:'Spain',            dial:'+34'},
+    {code:'LK',flag:'🇱🇰',name:'Sri Lanka',        dial:'+94'},
+    {code:'SD',flag:'🇸🇩',name:'Sudan',            dial:'+249'},
+    {code:'SE',flag:'🇸🇪',name:'Sweden',           dial:'+46'},
+    {code:'CH',flag:'🇨🇭',name:'Switzerland',      dial:'+41'},
+    {code:'SY',flag:'🇸🇾',name:'Syria',            dial:'+963'},
+    {code:'TW',flag:'🇹🇼',name:'Taiwan',           dial:'+886'},
+    {code:'TJ',flag:'🇹🇯',name:'Tajikistan',       dial:'+992'},
+    {code:'TZ',flag:'🇹🇿',name:'Tanzania',         dial:'+255'},
+    {code:'TH',flag:'🇹🇭',name:'Thailand',         dial:'+66'},
+    {code:'TN',flag:'🇹🇳',name:'Tunisia',          dial:'+216'},
+    {code:'TR',flag:'🇹🇷',name:'Turkey',           dial:'+90'},
+    {code:'TM',flag:'🇹🇲',name:'Turkmenistan',     dial:'+993'},
+    {code:'AE',flag:'🇦🇪',name:'UAE',              dial:'+971'},
+    {code:'GB',flag:'🇬🇧',name:'UK',               dial:'+44'},
+    {code:'UA',flag:'🇺🇦',name:'Ukraine',          dial:'+380'},
+    {code:'UG',flag:'🇺🇬',name:'Uganda',           dial:'+256'},
+    {code:'US',flag:'🇺🇸',name:'United States',    dial:'+1'},
+    {code:'UY',flag:'🇺🇾',name:'Uruguay',          dial:'+598'},
+    {code:'UZ',flag:'🇺🇿',name:'Uzbekistan',       dial:'+998'},
+    {code:'VE',flag:'🇻🇪',name:'Venezuela',        dial:'+58'},
+    {code:'VN',flag:'🇻🇳',name:'Vietnam',          dial:'+84'},
+    {code:'YE',flag:'🇾🇪',name:'Yemen',            dial:'+967'},
+    {code:'ZM',flag:'🇿🇲',name:'Zambia',           dial:'+260'},
+    {code:'ZW',flag:'🇿🇼',name:'Zimbabwe',         dial:'+263'},
 ];
+}
 
 /* Parse a full phone string into {dial, local} */
+if (!window.parsePhoneNumber) {
 window.parsePhoneNumber = function(full) {
     if (!full) return { dial: '+971', local: '' };
     const sorted = [...window.PHONE_COUNTRIES].sort((a, b) => b.dial.length - a.dial.length);
@@ -1724,8 +1833,9 @@ window.parsePhoneNumber = function(full) {
     }
     return { dial: '+971', local: full };
 };
+}
 
-/* Standalone phonePicker Alpine component (used in add-user modal & other pages) */
+/* Standalone phonePicker Alpine component (used in add-user modal) */
 function phonePicker(initialFull) {
     const p = window.parsePhoneNumber(initialFull || '');
     const initial = window.PHONE_COUNTRIES.find(c => c.dial === p.dial) || window.PHONE_COUNTRIES[0];
@@ -1734,26 +1844,28 @@ function phonePicker(initialFull) {
         local:    p.local,
         search:   '',
         open:     false,
-        dropTop:  0,
-        dropLeft: 0,
-        dropW:    250,
         get filtered() {
-            const q = this.search.toLowerCase();
-            return q ? window.PHONE_COUNTRIES.filter(c => c.name.toLowerCase().includes(q) || c.dial.includes(q)) : window.PHONE_COUNTRIES;
+            const q = this.search.toLowerCase().replace('+','').trim();
+            if (!q) return window.PHONE_COUNTRIES;
+            return window.PHONE_COUNTRIES.filter(c =>
+                c.name.toLowerCase().includes(q) ||
+                c.dial.replace('+','').startsWith(q)
+            );
+        },
+        get grouped() {
+            const list = this.filtered;
+            if (this.search.trim()) return [{ letter: '', items: list }];
+            const map = {};
+            for (const c of list) {
+                const l = c.name[0].toUpperCase();
+                if (!map[l]) map[l] = [];
+                map[l].push(c);
+            }
+            return Object.keys(map).sort().map(l => ({ letter: l, items: map[l] }));
         },
         get full() {
             const n = this.local.replace(/[\s\-\(\)]/g,'');
             return n ? this.selected.dial + n : '';
-        },
-        toggle(btn) {
-            if (!this.open) {
-                const r = btn.getBoundingClientRect();
-                this.dropTop  = r.bottom + 4;
-                this.dropLeft = r.left;
-                const overflow = this.dropLeft + this.dropW - window.innerWidth + 8;
-                if (overflow > 0) this.dropLeft -= overflow;
-            }
-            this.open = !this.open;
         },
         pick(c) { this.selected = c; this.search = ''; this.open = false; },
     };
@@ -1775,14 +1887,24 @@ function editUserModal() {
         hourlyRate:   '',
         avatarPreview: null,
         /* phone picker */
-        dialCode:     '+971',
-        dialFlag:     '🇦🇪',
-        localPhone:   '',
-        phoneSearch:  '',
-        phoneDropOpen:false,
-        get phoneFiltered() {
-            const q = this.phoneSearch.toLowerCase();
-            return q ? window.PHONE_COUNTRIES.filter(c => c.name.toLowerCase().includes(q) || c.dial.includes(q)) : window.PHONE_COUNTRIES;
+        dialCode:      '+971',
+        dialFlag:      '🇦🇪',
+        localPhone:    '',
+        phoneSearch:   '',
+        phoneDropOpen: false,
+        get phoneGrouped() {
+            const q = this.phoneSearch.toLowerCase().replace('+','').trim();
+            const list = q
+                ? window.PHONE_COUNTRIES.filter(c => c.name.toLowerCase().includes(q) || c.dial.replace('+','').startsWith(q))
+                : window.PHONE_COUNTRIES;
+            if (q) return [{ letter: '', items: list }];
+            const map = {};
+            for (const c of list) {
+                const l = c.name[0].toUpperCase();
+                if (!map[l]) map[l] = [];
+                map[l].push(c);
+            }
+            return Object.keys(map).sort().map(l => ({ letter: l, items: map[l] }));
         },
         get fullPhone() {
             const n = this.localPhone.replace(/[\s\-\(\)]/g,'');
@@ -1940,10 +2062,9 @@ function editUserModal() {
                     </div>
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Phone Number</label>
-                        <div x-data="phonePicker('')" @click.outside="open = false">
+                        <div x-data="phonePicker('')" @keydown.escape.window="open = false">
                             <div style="display:flex;border:1.5px solid #E5E7EB;border-radius:10px;overflow:hidden;background:#F9FAFB;">
-                                <button type="button" x-ref="phoneBtn"
-                                        @click.stop="toggle($refs.phoneBtn)"
+                                <button type="button" @click.stop="open = true"
                                         style="display:flex;align-items:center;gap:5px;padding:8px 10px;background:#F3F4F6;border:none;border-right:1.5px solid #E5E7EB;cursor:pointer;outline:none;flex-shrink:0;min-width:80px;">
                                     <span x-text="selected.flag" style="font-size:15px;line-height:1;"></span>
                                     <span x-text="selected.dial" style="font-size:12px;font-weight:600;color:#374151;"></span>
@@ -1953,25 +2074,58 @@ function editUserModal() {
                                        style="flex:1;padding:9px 10px;border:none;font-size:13px;background:transparent;color:#111827;outline:none;min-width:0;">
                             </div>
                             <input type="hidden" name="phone" :value="full">
-                            <div x-show="open" x-cloak
-                                 :style="`position:fixed;top:${dropTop}px;left:${dropLeft}px;width:${dropW}px;`"
-                                 style="z-index:9999;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,0.15);overflow:hidden;">
-                                <div style="padding:7px;">
-                                    <input type="text" x-model="search" placeholder="Search country…" @click.stop
-                                           style="width:100%;padding:6px 9px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;outline:none;box-sizing:border-box;">
-                                </div>
-                                <div style="max-height:200px;overflow-y:auto;">
-                                    <template x-for="c in filtered" :key="c.code">
-                                        <button type="button" @click.stop="pick(c)"
-                                                :style="selected.code === c.code ? 'background:#EEF2FF;' : ''"
-                                                style="width:100%;text-align:left;padding:7px 12px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;gap:8px;">
-                                            <span x-text="c.flag" style="font-size:15px;line-height:1;flex-shrink:0;"></span>
-                                            <span x-text="c.name" style="flex:1;font-size:12px;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
-                                            <span x-text="c.dial" style="font-size:11px;color:#9CA3AF;font-weight:600;flex-shrink:0;"></span>
+                            {{-- Backdrop --}}
+                            <div x-show="open" x-cloak @click="open=false; search=''"
+                                 style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:10000;"></div>
+                            {{-- Country picker panel: x-show on wrapper; flex centering on inner div --}}
+                            <div x-show="open" x-cloak style="position:fixed;inset:0;z-index:10001;">
+                                <div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;padding:16px;">
+                                <div @click.stop
+                                     style="background:#fff;border-radius:18px;width:100%;max-width:420px;max-height:min(620px,88vh);display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,0.22);overflow:hidden;">
+                                    {{-- Header --}}
+                                    <div style="display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid #F3F4F6;flex-shrink:0;">
+                                        <button type="button" @click="open=false; search=''"
+                                                style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border:none;background:#F3F4F6;border-radius:8px;cursor:pointer;color:#374151;flex-shrink:0;">
+                                            <i class="fas fa-arrow-left" style="font-size:12px;"></i>
                                         </button>
-                                    </template>
+                                        <span style="font-size:15px;font-weight:700;color:#111827;flex:1;text-align:center;">Select your country code</span>
+                                        <div style="width:32px;"></div>
+                                    </div>
+                                    {{-- Search --}}
+                                    <div style="padding:12px 16px;border-bottom:1px solid #F3F4F6;flex-shrink:0;">
+                                        <div style="position:relative;">
+                                            <i class="fas fa-search" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:13px;pointer-events:none;"></i>
+                                            <input type="text" x-model="search" @click.stop
+                                                   placeholder="Enter country code to filter"
+                                                   x-ref="addPhoneSearch"
+                                                   x-effect="if(open) $nextTick(()=>{ $refs.addPhoneSearch && $refs.addPhoneSearch.focus(); })"
+                                                   style="width:100%;padding:9px 12px 9px 34px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box;background:#F9FAFB;color:#111827;">
+                                        </div>
+                                    </div>
+                                    {{-- List --}}
+                                    <div style="flex:1;overflow-y:auto;">
+                                        <template x-for="group in grouped" :key="group.letter">
+                                            <div>
+                                                <div x-show="group.letter" x-text="group.letter"
+                                                     style="padding:4px 20px;font-size:11px;font-weight:700;color:#9CA3AF;background:#F9FAFB;letter-spacing:.06em;position:sticky;top:0;z-index:1;"></div>
+                                                <template x-for="c in group.items" :key="c.code">
+                                                    <button type="button" @click.stop="pick(c)"
+                                                            :style="selected.code === c.code ? 'background:#EEF2FF;' : ''"
+                                                            style="display:block;width:100%;border:none;border-bottom:1px solid #F3F4F6;background:transparent;cursor:pointer;padding:0;text-align:left;box-sizing:border-box;">
+                                                        <div style="display:flex;align-items:center;gap:14px;padding:11px 20px;">
+                                                        <span x-text="c.dial" style="font-size:13px;font-weight:700;color:#111827;min-width:50px;flex-shrink:0;"></span>
+                                                        <span x-text="c.flag" style="font-size:20px;flex-shrink:0;line-height:1;"></span>
+                                                        <span x-text="c.name" style="font-size:13px;color:#374151;flex:1;"></span>
+                                                        <i x-show="selected.code === c.code" class="fas fa-check" style="font-size:11px;color:#6366F1;flex-shrink:0;"></i>
+                                                        </div>
+                                                    </button>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
                                 </div>
-                            </div>
+                                </div>{{-- /flex center --}}
+                            </div>{{-- /panel wrapper --}}
                         </div>
                     </div>
                     <div>

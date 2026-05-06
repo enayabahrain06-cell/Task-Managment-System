@@ -92,7 +92,7 @@
                 </p>
                 @if($task->deadline)
                 <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">
-                    <i class="fa fa-calendar" style="font-size:9px;margin-right:3px;"></i>Due {{ $task->deadline->format('M d, Y') }}
+                    <i class="fa fa-calendar" style="font-size:9px;margin-right:3px;"></i>Due {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
                 </p>
                 @endif
             </td>
@@ -128,7 +128,7 @@
 
             {{-- Deleted at --}}
             <td style="padding:14px 16px;">
-                <span style="font-size:12px;color:#6B7280;white-space:nowrap;">{{ $task->deleted_at->format('M d, Y') }}</span>
+                <span style="font-size:12px;color:#6B7280;white-space:nowrap;">{{ $task->deleted_at->format(config('app.date_format', 'M d, Y')) }}</span>
                 <p style="font-size:10px;color:#D1D5DB;margin:2px 0 0;">{{ $task->deleted_at->diffForHumans() }}</p>
             </td>
 

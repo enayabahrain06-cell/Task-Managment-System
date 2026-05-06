@@ -721,8 +721,8 @@ class UserController extends Controller
                 'job_title'   => $user->job_title ?? '',
                 'nationality' => $user->nationality ?? '',
                 'phone'       => $user->phone ?? '',
-                'joined_at'   => $user->created_at?->format('M d, Y') ?? '—',
-                'archived_at' => $user->archived_at?->format('M d, Y') ?? '—',
+                'joined_at'   => $user->created_at?->format(config('app.date_format', 'M d, Y')) ?? '—',
+                'archived_at' => $user->archived_at?->format(config('app.date_format', 'M d, Y')) ?? '—',
                 'archived_by' => $user->archivedBy?->name ?? '—',
             ],
             'stats' => [
@@ -737,8 +737,8 @@ class UserController extends Controller
                 'status'     => $t->status,
                 'priority'   => $t->priority,
                 'project'    => $t->project?->name ?? '—',
-                'deadline'   => $t->deadline?->format('M d, Y') ?? '—',
-                'created_at' => $t->created_at?->format('M d, Y') ?? '—',
+                'deadline'   => $t->deadline?->format(config('app.date_format', 'M d, Y')) ?? '—',
+                'created_at' => $t->created_at?->format(config('app.date_format', 'M d, Y')) ?? '—',
             ])->values(),
         ]);
     }

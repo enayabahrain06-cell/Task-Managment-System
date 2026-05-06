@@ -305,10 +305,31 @@ $activeStatDefs = [
         $stageNum  = $stages[$task->status] ?? 0;
     @endphp
 
+    @php
+    $cardEditData = [
+        'id'          => $task->id,
+        'title'       => $task->title,
+        'project_id'  => $task->project_id,
+        'customer_id' => $task->customer_id,
+        'assigned_to' => $task->assigned_to,
+        'priority'    => $task->priority ?? 'medium',
+        'deadline_raw'=> $task->deadline?->format('Y-m-d'),
+        'description' => $task->description,
+        'update_url'  => route('admin.tasks.update', $task),
+    ];
+    @endphp
     <div class="relative group/card">
 
     {{-- Action buttons (top-right, visible on hover) --}}
     <div style="position:absolute;top:10px;right:10px;z-index:10;display:flex;gap:4px;">
+        <button type="button"
+                @click.prevent="openEdit(@js($cardEditData))"
+                class="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                style="width:28px;height:28px;border-radius:8px;background:rgba(99,102,241,.1);color:#6366F1;border:1px solid rgba(99,102,241,.2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;"
+                onmouseover="this.style.background='rgba(99,102,241,.2)'" onmouseout="this.style.background='rgba(99,102,241,.1)'"
+                title="Edit task">
+            <i class="fas fa-pen"></i>
+        </button>
         @if(in_array($task->status, ['approved','delivered','archived']))
         <form method="POST" action="{{ route('admin.tasks.reopen', $task) }}" style="margin:0;">
             @csrf
@@ -421,7 +442,7 @@ $activeStatDefs = [
                 @elseif($task->deadline)
                 <i class="fas fa-calendar-days text-gray-300 text-xs"></i>
                 <span class="text-xs text-gray-400">
-                    {{ $daysLeft == 0 ? 'Due today' : ($daysLeft == 1 ? 'Due tomorrow' : 'Due '.$task->deadline->format('M d, Y')) }}
+                    {{ $daysLeft == 0 ? 'Due today' : ($daysLeft == 1 ? 'Due tomorrow' : 'Due '.$task->deadline->format(config('app.date_format', 'M d, Y'))) }}
                 </span>
                 @else
                 <span class="text-xs text-gray-200">No deadline</span>
@@ -456,6 +477,17 @@ $activeStatDefs = [
         $sm        = $statusMeta[$task->status] ?? $statusMeta['draft'];
         $isOverdue = $task->deadline && $task->deadline->isPast() && !in_array($task->status, $doneStatuses);
         $pm        = $priorityMeta[$task->priority] ?? ['color'=>'#9CA3AF','bg'=>'#F3F4F6','label'=>ucfirst($task->priority)];
+        $rowEditData = [
+            'id'          => $task->id,
+            'title'       => $task->title,
+            'project_id'  => $task->project_id,
+            'customer_id' => $task->customer_id,
+            'assigned_to' => $task->assigned_to,
+            'priority'    => $task->priority ?? 'medium',
+            'deadline_raw'=> $task->deadline?->format('Y-m-d'),
+            'description' => $task->description,
+            'update_url'  => route('admin.tasks.update', $task),
+        ];
     @endphp
     <tr>
         {{-- Task title + status badge --}}
@@ -503,10 +535,10 @@ $activeStatDefs = [
         <td style="white-space:nowrap;">
             @if($isOverdue)
                 <span style="font-size:12px;font-weight:600;color:#EF4444;">
-                    <i class="fas fa-triangle-exclamation" style="font-size:10px;margin-right:3px;"></i>{{ $task->deadline->format('M d, Y') }}
+                    <i class="fas fa-triangle-exclamation" style="font-size:10px;margin-right:3px;"></i>{{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
                 </span>
             @elseif($task->deadline)
-                <span style="font-size:12px;color:#6B7280;">{{ $task->deadline->format('M d, Y') }}</span>
+                <span style="font-size:12px;color:#6B7280;">{{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}</span>
             @else
                 <span style="font-size:12px;color:#D1D5DB;">—</span>
             @endif
@@ -520,6 +552,13 @@ $activeStatDefs = [
                    title="View task">
                     <i class="fas fa-arrow-up-right-from-square"></i>
                 </a>
+                <button type="button"
+                        @click="openEdit(@js($rowEditData))"
+                        style="width:30px;height:30px;border-radius:8px;background:#F5F3FF;border:1px solid #DDD6FE;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#7C3AED;font-size:12px;transition:background .15s;"
+                        onmouseover="this.style.background='#EDE9FE'" onmouseout="this.style.background='#F5F3FF'"
+                        title="Edit task">
+                    <i class="fas fa-pen"></i>
+                </button>
                 @if(in_array($task->status, ['approved','delivered','archived']))
                 <form method="POST" action="{{ route('admin.tasks.reopen', $task) }}" style="margin:0;">
                     @csrf
@@ -562,6 +601,162 @@ $activeStatDefs = [
 </div>
 </div>{{-- end table view --}}
 
+{{-- ── Edit Task Modal ── --}}
+<template x-teleport="body">
+<div x-show="editModal" x-cloak
+     @keydown.escape.window="closeEdit()"
+     style="position:fixed;inset:0;z-index:10000;">
+    <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:16px;">
+    <div @click="closeEdit()" style="position:absolute;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);"></div>
+    <div
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95"
+         style="position:relative;width:100%;max-width:560px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,.25);">
+        <template x-if="editTask">
+        <form :action="editTask.update_url" method="POST">
+            @csrf
+            @method('PATCH')
+            {{-- Header --}}
+            <div style="padding:20px 24px;background:linear-gradient(135deg,#4F46E5,#6366F1);display:flex;align-items:center;gap:12px;">
+                <div style="width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fa fa-pen" style="color:#fff;font-size:14px;"></i>
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <p style="font-size:14px;font-weight:700;color:#fff;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="editTask.title"></p>
+                    <p style="font-size:11px;color:rgba(255,255,255,.7);margin:2px 0 0;">Edit task details</p>
+                </div>
+                <button type="button" @click="closeEdit()"
+                        style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;"
+                        onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">
+                    <i class="fa fa-xmark"></i>
+                </button>
+            </div>
+            {{-- Body --}}
+            <div style="padding:24px;display:flex;flex-direction:column;gap:16px;max-height:70vh;overflow-y:auto;">
+
+                {{-- Title --}}
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
+                        Task Title <span style="color:#EF4444;">*</span>
+                    </label>
+                    <input type="text" name="title" x-model="editForm.title" required
+                           style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;outline:none;transition:border-color .15s;box-sizing:border-box;"
+                           onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                </div>
+
+                {{-- Project + Customer row --}}
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div>
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Project</label>
+                        <div style="position:relative;">
+                            <select name="project_id" x-model="editForm.project_id"
+                                    style="width:100%;padding:9px 32px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;appearance:none;background:#fff;cursor:pointer;outline:none;box-sizing:border-box;"
+                                    onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                                <option value="">No project</option>
+                                @foreach($projects as $proj)
+                                <option value="{{ $proj->id }}">{{ $proj->name }}</option>
+                                @endforeach
+                            </select>
+                            <div style="position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:#9CA3AF;font-size:10px;">
+                                <i class="fa fa-chevron-down"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Customer</label>
+                        <div style="position:relative;">
+                            <select name="customer_id" x-model="editForm.customer_id"
+                                    style="width:100%;padding:9px 32px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;appearance:none;background:#fff;cursor:pointer;outline:none;box-sizing:border-box;"
+                                    onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                                <option value="">No customer</option>
+                                @foreach($customers as $cust)
+                                <option value="{{ $cust->id }}">{{ $cust->name }}</option>
+                                @endforeach
+                            </select>
+                            <div style="position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:#9CA3AF;font-size:10px;">
+                                <i class="fa fa-chevron-down"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Assignee + Priority row --}}
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div>
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Assignee</label>
+                        <div style="position:relative;">
+                            <select name="assigned_to" x-model="editForm.assigned_to"
+                                    style="width:100%;padding:9px 32px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;appearance:none;background:#fff;cursor:pointer;outline:none;box-sizing:border-box;"
+                                    onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                                <option value="">Unassigned</option>
+                                @foreach($assignableUsers as $usr)
+                                <option value="{{ $usr->id }}">{{ $usr->name }}</option>
+                                @endforeach
+                            </select>
+                            <div style="position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:#9CA3AF;font-size:10px;">
+                                <i class="fa fa-chevron-down"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Priority</label>
+                        <div style="position:relative;">
+                            <select name="priority" x-model="editForm.priority"
+                                    style="width:100%;padding:9px 32px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;appearance:none;background:#fff;cursor:pointer;outline:none;box-sizing:border-box;"
+                                    onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                                <option value="high">High</option>
+                                <option value="medium">Medium</option>
+                                <option value="low">Low</option>
+                            </select>
+                            <div style="position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:#9CA3AF;font-size:10px;">
+                                <i class="fa fa-chevron-down"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Deadline --}}
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Deadline</label>
+                    <input type="date" name="deadline" x-model="editForm.deadline"
+                           style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;outline:none;transition:border-color .15s;box-sizing:border-box;"
+                           onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                </div>
+
+                {{-- Description --}}
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Description</label>
+                    <textarea name="description" x-model="editForm.description" rows="3"
+                              style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;outline:none;resize:vertical;transition:border-color .15s;box-sizing:border-box;"
+                              onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"
+                              placeholder="Optional description…"></textarea>
+                </div>
+
+            </div>
+            {{-- Footer --}}
+            <div style="padding:16px 24px;border-top:1px solid #F3F4F6;display:flex;align-items:center;justify-content:flex-end;gap:10px;background:#FAFAFA;">
+                <button type="button" @click="closeEdit()"
+                        style="padding:9px 20px;border-radius:10px;border:1.5px solid #E5E7EB;background:#fff;color:#374151;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;"
+                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='#fff'">
+                    Cancel
+                </button>
+                <button type="submit"
+                        style="padding:9px 22px;border-radius:10px;border:none;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(79,70,229,.4);transition:opacity .15s;"
+                        onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">
+                    <i class="fa fa-check" style="margin-right:6px;font-size:11px;"></i>Save Changes
+                </button>
+            </div>
+        </form>
+        </template>
+    </div>
+    </div>
+</div>
+</template>
+
 </div>{{-- end x-data taskViewToggle --}}
 
 {{-- Pagination --}}
@@ -579,7 +774,24 @@ function taskViewToggle() {
         setView(v) {
             this.view = v;
             try { localStorage.setItem('adminTaskView', v); } catch(e) {}
-        }
+        },
+        editModal: false,
+        editTask: null,
+        editForm: { title:'', project_id:'', customer_id:'', assigned_to:'', priority:'', deadline:'', description:'' },
+        openEdit(task) {
+            this.editTask = task;
+            this.editForm = {
+                title:       task.title,
+                project_id:  task.project_id  ? String(task.project_id)  : '',
+                customer_id: task.customer_id ? String(task.customer_id) : '',
+                assigned_to: task.assigned_to ? String(task.assigned_to) : '',
+                priority:    task.priority    || 'medium',
+                deadline:    task.deadline_raw || '',
+                description: task.description || '',
+            };
+            this.editModal = true;
+        },
+        closeEdit() { this.editModal = false; this.editTask = null; },
     };
 }
 </script>

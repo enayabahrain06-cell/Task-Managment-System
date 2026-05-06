@@ -284,18 +284,30 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     </template>
 
                                 </div>
-                                <p class="sf-hint" x-data style="margin-top:5px;">
+                                @php
+                                    $tzNow = \Carbon\Carbon::now($settings['timezone']);
+                                @endphp
+                                <p class="sf-hint" style="margin-top:5px;">
                                     Currently set to <strong>{{ $settings['timezone'] }}</strong>
                                     @if($currentTz) <span style="color:#9CA3AF;">({{ $currentTz['offset'] }})</span>@endif
+                                    &nbsp;·&nbsp; <span style="color:#6366F1;font-weight:600;">{{ $tzNow->format('D, M d Y · H:i') }}</span>
                                 </p>
                             </div>
                             <div class="sf-group" style="margin-bottom:0;">
                                 <label class="sf-label">Date Format</label>
+                                @php
+                                    $fmtNow = \Carbon\Carbon::now($settings['timezone']);
+                                @endphp
                                 <select name="date_format" class="sf-input sf-select">
-                                    @foreach(['Y-m-d'=>'2025-04-16','d/m/Y'=>'16/04/2025','m/d/Y'=>'04/16/2025','d M Y'=>'16 Apr 2025'] as $fmt => $example)
-                                    <option value="{{ $fmt }}" {{ $settings['date_format'] === $fmt ? 'selected' : '' }}>{{ $example }}</option>
+                                    @foreach(['Y-m-d' => 'Y-m-d', 'd/m/Y' => 'd/m/Y', 'm/d/Y' => 'm/d/Y', 'd M Y' => 'd M Y', 'M d, Y' => 'M d, Y', 'D M d, Y' => 'D M d, Y'] as $fmt => $label)
+                                    <option value="{{ $fmt }}" {{ $settings['date_format'] === $fmt ? 'selected' : '' }}>
+                                        {{ $fmtNow->format($fmt) }} — {{ $label }}
+                                    </option>
                                     @endforeach
                                 </select>
+                                <p class="sf-hint" style="margin-top:5px;">
+                                    Today previewed in each format using the selected timezone.
+                                </p>
                             </div>
                         </div>
                     </div>

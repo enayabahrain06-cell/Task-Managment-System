@@ -1497,7 +1497,7 @@ function dashModals() {
                         <td style="padding:11px 14px;text-align:center;">
                             @if($task->deadline)
                             <span style="font-size:12px;font-weight:600;color:{{ $isOverdue ? '#EF4444' : '#374151' }};">
-                                {{ $isOverdue ? '⚠ ' : '' }}{{ $task->deadline->format('M d, Y') }}
+                                {{ $isOverdue ? '⚠ ' : '' }}{{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
                             </span>
                             @else
                             <span style="color:#D1D5DB;font-size:12px;">—</span>

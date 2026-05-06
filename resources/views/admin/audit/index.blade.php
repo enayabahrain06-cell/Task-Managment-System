@@ -136,7 +136,7 @@
          data-action="{{ $log->action }}"
          data-actor="{{ $log->actor->name ?? 'System' }}"
          data-description="{{ $log->description }}"
-         data-date="{{ $log->created_at->format('M d, Y') }}"
+         data-date="{{ $log->created_at->format(config('app.date_format', 'M d, Y')) }}"
          data-time="{{ $log->created_at->format('H:i:s') }}"
          data-relative="{{ $log->created_at->diffForHumans() }}"
          data-ip="{{ $log->ip_address ?? '' }}"
@@ -193,7 +193,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:12px;flex-shrink:0;">
                     <div style="text-align:right;">
-                        <p style="font-size:12px;color:#374151;font-weight:500;margin:0;">{{ $log->created_at->format('M d, Y') }}</p>
+                        <p style="font-size:12px;color:#374151;font-weight:500;margin:0;">{{ $log->created_at->format(config('app.date_format', 'M d, Y')) }}</p>
                         <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">{{ $log->created_at->format('H:i:s') }}</p>
                         @if($log->ip_address)
                         <p style="font-size:10px;color:#D1D5DB;margin:2px 0 0;font-family:monospace;">{{ $log->ip_address }}</p>

@@ -16,6 +16,18 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Apply saved timezone and date format globally
+        try {
+            $timezone   = Setting::get('timezone', config('app.timezone', 'UTC'));
+            $dateFormat = Setting::get('date_format', 'M d, Y');
+            config(['app.timezone'    => $timezone]);
+            config(['app.date_format' => $dateFormat]);
+            date_default_timezone_set($timezone);
+            \Carbon\Carbon::setLocale(config('app.locale', 'en'));
+        } catch (\Throwable) {
+            // settings table may not exist yet (migrations)
+        }
+
         // Share recent projects with the navigation sidebar
         View::composer('layouts.navigation', function ($view) {
             if (auth()->check()) {

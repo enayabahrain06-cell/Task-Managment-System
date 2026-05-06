@@ -234,7 +234,7 @@
 .pend-reject-row.open { display: table-row; }
 </style>
 
-<div x-data="approvalPage()" @keydown.escape.window="if(viewer) closeViewer(); else if(approvalModal) approvalModal=false; else if(rejectModal) rejectModal=false; else closeModal()"
+<div x-data="approvalPage()" @keydown.escape.window="if(viewer) closeViewer(); else if(approvalModal) approvalModal=false; else if(rejectModal) rejectModal=false; else if(qvModal) closeQuickView(); else closeModal()"
 >
 
 {{-- ═══════════ FILE VIEWER LIGHTBOX ═══════════ --}}
@@ -372,6 +372,170 @@
                     Close
                 </button>
             </div>
+        </div>
+        </div>
+    </div>
+</template>
+
+{{-- ═══════════ QUICK VIEW MODAL ═══════════ --}}
+<template x-teleport="body">
+    <div x-show="qvModal" x-cloak
+         style="position:fixed;inset:0;z-index:99998;backdrop-filter:blur(5px);background:rgba(10,12,30,.6);">
+        <div @click.self="closeQuickView()"
+             style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             style="background:#fff;border-radius:24px;width:100%;max-width:600px;box-shadow:0 32px 90px rgba(0,0,0,.28);overflow:hidden;display:flex;flex-direction:column;max-height:90vh;">
+
+            {{-- ── Header ── --}}
+            <div style="background:linear-gradient(135deg,#6366F1 0%,#8B5CF6 100%);padding:22px 24px 20px;position:relative;overflow:hidden;flex-shrink:0;">
+                <div style="position:absolute;right:-24px;top:-24px;width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,.07);pointer-events:none;"></div>
+                <div style="position:absolute;right:50px;bottom:-28px;width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.05);pointer-events:none;"></div>
+                <div style="display:flex;align-items:flex-start;gap:14px;position:relative;z-index:1;">
+                    <div style="width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;flex-shrink:0;"
+                         x-text="qvTask?.initial ?? '?'"></div>
+                    <div style="flex:1;min-width:0;">
+                        <h3 style="font-size:16px;font-weight:700;color:#fff;margin:0 0 6px;line-height:1.3;" x-text="qvTask?.title"></h3>
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <span style="font-size:11px;color:rgba(255,255,255,.8);display:inline-flex;align-items:center;gap:4px;">
+                                <i class="fas fa-user" style="font-size:9px;"></i> <span x-text="qvTask?.assignee"></span>
+                            </span>
+                            <span style="color:rgba(255,255,255,.35);font-size:11px;">·</span>
+                            <span style="font-size:11px;color:rgba(255,255,255,.8);display:inline-flex;align-items:center;gap:4px;">
+                                <i class="fas fa-folder" style="font-size:9px;"></i> <span x-text="qvTask?.project"></span>
+                            </span>
+                            <span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:rgba(255,255,255,.15);border-radius:20px;font-size:10px;font-weight:700;color:#fff;">
+                                <i class="fas fa-hourglass-half" style="font-size:9px;"></i> In Review
+                            </span>
+                        </div>
+                    </div>
+                    <button @click="closeQuickView()"
+                            style="width:32px;height:32px;border-radius:10px;background:rgba(255,255,255,.15);border:none;cursor:pointer;color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s;"
+                            onmouseover="this.style.background='rgba(255,255,255,.28)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            {{-- ── Body ── --}}
+            <div style="overflow-y:auto;flex:1;padding:20px 24px;">
+
+                {{-- Meta chips --}}
+                <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:18px;">
+                    <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;"
+                          :style="`background:${qvTask?.priority_bg};color:${qvTask?.priority_color};`">
+                        <i class="fas fa-flag" style="font-size:9px;"></i>
+                        <span x-text="qvTask?.priority"></span>
+                    </span>
+                    <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#EDE9FE;color:#7C3AED;">
+                        <i class="fas fa-layer-group" style="font-size:9px;"></i>
+                        <span x-text="(qvTask?.versions ?? 0) + ' version' + ((qvTask?.versions ?? 0) !== 1 ? 's' : '')"></span>
+                    </span>
+                    <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;"
+                          :style="qvTask?.is_overdue ? 'background:#FEE2E2;color:#DC2626;' : 'background:#F3F4F6;color:#6B7280;'">
+                        <i class="fas fa-calendar-days" style="font-size:9px;"></i>
+                        <span x-text="qvTask?.deadline ?? 'No deadline'"></span>
+                        <template x-if="qvTask?.is_overdue"><span style="font-weight:700;"> · Overdue</span></template>
+                    </span>
+                </div>
+
+                {{-- File preview section --}}
+                <p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.07em;margin:0 0 8px;">
+                    <i class="fas fa-paperclip" style="font-size:9px;margin-right:3px;"></i> Latest Submission
+                </p>
+
+                <template x-if="qvTask?.submission_url">
+                    <div>
+                        {{-- Image --}}
+                        <template x-if="fileType(qvTask?.submission_name) === 'image'">
+                            <div @click="openViewer(qvTask.submission_url, qvTask.submission_name)"
+                                 style="cursor:pointer;border-radius:14px;overflow:hidden;border:1.5px solid #DDE3F5;position:relative;box-shadow:0 4px 18px rgba(99,102,241,.1);margin-bottom:8px;">
+                                <img :src="qvTask.submission_url" :alt="qvTask.submission_name"
+                                     style="width:100%;max-height:280px;object-fit:cover;display:block;">
+                                <div style="position:absolute;inset:0;background:rgba(0,0,0,0);display:flex;align-items:center;justify-content:center;transition:background .2s;"
+                                     onmouseover="this.style.background='rgba(0,0,0,.28)';this.querySelector('.qv-lens').style.opacity='1'"
+                                     onmouseout="this.style.background='rgba(0,0,0,0)';this.querySelector('.qv-lens').style.opacity='0'">
+                                    <div class="qv-lens" style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.95);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;box-shadow:0 4px 16px rgba(0,0,0,.22);">
+                                        <i class="fas fa-expand" style="color:#4F46E5;font-size:16px;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                        {{-- Video --}}
+                        <template x-if="fileType(qvTask?.submission_name) === 'video'">
+                            <div @click="openViewer(qvTask.submission_url, qvTask.submission_name)"
+                                 style="cursor:pointer;border-radius:14px;overflow:hidden;border:1.5px solid #DDE3F5;position:relative;box-shadow:0 4px 18px rgba(99,102,241,.1);margin-bottom:8px;">
+                                <video :src="qvTask.submission_url" style="width:100%;max-height:240px;object-fit:cover;display:block;" preload="metadata" muted></video>
+                                <div style="position:absolute;inset:0;background:rgba(0,0,0,.32);display:flex;align-items:center;justify-content:center;">
+                                    <div style="width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.95);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.22);">
+                                        <i class="fas fa-play" style="color:#4F46E5;font-size:18px;margin-left:3px;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                        {{-- Other file types --}}
+                        <template x-if="!['image','video'].includes(fileType(qvTask?.submission_name))">
+                            <div @click="openViewer(qvTask.submission_url, qvTask.submission_name)"
+                                 style="display:flex;align-items:center;gap:12px;padding:14px 16px;border:1.5px solid #DDE3F5;border-radius:12px;cursor:pointer;background:#F8FAFF;transition:all .15s;margin-bottom:8px;"
+                                 onmouseover="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE'" onmouseout="this.style.background='#F8FAFF';this.style.borderColor='#DDE3F5'">
+                                <div style="width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-paperclip" style="color:#6366F1;font-size:16px;"></i>
+                                </div>
+                                <div style="flex:1;min-width:0;">
+                                    <p style="font-size:13px;font-weight:600;color:#4F46E5;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="qvTask.submission_name"></p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Click to preview / download</p>
+                                </div>
+                                <i class="fas fa-expand" style="color:#A5B4FC;font-size:12px;flex-shrink:0;"></i>
+                            </div>
+                        </template>
+                        {{-- Download link --}}
+                        <a :href="qvTask?.submission_url" :download="qvTask?.submission_name"
+                           style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#6366F1;text-decoration:none;font-weight:600;"
+                           onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+                            <i class="fas fa-download" style="font-size:9px;"></i> Download file
+                        </a>
+                    </div>
+                </template>
+                <template x-if="!qvTask?.submission_url">
+                    <div style="background:#F9FAFB;border:1.5px dashed #E5E7EB;border-radius:12px;padding:24px;text-align:center;margin-bottom:8px;">
+                        <i class="fas fa-file-circle-xmark" style="color:#D1D5DB;font-size:24px;display:block;margin-bottom:6px;"></i>
+                        <p style="font-size:12px;color:#9CA3AF;margin:0;">No file submitted yet</p>
+                    </div>
+                </template>
+            </div>
+
+            {{-- ── Footer actions ── --}}
+            <template x-if="qvTask">
+            <div style="padding:14px 24px;border-top:1px solid #F0F2F8;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#FAFBFF;flex-shrink:0;">
+                <button @click="closeQuickView(); openApprovalModal({ id: qvTask.id, title: qvTask.title, assignee: qvTask.assignee, url: qvTask.approve_url, customer_name: qvTask.customer_name, customer_email: null, customer_phone: qvTask.customer_phone, submission_url: qvTask.submission_url, submission_name: qvTask.submission_name })"
+                        style="display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(16,185,129,.28);transition:opacity .15s;white-space:nowrap;"
+                        onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+                    <i class="fas fa-circle-check" style="font-size:12px;"></i> Approve
+                </button>
+                <button @click="closeQuickView(); openRejectModal({ id: qvTask.id, title: qvTask.title, assignee: qvTask.assignee, url: qvTask.reject_url })"
+                        style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;"
+                        onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
+                    <i class="fas fa-rotate-left" style="font-size:11px;"></i> Request Revision
+                </button>
+                <div style="flex:1;"></div>
+                <template x-if="qvTask.customer_phone">
+                    <a :href="'https://wa.me/'+qvTask.customer_phone.replace(/\D/g,'')+'?text='+encodeURIComponent('Hello '+qvTask.customer_name+', your design for \"'+qvTask.title+'\" has been submitted for review. We\'d love your feedback.\n\n'+(qvTask.submission_url ? 'View design: '+qvTask.submission_url : ''))"
+                       target="_blank" rel="noopener"
+                       style="width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;background:#DCFCE7;border:1.5px solid #BBF7D0;border-radius:10px;text-decoration:none;transition:all .15s;"
+                       onmouseover="this.style.background='#25D366';this.style.borderColor='#25D366'" onmouseout="this.style.background='#DCFCE7';this.style.borderColor='#BBF7D0'"
+                       title="Send preview via WhatsApp">
+                        <i class="fab fa-whatsapp" style="font-size:16px;color:#25D366;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#25D366'"></i>
+                    </a>
+                </template>
+                <a :href="qvTask.task_url"
+                   style="display:inline-flex;align-items:center;gap:6px;padding:9px 14px;background:#F3F4F6;color:#374151;border:1px solid #E5E7EB;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;white-space:nowrap;"
+                   onmouseover="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE';this.style.color='#4F46E5'" onmouseout="this.style.background='#F3F4F6';this.style.borderColor='#E5E7EB';this.style.color='#374151'">
+                    <i class="fa fa-arrow-up-right-from-square" style="font-size:11px;"></i> Full View
+                </a>
+            </div>
+            </template>
+
         </div>
         </div>
     </div>
@@ -958,7 +1122,7 @@
                 <span class="text-xs font-semibold text-red-500">Overdue · {{ $task->deadline->format('M d') }}</span>
                 @else
                 <i class="fas fa-calendar-days text-gray-300 text-xs"></i>
-                <span class="text-xs text-gray-400">Due {{ $task->deadline->format('M d, Y') }}</span>
+                <span class="text-xs text-gray-400">Due {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}</span>
                 @endif
             </div>
             <div class="flex items-center gap-1" onclick="event.stopPropagation()">
@@ -987,6 +1151,60 @@
                         title="Request revision">
                     <i class="fas fa-rotate-left" style="font-size:10px;"></i>
                 </button>
+                @if(($appSettings['hide_approval_customer_notify'] ?? '0') !== '1')
+                @php
+                    $cwPhone = $task->customer?->phone ?? $task->project?->customer?->phone ?? '';
+                    $cwName  = $task->customer?->name  ?? $task->project?->customer?->name  ?? 'Customer';
+                    $cwFile  = $latestSub?->file_path ? url(Storage::url($latestSub->file_path)) : '';
+                    $cwMsg   = "Hello {$cwName}, your design for \"{$task->title}\" has been submitted for review. We'd love your feedback before we finalize approval.";
+                    if ($cwFile) $cwMsg .= "\n\nView design: {$cwFile}";
+                @endphp
+                <div x-data="{
+                         waOpen: false, waPhone: @js($cwPhone), waMsg: @js($cwMsg),
+                         waTop: 0, waRight: 0,
+                         toggleWa(btn) {
+                             if (!this.waOpen) {
+                                 const r = btn.getBoundingClientRect();
+                                 this.waTop   = r.bottom + 7;
+                                 this.waRight = window.innerWidth - r.right;
+                             }
+                             this.waOpen = !this.waOpen;
+                         }
+                     }" @click.stop>
+                    <button type="button" @click.stop="toggleWa($event.currentTarget)"
+                            class="w-6 h-6 rounded-lg flex items-center justify-center"
+                            :style="waOpen ? 'background:#25D366;' : 'background:#DCFCE7;'"
+                            title="Send preview via WhatsApp">
+                        <i class="fab fa-whatsapp" :style="waOpen ? 'font-size:12px;color:#fff;' : 'font-size:12px;color:#25D366;'"></i>
+                    </button>
+                    <div x-show="waOpen" x-cloak x-transition @click.outside="waOpen=false" @click.stop
+                         :style="`position:fixed;top:${waTop}px;right:${waRight}px;`"
+                         style="z-index:9999;background:#fff;border-radius:14px;width:244px;box-shadow:0 16px 40px rgba(0,0,0,.18);border:1px solid #D1FAE5;overflow:hidden;">
+                        <div style="background:linear-gradient(135deg,#25D366,#128C7E);padding:11px 14px;display:flex;align-items:center;gap:9px;">
+                            <i class="fab fa-whatsapp" style="color:#fff;font-size:18px;flex-shrink:0;"></i>
+                            <div>
+                                <p style="font-size:12px;font-weight:700;color:#fff;margin:0;">Send Preview</p>
+                                <p style="font-size:10px;color:rgba(255,255,255,.75);margin:0;">Before approval · opens WhatsApp</p>
+                            </div>
+                        </div>
+                        <div style="padding:13px 14px;">
+                            <p style="font-size:11px;color:#6B7280;margin:0 0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                <i class="fas fa-file-image" style="font-size:9px;color:#A78BFA;margin-right:3px;"></i>{{ Str::limit($task->title, 32) }}
+                            </p>
+                            <label style="display:block;font-size:10px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">WhatsApp Number</label>
+                            <input type="tel" x-model="waPhone" x-ref="cwInput" placeholder="+971501234567"
+                                   style="width:100%;padding:8px 10px;border:1.5px solid #D1FAE5;background:#F0FDF4;border-radius:8px;font-size:12px;color:#111827;outline:none;box-sizing:border-box;margin-bottom:9px;transition:border-color .15s;"
+                                   onfocus="this.style.borderColor='#25D366'" onblur="this.style.borderColor='#D1FAE5'">
+                            <button type="button"
+                                    @click="const d=waPhone.replace(/\D/g,''); if(d){ window.open('https://wa.me/'+d+'?text='+encodeURIComponent(waMsg),'_blank'); waOpen=false; } else { $refs.cwInput.style.borderColor='#EF4444'; $refs.cwInput.focus(); }"
+                                    style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(37,211,102,.3);transition:opacity .15s;"
+                                    onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                                <i class="fab fa-whatsapp" style="font-size:13px;"></i> Open WhatsApp ↗
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                @endif {{-- hide_approval_customer_notify --}}
                 <a href="{{ route('admin.tasks.show', $task) }}"
                    class="w-6 h-6 rounded-lg bg-gray-100 hover:bg-indigo-100 flex items-center justify-center text-gray-400 hover:text-indigo-600 transition"
                    style="text-decoration:none;" title="View task"
@@ -1038,7 +1256,31 @@
             [$pbg2,$pco2] = $priColors2[$task->priority] ?? ['#F3F4F6','#6B7280'];
         @endphp
         {{-- Main row --}}
-        <tr id="pend-row-{{ $task->id }}">
+        @php
+            $qvData = [
+                'id'            => $task->id,
+                'title'         => $task->title,
+                'assignee'      => $task->assignee->name ?? 'Unknown',
+                'initial'       => strtoupper(substr($task->assignee->name ?? 'U', 0, 1)),
+                'project'       => $task->project->name ?? '—',
+                'priority'      => ucfirst($task->priority ?? 'normal'),
+                'priority_bg'   => $pbg2,
+                'priority_color'=> $pco2,
+                'deadline'      => $task->deadline?->format(config('app.date_format', 'M d, Y')),
+                'is_overdue'    => $isOverdue2,
+                'versions'      => $task->submissions->count(),
+                'submission_url'  => $latestSub2?->file_path ? Storage::url($latestSub2->file_path) : null,
+                'submission_name' => $latestSub2?->original_filename ?? ($latestSub2?->file_path ? basename($latestSub2->file_path) : null),
+                'approve_url'   => route('admin.tasks.approve', $task),
+                'reject_url'    => route('admin.tasks.reject', $task),
+                'task_url'      => route('admin.tasks.show', $task),
+                'customer_name' => $task->customer?->name ?? $task->project?->customer?->name ?? 'Customer',
+                'customer_phone'=> $task->customer?->phone ?? $task->project?->customer?->phone ?? null,
+            ];
+        @endphp
+        <tr id="pend-row-{{ $task->id }}"
+            @click="openQuickView(@js($qvData))"
+            style="cursor:pointer;">
             {{-- Task --}}
             <td style="max-width:240px;">
                 <div style="display:flex;align-items:center;gap:8px;">
@@ -1064,7 +1306,7 @@
             <td>
                 @if($task->deadline)
                 <span style="font-size:12px;{{ $isOverdue2 ? 'color:#DC2626;font-weight:600;' : 'color:#6B7280;' }}white-space:nowrap;">
-                    {{ $isOverdue2 ? '⚠ ' : '' }}{{ $task->deadline->format('M d, Y') }}
+                    {{ $isOverdue2 ? '⚠ ' : '' }}{{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
                 </span>
                 @else
                 <span style="font-size:12px;color:#D1D5DB;">—</span>
@@ -1075,8 +1317,8 @@
                 <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#EDE9FE;color:#7C3AED;">{{ $task->submissions->count() }}</span>
             </td>
             {{-- Actions --}}
-            <td style="text-align:right;white-space:nowrap;">
-                <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;flex-wrap:wrap;">
+            <td style="text-align:right;white-space:nowrap;" onclick="event.stopPropagation()">
+                <div style="display:inline-flex;align-items:center;gap:5px;">
                     {{-- Approve --}}
                     <button type="button"
                             @click="openApprovalModal({
@@ -1090,23 +1332,76 @@
                                 submission_url:  @js($latestSub2?->file_path ? Storage::url($latestSub2->file_path) : null),
                                 submission_name: @js($latestSub2?->original_filename ?? ($latestSub2?->file_path ? basename($latestSub2->file_path) : null)),
                             })"
-                            style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(16,185,129,.25);transition:opacity .15s;"
-                            onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
-                        <i class="fas fa-circle-check" style="font-size:10px;"></i> Approve
+                            style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(16,185,129,.25);transition:opacity .15s;white-space:nowrap;"
+                            onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"
+                            title="Approve submission">
+                        <i class="fas fa-circle-check" style="font-size:11px;"></i> Approve
                     </button>
-                    {{-- Reject toggle --}}
+
+                    {{-- Separator --}}
+                    <div style="width:1px;height:20px;background:#E5E7EB;margin:0 2px;"></div>
+
+                    @if(($appSettings['hide_approval_customer_notify'] ?? '0') !== '1')
+                    @php
+                        $lwPhone = $task->customer?->phone ?? $task->project?->customer?->phone ?? '';
+                        $lwName  = $task->customer?->name  ?? $task->project?->customer?->name  ?? 'Customer';
+                        $lwFile  = $latestSub2?->file_path ? url(Storage::url($latestSub2->file_path)) : '';
+                        $lwMsg   = "Hello {$lwName}, your design for \"{$task->title}\" has been submitted for review. We'd love your feedback before we finalize approval.";
+                        if ($lwFile) $lwMsg .= "\n\nView design: {$lwFile}";
+                    @endphp
+                    {{-- Quick WhatsApp icon + dropdown --}}
+                    <div x-data="{ waOpen: false, waPhone: @js($lwPhone), waMsg: @js($lwMsg) }" style="position:relative;">
+                        <button type="button" @click.stop="waOpen = !waOpen"
+                                :style="waOpen
+                                    ? 'width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;background:#25D366;border:none;border-radius:8px;cursor:pointer;transition:all .15s;'
+                                    : 'width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:8px;cursor:pointer;transition:all .15s;'"
+                                title="Send preview via WhatsApp">
+                            <i class="fab fa-whatsapp" :style="waOpen ? 'font-size:15px;color:#fff;' : 'font-size:15px;color:#25D366;'"></i>
+                        </button>
+                        <div x-show="waOpen" x-cloak x-transition @click.outside="waOpen=false"
+                             style="position:absolute;right:0;top:calc(100% + 8px);z-index:9999;background:#fff;border-radius:16px;width:256px;box-shadow:0 20px 50px rgba(0,0,0,.18);border:1px solid #D1FAE5;overflow:hidden;">
+                            <div style="background:linear-gradient(135deg,#25D366,#128C7E);padding:12px 16px;display:flex;align-items:center;gap:10px;">
+                                <i class="fab fa-whatsapp" style="color:#fff;font-size:20px;flex-shrink:0;"></i>
+                                <div>
+                                    <p style="font-size:13px;font-weight:700;color:#fff;margin:0;">Send Preview</p>
+                                    <p style="font-size:10px;color:rgba(255,255,255,.75);margin:2px 0 0;">Before approval · opens WhatsApp</p>
+                                </div>
+                            </div>
+                            <div style="padding:14px 16px;">
+                                <p style="font-size:11px;color:#6B7280;margin:0 0 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                    <i class="fas fa-file-image" style="font-size:9px;color:#A78BFA;margin-right:3px;"></i>{{ Str::limit($task->title, 34) }}
+                                </p>
+                                <label style="display:block;font-size:10px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">WhatsApp Number</label>
+                                <input type="tel" x-model="waPhone" x-ref="lwInput" placeholder="+971501234567"
+                                       style="width:100%;padding:9px 11px;border:1.5px solid #D1FAE5;background:#F0FDF4;border-radius:9px;font-size:12px;color:#111827;outline:none;box-sizing:border-box;margin-bottom:10px;transition:border-color .15s;"
+                                       onfocus="this.style.borderColor='#25D366'" onblur="this.style.borderColor='#D1FAE5'">
+                                <button type="button"
+                                        @click="const d=waPhone.replace(/\D/g,''); if(d){ window.open('https://wa.me/'+d+'?text='+encodeURIComponent(waMsg),'_blank'); waOpen=false; } else { $refs.lwInput.style.borderColor='#EF4444'; $refs.lwInput.focus(); }"
+                                        style="width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:10px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(37,211,102,.35);transition:opacity .15s;"
+                                        onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                                    <i class="fab fa-whatsapp" style="font-size:14px;"></i> Open WhatsApp ↗
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    @endif {{-- hide_approval_customer_notify --}}
+
+                    {{-- Request Revision icon button --}}
                     <button type="button"
                             onclick="togglePendReject({{ $task->id }})"
                             id="pend-rej-btn-{{ $task->id }}"
-                            style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;"
-                            onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
-                        <i class="fas fa-rotate-left" style="font-size:10px;"></i> Reject
+                            style="width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;background:#FEF2F2;border:1.5px solid #FECACA;border-radius:8px;cursor:pointer;transition:all .15s;"
+                            onmouseover="this.style.background='#FEE2E2';this.style.borderColor='#FCA5A5';" onmouseout="this.style.background='#FEF2F2';this.style.borderColor='#FECACA';"
+                            title="Request Revision">
+                        <i class="fas fa-rotate-left" style="font-size:12px;color:#DC2626;"></i>
                     </button>
-                    {{-- Full View --}}
+
+                    {{-- View --}}
                     <a href="{{ route('admin.tasks.show', $task) }}"
-                       style="display:flex;align-items:center;gap:5px;padding:6px 11px;background:#F3F4F6;color:#374151;border:1px solid #E5E7EB;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;transition:background .15s;"
-                       onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
-                        <i class="fa fa-arrow-up-right-from-square" style="font-size:10px;"></i>
+                       style="width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;background:#F3F4F6;border:1px solid #E5E7EB;border-radius:8px;text-decoration:none;transition:all .15s;"
+                       onmouseover="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE';" onmouseout="this.style.background='#F3F4F6';this.style.borderColor='#E5E7EB';"
+                       title="View task">
+                        <i class="fa fa-arrow-up-right-from-square" style="font-size:11px;color:#6B7280;"></i>
                     </a>
                 </div>
             </td>
@@ -1321,7 +1616,7 @@
                     <span style="font-size:12px;color:#374151;">{{ $sub->reviewer->name ?? '—' }}</span>
                 </td>
                 <td>
-                    <span style="font-size:12px;color:#6B7280;white-space:nowrap;">{{ $sub->reviewed_at?->format('M d, Y') }}</span>
+                    <span style="font-size:12px;color:#6B7280;white-space:nowrap;">{{ $sub->reviewed_at?->format(config('app.date_format', 'M d, Y')) }}</span>
                     <p style="font-size:10px;color:#D1D5DB;margin:2px 0 0;">{{ $sub->reviewed_at?->diffForHumans() }}</p>
                 </td>
 
@@ -1453,7 +1748,7 @@
                     <p style="font-size:12px;font-weight:600;color:#374151;margin:0;">{{ $sub->reviewer->name ?? '—' }}</p>
                 </div>
                 <div style="text-align:right;">
-                    <p style="font-size:12px;color:#6B7280;margin:0;white-space:nowrap;">{{ $sub->reviewed_at?->format('M d, Y') }}</p>
+                    <p style="font-size:12px;color:#6B7280;margin:0;white-space:nowrap;">{{ $sub->reviewed_at?->format(config('app.date_format', 'M d, Y')) }}</p>
                     <p style="font-size:10px;color:#D1D5DB;margin:2px 0 0;">{{ $sub->reviewed_at?->diffForHumans() }}</p>
                 </div>
             </div>
@@ -1644,7 +1939,7 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
                         <i class="fas fa-folder" style="font-size:8px;color:#C4B5FD;"></i>
                         {{ $pt->project->name ?? '—' }}
                         <span style="color:#E5E7EB;">·</span>
-                        {{ $pt->social_posted_at->format('M d, Y') }}
+                        {{ $pt->social_posted_at->format(config('app.date_format', 'M d, Y')) }}
                     </p>
                 </div>
                 <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;background:#D1FAE5;color:#065F46;font-size:10px;font-weight:700;flex-shrink:0;">
@@ -1721,7 +2016,7 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
                     @endif
                 </td>
                 <td>
-                    <span style="font-size:12px;color:#6B7280;">{{ $st->updated_at->format('M d, Y') }}</span>
+                    <span style="font-size:12px;color:#6B7280;">{{ $st->updated_at->format(config('app.date_format', 'M d, Y')) }}</span>
                 </td>
                 {{-- ── Social Status: always pending here ── --}}
                 <td style="min-width:200px;">
@@ -1902,6 +2197,15 @@ function approvalPage() {
         waSendState:            'idle',   // idle | sending | sent | error
         waSendMsg:              '',
 
+        quickWhatsApp(phone, name, title, submissionUrl) {
+            if (!phone) { alert('No WhatsApp number on file for this customer.'); return; }
+            const digits = phone.replace(/\D/g, '');
+            if (!digits) return;
+            const base = `Hello ${name}, your design for "${title}" has been submitted for review. We'd love your feedback before we finalize approval.`;
+            const file = submissionUrl ? `\n\nView design: ${submissionUrl}` : '';
+            window.open('https://wa.me/' + digits + '?text=' + encodeURIComponent(base + file), '_blank');
+        },
+
         openApprovalModal(task) {
             this.approvalTask           = task;
             this.approvalNote           = '';
@@ -1971,6 +2275,13 @@ function approvalPage() {
             this.rejectNote  = '';
             this.rejectModal = true;
         },
+
+        // ── Quick view (list row click) ──
+        qvModal: false,
+        qvTask:  null,
+
+        openQuickView(task) { this.qvTask = task; this.qvModal = true; },
+        closeQuickView()    { this.qvModal = false; this.qvTask = null; },
 
         openModal(data)  { this.sub = data; this.modal = true; },
         closeModal()     { this.modal = false; this.sub = null; },

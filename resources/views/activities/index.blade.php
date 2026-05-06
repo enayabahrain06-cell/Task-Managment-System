@@ -246,31 +246,24 @@
 
         @php
             $lastDate = null;
-            $actionIcons = [
-                'status_updated_completed'   => ['icon' => 'fa-check-circle', 'color' => 'text-emerald-500', 'bg' => 'bg-emerald-50'],
-                'status_updated_in_progress' => ['icon' => 'fa-spinner',      'color' => 'text-amber-500',   'bg' => 'bg-amber-50'],
-                'status_updated_pending'     => ['icon' => 'fa-clock',        'color' => 'text-gray-400',    'bg' => 'bg-gray-50'],
-                'release_published'          => ['icon' => 'fa-rocket',       'color' => 'text-indigo-500',  'bg' => 'bg-indigo-50'],
-            ];
             $colors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
         @endphp
 
         <div class="divide-y divide-gray-50 max-h-[600px] overflow-y-auto">
             @forelse($activities as $i => $log)
             @php
-                $dateStr = $log->created_at->isToday() ? 'Today' : ($log->created_at->isYesterday() ? 'Yesterday' : $log->created_at->format('M d, Y'));
-                $style   = $actionIcons[$log->action] ?? ['icon' => 'fa-bolt', 'color' => 'text-indigo-500', 'bg' => 'bg-indigo-50'];
-                $color   = $colors[$log->user_id % count($colors)];
-                $actionText = match($log->action) {
-                    'status_updated_completed'   => 'marked task as completed',
-                    'status_updated_in_progress' => 'started working on task',
-                    'status_updated_pending'     => 'moved task to pending',
-                    'release_published'          => 'published a new release',
-                    default => str_replace(['status_updated_', '_'], ['updated status to ', ' '], $log->action),
-                };
+                $dateStr     = $log->created_at->isToday() ? 'Today' : ($log->created_at->isYesterday() ? 'Yesterday' : $log->created_at->format(config('app.date_format', 'M d, Y')));
+                $color       = $colors[$log->user_id % count($colors)];
+                $actionLabel = $log->actionLabel();
+                [$actIcon, $actFg, $actBg] = $log->actionStyle();
                 $releaseData = ($log->action === 'release_published' && $log->note)
                     ? json_decode($log->note, true)
                     : null;
+                // suppress redundant/technical notes; show comment text and meaningful notes
+                $showNote = $log->note
+                    && !$releaseData
+                    && !str_starts_with($log->note, 'Task details updated by')
+                    && !str_starts_with($log->note, 'Task "');
             @endphp
 
             @if($lastDate !== $dateStr)
@@ -383,21 +376,23 @@
                 <div class="flex-1 min-w-0">
                     <p class="text-sm text-gray-800">
                         <span class="font-semibold text-gray-900">{{ $log->user->name ?? 'Unknown' }}</span>
-                        {{ $actionText }}
+                        <span style="display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:20px;font-size:11px;font-weight:600;background:{{ $actBg }};color:{{ $actFg }};margin:0 3px;vertical-align:middle;">
+                            <i class="fa {{ $actIcon }}" style="font-size:9px;"></i>{{ $actionLabel }}
+                        </span>
                         @if($log->task)
                         @if($taskUrl)
-                        <a href="{{ $taskUrl }}" class="font-medium text-indigo-600 hover:text-indigo-800 hover:underline" data-no-nav>#{{ $log->task->title }}</a>
+                        <a href="{{ $taskUrl }}" class="font-medium text-indigo-600 hover:text-indigo-800 hover:underline" data-no-nav>{{ $log->task->title }}</a>
                         @else
-                        <span class="font-medium text-indigo-600">#{{ $log->task->title }}</span>
+                        <span class="font-medium text-indigo-600">{{ $log->task->title }}</span>
                         @endif
-                        @if($log->task->project)
-                        in <span class="font-medium text-gray-700">{{ $log->task->project->name }}</span>
+                        @if($log->task->project && !$log->task->project->is_quick)
+                        <span class="text-gray-400">in</span> <span class="font-medium text-gray-700">{{ $log->task->project->name }}</span>
                         @endif
                         @endif
                     </p>
 
-                    @if($log->note)
-                    <div class="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-100 text-sm text-gray-600">
+                    @if($showNote)
+                    <div class="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-100 text-sm text-gray-600 whitespace-pre-line">
                         {{ $log->note }}
                     </div>
                     @endif
@@ -489,8 +484,8 @@
                 </div>
 
                 {{-- Activity icon --}}
-                <div class="w-8 h-8 {{ $style['bg'] }} rounded-lg flex items-center justify-center flex-shrink-0">
-                    <i class="fa {{ $style['icon'] }} {{ $style['color'] }} text-sm"></i>
+                <div style="width:32px;height:32px;border-radius:8px;background:{{ $actBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fa {{ $actIcon }}" style="color:{{ $actFg }};font-size:13px;"></i>
                 </div>
             </div>
             @empty

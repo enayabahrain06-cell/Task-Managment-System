@@ -140,12 +140,12 @@
     <div style="display:flex;gap:32px;flex-wrap:wrap;">
         <div>
             <span style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em;">Generated</span>
-            <div style="font-size:12px;font-weight:600;color:#374151;margin-top:2px;">{{ now()->format('F d, Y') }} at {{ now()->format('H:i') }}</div>
+            <div style="font-size:12px;font-weight:600;color:#374151;margin-top:2px;">{{ now()->format(config('app.date_format', 'M d, Y')) }} at {{ now()->format('H:i') }}</div>
         </div>
         <div>
             <span style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em;">Period</span>
             <div style="font-size:12px;font-weight:600;color:#374151;margin-top:2px;">
-                {{ $from ? $from->format('M d, Y').' – '.now()->format('M d, Y') : 'All Time' }}
+                {{ $from ? $from->format(config('app.date_format', 'M d, Y')).' – '.now()->format(config('app.date_format', 'M d, Y')) : 'All Time' }}
             </div>
         </div>
         <div>
@@ -173,7 +173,7 @@
             @endif
         </h1>
         <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">
-            {{ $from ? 'From '.$from->format('M d, Y').' to '.now()->format('M d, Y') : 'All time data' }}
+            {{ $from ? 'From '.$from->format(config('app.date_format', 'M d, Y')).' to '.now()->format(config('app.date_format', 'M d, Y')) : 'All time data' }}
             @if($selectedUser) · {{ ucfirst($selectedUser->role) }}@endif
         </p>
     </div>
@@ -330,7 +330,7 @@
             {{-- Footer --}}
             <div style="padding:12px 20px;border-top:1px solid #E5E7EB;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                 <div style="font-size:11px;color:#9CA3AF;">
-                    Period: <strong style="color:#374151;">{{ $from ? $from->format('M d, Y').' – '.now()->format('M d, Y') : 'All Time' }}</strong>
+                    Period: <strong style="color:#374151;">{{ $from ? $from->format(config('app.date_format', 'M d, Y')).' – '.now()->format(config('app.date_format', 'M d, Y')) : 'All Time' }}</strong>
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
                     <button type="button" onclick="closeUserExport()"
@@ -966,7 +966,7 @@
             </p>
             <p style="font-size:11px;color:#9CA3AF;margin:0;">
                 @if($selectedUser) Tracked hours for {{ $selectedUser->name }} @else Hours logged per employee, broken down by work phase @endif
-                · {{ $from ? 'From '.$from->format('M d, Y') : 'All time' }}
+                · {{ $from ? 'From '.$from->format(config('app.date_format', 'M d, Y')) : 'All time' }}
             </p>
         </div>
     </div>
@@ -1062,7 +1062,7 @@
             <p class="rpt-section-title" style="margin:0;">Billing — By Customer</p>
             <p style="font-size:11px;color:#9CA3AF;margin:0;">
                 Estimated cost per customer based on hours × hourly rate
-                · {{ $from ? 'From '.$from->format('M d, Y') : 'All time' }}
+                · {{ $from ? 'From '.$from->format(config('app.date_format', 'M d, Y')) : 'All time' }}
             </p>
         </div>
     </div>
@@ -1163,7 +1163,7 @@
                 <p class="rpt-section-title" style="margin:0;">Ad Budget Monitor</p>
                 <p style="font-size:11px;color:#9CA3AF;margin:0;">
                     Social media tasks — {{ $budgetPosted }} posted · {{ $budgetPending }} pending
-                    · {{ $from ? 'From '.$from->format('M d, Y') : 'All time' }}
+                    · {{ $from ? 'From '.$from->format(config('app.date_format', 'M d, Y')) : 'All time' }}
                 </p>
             </div>
         </div>
@@ -1563,7 +1563,7 @@ async function exportPDF() {
     const numPages  = Math.ceil(imgH / pxPerPage);
 
     const companyName = '{{ addslashes($appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name')) }}';
-    const dateStr     = '{{ now()->format('F d, Y') }}';
+    const dateStr     = '{{ now()->format(config('app.date_format', 'M d, Y')) }}';
 
     const addFooter = (pageNum) => {
         const footerY = pageH - footerH;
@@ -1625,7 +1625,7 @@ function exportExcel() {
         const rows = [
             ['Reports & Analytics'],
             ['Generated', '{{ now()->format('F d, Y H:i') }}'],
-            ['Period',    '{{ $from ? $from->format('M d, Y').' – '.now()->format('M d, Y') : 'All Time' }}'],
+            ['Period',    '{{ $from ? $from->format(config('app.date_format', 'M d, Y')).' – '.now()->format(config('app.date_format', 'M d, Y')) : 'All Time' }}'],
             [],
             ['KEY PERFORMANCE INDICATORS'],
             ['Metric', 'Value', 'Notes'],
@@ -1760,9 +1760,9 @@ async function exportUsersPDF() {
     pdfBtn.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:11px;"></i><span> Fetching data…</span>';
     pdfBtn.disabled  = true;
 
-    const period  = '{{ $from ? $from->format('M d, Y').' – '.now()->format('M d, Y') : 'All Time' }}';
+    const period  = '{{ $from ? $from->format(config('app.date_format', 'M d, Y')).' – '.now()->format(config('app.date_format', 'M d, Y')) : 'All Time' }}';
     const company = '{{ addslashes($appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name')) }}';
-    const dateStr = '{{ now()->format('F d, Y') }}';
+    const dateStr = '{{ now()->format(config('app.date_format', 'M d, Y')) }}';
     const range   = '{{ $range }}';
 
     // Fetch rich per-user detail from backend

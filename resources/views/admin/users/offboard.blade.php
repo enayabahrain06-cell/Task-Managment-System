@@ -70,7 +70,7 @@
                 <span style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:10px;background:#FEF3C7;color:#D97706;">{{ ucfirst($user->status) }}</span>
             </div>
             <p style="font-size:13px;color:#6B7280;margin:0;">{{ $user->email }}{{ $user->job_title ? ' · ' . $user->job_title : '' }}</p>
-            <p style="font-size:12px;color:#9CA3AF;margin:3px 0 0;">Member since {{ $user->created_at->format('M d, Y') }}</p>
+            <p style="font-size:12px;color:#9CA3AF;margin:3px 0 0;">Member since {{ $user->created_at->format(config('app.date_format', 'M d, Y')) }}</p>
         </div>
         <div style="display:flex;gap:20px;flex-shrink:0;text-align:center;">
             <div>

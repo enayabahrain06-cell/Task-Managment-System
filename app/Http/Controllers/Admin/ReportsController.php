@@ -345,7 +345,7 @@ class ReportsController extends Controller
                 'title'       => $t->title,
                 'project'     => $t->project->name ?? '—',
                 'assignee'    => $t->assignee->name ?? 'Unassigned',
-                'deadline'    => $t->deadline->format('M d, Y'),
+                'deadline'    => $t->deadline->format(config('app.date_format', 'M d, Y')),
                 'days_late'   => (int) abs(now()->diffInDays($t->deadline)),
                 'priority'    => $t->priority ?? 'medium',
                 'status'      => $t->status,
@@ -368,7 +368,7 @@ class ReportsController extends Controller
                 'to_user'   => $t->toUser?->name ?? '—',
                 'by'        => $t->transferredBy?->name ?? '—',
                 'reason'    => $t->reason,
-                'date'      => $t->transferred_at->format('M d, Y'),
+                'date'      => $t->transferred_at->format(config('app.date_format', 'M d, Y')),
                 'time'      => $t->transferred_at->format('H:i'),
             ]);
 
@@ -388,7 +388,7 @@ class ReportsController extends Controller
                 'project'    => $log->task?->project?->name ?? '—',
                 'old_status' => ucfirst(str_replace('_', ' ', $log->metadata['old_status'] ?? '—')),
                 'by'         => $log->metadata['reopened_by_name'] ?? $log->user?->name ?? '—',
-                'date'       => $log->created_at->format('M d, Y'),
+                'date'       => $log->created_at->format(config('app.date_format', 'M d, Y')),
                 'time'       => $log->created_at->format('H:i'),
             ]);
 
@@ -411,7 +411,7 @@ class ReportsController extends Controller
                 'budget'      => $t->social_budget,
                 'caption'     => $t->social_caption,
                 'posted'      => (bool) $t->social_posted_at,
-                'posted_at'   => $t->social_posted_at ? $t->social_posted_at->format('M d, Y') : null,
+                'posted_at'   => $t->social_posted_at ? $t->social_posted_at->format(config('app.date_format', 'M d, Y')) : null,
                 'status'      => $t->status,
             ]);
 
@@ -620,7 +620,7 @@ class ReportsController extends Controller
                     'name'        => $proj?->name ?? '—',
                     'customer'    => $customer,
                     'proj_status' => $proj ? $proj->status : '—',
-                    'first_date'  => $first ? Carbon::parse($first)->format('M d, Y') : '—',
+                    'first_date'  => $first ? Carbon::parse($first)->format(config('app.date_format', 'M d, Y')) : '—',
                     'days_active' => $first ? (int) Carbon::parse($first)->diffInDays($now) : 0,
                     'total'       => $pTotal,
                     'done'        => $pDone,
@@ -641,7 +641,7 @@ class ReportsController extends Controller
                     'customer'  => $t->customer?->name ?? $t->project?->customer?->name ?? '—',
                     'status'    => $t->status,
                     'priority'  => $t->priority ?? 'medium',
-                    'deadline'  => $t->deadline ? $t->deadline->format('M d, Y') : null,
+                    'deadline'  => $t->deadline ? $t->deadline->format(config('app.date_format', 'M d, Y')) : null,
                     'days_left' => $t->deadline ? (int) $now->diffInDays($t->deadline, false) : null,
                 ])->values()->all();
 
@@ -673,7 +673,7 @@ class ReportsController extends Controller
                 'role'               => ucfirst($user->role),
                 'job_title'          => $user->job_title ?: null,
                 'email'              => $user->email,
-                'member_since'       => $user->created_at->format('M d, Y'),
+                'member_since'       => $user->created_at->format(config('app.date_format', 'M d, Y')),
                 'totals'             => $totals,
                 'time_spent'         => self::fmtMinutes($totalMinutes),
                 'rate'               => $totals['total'] > 0 ? round($totals['done'] / $totals['total'] * 100) : 0,

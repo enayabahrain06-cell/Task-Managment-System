@@ -395,6 +395,11 @@
         <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:{{ $tbg }};color:{{ $tco }};">#{{ $tag }}</span>
         @endforeach
         @endif
+        <button type="button" onclick="document.getElementById('taskEditModal').style.display='flex'"
+                style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(79,70,229,.3);transition:opacity .15s;"
+                onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+            <i class="fa fa-pen" style="font-size:11px;"></i> Edit
+        </button>
     </div>
 </div>
 
@@ -444,7 +449,7 @@
                 <div style="background:#FAFAFA;border-radius:10px;padding:12px;">
                     <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;font-weight:600;margin:0 0 4px;">Deadline</p>
                     <p style="font-size:14px;font-weight:600;color:{{ $isOverdue ? '#DC2626' : '#111827' }};margin:0;">
-                        {{ $task->deadline->format('M d, Y') }}
+                        {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
                     </p>
                 </div>
                 @if($task->reviewer)
@@ -594,6 +599,37 @@
                         onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
                     <i class="fa fa-rotate-left"></i> Request Revision
                 </button>
+            </div>
+            @php
+                $previewPhone = $task->customer?->phone ?? $task->project?->customer?->phone ?? null;
+                $previewName  = $task->customer?->name  ?? $task->project?->customer?->name  ?? 'Customer';
+                $previewSub   = $task->submissions->first();
+                $previewFile  = $previewSub?->file_path ? url(Storage::url($previewSub->file_path)) : null;
+                $previewMsg   = "Hello {$previewName}, your design for \"{$task->title}\" has been submitted for review. We'd love your feedback before we finalize approval.";
+                if ($previewFile) $previewMsg .= "\n\nView design: {$previewFile}";
+                $previewWaLink = $previewPhone
+                    ? 'https://wa.me/' . preg_replace('/\D/', '', $previewPhone) . '?text=' . rawurlencode($previewMsg)
+                    : null;
+            @endphp
+            <div style="margin-top:14px;border-top:1px dashed #E9D5FF;padding-top:14px;">
+                <p style="font-size:11px;color:#9CA3AF;margin:0 0 8px;display:flex;align-items:center;gap:5px;">
+                    <i class="fab fa-whatsapp" style="color:#25D366;"></i>
+                    Send design preview to customer <em>before</em> approving
+                </p>
+                @if($previewWaLink)
+                <a href="{{ $previewWaLink }}" target="_blank" rel="noopener"
+                   style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:#25D366;color:#fff;border-radius:9px;font-size:12px;font-weight:600;text-decoration:none;box-shadow:0 2px 8px rgba(37,211,102,.25);transition:opacity .15s;"
+                   onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+                    <i class="fab fa-whatsapp" style="font-size:13px;"></i>
+                    Send via WhatsApp ↗
+                </a>
+                <span style="font-size:11px;color:#6B7280;margin-left:6px;">{{ $previewName }}</span>
+                @else
+                <span style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:#F3F4F6;color:#9CA3AF;border-radius:9px;font-size:12px;font-weight:600;cursor:not-allowed;">
+                    <i class="fab fa-whatsapp" style="font-size:13px;"></i>
+                    Send via WhatsApp <span style="font-weight:400;">(no phone on file)</span>
+                </span>
+                @endif
             </div>
         </div>
         @endif
@@ -1191,7 +1227,7 @@
                 </div>
                 <div style="display:flex;justify-content:space-between;align-items:center;">
                     <span style="font-size:13px;color:#6B7280;"><i class="fa fa-calendar" style="width:16px;color:#9CA3AF;margin-right:6px;"></i>Deadline</span>
-                    <span style="font-size:13px;font-weight:600;color:{{ $isOverdue ? '#DC2626' : '#111827' }};">{{ $task->deadline->format('M d, Y') }}</span>
+                    <span style="font-size:13px;font-weight:600;color:{{ $isOverdue ? '#DC2626' : '#111827' }};">{{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}</span>
                 </div>
                 <div style="display:flex;justify-content:space-between;align-items:center;">
                     <span style="font-size:13px;color:#6B7280;"><i class="fa fa-eye" style="width:16px;color:#9CA3AF;margin-right:6px;"></i>First Viewed</span>
@@ -1334,4 +1370,129 @@ function taskApprovalPage() {
     };
 }
 </script>
+
+{{-- ═══════════ EDIT TASK MODAL ═══════════ --}}
+<div id="taskEditModal"
+     style="display:none;position:fixed;inset:0;z-index:99998;"
+     onkeydown="if(event.key==='Escape') this.style.display='none'">
+    <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div onclick="document.getElementById('taskEditModal').style.display='none'"
+             style="position:absolute;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);"></div>
+        <div style="position:relative;width:100%;max-width:560px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,.25);">
+            <form action="{{ route('admin.tasks.update', $task) }}" method="POST">
+                @csrf
+                @method('PATCH')
+                {{-- Header --}}
+                <div style="padding:20px 24px;background:linear-gradient(135deg,#4F46E5,#6366F1);display:flex;align-items:center;gap:12px;">
+                    <div style="width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="fa fa-pen" style="color:#fff;font-size:14px;"></i>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <p style="font-size:14px;font-weight:700;color:#fff;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $task->title }}</p>
+                        <p style="font-size:11px;color:rgba(255,255,255,.7);margin:2px 0 0;">Edit task details</p>
+                    </div>
+                    <button type="button" onclick="document.getElementById('taskEditModal').style.display='none'"
+                            style="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;"
+                            onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">
+                        <i class="fa fa-xmark"></i>
+                    </button>
+                </div>
+                {{-- Body --}}
+                <div style="padding:24px;display:flex;flex-direction:column;gap:16px;max-height:70vh;overflow-y:auto;">
+                    <div>
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Task Title <span style="color:#EF4444;">*</span></label>
+                        <input type="text" name="title" value="{{ old('title', $task->title) }}" required
+                               style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;outline:none;transition:border-color .15s;box-sizing:border-box;"
+                               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Project</label>
+                            <div style="position:relative;">
+                                <select name="project_id"
+                                        style="width:100%;padding:9px 32px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;appearance:none;background:#fff;cursor:pointer;outline:none;box-sizing:border-box;"
+                                        onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                                    <option value="">No project</option>
+                                    @foreach($projects as $proj)
+                                    <option value="{{ $proj->id }}" {{ old('project_id', $task->project_id) == $proj->id ? 'selected' : '' }}>{{ $proj->name }}</option>
+                                    @endforeach
+                                </select>
+                                <div style="position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:#9CA3AF;font-size:10px;"><i class="fa fa-chevron-down"></i></div>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Customer</label>
+                            <div style="position:relative;">
+                                <select name="customer_id"
+                                        style="width:100%;padding:9px 32px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;appearance:none;background:#fff;cursor:pointer;outline:none;box-sizing:border-box;"
+                                        onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                                    <option value="">No customer</option>
+                                    @foreach($customers as $cust)
+                                    <option value="{{ $cust->id }}" {{ old('customer_id', $task->customer_id) == $cust->id ? 'selected' : '' }}>{{ $cust->name }}</option>
+                                    @endforeach
+                                </select>
+                                <div style="position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:#9CA3AF;font-size:10px;"><i class="fa fa-chevron-down"></i></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Assignee</label>
+                            <div style="position:relative;">
+                                <select name="assigned_to"
+                                        style="width:100%;padding:9px 32px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;appearance:none;background:#fff;cursor:pointer;outline:none;box-sizing:border-box;"
+                                        onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                                    <option value="">Unassigned</option>
+                                    @foreach($users as $u)
+                                    <option value="{{ $u->id }}" {{ old('assigned_to', $task->assigned_to) == $u->id ? 'selected' : '' }}>{{ $u->name }}</option>
+                                    @endforeach
+                                </select>
+                                <div style="position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:#9CA3AF;font-size:10px;"><i class="fa fa-chevron-down"></i></div>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Priority</label>
+                            <div style="position:relative;">
+                                <select name="priority"
+                                        style="width:100%;padding:9px 32px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;appearance:none;background:#fff;cursor:pointer;outline:none;box-sizing:border-box;"
+                                        onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                                    <option value="high"   {{ old('priority', $task->priority) === 'high'   ? 'selected' : '' }}>High</option>
+                                    <option value="medium" {{ old('priority', $task->priority) === 'medium' ? 'selected' : '' }}>Medium</option>
+                                    <option value="low"    {{ old('priority', $task->priority) === 'low'    ? 'selected' : '' }}>Low</option>
+                                </select>
+                                <div style="position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:#9CA3AF;font-size:10px;"><i class="fa fa-chevron-down"></i></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Deadline</label>
+                        <input type="date" name="deadline" value="{{ old('deadline', $task->deadline?->toDateString()) }}"
+                               style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;outline:none;transition:border-color .15s;box-sizing:border-box;"
+                               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Description</label>
+                        <textarea name="description" rows="3"
+                                  style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;outline:none;resize:vertical;transition:border-color .15s;box-sizing:border-box;"
+                                  onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"
+                                  placeholder="Optional description…">{{ old('description', $task->description) }}</textarea>
+                    </div>
+                </div>
+                {{-- Footer --}}
+                <div style="padding:16px 24px;border-top:1px solid #F3F4F6;display:flex;align-items:center;justify-content:flex-end;gap:10px;background:#FAFAFA;">
+                    <button type="button" onclick="document.getElementById('taskEditModal').style.display='none'"
+                            style="padding:9px 20px;border-radius:10px;border:1.5px solid #E5E7EB;background:#fff;color:#374151;font-size:13px;font-weight:600;cursor:pointer;"
+                            onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='#fff'">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            style="padding:9px 22px;border-radius:10px;border:none;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(79,70,229,.4);transition:opacity .15s;"
+                            onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">
+                        <i class="fa fa-check" style="margin-right:6px;font-size:11px;"></i>Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection

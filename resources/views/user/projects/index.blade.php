@@ -38,7 +38,7 @@
         @if($proj->description)
         <p style="font-size:12px;color:#9CA3AF;margin:0 0 14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $proj->description }}</p>
         @else
-        <p style="font-size:12px;color:#9CA3AF;margin:0 0 14px;">Due {{ $proj->deadline->format('M d, Y') }}</p>
+        <p style="font-size:12px;color:#9CA3AF;margin:0 0 14px;">Due {{ $proj->deadline->format(config('app.date_format', 'M d, Y')) }}</p>
         @endif
         <div style="margin-bottom:10px;">
             <div style="display:flex;justify-content:space-between;margin-bottom:6px;">

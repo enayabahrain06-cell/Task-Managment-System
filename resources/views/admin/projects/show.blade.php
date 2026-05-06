@@ -48,7 +48,7 @@
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         @php $pStatus = ['active'=>['#D1FAE5','#059669'],'completed'=>['#F3F4F6','#6B7280'],'overdue'=>['#FEE2E2','#DC2626']][$project->status] ?? ['#F3F4F6','#6B7280']; @endphp
         <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:{{ $pStatus[0] }};color:{{ $pStatus[1] }};">{{ ucfirst($project->status) }}</span>
-        <span style="font-size:13px;color:#9CA3AF;">Due {{ $project->deadline->format('M d, Y') }}</span>
+        <span style="font-size:13px;color:#9CA3AF;">Due {{ $project->deadline->format(config('app.date_format', 'M d, Y')) }}</span>
         @if($pendingApprovalCount > 0)
         <a href="{{ route('admin.approvals.index') }}"
            style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#EDE9FE;color:#7C3AED;text-decoration:none;">
@@ -162,7 +162,7 @@
                 </div>
                 <p style="font-size:12px;color:#9CA3AF;margin:0;">
                     <i class="fa fa-user" style="margin-right:4px;"></i>{{ $task->assignee->name ?? '—' }}
-                    &nbsp;·&nbsp;<i class="fa fa-calendar" style="margin-right:4px;"></i>Due {{ $task->deadline ? $task->deadline->format('M d, Y') : '—' }}
+                    &nbsp;·&nbsp;<i class="fa fa-calendar" style="margin-right:4px;"></i>Due {{ $task->deadline ? $task->deadline->format(config('app.date_format', 'M d, Y')) : '—' }}
                     @if($task->social_required && $task->socialAssignee)
                     &nbsp;·&nbsp;<i class="fa-brands fa-whatsapp" style="color:#25D366;margin-right:3px;"></i>
                     <span style="color:#374151;font-weight:500;">{{ $task->socialAssignee->name }}</span>

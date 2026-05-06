@@ -84,7 +84,7 @@
                     <p class="text-sm font-semibold text-gray-900 truncate">{{ $task->title }}</p>
                     <p class="text-xs text-gray-500">{{ $task->project->name }}</p>
                     <p class="text-xs text-red-500 font-medium mt-0.5">
-                        <i class="fa fa-clock"></i> Due {{ $task->deadline->format('M d, Y') }}
+                        <i class="fa fa-clock"></i> Due {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
                     </p>
                 </div>
             </div>
