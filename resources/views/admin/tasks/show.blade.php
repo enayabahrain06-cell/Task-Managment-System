@@ -598,6 +598,19 @@
         </div>
         @endif
 
+        @php
+            $previewPhone   = $task->customer?->phone ?? $task->project?->customer?->phone ?? null;
+            $previewName    = $task->customer?->name  ?? $task->project?->customer?->name  ?? 'Customer';
+            $previewSub     = $task->submissions->first();
+            $previewFile    = $previewSub?->file_path ? url(Storage::url($previewSub->file_path)) : null;
+            $previewMsgBase = "Hello {$previewName}, your design for \"{$task->title}\" has been submitted for review. We'd love your feedback before we finalize approval.";
+            $previewMsg     = $previewMsgBase;
+            if ($previewFile) $previewMsg .= "\n\nView design: {$previewFile}";
+            $previewWaLink  = $previewPhone
+                ? 'https://wa.me/' . preg_replace('/\D/', '', $previewPhone) . '?text=' . rawurlencode($previewMsg)
+                : null;
+        @endphp
+
         {{-- Admin Actions: Approve/Reject (only when submitted) --}}
         @if($task->status === 'submitted')
         <div style="background:#fff;border-radius:14px;border:1.5px solid #A78BFA;box-shadow:0 4px 16px rgba(124,58,237,.08);padding:24px;">
@@ -633,18 +646,6 @@
                     <i class="fa fa-rotate-left"></i> Request Revision
                 </button>
             </div>
-            @php
-                $previewPhone = $task->customer?->phone ?? $task->project?->customer?->phone ?? null;
-                $previewName  = $task->customer?->name  ?? $task->project?->customer?->name  ?? 'Customer';
-                $previewSub   = $task->submissions->first();
-                $previewFile  = $previewSub?->file_path ? url(Storage::url($previewSub->file_path)) : null;
-                $previewMsgBase = "Hello {$previewName}, your design for \"{$task->title}\" has been submitted for review. We'd love your feedback before we finalize approval.";
-                $previewMsg     = $previewMsgBase;
-                if ($previewFile) $previewMsg .= "\n\nView design: {$previewFile}";
-                $previewWaLink = $previewPhone
-                    ? 'https://wa.me/' . preg_replace('/\D/', '', $previewPhone) . '?text=' . rawurlencode($previewMsg)
-                    : null;
-            @endphp
             <div style="margin-top:14px;border-top:1px dashed #E9D5FF;padding-top:14px;">
                 <p style="font-size:11px;color:#9CA3AF;margin:0 0 8px;display:flex;align-items:center;gap:5px;">
                     <i class="fab fa-whatsapp" style="color:#25D366;"></i>
@@ -861,6 +862,156 @@
                                 <a href="{{ route('admin.tasks.show', $meta['paused_by_task_id']) }}"
                                    style="color:#4F46E5;font-weight:600;text-decoration:none;">{{ Str::limit($meta['paused_by_task_title'], 50) }}</a>
                             </span>
+                            @elseif(in_array($log->action, ['social_posted','social_post_edited']))
+                            @php
+                                $spPlatformMeta = [
+                                    'facebook'  => ['fab fa-facebook-f', '#1877F2', '#fff', 'Facebook'],
+                                    'instagram' => ['fab fa-instagram',  '#E1306C', '#fff', 'Instagram'],
+                                    'twitter'   => ['fab fa-x-twitter',  '#0F1419', '#fff', 'Twitter/X'],
+                                    'tiktok'    => ['fab fa-tiktok',      '#010101', '#fff', 'TikTok'],
+                                    'youtube'   => ['fab fa-youtube',     '#FF0000', '#fff', 'YouTube'],
+                                    'linkedin'  => ['fab fa-linkedin-in', '#0A66C2', '#fff', 'LinkedIn'],
+                                    'snapchat'  => ['fab fa-snapchat',    '#FFFC00', '#111', 'Snapchat'],
+                                    'other'     => ['fas fa-share-nodes', '#6366F1', '#fff', 'Other'],
+                                ];
+                                $spKey      = $meta['platform'] ?? 'other';
+                                [$spIcon, $spBg, $spIconClr, $spLabel] = $spPlatformMeta[$spKey] ?? $spPlatformMeta['other'];
+                                $spUrl      = $meta['post_url'] ?? null;
+                                $spIsEdit   = $log->action === 'social_post_edited';
+                                $spNl       = chr(10);
+                                $spWaMsg    = 'Social media post for “' . $task->title . '”' . ($spUrl ? ($spNl . $spNl . $spUrl) : '');
+                                $spMailBody = $spUrl ? urlencode('Social media post for “' . $task->title . '”' . $spNl . $spNl . $spUrl) : '';
+                            @endphp
+                            <div style=”display:inline-flex;align-items:center;gap:8px;vertical-align:middle;position:relative;”
+                                 x-data=”{
+                                    open: false,
+                                    waPanel: false,
+                                    waPhone: '',
+                                    waSending: false,
+                                    waResult: null,
+                                    copied: false,
+                                    async doWaSend() {
+                                        const digits = this.waPhone.replace(/\D/g,'');
+                                        if (!digits) return;
+                                        this.waSending = true;
+                                        this.waResult  = null;
+                                        try {
+                                            const res = await fetch({{ Js::from(route('admin.approvals.whatsapp-customer')) }}, {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': {{ Js::from(csrf_token()) }} },
+                                                body: JSON.stringify({ phone: digits, message: {{ Js::from($spWaMsg) }} })
+                                            });
+                                            this.waResult = await res.json();
+                                        } catch(e) {
+                                            this.waResult = { ok: false, message: 'Network error. Please try again.' };
+                                        } finally {
+                                            this.waSending = false;
+                                        }
+                                    }
+                                 }”>
+
+                                {{-- Square brand icon button --}}
+                                <button @click=”@if($spIsEdit || !$spUrl) null @else open=!open; if(!open){ waPanel=false; waResult=null; } @endif”
+                                        style=”width:34px;height:34px;border-radius:9px;background:{{ $spBg }};color:{{ $spIconClr }};border:none;{{ ($spIsEdit || !$spUrl) ? 'cursor:default;opacity:.75;' : 'cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2);transition:opacity .15s;' }}display:flex;align-items:center;justify-content:center;flex-shrink:0;”
+                                        title=”{{ $spLabel }}”
+                                        @if(!$spIsEdit && $spUrl) onmouseover=”this.style.opacity='.8'” onmouseout=”this.style.opacity='1'” @endif>
+                                    <i class=”{{ $spIcon }}” style=”font-size:15px;”></i>
+                                </button>
+
+                                @if($spUrl)
+                                <span style=”font-size:11px;color:#374151;background:#F9FAFB;border:1px solid #E5E7EB;padding:2px 8px;border-radius:6px;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;” title=”{{ $spUrl }}”>
+                                    {{ Str::limit($spUrl, 42) }}
+                                </span>
+                                @endif
+
+                                @if(!$spIsEdit && $spUrl)
+                                {{-- Dropdown --}}
+                                <div x-show=”open” @click.outside=”open=false; waPanel=false; waResult=null;”
+                                     x-transition:enter=”transition ease-out duration-100”
+                                     x-transition:enter-start=”opacity-0 scale-95”
+                                     x-transition:enter-end=”opacity-100 scale-100”
+                                     style=”position:absolute;top:calc(100% + 6px);left:0;z-index:999;background:#fff;border:1.5px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.13);min-width:210px;overflow:hidden;”>
+
+                                    {{-- Dropdown header --}}
+                                    <div style=”padding:9px 14px;background:{{ $spBg }};display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.15);”>
+                                        <i class=”{{ $spIcon }}” style=”color:{{ $spIconClr }};font-size:14px;flex-shrink:0;”></i>
+                                        <span style=”font-size:12px;font-weight:700;color:{{ $spIconClr }};”>{{ $spLabel }}</span>
+                                    </div>
+
+                                    {{-- Main menu --}}
+                                    <template x-if=”!waPanel”>
+                                        <div>
+                                            <button @click=”navigator.clipboard.writeText('{{ $spUrl }}').then(()=>{ copied=true; setTimeout(()=>copied=false,1800); })”
+                                                    style=”width:100%;padding:9px 14px;background:none;border:none;border-bottom:1px solid #F3F4F6;text-align:left;font-size:12px;color:#374151;cursor:pointer;display:flex;align-items:center;gap:8px;”
+                                                    onmouseover=”this.style.background='#F9FAFB'” onmouseout=”this.style.background='none'”>
+                                                <i class=”fa fa-copy” style=”color:#6366F1;width:14px;” x-show=”!copied”></i>
+                                                <i class=”fa fa-check” style=”color:#059669;width:14px;” x-show=”copied”></i>
+                                                <span x-text=”copied ? 'Copied!' : 'Copy Link'”>Copy Link</span>
+                                            </button>
+                                            <a href=”{{ $spUrl }}” target=”_blank”
+                                               style=”display:flex;align-items:center;gap:8px;padding:9px 14px;font-size:12px;color:#374151;text-decoration:none;border-bottom:1px solid #F3F4F6;”
+                                               onmouseover=”this.style.background='#F9FAFB'” onmouseout=”this.style.background='none'”>
+                                                <i class=”fa fa-external-link-alt” style=”color:#6366F1;width:14px;”></i> Open Link
+                                            </a>
+                                            <button @click=”waPanel=true; waPhone=''; waResult=null; $nextTick(()=>$refs.waInput?.focus())”
+                                                    style=”width:100%;padding:9px 14px;background:none;border:none;border-bottom:1px solid #F3F4F6;text-align:left;font-size:12px;color:#374151;cursor:pointer;display:flex;align-items:center;gap:8px;”
+                                                    onmouseover=”this.style.background='#F9FAFB'” onmouseout=”this.style.background='none'”>
+                                                <i class=”fab fa-whatsapp” style=”color:#25D366;width:14px;font-size:13px;”></i> Send via WhatsApp
+                                            </button>
+                                            <a href=”mailto:?subject={{ urlencode($task->title) }}&body={{ $spMailBody }}”
+                                               style=”display:flex;align-items:center;gap:8px;padding:9px 14px;font-size:12px;color:#374151;text-decoration:none;”
+                                               onmouseover=”this.style.background='#F9FAFB'” onmouseout=”this.style.background='none'”>
+                                                <i class=”fa fa-envelope” style=”color:#6366F1;width:14px;”></i> Send via Email
+                                            </a>
+                                        </div>
+                                    </template>
+
+                                    {{-- WhatsApp panel --}}
+                                    <template x-if=”waPanel”>
+                                        <div>
+                                            <div style=”background:linear-gradient(135deg,#25D366,#128C7E);padding:12px 14px;display:flex;align-items:center;gap:10px;”>
+                                                <i class=”fab fa-whatsapp” style=”color:#fff;font-size:18px;flex-shrink:0;”></i>
+                                                <div>
+                                                    <p style=”font-size:13px;font-weight:700;color:#fff;margin:0;”>Share Social Post</p>
+                                                    <p style=”font-size:10px;color:rgba(255,255,255,.75);margin:2px 0 0;”>Sends link via WhatsApp API</p>
+                                                </div>
+                                            </div>
+                                            <div style=”padding:12px 14px;”>
+                                                <p style=”font-size:11px;color:#6B7280;margin:0 0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;”>
+                                                    <i class=”{{ $spIcon }}” style=”font-size:10px;color:{{ $spBg }};margin-right:3px;”></i>{{ $spLabel }} &mdash; {{ Str::limit($spUrl, 32) }}
+                                                </p>
+                                                <label style=”display:block;font-size:10px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;”>WhatsApp Number</label>
+                                                <input type=”tel” x-model=”waPhone” x-ref=”waInput”
+                                                       placeholder=”+971501234567”
+                                                       @keydown.enter=”doWaSend()”
+                                                       style=”width:100%;padding:8px 10px;border:1.5px solid #D1FAE5;background:#F0FDF4;border-radius:9px;font-size:12px;color:#111827;outline:none;box-sizing:border-box;margin-bottom:10px;”
+                                                       onfocus=”this.style.borderColor='#25D366'” onblur=”this.style.borderColor='#D1FAE5'”>
+                                                <button @click=”doWaSend()” :disabled=”waSending”
+                                                        :style=”waSending ? 'width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;background:#9CA3AF;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:not-allowed;' : 'width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(37,211,102,.35);'”
+                                                        onmouseover=”if(this.style.cursor!=='not-allowed')this.style.opacity='.85'” onmouseout=”this.style.opacity='1'”>
+                                                    <i class=”fab fa-whatsapp” style=”font-size:13px;” x-show=”!waSending”></i>
+                                                    <i class=”fas fa-spinner fa-spin” style=”font-size:12px;” x-show=”waSending”></i>
+                                                    <span x-text=”waSending ? 'Sending…' : 'Send via WhatsApp'”>Send via WhatsApp</span>
+                                                </button>
+                                                <template x-if=”waResult”>
+                                                    <div :style=”waResult.ok ? 'margin-top:8px;font-size:11px;color:#16A34A;display:flex;align-items:center;gap:4px;' : 'margin-top:8px;font-size:11px;color:#DC2626;display:flex;align-items:center;gap:4px;'”>
+                                                        <i :class=”waResult.ok ? 'fas fa-circle-check' : 'fas fa-circle-xmark'” style=”font-size:11px;”></i>
+                                                        <span x-text=”waResult.message ?? ''”></span>
+                                                    </div>
+                                                </template>
+                                                <button @click=”waPanel=false; waResult=null;”
+                                                        style=”width:100%;margin-top:8px;padding:6px;background:none;border:1px solid #E5E7EB;border-radius:8px;font-size:11px;color:#6B7280;cursor:pointer;”
+                                                        onmouseover=”this.style.background='#F9FAFB'” onmouseout=”this.style.background='none'”>
+                                                    <i class=”fa fa-arrow-left” style=”font-size:9px;margin-right:4px;”></i> Back
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                </div>
+                                @endif
+
+                            </div>
                             @elseif(isset($meta['old_status'], $meta['new_status']))
                             <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;">
                                 <span style="text-decoration:line-through;opacity:.7;">{{ str_replace('_',' ',$meta['old_status']) }}</span> → <strong>{{ str_replace('_',' ',$meta['new_status']) }}</strong>
@@ -868,7 +1019,7 @@
                             @endif
                         </div>
                         @endif
-                        @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','deadline_updated','auto_paused']))
+                        @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','deadline_updated','auto_paused','social_posted','social_post_edited']))
                         <p style="font-size:12px;color:#6B7280;background:#F9FAFB;padding:6px 10px;border-radius:8px;border-left:3px solid #E5E7EB;margin:6px 0 0;">"{{ $log->note }}"</p>
                         @endif
                     </div>
@@ -1595,4 +1746,5 @@ function taskApprovalPage() {
         </div>
     </div>
 </div>
+
 @endsection

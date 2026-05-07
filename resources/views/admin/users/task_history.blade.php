@@ -1,46 +1,43 @@
 @extends('layouts.app')
 
-@section('title', 'Task History')
+@section('title', $user->name . ' — Task History')
 
 @section('content')
+
+{{-- Breadcrumb --}}
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;font-size:13px;color:#9CA3AF;">
+    <a href="{{ route('admin.users.index') }}" style="color:#6B7280;text-decoration:none;font-weight:500;">Users</a>
+    <i class="fas fa-chevron-right" style="font-size:10px;"></i>
+    <a href="{{ route('admin.users.dashboard', $user) }}" style="color:#6B7280;text-decoration:none;font-weight:500;">{{ $user->name }}</a>
+    <i class="fas fa-chevron-right" style="font-size:10px;"></i>
+    <span style="color:#111827;font-weight:600;">Task History</span>
+</div>
+
 <div class="flex items-center justify-between mb-6">
     <div>
-        <h1 class="text-2xl font-bold text-gray-900">Task History</h1>
-        <p class="text-sm text-gray-500 mt-0.5">All tasks assigned to you</p>
+        <h1 class="text-2xl font-bold text-gray-900">{{ $user->name }} — Task History</h1>
+        <p class="text-sm text-gray-500 mt-0.5">All tasks assigned to this user</p>
     </div>
+    <a href="{{ route('admin.users.dashboard', $user) }}"
+       style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:#F3F4F6;color:#374151;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:background .15s;"
+       onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+        <i class="fas fa-arrow-left" style="font-size:11px;"></i> Back to Dashboard
+    </a>
 </div>
-
-@php
-    $pausedCount = auth()->user()->tasks()->where('status', 'paused')->count();
-@endphp
-
-{{-- Paused tasks reminder --}}
-@if($pausedCount > 0)
-<div style="background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:12px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:14px;">
-    <div style="width:38px;height:38px;border-radius:10px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-        <i class="fa fa-circle-pause" style="color:#D97706;font-size:16px;"></i>
-    </div>
-    <div style="flex:1;">
-        <p style="font-size:13px;font-weight:700;color:#92400E;margin:0 0 2px;">{{ $pausedCount }} {{ Str::plural('task', $pausedCount) }} paused</p>
-        <p style="font-size:12px;color:#B45309;margin:0;">{{ $pausedCount === 1 ? 'A task was' : 'Tasks were' }} paused — open {{ $pausedCount === 1 ? 'it' : 'them' }} to resume your timer when you're ready.</p>
-    </div>
-    <i class="fa fa-chevron-right" style="color:#D97706;font-size:12px;flex-shrink:0;"></i>
-</div>
-@endif
 
 {{-- Filter Cards --}}
 @php
     $filterCards = [
-        ['all',         'All Tasks',    'fa-list-check',           '#EEF2FF', '#4F46E5', $counts['all']],
-        ['pending',     'Pending',      'fa-clock',                '#FFFBEB', '#D97706', $counts['pending']],
-        ['in_progress', 'In Progress',  'fa-spinner',              '#F5F3FF', '#7C3AED', $counts['in_progress']],
-        ['completed',   'Completed',    'fa-circle-check',         '#F0FDF4', '#16A34A', $counts['completed']],
+        ['all',         'All Tasks',   'fa-list-check',   '#EEF2FF', '#4F46E5', $counts['all']],
+        ['pending',     'Pending',     'fa-clock',        '#FFFBEB', '#D97706', $counts['pending']],
+        ['in_progress', 'In Progress', 'fa-spinner',      '#F5F3FF', '#7C3AED', $counts['in_progress']],
+        ['completed',   'Completed',   'fa-circle-check', '#F0FDF4', '#16A34A', $counts['completed']],
     ];
 @endphp
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;">
     @foreach($filterCards as [$key, $label, $icon, $bg, $color, $count])
     @php $isActive = $filter === $key; @endphp
-    <a href="{{ route('user.tasks.index', ['filter' => $key]) }}"
+    <a href="{{ route('admin.users.task-history', [$user, 'filter' => $key]) }}"
        style="display:block;background:{{ $isActive ? $color : '#fff' }};border:2px solid {{ $isActive ? $color : '#E5E7EB' }};border-radius:14px;padding:16px 18px;text-decoration:none;transition:all .15s;box-shadow:{{ $isActive ? '0 4px 14px rgba(0,0,0,.12)' : '0 1px 3px rgba(0,0,0,.05)' }};"
        onmouseover="if({{ $isActive ? 'false' : 'true' }}) { this.style.borderColor='{{ $color }}'; this.style.boxShadow='0 4px 12px rgba(0,0,0,.08)'; }"
        onmouseout="if({{ $isActive ? 'false' : 'true' }}) { this.style.borderColor='#E5E7EB'; this.style.boxShadow='0 1px 3px rgba(0,0,0,.05)'; }">
@@ -65,7 +62,7 @@
         <span style="font-size:12px;font-weight:600;color:#6B7280;">
             Showing: <span style="color:#111827;">{{ ucwords(str_replace('_', ' ', $filter)) }}</span> tasks
         </span>
-        <a href="{{ route('user.tasks.index') }}" style="font-size:12px;color:#6366F1;text-decoration:none;font-weight:600;">
+        <a href="{{ route('admin.users.task-history', $user) }}" style="font-size:12px;color:#6366F1;text-decoration:none;font-weight:600;">
             <i class="fas fa-times" style="font-size:10px;margin-right:3px;"></i> Clear filter
         </a>
     </div>
@@ -92,7 +89,7 @@
                 default              => [ucfirst($task->status), 'bg-gray-100 text-gray-600'],
             };
         @endphp
-        <a href="{{ route('user.tasks.show', $task) }}"
+        <a href="{{ route('admin.tasks.show', $task) }}"
            class="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/70 transition group
                {{ $isPaused   ? 'bg-amber-50/40 border-l-2 border-amber-300'  : '' }}
                {{ $isRevision ? 'bg-red-50/40 border-l-2 border-red-300'      : '' }}
@@ -133,7 +130,7 @@
             <i class="fa fa-clipboard-list text-5xl text-gray-200 mb-3"></i>
             <p class="text-gray-500 font-medium mb-1">No {{ $filter === 'all' ? '' : str_replace('_', ' ', $filter) . ' ' }}tasks found</p>
             @if($filter !== 'all')
-            <a href="{{ route('user.tasks.index') }}" class="text-sm text-indigo-500 hover:underline">View all tasks</a>
+            <a href="{{ route('admin.users.task-history', $user) }}" class="text-sm text-indigo-500 hover:underline">View all tasks</a>
             @endif
         </div>
         @endforelse

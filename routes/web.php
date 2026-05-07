@@ -210,6 +210,8 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::delete('users/{user}/permanent',        [AdminUserController::class, 'permanentDelete'])->name('users.permanent-delete');
     // View user's dashboard (admin preview)
     Route::get('users/{user}/dashboard',           [AdminUserController::class, 'viewDashboard'])->name('users.dashboard');
+    Route::get('users/{user}/tasks-modal',         [AdminUserController::class, 'taskModal'])->name('users.tasks-modal');
+    Route::get('users/{user}/tasks',               [AdminUserController::class, 'taskHistory'])->name('users.task-history');
     // Performance data (JSON)
     Route::get('users/{user}/performance',         [AdminUserController::class, 'performance'])->name('users.performance');
 

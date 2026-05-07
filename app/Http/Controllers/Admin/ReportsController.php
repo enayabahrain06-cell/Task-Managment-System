@@ -52,9 +52,35 @@ class ReportsController extends Controller
                        }));
         };
 
+        // Determine if the selected user is a regular user (role = 'user')
+        $selectedUserRole = $userId ? User::where('id', $userId)->value('role') : null;
+        $isRegularUserFilter = $userId && $selectedUserRole === 'user';
+
+        // ── Social-only scoped query helper (only active when filtering by a regular user) ──
+        $socialScoped = function () use ($from, $projectId, $customerId, $userId, $isRegularUserFilter) {
+            if (!$isRegularUserFilter) {
+                return null;
+            }
+            return Task::where('social_assigned_to', $userId)
+                ->where(function ($q) use ($userId) {
+                    $q->whereNull('assigned_to')->orWhere('assigned_to', '!=', $userId);
+                })
+                ->whereNotExists(fn($sub) => $sub->selectRaw('1')
+                    ->from('task_assignees')
+                    ->whereColumn('task_assignees.task_id', 'tasks.id')
+                    ->where('task_assignees.user_id', $userId))
+                ->when($from, fn($q) => $q->where('tasks.created_at', '>=', $from))
+                ->when($projectId, fn($q) => $q->where('tasks.project_id', $projectId))
+                ->when($customerId, fn($q) => $q->where('tasks.customer_id', $customerId));
+        };
+
         // ── Summary KPIs ───────────────────────────────────────────────────────
-        $totalTasks     = $scoped()->count();
-        $completedTasks = $scoped()->whereIn('status', $doneStatuses)->count();
+        $socialScopedBase = $socialScoped();
+        $socialTotal      = $socialScopedBase ? (clone $socialScopedBase)->count() : 0;
+        $socialDone       = $socialScopedBase ? (clone $socialScopedBase)->whereNotNull('social_posted_at')->count() : 0;
+
+        $totalTasks     = $scoped()->count() + $socialTotal;
+        $completedTasks = $scoped()->whereIn('status', $doneStatuses)->count() + $socialDone;
         // Overdue is a current state — do not filter by created_at, only by project/customer
         $overdueTasks   = Task::where('deadline', '<', now())
                               ->whereIn('status', $nonDoneStatuses)
@@ -283,23 +309,48 @@ class ReportsController extends Controller
         for ($i = 5; $i >= 0; $i--) {
             $month        = now()->subMonths($i);
             $monthLabels[]      = $month->format('M Y');
-            $monthlyCreated[]   = Task::whereYear('created_at', $month->year)
-                                      ->whereMonth('created_at', $month->month)
-                                      ->when($projectId, fn($q) => $q->where('project_id', $projectId))
-                                      ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
-                                      ->when($userId, fn($q) => $q->where(function ($uq) use ($userId) {
-                                          $uq->where('assigned_to', $userId)->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId));
-                                      }))
-                                      ->count();
-            $monthlyCompleted[] = Task::whereYear('updated_at', $month->year)
-                                      ->whereMonth('updated_at', $month->month)
-                                      ->whereIn('status', $doneStatuses)
-                                      ->when($projectId, fn($q) => $q->where('project_id', $projectId))
-                                      ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
-                                      ->when($userId, fn($q) => $q->where(function ($uq) use ($userId) {
-                                          $uq->where('assigned_to', $userId)->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId));
-                                      }))
-                                      ->count();
+
+            $regularCreated = Task::whereYear('created_at', $month->year)
+                                  ->whereMonth('created_at', $month->month)
+                                  ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+                                  ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
+                                  ->when($userId, fn($q) => $q->where(function ($uq) use ($userId) {
+                                      $uq->where('assigned_to', $userId)->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId));
+                                  }))
+                                  ->count();
+            $socialCreatedMonth = $isRegularUserFilter
+                ? Task::where('social_assigned_to', $userId)
+                    ->where(function ($q) use ($userId) { $q->whereNull('assigned_to')->orWhere('assigned_to', '!=', $userId); })
+                    ->whereNotExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId))
+                    ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+                    ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
+                    ->whereYear('created_at', $month->year)
+                    ->whereMonth('created_at', $month->month)
+                    ->count()
+                : 0;
+            $monthlyCreated[] = $regularCreated + $socialCreatedMonth;
+
+            $regularCompleted = Task::whereYear('updated_at', $month->year)
+                                    ->whereMonth('updated_at', $month->month)
+                                    ->whereIn('status', $doneStatuses)
+                                    ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+                                    ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
+                                    ->when($userId, fn($q) => $q->where(function ($uq) use ($userId) {
+                                        $uq->where('assigned_to', $userId)->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId));
+                                    }))
+                                    ->count();
+            $socialCompletedMonth = $isRegularUserFilter
+                ? Task::where('social_assigned_to', $userId)
+                    ->where(function ($q) use ($userId) { $q->whereNull('assigned_to')->orWhere('assigned_to', '!=', $userId); })
+                    ->whereNotExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId))
+                    ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+                    ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
+                    ->whereNotNull('social_posted_at')
+                    ->whereYear('social_posted_at', $month->year)
+                    ->whereMonth('social_posted_at', $month->month)
+                    ->count()
+                : 0;
+            $monthlyCompleted[] = $regularCompleted + $socialCompletedMonth;
         }
 
         // ── Monthly Balance (last 12 months) for diverging bar chart ──────────
@@ -309,23 +360,48 @@ class ReportsController extends Controller
         for ($i = 11; $i >= 0; $i--) {
             $month = now()->subMonths($i);
             $balanceLabels[]  = $month->format('M');
-            $balanceCreated[] = Task::whereYear('created_at', $month->year)
-                                    ->whereMonth('created_at', $month->month)
-                                    ->when($projectId, fn($q) => $q->where('project_id', $projectId))
-                                    ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
-                                    ->when($userId, fn($q) => $q->where(function ($uq) use ($userId) {
-                                        $uq->where('assigned_to', $userId)->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId));
-                                    }))
-                                    ->count();
-            $balanceDone[]    = Task::whereYear('updated_at', $month->year)
-                                    ->whereMonth('updated_at', $month->month)
-                                    ->whereIn('status', $doneStatuses)
-                                    ->when($projectId, fn($q) => $q->where('project_id', $projectId))
-                                    ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
-                                    ->when($userId, fn($q) => $q->where(function ($uq) use ($userId) {
-                                        $uq->where('assigned_to', $userId)->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId));
-                                    }))
-                                    ->count();
+
+            $regularBalCreated = Task::whereYear('created_at', $month->year)
+                                     ->whereMonth('created_at', $month->month)
+                                     ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+                                     ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
+                                     ->when($userId, fn($q) => $q->where(function ($uq) use ($userId) {
+                                         $uq->where('assigned_to', $userId)->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId));
+                                     }))
+                                     ->count();
+            $socialBalCreated = $isRegularUserFilter
+                ? Task::where('social_assigned_to', $userId)
+                    ->where(function ($q) use ($userId) { $q->whereNull('assigned_to')->orWhere('assigned_to', '!=', $userId); })
+                    ->whereNotExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId))
+                    ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+                    ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
+                    ->whereYear('created_at', $month->year)
+                    ->whereMonth('created_at', $month->month)
+                    ->count()
+                : 0;
+            $balanceCreated[] = $regularBalCreated + $socialBalCreated;
+
+            $regularBalDone = Task::whereYear('updated_at', $month->year)
+                                  ->whereMonth('updated_at', $month->month)
+                                  ->whereIn('status', $doneStatuses)
+                                  ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+                                  ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
+                                  ->when($userId, fn($q) => $q->where(function ($uq) use ($userId) {
+                                      $uq->where('assigned_to', $userId)->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId));
+                                  }))
+                                  ->count();
+            $socialBalDone = $isRegularUserFilter
+                ? Task::where('social_assigned_to', $userId)
+                    ->where(function ($q) use ($userId) { $q->whereNull('assigned_to')->orWhere('assigned_to', '!=', $userId); })
+                    ->whereNotExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId))
+                    ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+                    ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
+                    ->whereNotNull('social_posted_at')
+                    ->whereYear('social_posted_at', $month->year)
+                    ->whereMonth('social_posted_at', $month->month)
+                    ->count()
+                : 0;
+            $balanceDone[] = $regularBalDone + $socialBalDone;
         }
 
         // ── Overdue Task List ─────────────────────────────────────────────────
@@ -591,6 +667,26 @@ class ReportsController extends Controller
                   ->when($from, fn($q) => $q->where('created_at', '>=', $from))
                   ->orderBy('created_at')->get();
 
+            // Load social-only tasks for regular users and merge them in
+            if (!$isAdm) {
+                $socialOnlyTasks = Task::where('social_assigned_to', $user->id)
+                    ->where(function ($q) use ($user) {
+                        $q->whereNull('assigned_to')->orWhere('assigned_to', '!=', $user->id);
+                    })
+                    ->whereNotExists(fn($sub) => $sub->selectRaw('1')
+                        ->from('task_assignees')
+                        ->whereColumn('task_assignees.task_id', 'tasks.id')
+                        ->where('task_assignees.user_id', $user->id))
+                    ->with(['project.customer', 'customer'])
+                    ->when($from, fn($q) => $q->where('created_at', '>=', $from))
+                    ->orderBy('created_at')
+                    ->get();
+
+                if ($socialOnlyTasks->isNotEmpty()) {
+                    $tasks = $tasks->merge($socialOnlyTasks);
+                }
+            }
+
             $timeByTask   = $tasks->isNotEmpty() ? self::timeSpentByTask($tasks->pluck('id')) : collect();
             $totalMinutes = $timeByTask->sum();
 
@@ -602,7 +698,7 @@ class ReportsController extends Controller
                 'approved'  => $tasks->where('status', 'approved')->count(),
                 'delivered' => $tasks->whereIn('status', ['delivered','archived'])->count(),
                 'overdue'   => $tasks->filter(fn($t) => $t->deadline && $t->deadline->lt($now) && in_array($t->status, $nonDoneStatuses))->count(),
-                'done'      => $tasks->whereIn('status', $doneStatuses)->count(),
+                'done'      => $tasks->filter(fn($t) => in_array($t->status, $doneStatuses) || (!empty($t->social_posted_at) && !is_null($t->social_posted_at)))->count(),
                 'p_low'     => $tasks->where('priority', 'low')->count(),
                 'p_medium'  => $tasks->where('priority', 'medium')->count(),
                 'p_high'    => $tasks->where('priority', 'high')->count(),
@@ -633,8 +729,12 @@ class ReportsController extends Controller
             }
             usort($projects, fn($a, $b) => strcmp($a['first_date'], $b['first_date']));
 
-            // Active tasks
-            $active = $tasks->whereNotIn('status', $doneStatuses)->sortBy('deadline')->values()
+            // Active tasks — a social-only task is "done" when social_posted_at is set
+            $active = $tasks->filter(function ($t) use ($doneStatuses) {
+                $isSocialDone = !is_null($t->social_posted_at);
+                $isStatusDone = in_array($t->status, $doneStatuses);
+                return !$isStatusDone && !$isSocialDone;
+            })->sortBy('deadline')->values()
                 ->map(fn($t) => [
                     'title'     => $t->title,
                     'project'   => $t->project?->name ?? '—',
@@ -646,6 +746,7 @@ class ReportsController extends Controller
                 ])->values()->all();
 
             // Monthly trend (last 6 months from tasks collection)
+            // For social-only tasks, "completed" means social_posted_at is set (not task status)
             $monthlyLabels    = [];
             $monthlyCreated   = [];
             $monthlyCompleted = [];
@@ -653,18 +754,40 @@ class ReportsController extends Controller
                 $month              = $now->copy()->subMonths($i);
                 $monthlyLabels[]    = $month->format('M Y');
                 $monthlyCreated[]   = $tasks->filter(fn($t) => $t->created_at->year === $month->year && $t->created_at->month === $month->month)->count();
-                $monthlyCompleted[] = $tasks->filter(fn($t) => in_array($t->status, $doneStatuses) && $t->updated_at->year === $month->year && $t->updated_at->month === $month->month)->count();
+                $monthlyCompleted[] = $tasks->filter(function ($t) use ($doneStatuses, $month) {
+                    // Regular done: status in doneStatuses, keyed by updated_at
+                    if (in_array($t->status, $doneStatuses) && $t->updated_at->year === $month->year && $t->updated_at->month === $month->month) {
+                        return true;
+                    }
+                    // Social done: social_posted_at is set, keyed by social_posted_at
+                    if (!is_null($t->social_posted_at) && !in_array($t->status, $doneStatuses)) {
+                        $postedAt = $t->social_posted_at instanceof \Illuminate\Support\Carbon
+                            ? $t->social_posted_at
+                            : \Illuminate\Support\Carbon::parse($t->social_posted_at);
+                        return $postedAt->year === $month->year && $postedAt->month === $month->month;
+                    }
+                    return false;
+                })->count();
             }
             $bestMonthCount = !empty($monthlyCompleted) ? max($monthlyCompleted) : 0;
             $bestMonthIdx   = $bestMonthCount > 0 ? array_search($bestMonthCount, $monthlyCompleted) : null;
             $bestMonthLabel = $bestMonthIdx !== null ? explode(' ', $monthlyLabels[$bestMonthIdx])[0] : '—';
 
             // On-time rate (done tasks where deadline was not missed at completion)
-            $onTimeDone = $tasks->filter(fn($t) =>
-                in_array($t->status, $doneStatuses) &&
-                $t->deadline &&
-                $t->updated_at->lte($t->deadline)
-            )->count();
+            $onTimeDone = $tasks->filter(function ($t) use ($doneStatuses) {
+                // Regular task: done by status and updated before deadline
+                if (in_array($t->status, $doneStatuses) && $t->deadline && $t->updated_at->lte($t->deadline)) {
+                    return true;
+                }
+                // Social-only task: posted before deadline
+                if (!is_null($t->social_posted_at) && !in_array($t->status, $doneStatuses) && $t->deadline) {
+                    $postedAt = $t->social_posted_at instanceof \Illuminate\Support\Carbon
+                        ? $t->social_posted_at
+                        : \Illuminate\Support\Carbon::parse($t->social_posted_at);
+                    return $postedAt->lte($t->deadline);
+                }
+                return false;
+            })->count();
             $onTimeRate = $totals['done'] > 0 ? round($onTimeDone / $totals['done'] * 100) : 0;
 
             $result[] = [

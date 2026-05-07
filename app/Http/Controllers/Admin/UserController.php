@@ -699,6 +699,190 @@ class UserController extends Controller
         ));
     }
 
+    public function taskModal(User $user, Request $request)
+    {
+        $doneStatuses    = ['approved', 'delivered', 'archived'];
+        $nonDoneStatuses = ['draft', 'assigned', 'viewed', 'in_progress', 'submitted', 'revision_requested'];
+        $isAdminOrManager = in_array($user->role, ['admin', 'manager']);
+
+        $filter = $request->input('filter', 'total');
+
+        // Admin/manager dashboards are built from tasks they *created*, not assigned to them
+        if ($isAdminOrManager) {
+            $base = Task::where('created_by', $user->id)->with(['project:id,name']);
+
+            if ($filter === 'date') {
+                $date    = $request->input('date');
+                $taskIds = TaskLog::where('user_id', $user->id)
+                    ->whereDate('created_at', $date)
+                    ->pluck('task_id')->unique();
+                $base = Task::whereIn('id', $taskIds)->with(['project:id,name']);
+            } elseif ($filter === 'social') {
+                $base = Task::where('social_assigned_to', $user->id)
+                    ->whereNull('social_posted_at')
+                    ->with(['project:id,name']);
+            } else {
+                match ($filter) {
+                    'completed'   => $base->whereIn('status', $doneStatuses),
+                    'in_progress' => $base->where('status', 'in_progress'),
+                    'in_review'   => $base->whereIn('status', ['submitted', 'revision_requested']),
+                    'overdue'     => $base->whereNotNull('deadline')->where('deadline', '<', now())->whereIn('status', $nonDoneStatuses),
+                    default       => $base->whereNotIn('status', $doneStatuses),
+                };
+            }
+        } else {
+            // Regular users: scoped to tasks assigned to them (assigned_to or task_assignees)
+            $base = Task::where(function ($q) use ($user) {
+                $q->where('assigned_to', $user->id)
+                  ->orWhereExists(fn($sub) => $sub->selectRaw('1')
+                      ->from('task_assignees')
+                      ->whereColumn('task_assignees.task_id', 'tasks.id')
+                      ->where('task_assignees.user_id', $user->id));
+            })->with(['project:id,name']);
+
+            if ($filter === 'social') {
+                $base = Task::where('social_assigned_to', $user->id)
+                    ->whereNull('social_posted_at')
+                    ->with(['project:id,name']);
+            } elseif ($filter === 'date') {
+                $date    = $request->input('date');
+                $taskIds = TaskLog::where('user_id', $user->id)
+                    ->whereDate('created_at', $date)
+                    ->pluck('task_id')->unique();
+                $base = Task::whereIn('id', $taskIds)->with(['project:id,name']);
+            } elseif ($filter === 'total') {
+                $base = Task::where(function ($q) use ($user, $nonDoneStatuses) {
+                    $q->where(function ($q2) use ($user) {
+                        $q2->where('assigned_to', $user->id)
+                           ->orWhereExists(fn($sub) => $sub->selectRaw('1')
+                               ->from('task_assignees')
+                               ->whereColumn('task_assignees.task_id', 'tasks.id')
+                               ->where('task_assignees.user_id', $user->id));
+                    })->whereIn('status', $nonDoneStatuses)
+                      ->orWhere(fn($q3) => $q3
+                          ->where('social_assigned_to', $user->id)
+                          ->whereNull('social_posted_at'));
+                })->with(['project:id,name']);
+            } elseif ($filter === 'completed') {
+                $base = Task::where(function ($q) use ($user, $doneStatuses) {
+                    $q->where(function ($q2) use ($user) {
+                        $q2->where('assigned_to', $user->id)
+                           ->orWhereExists(fn($sub) => $sub->selectRaw('1')
+                               ->from('task_assignees')
+                               ->whereColumn('task_assignees.task_id', 'tasks.id')
+                               ->where('task_assignees.user_id', $user->id));
+                    })->whereIn('status', $doneStatuses)
+                      ->orWhere(fn($q3) => $q3
+                          ->where('social_assigned_to', $user->id)
+                          ->whereNotNull('social_posted_at'));
+                })->with(['project:id,name']);
+            } elseif ($filter === 'received') {
+                $inheritedIds  = \App\Models\TaskTransfer::where('to_user_id', $user->id)->pluck('task_id');
+                $reassignedIds = TaskLog::where('action', 'task_reassigned')
+                    ->whereIn('task_id', Task::where(function ($q) use ($user) {
+                        $q->where('assigned_to', $user->id)
+                          ->orWhereExists(fn($sub) => $sub->selectRaw('1')
+                              ->from('task_assignees')
+                              ->whereColumn('task_assignees.task_id', 'tasks.id')
+                              ->where('task_assignees.user_id', $user->id));
+                    })->pluck('id'))
+                    ->get()
+                    ->filter(fn($log) => ($log->metadata['to_user_id'] ?? null) == $user->id)
+                    ->pluck('task_id');
+                $base->whereIn('id', $inheritedIds->merge($reassignedIds)->unique());
+            } else {
+                match ($filter) {
+                    'in_progress' => $base->where('status', 'in_progress'),
+                    'in_review'   => $base->whereIn('status', ['submitted', 'revision_requested']),
+                    'overdue'     => $base->where('deadline', '<', now())->whereIn('status', $nonDoneStatuses),
+                    default       => $base->whereIn('status', $nonDoneStatuses),
+                };
+            }
+        }
+
+        $statusMeta = [
+            'draft'              => ['label' => 'Draft',       'color' => '#6B7280', 'bg' => '#F3F4F6'],
+            'assigned'           => ['label' => 'Assigned',    'color' => '#4F46E5', 'bg' => '#EEF2FF'],
+            'viewed'             => ['label' => 'Viewed',      'color' => '#0369A1', 'bg' => '#E0F2FE'],
+            'in_progress'        => ['label' => 'In Progress', 'color' => '#D97706', 'bg' => '#FEF3C7'],
+            'submitted'          => ['label' => 'In Review',   'color' => '#7C3AED', 'bg' => '#EDE9FE'],
+            'revision_requested' => ['label' => 'Revision',    'color' => '#DC2626', 'bg' => '#FEE2E2'],
+            'approved'           => ['label' => 'Approved',    'color' => '#059669', 'bg' => '#D1FAE5'],
+            'delivered'          => ['label' => 'Delivered',   'color' => '#047857', 'bg' => '#ECFDF5'],
+            'archived'           => ['label' => 'Archived',    'color' => '#6B7280', 'bg' => '#F3F4F6'],
+        ];
+        $priorityMeta = [
+            'high'   => ['label' => 'High', 'color' => '#EF4444'],
+            'medium' => ['label' => 'Med',  'color' => '#F59E0B'],
+            'low'    => ['label' => 'Low',  'color' => '#10B981'],
+        ];
+
+        $tasks = $base->orderByRaw('CASE WHEN deadline IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('deadline')
+            ->take(50)
+            ->get()
+            ->map(function ($task) use ($statusMeta, $priorityMeta) {
+                $sm = $statusMeta[$task->status] ?? ['label' => ucfirst($task->status ?? ''), 'color' => '#6B7280', 'bg' => '#F3F4F6'];
+                $pm = $priorityMeta[$task->priority] ?? null;
+                return [
+                    'id'           => $task->id,
+                    'title'        => $task->title,
+                    'status'       => $task->status,
+                    'statusLabel'  => $sm['label'],
+                    'statusColor'  => $sm['color'],
+                    'statusBg'     => $sm['bg'],
+                    'priority'     => $task->priority,
+                    'priorityMeta' => $pm,
+                    'deadline'     => $task->deadline?->format(config('app.date_format', 'M d, Y')),
+                    'isOverdue'    => $task->deadline && $task->deadline->isPast() && !in_array($task->status, ['approved', 'delivered', 'archived']),
+                    'project'      => $task->project?->name,
+                    'url'          => route('admin.tasks.show', $task->id),
+                ];
+            });
+
+        return response()->json(['tasks' => $tasks, 'filter' => $filter]);
+    }
+
+    public function taskHistory(User $user, Request $request)
+    {
+        $filter = $request->input('filter', 'all');
+
+        $pendingStatuses    = ['draft', 'assigned', 'viewed', 'revision_requested'];
+        $inProgressStatuses = ['in_progress', 'paused', 'submitted'];
+        $completedStatuses  = ['approved', 'delivered', 'archived'];
+
+        $isAdminOrManager = in_array($user->role, ['admin', 'manager']);
+
+        // Admin/manager: tasks they created. Regular users: tasks assigned to them.
+        $baseQuery = $isAdminOrManager
+            ? Task::where('created_by', $user->id)
+            : $user->tasks();
+
+        $base = $baseQuery->with('project');
+
+        match ($filter) {
+            'pending'     => $base->whereIn('status', $pendingStatuses),
+            'in_progress' => $base->whereIn('status', $inProgressStatuses),
+            'completed'   => $base->whereIn('status', $completedStatuses),
+            default       => null,
+        };
+
+        $tasks = $base->latest()->paginate(15)->withQueryString();
+
+        $freshBase = fn() => $isAdminOrManager
+            ? Task::where('created_by', $user->id)
+            : $user->tasks();
+
+        $counts = [
+            'all'         => $freshBase()->count(),
+            'pending'     => $freshBase()->whereIn('status', $pendingStatuses)->count(),
+            'in_progress' => $freshBase()->whereIn('status', $inProgressStatuses)->count(),
+            'completed'   => $freshBase()->whereIn('status', $completedStatuses)->count(),
+        ];
+
+        return view('admin.users.task_history', compact('user', 'tasks', 'filter', 'counts'));
+    }
+
     public function performance(User $user)
     {
         $doneStatuses = ['delivered', 'approved', 'archived'];

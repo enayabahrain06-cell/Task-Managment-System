@@ -23,10 +23,34 @@ use Illuminate\Support\Facades\Storage;
 
 class TaskController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $tasks = auth()->user()->tasks()->with('project')->latest()->paginate(15);
-        return view('user.tasks.index', compact('tasks'));
+        $user   = auth()->user();
+        $filter = $request->input('filter', 'all');
+
+        $pendingStatuses    = ['draft', 'assigned', 'viewed', 'revision_requested'];
+        $inProgressStatuses = ['in_progress', 'paused', 'submitted'];
+        $completedStatuses  = ['approved', 'delivered', 'archived'];
+
+        $base = $user->tasks()->with('project');
+
+        match ($filter) {
+            'pending'     => $base->whereIn('status', $pendingStatuses),
+            'in_progress' => $base->whereIn('status', $inProgressStatuses),
+            'completed'   => $base->whereIn('status', $completedStatuses),
+            default       => null,
+        };
+
+        $tasks = $base->latest()->paginate(15)->withQueryString();
+
+        $counts = [
+            'all'         => $user->tasks()->count(),
+            'pending'     => $user->tasks()->whereIn('status', $pendingStatuses)->count(),
+            'in_progress' => $user->tasks()->whereIn('status', $inProgressStatuses)->count(),
+            'completed'   => $user->tasks()->whereIn('status', $completedStatuses)->count(),
+        ];
+
+        return view('user.tasks.index', compact('tasks', 'filter', 'counts'));
     }
 
     // ── Timer helpers ────────────────────────────────────────────────────────
