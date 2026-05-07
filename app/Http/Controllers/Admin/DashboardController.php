@@ -488,6 +488,9 @@ class DashboardController extends Controller
         // --- Meetings count ---
         $scheduledMeetings = CalendarEvent::where('start_date', '>=', now())->count();
 
+        // --- Awaiting customer approval ---
+        $awaitingCustomerCount = Task::where('status', 'pending_customer')->count();
+
         // --- Member status stats ---
         $totalMembers    = User::count();
         $activeMembers   = User::where('role', '!=', 'admin')->count();
@@ -601,7 +604,7 @@ class DashboardController extends Controller
         return view('admin.dashboard', compact(
             'users', 'projects', 'allUsers', 'allProjects', 'customers', 'recentTasks', 'customerTaskDist', 'unassignedTaskCount',
             'overdueTasks', 'completedTasks', 'totalTasks', 'activeProjects',
-            'scheduledMeetings',
+            'scheduledMeetings', 'awaitingCustomerCount',
             'weekLabels', 'weekData',
             'taskStats',
             'workloadLabels', 'workloadData',

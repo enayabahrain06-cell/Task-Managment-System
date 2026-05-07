@@ -9,7 +9,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 /* ── Responsive grid helpers ── */
-.stats-grid   { display: -ms-grid; display:grid; -ms-grid-columns: 1fr 16px 1fr 16px 1fr 16px 1fr; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }
+.stats-grid   { display: -ms-grid; display:grid; -ms-grid-columns: 1fr 16px 1fr 16px 1fr 16px 1fr 16px 1fr; grid-template-columns:repeat(5,1fr); gap:16px; margin-bottom:20px; }
 .charts-grid  { display: -ms-grid; display:grid; -ms-grid-columns: 3fr 16px 2fr;  grid-template-columns:3fr 2fr; gap:16px; margin-bottom:16px; align-items:stretch; }
 .bottom-grid  { display: -ms-grid; display:grid; -ms-grid-columns: 3fr 16px 2fr;  grid-template-columns:3fr 2fr; gap:16px; margin-bottom:0; align-items:stretch; }
 
@@ -25,6 +25,9 @@
 }
 @media(max-width:1024px){
     .charts-grid, .bottom-grid { -ms-grid-columns:1fr; grid-template-columns:1fr; }
+}
+@media(max-width:1100px){
+    .stats-grid { grid-template-columns:repeat(3,1fr); }
 }
 @media(max-width:700px){
     .stats-grid { -ms-grid-columns:1fr 16px 1fr; grid-template-columns:repeat(2,1fr); }
@@ -923,6 +926,23 @@ function dashModals() {
             <span data-rv="managerCount">{{ $managerCount }}</span> mgr ·
             <span data-rv="userCount">{{ $userCount }}</span> users
         </p>
+    </div>
+    </a>
+
+    {{-- Awaiting Customer Approval --}}
+    <a href="{{ route('admin.approvals.index') }}?tab=awaiting" style="text-decoration:none;display:flex;">
+    <div class="stat-card anim-card anim-d5" style="flex:1;background:linear-gradient(135deg,#B45309,#D97706);cursor:pointer;transition:transform .15s,box-shadow .15s;"
+         onmouseover="this.style.transform='translateY(-3px)';this.style.boxShadow='0 8px 24px rgba(180,83,9,.4)'"
+         onmouseout="this.style.transform='';this.style.boxShadow=''"
+         onmousedown="this.style.transform='translateY(-1px)'"
+         onmouseup="this.style.transform='translateY(-3px)'">
+        <div class="stat-card-blob"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+            <p class="stat-card-label">Awaiting Customer</p>
+            <button class="stat-card-menu" onclick="event.preventDefault()"><i class="fas fa-ellipsis-h"></i></button>
+        </div>
+        <p class="stat-card-value stat-count" data-target="{{ $awaitingCustomerCount }}" data-rv="awaitingCustomerCount">{{ $awaitingCustomerCount }}</p>
+        <p class="stat-card-sub">Pending Customer Approval</p>
     </div>
     </a>
 
