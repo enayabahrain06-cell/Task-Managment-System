@@ -38,12 +38,18 @@ class ReportsController extends Controller
         $doneStatuses     = ['approved', 'delivered'];
         $nonDoneStatuses  = ['draft', 'assigned', 'viewed', 'in_progress', 'paused', 'submitted', 'revision_requested'];
 
+        // Determine role of the selected user (needed by scoped helpers below)
+        $selectedUserRole     = $userId ? User::where('id', $userId)->value('role') : null;
+        $isRegularUserFilter  = $userId && $selectedUserRole === 'user';
+        $isAdminManagerFilter = $userId && in_array($selectedUserRole, ['admin', 'manager']);
+
         // ── Base scoped query helper ───────────────────────────────────────────
-        $scoped = function () use ($from, $projectId, $customerId, $userId) {
+        $scoped = function () use ($from, $projectId, $customerId, $userId, $isAdminManagerFilter) {
             return Task::when($from, fn($q) => $q->where('tasks.created_at', '>=', $from))
                        ->when($projectId, fn($q) => $q->where('tasks.project_id', $projectId))
                        ->when($customerId, fn($q) => $q->where('tasks.customer_id', $customerId))
-                       ->when($userId, fn($q) => $q->where(function ($uq) use ($userId) {
+                       ->when($userId && $isAdminManagerFilter, fn($q) => $q->where('tasks.created_by', $userId))
+                       ->when($userId && !$isAdminManagerFilter, fn($q) => $q->where(function ($uq) use ($userId) {
                            $uq->where('tasks.assigned_to', $userId)
                               ->orWhereExists(fn($sub) => $sub->selectRaw('1')
                                   ->from('task_assignees')
@@ -51,10 +57,6 @@ class ReportsController extends Controller
                                   ->where('task_assignees.user_id', $userId));
                        }));
         };
-
-        // Determine if the selected user is a regular user (role = 'user')
-        $selectedUserRole = $userId ? User::where('id', $userId)->value('role') : null;
-        $isRegularUserFilter = $userId && $selectedUserRole === 'user';
 
         // ── Social-only scoped query helper (only active when filtering by a regular user) ──
         $socialScoped = function () use ($from, $projectId, $customerId, $userId, $isRegularUserFilter) {
@@ -86,7 +88,8 @@ class ReportsController extends Controller
                               ->whereIn('status', $nonDoneStatuses)
                               ->when($projectId, fn($q) => $q->where('project_id', $projectId))
                               ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
-                              ->when($userId, fn($q) => $q->where(function ($uq) use ($userId) {
+                              ->when($userId && $isAdminManagerFilter, fn($q) => $q->where('created_by', $userId))
+                              ->when($userId && !$isAdminManagerFilter, fn($q) => $q->where(function ($uq) use ($userId) {
                                   $uq->where('assigned_to', $userId)
                                      ->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId));
                               }))
@@ -104,7 +107,8 @@ class ReportsController extends Controller
         $activeProjects = Project::where('status', 'active')->where('is_quick', false)
             ->when($projectId, fn($q) => $q->where('id', $projectId))
             ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
-            ->when($userId, fn($q) => $q->whereHas('tasks', fn($tq) => $tq->where(function ($uq) use ($userId) {
+            ->when($userId && $isAdminManagerFilter, fn($q) => $q->whereHas('tasks', fn($tq) => $tq->where('created_by', $userId)))
+            ->when($userId && !$isAdminManagerFilter, fn($q) => $q->whereHas('tasks', fn($tq) => $tq->where(function ($uq) use ($userId) {
                 $uq->where('assigned_to', $userId)
                    ->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId));
             })))
@@ -114,7 +118,8 @@ class ReportsController extends Controller
         $pendingReview = Task::where('status', 'submitted')
                              ->when($projectId, fn($q) => $q->where('project_id', $projectId))
                              ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
-                             ->when($userId, fn($q) => $q->where(function ($uq) use ($userId) {
+                             ->when($userId && $isAdminManagerFilter, fn($q) => $q->where('created_by', $userId))
+                             ->when($userId && !$isAdminManagerFilter, fn($q) => $q->where(function ($uq) use ($userId) {
                                  $uq->where('assigned_to', $userId)
                                     ->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId));
                              }))
@@ -166,7 +171,8 @@ class ReportsController extends Controller
             ->where('is_quick', false)
             ->when($projectId, fn($q) => $q->where('id', $projectId))
             ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
-            ->when($userId, fn($q) => $q->whereHas('tasks', fn($tq) => $tq->where(function ($uq) use ($userId) {
+            ->when($userId && $isAdminManagerFilter, fn($q) => $q->whereHas('tasks', fn($tq) => $tq->where('created_by', $userId)))
+            ->when($userId && !$isAdminManagerFilter, fn($q) => $q->whereHas('tasks', fn($tq) => $tq->where(function ($uq) use ($userId) {
                 $uq->where('assigned_to', $userId)
                    ->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId));
             })))
@@ -314,7 +320,8 @@ class ReportsController extends Controller
                                   ->whereMonth('created_at', $month->month)
                                   ->when($projectId, fn($q) => $q->where('project_id', $projectId))
                                   ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
-                                  ->when($userId, fn($q) => $q->where(function ($uq) use ($userId) {
+                                  ->when($userId && $isAdminManagerFilter, fn($q) => $q->where('created_by', $userId))
+                                  ->when($userId && !$isAdminManagerFilter, fn($q) => $q->where(function ($uq) use ($userId) {
                                       $uq->where('assigned_to', $userId)->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId));
                                   }))
                                   ->count();
@@ -335,7 +342,8 @@ class ReportsController extends Controller
                                     ->whereIn('status', $doneStatuses)
                                     ->when($projectId, fn($q) => $q->where('project_id', $projectId))
                                     ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
-                                    ->when($userId, fn($q) => $q->where(function ($uq) use ($userId) {
+                                    ->when($userId && $isAdminManagerFilter, fn($q) => $q->where('created_by', $userId))
+                                    ->when($userId && !$isAdminManagerFilter, fn($q) => $q->where(function ($uq) use ($userId) {
                                         $uq->where('assigned_to', $userId)->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId));
                                     }))
                                     ->count();
@@ -365,7 +373,8 @@ class ReportsController extends Controller
                                      ->whereMonth('created_at', $month->month)
                                      ->when($projectId, fn($q) => $q->where('project_id', $projectId))
                                      ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
-                                     ->when($userId, fn($q) => $q->where(function ($uq) use ($userId) {
+                                     ->when($userId && $isAdminManagerFilter, fn($q) => $q->where('created_by', $userId))
+                                     ->when($userId && !$isAdminManagerFilter, fn($q) => $q->where(function ($uq) use ($userId) {
                                          $uq->where('assigned_to', $userId)->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId));
                                      }))
                                      ->count();
@@ -386,7 +395,8 @@ class ReportsController extends Controller
                                   ->whereIn('status', $doneStatuses)
                                   ->when($projectId, fn($q) => $q->where('project_id', $projectId))
                                   ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
-                                  ->when($userId, fn($q) => $q->where(function ($uq) use ($userId) {
+                                  ->when($userId && $isAdminManagerFilter, fn($q) => $q->where('created_by', $userId))
+                                  ->when($userId && !$isAdminManagerFilter, fn($q) => $q->where(function ($uq) use ($userId) {
                                       $uq->where('assigned_to', $userId)->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId));
                                   }))
                                   ->count();
@@ -411,7 +421,8 @@ class ReportsController extends Controller
             ->when($from, fn($q) => $q->where('tasks.created_at', '>=', $from))
             ->when($projectId, fn($q) => $q->where('project_id', $projectId))
             ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
-            ->when($userId, fn($q) => $q->where(function ($uq) use ($userId) {
+            ->when($userId && $isAdminManagerFilter, fn($q) => $q->where('created_by', $userId))
+            ->when($userId && !$isAdminManagerFilter, fn($q) => $q->where(function ($uq) use ($userId) {
                 $uq->where('assigned_to', $userId)->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId));
             }))
             ->orderBy('deadline')
