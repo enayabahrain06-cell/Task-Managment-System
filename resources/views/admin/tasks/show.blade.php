@@ -882,14 +882,24 @@
                                 $spWaMsg    = 'Social media post for “' . $task->title . '”' . ($spUrl ? ($spNl . $spNl . $spUrl) : '');
                                 $spMailBody = $spUrl ? urlencode('Social media post for “' . $task->title . '”' . $spNl . $spNl . $spUrl) : '';
                             @endphp
-                            <div style=”display:inline-flex;align-items:center;gap:8px;vertical-align:middle;position:relative;”
+                            <div style=”display:inline-flex;align-items:center;gap:8px;vertical-align:middle;”
                                  x-data=”{
                                     open: false,
+                                    dropX: 0,
+                                    dropY: 0,
                                     waPanel: false,
                                     waPhone: '',
                                     waSending: false,
                                     waResult: null,
                                     copied: false,
+                                    openDrop(btn) {
+                                        const r = btn.getBoundingClientRect();
+                                        this.dropX = r.left;
+                                        this.dropY = r.bottom + 8;
+                                        this.waPanel = false;
+                                        this.waResult = null;
+                                        this.open = true;
+                                    },
                                     async doWaSend() {
                                         const digits = this.waPhone.replace(/\D/g,'');
                                         if (!digits) return;
@@ -908,11 +918,13 @@
                                             this.waSending = false;
                                         }
                                     }
-                                 }”>
+                                 }”
+                                 @scroll.window=”open=false”
+                                 @keydown.escape.window=”open=false; waPanel=false;”>
 
                                 {{-- Square brand icon button --}}
-                                <button @click=”@if($spIsEdit || !$spUrl) null @else open=!open; if(!open){ waPanel=false; waResult=null; } @endif”
-                                        style=”width:38px;height:38px;border-radius:10px;background:{{ $spBg }};color:{{ $spIconClr }};border:none;{{ ($spIsEdit || !$spUrl) ? 'cursor:default;opacity:.65;' : 'cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.22);transition:transform .12s,box-shadow .12s,opacity .12s;' }}display:flex;align-items:center;justify-content:center;flex-shrink:0;”
+                                <button @click=”@if($spIsEdit || !$spUrl) null @else open ? (open=false) : openDrop($el) @endif”
+                                        style=”width:38px;height:38px;border-radius:10px;background:{{ $spBg }};color:{{ $spIconClr }};border:none;{{ ($spIsEdit || !$spUrl) ? 'cursor:default;opacity:.65;' : 'cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.22);transition:transform .12s,box-shadow .12s;' }}display:flex;align-items:center;justify-content:center;flex-shrink:0;”
                                         title=”{{ $spIsEdit ? 'Edited' : $spLabel }}”
                                         @if(!$spIsEdit && $spUrl)
                                             onmouseover=”this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 16px rgba(0,0,0,.28)'”
@@ -922,15 +934,17 @@
                                 </button>
 
                                 @if(!$spIsEdit && $spUrl)
-                                {{-- Dropdown --}}
-                                <div x-show=”open” @click.outside=”open=false; waPanel=false; waResult=null;”
+                                {{-- Dropdown — teleported to <body> so it escapes overflow:hidden parents --}}
+                                <template x-teleport=”body”>
+                                <div x-show=”open”
+                                     @click.outside=”open=false; waPanel=false; waResult=null;”
                                      x-transition:enter=”transition ease-out duration-150”
-                                     x-transition:enter-start=”opacity-0 translate-y-1 scale-95”
-                                     x-transition:enter-end=”opacity-100 translate-y-0 scale-100”
+                                     x-transition:enter-start=”opacity-0 scale-95”
+                                     x-transition:enter-end=”opacity-100 scale-100”
                                      x-transition:leave=”transition ease-in duration-100”
                                      x-transition:leave-start=”opacity-100 scale-100”
                                      x-transition:leave-end=”opacity-0 scale-95”
-                                     style=”position:absolute;top:calc(100% + 8px);left:0;z-index:999;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.14);min-width:220px;overflow:hidden;”>
+                                     :style=”`position:fixed;top:${dropY}px;left:${dropX}px;z-index:99999;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);min-width:220px;overflow:hidden;`”>
 
                                     {{-- Dropdown header --}}
                                     <div style=”padding:10px 14px;background:{{ $spBg }};display:flex;align-items:center;gap:9px;”>
@@ -1029,6 +1043,7 @@
                                     </template>
 
                                 </div>
+                                </template>{{-- /x-teleport --}}
                                 @endif
 
                             </div>
