@@ -58,7 +58,7 @@
 ════════════════════════════════ --}}
 <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:20px;">
     @foreach([
-        ['Total Tasks',   $total + $pendingSocialPosts, 'fa-list-check', '#EEF2FF', '#4F46E5', 'Assigned to you', 'F0F0F0', 'total', '#4F46E5'],
+        ['Total Tasks',   ($total - $completed) + $pendingSocialPosts, 'fa-list-check', '#EEF2FF', '#4F46E5', 'Assigned to you', 'F0F0F0', 'total', '#4F46E5'],
         ['Completed',     $completed + $completedSocialPosts, 'fa-circle-check', '#F0FDF4', '#16A34A', $rate.'% rate'.($completedSocialPosts>0?' · '.$completedSocialPosts.' post'.($completedSocialPosts>1?'s':'').' done':''), 'F0F0F0', 'completed', '#16A34A'],
         ['In Progress',   $inProgress,      'fa-spinner',              '#FFFBEB', '#D97706', 'Active tasks',      'F0F0F0', 'in_progress', '#D97706'],
         ['In Review',     $pendingApproval, 'fa-hourglass-half',       '#F5F3FF', '#7C3AED', 'Awaiting approval', 'F0F0F0', 'in_review', '#7C3AED'],
@@ -120,7 +120,7 @@
                 <p id="usmCount" style="font-size:11px;color:#9CA3AF;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px;"></p>
                 <div id="usmItems" style="max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;"></div>
                 <div style="padding-top:14px;border-top:1px solid #F3F4F6;margin-top:12px;">
-                    <a href="{{ route('user.tasks.index') }}" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#6366F1;text-decoration:none;">
+                    <a href="{{ $isPreview ? route('admin.users.task-history', $previewUser) : route('user.tasks.index') }}" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#6366F1;text-decoration:none;">
                         View all tasks <i class="fas fa-arrow-right" style="font-size:10px;"></i>
                     </a>
                 </div>
@@ -136,7 +136,7 @@
 </style>
 
 <script>
-var _usmUrl = '{{ route('user.tasks.modal') }}';
+var _usmUrl = '{{ $isPreview ? route('admin.users.tasks-modal', $previewUser) : route('user.tasks.modal') }}';
 
 function openUserStatsModal(filter, label, color, bg, icon, date) {
     var modal   = document.getElementById('userStatsModal');
