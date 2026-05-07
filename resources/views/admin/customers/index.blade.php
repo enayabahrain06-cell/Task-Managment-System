@@ -5,7 +5,22 @@
 <div x-data="{
         modal: {{ $errors->any() ? 'true' : 'false' }},
         view: localStorage.getItem('customers_view') || 'table',
-        setView(v) { this.view = v; localStorage.setItem('customers_view', v); }
+        setView(v) { this.view = v; localStorage.setItem('customers_view', v); },
+        deleteModal: false,
+        deleteCustomerName: '',
+        deleteAction: '',
+        deleteConfirmInput: '',
+        openDeleteModal(name, action) {
+            this.deleteCustomerName = name;
+            this.deleteAction = action;
+            this.deleteConfirmInput = '';
+            this.deleteModal = true;
+        },
+        get deleteConfirmed() { return this.deleteConfirmInput.trim() === this.deleteCustomerName.trim(); },
+        submitDelete() {
+            if (!this.deleteConfirmed) return;
+            this.$refs.deleteForm.submit();
+        }
      }" style="max-width:1100px;">
 
     {{-- Header --}}
@@ -148,14 +163,11 @@
                                    style="padding:5px 10px;border-radius:7px;background:#EEF2FF;color:#4F46E5;font-size:12px;font-weight:600;text-decoration:none;">
                                     <i class="fas fa-pencil" style="font-size:11px;"></i>
                                 </a>
-                                <form method="POST" action="{{ route('admin.customers.destroy', $customer) }}"
-                                      onsubmit="return confirm('Delete customer {{ addslashes($customer->name) }}? Projects and tasks linked to them will not be deleted.')">
-                                    @csrf @method('DELETE')
-                                    <button type="submit"
-                                            style="padding:5px 10px;border-radius:7px;background:#FEF2F2;color:#DC2626;border:none;font-size:12px;font-weight:600;cursor:pointer;">
-                                        <i class="fas fa-trash" style="font-size:11px;"></i>
-                                    </button>
-                                </form>
+                                <button type="button"
+                                        @click="openDeleteModal(@js($customer->name), '{{ route('admin.customers.destroy', $customer) }}')"
+                                        style="padding:5px 10px;border-radius:7px;background:#FEF2F2;color:#DC2626;border:none;font-size:12px;font-weight:600;cursor:pointer;">
+                                    <i class="fas fa-trash" style="font-size:11px;"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -210,14 +222,11 @@
                            style="width:28px;height:28px;border-radius:7px;background:#EEF2FF;color:#4F46E5;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:11px;">
                             <i class="fas fa-pencil"></i>
                         </a>
-                        <form method="POST" action="{{ route('admin.customers.destroy', $customer) }}"
-                              onsubmit="return confirm('Delete customer {{ addslashes($customer->name) }}? Projects and tasks linked to them will not be deleted.')">
-                            @csrf @method('DELETE')
-                            <button type="submit"
-                                    style="width:28px;height:28px;border-radius:7px;background:#FEF2F2;color:#DC2626;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </form>
+                        <button type="button"
+                                @click="openDeleteModal(@js($customer->name), '{{ route('admin.customers.destroy', $customer) }}')"
+                                style="width:28px;height:28px;border-radius:7px;background:#FEF2F2;color:#DC2626;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </div>
                 </div>
 
@@ -402,6 +411,96 @@
         </div>
         </div>{{-- /centering wrapper --}}
     </div>{{-- /modal --}}
+
+    {{-- Delete Confirmation Modal --}}
+    <div x-show="deleteModal" x-cloak
+         style="position:fixed;inset:0;z-index:2000;"
+         @keydown.escape.window="deleteModal=false">
+        <div @click="deleteModal=false"
+             style="position:absolute;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(3px);"></div>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;pointer-events:none;">
+        <div x-show="deleteModal"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95"
+             style="background:#fff;border-radius:20px;width:100%;max-width:440px;box-shadow:0 24px 70px rgba(0,0,0,.22);overflow:hidden;pointer-events:auto;">
+
+            {{-- Header --}}
+            <div style="padding:20px 24px 16px;background:linear-gradient(135deg,#FFF5F5,#fff);border-bottom:1px solid #FEE2E2;display:flex;align-items:center;gap:12px;">
+                <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#EF4444,#DC2626);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(239,68,68,.3);">
+                    <i class="fas fa-trash" style="color:#fff;font-size:15px;"></i>
+                </div>
+                <div>
+                    <h3 style="font-size:16px;font-weight:700;color:#111827;margin:0;">Delete Customer</h3>
+                    <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">This action cannot be undone</p>
+                </div>
+                <button @click="deleteModal=false" type="button"
+                        style="margin-left:auto;width:30px;height:30px;border-radius:8px;background:#F3F4F6;border:none;cursor:pointer;color:#6B7280;font-size:13px;display:flex;align-items:center;justify-content:center;"
+                        onmouseover="this.style.background='#FEE2E2';this.style.color='#DC2626'" onmouseout="this.style.background='#F3F4F6';this.style.color='#6B7280'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            {{-- Body --}}
+            <div style="padding:20px 24px 24px;">
+                <p style="font-size:13px;color:#374151;margin:0 0 6px;">You are about to permanently delete:</p>
+                <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:10px 14px;margin-bottom:18px;">
+                    <p style="font-size:14px;font-weight:700;color:#991B1B;margin:0;" x-text="deleteCustomerName"></p>
+                </div>
+                <p style="font-size:13px;color:#6B7280;margin:0 0 14px;">
+                    Projects and tasks linked to this customer will <strong>not</strong> be deleted, but they will lose the customer association.
+                </p>
+
+                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:7px;">
+                    Type the customer name to confirm:
+                    <span style="font-weight:700;color:#DC2626;" x-text="' ' + deleteCustomerName"></span>
+                </label>
+                <input type="text"
+                       x-model="deleteConfirmInput"
+                       @keydown.enter.prevent="submitDelete()"
+                       placeholder="Type customer name here…"
+                       style="width:100%;padding:10px 13px;border:1.5px solid #FECACA;background:#FFF5F5;border-radius:10px;font-size:13px;color:#111827;outline:none;box-sizing:border-box;transition:border-color .15s,box-shadow .15s;"
+                       :style="deleteConfirmInput.length > 0
+                           ? (deleteConfirmed ? 'border-color:#EF4444;box-shadow:0 0 0 3px rgba(239,68,68,.12);' : 'border-color:#FCA5A5;')
+                           : ''"
+                       onfocus="this.style.borderColor='#F87171'" onblur="if(!this.value) this.style.borderColor='#FECACA'">
+
+                {{-- Mismatch hint --}}
+                <p x-show="deleteConfirmInput.length > 0 && !deleteConfirmed"
+                   style="font-size:11px;color:#EF4444;margin:5px 0 0;display:flex;align-items:center;gap:4px;">
+                    <i class="fas fa-circle-exclamation" style="font-size:10px;"></i>
+                    Name doesn't match — check spelling and capitalisation.
+                </p>
+
+                {{-- Hidden form --}}
+                <form x-ref="deleteForm" method="POST" :action="deleteAction">
+                    @csrf
+                    @method('DELETE')
+                </form>
+
+                <div style="display:flex;gap:10px;margin-top:20px;">
+                    <button type="button" @click="deleteModal=false"
+                            style="flex:1;padding:10px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;"
+                            onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                        Cancel
+                    </button>
+                    <button type="button" @click="submitDelete()"
+                            :disabled="!deleteConfirmed"
+                            :style="deleteConfirmed
+                                ? 'flex:2;padding:10px;background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(239,68,68,.3);transition:opacity .15s;'
+                                : 'flex:2;padding:10px;background:#FEE2E2;color:#FCA5A5;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:not-allowed;'">
+                        <i class="fas fa-trash" style="font-size:12px;"></i>
+                        Delete Customer
+                    </button>
+                </div>
+            </div>
+
+        </div>
+        </div>
+    </div>{{-- /delete modal --}}
 
 </div>
 @endsection
