@@ -912,56 +912,76 @@
 
                                 {{-- Square brand icon button --}}
                                 <button @click=”@if($spIsEdit || !$spUrl) null @else open=!open; if(!open){ waPanel=false; waResult=null; } @endif”
-                                        style=”width:34px;height:34px;border-radius:9px;background:{{ $spBg }};color:{{ $spIconClr }};border:none;{{ ($spIsEdit || !$spUrl) ? 'cursor:default;opacity:.75;' : 'cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2);transition:opacity .15s;' }}display:flex;align-items:center;justify-content:center;flex-shrink:0;”
-                                        title=”{{ $spLabel }}”
-                                        @if(!$spIsEdit && $spUrl) onmouseover=”this.style.opacity='.8'” onmouseout=”this.style.opacity='1'” @endif>
-                                    <i class=”{{ $spIcon }}” style=”font-size:15px;”></i>
+                                        style=”width:38px;height:38px;border-radius:10px;background:{{ $spBg }};color:{{ $spIconClr }};border:none;{{ ($spIsEdit || !$spUrl) ? 'cursor:default;opacity:.65;' : 'cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.22);transition:transform .12s,box-shadow .12s,opacity .12s;' }}display:flex;align-items:center;justify-content:center;flex-shrink:0;”
+                                        title=”{{ $spIsEdit ? 'Edited' : $spLabel }}”
+                                        @if(!$spIsEdit && $spUrl)
+                                            onmouseover=”this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 16px rgba(0,0,0,.28)'”
+                                            onmouseout=”this.style.transform='';this.style.boxShadow='0 3px 10px rgba(0,0,0,.22)'”
+                                        @endif>
+                                    <i class=”{{ $spIcon }}” style=”font-size:16px;”></i>
                                 </button>
-
-                                @if($spUrl)
-                                <span style=”font-size:11px;color:#374151;background:#F9FAFB;border:1px solid #E5E7EB;padding:2px 8px;border-radius:6px;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;” title=”{{ $spUrl }}”>
-                                    {{ Str::limit($spUrl, 42) }}
-                                </span>
-                                @endif
 
                                 @if(!$spIsEdit && $spUrl)
                                 {{-- Dropdown --}}
                                 <div x-show=”open” @click.outside=”open=false; waPanel=false; waResult=null;”
-                                     x-transition:enter=”transition ease-out duration-100”
-                                     x-transition:enter-start=”opacity-0 scale-95”
-                                     x-transition:enter-end=”opacity-100 scale-100”
-                                     style=”position:absolute;top:calc(100% + 6px);left:0;z-index:999;background:#fff;border:1.5px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.13);min-width:210px;overflow:hidden;”>
+                                     x-transition:enter=”transition ease-out duration-150”
+                                     x-transition:enter-start=”opacity-0 translate-y-1 scale-95”
+                                     x-transition:enter-end=”opacity-100 translate-y-0 scale-100”
+                                     x-transition:leave=”transition ease-in duration-100”
+                                     x-transition:leave-start=”opacity-100 scale-100”
+                                     x-transition:leave-end=”opacity-0 scale-95”
+                                     style=”position:absolute;top:calc(100% + 8px);left:0;z-index:999;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.14);min-width:220px;overflow:hidden;”>
 
                                     {{-- Dropdown header --}}
-                                    <div style=”padding:9px 14px;background:{{ $spBg }};display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.15);”>
-                                        <i class=”{{ $spIcon }}” style=”color:{{ $spIconClr }};font-size:14px;flex-shrink:0;”></i>
-                                        <span style=”font-size:12px;font-weight:700;color:{{ $spIconClr }};”>{{ $spLabel }}</span>
+                                    <div style=”padding:10px 14px;background:{{ $spBg }};display:flex;align-items:center;gap:9px;”>
+                                        <i class=”{{ $spIcon }}” style=”color:{{ $spIconClr }};font-size:15px;flex-shrink:0;”></i>
+                                        <div>
+                                            <p style=”font-size:12px;font-weight:700;color:{{ $spIconClr }};margin:0;”>{{ $spLabel }}</p>
+                                            <p style=”font-size:10px;color:{{ $spIconClr }};opacity:.75;margin:1px 0 0;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;”>{{ Str::limit($spUrl, 34) }}</p>
+                                        </div>
                                     </div>
 
                                     {{-- Main menu --}}
                                     <template x-if=”!waPanel”>
-                                        <div>
+                                        <div style=”padding:4px 0;”>
+                                            {{-- Copy Link --}}
                                             <button @click=”navigator.clipboard.writeText('{{ $spUrl }}').then(()=>{ copied=true; setTimeout(()=>copied=false,1800); })”
-                                                    style=”width:100%;padding:9px 14px;background:none;border:none;border-bottom:1px solid #F3F4F6;text-align:left;font-size:12px;color:#374151;cursor:pointer;display:flex;align-items:center;gap:8px;”
-                                                    onmouseover=”this.style.background='#F9FAFB'” onmouseout=”this.style.background='none'”>
-                                                <i class=”fa fa-copy” style=”color:#6366F1;width:14px;” x-show=”!copied”></i>
-                                                <i class=”fa fa-check” style=”color:#059669;width:14px;” x-show=”copied”></i>
-                                                <span x-text=”copied ? 'Copied!' : 'Copy Link'”>Copy Link</span>
+                                                    style=”width:100%;padding:9px 16px;background:none;border:none;text-align:left;font-size:13px;color:#374151;cursor:pointer;display:flex;align-items:center;gap:10px;”
+                                                    onmouseover=”this.style.background='#F5F3FF'” onmouseout=”this.style.background='none'”>
+                                                <span style=”width:26px;height:26px;border-radius:7px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;”>
+                                                    <i class=”fa fa-copy” style=”color:#6366F1;font-size:11px;” x-show=”!copied”></i>
+                                                    <i class=”fa fa-check” style=”color:#059669;font-size:11px;” x-show=”copied”></i>
+                                                </span>
+                                                <span x-text=”copied ? 'Copied!' : 'Copy Link'” style=”font-weight:600;”>Copy Link</span>
                                             </button>
-                                            <a href=”{{ $spUrl }}” target=”_blank”
-                                               style=”display:flex;align-items:center;gap:8px;padding:9px 14px;font-size:12px;color:#374151;text-decoration:none;border-bottom:1px solid #F3F4F6;”
-                                               onmouseover=”this.style.background='#F9FAFB'” onmouseout=”this.style.background='none'”>
-                                                <i class=”fa fa-external-link-alt” style=”color:#6366F1;width:14px;”></i> Open Link
-                                            </a>
+                                            {{-- Send via WhatsApp --}}
                                             <button @click=”waPanel=true; waPhone=''; waResult=null; $nextTick(()=>$refs.waInput?.focus())”
-                                                    style=”width:100%;padding:9px 14px;background:none;border:none;border-bottom:1px solid #F3F4F6;text-align:left;font-size:12px;color:#374151;cursor:pointer;display:flex;align-items:center;gap:8px;”
-                                                    onmouseover=”this.style.background='#F9FAFB'” onmouseout=”this.style.background='none'”>
-                                                <i class=”fab fa-whatsapp” style=”color:#25D366;width:14px;font-size:13px;”></i> Send via WhatsApp
+                                                    style=”width:100%;padding:9px 16px;background:none;border:none;text-align:left;font-size:13px;color:#374151;cursor:pointer;display:flex;align-items:center;gap:10px;”
+                                                    onmouseover=”this.style.background='#F0FDF4'” onmouseout=”this.style.background='none'”>
+                                                <span style=”width:26px;height:26px;border-radius:7px;background:#DCFCE7;display:flex;align-items:center;justify-content:center;flex-shrink:0;”>
+                                                    <i class=”fab fa-whatsapp” style=”color:#25D366;font-size:13px;”></i>
+                                                </span>
+                                                <span style=”font-weight:600;”>Send via WhatsApp</span>
                                             </button>
+                                            {{-- Send via Email --}}
                                             <a href=”mailto:?subject={{ urlencode($task->title) }}&body={{ $spMailBody }}”
-                                               style=”display:flex;align-items:center;gap:8px;padding:9px 14px;font-size:12px;color:#374151;text-decoration:none;”
+                                               style=”display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:13px;color:#374151;text-decoration:none;”
+                                               onmouseover=”this.style.background='#EFF6FF'” onmouseout=”this.style.background='none'”>
+                                                <span style=”width:26px;height:26px;border-radius:7px;background:#DBEAFE;display:flex;align-items:center;justify-content:center;flex-shrink:0;”>
+                                                    <i class=”fa fa-envelope” style=”color:#3B82F6;font-size:11px;”></i>
+                                                </span>
+                                                <span style=”font-weight:600;”>Send via Email</span>
+                                            </a>
+                                            {{-- Divider --}}
+                                            <div style=”height:1px;background:#F3F4F6;margin:4px 0;”></div>
+                                            {{-- Open in New Window --}}
+                                            <a href=”{{ $spUrl }}” target=”_blank” rel=”noopener”
+                                               style=”display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:13px;color:#374151;text-decoration:none;”
                                                onmouseover=”this.style.background='#F9FAFB'” onmouseout=”this.style.background='none'”>
-                                                <i class=”fa fa-envelope” style=”color:#6366F1;width:14px;”></i> Send via Email
+                                                <span style=”width:26px;height:26px;border-radius:7px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;”>
+                                                    <i class=”fa fa-arrow-up-right-from-square” style=”color:#6B7280;font-size:11px;”></i>
+                                                </span>
+                                                <span style=”font-weight:600;”>Open in New Window</span>
                                             </a>
                                         </div>
                                     </template>
