@@ -189,44 +189,61 @@
     <div style="display:flex;flex-direction:column;gap:20px;">
 
         {{-- Task details --}}
-        <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
-            <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 16px;display:flex;align-items:center;gap:8px;">
-                <i class="fa fa-circle-info" style="color:#6366F1;"></i> Task Details
-            </h2>
-            @if($task->description)
-            <p style="font-size:14px;color:#6B7280;line-height:1.7;margin:0 0 16px;padding-bottom:16px;border-bottom:1px solid #F3F4F6;">{{ $task->description }}</p>
-            @endif
-
-            {{-- Tags --}}
-            @if($task->tags)
-            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #F3F4F6;">
-                @if($task->task_type)
-                <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:#F3F4F6;color:#374151;"><i class="fa fa-tag" style="margin-right:3px;color:#9CA3AF;"></i>{{ $task->task_type }}</span>
-                @endif
-                @foreach($task->tags as $tag)
-                <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:#EEF2FF;color:#4F46E5;">#{{ $tag }}</span>
-                @endforeach
+        <div style="border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(109,40,217,.13);border:1px solid rgba(109,40,217,.12);">
+            {{-- Purple gradient header --}}
+            <div style="background:linear-gradient(135deg,#312e81,#4c1d95,#5b21b6);padding:16px 24px;display:flex;align-items:center;gap:10px;">
+                <span style="font-size:20px;line-height:1;">💡</span>
+                <h2 style="font-size:16px;font-weight:700;color:#fff;margin:0;letter-spacing:.02em;">Task Details</h2>
             </div>
-            @endif
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                <div style="background:#FAFAFA;border-radius:10px;padding:12px;">
-                    <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;font-weight:600;margin:0 0 4px;">Project</p>
-                    <p style="font-size:14px;font-weight:600;color:#111827;margin:0;">{{ $task->project->name }}</p>
-                </div>
-                <div style="background:#FAFAFA;border-radius:10px;padding:12px;">
-                    <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;font-weight:600;margin:0 0 4px;">Deadline</p>
-                    <p style="font-size:14px;font-weight:600;color:{{ $isOverdue ? '#DC2626' : '#111827' }};margin:0;">
-                        {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
-                        <span style="font-size:11px;font-weight:400;color:{{ $isOverdue ? '#DC2626' : '#9CA3AF' }};"> — {{ $task->deadline->diffForHumans() }}</span>
-                    </p>
-                </div>
-                @if($task->reviewer)
-                <div style="background:#FAFAFA;border-radius:10px;padding:12px;">
-                    <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;font-weight:600;margin:0 0 4px;">Reviewer</p>
-                    <p style="font-size:14px;font-weight:600;color:#111827;margin:0;">{{ $task->reviewer->name }}</p>
+            {{-- Warm golden body --}}
+            <div style="background:linear-gradient(160deg,#fffbeb,#fef3c7,#fde68a22);padding:24px;">
+                @if($task->description)
+                <div style="font-size:20px;font-weight:500;color:#1c1917;line-height:1.65;margin:0 0 24px;padding-bottom:20px;border-bottom:1px solid rgba(217,119,6,.25);">
+                    {!! nl2br(e($task->description)) !!}
                 </div>
                 @endif
+
+                {{-- Tags --}}
+                @if($task->tags)
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid rgba(217,119,6,.2);">
+                    @if($task->task_type)
+                    <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(255,255,255,.7);color:#374151;"><i class="fa fa-tag" style="margin-right:3px;color:#92400E;"></i>{{ $task->task_type }}</span>
+                    @endif
+                    @foreach($task->tags as $tag)
+                    <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:#EEF2FF;color:#4F46E5;">#{{ $tag }}</span>
+                    @endforeach
+                </div>
+                @endif
+
+                {{-- Info row --}}
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    <div style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
+                        <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:5px;">
+                            <i class="fa fa-folder" style="font-size:9px;"></i> Project
+                        </p>
+                        <p style="font-size:13px;font-weight:700;color:#1c1917;margin:0;">{{ $task->project->name }}</p>
+                    </div>
+
+                    <div style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
+                        <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:5px;">
+                            <i class="fa fa-calendar" style="font-size:9px;"></i> Deadline
+                        </p>
+                        <p style="font-size:13px;font-weight:700;color:{{ $isOverdue ? '#DC2626' : '#1c1917' }};margin:0;">
+                            {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
+                            <span style="font-size:11px;font-weight:400;color:{{ $isOverdue ? '#DC2626' : '#92400e' }};display:block;margin-top:2px;">{{ $task->deadline->diffForHumans() }}</span>
+                        </p>
+                    </div>
+
+                    @if($task->reviewer)
+                    <div style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
+                        <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:5px;">
+                            <i class="fa fa-eye" style="font-size:9px;"></i> Reviewer
+                        </p>
+                        <p style="font-size:13px;font-weight:700;color:#1c1917;margin:0;">{{ $task->reviewer->name }}</p>
+                    </div>
+                    @endif
+                </div>
             </div>
         </div>
 

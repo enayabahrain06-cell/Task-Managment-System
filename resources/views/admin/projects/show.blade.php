@@ -41,9 +41,6 @@
             </a>
             @endif
         </div>
-        @if($project->description)
-        <p style="font-size:13px;color:#9CA3AF;margin:4px 0 0;">{{ $project->description }}</p>
-        @endif
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         @php $pStatus = ['active'=>['#D1FAE5','#059669'],'completed'=>['#F3F4F6','#6B7280'],'overdue'=>['#FEE2E2','#DC2626']][$project->status] ?? ['#F3F4F6','#6B7280']; @endphp
@@ -116,6 +113,21 @@
     </div>
     @endif
 </div>
+
+{{-- Project Brief --}}
+@if($project->description)
+<div style="border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(109,40,217,.13);border:1px solid rgba(109,40,217,.12);margin-bottom:24px;">
+    <div style="background:linear-gradient(135deg,#312e81,#4c1d95,#5b21b6);padding:16px 24px;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:20px;line-height:1;">📋</span>
+        <h2 style="font-size:16px;font-weight:700;color:#fff;margin:0;letter-spacing:.02em;">Project Brief</h2>
+    </div>
+    <div style="background:linear-gradient(160deg,#fffbeb,#fef3c7,#fde68a22);padding:24px;">
+        <div style="font-size:18px;font-weight:500;color:#1c1917;line-height:1.65;">
+            {!! nl2br(e($project->description)) !!}
+        </div>
+    </div>
+</div>
+@endif
 
 {{-- Task list --}}
 <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">

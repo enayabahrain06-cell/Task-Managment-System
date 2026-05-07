@@ -415,71 +415,98 @@
     <div style="display:flex;flex-direction:column;gap:20px;">
 
         {{-- Task Details --}}
-        <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
-            <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 16px;display:flex;align-items:center;gap:8px;">
-                <i class="fa fa-circle-info" style="color:#6366F1;"></i> Task Details
-            </h2>
-            @if($task->description)
-            <p style="font-size:14px;color:#6B7280;line-height:1.7;margin:0 0 16px;padding-bottom:16px;border-bottom:1px solid #F3F4F6;">{{ $task->description }}</p>
-            @endif
-            {{-- Assignees with roles --}}
-            @if($task->assignees->count())
-            <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #F3F4F6;">
-                <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;font-weight:600;margin:0 0 10px;">Assignees</p>
-                <div style="display:flex;flex-direction:column;gap:8px;">
-                    @foreach($task->assignees as $a)
-                    <div style="display:flex;align-items:center;gap:10px;background:#FAFAFA;border-radius:10px;padding:10px 12px;">
-                        <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">
-                            {{ strtoupper(substr($a->name, 0, 1)) }}
-                        </div>
-                        <div style="flex:1;min-width:0;">
-                            <p style="font-size:13px;font-weight:600;color:#111827;margin:0;">{{ $a->name }}</p>
-                            @if($a->pivot->role_in_task)
-                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">{{ $a->pivot->role_in_task }}</p>
-                            @endif
-                        </div>
-                        <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px;background:#EEF2FF;color:#4F46E5;">{{ ucfirst($a->role) }}</span>
-                    </div>
-                    @endforeach
-                </div>
+        <div style="border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(109,40,217,.13);border:1px solid rgba(109,40,217,.12);">
+            {{-- Purple gradient header --}}
+            <div style="background:linear-gradient(135deg,#312e81,#4c1d95,#5b21b6);padding:16px 24px;display:flex;align-items:center;gap:10px;">
+                <span style="font-size:20px;line-height:1;">💡</span>
+                <h2 style="font-size:16px;font-weight:700;color:#fff;margin:0;letter-spacing:.02em;">Task Details</h2>
             </div>
-            @endif
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                @if($task->assignees->isEmpty())
-                <div style="background:#FAFAFA;border-radius:10px;padding:12px;">
-                    <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;font-weight:600;margin:0 0 4px;">Assignee</p>
-                    <p style="font-size:14px;font-weight:600;color:#111827;margin:0;">{{ $task->assignee->name ?? '—' }}</p>
+            {{-- Warm golden body --}}
+            <div style="background:linear-gradient(160deg,#fffbeb,#fef3c7,#fde68a22);padding:24px;">
+                @if($task->description)
+                <div style="font-size:20px;font-weight:500;color:#1c1917;line-height:1.65;margin:0 0 24px;padding-bottom:20px;border-bottom:1px solid rgba(217,119,6,.25);">
+                    {!! nl2br(e($task->description)) !!}
                 </div>
                 @endif
-                <div style="background:#FAFAFA;border-radius:10px;padding:12px;">
-                    <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;font-weight:600;margin:0 0 4px;">Deadline</p>
-                    <p style="font-size:14px;font-weight:600;color:{{ $isOverdue ? '#DC2626' : '#111827' }};margin:0;">
-                        {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
-                    </p>
-                </div>
-                @if($task->reviewer)
-                <div style="background:#FAFAFA;border-radius:10px;padding:12px;">
-                    <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;font-weight:600;margin:0 0 4px;">Reviewer</p>
-                    <p style="font-size:14px;font-weight:600;color:#111827;margin:0;">{{ $task->reviewer->name }}</p>
-                </div>
-                @endif
-                <div style="background:#FAFAFA;border-radius:10px;padding:12px;">
-                    <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;font-weight:600;margin:0 0 4px;">First Viewed</p>
-                    <p style="font-size:13px;font-weight:500;color:#111827;margin:0;">
-                        {{ $task->first_viewed_at ? $task->first_viewed_at->diffForHumans() : 'Not yet opened' }}
-                    </p>
-                </div>
-                <div style="background:#FAFAFA;border-radius:10px;padding:12px;">
-                    <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;font-weight:600;margin:0 0 4px;">Versions</p>
-                    <p style="font-size:14px;font-weight:600;color:#111827;margin:0;">{{ $task->submissions->count() }}</p>
-                </div>
-                @if($task->creator)
-                <div style="background:#FAFAFA;border-radius:10px;padding:12px;">
-                    <p style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#9CA3AF;font-weight:600;margin:0 0 4px;">Created By</p>
-                    <p style="font-size:14px;font-weight:600;color:#111827;margin:0;">{{ $task->creator->name }}</p>
+
+                {{-- Assignees with roles (multi-assignee) --}}
+                @if($task->assignees->count())
+                <div style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid rgba(217,119,6,.2);">
+                    <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 10px;">Assignees</p>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        @foreach($task->assignees as $a)
+                        <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.7);border-radius:10px;padding:10px 12px;backdrop-filter:blur(4px);">
+                            <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">
+                                {{ strtoupper(substr($a->name, 0, 1)) }}
+                            </div>
+                            <div style="flex:1;min-width:0;">
+                                <p style="font-size:13px;font-weight:600;color:#111827;margin:0;">{{ $a->name }}</p>
+                                @if($a->pivot->role_in_task)
+                                <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">{{ $a->pivot->role_in_task }}</p>
+                                @endif
+                            </div>
+                            <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px;background:#EEF2FF;color:#4F46E5;">{{ ucfirst($a->role) }}</span>
+                        </div>
+                        @endforeach
+                    </div>
                 </div>
                 @endif
+
+                {{-- Info row --}}
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                    @if($task->assignees->isEmpty())
+                    <div style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
+                        <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:5px;">
+                            <i class="fa fa-user" style="font-size:9px;"></i> Assignee
+                        </p>
+                        <p style="font-size:13px;font-weight:700;color:#1c1917;margin:0;">{{ $task->assignee->name ?? '—' }}</p>
+                    </div>
+                    @endif
+
+                    <div style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
+                        <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:5px;">
+                            <i class="fa fa-calendar" style="font-size:9px;"></i> Deadline
+                        </p>
+                        <p style="font-size:13px;font-weight:700;color:{{ $isOverdue ? '#DC2626' : '#1c1917' }};margin:0;">
+                            {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
+                        </p>
+                    </div>
+
+                    @if($task->creator)
+                    <div style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
+                        <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:5px;">
+                            <i class="fa fa-pencil" style="font-size:9px;"></i> Created By
+                        </p>
+                        <p style="font-size:13px;font-weight:700;color:#1c1917;margin:0;">{{ $task->creator->name }}</p>
+                    </div>
+                    @endif
+
+                    @if($task->reviewer)
+                    <div style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
+                        <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:5px;">
+                            <i class="fa fa-eye" style="font-size:9px;"></i> Reviewer
+                        </p>
+                        <p style="font-size:13px;font-weight:700;color:#1c1917;margin:0;">{{ $task->reviewer->name }}</p>
+                    </div>
+                    @endif
+
+                    <div style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
+                        <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:5px;">
+                            <i class="fa fa-clock" style="font-size:9px;"></i> First Viewed
+                        </p>
+                        <p style="font-size:12px;font-weight:600;color:#1c1917;margin:0;">
+                            {{ $task->first_viewed_at ? $task->first_viewed_at->diffForHumans() : 'Not yet' }}
+                        </p>
+                    </div>
+
+                    <div style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
+                        <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:5px;">
+                            <i class="fa fa-layer-group" style="font-size:9px;"></i> Versions
+                        </p>
+                        <p style="font-size:13px;font-weight:700;color:#1c1917;margin:0;">{{ $task->submissions->count() }}</p>
+                    </div>
+                </div>
             </div>
         </div>
 
