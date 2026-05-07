@@ -173,6 +173,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::get('approvals',                        [AdminTaskApprovalController::class, 'index'])->name('approvals.index');
     Route::post('tasks/{task}/approve',            [AdminTaskApprovalController::class, 'approve'])->name('tasks.approve');
     Route::post('tasks/{task}/reject',             [AdminTaskApprovalController::class, 'reject'])->name('tasks.reject');
+    Route::post('tasks/{task}/pending-customer',   [AdminTaskApprovalController::class, 'pendingCustomer'])->name('tasks.pending-customer');
     Route::post('tasks/{task}/social-assign',      [AdminTaskApprovalController::class, 'assignSocial'])->name('tasks.social.assign');
     Route::post('tasks/{task}/social-required',    [AdminTaskApprovalController::class, 'setSocialRequired'])->name('tasks.social.required');
     Route::put('social-posts/{post}',              [AdminTaskApprovalController::class, 'updateSocialPost'])->name('social-posts.update');

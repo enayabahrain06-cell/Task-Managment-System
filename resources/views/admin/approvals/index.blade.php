@@ -509,7 +509,7 @@
             {{-- ── Footer actions ── --}}
             <template x-if="qvTask">
             <div style="padding:14px 24px;border-top:1px solid #F0F2F8;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#FAFBFF;flex-shrink:0;">
-                <button @click="openApprovalModal({ id: qvTask.id, title: qvTask.title, assignee: qvTask.assignee, url: qvTask.approve_url, customer_name: qvTask.customer_name, customer_email: null, customer_phone: qvTask.customer_phone, submission_url: qvTask.submission_url, submission_name: qvTask.submission_name }); closeQuickView()"
+                <button @click="openApprovalModal({ id: qvTask.id, title: qvTask.title, assignee: qvTask.assignee, url: qvTask.approve_url, pending_customer_url: qvTask.pending_customer_url, customer_name: qvTask.customer_name, customer_email: null, customer_phone: qvTask.customer_phone, submission_url: qvTask.submission_url, submission_name: qvTask.submission_name }); closeQuickView()"
                         style="display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(16,185,129,.28);transition:opacity .15s;white-space:nowrap;"
                         onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
                     <i class="fas fa-circle-check" style="font-size:12px;"></i> Approve
@@ -583,7 +583,7 @@
             </div>
 
             {{-- Form body --}}
-            <form :action="approvalTask ? approvalTask.url : '#'" method="POST" style="padding:20px 26px 24px;overflow-y:auto;">
+            <form x-ref="approvalForm" :action="approvalTask ? approvalTask.url : '#'" method="POST" style="padding:20px 26px 24px;overflow-y:auto;">
                 @csrf
 
                 {{-- Approval note --}}
@@ -868,20 +868,30 @@
                 </div>
 
                 {{-- Footer buttons --}}
-                <div style="display:flex;gap:10px;margin-top:20px;">
-                    <button type="button" @click="approvalModal=false"
-                            style="flex:1;padding:11px;background:#F3F4F6;color:#374151;border:none;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;"
-                            onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
-                        Cancel
+                <div style="display:flex;flex-direction:column;gap:8px;margin-top:20px;">
+                    {{-- Awaiting Customer Approval button --}}
+                    <button type="button"
+                            @click="$refs.approvalForm.action = approvalTask.pending_customer_url; $refs.approvalForm.requestSubmit()"
+                            style="width:100%;padding:10px;background:linear-gradient(135deg,#FEF3C7,#FDE68A);color:#92400E;border:1.5px solid #FCD34D;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:opacity .15s;"
+                            onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                        <i class="fas fa-hourglass-half" style="font-size:12px;"></i>
+                        Awaiting Customer Approval
                     </button>
-                    <button type="submit"
-                            :disabled="approvalSocial === 'yes' && !approvalSocialUser"
-                            :style="(approvalSocial === 'yes' && !approvalSocialUser)
-                                ? 'flex:2;padding:11px;background:#D1FAE5;color:#6EE7B7;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:7px;'
-                                : 'flex:2;padding:11px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 4px 14px rgba(16,185,129,.35);transition:opacity .15s;'">
-                        <i class="fas fa-circle-check"></i>
-                        <span x-text="approvalSocial === 'yes' && !approvalSocialUser ? 'Select a team member first' : 'Confirm Approval'"></span>
-                    </button>
+                    <div style="display:flex;gap:10px;">
+                        <button type="button" @click="approvalModal=false"
+                                style="flex:1;padding:11px;background:#F3F4F6;color:#374151;border:none;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;"
+                                onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                :disabled="approvalSocial === 'yes' && !approvalSocialUser"
+                                :style="(approvalSocial === 'yes' && !approvalSocialUser)
+                                    ? 'flex:2;padding:11px;background:#D1FAE5;color:#6EE7B7;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:7px;'
+                                    : 'flex:2;padding:11px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 4px 14px rgba(16,185,129,.35);transition:opacity .15s;'">
+                            <i class="fas fa-circle-check"></i>
+                            <span x-text="approvalSocial === 'yes' && !approvalSocialUser ? 'Select a team member first' : 'Confirm Approval'"></span>
+                        </button>
+                    </div>
                 </div>
             </form>
 
@@ -978,6 +988,14 @@
         <i class="fas fa-clock" style="font-size:11px;"></i> Pending
         @if($tasks->total() > 0)
         <span style="background:linear-gradient(135deg,#EDE9FE,#DDD6FE);color:#7C3AED;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">{{ $tasks->total() }}</span>
+        @endif
+    </a>
+    <a href="{{ route('admin.approvals.index') }}?tab=awaiting"
+       style="display:flex;align-items:center;gap:7px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all .18s;
+              {{ $tab === 'awaiting' ? 'background:#fff;color:#D97706;box-shadow:0 2px 8px rgba(217,119,6,.12);' : 'color:#6B7280;' }}">
+        <i class="fas fa-hourglass-half" style="font-size:11px;"></i> Awaiting Customer
+        @if($awaitingTasks->total() > 0)
+        <span style="background:{{ $tab === 'awaiting' ? 'linear-gradient(135deg,#FEF3C7,#FDE68A)' : '#F3F4F6' }};color:{{ $tab === 'awaiting' ? '#92400E' : '#6B7280' }};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">{{ $awaitingTasks->total() }}</span>
         @endif
     </a>
     <a href="{{ route('admin.approvals.index') }}?tab=history"
@@ -1136,15 +1154,16 @@
             </div>
             <div class="flex items-center gap-1" onclick="event.stopPropagation()">
                 <button @click.stop="openApprovalModal({
-                            id:              {{ $task->id }},
-                            title:           @js($task->title),
-                            assignee:        @js($task->assignee->name ?? 'Unknown'),
-                            url:             '{{ route('admin.tasks.approve', $task) }}',
-                            customer_name:   @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
-                            customer_email:  @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
-                            customer_phone:  @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
-                            submission_url:  @js($latestSub?->file_path ? url(Storage::url($latestSub->file_path)) : null),
-                            submission_name: @js($latestSub?->original_filename ?? ($latestSub?->file_path ? basename($latestSub->file_path) : null)),
+                            id:                   {{ $task->id }},
+                            title:                @js($task->title),
+                            assignee:             @js($task->assignee->name ?? 'Unknown'),
+                            url:                  '{{ route('admin.tasks.approve', $task) }}',
+                            pending_customer_url: '{{ route('admin.tasks.pending-customer', $task) }}',
+                            customer_name:        @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
+                            customer_email:       @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
+                            customer_phone:       @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
+                            submission_url:       @js($latestSub?->file_path ? url(Storage::url($latestSub->file_path)) : null),
+                            submission_name:      @js($latestSub?->original_filename ?? ($latestSub?->file_path ? basename($latestSub->file_path) : null)),
                         })"
                         class="w-6 h-6 rounded-lg bg-green-50 hover:bg-green-100 flex items-center justify-center text-green-500 hover:text-green-600 transition"
                         title="Approve">
@@ -1307,8 +1326,9 @@
                 'versions'      => $task->submissions->count(),
                 'submission_url'  => $latestSub2?->file_path ? url(Storage::url($latestSub2->file_path)) : null,
                 'submission_name' => $latestSub2?->original_filename ?? ($latestSub2?->file_path ? basename($latestSub2->file_path) : null),
-                'approve_url'   => route('admin.tasks.approve', $task),
-                'reject_url'    => route('admin.tasks.reject', $task),
+                'approve_url'          => route('admin.tasks.approve', $task),
+                'pending_customer_url' => route('admin.tasks.pending-customer', $task),
+                'reject_url'           => route('admin.tasks.reject', $task),
                 'task_url'      => route('admin.tasks.show', $task),
                 'customer_name' => $task->customer?->name ?? $task->project?->customer?->name ?? 'Customer',
                 'customer_phone'=> $task->customer?->phone ?? $task->project?->customer?->phone ?? null,
@@ -1358,15 +1378,16 @@
                     {{-- Approve --}}
                     <button type="button"
                             @click="openApprovalModal({
-                                id:              {{ $task->id }},
-                                title:           @js($task->title),
-                                assignee:        @js($task->assignee->name ?? 'Unknown'),
-                                url:             '{{ route('admin.tasks.approve', $task) }}',
-                                customer_name:   @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
-                                customer_email:  @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
-                                customer_phone:  @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
-                                submission_url:  @js($latestSub2?->file_path ? url(Storage::url($latestSub2->file_path)) : null),
-                                submission_name: @js($latestSub2?->original_filename ?? ($latestSub2?->file_path ? basename($latestSub2->file_path) : null)),
+                                id:                   {{ $task->id }},
+                                title:                @js($task->title),
+                                assignee:             @js($task->assignee->name ?? 'Unknown'),
+                                url:                  '{{ route('admin.tasks.approve', $task) }}',
+                                pending_customer_url: '{{ route('admin.tasks.pending-customer', $task) }}',
+                                customer_name:        @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
+                                customer_email:       @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
+                                customer_phone:       @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
+                                submission_url:       @js($latestSub2?->file_path ? url(Storage::url($latestSub2->file_path)) : null),
+                                submission_name:      @js($latestSub2?->original_filename ?? ($latestSub2?->file_path ? basename($latestSub2->file_path) : null)),
                             })"
                             style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(16,185,129,.25);transition:opacity .15s;white-space:nowrap;"
                             onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"
@@ -1513,6 +1534,109 @@
 @endif
 
 @endif {{-- end pending tab --}}
+
+{{-- ══════════════════════ AWAITING CUSTOMER TAB ══════════════════════ --}}
+@if($tab === 'awaiting')
+<div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:14px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:10px;">
+    <i class="fas fa-hourglass-half" style="color:#D97706;font-size:15px;flex-shrink:0;"></i>
+    <p style="font-size:13px;color:#92400E;margin:0;">These tasks are waiting for <strong>customer approval</strong> before being finalized. You can approve or request a revision once the customer responds.</p>
+</div>
+
+@if($awaitingTasks->isEmpty())
+<div style="text-align:center;padding:60px 20px;">
+    <div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#FEF3C7,#FDE68A);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+        <i class="fas fa-hourglass-half" style="color:#D97706;font-size:22px;"></i>
+    </div>
+    <p style="font-size:15px;font-weight:700;color:#111827;margin:0 0 6px;">No tasks awaiting customer approval</p>
+    <p style="font-size:13px;color:#9CA3AF;margin:0;">Tasks marked as "Awaiting Customer Approval" will appear here.</p>
+</div>
+@else
+<div style="overflow-x:auto;border-radius:14px;border:1px solid #F3F4F6;">
+<table class="pend-table" style="background:#fff;">
+    <thead>
+        <tr>
+            <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;background:#FAFBFF;border-radius:14px 0 0 0;">Task</th>
+            <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;background:#FAFBFF;">Assignee</th>
+            <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;background:#FAFBFF;">Project</th>
+            <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;background:#FAFBFF;">Priority</th>
+            <th style="padding:12px 16px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;background:#FAFBFF;">Deadline</th>
+            <th style="padding:12px 16px;text-align:right;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;background:#FAFBFF;border-radius:0 14px 0 0;">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach($awaitingTasks as $task)
+    @php
+        $latestSubAw  = $task->submissions->first();
+        $isOverdueAw  = $task->deadline && $task->deadline->isPast();
+        $pbgAw = match($task->priority) { 'high' => '#FEE2E2', 'medium' => '#FEF3C7', default => '#D1FAE5' };
+        $pcoAw = match($task->priority) { 'high' => '#DC2626', 'medium' => '#D97706', default => '#059669' };
+    @endphp
+    <tr>
+        <td style="max-width:220px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#FCD34D,#F59E0B);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;">
+                    {{ strtoupper(substr($task->assignee->name ?? 'U', 0, 1)) }}
+                </div>
+                <a href="{{ route('admin.tasks.show', $task) }}" style="font-size:13px;font-weight:600;color:#111827;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;display:block;" title="{{ $task->title }}">{{ $task->title }}</a>
+            </div>
+        </td>
+        <td><span style="font-size:12px;font-weight:600;color:#D97706;">{{ $task->assignee->name ?? '—' }}</span></td>
+        <td><span style="font-size:12px;color:#6B7280;"><i class="fas fa-folder" style="font-size:10px;color:#FCD34D;margin-right:4px;"></i>{{ $task->project->name ?? '—' }}</span></td>
+        <td><span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:{{ $pbgAw }};color:{{ $pcoAw }};white-space:nowrap;">{{ ucfirst($task->priority) }}</span></td>
+        <td>
+            @if($task->deadline)
+            <span style="font-size:12px;{{ $isOverdueAw ? 'color:#DC2626;font-weight:600;' : 'color:#6B7280;' }}white-space:nowrap;">
+                {{ $isOverdueAw ? '⚠ ' : '' }}{{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
+            </span>
+            @else
+            <span style="font-size:12px;color:#D1D5DB;">—</span>
+            @endif
+        </td>
+        <td style="text-align:right;white-space:nowrap;">
+            <div style="display:inline-flex;align-items:center;gap:5px;">
+                {{-- Approve --}}
+                <button type="button"
+                        @click="openApprovalModal({
+                            id:                   {{ $task->id }},
+                            title:                @js($task->title),
+                            assignee:             @js($task->assignee->name ?? 'Unknown'),
+                            url:                  '{{ route('admin.tasks.approve', $task) }}',
+                            pending_customer_url: '{{ route('admin.tasks.pending-customer', $task) }}',
+                            customer_name:        @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
+                            customer_email:       @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
+                            customer_phone:       @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
+                            submission_url:       @js($latestSubAw?->file_path ? url(Storage::url($latestSubAw->file_path)) : null),
+                            submission_name:      @js($latestSubAw?->original_filename ?? ($latestSubAw?->file_path ? basename($latestSubAw->file_path) : null)),
+                        })"
+                        style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(16,185,129,.25);transition:opacity .15s;white-space:nowrap;"
+                        onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+                    <i class="fas fa-circle-check" style="font-size:11px;"></i> Approve
+                </button>
+                <div style="width:1px;height:20px;background:#E5E7EB;margin:0 2px;"></div>
+                {{-- Reject --}}
+                <button type="button"
+                        @click="openRejectModal({
+                            id:       {{ $task->id }},
+                            title:    @js($task->title),
+                            assignee: @js($task->assignee->name ?? 'Unknown'),
+                            url:      '{{ route('admin.tasks.reject', $task) }}'
+                        })"
+                        style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:#FEF2F2;color:#DC2626;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:opacity .15s;white-space:nowrap;"
+                        onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                    <i class="fas fa-rotate-left" style="font-size:11px;"></i> Revision
+                </button>
+            </div>
+        </td>
+    </tr>
+    @endforeach
+    </tbody>
+</table>
+</div>
+@if($awaitingTasks->hasPages())
+<div style="margin-top:20px;">{{ $awaitingTasks->appends(['tab' => 'awaiting'])->links() }}</div>
+@endif
+@endif
+@endif {{-- end awaiting tab --}}
 
 {{-- ══════════════════════ HISTORY TAB ══════════════════════ --}}
 @if($tab === 'history')

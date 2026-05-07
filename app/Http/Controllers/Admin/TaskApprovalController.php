@@ -88,9 +88,14 @@ class TaskApprovalController extends Controller
 
         $socialUsers = User::where('role', 'user')->orderBy('name')->get();
 
+        $awaitingTasks = Task::where('status', 'pending_customer')
+            ->with(['project.customer', 'customer', 'assignee', 'assignees', 'submissions' => fn($q) => $q->latest()])
+            ->latest()
+            ->paginate(20, ['*'], 'apage');
+
         return view('admin.approvals.index', compact(
             'tasks', 'history', 'tab', 'socialTasks', 'publishedSocialTasks', 'socialUsers',
-            'hSort', 'hDir', 'hFrom', 'hTo', 'hDecision', 'hSearch'
+            'hSort', 'hDir', 'hFrom', 'hTo', 'hDecision', 'hSearch', 'awaitingTasks'
         ));
     }
 
@@ -148,6 +153,44 @@ class TaskApprovalController extends Controller
             'duration_seconds' => $seconds,
             'pause_reason'     => 'system',
         ]);
+    }
+
+    public function pendingCustomer(Request $request, Task $task)
+    {
+        if (!auth()->user()->hasPermission('view_approvals')) {
+            abort(403);
+        }
+
+        $request->validate(['note' => 'nullable|string|max:500']);
+
+        if (!in_array($task->status, ['submitted', 'pending_customer'])) {
+            return back()->with('error', 'Only submitted tasks can be marked as awaiting customer approval.');
+        }
+
+        $task->update(['status' => 'pending_customer']);
+
+        TaskLog::create([
+            'task_id'  => $task->id,
+            'user_id'  => auth()->id(),
+            'action'   => 'status_updated_pending_customer',
+            'note'     => $request->note ?: 'Awaiting customer approval',
+            'metadata' => [
+                'old_status'    => 'submitted',
+                'new_status'    => 'pending_customer',
+                'reviewer_id'   => auth()->id(),
+                'reviewer_name' => auth()->user()->name,
+                'note'          => $request->note,
+            ],
+        ]);
+
+        AuditLogger::log(
+            'task.pending_customer',
+            $task,
+            'Task "' . $task->title . '" marked as awaiting customer approval',
+            ['task_id' => $task->id, 'note' => $request->note]
+        );
+
+        return back()->with('success', 'Task marked as awaiting customer approval.');
     }
 
     public function approve(Request $request, Task $task)
