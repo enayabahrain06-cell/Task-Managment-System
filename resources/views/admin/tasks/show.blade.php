@@ -68,7 +68,7 @@
                 <p style="font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px;">Task</p>
                 <p style="font-size:14px;font-weight:600;color:#111827;margin:0;line-height:1.4;" x-text="approvalTask?.title"></p>
             </div>
-            <form :action="approvalTask ? approvalTask.url : '#'" method="POST" style="padding:20px 26px 24px;overflow-y:auto;">
+            <form x-ref="approvalForm" :action="approvalTask ? approvalTask.url : '#'" method="POST" style="padding:20px 26px 24px;overflow-y:auto;">
                 @csrf
                 <div style="margin-bottom:20px;">
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
@@ -342,20 +342,29 @@
                     <input type="hidden" name="social_required"
                            :value="approvalSocial === 'yes' ? '1' : (approvalSocial === 'no' ? '0' : '')">
                 </div>
-                <div style="display:flex;gap:10px;margin-top:20px;">
-                    <button type="button" @click="approvalModal=false"
-                            style="flex:1;padding:11px;background:#F3F4F6;color:#374151;border:none;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;"
-                            onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
-                        Cancel
+                <div style="display:flex;flex-direction:column;gap:8px;margin-top:20px;">
+                    <button type="button"
+                            @click="$refs.approvalForm.action = approvalTask.pending_customer_url; $refs.approvalForm.requestSubmit()"
+                            style="width:100%;padding:10px;background:linear-gradient(135deg,#FEF3C7,#FDE68A);color:#92400E;border:1.5px solid #FCD34D;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:opacity .15s;"
+                            onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                        <i class="fas fa-hourglass-half" style="font-size:12px;"></i>
+                        Awaiting Customer Approval
                     </button>
-                    <button type="submit"
-                            :disabled="approvalSocial === 'yes' && !approvalSocialUser"
-                            :style="(approvalSocial === 'yes' && !approvalSocialUser)
-                                ? 'flex:2;padding:11px;background:#D1FAE5;color:#6EE7B7;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:7px;'
-                                : 'flex:2;padding:11px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 4px 14px rgba(16,185,129,.35);transition:opacity .15s;'">
-                        <i class="fas fa-circle-check"></i>
-                        <span x-text="approvalSocial === 'yes' && !approvalSocialUser ? 'Select a team member first' : 'Confirm Approval'"></span>
-                    </button>
+                    <div style="display:flex;gap:10px;">
+                        <button type="button" @click="approvalModal=false"
+                                style="flex:1;padding:11px;background:#F3F4F6;color:#374151;border:none;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;"
+                                onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                :disabled="approvalSocial === 'yes' && !approvalSocialUser"
+                                :style="(approvalSocial === 'yes' && !approvalSocialUser)
+                                    ? 'flex:2;padding:11px;background:#D1FAE5;color:#6EE7B7;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:7px;'
+                                    : 'flex:2;padding:11px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 4px 14px rgba(16,185,129,.35);transition:opacity .15s;'">
+                            <i class="fas fa-circle-check"></i>
+                            <span x-text="approvalSocial === 'yes' && !approvalSocialUser ? 'Select a team member first' : 'Confirm Approval'"></span>
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -689,6 +698,7 @@
                             title:           @js($task->title),
                             assignee:        @js($task->assignee->name ?? 'Unknown'),
                             url:             '{{ route('admin.tasks.approve', $task) }}',
+                            pending_customer_url: '{{ route('admin.tasks.pending-customer', $task) }}',
                             customer_name:   @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
                             customer_email:  @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
                             customer_phone:  @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
