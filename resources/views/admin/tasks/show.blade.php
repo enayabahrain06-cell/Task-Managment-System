@@ -821,6 +821,8 @@
             .rte-toolbar-btn { width:28px;height:28px;border:none;background:none;border-radius:6px;cursor:pointer;font-size:13px;color:#374151;display:flex;align-items:center;justify-content:center;transition:background .12s;flex-shrink:0; }
             .rte-toolbar-btn:hover { background:#E5E7EB; }
             .rte-toolbar-btn.active { background:#EEF2FF; color:#4F46E5; }
+            .rte-color-swatch { width:18px;height:18px;border-radius:4px;border:1.5px solid rgba(0,0,0,.12);cursor:pointer;flex-shrink:0;transition:transform .1s,box-shadow .1s; }
+            .rte-color-swatch:hover { transform:scale(1.2);box-shadow:0 2px 6px rgba(0,0,0,.18); }
         </style>
         <div x-data="{
                 commentFile: '',
@@ -836,8 +838,10 @@
                     dt.items.add(file);
                     input.files = dt.files;
                 },
+                colorOpen: false,
                 cmd(c, v = null) { this.$refs.editor.focus(); document.execCommand(c, false, v); },
                 setSize(v) { this.$refs.editor.focus(); document.execCommand('fontSize', false, v); },
+                setColor(c) { this.colorOpen=false; this.$refs.editor.focus(); document.execCommand('foreColor', false, c); },
                 addLink() {
                     const url = prompt('Enter URL:');
                     if (!url) return;
@@ -887,6 +891,33 @@
                         <div style="width:1px;height:16px;background:#D1D5DB;margin:0 4px;flex-shrink:0;"></div>
                         <button type="button" class="rte-toolbar-btn" @click="cmd('insertUnorderedList')" title="Bullet list"><i class="fa fa-list-ul" style="font-size:11px;"></i></button>
                         <button type="button" class="rte-toolbar-btn" @click="cmd('insertOrderedList')" title="Numbered list"><i class="fa fa-list-ol" style="font-size:11px;"></i></button>
+                        <div style="width:1px;height:16px;background:#D1D5DB;margin:0 4px;flex-shrink:0;"></div>
+                        {{-- Color picker --}}
+                        <div style="position:relative;" @click.outside="colorOpen=false">
+                            <button type="button" class="rte-toolbar-btn" @click="colorOpen=!colorOpen" title="Text color"
+                                    style="flex-direction:column;gap:1px;">
+                                <span style="font-size:12px;font-weight:700;color:#374151;line-height:1;">A</span>
+                                <span style="width:14px;height:3px;border-radius:2px;background:#EF4444;display:block;"></span>
+                            </button>
+                            <div x-show="colorOpen" x-transition
+                                 style="position:absolute;top:calc(100% + 4px);left:50%;transform:translateX(-50%);background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:100;display:grid;grid-template-columns:repeat(5,1fr);gap:5px;width:120px;">
+                                <div class="rte-color-swatch" style="background:#111827;" @click="setColor('#111827')" title="Black"></div>
+                                <div class="rte-color-swatch" style="background:#6B7280;" @click="setColor('#6B7280')" title="Gray"></div>
+                                <div class="rte-color-swatch" style="background:#EF4444;" @click="setColor('#EF4444')" title="Red"></div>
+                                <div class="rte-color-swatch" style="background:#F97316;" @click="setColor('#F97316')" title="Orange"></div>
+                                <div class="rte-color-swatch" style="background:#EAB308;" @click="setColor('#EAB308')" title="Yellow"></div>
+                                <div class="rte-color-swatch" style="background:#22C55E;" @click="setColor('#22C55E')" title="Green"></div>
+                                <div class="rte-color-swatch" style="background:#06B6D4;" @click="setColor('#06B6D4')" title="Cyan"></div>
+                                <div class="rte-color-swatch" style="background:#3B82F6;" @click="setColor('#3B82F6')" title="Blue"></div>
+                                <div class="rte-color-swatch" style="background:#6366F1;" @click="setColor('#6366F1')" title="Indigo"></div>
+                                <div class="rte-color-swatch" style="background:#A855F7;" @click="setColor('#A855F7')" title="Purple"></div>
+                                <div class="rte-color-swatch" style="background:#EC4899;" @click="setColor('#EC4899')" title="Pink"></div>
+                                <div class="rte-color-swatch" style="background:#14B8A6;" @click="setColor('#14B8A6')" title="Teal"></div>
+                                <div class="rte-color-swatch" style="background:#8B5CF6;" @click="setColor('#8B5CF6')" title="Violet"></div>
+                                <div class="rte-color-swatch" style="background:#F43F5E;" @click="setColor('#F43F5E')" title="Rose"></div>
+                                <div class="rte-color-swatch" style="background:#fff;border:1.5px solid #D1D5DB;" @click="setColor('#374151')" title="Reset"></div>
+                            </div>
+                        </div>
                         <div style="width:1px;height:16px;background:#D1D5DB;margin:0 4px;flex-shrink:0;"></div>
                         <button type="button" class="rte-toolbar-btn" @click="cmd('removeFormat')" title="Clear formatting"><i class="fa fa-remove-format" style="font-size:11px;"></i></button>
                     </div>
@@ -1423,9 +1454,10 @@
                 <div x-data="{
                     editing: false, showHistory: false,
                     body: {{ json_encode($comment->body) }},
-                    editorFocused: false,
+                    editorFocused: false, colorOpen: false,
                     cmd(c,v=null){ this.$refs.editEditor.focus(); document.execCommand(c,false,v); },
                     setSize(v){ this.$refs.editEditor.focus(); document.execCommand('fontSize',false,v); },
+                    setColor(c){ this.colorOpen=false; this.$refs.editEditor.focus(); document.execCommand('foreColor',false,c); },
                     addLink(){ const u=prompt('Enter URL:'); if(!u) return; this.$refs.editEditor.focus(); document.execCommand('createLink',false,u.startsWith('http')?u:'https://'+u); },
                     openEdit(){ this.editing=true; this.$nextTick(()=>{ if(this.$refs.editEditor) this.$refs.editEditor.innerHTML=this.body; }); }
                 }" style="display:flex;gap:14px;">
@@ -1513,6 +1545,33 @@
                                             </select>
                                             <div style="width:1px;height:14px;background:#D1D5DB;margin:0 3px;flex-shrink:0;"></div>
                                             <button type="button" class="rte-toolbar-btn" @click="addLink()" title="Add link"><i class="fa fa-link" style="font-size:10px;"></i></button>
+                                            <div style="width:1px;height:14px;background:#D1D5DB;margin:0 3px;flex-shrink:0;"></div>
+                                            <div style="position:relative;" @click.outside="colorOpen=false">
+                                                <button type="button" class="rte-toolbar-btn" @click="colorOpen=!colorOpen" title="Text color"
+                                                        style="flex-direction:column;gap:1px;">
+                                                    <span style="font-size:11px;font-weight:700;color:#374151;line-height:1;">A</span>
+                                                    <span style="width:12px;height:3px;border-radius:2px;background:#EF4444;display:block;"></span>
+                                                </button>
+                                                <div x-show="colorOpen" x-transition
+                                                     style="position:absolute;top:calc(100% + 4px);left:50%;transform:translateX(-50%);background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:100;display:grid;grid-template-columns:repeat(5,1fr);gap:5px;width:120px;">
+                                                    <div class="rte-color-swatch" style="background:#111827;" @click="setColor('#111827')"></div>
+                                                    <div class="rte-color-swatch" style="background:#6B7280;" @click="setColor('#6B7280')"></div>
+                                                    <div class="rte-color-swatch" style="background:#EF4444;" @click="setColor('#EF4444')"></div>
+                                                    <div class="rte-color-swatch" style="background:#F97316;" @click="setColor('#F97316')"></div>
+                                                    <div class="rte-color-swatch" style="background:#EAB308;" @click="setColor('#EAB308')"></div>
+                                                    <div class="rte-color-swatch" style="background:#22C55E;" @click="setColor('#22C55E')"></div>
+                                                    <div class="rte-color-swatch" style="background:#06B6D4;" @click="setColor('#06B6D4')"></div>
+                                                    <div class="rte-color-swatch" style="background:#3B82F6;" @click="setColor('#3B82F6')"></div>
+                                                    <div class="rte-color-swatch" style="background:#6366F1;" @click="setColor('#6366F1')"></div>
+                                                    <div class="rte-color-swatch" style="background:#A855F7;" @click="setColor('#A855F7')"></div>
+                                                    <div class="rte-color-swatch" style="background:#EC4899;" @click="setColor('#EC4899')"></div>
+                                                    <div class="rte-color-swatch" style="background:#14B8A6;" @click="setColor('#14B8A6')"></div>
+                                                    <div class="rte-color-swatch" style="background:#8B5CF6;" @click="setColor('#8B5CF6')"></div>
+                                                    <div class="rte-color-swatch" style="background:#F43F5E;" @click="setColor('#F43F5E')"></div>
+                                                    <div class="rte-color-swatch" style="background:#fff;border:1.5px solid #D1D5DB;" @click="setColor('#374151')"></div>
+                                                </div>
+                                            </div>
+                                            <div style="width:1px;height:14px;background:#D1D5DB;margin:0 3px;flex-shrink:0;"></div>
                                             <button type="button" class="rte-toolbar-btn" @click="cmd('removeFormat')" title="Clear formatting"><i class="fa fa-remove-format" style="font-size:10px;"></i></button>
                                         </div>
                                         <div x-ref="editEditor"
