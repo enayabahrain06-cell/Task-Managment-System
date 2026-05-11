@@ -30,7 +30,7 @@ class TaskController extends Controller
             abort(403, 'You do not have permission to manage Tasks.');
         }
 
-        $query = Task::with(['project:id,name', 'assignee:id,name,avatar', 'socialAssignee:id,name'])
+        $query = Task::with(['project:id,name', 'assignee:id,name,avatar', 'socialAssignee:id,name', 'socialPosts'])
             ->withCount('assignees');
 
 
