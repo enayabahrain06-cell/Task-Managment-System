@@ -53,7 +53,7 @@ class ActivitiesController extends Controller
         $sort = $request->input('sort', 'newest');
         $sort === 'oldest' ? $query->oldest() : $query->latest();
 
-        $activities = $query->paginate(20)->withQueryString();
+        $activities = $query->get();
 
         // Distinct action types for filter dropdown
         $actionTypes = TaskLog::select('action')->distinct()->orderBy('action')->pluck('action');

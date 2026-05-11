@@ -249,7 +249,7 @@
                 </span>
                 @endif
             </div>
-            <span class="text-xs text-gray-400">{{ $activities->total() }} {{ $selectedUser ? 'activities' : 'total activities' }}</span>
+            <span class="text-xs text-gray-400">{{ $activities->count() }} {{ $selectedUser ? 'activities' : 'total activities' }}</span>
         </div>
 
         @php
@@ -339,7 +339,7 @@
                     reactions:  {{ Js::from($initReactions) }},
                     myReactions:{{ Js::from($myReactions) }},
                     replies:    {{ Js::from($initReplies) }},
-                    emojis: ['👍','❤️','😄','😮','🎉','🔥'],
+                    emojis: ['👍','👎','❤️','🧡','💛','💚','💙','💜','😄','😂','😮','😢','😡','🤩','🥳','🎉','🔥','✅','💯','🚀','👀','💪','🙏','⭐','😎','🤝','💎','🎯'],
                     async toggleReact(emoji) {
                         this.showPicker = false;
                         const res = await fetch('{{ route('activities.react', $log) }}', {
@@ -424,7 +424,8 @@
                                 <i class="fa fa-smile"></i> React
                             </button>
                             <div x-show="showPicker" @click.outside="showPicker=false" x-transition
-                                 style="position:absolute;bottom:calc(100% + 6px);left:0;background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:50;display:flex;gap:4px;">
+                                 style="position:fixed;background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:9999;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;width:196px;"
+                                 x-init="$watch('showPicker', v => { if(v) { const r = $el.previousElementSibling.getBoundingClientRect(); $el.style.left = r.left+'px'; $el.style.top = (r.bottom+6)+'px'; } })">
                                 <template x-for="e in emojis" :key="e">
                                     <button @click="toggleReact(e)"
                                             :class="myReactions.includes(e) ? 'bg-indigo-100 scale-110' : 'hover:bg-gray-100'"
@@ -505,7 +506,6 @@
             @endforelse
         </div>
 
-        <x-pagination :paginator="$activities" mt="12px" />
     </div>
 
 </div>
