@@ -440,9 +440,21 @@
     </a>
     <div style="flex:1;min-width:0;">
         <h1 style="font-size:20px;font-weight:700;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $task->title }}</h1>
-        <p style="font-size:13px;color:#9CA3AF;margin:2px 0 0;">
+        <p style="font-size:13px;color:#9CA3AF;margin:2px 0 0;display:flex;align-items:center;flex-wrap:wrap;gap:0;">
             <i class="fa fa-folder-open" style="margin-right:4px;"></i>{{ $task->project->name }}
             &nbsp;·&nbsp;<i class="fa fa-user" style="margin-right:4px;"></i>{{ $task->assignee->name ?? '—' }}
+            @if($task->social_required && $task->socialAssignee)
+            &nbsp;·&nbsp;<i class="fas fa-share-nodes" style="margin-right:4px;color:#8B5CF6;"></i><span style="color:#8B5CF6;">{{ $task->socialAssignee->name }}</span>&nbsp;
+            @if($task->socialPosts->isNotEmpty())
+            <span style="font-size:10px;font-weight:700;color:#15803D;background:#DCFCE7;padding:1px 6px;border-radius:4px;white-space:nowrap;">
+                <i class="fas fa-circle-check" style="font-size:8px;"></i> Posted
+            </span>
+            @else
+            <span style="font-size:10px;font-weight:700;color:#D97706;background:#FEF3C7;padding:1px 6px;border-radius:4px;white-space:nowrap;">
+                <i class="fas fa-hourglass-half" style="font-size:8px;"></i> Pending
+            </span>
+            @endif
+            @endif
         </p>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -557,6 +569,42 @@
                             <i class="fa fa-eye" style="font-size:9px;"></i> Reviewer
                         </p>
                         <p style="font-size:13px;font-weight:700;color:#1c1917;margin:0;">{{ $task->reviewer->name }}</p>
+                    </div>
+                    @endif
+
+                    @if($task->social_required && $task->socialAssignee)
+                    @php
+                        $spFirst     = $task->socialPosts->first();
+                        $spPosted    = $spFirst !== null;
+                        $spPlatforms = ['facebook'=>['fab fa-facebook','#1877F2'],'instagram'=>['fab fa-instagram','#E1306C'],'twitter'=>['fab fa-x-twitter','#000'],'tiktok'=>['fab fa-tiktok','#010101'],'youtube'=>['fab fa-youtube','#FF0000'],'snapchat'=>['fab fa-snapchat-ghost','#F7CA00'],'linkedin'=>['fab fa-linkedin','#0A66C2'],'other'=>['fas fa-share-nodes','#6366F1']];
+                        $spIcon      = $spFirst ? ($spPlatforms[$spFirst->platform] ?? $spPlatforms['other']) : null;
+                    @endphp
+                    <div style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:130px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
+                        <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 6px;display:flex;align-items:center;gap:5px;">
+                            <i class="fas fa-share-nodes" style="font-size:9px;"></i> Social
+                        </p>
+                        <p style="font-size:13px;font-weight:700;color:#1c1917;margin:0 0 5px;">{{ $task->socialAssignee->name }}</p>
+                        @if($spPosted)
+                        <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                            @if($spIcon)
+                            <i class="{{ $spIcon[0] }}" style="font-size:12px;color:{{ $spIcon[1] }};flex-shrink:0;"></i>
+                            <span style="font-size:11px;font-weight:600;color:#374151;">{{ ucfirst($spFirst->platform) }}</span>
+                            @endif
+                            <span style="font-size:10px;font-weight:700;color:#15803D;background:#DCFCE7;padding:1px 6px;border-radius:4px;white-space:nowrap;">
+                                <i class="fas fa-circle-check" style="font-size:8px;"></i> {{ $spFirst->created_at->format('M d') }}
+                            </span>
+                            @if($spFirst->post_url)
+                            <a href="{{ $spFirst->post_url }}" target="_blank" rel="noopener"
+                               style="font-size:10px;color:#4F46E5;text-decoration:none;background:#EEF2FF;padding:1px 6px;border-radius:4px;font-weight:600;white-space:nowrap;">
+                                <i class="fas fa-arrow-up-right-from-square" style="font-size:7px;"></i> View
+                            </a>
+                            @endif
+                        </div>
+                        @else
+                        <span style="font-size:10px;font-weight:700;color:#D97706;background:#FEF3C7;padding:2px 7px;border-radius:4px;white-space:nowrap;">
+                            <i class="fas fa-hourglass-half" style="font-size:8px;"></i> Pending post
+                        </span>
+                        @endif
                     </div>
                     @endif
 
