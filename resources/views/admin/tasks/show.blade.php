@@ -821,8 +821,8 @@
             .rte-toolbar-btn { width:28px;height:28px;border:none;background:none;border-radius:6px;cursor:pointer;font-size:13px;color:#374151;display:flex;align-items:center;justify-content:center;transition:background .12s;flex-shrink:0; }
             .rte-toolbar-btn:hover { background:#E5E7EB; }
             .rte-toolbar-btn.active { background:#EEF2FF; color:#4F46E5; }
-            .rte-color-swatch { width:18px;height:18px;border-radius:4px;border:1.5px solid rgba(0,0,0,.12);cursor:pointer;flex-shrink:0;transition:transform .1s,box-shadow .1s; }
-            .rte-color-swatch:hover { transform:scale(1.2);box-shadow:0 2px 6px rgba(0,0,0,.18); }
+            .rte-color-swatch { width:28px;height:28px;border-radius:8px;border:1.5px solid rgba(0,0,0,.12);cursor:pointer;flex-shrink:0;transition:transform .1s,box-shadow .1s; }
+            .rte-color-swatch:hover { transform:scale(1.25);box-shadow:0 2px 8px rgba(0,0,0,.2); }
         </style>
         <div x-data="{
                 commentFile: '',
@@ -901,8 +901,9 @@
                                 <span style="font-size:12px;font-weight:700;color:#374151;line-height:1;">A</span>
                                 <span style="width:14px;height:3px;border-radius:2px;background:#EF4444;display:block;"></span>
                             </button>
-                            <div x-show="colorOpen" x-transition
-                                 style="position:absolute;top:calc(100% + 4px);left:50%;transform:translateX(-50%);background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:100;display:grid;grid-template-columns:repeat(5,1fr);gap:5px;width:120px;">
+                            <div x-show="colorOpen" @click.outside="colorOpen=false" x-transition
+                                 style="position:fixed;background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:9999;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;width:172px;"
+                                 x-init="$watch('colorOpen', v => { if(v) { const r = $el.previousElementSibling.getBoundingClientRect(); $el.style.left = r.left+'px'; $el.style.top = (r.bottom+6)+'px'; } })">
                                 <div class="rte-color-swatch" @mousedown.prevent style="background:#111827;" @click="setColor('#111827')" title="Black"></div>
                                 <div class="rte-color-swatch" @mousedown.prevent style="background:#6B7280;" @click="setColor('#6B7280')" title="Gray"></div>
                                 <div class="rte-color-swatch" @mousedown.prevent style="background:#EF4444;" @click="setColor('#EF4444')" title="Red"></div>
@@ -1556,8 +1557,9 @@
                                                     <span style="font-size:11px;font-weight:700;color:#374151;line-height:1;">A</span>
                                                     <span style="width:12px;height:3px;border-radius:2px;background:#EF4444;display:block;"></span>
                                                 </button>
-                                                <div x-show="colorOpen" x-transition
-                                                     style="position:absolute;top:calc(100% + 4px);left:50%;transform:translateX(-50%);background:#fff;border:1px solid #E5E7EB;border-radius:10px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:100;display:grid;grid-template-columns:repeat(5,1fr);gap:5px;width:120px;">
+                                                <div x-show="colorOpen" @click.outside="colorOpen=false" x-transition
+                                                     style="position:fixed;background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:9999;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;width:172px;"
+                                                     x-init="$watch('colorOpen', v => { if(v) { const r = $el.previousElementSibling.getBoundingClientRect(); $el.style.left = r.left+'px'; $el.style.top = (r.bottom+6)+'px'; } })">
                                                     <div class="rte-color-swatch" @mousedown.prevent style="background:#111827;" @click="setColor('#111827')"></div>
                                                     <div class="rte-color-swatch" @mousedown.prevent style="background:#6B7280;" @click="setColor('#6B7280')"></div>
                                                     <div class="rte-color-swatch" @mousedown.prevent style="background:#EF4444;" @click="setColor('#EF4444')"></div>
