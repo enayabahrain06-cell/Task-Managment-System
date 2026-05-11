@@ -422,7 +422,7 @@ $activeStatDefs = [
             </div>
 
             {{-- Assignee --}}
-            <div class="flex items-center gap-2 mt-auto">
+            <div class="flex items-center gap-2 mt-auto flex-wrap">
                 @if($task->assignee)
                 <div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-bold flex-shrink-0">
                     {{ strtoupper(substr($task->assignee->name,0,1)) }}
@@ -431,6 +431,14 @@ $activeStatDefs = [
                 @else
                 <i class="fas fa-user-slash text-gray-300 text-xs"></i>
                 <span class="text-xs text-gray-300">Unassigned</span>
+                @endif
+                @if($task->socialAssignee && $task->socialAssignee->id !== $task->assigned_to)
+                <div class="flex items-center gap-1 ml-1" title="Social: {{ $task->socialAssignee->name }}">
+                    <div class="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background:#8B5CF6;">
+                        {{ strtoupper(substr($task->socialAssignee->name,0,1)) }}
+                    </div>
+                    <i class="fab fa-share-nodes" style="font-size:9px;color:#8B5CF6;"></i>
+                </div>
                 @endif
             </div>
 
@@ -509,11 +517,22 @@ $activeStatDefs = [
         {{-- Assignee --}}
         <td>
             @if($task->assignee)
-            <div style="display:flex;align-items:center;gap:7px;">
-                <div style="width:26px;height:26px;border-radius:50%;background:#6366F1;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;flex-shrink:0;">
-                    {{ strtoupper(substr($task->assignee->name,0,1)) }}
+            <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <div style="width:26px;height:26px;border-radius:50%;background:#6366F1;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;flex-shrink:0;">
+                        {{ strtoupper(substr($task->assignee->name,0,1)) }}
+                    </div>
+                    <span style="font-size:12px;color:#374151;white-space:nowrap;">{{ $task->assignee->name }}</span>
                 </div>
-                <span style="font-size:12px;color:#374151;white-space:nowrap;">{{ $task->assignee->name }}</span>
+                @if($task->socialAssignee && $task->socialAssignee->id !== $task->assigned_to)
+                <div style="display:flex;align-items:center;gap:4px;" title="Social: {{ $task->socialAssignee->name }}">
+                    <div style="width:22px;height:22px;border-radius:50%;background:#8B5CF6;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700;flex-shrink:0;">
+                        {{ strtoupper(substr($task->socialAssignee->name,0,1)) }}
+                    </div>
+                    <span style="font-size:11px;color:#8B5CF6;white-space:nowrap;">{{ $task->socialAssignee->name }}</span>
+                    <i class="fab fa-share-nodes" style="font-size:9px;color:#8B5CF6;"></i>
+                </div>
+                @endif
             </div>
             @else
             <span style="font-size:12px;color:#D1D5DB;">Unassigned</span>
