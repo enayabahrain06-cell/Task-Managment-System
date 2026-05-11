@@ -648,6 +648,14 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     <p class="sf-hint">All running timers are auto-paused at this time each work day.</p>
                                 </div>
                             </div>
+                            <div class="sf-row" style="margin-top:2px;">
+                                <div class="sf-group" style="margin-bottom:0;">
+                                    <label class="sf-label">Deadline Cut-off Time</label>
+                                    <input type="time" name="deadline_end_time" class="sf-input"
+                                           value="{{ $settings['deadline_end_time'] ?? '23:59' }}">
+                                    <p class="sf-hint">Tasks become overdue after this time on their deadline day. Default is 23:59 (end of day).</p>
+                                </div>
+                            </div>
                             @php
                                 $savedDays = json_decode($settings['work_days'] ?? '[1,2,3,4,5]', true) ?? [1,2,3,4,5];
                                 $dayNames  = [1=>'Mon',2=>'Tue',3=>'Wed',4=>'Thu',5=>'Fri',6=>'Sat',7=>'Sun'];

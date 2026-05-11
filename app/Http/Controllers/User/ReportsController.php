@@ -168,20 +168,27 @@ class ReportsController extends Controller
         // ── Overdue tasks list ────────────────────────────────────────────────
         $overdueList = $base()
             ->with(['project'])
-            ->where('deadline', '<', now())
+            ->whereDate('deadline', '<=', today())
             ->whereIn('status', $nonDoneStatuses)
             ->orderBy('deadline')
             ->take(20)
             ->get()
-            ->map(fn($t) => [
-                'id'        => $t->id,
-                'title'     => $t->title,
-                'project'   => $t->project->name ?? '—',
-                'deadline'  => $t->deadline->format(config('app.date_format', 'M d, Y')),
-                'days_late' => abs(now()->diffInDays($t->deadline)),
-                'priority'  => $t->priority ?? 'medium',
-                'status'    => $t->status,
-            ]);
+            ->map(function ($t) {
+                $eod       = \App\Models\Setting::deadlineEOD($t->deadline);
+                $hoursLate = $eod->isPast() ? (int) $eod->diffInHours(now()) : 0;
+                $hoursLeft = !$eod->isPast() ? (int) now()->diffInHours($eod) : 0;
+                return [
+                    'id'         => $t->id,
+                    'title'      => $t->title,
+                    'project'    => $t->project->name ?? '—',
+                    'deadline'   => $t->deadline->format(config('app.date_format', 'M d, Y')),
+                    'hours_late' => $hoursLate,
+                    'hours_left' => $hoursLeft,
+                    'due_today'  => $t->deadline->isToday(),
+                    'priority'   => $t->priority ?? 'medium',
+                    'status'     => $t->status,
+                ];
+            });
 
         // ── Task IDs for this user (for reassigned/reopened queries) ──────────
         $userTaskIds = Task::where(function ($q) use ($user) {
@@ -301,12 +308,13 @@ class ReportsController extends Controller
                 $totalMinutes += (int) $segStart->diffInMinutes(now());
             }
 
-            $isDone    = in_array($task->status, $doneStatuses);
-            $isOverdue = $task->deadline && $task->deadline->isPast() && ! $isDone;
-            $isLate    = $isDone && $task->deadline && $completedAt && $completedAt->gt($task->deadline);
-            $daysLate  = $isLate ? (int) $task->deadline->diffInDays($completedAt) : null;
-            $daysEarly = ($isDone && $task->deadline && $completedAt && $completedAt->lte($task->deadline))
-                ? (int) $completedAt->diffInDays($task->deadline) : null;
+            $isDone      = in_array($task->status, $doneStatuses);
+            $deadlineEOD = $task->deadline ? \App\Models\Setting::deadlineEOD($task->deadline) : null;
+            $isOverdue   = $deadlineEOD && $deadlineEOD->isPast() && ! $isDone;
+            $isLate      = $isDone && $deadlineEOD && $completedAt && $completedAt->gt($deadlineEOD);
+            $daysLate    = $isLate ? (int) $deadlineEOD->diffInDays($completedAt) : null;
+            $daysEarly   = ($isDone && $deadlineEOD && $completedAt && $completedAt->lte($deadlineEOD))
+                ? (int) $completedAt->diffInDays($deadlineEOD) : null;
 
             return [
                 'id'               => $task->id,

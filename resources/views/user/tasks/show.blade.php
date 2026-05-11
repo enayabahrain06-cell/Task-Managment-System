@@ -5,7 +5,8 @@
 @php
     $isSocialAssignee = $isSocialAssignee ?? false;
     $doneStatuses = ['approved', 'delivered', 'archived'];
-    $isOverdue    = $task->deadline && $task->deadline->isPast() && !in_array($task->status, $doneStatuses);
+    $deadlineEOD  = $task->deadline ? \App\Models\Setting::deadlineEOD($task->deadline) : null;
+    $isOverdue    = $deadlineEOD && $deadlineEOD->isPast() && !in_array($task->status, $doneStatuses);
 
     $statusMap = [
         'draft'              => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Draft'],
@@ -245,7 +246,7 @@
                         </p>
                         <p style="font-size:13px;font-weight:700;color:{{ $isOverdue ? '#DC2626' : '#1c1917' }};margin:0;">
                             {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
-                            <span style="font-size:11px;font-weight:400;color:{{ $isOverdue ? '#DC2626' : '#92400e' }};display:block;margin-top:2px;">{{ $task->deadline->diffForHumans() }}</span>
+                            <span style="font-size:11px;font-weight:400;color:{{ $isOverdue ? '#DC2626' : '#92400e' }};display:block;margin-top:2px;">{{ $deadlineEOD->diffForHumans() }}</span>
                         </p>
                     </div>
 
@@ -527,7 +528,20 @@
 
         {{-- Unified: Comment + Submit --}}
         @if(!in_array($task->status, ['revision_requested']) && (auth()->user()->hasPermission('view_comments') || ($canSubmit && auth()->user()->hasPermission('submit_work'))))
-        <div x-data="{ uFiles: [], showModal: false, body: '{{ old('body') }}' }" style="background:#fff;border-radius:14px;border:1.5px solid #6366F1;box-shadow:0 4px 16px rgba(99,102,241,.08);padding:24px;">
+        <div x-data="{
+                uFiles: [], showModal: false, body: '{{ old('body') }}',
+                dragging: false,
+                handleDrop(e) {
+                    this.dragging = false;
+                    const files = Array.from(e.dataTransfer.files);
+                    if (!files.length) return;
+                    this.uFiles = files.map(f => f.name);
+                    const input = this.$refs.uFileInput;
+                    const dt = new DataTransfer();
+                    files.forEach(f => dt.items.add(f));
+                    input.files = dt.files;
+                }
+             }" style="background:#fff;border-radius:14px;border:1.5px solid #6366F1;box-shadow:0 4px 16px rgba(99,102,241,.08);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 4px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-comment" style="color:#6366F1;"></i>
                 @if($task->status === 'viewed')
@@ -556,15 +570,28 @@
                           onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">{{ old('body') }}</textarea>
                 @error('body')<p style="font-size:11px;color:#DC2626;margin:-6px 0 8px;">{{ $message }}</p>@enderror
                 <div style="margin-bottom:14px;">
-                    <label style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px dashed #D1D5DB;border-radius:10px;cursor:pointer;background:#FAFAFA;"
-                           onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#D1D5DB'">
-                        <i class="fa fa-paperclip" style="color:#9CA3AF;font-size:16px;"></i>
+                    <label
+                        @dragover.prevent="dragging = true"
+                        @dragenter.prevent="dragging = true"
+                        @dragleave.prevent="dragging = false"
+                        @drop.prevent="handleDrop($event)"
+                        :style="dragging
+                            ? 'display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px dashed #6366F1;border-radius:10px;cursor:pointer;background:#EEF2FF;transition:all .15s;'
+                            : 'display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px dashed #D1D5DB;border-radius:10px;cursor:pointer;background:#FAFAFA;transition:all .15s;'"
+                        onmouseover="if(!this.__dragging)this.style.borderColor='#6366F1'" onmouseout="if(!this.__dragging)this.style.borderColor='#D1D5DB'">
+                        <i class="fa fa-paperclip" :style="dragging ? 'color:#6366F1;font-size:16px;' : 'color:#9CA3AF;font-size:16px;'"></i>
                         <div style="flex:1;">
-                            <p x-text="uFiles.length === 0 ? 'Attach files (optional)' : (uFiles.length === 1 ? uFiles[0] : uFiles.length + ' files selected')"
+                            <p x-text="uFiles.length === 0 ? (dragging ? 'Drop files here' : 'Attach files — or drag & drop') : (uFiles.length === 1 ? uFiles[0] : uFiles.length + ' files selected')"
                                style="font-size:13px;font-weight:500;color:#374151;margin:0;"></p>
                             <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Images, PDF, ZIP and more — select multiple</p>
                         </div>
-                        <input type="file" name="files[]" multiple
+                        <template x-if="uFiles.length > 0">
+                            <button type="button" @click.prevent="uFiles=[]; $refs.uFileInput.value=''"
+                                    style="width:22px;height:22px;border-radius:50%;background:#FEE2E2;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fa fa-xmark" style="font-size:10px;color:#DC2626;"></i>
+                            </button>
+                        </template>
+                        <input type="file" name="files[]" multiple x-ref="uFileInput"
                                @change="uFiles = Array.from($event.target.files).map(f => f.name)"
                                style="display:none;">
                     </label>
@@ -1228,12 +1255,12 @@
 
         {{-- Time remaining --}}
         @php
-            $tbg = '#EEF2FF'; $tbo = '#C7D2FE'; $tico = '#6366F1'; $ttitle = 'Due ' . $task->deadline->diffForHumans(); $tsub = $task->deadline->format('l, M d');
+            $tbg = '#EEF2FF'; $tbo = '#C7D2FE'; $tico = '#6366F1'; $ttitle = 'Due ' . $deadlineEOD->diffForHumans(); $tsub = $task->deadline->format('l, M d');
             if($task->status === 'delivered')      { $tbg='#ECFDF5';$tbo='#6EE7B7';$tico='#047857';$ttitle='Delivered!';$tsub='Work delivered to client.'; }
             elseif($task->status === 'approved')   { $tbg='#F0FDF4';$tbo='#A7F3D0';$tico='#059669';$ttitle='Approved!';$tsub='Awaiting delivery.'; }
             elseif($task->status === 'submitted')  { $tbg='#F5F3FF';$tbo='#DDD6FE';$tico='#7C3AED';$ttitle='Under Review';$tsub='Waiting for admin.'; }
             elseif($task->status === 'revision_requested') { $tbg='#FEF2F2';$tbo='#FECACA';$tico='#DC2626';$ttitle='Revision Needed';$tsub='Check admin feedback.'; }
-            elseif($isOverdue) { $tbg='#FEF2F2';$tbo='#FECACA';$tico='#DC2626';$ttitle='Overdue';$tsub=$task->deadline->diffForHumans(); }
+            elseif($isOverdue) { $tbg='#FEF2F2';$tbo='#FECACA';$tico='#DC2626';$ttitle='Overdue';$tsub=$deadlineEOD->diffForHumans(); }
         @endphp
         <div style="background:{{ $tbg }};border:1px solid {{ $tbo }};border-radius:14px;padding:20px;text-align:center;">
             <i class="fa fa-clock" style="font-size:24px;color:{{ $tico }};margin-bottom:8px;display:block;"></i>

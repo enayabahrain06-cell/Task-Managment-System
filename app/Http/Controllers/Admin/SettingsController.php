@@ -332,6 +332,7 @@ class SettingsController extends Controller
             'max_upload_mb'         => 'nullable|integer|min:0',
             'work_start_time'       => ['nullable', 'regex:/^\d{2}:\d{2}$/'],
             'work_end_time'         => ['nullable', 'regex:/^\d{2}:\d{2}$/'],
+            'deadline_end_time'     => ['nullable', 'regex:/^\d{2}:\d{2}$/'],
             'work_days'             => 'nullable|array',
             'work_days.*'           => 'integer|between:1,7',
         ]);
@@ -346,6 +347,7 @@ class SettingsController extends Controller
             'max_upload_mb'         => $request->max_upload_mb,
             'work_start_time'       => $request->input('work_start_time', '09:00'),
             'work_end_time'         => $request->input('work_end_time', '18:00'),
+            'deadline_end_time'     => $request->input('deadline_end_time', '23:59'),
             'work_days'             => json_encode(array_map('intval', $workDays)),
         ]);
 

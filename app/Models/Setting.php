@@ -33,4 +33,15 @@ class Setting extends Model
             static::set($key, $value);
         }
     }
+
+    /**
+     * Return the effective "end of deadline day" Carbon for a given deadline.
+     * Uses the admin-configured deadline_end_time (default 23:59).
+     */
+    public static function deadlineEOD(\Illuminate\Support\Carbon $deadline): \Illuminate\Support\Carbon
+    {
+        $time = static::get('deadline_end_time', '23:59');
+        [$h, $m] = array_map('intval', explode(':', $time . ':00'));
+        return $deadline->copy()->setTime($h, $m, 0);
+    }
 }
