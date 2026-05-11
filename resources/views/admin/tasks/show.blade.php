@@ -4,7 +4,8 @@
 @section('content')
 @php
     $doneStatuses = ['approved','delivered','archived'];
-    $isOverdue  = $task->deadline && $task->deadline->isPast() && !in_array($task->status, $doneStatuses);
+    $deadlineEOD  = $task->deadline ? \App\Models\Setting::deadlineEOD($task->deadline) : null;
+    $isOverdue  = $deadlineEOD && $deadlineEOD->isPast() && !in_array($task->status, $doneStatuses);
     $overdueReason = $isOverdue ? match($task->status) {
         'pending_customer'   => ['label'=>'Waiting: Customer',    'bg'=>'#FEF3C7','color'=>'#D97706','icon'=>'fa-user-clock'],
         'submitted'          => ['label'=>'Waiting: Admin Review','bg'=>'#EEF2FF','color'=>'#4F46E5','icon'=>'fa-user-shield'],
@@ -799,7 +800,20 @@
         @endif
 
         {{-- Add Comment --}}
-        <div x-data="{ commentFile: '' }" style="background:#fff;border-radius:14px;border:1.5px solid #6366F1;box-shadow:0 4px 16px rgba(99,102,241,.08);padding:24px;">
+        <div x-data="{
+                commentFile: '',
+                dragging: false,
+                handleDrop(e) {
+                    this.dragging = false;
+                    const file = e.dataTransfer.files[0];
+                    if (!file) return;
+                    this.commentFile = file.name;
+                    const input = this.$refs.commentFileInput;
+                    const dt = new DataTransfer();
+                    dt.items.add(file);
+                    input.files = dt.files;
+                }
+             }" style="background:#fff;border-radius:14px;border:1.5px solid #6366F1;box-shadow:0 4px 16px rgba(99,102,241,.08);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 4px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-comment" style="color:#6366F1;"></i> Add a Comment
             </h2>
@@ -810,14 +824,29 @@
                           style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;resize:vertical;font-family:'Inter',sans-serif;line-height:1.5;margin-bottom:10px;"
                           onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"></textarea>
                 <div style="margin-bottom:12px;">
-                    <label style="display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px dashed #D1D5DB;border-radius:10px;cursor:pointer;background:#FAFAFA;"
-                           onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#D1D5DB'">
-                        <i class="fa fa-paperclip" style="color:#9CA3AF;font-size:16px;"></i>
+                    <label
+                        @dragover.prevent="dragging = true"
+                        @dragenter.prevent="dragging = true"
+                        @dragleave.prevent="dragging = false"
+                        @drop.prevent="handleDrop($event)"
+                        :style="dragging
+                            ? 'display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px dashed #6366F1;border-radius:10px;cursor:pointer;background:#EEF2FF;transition:all .15s;'
+                            : 'display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px dashed #D1D5DB;border-radius:10px;cursor:pointer;background:#FAFAFA;transition:all .15s;'"
+                        onmouseover="if(!this.__dragging)this.style.borderColor='#6366F1'" onmouseout="if(!this.__dragging)this.style.borderColor='#D1D5DB'">
+                        <i class="fa fa-paperclip" :style="dragging ? 'color:#6366F1;font-size:16px;' : 'color:#9CA3AF;font-size:16px;'"></i>
                         <div style="flex:1;">
-                            <p x-text="commentFile || 'Attach a file (optional)'" style="font-size:13px;font-weight:500;color:#374151;margin:0;"></p>
+                            <p x-text="commentFile || (dragging ? 'Drop file here' : 'Attach a file — or drag & drop')" style="font-size:13px;font-weight:500;color:#374151;margin:0;"></p>
                             <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Images, PDF, ZIP and more</p>
                         </div>
-                        <input type="file" name="file" @change="commentFile = $event.target.files[0]?.name || ''" style="display:none;">
+                        <template x-if="commentFile">
+                            <button type="button" @click.prevent="commentFile=''; $refs.commentFileInput.value=''"
+                                    style="width:22px;height:22px;border-radius:50%;background:#FEE2E2;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fa fa-xmark" style="font-size:10px;color:#DC2626;"></i>
+                            </button>
+                        </template>
+                        <input type="file" name="file" x-ref="commentFileInput"
+                               @change="commentFile = $event.target.files[0]?.name || ''"
+                               style="display:none;">
                     </label>
                 </div>
                 <button type="submit"

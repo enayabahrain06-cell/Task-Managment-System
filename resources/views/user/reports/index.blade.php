@@ -367,7 +367,14 @@
             </div>
             <div style="text-align:right;flex-shrink:0;">
                 <span class="chip-{{ $t['priority'] }}">{{ ucfirst($t['priority']) }}</span>
-                <p style="font-size:10px;color:#DC2626;font-weight:700;margin:3px 0 0;">{{ $t['days_late'] }}d late</p>
+                @php $hl = $t['hours_late'] ?? 0; $hleft = $t['hours_left'] ?? 0; @endphp
+                @if($t['due_today'] && $hl === 0)
+                <p style="font-size:10px;color:#D97706;font-weight:700;margin:3px 0 0;">Due Today · {{ $hleft }}h left</p>
+                @else
+                <p style="font-size:10px;color:#DC2626;font-weight:700;margin:3px 0 0;">
+                    {{ $hl >= 24 ? floor($hl/24).'d '.($hl%24).'h' : $hl.'h' }} late
+                </p>
+                @endif
             </div>
         </a>
         @empty

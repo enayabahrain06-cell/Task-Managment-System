@@ -1,6 +1,17 @@
 @php
     $role              = auth()->user()->role ?? 'user';
-    $taskCount         = auth()->check() ? auth()->user()->tasks()->where('status','!=','completed')->count() : 0;
+    $taskCount = 0;
+    if (auth()->check() && in_array($role, ['user'])) {
+        $uid = auth()->id();
+        $taskCount = \App\Models\Task::where(fn($q) => $q
+            ->where('assigned_to', $uid)
+            ->orWhere('social_assigned_to', $uid)
+            ->orWhereExists(fn($x) => $x->selectRaw('1')->from('task_assignees')
+                ->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id', $uid))
+        )->whereDate('deadline', today())
+         ->whereNotIn('status', ['approved', 'delivered', 'archived'])
+         ->count();
+    }
     $dashRoute         = $role === 'admin' ? 'admin.dashboard' : ($role === 'manager' ? 'manager.dashboard' : 'user.dashboard');
     $tasksRoute        = $role === 'admin' ? 'admin.dashboard' : ($role === 'manager' ? 'manager.dashboard' : 'user.dashboard');
     $approvalCount     = (in_array($role, ['admin', 'manager']) && auth()->check()) ? \App\Models\Task::where('status','submitted')->count() : 0;
