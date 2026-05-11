@@ -67,7 +67,7 @@
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
     <div class="sb-stat">
         <div class="sb-stat-icon" style="background:#F5F3FF;">
-            <i class="fas fa-share-nodes" style="color:#7C3AED;"></i>
+            <i class="fas fa-share-alt" style="color:#7C3AED;"></i>
         </div>
         <div>
             <p style="font-size:22px;font-weight:800;color:#111827;margin:0;">{{ $totalCount }}</p>
@@ -203,7 +203,7 @@
                 <td>
                     @if($t['social_user'] !== '—')
                         <span class="sb-badge" style="background:#E0F2FE;color:#0284C7;">
-                            <i class="fas fa-share-nodes" style="font-size:9px;"></i>
+                            <i class="fas fa-share-alt" style="font-size:9px;"></i>
                             {{ $t['social_user'] }}
                         </span>
                     @else

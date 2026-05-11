@@ -63,7 +63,7 @@
         ['In Progress',   $cardInProgress, 'fa-spinner',               '#FFFBEB', '#D97706', 'Active tasks',      'F0F0F0', 'in_progress', '#D97706'],
         ['In Review',     $cardInReview,   'fa-hourglass-half',        '#F5F3FF', '#7C3AED', 'Awaiting approval', 'F0F0F0', 'in_review',   '#7C3AED'],
         ['Overdue',       $cardOverdue,    'fa-triangle-exclamation',  $cardOverdue>0?'#FEF2F2':'#F8FAFC', $cardOverdue>0?'#DC2626':'#9CA3AF', $cardOverdue>0?'Needs attention':'All on time', $cardOverdue>0?'FECACA':'F0F0F0', 'overdue', '#EF4444'],
-        ['Pending Posts', $pendingSocialPosts, 'fa-share-nodes',       $pendingSocialPosts>0?'#FFF7ED':'#F8FAFC', $pendingSocialPosts>0?'#EA580C':'#9CA3AF', $pendingSocialPosts>0?'Needs posting':($completedSocialPosts>0?$completedSocialPosts.' completed':'No pending posts'), $pendingSocialPosts>0?'FED7AA':'F0F0F0', 'social', '#EA580C'],
+        ['Pending Posts', $pendingSocialPosts, 'fa-share-alt',       $pendingSocialPosts>0?'#FFF7ED':'#F8FAFC', $pendingSocialPosts>0?'#EA580C':'#9CA3AF', $pendingSocialPosts>0?'Needs posting':($completedSocialPosts>0?$completedSocialPosts.' completed':'No pending posts'), $pendingSocialPosts>0?'FED7AA':'F0F0F0', 'social', '#EA580C'],
     ] as $i => [$label,$val,$icon,$bg,$ic,$sub,$border,$filter,$color])
     <div onclick="openUserStatsModal('{{ $filter }}','{{ $label }}','{{ $color }}','{{ $bg }}','{{ $icon }}')"
          onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.08)';this.style.transform='translateY(-1px)'"
@@ -251,7 +251,7 @@ document.addEventListener('keydown', function(e) {
                     ? 'bg-white text-indigo-600 shadow-sm'
                     : 'bg-transparent text-gray-500 hover:text-gray-700'"
                 class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition border-none cursor-pointer font-sans">
-            <i class="fas fa-share-nodes text-xs"></i> Social Posts
+            <i class="fas fa-share-alt text-xs"></i> Social Posts
             @if($socialTasks->where('social_posted_at', null)->count() > 0)
             <span style="font-size:10px;font-weight:700;background:#EF4444;color:#fff;padding:1px 6px;border-radius:20px;line-height:1.6;">
                 {{ $socialTasks->whereNull('social_posted_at')->count() }}
@@ -321,7 +321,7 @@ document.addEventListener('keydown', function(e) {
                             <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">{{ $task->project?->name ?? 'Social Post' }}</p>
                         </div>
                         <span style="font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;background:#EEF2FF;color:#4F46E5;flex-shrink:0;display:flex;align-items:center;gap:4px;">
-                            <i class="fas fa-share-nodes" style="font-size:9px;"></i> Post Pending
+                            <i class="fas fa-share-alt" style="font-size:9px;"></i> Post Pending
                         </span>
                         <span style="font-size:11px;font-weight:500;color:#D97706;flex-shrink:0;white-space:nowrap;min-width:60px;text-align:right;">
                             @if($task->deadline){{ now()->diffInDays($task->deadline,false) === 0 ? 'Today' : $task->deadline->format('M d') }}@else—@endif
@@ -537,7 +537,7 @@ document.addEventListener('keydown', function(e) {
                     <div style="border-top:1px solid #F3F4F6;padding-top:12px;margin-top:12px;">
                         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
                             <span style="font-size:12px;font-weight:600;color:#374151;display:flex;align-items:center;gap:5px;">
-                                <i class="fas fa-share-nodes" style="font-size:10px;color:#6366F1;"></i> Social Posts
+                                <i class="fas fa-share-alt" style="font-size:10px;color:#6366F1;"></i> Social Posts
                             </span>
                             <button onclick="document.getElementById('social-tab-btn').click(); setTimeout(()=>document.getElementById('dashboard-tabs').scrollIntoView({behavior:'smooth'}),50);"
                                     style="font-size:10px;color:#6366F1;background:none;border:none;cursor:pointer;font-weight:600;padding:0;">View all</button>
@@ -823,14 +823,14 @@ document.addEventListener('keydown', function(e) {
             'tiktok'    => ['TikTok',     'fa-tiktok',     '#010101','#F5F5F5'],
             'youtube'   => ['YouTube',    'fa-youtube',    '#FF0000','#FFF0F0'],
             'snapchat'  => ['Snapchat',   'fa-snapchat',   '#F7CA00','#FFFDE7'],
-            'other'     => ['Other',      'fa-share-nodes','#6366F1','#EEF2FF'],
+            'other'     => ['Other',      'fa-share-alt','#6366F1','#EEF2FF'],
         ];
         @endphp
 
         @if($socialTasks->isEmpty())
         <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:56px;text-align:center;">
             <div style="width:56px;height:56px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
-                <i class="fas fa-share-nodes" style="color:#D1D5DB;font-size:22px;"></i>
+                <i class="fas fa-share-alt" style="color:#D1D5DB;font-size:22px;"></i>
             </div>
             <p style="font-size:14px;font-weight:600;color:#374151;margin:0 0 4px;">No social media tasks assigned</p>
             <p style="font-size:12px;color:#9CA3AF;margin:0;">When an admin assigns you to post content, it will appear here.</p>
@@ -853,7 +853,7 @@ document.addEventListener('keydown', function(e) {
                    style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid #F9FAFB;text-decoration:none;background:#fff;transition:background .1s;"
                    onmouseover="this.style.background='#FFF8F8'" onmouseout="this.style.background='#fff'">
                     <div style="width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                        <i class="fas fa-share-nodes" style="color:#fff;font-size:15px;"></i>
+                        <i class="fas fa-share-alt" style="color:#fff;font-size:15px;"></i>
                     </div>
                     <div style="flex:1;min-width:0;">
                         <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $st->title }}</p>

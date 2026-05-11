@@ -422,7 +422,7 @@ $activeStatDefs = [
             </div>
 
             {{-- Assignee --}}
-            <div class="flex items-center gap-2 mt-auto">
+            <div class="flex items-center gap-2 mt-auto flex-wrap">
                 @if($task->assignee)
                 <div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-bold flex-shrink-0">
                     {{ strtoupper(substr($task->assignee->name,0,1)) }}
@@ -431,6 +431,28 @@ $activeStatDefs = [
                 @else
                 <i class="fas fa-user-slash text-gray-300 text-xs"></i>
                 <span class="text-xs text-gray-300">Unassigned</span>
+                @endif
+                @if($task->socialAssignee && $task->socialAssignee->id !== $task->assigned_to)
+                @php $cardSocialPosted = $task->socialPosts->isNotEmpty(); @endphp
+                <div class="flex items-center gap-1 ml-1" title="Social: {{ $task->socialAssignee->name }}">
+                    <div class="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style="background:#8B5CF6;">
+                        {{ strtoupper(substr($task->socialAssignee->name,0,1)) }}
+                    </div>
+                    <span style="font-size:11px;color:#8B5CF6;white-space:nowrap;">{{ $task->socialAssignee->name }}</span>
+                    @if($task->social_required)
+                    @if($cardSocialPosted)
+                    <span style="font-size:9px;font-weight:700;color:#15803D;background:#DCFCE7;padding:1px 5px;border-radius:4px;white-space:nowrap;flex-shrink:0;">
+                        <i class="fas fa-circle-check" style="font-size:8px;"></i> Posted
+                    </span>
+                    @else
+                    <span style="font-size:9px;font-weight:700;color:#D97706;background:#FEF3C7;padding:1px 5px;border-radius:4px;white-space:nowrap;flex-shrink:0;">
+                        <i class="fas fa-hourglass-half" style="font-size:8px;"></i> Pending
+                    </span>
+                    @endif
+                    @else
+                    <i class="fas fa-share-nodes" style="font-size:9px;color:#8B5CF6;"></i>
+                    @endif
+                </div>
                 @endif
             </div>
 
@@ -451,6 +473,84 @@ $activeStatDefs = [
 
         </div>
     </a>
+
+    {{-- Social Media Row (done tab only) --}}
+    @if($isDoneTab && $task->social_required)
+    @php
+        $platformIcons = ['facebook'=>['fab fa-facebook','#1877F2'],'instagram'=>['fab fa-instagram','#E1306C'],'twitter'=>['fab fa-x-twitter','#000'],'tiktok'=>['fab fa-tiktok','#010101'],'youtube'=>['fab fa-youtube','#FF0000'],'snapchat'=>['fab fa-snapchat-ghost','#F7CA00'],'linkedin'=>['fab fa-linkedin','#0A66C2'],'other'=>['fas fa-share-nodes','#6366F1']];
+        $socialPost = $task->socialPosts->first();
+        $isPosted = $socialPost !== null;
+        $platform = $socialPost?->platform ?? null;
+        $pIcon = $platform ? ($platformIcons[$platform] ?? $platformIcons['other']) : null;
+    @endphp
+    <div style="margin-top:6px;border-radius:10px;overflow:hidden;border:1px solid {{ $isPosted ? '#BBF7D0' : '#FDE68A' }};background:{{ $isPosted ? '#F0FDF4' : '#FFFBEB' }};">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;">
+            {{-- Platform icon --}}
+            @if($pIcon)
+            <div style="width:26px;height:26px;border-radius:7px;background:{{ $isPosted ? '#DCFCE7' : '#FEF3C7' }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="{{ $pIcon[0] }}" style="font-size:13px;color:{{ $pIcon[1] }};"></i>
+            </div>
+            @else
+            <div style="width:26px;height:26px;border-radius:7px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fab fa-share-nodes" style="font-size:12px;color:#8B5CF6;"></i>
+            </div>
+            @endif
+
+            {{-- Info --}}
+            <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                    <span style="font-size:10px;font-weight:700;color:{{ $isPosted ? '#15803D' : '#92400E' }};text-transform:uppercase;letter-spacing:.05em;">
+                        {{ $platform ? ucfirst($platform) : 'Social' }}
+                    </span>
+                    @if($task->socialAssignee)
+                    <span style="font-size:10px;color:#6B7280;">· {{ $task->socialAssignee->name }}</span>
+                    @endif
+                </div>
+                @if($isPosted && $socialPost->note)
+                <p style="font-size:10px;color:#6B7280;margin:1px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $socialPost->note }}</p>
+                @endif
+            </div>
+
+            {{-- Status badge --}}
+            @if($isPosted)
+            <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+                @if($socialPost->post_url)
+                <a href="{{ $socialPost->post_url }}" target="_blank" rel="noopener"
+                   style="font-size:10px;color:#4F46E5;text-decoration:none;background:#EEF2FF;padding:2px 7px;border-radius:6px;font-weight:600;"
+                   onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'">
+                    <i class="fas fa-arrow-up-right-from-square" style="font-size:8px;"></i> View
+                </a>
+                @endif
+                <span style="font-size:10px;font-weight:700;color:#15803D;background:#DCFCE7;padding:2px 7px;border-radius:6px;white-space:nowrap;">
+                    <i class="fas fa-circle-check" style="font-size:9px;"></i> {{ $socialPost->created_at->format('M d') }}
+                </span>
+            </div>
+            @else
+            <span style="font-size:10px;font-weight:700;color:#92400E;background:#FEF3C7;padding:2px 7px;border-radius:6px;white-space:nowrap;flex-shrink:0;">
+                <i class="fas fa-hourglass-half" style="font-size:9px;"></i> Pending
+            </span>
+            @endif
+        </div>
+
+        {{-- Extra social posts (multiple platforms) --}}
+        @foreach($task->socialPosts->skip(1) as $sp)
+        @php $spIcon = $platformIcons[$sp->platform] ?? $platformIcons['other']; @endphp
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 12px 5px 46px;border-top:1px solid {{ $isPosted ? '#BBF7D0' : '#FDE68A' }};">
+            <i class="{{ $spIcon[0] }}" style="font-size:12px;color:{{ $spIcon[1] }};flex-shrink:0;"></i>
+            <span style="font-size:10px;color:#6B7280;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ ucfirst($sp->platform) }}{{ $sp->note ? ' · '.$sp->note : '' }}</span>
+            @if($sp->post_url)
+            <a href="{{ $sp->post_url }}" target="_blank" rel="noopener" style="font-size:10px;color:#4F46E5;text-decoration:none;background:#EEF2FF;padding:2px 7px;border-radius:6px;font-weight:600;flex-shrink:0;">
+                <i class="fas fa-arrow-up-right-from-square" style="font-size:8px;"></i> View
+            </a>
+            @endif
+            <span style="font-size:10px;font-weight:600;color:#15803D;white-space:nowrap;flex-shrink:0;">
+                <i class="fas fa-circle-check" style="font-size:9px;"></i> {{ $sp->created_at->format('M d') }}
+            </span>
+        </div>
+        @endforeach
+    </div>
+    @endif
+
     </div>{{-- /relative group/card --}}
 @endforeach
 </div>
@@ -490,14 +590,47 @@ $activeStatDefs = [
         ];
     @endphp
     <tr>
-        {{-- Task title + status badge --}}
-        <td style="max-width:260px;">
+        {{-- Task title --}}
+        <td style="max-width:280px;">
             <a href="{{ route('admin.tasks.show', $task) }}"
-               style="font-size:13px;font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px;"
+               style="font-size:13px;font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;"
                onmouseover="this.style.color='#4F46E5'" onmouseout="this.style.color='#111827'"
                title="{{ $task->title }}">
                 {{ $task->title }}
             </a>
+            @if($isDoneTab && $task->social_required)
+            @php
+                $platformIcons = $platformIcons ?? ['facebook'=>['fab fa-facebook','#1877F2'],'instagram'=>['fab fa-instagram','#E1306C'],'twitter'=>['fab fa-x-twitter','#000'],'tiktok'=>['fab fa-tiktok','#010101'],'youtube'=>['fab fa-youtube','#FF0000'],'snapchat'=>['fab fa-snapchat-ghost','#F7CA00'],'linkedin'=>['fab fa-linkedin','#0A66C2'],'other'=>['fas fa-share-nodes','#6366F1']];
+            @endphp
+            <div style="margin-top:5px;display:flex;flex-direction:column;gap:3px;">
+                @forelse($task->socialPosts as $sp)
+                @php $spIcon = $platformIcons[$sp->platform] ?? $platformIcons['other']; @endphp
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <i class="{{ $spIcon[0] }}" style="font-size:10px;color:{{ $spIcon[1] }};flex-shrink:0;"></i>
+                    <span style="font-size:10px;font-weight:600;color:#15803D;white-space:nowrap;">{{ ucfirst($sp->platform) }}</span>
+                    <span style="font-size:10px;color:#15803D;white-space:nowrap;flex-shrink:0;">
+                        · <i class="fas fa-circle-check" style="font-size:8px;"></i> {{ $sp->created_at->format('M d') }}
+                    </span>
+                    @if($sp->post_url)
+                    <a href="{{ $sp->post_url }}" target="_blank" rel="noopener"
+                       style="font-size:9px;color:#4F46E5;text-decoration:none;background:#EEF2FF;padding:1px 5px;border-radius:4px;font-weight:600;flex-shrink:0;white-space:nowrap;line-height:1.6;">
+                        <i class="fas fa-arrow-up-right-from-square" style="font-size:7px;"></i> View
+                    </a>
+                    @endif
+                </div>
+                @empty
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <i class="fab fa-share-nodes" style="font-size:10px;color:#8B5CF6;flex-shrink:0;"></i>
+                    @if($task->socialAssignee)
+                    <span style="font-size:10px;color:#6B7280;white-space:nowrap;">{{ $task->socialAssignee->name }}</span>
+                    @endif
+                    <span style="font-size:10px;font-weight:600;color:#D97706;white-space:nowrap;">
+                        · <i class="fas fa-hourglass-half" style="font-size:8px;"></i> Pending
+                    </span>
+                </div>
+                @endforelse
+            </div>
+            @endif
         </td>
         {{-- Project --}}
         <td>
@@ -509,11 +642,35 @@ $activeStatDefs = [
         {{-- Assignee --}}
         <td>
             @if($task->assignee)
-            <div style="display:flex;align-items:center;gap:7px;">
-                <div style="width:26px;height:26px;border-radius:50%;background:#6366F1;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;flex-shrink:0;">
-                    {{ strtoupper(substr($task->assignee->name,0,1)) }}
+            <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <div style="width:26px;height:26px;border-radius:50%;background:#6366F1;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;flex-shrink:0;">
+                        {{ strtoupper(substr($task->assignee->name,0,1)) }}
+                    </div>
+                    <span style="font-size:12px;color:#374151;white-space:nowrap;">{{ $task->assignee->name }}</span>
                 </div>
-                <span style="font-size:12px;color:#374151;white-space:nowrap;">{{ $task->assignee->name }}</span>
+                @if($task->socialAssignee && $task->socialAssignee->id !== $task->assigned_to)
+                @php $socialPosted = $task->socialPosts->isNotEmpty(); @endphp
+                <div style="display:flex;align-items:center;gap:4px;" title="Social: {{ $task->socialAssignee->name }}">
+                    <div style="width:22px;height:22px;border-radius:50%;background:#8B5CF6;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:700;flex-shrink:0;">
+                        {{ strtoupper(substr($task->socialAssignee->name,0,1)) }}
+                    </div>
+                    <span style="font-size:11px;color:#8B5CF6;white-space:nowrap;">{{ $task->socialAssignee->name }}</span>
+                    @if($task->social_required)
+                    @if($socialPosted)
+                    <span style="font-size:9px;font-weight:700;color:#15803D;background:#DCFCE7;padding:1px 5px;border-radius:4px;white-space:nowrap;flex-shrink:0;">
+                        <i class="fas fa-circle-check" style="font-size:8px;"></i> Posted
+                    </span>
+                    @else
+                    <span style="font-size:9px;font-weight:700;color:#D97706;background:#FEF3C7;padding:1px 5px;border-radius:4px;white-space:nowrap;flex-shrink:0;">
+                        <i class="fas fa-hourglass-half" style="font-size:8px;"></i> Pending
+                    </span>
+                    @endif
+                    @else
+                    <i class="fas fa-share-nodes" style="font-size:9px;color:#8B5CF6;"></i>
+                    @endif
+                </div>
+                @endif
             </div>
             @else
             <span style="font-size:12px;color:#D1D5DB;">Unassigned</span>

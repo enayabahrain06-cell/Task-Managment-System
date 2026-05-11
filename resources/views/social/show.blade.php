@@ -41,7 +41,7 @@ $pMeta = [
     'tiktok'    => ['TikTok',     'fa-tiktok',     '#010101','#F5F5F5'],
     'youtube'   => ['YouTube',    'fa-youtube',    '#FF0000','#FFF0F0'],
     'snapchat'  => ['Snapchat',   'fa-snapchat',   '#F7CA00','#FFFDE7'],
-    'other'     => ['Other',      'fa-share-nodes','#6366F1','#EEF2FF'],
+    'other'     => ['Other',      'fa-share-alt','#6366F1','#EEF2FF'],
 ];
 @endphp
 
@@ -49,7 +49,7 @@ $pMeta = [
 <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:24px;flex-wrap:wrap;">
     <div style="display:flex;align-items:center;gap:14px;">
         <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(99,102,241,.3);">
-            <i class="fas fa-share-nodes" style="color:#fff;font-size:20px;"></i>
+            <i class="fas fa-share-alt" style="color:#fff;font-size:20px;"></i>
         </div>
         <div>
             <h1 style="font-size:20px;font-weight:800;color:#111827;margin:0;">Social Media Assignment</h1>
@@ -158,15 +158,15 @@ $pMeta = [
             {{-- Target Platforms --}}
             @if($task->social_platforms && count($task->social_platforms))
             @php
-            $spMeta = ['facebook'=>['Facebook','fa-facebook','#1877F2','#EBF3FF'],'instagram'=>['Instagram','fa-instagram','#E1306C','#FFF0F5'],'twitter'=>['Twitter / X','fa-x-twitter','#000000','#F5F5F5'],'linkedin'=>['LinkedIn','fa-linkedin','#0A66C2','#EAF2FB'],'tiktok'=>['TikTok','fa-tiktok','#010101','#F5F5F5'],'youtube'=>['YouTube','fa-youtube','#FF0000','#FFF0F0'],'snapchat'=>['Snapchat','fa-snapchat','#F7CA00','#FFFDE7'],'other'=>['Other','fa-share-nodes','#6366F1','#EEF2FF']];
+            $spMeta = ['facebook'=>['Facebook','fa-facebook','#1877F2','#EBF3FF'],'instagram'=>['Instagram','fa-instagram','#E1306C','#FFF0F5'],'twitter'=>['Twitter / X','fa-x-twitter','#000000','#F5F5F5'],'linkedin'=>['LinkedIn','fa-linkedin','#0A66C2','#EAF2FB'],'tiktok'=>['TikTok','fa-tiktok','#010101','#F5F5F5'],'youtube'=>['YouTube','fa-youtube','#FF0000','#FFF0F0'],'snapchat'=>['Snapchat','fa-snapchat','#F7CA00','#FFFDE7'],'other'=>['Other','fa-share-alt','#6366F1','#EEF2FF']];
             @endphp
             <div style="padding:14px 24px;border-bottom:1px solid #F3F4F6;">
                 <p style="font-size:10px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;display:flex;align-items:center;gap:5px;">
-                    <i class="fas fa-share-nodes" style="font-size:11px;"></i>Target Platforms
+                    <i class="fas fa-share-alt" style="font-size:11px;"></i>Target Platforms
                 </p>
                 <div style="display:flex;flex-wrap:wrap;gap:6px;">
                     @foreach($task->social_platforms as $pKey)
-                    @php [$pLabel,$pIcon,$pColor,$pBg] = $spMeta[$pKey] ?? ['Other','fa-share-nodes','#6366F1','#EEF2FF']; @endphp
+                    @php [$pLabel,$pIcon,$pColor,$pBg] = $spMeta[$pKey] ?? ['Other','fa-share-alt','#6366F1','#EEF2FF']; @endphp
                     <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;background:{{ $pBg }};border:1px solid {{ $pColor }}22;font-size:12px;font-weight:600;color:{{ $pColor }};">
                         <i class="fab {{ $pIcon }}" style="font-size:13px;"></i> {{ $pLabel }}
                     </span>
@@ -365,7 +365,7 @@ $pMeta = [
             <div style="padding:18px 24px;border-bottom:1px solid #F3F4F6;background:linear-gradient(135deg,#F8F9FF,#fff);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
                 <div>
                     <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">
-                        <i class="fas fa-share-nodes" style="color:#6366F1;margin-right:8px;"></i>
+                        <i class="fas fa-share-alt" style="color:#6366F1;margin-right:8px;"></i>
                         Record Posts
                     </p>
                     <p style="font-size:12px;color:#9CA3AF;margin:4px 0 0;">Add one or more platforms with their post links</p>
@@ -380,7 +380,7 @@ $pMeta = [
             {{-- Requested platforms banner --}}
             @if($task->social_platforms && count($task->social_platforms))
             @php
-            $rpMeta = ['facebook'=>['Facebook','fa-facebook','#1877F2','#EBF3FF'],'instagram'=>['Instagram','fa-instagram','#E1306C','#FFF0F5'],'twitter'=>['Twitter / X','fa-x-twitter','#000000','#F5F5F5'],'linkedin'=>['LinkedIn','fa-linkedin','#0A66C2','#EAF2FB'],'tiktok'=>['TikTok','fa-tiktok','#010101','#F5F5F5'],'youtube'=>['YouTube','fa-youtube','#FF0000','#FFF0F0'],'snapchat'=>['Snapchat','fa-snapchat','#F7CA00','#FFFDE7'],'other'=>['Other','fa-share-nodes','#6366F1','#EEF2FF']];
+            $rpMeta = ['facebook'=>['Facebook','fa-facebook','#1877F2','#EBF3FF'],'instagram'=>['Instagram','fa-instagram','#E1306C','#FFF0F5'],'twitter'=>['Twitter / X','fa-x-twitter','#000000','#F5F5F5'],'linkedin'=>['LinkedIn','fa-linkedin','#0A66C2','#EAF2FB'],'tiktok'=>['TikTok','fa-tiktok','#010101','#F5F5F5'],'youtube'=>['YouTube','fa-youtube','#FF0000','#FFF0F0'],'snapchat'=>['Snapchat','fa-snapchat','#F7CA00','#FFFDE7'],'other'=>['Other','fa-share-alt','#6366F1','#EEF2FF']];
             @endphp
             <div style="padding:10px 24px;background:#F0FDF4;border-bottom:1px solid #BBF7D0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                 <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">
@@ -389,7 +389,7 @@ $pMeta = [
                 </div>
                 <div style="display:flex;flex-wrap:wrap;gap:5px;">
                     @foreach($task->social_platforms as $rp)
-                    @php [$rpLabel,$rpIcon,$rpColor,$rpBg] = $rpMeta[$rp] ?? ['Other','fa-share-nodes','#6366F1','#EEF2FF']; @endphp
+                    @php [$rpLabel,$rpIcon,$rpColor,$rpBg] = $rpMeta[$rp] ?? ['Other','fa-share-alt','#6366F1','#EEF2FF']; @endphp
                     <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;background:{{ $rpBg }};border:1px solid {{ $rpColor }}33;font-size:11px;font-weight:600;color:{{ $rpColor }};">
                         <i class="fab {{ $rpIcon }}" style="font-size:11px;"></i> {{ $rpLabel }}
                     </span>
@@ -419,7 +419,7 @@ $pMeta = [
                                 <div style="flex:1;min-width:0;">
                                     <template x-if="entry.platform">
                                         <span :style="`display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;background:${platforms[entry.platform]?.bg ?? '#EEF2FF'};border:1px solid ${platforms[entry.platform]?.color ?? '#6366F1'}33;font-size:12px;font-weight:700;color:${platforms[entry.platform]?.color ?? '#6366F1'};`">
-                                            <i :class="'fab ' + (platforms[entry.platform]?.icon ?? 'fa-share-nodes')"
+                                            <i :class="'fab ' + (platforms[entry.platform]?.icon ?? 'fa-share-alt')"
                                                :style="'font-size:13px;color:' + (platforms[entry.platform]?.color ?? '#6366F1')"></i>
                                             <span x-text="platforms[entry.platform]?.label ?? entry.platform"></span>
                                         </span>
@@ -606,7 +606,7 @@ $pMeta = [
         @if($task->socialAssignee)
         <div style="background:#fff;border-radius:18px;border:1px solid #E5E7EB;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:16px 20px;">
             <p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;">
-                <i class="fas fa-share-nodes" style="margin-right:4px;color:#6366F1;"></i>Social Media Handler
+                <i class="fas fa-share-alt" style="margin-right:4px;color:#6366F1;"></i>Social Media Handler
             </p>
             <div style="display:flex;align-items:center;gap:10px;">
                 <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;flex-shrink:0;">
@@ -675,7 +675,7 @@ function socialForm() {
             tiktok:    { label: 'TikTok',      icon: 'fa-tiktok',      color: '#010101', bg: '#F5F5F5' },
             youtube:   { label: 'YouTube',     icon: 'fa-youtube',     color: '#FF0000', bg: '#FFF0F0' },
             snapchat:  { label: 'Snapchat',    icon: 'fa-snapchat',    color: '#F7CA00', bg: '#FFFDE7' },
-            other:     { label: 'Other',       icon: 'fa-share-nodes', color: '#6366F1', bg: '#EEF2FF' },
+            other:     { label: 'Other',       icon: 'fa-share-alt', color: '#6366F1', bg: '#EEF2FF' },
         },
         add() { this.entries.push({ platform: '', url: '', note: '', showPicker: true }); },
         remove(idx) { this.entries.splice(idx, 1); },
