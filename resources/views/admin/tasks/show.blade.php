@@ -223,7 +223,7 @@
                 <div style="background:#F8FAFF;border:1px solid #EEF2FF;border-radius:14px;padding:18px;">
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
                         <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#EEF2FF,#DDD6FE);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                            <i class="fas fa-share-nodes" style="color:#6366F1;font-size:11px;"></i>
+                            <i class="fas fa-share-alt" style="color:#6366F1;font-size:11px;"></i>
                         </div>
                         <div>
                             <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">Social Media Posting</p>
@@ -271,7 +271,7 @@
                         {{-- Platform selector --}}
                         <div>
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:8px;">
-                                <i class="fas fa-share-nodes" style="font-size:10px;margin-right:4px;color:#6366F1;"></i>
+                                <i class="fas fa-share-alt" style="font-size:10px;margin-right:4px;color:#6366F1;"></i>
                                 Platforms <span style="font-weight:400;color:#9CA3AF;">(select all that apply)</span>
                             </label>
                             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
@@ -284,7 +284,7 @@
                                     'tiktok'    => ['TikTok',     'fa-tiktok',     '#010101','#F5F5F5'],
                                     'youtube'   => ['YouTube',    'fa-youtube',    '#FF0000','#FFF0F0'],
                                     'snapchat'  => ['Snapchat',   'fa-snapchat',   '#F7CA00','#FFFDE7'],
-                                    'other'     => ['Other',      'fa-share-nodes','#6366F1','#EEF2FF'],
+                                    'other'     => ['Other',      'fa-share-alt','#6366F1','#EEF2FF'],
                                 ];
                                 @endphp
                                 @foreach($tskApprovalPlatforms as $pKey => [$pLabel, $pIcon, $pColor, $pBg])
@@ -818,11 +818,15 @@
         <style>
             .rte-field:empty:before { content: attr(data-placeholder); color: #9CA3AF; pointer-events: none; display: block; }
             .rte-field a { color: #4F46E5; text-decoration: underline; }
+            .rte-field ul { list-style-type: disc; padding-left: 1.5em; margin: 4px 0; }
+            .rte-field ol { list-style-type: decimal; padding-left: 1.5em; margin: 4px 0; }
+            .rte-field li { margin: 2px 0; }
             .rte-toolbar-btn { width:28px;height:28px;border:none;background:none;border-radius:6px;cursor:pointer;font-size:13px;color:#374151;display:flex;align-items:center;justify-content:center;transition:background .12s;flex-shrink:0; }
             .rte-toolbar-btn:hover { background:#E5E7EB; }
             .rte-toolbar-btn.active { background:#EEF2FF; color:#4F46E5; }
-            .rte-color-swatch { width:28px;height:28px;border-radius:8px;border:1.5px solid rgba(0,0,0,.12);cursor:pointer;flex-shrink:0;transition:transform .1s,box-shadow .1s; }
-            .rte-color-swatch:hover { transform:scale(1.25);box-shadow:0 2px 8px rgba(0,0,0,.2); }
+            .rte-color-swatch { width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex-shrink:0;transition:transform .15s,box-shadow .15s,border-color .15s; }
+            .rte-color-swatch:hover { transform:scale(1.2);box-shadow:0 3px 10px rgba(0,0,0,.3); }
+            .rte-color-swatch.selected { border-color:#fff;box-shadow:0 0 0 2px rgba(0,0,0,.5); }
         </style>
         <div x-data="{
                 commentFile: '',
@@ -838,12 +842,12 @@
                     dt.items.add(file);
                     input.files = dt.files;
                 },
-                colorOpen: false, savedRange: null,
+                colorOpen: false, selectedColor: '#EF4444', savedRange: null,
                 saveRange() { const s=window.getSelection(); if(s.rangeCount) this.savedRange=s.getRangeAt(0).cloneRange(); },
                 restoreRange() { if(!this.savedRange) return; const s=window.getSelection(); s.removeAllRanges(); s.addRange(this.savedRange); },
-                cmd(c, v = null) { this.$refs.editor.focus(); document.execCommand(c, false, v); },
-                setSize(v) { this.restoreRange(); document.execCommand('fontSize', false, v); },
-                setColor(c) { this.colorOpen=false; this.$refs.editor.focus(); document.execCommand('foreColor', false, c); },
+                cmd(c, v = null) { this.restoreRange(); this.$refs.editor.focus(); document.execCommand(c, false, v); },
+                setSize(v) { this.restoreRange(); this.$refs.editor.focus(); document.execCommand('fontSize', false, v); },
+                setColor(c) { this.colorOpen=false; this.selectedColor=c; this.$refs.editor.focus(); document.execCommand('foreColor', false, c); },
                 addLink() {
                     const url = prompt('Enter URL:');
                     if (!url) return;
@@ -898,27 +902,34 @@
                         <div style="position:relative;" @click.outside="colorOpen=false">
                             <button type="button" class="rte-toolbar-btn" @mousedown.prevent="colorOpen=!colorOpen" title="Text color"
                                     style="flex-direction:column;gap:1px;">
-                                <span style="font-size:12px;font-weight:700;color:#374151;line-height:1;">A</span>
-                                <span style="width:14px;height:3px;border-radius:2px;background:#EF4444;display:block;"></span>
+                                <span style="font-size:12px;font-weight:700;line-height:1;" :style="'color:'+selectedColor">A</span>
+                                <span style="width:14px;height:3px;border-radius:2px;display:block;" :style="'background:'+selectedColor"></span>
                             </button>
-                            <div x-show="colorOpen" @click.outside="colorOpen=false" x-transition
-                                 style="position:fixed;background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:9999;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;width:172px;"
+                            <div x-show="colorOpen"
+                                 style="position:fixed;z-index:9999;"
                                  x-init="$watch('colorOpen', v => { if(v) { const r = $el.previousElementSibling.getBoundingClientRect(); $el.style.left = r.left+'px'; $el.style.top = (r.bottom+6)+'px'; } })">
-                                <div class="rte-color-swatch" @mousedown.prevent style="background:#111827;" @click="setColor('#111827')" title="Black"></div>
-                                <div class="rte-color-swatch" @mousedown.prevent style="background:#6B7280;" @click="setColor('#6B7280')" title="Gray"></div>
-                                <div class="rte-color-swatch" @mousedown.prevent style="background:#EF4444;" @click="setColor('#EF4444')" title="Red"></div>
-                                <div class="rte-color-swatch" @mousedown.prevent style="background:#F97316;" @click="setColor('#F97316')" title="Orange"></div>
-                                <div class="rte-color-swatch" @mousedown.prevent style="background:#EAB308;" @click="setColor('#EAB308')" title="Yellow"></div>
-                                <div class="rte-color-swatch" @mousedown.prevent style="background:#22C55E;" @click="setColor('#22C55E')" title="Green"></div>
-                                <div class="rte-color-swatch" @mousedown.prevent style="background:#06B6D4;" @click="setColor('#06B6D4')" title="Cyan"></div>
-                                <div class="rte-color-swatch" @mousedown.prevent style="background:#3B82F6;" @click="setColor('#3B82F6')" title="Blue"></div>
+                                <div style="background:#fff;border:1px solid #E5E7EB;border-radius:14px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);display:grid;grid-template-columns:repeat(5,1fr);gap:7px;width:192px;">
+                                <div class="rte-color-swatch" @mousedown.prevent style="background:#212121;" @click="setColor('#212121')" title="Black"></div>
+                                <div class="rte-color-swatch" @mousedown.prevent style="background:#F44336;" @click="setColor('#F44336')" title="Red"></div>
+                                <div class="rte-color-swatch" @mousedown.prevent style="background:#E91E63;" @click="setColor('#E91E63')" title="Pink"></div>
+                                <div class="rte-color-swatch" @mousedown.prevent style="background:#9C27B0;" @click="setColor('#9C27B0')" title="Purple"></div>
+                                <div class="rte-color-swatch" @mousedown.prevent style="background:#673AB7;" @click="setColor('#673AB7')" title="Deep Purple"></div>
+                                <div class="rte-color-swatch" @mousedown.prevent style="background:#3F51B5;" @click="setColor('#3F51B5')" title="Indigo"></div>
+                                <div class="rte-color-swatch" @mousedown.prevent style="background:#2196F3;" @click="setColor('#2196F3')" title="Blue"></div>
+                                <div class="rte-color-swatch" @mousedown.prevent style="background:#00BCD4;" @click="setColor('#00BCD4')" title="Cyan"></div>
+                                <div class="rte-color-swatch" @mousedown.prevent style="background:#009688;" @click="setColor('#009688')" title="Teal"></div>
+                                <div class="rte-color-swatch" @mousedown.prevent style="background:#4CAF50;" @click="setColor('#4CAF50')" title="Green"></div>
+                                <div class="rte-color-swatch" @mousedown.prevent style="background:#8BC34A;" @click="setColor('#8BC34A')" title="Light Green"></div>
+                                <div class="rte-color-swatch" @mousedown.prevent style="background:#FFEB3B;" @click="setColor('#FFEB3B')" title="Yellow"></div>
+                                <div class="rte-color-swatch" @mousedown.prevent style="background:#FF9800;" @click="setColor('#FF9800')" title="Orange"></div>
+                                <div class="rte-color-swatch" @mousedown.prevent style="background:#FF5722;" @click="setColor('#FF5722')" title="Deep Orange"></div>
+                                <div class="rte-color-swatch" @mousedown.prevent style="background:#795548;" @click="setColor('#795548')" title="Brown"></div>
+                                <div class="rte-color-swatch" @mousedown.prevent style="background:#9E9E9E;" @click="setColor('#9E9E9E')" title="Gray"></div>
+                                <div class="rte-color-swatch" @mousedown.prevent style="background:#607D8B;" @click="setColor('#607D8B')" title="Blue Gray"></div>
                                 <div class="rte-color-swatch" @mousedown.prevent style="background:#6366F1;" @click="setColor('#6366F1')" title="Indigo"></div>
-                                <div class="rte-color-swatch" @mousedown.prevent style="background:#A855F7;" @click="setColor('#A855F7')" title="Purple"></div>
-                                <div class="rte-color-swatch" @mousedown.prevent style="background:#EC4899;" @click="setColor('#EC4899')" title="Pink"></div>
-                                <div class="rte-color-swatch" @mousedown.prevent style="background:#14B8A6;" @click="setColor('#14B8A6')" title="Teal"></div>
-                                <div class="rte-color-swatch" @mousedown.prevent style="background:#8B5CF6;" @click="setColor('#8B5CF6')" title="Violet"></div>
-                                <div class="rte-color-swatch" @mousedown.prevent style="background:#F43F5E;" @click="setColor('#F43F5E')" title="Rose"></div>
-                                <div class="rte-color-swatch" @mousedown.prevent style="background:#fff;border:1.5px solid #D1D5DB;" @click="setColor('#374151')" title="Reset"></div>
+                                <div class="rte-color-swatch" @mousedown.prevent style="background:#EC4899;" @click="setColor('#EC4899')" title="Rose"></div>
+                                <div class="rte-color-swatch" @mousedown.prevent style="background:#fff;border:2px solid #D1D5DB;" @click="setColor('#374151')" title="Reset"></div>
+                                </div>
                             </div>
                         </div>
                         <div style="width:1px;height:16px;background:#D1D5DB;margin:0 4px;flex-shrink:0;"></div>
@@ -930,7 +941,8 @@
                          class="rte-field"
                          data-placeholder="Write your comment..."
                          @focus="editorFocused = true"
-                         @blur="editorFocused = false"
+                         @blur="editorFocused = false; saveRange()"
+                         @keyup="saveRange()" @mouseup="saveRange()"
                          style="min-height:84px;padding:10px 14px;font-size:13px;color:#111827;outline:none;font-family:'Inter',sans-serif;line-height:1.6;background:#fff;word-break:break-word;"></div>
                 </div>
 
@@ -1119,7 +1131,7 @@
                                     'youtube'   => ['fab fa-youtube',     '#FF0000', '#fff', 'YouTube'],
                                     'linkedin'  => ['fab fa-linkedin-in', '#0A66C2', '#fff', 'LinkedIn'],
                                     'snapchat'  => ['fab fa-snapchat',    '#FFFC00', '#111', 'Snapchat'],
-                                    'other'     => ['fas fa-share-nodes', '#6366F1', '#fff', 'Other'],
+                                    'other'     => ['fas fa-share-alt', '#6366F1', '#fff', 'Other'],
                                 ];
                                 $spKey      = $meta['platform'] ?? 'other';
                                 [$spIcon, $spBg, $spIconClr, $spLabel] = $spPlatformMeta[$spKey] ?? $spPlatformMeta['other'];
@@ -1457,12 +1469,12 @@
                 <div x-data="{
                     editing: false, showHistory: false,
                     body: {{ json_encode($comment->body) }},
-                    editorFocused: false, colorOpen: false, savedRange: null,
+                    editorFocused: false, colorOpen: false, selectedColor: '#EF4444', savedRange: null,
                     saveRange(){ const s=window.getSelection(); if(s.rangeCount) this.savedRange=s.getRangeAt(0).cloneRange(); },
                     restoreRange(){ if(!this.savedRange) return; const s=window.getSelection(); s.removeAllRanges(); s.addRange(this.savedRange); },
-                    cmd(c,v=null){ this.$refs.editEditor.focus(); document.execCommand(c,false,v); },
-                    setSize(v){ this.restoreRange(); document.execCommand('fontSize',false,v); },
-                    setColor(c){ this.colorOpen=false; this.$refs.editEditor.focus(); document.execCommand('foreColor',false,c); },
+                    cmd(c,v=null){ this.restoreRange(); this.$refs.editEditor.focus(); document.execCommand(c,false,v); },
+                    setSize(v){ this.restoreRange(); this.$refs.editEditor.focus(); document.execCommand('fontSize',false,v); },
+                    setColor(c){ this.colorOpen=false; this.selectedColor=c; this.$refs.editEditor.focus(); document.execCommand('foreColor',false,c); },
                     addLink(){ const u=prompt('Enter URL:'); if(!u) return; this.$refs.editEditor.focus(); document.execCommand('createLink',false,u.startsWith('http')?u:'https://'+u); },
                     openEdit(){ this.editing=true; this.$nextTick(()=>{ if(this.$refs.editEditor) this.$refs.editEditor.innerHTML=this.body; }); }
                 }" style="display:flex;gap:14px;">
@@ -1489,7 +1501,7 @@
                         </div>
                         <div style="background:{{ $isAdmin ? '#F5F3FF' : '#F9FAFB' }};border:1px solid {{ $isAdmin ? '#EDE9FE' : '#E5E7EB' }};border-radius:10px;padding:10px 14px;{{ $isAdmin ? 'border-left:3px solid #8B5CF6;' : '' }}">
                             <div x-show="!editing">
-                                <div style="font-size:13px;color:#374151;margin:0{{ $comment->file_path ? ' 0 10px' : '' }};line-height:1.6;word-break:break-word;" x-html="body"></div>
+                                <div class="rte-field" style="font-size:13px;color:#374151;margin:0{{ $comment->file_path ? ' 0 10px' : '' }};line-height:1.6;word-break:break-word;padding:0;min-height:0;" x-html="body"></div>
                                 @if($comment->file_path)
                                     @if($cIsImage)
                                     <button type="button" @click="showComment({{ json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'isImage'=>true,'isVideo'=>false]) }})" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;width:100%;" onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
@@ -1554,27 +1566,34 @@
                                             <div style="position:relative;" @click.outside="colorOpen=false">
                                                 <button type="button" class="rte-toolbar-btn" @mousedown.prevent="colorOpen=!colorOpen" title="Text color"
                                                         style="flex-direction:column;gap:1px;">
-                                                    <span style="font-size:11px;font-weight:700;color:#374151;line-height:1;">A</span>
-                                                    <span style="width:12px;height:3px;border-radius:2px;background:#EF4444;display:block;"></span>
+                                                    <span style="font-size:11px;font-weight:700;line-height:1;" :style="'color:'+selectedColor">A</span>
+                                                    <span style="width:12px;height:3px;border-radius:2px;display:block;" :style="'background:'+selectedColor"></span>
                                                 </button>
-                                                <div x-show="colorOpen" @click.outside="colorOpen=false" x-transition
-                                                     style="position:fixed;background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:9999;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;width:172px;"
+                                                <div x-show="colorOpen"
+                                                     style="position:fixed;z-index:9999;"
                                                      x-init="$watch('colorOpen', v => { if(v) { const r = $el.previousElementSibling.getBoundingClientRect(); $el.style.left = r.left+'px'; $el.style.top = (r.bottom+6)+'px'; } })">
-                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#111827;" @click="setColor('#111827')"></div>
-                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#6B7280;" @click="setColor('#6B7280')"></div>
-                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#EF4444;" @click="setColor('#EF4444')"></div>
-                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#F97316;" @click="setColor('#F97316')"></div>
-                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#EAB308;" @click="setColor('#EAB308')"></div>
-                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#22C55E;" @click="setColor('#22C55E')"></div>
-                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#06B6D4;" @click="setColor('#06B6D4')"></div>
-                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#3B82F6;" @click="setColor('#3B82F6')"></div>
+                                                    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:14px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);display:grid;grid-template-columns:repeat(5,1fr);gap:7px;width:192px;">
+                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#212121;" @click="setColor('#212121')"></div>
+                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#F44336;" @click="setColor('#F44336')"></div>
+                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#E91E63;" @click="setColor('#E91E63')"></div>
+                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#9C27B0;" @click="setColor('#9C27B0')"></div>
+                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#673AB7;" @click="setColor('#673AB7')"></div>
+                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#3F51B5;" @click="setColor('#3F51B5')"></div>
+                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#2196F3;" @click="setColor('#2196F3')"></div>
+                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#00BCD4;" @click="setColor('#00BCD4')"></div>
+                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#009688;" @click="setColor('#009688')"></div>
+                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#4CAF50;" @click="setColor('#4CAF50')"></div>
+                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#8BC34A;" @click="setColor('#8BC34A')"></div>
+                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#FFEB3B;" @click="setColor('#FFEB3B')"></div>
+                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#FF9800;" @click="setColor('#FF9800')"></div>
+                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#FF5722;" @click="setColor('#FF5722')"></div>
+                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#795548;" @click="setColor('#795548')"></div>
+                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#9E9E9E;" @click="setColor('#9E9E9E')"></div>
+                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#607D8B;" @click="setColor('#607D8B')"></div>
                                                     <div class="rte-color-swatch" @mousedown.prevent style="background:#6366F1;" @click="setColor('#6366F1')"></div>
-                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#A855F7;" @click="setColor('#A855F7')"></div>
                                                     <div class="rte-color-swatch" @mousedown.prevent style="background:#EC4899;" @click="setColor('#EC4899')"></div>
-                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#14B8A6;" @click="setColor('#14B8A6')"></div>
-                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#8B5CF6;" @click="setColor('#8B5CF6')"></div>
-                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#F43F5E;" @click="setColor('#F43F5E')"></div>
-                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#fff;border:1.5px solid #D1D5DB;" @click="setColor('#374151')"></div>
+                                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#fff;border:2px solid #D1D5DB;" @click="setColor('#374151')"></div>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div style="width:1px;height:14px;background:#D1D5DB;margin:0 3px;flex-shrink:0;"></div>
@@ -1585,7 +1604,8 @@
                                              class="rte-field"
                                              data-placeholder="Edit your comment..."
                                              @focus="editorFocused=true"
-                                             @blur="editorFocused=false"
+                                             @blur="editorFocused=false; saveRange()"
+                                             @keyup="saveRange()" @mouseup="saveRange()"
                                              style="min-height:60px;padding:9px 12px;font-size:13px;color:#111827;outline:none;font-family:'Inter',sans-serif;line-height:1.6;background:#fff;word-break:break-word;"></div>
                                     </div>
                                     <div style="display:flex;gap:8px;">

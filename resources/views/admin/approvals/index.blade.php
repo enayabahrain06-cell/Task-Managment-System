@@ -796,7 +796,7 @@
                 <div style="background:#F8FAFF;border:1px solid #EEF2FF;border-radius:14px;padding:18px;">
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
                         <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#EEF2FF,#DDD6FE);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                            <i class="fas fa-share-nodes" style="color:#6366F1;font-size:11px;"></i>
+                            <i class="fas fa-share-alt" style="color:#6366F1;font-size:11px;"></i>
                         </div>
                         <div>
                             <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">Social Media Posting</p>
@@ -848,7 +848,7 @@
                         {{-- Platform selector --}}
                         <div>
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:8px;">
-                                <i class="fas fa-share-nodes" style="font-size:10px;margin-right:4px;color:#6366F1;"></i>
+                                <i class="fas fa-share-alt" style="font-size:10px;margin-right:4px;color:#6366F1;"></i>
                                 Platforms <span style="font-weight:400;color:#9CA3AF;">(select all that apply)</span>
                             </label>
                             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
@@ -861,7 +861,7 @@
                                     'tiktok'    => ['TikTok',     'fa-tiktok',     '#010101','#F5F5F5','#D1D5DB'],
                                     'youtube'   => ['YouTube',    'fa-youtube',    '#FF0000','#FFF0F0','#FFBBBB'],
                                     'snapchat'  => ['Snapchat',   'fa-snapchat',   '#F7CA00','#FFFDE7','#FDE68A'],
-                                    'other'     => ['Other',      'fa-share-nodes','#6366F1','#EEF2FF','#C7D2FE'],
+                                    'other'     => ['Other',      'fa-share-alt','#6366F1','#EEF2FF','#C7D2FE'],
                                 ];
                                 @endphp
                                 @foreach($approvalPlatforms as $pKey => [$pLabel, $pIcon, $pColor, $pBg, $pBorder])
@@ -1111,7 +1111,7 @@
     <a href="{{ route('admin.approvals.index') }}?tab=social"
        style="display:flex;align-items:center;gap:7px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all .18s;
               {{ $tab === 'social' ? 'background:#fff;color:#4F46E5;box-shadow:0 2px 8px rgba(99,102,241,.12);' : 'color:#6B7280;' }}">
-        <i class="fas fa-share-nodes" style="font-size:11px;"></i> Social Media
+        <i class="fas fa-share-alt" style="font-size:11px;"></i> Social Media
         @php $socialPending = $socialTasks->total(); @endphp
         @if($socialTasks->total() > 0)
         <span style="background:{{ $tab === 'social' ? 'linear-gradient(135deg,#EDE9FE,#DDD6FE)' : '#F3F4F6' }};color:{{ $tab === 'social' ? '#7C3AED' : '#6B7280' }};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">{{ $socialTasks->total() }}</span>
@@ -1936,7 +1936,7 @@
             $socialAssignee = $sub->task?->socialAssignee;
             $postedAt       = $sub->task?->social_posted_at;
             $taskSocialPosts = $sub->task?->socialPosts ?? collect();
-            $pIcons = ['facebook'=>['fa-facebook','#1877F2'],'instagram'=>['fa-instagram','#E1306C'],'twitter'=>['fa-x-twitter','#000000'],'linkedin'=>['fa-linkedin','#0A66C2'],'tiktok'=>['fa-tiktok','#010101'],'youtube'=>['fa-youtube','#FF0000'],'snapchat'=>['fa-snapchat','#F7CA00'],'other'=>['fa-share-nodes','#6366F1']];
+            $pIcons = ['facebook'=>['fa-facebook','#1877F2'],'instagram'=>['fa-instagram','#E1306C'],'twitter'=>['fa-x-twitter','#000000'],'linkedin'=>['fa-linkedin','#0A66C2'],'tiktok'=>['fa-tiktok','#010101'],'youtube'=>['fa-youtube','#FF0000'],'snapchat'=>['fa-snapchat','#F7CA00'],'other'=>['fa-share-alt','#6366F1']];
         @endphp
         <tbody x-data="{ expanded: false }">
             {{-- Summary row --}}
@@ -2120,7 +2120,7 @@
         $socialAssignee = $sub->task?->socialAssignee;
         $postedAt       = $sub->task?->social_posted_at;
         $taskSocialPosts = $sub->task?->socialPosts ?? collect();
-        $pIcons = ['facebook'=>['fa-facebook','#1877F2'],'instagram'=>['fa-instagram','#E1306C'],'twitter'=>['fa-x-twitter','#000000'],'linkedin'=>['fa-linkedin','#0A66C2'],'tiktok'=>['fa-tiktok','#010101'],'youtube'=>['fa-youtube','#FF0000'],'snapchat'=>['fa-snapchat','#F7CA00'],'other'=>['fa-share-nodes','#6366F1']];
+        $pIcons = ['facebook'=>['fa-facebook','#1877F2'],'instagram'=>['fa-instagram','#E1306C'],'twitter'=>['fa-x-twitter','#000000'],'linkedin'=>['fa-linkedin','#0A66C2'],'tiktok'=>['fa-tiktok','#010101'],'youtube'=>['fa-youtube','#FF0000'],'snapchat'=>['fa-snapchat','#F7CA00'],'other'=>['fa-share-alt','#6366F1']];
     @endphp
     <div class="hist-card dec-{{ $isApproved ? 'approved' : 'rejected' }}" onclick="openTaskPanel({{ $sub->task_id ?? 'null' }})" style="cursor:pointer;">
 
@@ -2264,7 +2264,7 @@
 {{-- ══════════════════════ PUBLISHED POSTS TAB ══════════════════════ --}}
 @if($tab === 'published')
 @php
-$pubIcons = ['facebook'=>['fa-facebook','#1877F2'],'instagram'=>['fa-instagram','#E1306C'],'twitter'=>['fa-x-twitter','#000000'],'linkedin'=>['fa-linkedin','#0A66C2'],'tiktok'=>['fa-tiktok','#010101'],'youtube'=>['fa-youtube','#FF0000'],'snapchat'=>['fa-snapchat','#F7CA00'],'other'=>['fa-share-nodes','#6366F1']];
+$pubIcons = ['facebook'=>['fa-facebook','#1877F2'],'instagram'=>['fa-instagram','#E1306C'],'twitter'=>['fa-x-twitter','#000000'],'linkedin'=>['fa-linkedin','#0A66C2'],'tiktok'=>['fa-tiktok','#010101'],'youtube'=>['fa-youtube','#FF0000'],'snapchat'=>['fa-snapchat','#F7CA00'],'other'=>['fa-share-alt','#6366F1']];
 $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twitter / X','linkedin'=>'LinkedIn','tiktok'=>'TikTok','youtube'=>'YouTube','snapchat'=>'Snapchat','other'=>'Other'];
 @endphp
 <style>
@@ -2554,7 +2554,7 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
 @if($socialTasks->isEmpty())
 <div class="apv-empty" style="background:#fff;border-radius:18px;border:1px solid #EBEBEB;padding:72px 40px;text-align:center;box-shadow:0 2px 10px rgba(99,102,241,.06);">
     <div style="width:64px;height:64px;border-radius:20px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;">
-        <i class="fas fa-share-nodes" style="color:#6366F1;font-size:26px;"></i>
+        <i class="fas fa-share-alt" style="color:#6366F1;font-size:26px;"></i>
     </div>
     <p style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">No social media assignments yet</p>
     <p style="font-size:13px;color:#9CA3AF;margin:0;">No pending social media tasks. All posted tasks are recorded in the <a href="{{ route('admin.approvals.index') }}?tab=published" style="color:#4F46E5;text-decoration:none;font-weight:600;">Published Posts tab</a>.</p>
@@ -3041,7 +3041,7 @@ function _esc(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-var _spIcons = {facebook:['fa-facebook','#1877F2'],instagram:['fa-instagram','#E1306C'],twitter:['fa-x-twitter','#000'],linkedin:['fa-linkedin','#0A66C2'],tiktok:['fa-tiktok','#010101'],youtube:['fa-youtube','#FF0000'],snapchat:['fa-snapchat','#F7CA00'],other:['fa-share-nodes','#6366F1']};
+var _spIcons = {facebook:['fa-facebook','#1877F2'],instagram:['fa-instagram','#E1306C'],twitter:['fa-x-twitter','#000'],linkedin:['fa-linkedin','#0A66C2'],tiktok:['fa-tiktok','#010101'],youtube:['fa-youtube','#FF0000'],snapchat:['fa-snapchat','#F7CA00'],other:['fa-share-alt','#6366F1']};
 
 function renderTaskPanel(d) {
     var loading = document.getElementById('taskPanelLoading');
@@ -3189,7 +3189,7 @@ function renderTaskPanel(d) {
     // ── Social Media ──
     var soEl = document.getElementById('tpSocial');
     if (d.socialPosts && d.socialPosts.length) {
-        var soHtml = '<p class="tp-section-head"><i class="fas fa-share-nodes" style="font-size:10px;color:#A5B4FC;"></i> Social Media Posts <span style="font-weight:400;color:#C4B5FD;font-size:10px;">(' + d.socialPosts.length + ')</span></p>';
+        var soHtml = '<p class="tp-section-head"><i class="fas fa-share-alt" style="font-size:10px;color:#A5B4FC;"></i> Social Media Posts <span style="font-weight:400;color:#C4B5FD;font-size:10px;">(' + d.socialPosts.length + ')</span></p>';
         d.socialPosts.forEach(function(sp) {
             var ico = _spIcons[sp.platform] || _spIcons['other'];
             soHtml += '<div style="display:flex;align-items:flex-start;gap:10px;background:#fff;border:1px solid #EBEBEB;border-radius:12px;padding:12px 14px;margin-bottom:8px;">';

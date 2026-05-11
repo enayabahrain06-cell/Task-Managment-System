@@ -125,6 +125,15 @@ class ReportsController extends Controller
                              }))
                              ->count();
 
+        // Social posts published by the filtered user within the date range
+        $socialPostsCount = $isRegularUserFilter
+            ? \App\Models\TaskSocialPost::where('user_id', $userId)
+                ->when($from, fn($q) => $q->where('created_at', '>=', $from))
+                ->when($projectId, fn($q) => $q->whereHas('task', fn($tq) => $tq->where('project_id', $projectId)))
+                ->when($customerId, fn($q) => $q->whereHas('task', fn($tq) => $tq->where('customer_id', $customerId)))
+                ->count()
+            : 0;
+
         // All active non-admin users regardless of task count in period
         $teamMemberCount = User::whereNotIn('role', ['admin'])
             ->where('status', 'active')
@@ -666,7 +675,7 @@ class ReportsController extends Controller
         return view('admin.reports.index', compact(
             'range', 'projectId', 'customerId', 'userId', 'selectedUser',
             'totalTasks', 'completedTasks', 'overdueTasks', 'completionRate',
-            'onTimeRate', 'activeProjects', 'pendingReview', 'teamMemberCount',
+            'onTimeRate', 'activeProjects', 'pendingReview', 'socialPostsCount', 'teamMemberCount',
             'statusBreakdown', 'priorityBreakdown',
             'projects', 'teamMembers',
             'monthLabels', 'monthlyCreated', 'monthlyCompleted',

@@ -2211,7 +2211,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 ['key'=>'wa_tpl_approved',         'icon'=>'fa-circle-check',        'color'=>'#16a34a', 'label'=>'Task Approved',           'hint'=>'Sent when admin approves a submitted task'],
                                 ['key'=>'wa_tpl_reminder',         'icon'=>'fa-clock',               'color'=>'#D97706', 'label'=>'Deadline Reminder',       'hint'=>'Sent X days before the task deadline'],
                                 ['key'=>'wa_tpl_overdue',          'icon'=>'fa-triangle-exclamation','color'=>'#DC2626', 'label'=>'Overdue Alert',           'hint'=>'Automated daily alert for overdue tasks'],
-                                ['key'=>'wa_tpl_social',           'icon'=>'fa-share-nodes',         'color'=>'#7C3AED', 'label'=>'Social Media Assigned',   'hint'=>'Sent when a task is assigned for social posting'],
+                                ['key'=>'wa_tpl_social',           'icon'=>'fa-share-alt',         'color'=>'#7C3AED', 'label'=>'Social Media Assigned',   'hint'=>'Sent when a task is assigned for social posting'],
                                 ['key'=>'wa_tpl_customer_design',  'icon'=>'fa-image',               'color'=>'#0891B2', 'label'=>'Customer Design Ready',   'hint'=>'Sent to customer when their design is approved and ready for review. Variables: {customer_name}, {task_title}, {design_link}, {admin_note}, {company}'],
                             ];
                             @endphp

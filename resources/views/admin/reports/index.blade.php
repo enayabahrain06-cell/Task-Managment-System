@@ -373,9 +373,11 @@
         ...($empName ? [] : [
             ['label'=>'Active Projects','value'=>$activeProjects,  'icon'=>'fa-diagram-project',     'color'=>'#3B82F6','bg'=>'#DBEAFE', 'sub'=>'Currently running'],
         ]),
-        ['label' => $empName ? 'Submitted Tasks'  : 'Pending Review',
-         'value' => $pendingReview,     'icon'=>'fa-gavel',               'color'=>'#7C3AED','bg'=>'#EDE9FE',
-         'sub'   => $empName ? 'Awaiting admin approval' : 'Awaiting approval'],
+        ['label' => $empName ? ($socialPostsCount > 0 && $pendingReview === 0 ? 'Social Posts' : ($socialPostsCount > 0 ? 'Submitted + Posted' : 'Submitted Tasks')) : 'Pending Review',
+         'value' => $empName ? ($pendingReview + $socialPostsCount) : $pendingReview,
+         'icon'  => $empName && $socialPostsCount > 0 && $pendingReview === 0 ? 'fa-share-nodes' : 'fa-gavel',
+         'color' => '#7C3AED', 'bg' => '#EDE9FE',
+         'sub'   => $empName ? ($socialPostsCount > 0 && $pendingReview === 0 ? 'Social media posts published' : ($socialPostsCount > 0 ? 'Submitted tasks + social posts' : 'Awaiting admin approval')) : 'Awaiting approval'],
         ...($empName ? [] : [
             ['label'=>'Team Members',  'value'=>$teamMemberCount,  'icon'=>'fa-users',               'color'=>'#059669','bg'=>'#ECFDF5', 'sub'=>'Active contributors'],
         ]),
@@ -1331,7 +1333,7 @@
                 <td>
                     @if($at['social_user'] !== '—')
                         <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:8px;background:#E0F2FE;color:#0284C7;font-size:11px;font-weight:600;">
-                            <i class="fas fa-share-nodes" style="font-size:9px;"></i>
+                            <i class="fas fa-share-alt" style="font-size:9px;"></i>
                             {{ $at['social_user'] }}
                         </span>
                     @else

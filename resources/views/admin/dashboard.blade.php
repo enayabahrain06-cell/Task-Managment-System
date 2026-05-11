@@ -1202,7 +1202,7 @@ function dashModals() {
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
                 <div style="display:flex;align-items:center;gap:6px;">
                     <div style="width:20px;height:20px;border-radius:6px;background:linear-gradient(135deg,#EEF2FF,#DDD6FE);display:flex;align-items:center;justify-content:center;">
-                        <i class="fas fa-share-nodes" style="color:#6366F1;font-size:9px;"></i>
+                        <i class="fas fa-share-alt" style="color:#6366F1;font-size:9px;"></i>
                     </div>
                     <span style="font-size:12px;font-weight:700;color:#374151;">Social Media</span>
                 </div>
@@ -1228,7 +1228,7 @@ function dashModals() {
             {{-- Platform icons row --}}
             @if($socialPlatformStats->isNotEmpty())
             <div style="display:-webkit-box;display:-ms-flexbox;display:flex;-ms-flex-wrap:wrap;flex-wrap:wrap;gap:4px;">
-                @php $spIcons=['facebook'=>['fa-facebook','#1877F2'],'instagram'=>['fa-instagram','#E1306C'],'twitter'=>['fa-x-twitter','#000000'],'linkedin'=>['fa-linkedin','#0A66C2'],'tiktok'=>['fa-tiktok','#010101'],'youtube'=>['fa-youtube','#FF0000'],'snapchat'=>['fa-snapchat','#F7CA00'],'other'=>['fa-share-nodes','#6366F1']]; @endphp
+                @php $spIcons=['facebook'=>['fa-facebook','#1877F2'],'instagram'=>['fa-instagram','#E1306C'],'twitter'=>['fa-x-twitter','#000000'],'linkedin'=>['fa-linkedin','#0A66C2'],'tiktok'=>['fa-tiktok','#010101'],'youtube'=>['fa-youtube','#FF0000'],'snapchat'=>['fa-snapchat','#F7CA00'],'other'=>['fa-share-alt','#6366F1']]; @endphp
                 @foreach($socialPlatformStats->take(5) as $ps)
                 @php [$spIco,$spCol] = $spIcons[$ps->platform] ?? $spIcons['other']; @endphp
                 <button onclick="openSocialPostsModal('{{ $ps->platform }}')"
@@ -1728,7 +1728,7 @@ function dashModals() {
             {{-- Empty --}}
             <div id="socialModalEmpty" style="display:none;padding:48px 24px;text-align:center;">
                 <div style="width:56px;height:56px;border-radius:16px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
-                    <i class="fas fa-share-nodes" style="font-size:24px;color:#D1D5DB;"></i>
+                    <i class="fas fa-share-alt" style="font-size:24px;color:#D1D5DB;"></i>
                 </div>
                 <p style="font-size:14px;font-weight:600;color:#374151;margin:0 0 4px;">No posts found</p>
                 <p style="font-size:12px;color:#9CA3AF;margin:0;">No social media posts have been recorded yet.</p>
@@ -2168,7 +2168,7 @@ var _spPlatformMeta = {
     tiktok:    { icon: 'fa-tiktok',     color: '#010101', grad: 'linear-gradient(135deg,#010101,#69C9D0)' },
     youtube:   { icon: 'fa-youtube',    color: '#FF0000', grad: 'linear-gradient(135deg,#FF0000,#CC0000)' },
     snapchat:  { icon: 'fa-snapchat',   color: '#F7CA00', grad: 'linear-gradient(135deg,#F7CA00,#C9A600)' },
-    other:     { icon: 'fa-share-nodes',color: '#6366F1', grad: 'linear-gradient(135deg,#6366F1,#8B5CF6)' },
+    other:     { icon: 'fa-share-alt',color: '#6366F1', grad: 'linear-gradient(135deg,#6366F1,#8B5CF6)' },
 };
 
 function openSocialPostsModal(platform) {
