@@ -46,6 +46,16 @@ class TaskController extends Controller
         if ($request->filled('project')) {
             $query->where('project_id', $request->project);
         }
+        if ($request->filled('assignee')) {
+            $uid = $request->assignee;
+            $query->where(function($q) use ($uid) {
+                $q->where('assigned_to', $uid)
+                  ->orWhere('social_assigned_to', $uid)
+                  ->orWhereExists(fn($x) => $x->selectRaw('1')->from('task_assignees')
+                      ->whereColumn('task_assignees.task_id', 'tasks.id')
+                      ->where('task_assignees.user_id', $uid));
+            });
+        }
         $doneStatuses   = ['approved', 'delivered', 'archived'];
         $isDoneTab      = ($request->get('tab') === 'done');
 

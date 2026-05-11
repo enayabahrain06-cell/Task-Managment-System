@@ -7,11 +7,12 @@
 <style>
 /* ── Screen layout helpers ── */
 .rpt-grid-4  { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:10px; }
+.rpt-grid-5  { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:10px; }
 .rpt-grid-2  { display:grid; grid-template-columns:1fr 1fr;       gap:10px; margin-bottom:10px; }
 .rpt-grid-3  { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:10px; }
-@media(max-width:1100px){ .rpt-grid-4 { grid-template-columns:repeat(2,1fr); } }
+@media(max-width:1100px){ .rpt-grid-4,.rpt-grid-5 { grid-template-columns:repeat(2,1fr); } }
 @media(max-width:900px) { .rpt-grid-2,.rpt-grid-3 { grid-template-columns:1fr; } }
-@media(max-width:600px) { .rpt-grid-4 { grid-template-columns:1fr; } }
+@media(max-width:600px) { .rpt-grid-4,.rpt-grid-5 { grid-template-columns:1fr; } }
 
 .rpt-card {
     background:#fff; border-radius:12px;
@@ -74,6 +75,7 @@
         page-break-inside:avoid;
     }
     .rpt-grid-4 { grid-template-columns:repeat(4,1fr) !important; }
+    .rpt-grid-5 { grid-template-columns:repeat(5,1fr) !important; }
     .rpt-grid-2 { grid-template-columns:1fr 1fr !important; }
     .rpt-grid-3 { grid-template-columns:repeat(3,1fr) !important; }
 
@@ -358,32 +360,49 @@
 {{-- Hidden area used for PDF rendering --}}
 <div id="user-perf-pdf-area" style="position:fixed;left:-9999px;top:0;width:900px;background:#fff;padding:32px;font-family:Inter,system-ui,sans-serif;"></div>
 
-{{-- ══ KPI Summary Row ══ --}}
+{{-- ══ KPI Summary ══ --}}
+@php
+$empName       = $selectedUser ? $selectedUser->name : null;
+$platformIcons = ['facebook'=>['fab fa-facebook','#1877F2'],'instagram'=>['fab fa-instagram','#E1306C'],'twitter'=>['fab fa-x-twitter','#000'],'tiktok'=>['fab fa-tiktok','#010101'],'youtube'=>['fab fa-youtube','#FF0000'],'snapchat'=>['fab fa-snapchat-ghost','#F7CA00'],'linkedin'=>['fab fa-linkedin','#0A66C2'],'other'=>['fas fa-share-nodes','#6366F1']];
+
+// Row 1 — always 4 core metrics
+$kpisRow1 = [
+    ['label' => $empName ? 'Assigned Tasks' : 'Total Tasks',
+     'value' => $totalTasks,         'icon'=>'fa-list-check',   'color'=>'#6366F1','bg'=>'#EEF2FF',
+     'sub'   => $empName ? 'Assigned to '.$empName : 'In selected period'],
+    ['label'=>'Completed',        'value'=>$completedTasks,    'icon'=>'fa-circle-check', 'color'=>'#10B981','bg'=>'#D1FAE5', 'sub'=>'Approved + Delivered'],
+    ['label'=>'Completion Rate',  'value'=>$completionRate.'%','icon'=>'fa-chart-pie',     'color'=>'#F59E0B','bg'=>'#FEF3C7', 'sub'=>'Of all tasks done'],
+    ['label'=>'On-time Rate',     'value'=>$onTimeRate.'%',    'icon'=>'fa-clock',         'color'=>'#8B5CF6','bg'=>'#EDE9FE', 'sub'=>'Before deadline'],
+];
+
+// Row 2 — context metrics (count varies by filter)
+$kpisRow2 = [
+    ['label'=>'Overdue',   'value'=>$overdueTasks, 'icon'=>'fa-triangle-exclamation','color'=>'#EF4444','bg'=>'#FEE2E2', 'sub'=>'Need attention'],
+    ...($empName ? [] : [
+        ['label'=>'Active Projects','value'=>$activeProjects,'icon'=>'fa-diagram-project','color'=>'#3B82F6','bg'=>'#DBEAFE','sub'=>'Currently running'],
+    ]),
+    ['label' => $empName ? 'Submitted Tasks' : 'Pending Review',
+     'value' => $pendingReview,
+     'icon'  => 'fa-gavel', 'color'=>'#7C3AED','bg'=>'#EDE9FE',
+     'sub'   => 'Awaiting approval'],
+    ...($empName ? [] : [
+        ['label'=>'Team Members','value'=>$teamMemberCount,'icon'=>'fa-users','color'=>'#059669','bg'=>'#ECFDF5','sub'=>'Active contributors'],
+    ]),
+    ['label'     => 'Social Posts',
+     'value'     => $socialPostsCount,
+     'icon'      => 'fa-share-nodes',
+     'color'     => '#EC4899','bg'=>'#FCE7F3',
+     'sub'       => $socialPendingCount > 0 ? $socialPendingCount.' pending' : 'All posted',
+     'sub_color' => $socialPendingCount > 0 ? '#D97706' : '#10B981',
+     'platforms' => $socialByPlatform],
+];
+
+$row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? 'rpt-grid-3' : 'rpt-grid-4');
+@endphp
+
+{{-- Row 1: Core metrics (always 4) --}}
 <div class="rpt-grid-4">
-    @php
-    $empName = $selectedUser ? $selectedUser->name : null;
-    $kpis = [
-        ['label' => $empName ? 'Assigned Tasks'   : 'Total Tasks',
-         'value' => $totalTasks,        'icon'=>'fa-list-check',          'color'=>'#6366F1','bg'=>'#EEF2FF',
-         'sub'   => $empName ? 'Tasks assigned to '.$empName : 'In selected period'],
-        ['label'=>'Completed',        'value'=>$completedTasks,    'icon'=>'fa-circle-check',        'color'=>'#10B981','bg'=>'#D1FAE5', 'sub'=>'Approved + Delivered'],
-        ['label'=>'Completion Rate',  'value'=>$completionRate.'%','icon'=>'fa-chart-pie',            'color'=>'#F59E0B','bg'=>'#FEF3C7', 'sub'=>'Of all tasks done'],
-        ['label'=>'On-time Rate',     'value'=>$onTimeRate.'%',    'icon'=>'fa-clock',               'color'=>'#8B5CF6','bg'=>'#EDE9FE', 'sub'=>'Before deadline'],
-        ['label'=>'Overdue',          'value'=>$overdueTasks,      'icon'=>'fa-triangle-exclamation','color'=>'#EF4444','bg'=>'#FEE2E2', 'sub'=>'Need attention'],
-        ...($empName ? [] : [
-            ['label'=>'Active Projects','value'=>$activeProjects,  'icon'=>'fa-diagram-project',     'color'=>'#3B82F6','bg'=>'#DBEAFE', 'sub'=>'Currently running'],
-        ]),
-        ['label' => $empName ? ($socialPostsCount > 0 && $pendingReview === 0 ? 'Social Posts' : ($socialPostsCount > 0 ? 'Submitted + Posted' : 'Submitted Tasks')) : 'Pending Review',
-         'value' => $empName ? ($pendingReview + $socialPostsCount) : $pendingReview,
-         'icon'  => $empName && $socialPostsCount > 0 && $pendingReview === 0 ? 'fa-share-nodes' : 'fa-gavel',
-         'color' => '#7C3AED', 'bg' => '#EDE9FE',
-         'sub'   => $empName ? ($socialPostsCount > 0 && $pendingReview === 0 ? 'Social media posts published' : ($socialPostsCount > 0 ? 'Submitted tasks + social posts' : 'Awaiting admin approval')) : 'Awaiting approval'],
-        ...($empName ? [] : [
-            ['label'=>'Team Members',  'value'=>$teamMemberCount,  'icon'=>'fa-users',               'color'=>'#059669','bg'=>'#ECFDF5', 'sub'=>'Active contributors'],
-        ]),
-    ];
-    @endphp
-    @foreach($kpis as $kpi)
+    @foreach($kpisRow1 as $kpi)
     <div class="rpt-card" style="padding:10px 12px;">
         <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px;">
             <div style="width:28px;height:28px;border-radius:8px;background:{{ $kpi['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -393,6 +412,33 @@
         </div>
         <p style="font-size:22px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $kpi['value'] }}</p>
         <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">{{ $kpi['sub'] }}</p>
+    </div>
+    @endforeach
+</div>
+
+{{-- Row 2: Context metrics (5 cols without filter, 3 cols with user filter) --}}
+<div class="{{ $row2Class }}">
+    @foreach($kpisRow2 as $kpi)
+    <div class="rpt-card" style="padding:10px 12px;">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px;">
+            <div style="width:28px;height:28px;border-radius:8px;background:{{ $kpi['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas {{ $kpi['icon'] }}" style="color:{{ $kpi['color'] }};font-size:11px;"></i>
+            </div>
+            <span style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.04em;line-height:1.2;">{{ $kpi['label'] }}</span>
+        </div>
+        <p style="font-size:22px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $kpi['value'] }}</p>
+        <p style="font-size:10px;margin:3px 0 0;color:{{ $kpi['sub_color'] ?? '#9CA3AF' }};">{{ $kpi['sub'] }}</p>
+        @if(!empty($kpi['platforms']) && $kpi['platforms']->isNotEmpty())
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;padding-top:7px;border-top:1px solid #F3F4F6;">
+            @foreach($kpi['platforms'] as $pl)
+            @php $pIco = $platformIcons[$pl->platform] ?? $platformIcons['other']; @endphp
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:#374151;background:#F9FAFB;border:1px solid #F3F4F6;border-radius:6px;padding:2px 6px;">
+                <i class="{{ $pIco[0] }}" style="color:{{ $pIco[1] }};font-size:10px;"></i>
+                {{ ucfirst($pl->platform) }} <span style="color:#9CA3AF;font-weight:400;">· {{ $pl->cnt }}</span>
+            </span>
+            @endforeach
+        </div>
+        @endif
     </div>
     @endforeach
 </div>
@@ -1536,6 +1582,7 @@ function prepareCapture() {
     const s = document.createElement('style');
     s.id = '__rpt-grid-override';
     s.textContent = '.rpt-grid-4{grid-template-columns:repeat(4,1fr)!important;}' +
+                    '.rpt-grid-5{grid-template-columns:repeat(5,1fr)!important;}' +
                     '.rpt-grid-2{grid-template-columns:1fr 1fr!important;}' +
                     '.rpt-grid-3{grid-template-columns:repeat(3,1fr)!important;}';
     document.head.appendChild(s);

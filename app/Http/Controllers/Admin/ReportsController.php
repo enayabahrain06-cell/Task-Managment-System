@@ -125,14 +125,32 @@ class ReportsController extends Controller
                              }))
                              ->count();
 
-        // Social posts published by the filtered user within the date range
-        $socialPostsCount = $isRegularUserFilter
-            ? \App\Models\TaskSocialPost::where('user_id', $userId)
-                ->when($from, fn($q) => $q->where('created_at', '>=', $from))
-                ->when($projectId, fn($q) => $q->whereHas('task', fn($tq) => $tq->where('project_id', $projectId)))
-                ->when($customerId, fn($q) => $q->whereHas('task', fn($tq) => $tq->where('customer_id', $customerId)))
-                ->count()
-            : 0;
+        // Social posts published (all users or filtered user)
+        $socialPostsCount = \App\Models\TaskSocialPost::query()
+            ->when($isRegularUserFilter, fn($q) => $q->where('user_id', $userId))
+            ->when($from, fn($q) => $q->where('created_at', '>=', $from))
+            ->when($projectId, fn($q) => $q->whereHas('task', fn($tq) => $tq->where('project_id', $projectId)))
+            ->when($customerId, fn($q) => $q->whereHas('task', fn($tq) => $tq->where('customer_id', $customerId)))
+            ->count();
+
+        // Tasks requiring social posting with no post yet
+        $socialPendingCount = Task::where('social_required', true)
+            ->when($isRegularUserFilter, fn($q) => $q->where('social_assigned_to', $userId))
+            ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+            ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
+            ->whereDoesntHave('socialPosts')
+            ->count();
+
+        // Platform breakdown
+        $socialByPlatform = \App\Models\TaskSocialPost::query()
+            ->when($isRegularUserFilter, fn($q) => $q->where('user_id', $userId))
+            ->when($from, fn($q) => $q->where('created_at', '>=', $from))
+            ->when($projectId, fn($q) => $q->whereHas('task', fn($tq) => $tq->where('project_id', $projectId)))
+            ->when($customerId, fn($q) => $q->whereHas('task', fn($tq) => $tq->where('customer_id', $customerId)))
+            ->selectRaw('platform, count(*) as cnt')
+            ->groupBy('platform')
+            ->orderByDesc('cnt')
+            ->get();
 
         // All active non-admin users regardless of task count in period
         $teamMemberCount = User::whereNotIn('role', ['admin'])
@@ -675,7 +693,7 @@ class ReportsController extends Controller
         return view('admin.reports.index', compact(
             'range', 'projectId', 'customerId', 'userId', 'selectedUser',
             'totalTasks', 'completedTasks', 'overdueTasks', 'completionRate',
-            'onTimeRate', 'activeProjects', 'pendingReview', 'socialPostsCount', 'teamMemberCount',
+            'onTimeRate', 'activeProjects', 'pendingReview', 'socialPostsCount', 'socialPendingCount', 'socialByPlatform', 'teamMemberCount',
             'statusBreakdown', 'priorityBreakdown',
             'projects', 'teamMembers',
             'monthLabels', 'monthlyCreated', 'monthlyCompleted',
