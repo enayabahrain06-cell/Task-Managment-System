@@ -530,9 +530,9 @@
         @if(!in_array($task->status, ['revision_requested']) && (auth()->user()->hasPermission('view_comments') || ($canSubmit && auth()->user()->hasPermission('submit_work'))))
         <div x-data="{
                 uFiles: [], showModal: false, body: '{{ old('body') }}',
-                dragging: false,
+                dragging: false, dragCount: 0,
                 handleDrop(e) {
-                    this.dragging = false;
+                    this.dragCount = 0; this.dragging = false;
                     const files = Array.from(e.dataTransfer.files);
                     if (!files.length) return;
                     this.uFiles = files.map(f => f.name);
@@ -572,18 +572,17 @@
                 <div style="margin-bottom:14px;">
                     <label
                         @dragover.prevent="dragging = true"
-                        @dragenter.prevent="dragging = true"
-                        @dragleave.prevent="dragging = false"
+                        @dragenter.prevent="dragCount++; dragging = true"
+                        @dragleave.prevent="dragCount--; dragging = dragCount > 0"
                         @drop.prevent="handleDrop($event)"
                         :style="dragging
                             ? 'display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px dashed #6366F1;border-radius:10px;cursor:pointer;background:#EEF2FF;transition:all .15s;'
-                            : 'display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px dashed #D1D5DB;border-radius:10px;cursor:pointer;background:#FAFAFA;transition:all .15s;'"
-                        onmouseover="if(!this.__dragging)this.style.borderColor='#6366F1'" onmouseout="if(!this.__dragging)this.style.borderColor='#D1D5DB'">
+                            : 'display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px dashed #D1D5DB;border-radius:10px;cursor:pointer;background:#FAFAFA;transition:all .15s;'">
                         <i class="fa fa-paperclip" :style="dragging ? 'color:#6366F1;font-size:16px;' : 'color:#9CA3AF;font-size:16px;'"></i>
                         <div style="flex:1;">
-                            <p x-text="uFiles.length === 0 ? (dragging ? 'Drop files here' : 'Attach files — or drag & drop') : (uFiles.length === 1 ? uFiles[0] : uFiles.length + ' files selected')"
+                            <p x-text="uFiles.length === 0 ? (dragging ? 'Drop files here' : 'Attach files — or drag & drop') : uFiles.length + (uFiles.length === 1 ? ' file selected' : ' files selected')"
                                style="font-size:13px;font-weight:500;color:#374151;margin:0;"></p>
-                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Images, PDF, ZIP and more — select multiple</p>
+                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Images, PDF, ZIP and more — drop multiple files at once</p>
                         </div>
                         <template x-if="uFiles.length > 0">
                             <button type="button" @click.prevent="uFiles=[]; $refs.uFileInput.value=''"
@@ -595,8 +594,8 @@
                                @change="uFiles = Array.from($event.target.files).map(f => f.name)"
                                style="display:none;">
                     </label>
-                    {{-- File list when multiple selected --}}
-                    <template x-if="uFiles.length > 1">
+                    {{-- File chips --}}
+                    <template x-if="uFiles.length > 0">
                         <ul style="margin:6px 0 0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:4px;">
                             <template x-for="name in uFiles" :key="name">
                                 <li style="display:flex;align-items:center;gap:4px;padding:2px 8px;background:#EEF2FF;border-radius:6px;font-size:11px;color:#4F46E5;font-weight:500;">

@@ -802,9 +802,9 @@
         {{-- Add Comment --}}
         <div x-data="{
                 commentFile: '',
-                dragging: false,
+                dragging: false, dragCount: 0,
                 handleDrop(e) {
-                    this.dragging = false;
+                    this.dragCount = 0; this.dragging = false;
                     const file = e.dataTransfer.files[0];
                     if (!file) return;
                     this.commentFile = file.name;
@@ -826,13 +826,12 @@
                 <div style="margin-bottom:12px;">
                     <label
                         @dragover.prevent="dragging = true"
-                        @dragenter.prevent="dragging = true"
-                        @dragleave.prevent="dragging = false"
+                        @dragenter.prevent="dragCount++; dragging = true"
+                        @dragleave.prevent="dragCount--; dragging = dragCount > 0"
                         @drop.prevent="handleDrop($event)"
                         :style="dragging
                             ? 'display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px dashed #6366F1;border-radius:10px;cursor:pointer;background:#EEF2FF;transition:all .15s;'
-                            : 'display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px dashed #D1D5DB;border-radius:10px;cursor:pointer;background:#FAFAFA;transition:all .15s;'"
-                        onmouseover="if(!this.__dragging)this.style.borderColor='#6366F1'" onmouseout="if(!this.__dragging)this.style.borderColor='#D1D5DB'">
+                            : 'display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px dashed #D1D5DB;border-radius:10px;cursor:pointer;background:#FAFAFA;transition:all .15s;'">
                         <i class="fa fa-paperclip" :style="dragging ? 'color:#6366F1;font-size:16px;' : 'color:#9CA3AF;font-size:16px;'"></i>
                         <div style="flex:1;">
                             <p x-text="commentFile || (dragging ? 'Drop file here' : 'Attach a file — or drag & drop')" style="font-size:13px;font-weight:500;color:#374151;margin:0;"></p>
