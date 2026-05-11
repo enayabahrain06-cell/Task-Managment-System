@@ -49,7 +49,7 @@
         <p style="font-size:13px;color:#9CA3AF;margin:3px 0 0;">Full record of administrative actions — who did what and when</p>
     </div>
     <span style="background:#EEF2FF;color:#4F46E5;font-size:13px;font-weight:700;padding:6px 14px;border-radius:20px;">
-        {{ number_format($logs->total()) }} {{ Str::plural('entry', $logs->total()) }}
+        {{ number_format($logs->count()) }} {{ Str::plural('entry', $logs->count()) }}
     </span>
 </div>
 
