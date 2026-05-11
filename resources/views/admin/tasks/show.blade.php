@@ -1910,6 +1910,27 @@
                     <span style="font-size:13px;color:#6B7280;"><i class="fa fa-circle-half-stroke" style="width:16px;color:#9CA3AF;margin-right:6px;"></i>Status</span>
                     <span style="padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;background:{{ $s['bg'] }};color:{{ $s['color'] }};">{{ $s['label'] }}</span>
                 </div>
+                @php
+                    $adminDoneLog = in_array($task->status, ['approved','delivered','archived'])
+                        ? $task->logs->whereIn('action', ['status_updated_approved','status_updated_delivered','status_updated_archived'])->sortByDesc('created_at')->first()
+                        : null;
+                    if ($adminDoneLog) {
+                        $adminDiffSec = $task->created_at->diffInSeconds($adminDoneLog->created_at);
+                        $adminDays = intdiv($adminDiffSec, 86400);
+                        $adminHrs  = intdiv($adminDiffSec % 86400, 3600);
+                        $adminMins = intdiv($adminDiffSec % 3600, 60);
+                        $adminFinishDuration = $adminDays > 0
+                            ? "{$adminDays}d " . ($adminHrs > 0 ? "{$adminHrs}h" : '')
+                            : ($adminHrs > 0 ? "{$adminHrs}h {$adminMins}m" : "{$adminMins}m");
+                        $adminFinishDuration = trim($adminFinishDuration);
+                    }
+                @endphp
+                @if($adminDoneLog)
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:13px;color:#6B7280;"><i class="fa fa-hourglass-end" style="width:16px;color:#9CA3AF;margin-right:6px;"></i>Time to Finish</span>
+                    <span style="font-size:12px;font-weight:600;color:#059669;">{{ $adminFinishDuration }}</span>
+                </div>
+                @endif
             </div>
         </div>
 

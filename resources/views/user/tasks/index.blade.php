@@ -140,6 +140,5 @@
     </div>
 
     <x-pagination :paginator="$tasks" mt="12px" />
-    @endif
 </div>
 @endsection

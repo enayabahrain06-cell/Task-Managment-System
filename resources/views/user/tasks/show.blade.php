@@ -258,6 +258,57 @@
                         <p style="font-size:13px;font-weight:700;color:#1c1917;margin:0;">{{ $task->reviewer->name }}</p>
                     </div>
                     @endif
+
+                    {{-- Submitted by --}}
+                    @if($task->submissions->isNotEmpty())
+                    @php $latestSub = $task->submissions->sortByDesc('created_at')->first(); @endphp
+                    <div style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
+                        <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:5px;">
+                            <i class="fa fa-file-arrow-up" style="font-size:9px;"></i> Submitted by
+                        </p>
+                        <p style="font-size:13px;font-weight:700;color:#1c1917;margin:0 0 3px;">{{ $latestSub->user->name ?? '—' }}</p>
+                        <p style="font-size:10px;color:#9CA3AF;margin:0;">v{{ $latestSub->version }} · {{ $latestSub->created_at->format('M d, Y') }}</p>
+                    </div>
+                    @endif
+
+                    {{-- Social posting --}}
+                    @if($task->social_required && $task->socialAssignee)
+                    @php
+                        $spIcons  = ['facebook'=>['fab fa-facebook','#1877F2'],'instagram'=>['fab fa-instagram','#E1306C'],'twitter'=>['fab fa-x-twitter','#000'],'tiktok'=>['fab fa-tiktok','#010101'],'youtube'=>['fab fa-youtube','#FF0000'],'snapchat'=>['fab fa-snapchat-ghost','#F7CA00'],'linkedin'=>['fab fa-linkedin','#0A66C2'],'other'=>['fas fa-share-nodes','#6366F1']];
+                        $spFirst  = $task->socialPosts->first();
+                        $spPosted = $spFirst !== null;
+                    @endphp
+                    <div style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:130px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
+                        <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 6px;display:flex;align-items:center;gap:5px;">
+                            <i class="fas fa-share-nodes" style="font-size:9px;"></i> Social Post
+                        </p>
+                        <p style="font-size:13px;font-weight:700;color:#1c1917;margin:0 0 5px;">{{ $task->socialAssignee->name }}</p>
+                        @if($spPosted)
+                        <div style="display:flex;flex-direction:column;gap:4px;">
+                            @foreach($task->socialPosts as $sp)
+                            @php $ico = $spIcons[$sp->platform] ?? $spIcons['other']; @endphp
+                            <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                                <i class="{{ $ico[0] }}" style="font-size:11px;color:{{ $ico[1] }};flex-shrink:0;"></i>
+                                <span style="font-size:11px;font-weight:600;color:#374151;">{{ ucfirst($sp->platform) }}</span>
+                                <span style="font-size:10px;font-weight:700;color:#15803D;background:#DCFCE7;padding:1px 6px;border-radius:4px;white-space:nowrap;">
+                                    <i class="fas fa-circle-check" style="font-size:8px;"></i> {{ $sp->created_at->format('M d') }}
+                                </span>
+                                @if($sp->post_url)
+                                <a href="{{ $sp->post_url }}" target="_blank" rel="noopener"
+                                   style="font-size:10px;color:#4F46E5;text-decoration:none;background:#EEF2FF;padding:1px 6px;border-radius:4px;font-weight:600;white-space:nowrap;">
+                                    <i class="fas fa-arrow-up-right-from-square" style="font-size:7px;"></i> View
+                                </a>
+                                @endif
+                            </div>
+                            @endforeach
+                        </div>
+                        @else
+                        <span style="font-size:10px;font-weight:700;color:#D97706;background:#FEF3C7;padding:2px 7px;border-radius:4px;white-space:nowrap;">
+                            <i class="fas fa-hourglass-half" style="font-size:8px;"></i> Pending post
+                        </span>
+                        @endif
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -1316,6 +1367,27 @@
                     <span style="font-size:13px;color:#6B7280;"><i class="fa fa-eye" style="width:16px;color:#9CA3AF;margin-right:6px;"></i>First Viewed</span>
                     <span style="font-size:12px;color:#6B7280;">{{ $task->first_viewed_at ? $task->first_viewed_at->format('M d, H:i') : 'Just now' }}</span>
                 </div>
+                @php
+                    $doneLog = in_array($task->status, ['approved','delivered','archived'])
+                        ? $task->logs->whereIn('action', ['status_updated_approved','status_updated_delivered','status_updated_archived'])->sortByDesc('created_at')->first()
+                        : null;
+                    if ($doneLog) {
+                        $diffSec = $task->created_at->diffInSeconds($doneLog->created_at);
+                        $days    = intdiv($diffSec, 86400);
+                        $hrs     = intdiv($diffSec % 86400, 3600);
+                        $mins    = intdiv($diffSec % 3600, 60);
+                        $finishDuration = $days > 0
+                            ? "{$days}d " . ($hrs > 0 ? "{$hrs}h" : '')
+                            : ($hrs > 0 ? "{$hrs}h {$mins}m" : "{$mins}m");
+                        $finishDuration = trim($finishDuration);
+                    }
+                @endphp
+                @if($doneLog)
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:13px;color:#6B7280;"><i class="fa fa-hourglass-end" style="width:16px;color:#9CA3AF;margin-right:6px;"></i>Time to Finish</span>
+                    <span style="font-size:12px;font-weight:600;color:#059669;">{{ $finishDuration }}</span>
+                </div>
+                @endif
             </div>
         </div>
 
