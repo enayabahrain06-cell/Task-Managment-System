@@ -93,9 +93,16 @@ class TaskApprovalController extends Controller
             ->latest()
             ->paginate(10, ['*'], 'apage');
 
+        $decideLaterTasks = Task::whereIn('status', ['delivered', 'approved', 'archived'])
+            ->whereNull('social_required')
+            ->whereNull('social_assigned_to')
+            ->with(['project', 'assignee', 'submissions' => fn($q) => $q->latest()])
+            ->latest()
+            ->paginate(10, ['*'], 'dpage');
+
         return view('admin.approvals.index', compact(
             'tasks', 'history', 'tab', 'socialTasks', 'publishedSocialTasks', 'socialUsers',
-            'hSort', 'hDir', 'hFrom', 'hTo', 'hDecision', 'hSearch', 'awaitingTasks'
+            'hSort', 'hDir', 'hFrom', 'hTo', 'hDecision', 'hSearch', 'awaitingTasks', 'decideLaterTasks'
         ));
     }
 

@@ -1117,6 +1117,14 @@
         <span style="background:{{ $tab === 'social' ? 'linear-gradient(135deg,#EDE9FE,#DDD6FE)' : '#F3F4F6' }};color:{{ $tab === 'social' ? '#7C3AED' : '#6B7280' }};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">{{ $socialTasks->total() }}</span>
         @endif
     </a>
+    <a href="{{ route('admin.approvals.index') }}?tab=decide_later"
+       style="display:flex;align-items:center;gap:7px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all .18s;
+              {{ $tab === 'decide_later' ? 'background:#fff;color:#D97706;box-shadow:0 2px 8px rgba(217,119,6,.12);' : 'color:#6B7280;' }}">
+        <i class="fas fa-clock" style="font-size:11px;"></i> Decide Later
+        @if($decideLaterTasks->total() > 0)
+        <span style="background:{{ $tab === 'decide_later' ? 'linear-gradient(135deg,#FEF3C7,#FDE68A)' : '#F3F4F6' }};color:{{ $tab === 'decide_later' ? '#92400E' : '#6B7280' }};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">{{ $decideLaterTasks->total() }}</span>
+        @endif
+    </a>
     <a href="{{ route('admin.approvals.index') }}?tab=published"
        style="display:flex;align-items:center;gap:7px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all .18s;
               {{ $tab === 'published' ? 'background:#fff;color:#4F46E5;box-shadow:0 2px 8px rgba(99,102,241,.12);' : 'color:#6B7280;' }}">
@@ -2544,6 +2552,171 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
 
 @endif {{-- end published tab --}}
 
+{{-- ══════════════════════ DECIDE LATER TAB ══════════════════════ --}}
+@if($tab === 'decide_later')
+
+<div style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+    <p style="font-size:13px;color:#6B7280;margin:0;">Approved tasks where the social media decision was deferred. Assign them for posting or mark as not needed.</p>
+</div>
+
+@if($decideLaterTasks->isEmpty())
+<div class="apv-empty" style="background:#fff;border-radius:18px;border:1px solid #EBEBEB;padding:72px 40px;text-align:center;box-shadow:0 2px 10px rgba(217,119,6,.06);">
+    <div style="width:64px;height:64px;border-radius:20px;background:linear-gradient(135deg,#FEF3C7,#FDE68A);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;">
+        <i class="fas fa-clock" style="color:#D97706;font-size:26px;"></i>
+    </div>
+    <p style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">No deferred decisions</p>
+    <p style="font-size:13px;color:#9CA3AF;margin:0;">All approved tasks have had their social media decision resolved.</p>
+</div>
+@else
+<div style="background:#fff;border-radius:18px;border:1px solid #EBEBEB;box-shadow:0 2px 10px rgba(217,119,6,.06);overflow:clip;">
+<div class="tbl-scroll">
+    <table class="hist-table" style="table-layout:auto;">
+        <thead>
+            <tr>
+                <th style="width:32px;padding:11px 8px 11px 16px;"></th>
+                <th>Task</th>
+                <th>Assignee</th>
+                <th>Approved</th>
+                <th></th>
+            </tr>
+        </thead>
+        @foreach($decideLaterTasks as $dl)
+        <tbody x-data="{ expanded: false }">
+            <tr>
+                <td style="padding:12px 8px 12px 16px;width:32px;">
+                    <button @click="expanded = !expanded"
+                            :style="expanded ? 'background:#FEF3C7;border-color:#FDE68A;' : ''"
+                            :title="expanded ? 'Collapse' : 'Expand'" title="Expand">
+                        <i class="fas fa-chevron-right" :style="expanded ? 'transform:rotate(90deg);color:#D97706;' : ''"></i>
+                    </button>
+                </td>
+                <td @click="expanded = !expanded" style="cursor:pointer;">
+                    <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;" title="{{ $dl->title }}">{{ $dl->title }}</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">
+                        <i class="fas fa-folder" style="font-size:9px;color:#FBB040;margin-right:3px;"></i>{{ $dl->project && !$dl->project->is_quick ? $dl->project->name : 'Quick Task' }}
+                    </p>
+                </td>
+                <td>
+                    @if($dl->assignee)
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#FEF3C7,#FDE68A);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#92400E;flex-shrink:0;">
+                            {{ strtoupper(substr($dl->assignee->name, 0, 1)) }}
+                        </div>
+                        <span style="font-size:12px;font-weight:500;color:#374151;white-space:nowrap;">{{ $dl->assignee->name }}</span>
+                    </div>
+                    @else
+                    <span style="color:#D1D5DB;font-size:12px;">—</span>
+                    @endif
+                </td>
+                <td>
+                    <span style="font-size:12px;color:#6B7280;white-space:nowrap;">{{ $dl->updated_at->format(config('app.date_format', 'M d, Y')) }}</span>
+                    <p style="font-size:10px;color:#D1D5DB;margin:2px 0 0;white-space:nowrap;">{{ $dl->updated_at->diffForHumans() }}</p>
+                </td>
+                <td style="white-space:nowrap;">
+                    <div style="display:flex;align-items:center;gap:6px;">
+                    <form method="POST" action="{{ route('admin.tasks.social.required', $dl->id) }}" style="margin:0;">
+                        @csrf
+                        <input type="hidden" name="required" value="0">
+                        <button type="submit"
+                                style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#F3F4F6;color:#6B7280;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s;"
+                                onmouseover="this.style.background='#FEE2E2';this.style.color='#DC2626';this.style.borderColor='#FECACA'" onmouseout="this.style.background='#F3F4F6';this.style.color='#6B7280';this.style.borderColor='#E5E7EB'">
+                            <i class="fas fa-ban" style="font-size:10px;"></i> Not Needed
+                        </button>
+                    </form>
+                    <div x-data="{ menuOpen: false, dTop: 0, dRight: 0 }" @click.outside="menuOpen=false" @scroll.window="menuOpen=false" @keydown.escape.window="menuOpen=false">
+                        <button x-ref="actBtn" @click.stop="
+                                    if (!menuOpen) {
+                                        const r = $refs.actBtn.getBoundingClientRect();
+                                        dTop   = r.bottom + 5;
+                                        dRight = window.innerWidth - r.right;
+                                    }
+                                    menuOpen = !menuOpen;
+                                "
+                                style="display:inline-flex;align-items:center;gap:6px;padding:5px 13px;background:#FEF3C7;color:#D97706;border:1.5px solid #FDE68A;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s;"
+                                onmouseover="this.style.background='#FDE68A'" onmouseout="this.style.background='#FEF3C7'">
+                            Actions <i class="fas fa-chevron-down" :style="menuOpen ? 'transform:rotate(180deg)' : ''"></i>
+                        </button>
+                        <div x-show="menuOpen"
+                             :style="`position:fixed;top:${dTop}px;right:${dRight}px;background:#fff;border:1.5px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.13);min-width:190px;z-index:9999;overflow:hidden;`">
+                            <button @click="menuOpen=false; expanded=true"
+                                    style="display:flex;align-items:center;gap:9px;width:100%;padding:11px 15px;background:linear-gradient(135deg,#ECFDF5,#D1FAE5);border:none;border-bottom:1px solid #A7F3D0;font-size:12px;font-weight:700;color:#065F46;cursor:pointer;text-align:left;"
+                                    onmouseover="this.style.background='linear-gradient(135deg,#D1FAE5,#A7F3D0)'" onmouseout="this.style.background='linear-gradient(135deg,#ECFDF5,#D1FAE5)'">
+                                <i class="fas fa-circle-check" style="font-size:12px;width:14px;text-align:center;color:#10B981;"></i> Approve &amp; Assign
+                            </button>
+                            <button @click="menuOpen=false; expanded=true"
+                                    style="display:flex;align-items:center;gap:9px;width:100%;padding:10px 15px;background:none;border:none;border-bottom:1px solid #F3F4F6;font-size:12px;font-weight:600;color:#4F46E5;cursor:pointer;text-align:left;"
+                                    onmouseover="this.style.background='#F5F3FF'" onmouseout="this.style.background=''">
+                                <i class="fas fa-share-alt" style="font-size:11px;width:14px;text-align:center;color:#6366F1;"></i> Assign for Social
+                            </button>
+                            <a href="{{ route('admin.tasks.show', $dl->id) }}" @click="menuOpen=false"
+                               style="display:flex;align-items:center;gap:9px;padding:10px 15px;font-size:12px;font-weight:600;color:#374151;text-decoration:none;"
+                               onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                                <i class="fas fa-arrow-up-right-from-square" style="font-size:11px;width:14px;text-align:center;color:#6B7280;"></i> Open Task
+                            </a>
+                        </div>
+                    </div>
+                    </div>{{-- flex wrapper --}}
+                </td>
+            </tr>
+            <tr x-show="expanded" x-collapse style="background:rgb(255,251,235);">
+                <td></td>
+                <td colspan="4" style="padding:0 16px 16px;">
+                    <div style="padding-top:14px;border-top:1px solid #FEF3C7;">
+                        <p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px;">
+                            <i class="fas fa-share-alt" style="margin-right:4px;color:#D97706;"></i>Assign for Social Media Posting
+                        </p>
+                        <form method="POST" action="{{ route('admin.tasks.social.assign', $dl->id) }}" style="display:flex;flex-direction:column;gap:8px;max-width:480px;">
+                            @csrf
+                            <div style="display:flex;gap:6px;align-items:center;">
+                                <select name="social_user_id" required style="font-size:12px;padding:7px 10px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;color:#374151;outline:none;flex:1;min-width:0;"
+                                        onfocus="this.style.borderColor='#FBB040'" onblur="this.style.borderColor='#E5E7EB'">
+                                    <option value="">Select handler…</option>
+                                    @foreach($socialUsers as $su)
+                                    <option value="{{ $su->id }}">{{ $su->name }}</option>
+                                    @endforeach
+                                </select>
+                                <button type="submit"
+                                        style="padding:7px 16px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px rgba(245,158,11,.25);transition:opacity .15s;"
+                                        onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+                                    <i class="fas fa-share-alt" style="font-size:10px;margin-right:4px;"></i> Assign
+                                </button>
+                            </div>
+                            <textarea name="social_description" rows="2" placeholder="Posting instructions (optional)…"
+                                      style="width:100%;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#374151;outline:none;resize:vertical;box-sizing:border-box;"
+                                      onfocus="this.style.borderColor='#FBB040'" onblur="this.style.borderColor='#E5E7EB'"></textarea>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+        @endforeach
+    </table>
+</div>
+</div>
+
+{{-- Pagination --}}
+@if($decideLaterTasks->lastPage() > 1)
+<div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:20px;flex-wrap:wrap;">
+    @if($decideLaterTasks->onFirstPage())
+    <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#D1D5DB;">‹ Prev</span>
+    @else
+    <a href="{{ $decideLaterTasks->appends(['tab'=>'decide_later'])->previousPageUrl() }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;">‹ Prev</a>
+    @endif
+    @foreach($decideLaterTasks->appends(['tab'=>'decide_later'])->getUrlRange(1, $decideLaterTasks->lastPage()) as $page => $url)
+    <a href="{{ $url }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;{{ $page == $decideLaterTasks->currentPage() ? 'background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;' : 'background:#F3F4F6;color:#374151;' }}">{{ $page }}</a>
+    @endforeach
+    @if($decideLaterTasks->hasMorePages())
+    <a href="{{ $decideLaterTasks->appends(['tab'=>'decide_later'])->nextPageUrl() }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;">Next ›</a>
+    @else
+    <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#D1D5DB;">Next ›</span>
+    @endif
+</div>
+@endif
+
+@endif {{-- decide later not empty --}}
+
+@endif {{-- end decide_later tab --}}
+
 {{-- ══════════════════════ SOCIAL MEDIA TAB ══════════════════════ --}}
 @if($tab === 'social')
 
@@ -2819,7 +2992,7 @@ function approvalPage() {
         approvalModal:          false,
         approvalTask:           null,
         approvalNote:           '',
-        approvalSocial:          null,   // 'yes' | 'no' | 'later' | null
+        approvalSocial:          'no',   // 'yes' | 'no' | 'later' | null
         approvalSocialUser:      '',
         approvalSocialPlatforms: [],
         approvalNotifyEmail:    false,
@@ -2856,7 +3029,7 @@ function approvalPage() {
         openApprovalModal(task) {
             this.approvalTask           = task;
             this.approvalNote           = '';
-            this.approvalSocial          = null;
+            this.approvalSocial          = 'no';
             this.approvalSocialUser      = '';
             this.approvalSocialPlatforms = [];
             this.approvalNotifyEmail    = false;
