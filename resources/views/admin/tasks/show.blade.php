@@ -894,7 +894,7 @@
                 open: false,
                 sub: null,
                 show(item) { this.sub = item; this.open = true; },
-                close() { this.open = false; this.sub = null; },
+                close() { this.open = false; this.sub = null; document.querySelectorAll('video').forEach(v => { v.pause(); }); },
                 commentOpen: false,
                 commentItem: null,
                 showComment(item) { this.commentItem = item; this.commentOpen = true; },
@@ -1269,7 +1269,7 @@
                                     $sfUrl     = $subFile->fileUrl();
                                     $sfIconMap = ['pdf'=>'fa-file-pdf','doc'=>'fa-file-word','docx'=>'fa-file-word','xls'=>'fa-file-excel','xlsx'=>'fa-file-excel','ppt'=>'fa-file-powerpoint','pptx'=>'fa-file-powerpoint','zip'=>'fa-file-zipper','rar'=>'fa-file-zipper','txt'=>'fa-file-lines'];
                                     $sfIcon    = $sfIconMap[$sfExt] ?? 'fa-file';
-                                    $sfItem    = ['name'=>$subFile->original_filename ?? 'file','url'=>$sfUrl,'downloadUrl'=>route('admin.submissions.download',$subFile),'isImage'=>$sfIsImage,'version'=>$subFile->version];
+                                    $sfItem    = ['name'=>$subFile->original_filename ?? 'file','url'=>$sfUrl,'downloadUrl'=>route('admin.submissions.download',$subFile),'isImage'=>$sfIsImage,'isVideo'=>$sfIsVideo,'version'=>$subFile->version];
                                 @endphp
                                 @if($sfIsImage)
                                 <button type="button" @click="show({{ json_encode($sfItem) }})"
@@ -1519,6 +1519,11 @@
                             <template x-if="sub.isImage">
                                 <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#F9FAFB;display:flex;justify-content:center;">
                                     <img :src="sub.url" :alt="sub.name" style="max-width:100%;max-height:75vh;border-radius:10px;object-fit:contain;display:block;">
+                                </div>
+                            </template>
+                            <template x-if="sub.isVideo">
+                                <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#000;display:flex;justify-content:center;">
+                                    <video :src="sub.url" controls autoplay style="max-width:100%;max-height:75vh;border-radius:10px;display:block;outline:none;"></video>
                                 </div>
                             </template>
                             <div style="padding:16px 24px;display:flex;gap:10px;justify-content:flex-end;">

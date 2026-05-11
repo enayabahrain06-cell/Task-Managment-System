@@ -633,7 +633,7 @@ $statDefs = [
 
             {{-- Attachments --}}
             <div style="margin-bottom:16px;">
-                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Attachments <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional, max 20 MB each</span></label>
+                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Attachments <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
                 <div @dragover.prevent="qtDragover = true"
                      @dragleave.prevent="qtDragover = false"
                      @drop.prevent="qtDragover = false; qtHandleFiles($event)"
@@ -957,7 +957,7 @@ $statDefs = [
 
                     {{-- Drop Zone (fixed: all styles inside :style) --}}
                     <p style="font-size:12px;font-weight:600;color:#374151;margin:0 0 10px;">
-                        Files <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— max 20 MB each</span>
+                        Files <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span>
                     </p>
                     <div @dragover.prevent="dragover = true"
                          @dragleave.prevent="dragover = false"
@@ -970,7 +970,7 @@ $statDefs = [
                             <i class="fas fa-cloud-arrow-up" style="font-size:20px;color:#0EA5E9;"></i>
                         </div>
                         <p style="font-size:13px;font-weight:600;color:#374151;margin:0 0 4px;">Drop files here or <span style="color:#6366F1;">browse</span></p>
-                        <p style="font-size:11px;color:#9CA3AF;margin:0;">PDF, Word, Images, Video — up to 20 MB</p>
+                        <p style="font-size:11px;color:#9CA3AF;margin:0;">PDF, Word, Images, Video</p>
                         <input type="file" name="attachments[]" multiple x-ref="fileInput"
                                @change="handleFiles($event)" style="display:none;">
                     </div>
