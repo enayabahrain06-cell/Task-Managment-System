@@ -815,8 +815,16 @@
         @endif
 
         {{-- Add Comment --}}
+        <style>
+            .rte-field:empty:before { content: attr(data-placeholder); color: #9CA3AF; pointer-events: none; display: block; }
+            .rte-field a { color: #4F46E5; text-decoration: underline; }
+            .rte-toolbar-btn { width:28px;height:28px;border:none;background:none;border-radius:6px;cursor:pointer;font-size:13px;color:#374151;display:flex;align-items:center;justify-content:center;transition:background .12s;flex-shrink:0; }
+            .rte-toolbar-btn:hover { background:#E5E7EB; }
+            .rte-toolbar-btn.active { background:#EEF2FF; color:#4F46E5; }
+        </style>
         <div x-data="{
                 commentFile: '',
+                editorFocused: false,
                 dragging: false, dragCount: 0,
                 handleDrop(e) {
                     this.dragCount = 0; this.dragging = false;
@@ -827,17 +835,71 @@
                     const dt = new DataTransfer();
                     dt.items.add(file);
                     input.files = dt.files;
+                },
+                cmd(c, v = null) { this.$refs.editor.focus(); document.execCommand(c, false, v); },
+                setSize(v) { this.$refs.editor.focus(); document.execCommand('fontSize', false, v); },
+                addLink() {
+                    const url = prompt('Enter URL:');
+                    if (!url) return;
+                    this.$refs.editor.focus();
+                    document.execCommand('createLink', false, url.startsWith('http') ? url : 'https://' + url);
+                },
+                submitComment(form) {
+                    const html = this.$refs.editor.innerHTML.trim();
+                    if (!html || html === '<br>') { this.$refs.editor.focus(); return; }
+                    this.$refs.bodyInput.value = html;
+                    form.submit();
                 }
              }" style="background:#fff;border-radius:14px;border:1.5px solid #6366F1;box-shadow:0 4px 16px rgba(99,102,241,.08);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 4px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-comment" style="color:#6366F1;"></i> Add a Comment
             </h2>
             <p style="font-size:12px;color:#9CA3AF;margin:0 0 16px;">Leave a note, feedback, or update for the assignee.</p>
-            <form method="POST" action="{{ route('admin.tasks.comment', $task) }}" enctype="multipart/form-data">
+            <form method="POST" action="{{ route('admin.tasks.comment', $task) }}" enctype="multipart/form-data"
+                  @submit.prevent="submitComment($el)">
                 @csrf
-                <textarea name="body" rows="3" required placeholder="Write your comment..."
-                          style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;resize:vertical;font-family:'Inter',sans-serif;line-height:1.5;margin-bottom:10px;"
-                          onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"></textarea>
+                <input type="hidden" name="body" x-ref="bodyInput">
+
+                {{-- Rich text editor --}}
+                <div :style="editorFocused
+                        ? 'border:1.5px solid #6366F1;border-radius:10px;overflow:hidden;margin-bottom:10px;box-shadow:0 0 0 3px rgba(99,102,241,.08);transition:all .15s;'
+                        : 'border:1.5px solid #E5E7EB;border-radius:10px;overflow:hidden;margin-bottom:10px;transition:all .15s;'"
+                     style="border:1.5px solid #E5E7EB;border-radius:10px;overflow:hidden;margin-bottom:10px;">
+                    {{-- Toolbar --}}
+                    <div style="background:#F9FAFB;border-bottom:1px solid #E5E7EB;padding:5px 8px;display:flex;align-items:center;gap:1px;flex-wrap:wrap;">
+                        <button type="button" class="rte-toolbar-btn" @click="cmd('bold')" title="Bold"><b style="font-size:13px;">B</b></button>
+                        <button type="button" class="rte-toolbar-btn" @click="cmd('italic')" title="Italic"><i style="font-style:italic;font-size:13px;">I</i></button>
+                        <button type="button" class="rte-toolbar-btn" @click="cmd('underline')" title="Underline"><u style="font-size:13px;">U</u></button>
+                        <button type="button" class="rte-toolbar-btn" @click="cmd('strikeThrough')" title="Strikethrough"><s style="font-size:12px;">S</s></button>
+                        <div style="width:1px;height:16px;background:#D1D5DB;margin:0 4px;flex-shrink:0;"></div>
+                        <select @change="setSize($event.target.value); $event.target.selectedIndex=0"
+                                style="height:26px;padding:0 6px;border:1px solid #E5E7EB;border-radius:6px;font-size:11px;color:#374151;background:#fff;cursor:pointer;outline:none;transition:border-color .12s;"
+                                onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                            <option value="" disabled selected>Size</option>
+                            <option value="1">Small</option>
+                            <option value="3">Normal</option>
+                            <option value="5">Large</option>
+                            <option value="6">X-Large</option>
+                        </select>
+                        <div style="width:1px;height:16px;background:#D1D5DB;margin:0 4px;flex-shrink:0;"></div>
+                        <button type="button" class="rte-toolbar-btn" @click="addLink()" title="Add link"><i class="fa fa-link" style="font-size:11px;"></i></button>
+                        <button type="button" class="rte-toolbar-btn" @click="cmd('unlink')" title="Remove link"><i class="fa fa-link-slash" style="font-size:11px;"></i></button>
+                        <div style="width:1px;height:16px;background:#D1D5DB;margin:0 4px;flex-shrink:0;"></div>
+                        <button type="button" class="rte-toolbar-btn" @click="cmd('insertUnorderedList')" title="Bullet list"><i class="fa fa-list-ul" style="font-size:11px;"></i></button>
+                        <button type="button" class="rte-toolbar-btn" @click="cmd('insertOrderedList')" title="Numbered list"><i class="fa fa-list-ol" style="font-size:11px;"></i></button>
+                        <div style="width:1px;height:16px;background:#D1D5DB;margin:0 4px;flex-shrink:0;"></div>
+                        <button type="button" class="rte-toolbar-btn" @click="cmd('removeFormat')" title="Clear formatting"><i class="fa fa-remove-format" style="font-size:11px;"></i></button>
+                    </div>
+                    {{-- Contenteditable --}}
+                    <div x-ref="editor"
+                         contenteditable="true"
+                         class="rte-field"
+                         data-placeholder="Write your comment..."
+                         @focus="editorFocused = true"
+                         @blur="editorFocused = false"
+                         style="min-height:84px;padding:10px 14px;font-size:13px;color:#111827;outline:none;font-family:'Inter',sans-serif;line-height:1.6;background:#fff;word-break:break-word;"></div>
+                </div>
+
                 <div style="margin-bottom:12px;">
                     <label
                         @dragover.prevent="dragging = true"
@@ -1358,7 +1420,15 @@
                     $cIcon = $cIconMap[$cExt] ?? 'fa-file';
                     $isFirstWork = $firstWorkKey && $entry['at']->toDateTimeString() === $firstWorkKey;
                 @endphp
-                <div x-data="{ editing: false, showHistory: false, body: {{ json_encode($comment->body) }} }" style="display:flex;gap:14px;">
+                <div x-data="{
+                    editing: false, showHistory: false,
+                    body: {{ json_encode($comment->body) }},
+                    editorFocused: false,
+                    cmd(c,v=null){ this.$refs.editEditor.focus(); document.execCommand(c,false,v); },
+                    setSize(v){ this.$refs.editEditor.focus(); document.execCommand('fontSize',false,v); },
+                    addLink(){ const u=prompt('Enter URL:'); if(!u) return; this.$refs.editEditor.focus(); document.execCommand('createLink',false,u.startsWith('http')?u:'https://'+u); },
+                    openEdit(){ this.editing=true; this.$nextTick(()=>{ if(this.$refs.editEditor) this.$refs.editEditor.innerHTML=this.body; }); }
+                }" style="display:flex;gap:14px;">
                     <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px;">
                         <div style="width:32px;height:32px;border-radius:50%;background:{{ $isAdmin ? 'linear-gradient(135deg,#6366F1,#8B5CF6)' : 'linear-gradient(135deg,#10B981,#059669)' }};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;z-index:1;">
                             {{ strtoupper(substr($comment->user->name ?? 'U', 0, 1)) }}
@@ -1374,7 +1444,7 @@
                             <button @click="showHistory=!showHistory" style="font-size:10px;background:#F3F4F6;color:#9CA3AF;border:none;padding:1px 6px;border-radius:4px;cursor:pointer;">edited</button>
                             @endif
                             @if(auth()->id() === $comment->user_id)
-                            <button @click="editing=!editing" style="font-size:10px;background:none;border:none;color:#9CA3AF;cursor:pointer;padding:0;display:flex;align-items:center;gap:3px;" title="Edit comment">
+                            <button @click="editing ? editing=false : openEdit()" style="font-size:10px;background:none;border:none;color:#9CA3AF;cursor:pointer;padding:0;display:flex;align-items:center;gap:3px;" title="Edit comment">
                                 <i class="fa fa-pencil" style="font-size:10px;"></i>
                             </button>
                             @endif
@@ -1382,7 +1452,7 @@
                         </div>
                         <div style="background:{{ $isAdmin ? '#F5F3FF' : '#F9FAFB' }};border:1px solid {{ $isAdmin ? '#EDE9FE' : '#E5E7EB' }};border-radius:10px;padding:10px 14px;{{ $isAdmin ? 'border-left:3px solid #8B5CF6;' : '' }}">
                             <div x-show="!editing">
-                                <p style="font-size:13px;color:#374151;margin:0{{ $comment->file_path ? ' 0 10px' : '' }};line-height:1.6;" x-text="body"></p>
+                                <div style="font-size:13px;color:#374151;margin:0{{ $comment->file_path ? ' 0 10px' : '' }};line-height:1.6;word-break:break-word;" x-html="body"></div>
                                 @if($comment->file_path)
                                     @if($cIsImage)
                                     <button type="button" @click="showComment({{ json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'isImage'=>true,'isVideo'=>false]) }})" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;width:100%;" onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
@@ -1422,11 +1492,38 @@
                                 @endif
                             </div>
                             <div x-show="editing">
-                                <form method="POST" action="{{ route('admin.tasks.comments.edit', [$task, $comment]) }}">
+                                <form method="POST" action="{{ route('admin.tasks.comments.edit', [$task, $comment]) }}"
+                                      @submit.prevent="body=$refs.editEditor.innerHTML.trim(); if(body&&body!=='<br>'){$refs.editBodyInput.value=body;$el.submit();}">
                                     @csrf @method('PATCH')
-                                    <textarea name="body" x-model="body" rows="3"
-                                              style="width:100%;padding:10px 14px;border:1.5px solid #6366F1;border-radius:10px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;resize:vertical;font-family:'Inter',sans-serif;line-height:1.5;"></textarea>
-                                    <div style="display:flex;gap:8px;margin-top:8px;">
+                                    <input type="hidden" name="body" x-ref="editBodyInput">
+                                    <div :style="editorFocused?'border:1.5px solid #6366F1;border-radius:10px;overflow:hidden;margin-bottom:8px;box-shadow:0 0 0 3px rgba(99,102,241,.08);':'border:1.5px solid #6366F1;border-radius:10px;overflow:hidden;margin-bottom:8px;'"
+                                         style="border:1.5px solid #6366F1;border-radius:10px;overflow:hidden;margin-bottom:8px;">
+                                        <div style="background:#F9FAFB;border-bottom:1px solid #E5E7EB;padding:4px 8px;display:flex;align-items:center;gap:1px;flex-wrap:wrap;">
+                                            <button type="button" class="rte-toolbar-btn" @click="cmd('bold')" title="Bold"><b style="font-size:12px;">B</b></button>
+                                            <button type="button" class="rte-toolbar-btn" @click="cmd('italic')" title="Italic"><i style="font-style:italic;font-size:12px;">I</i></button>
+                                            <button type="button" class="rte-toolbar-btn" @click="cmd('underline')" title="Underline"><u style="font-size:12px;">U</u></button>
+                                            <button type="button" class="rte-toolbar-btn" @click="cmd('strikeThrough')" title="Strikethrough"><s style="font-size:11px;">S</s></button>
+                                            <div style="width:1px;height:14px;background:#D1D5DB;margin:0 3px;flex-shrink:0;"></div>
+                                            <select @change="setSize($event.target.value);$event.target.selectedIndex=0"
+                                                    style="height:24px;padding:0 5px;border:1px solid #E5E7EB;border-radius:5px;font-size:10px;color:#374151;background:#fff;cursor:pointer;outline:none;">
+                                                <option value="" disabled selected>Size</option>
+                                                <option value="1">Small</option>
+                                                <option value="3">Normal</option>
+                                                <option value="5">Large</option>
+                                            </select>
+                                            <div style="width:1px;height:14px;background:#D1D5DB;margin:0 3px;flex-shrink:0;"></div>
+                                            <button type="button" class="rte-toolbar-btn" @click="addLink()" title="Add link"><i class="fa fa-link" style="font-size:10px;"></i></button>
+                                            <button type="button" class="rte-toolbar-btn" @click="cmd('removeFormat')" title="Clear formatting"><i class="fa fa-remove-format" style="font-size:10px;"></i></button>
+                                        </div>
+                                        <div x-ref="editEditor"
+                                             contenteditable="true"
+                                             class="rte-field"
+                                             data-placeholder="Edit your comment..."
+                                             @focus="editorFocused=true"
+                                             @blur="editorFocused=false"
+                                             style="min-height:60px;padding:9px 12px;font-size:13px;color:#111827;outline:none;font-family:'Inter',sans-serif;line-height:1.6;background:#fff;word-break:break-word;"></div>
+                                    </div>
+                                    <div style="display:flex;gap:8px;">
                                         <button type="submit" style="background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">Save</button>
                                         <button type="button" @click="editing=false" style="background:#F3F4F6;color:#374151;border:none;padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">Cancel</button>
                                     </div>
