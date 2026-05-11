@@ -34,7 +34,7 @@ class TaskApprovalController extends Controller
         $tasks = Task::where('status', 'submitted')
             ->with(['project.customer', 'customer', 'assignee', 'assignees', 'submissions' => fn($q) => $q->latest()])
             ->latest()
-            ->paginate(20, ['*'], 'page');
+            ->paginate(10, ['*'], 'page');
 
         $hSort     = $request->get('hsort', 'date');
         $hDir      = $request->get('hdir', 'desc') === 'asc' ? 'asc' : 'desc';
@@ -72,26 +72,26 @@ class TaskApprovalController extends Controller
             default    => $historyQuery->orderBy('task_submissions.reviewed_at', $hDir),
         };
 
-        $history = $historyQuery->paginate(20, ['*'], 'hpage');
+        $history = $historyQuery->paginate(10, ['*'], 'hpage');
 
         $socialTasks = Task::whereNotNull('social_assigned_to')
             ->whereNull('social_posted_at')
             ->with(['project', 'assignee', 'socialAssignee', 'socialPosts.user'])
             ->latest()
-            ->paginate(20, ['*'], 'spage');
+            ->paginate(10, ['*'], 'spage');
 
         $publishedSocialTasks = Task::whereNotNull('social_assigned_to')
             ->whereNotNull('social_posted_at')
             ->with(['project', 'assignee', 'socialAssignee', 'socialPosts'])
             ->orderByDesc('social_posted_at')
-            ->paginate(20, ['*'], 'ppage');
+            ->paginate(10, ['*'], 'ppage');
 
         $socialUsers = User::where('role', 'user')->orderBy('name')->get();
 
         $awaitingTasks = Task::where('status', 'pending_customer')
             ->with(['project.customer', 'customer', 'assignee', 'assignees', 'submissions' => fn($q) => $q->latest()])
             ->latest()
-            ->paginate(20, ['*'], 'apage');
+            ->paginate(10, ['*'], 'apage');
 
         return view('admin.approvals.index', compact(
             'tasks', 'history', 'tab', 'socialTasks', 'publishedSocialTasks', 'socialUsers',

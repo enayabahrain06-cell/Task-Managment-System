@@ -1000,6 +1000,7 @@ function dashModals() {
     </div>
     </a>
 
+
 </div>
 @endif
 
@@ -1017,7 +1018,7 @@ function dashModals() {
     </div>
 
     {{-- Main grid: status counts --}}
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
 
         @php
         $tasksBase = route('admin.tasks.index');
@@ -1030,22 +1031,23 @@ function dashModals() {
             ['label'=>'Due This Week',  'value'=>$taskOverview['due_this_week'],                                 'key'=>'due_this_week', 'icon'=>'fa-calendar-week',       'bg'=>'#F0F9FF','color'=>'#0284C7', 'url'=>$tasksBase.'?filter=due_this_week'],
             ['label'=>'Reopened',       'value'=>$taskOverview['reopened'],                                      'key'=>'reopened',      'icon'=>'fa-rotate-right',        'bg'=>'#FFF7ED','color'=>'#EA580C', 'url'=>$tasksBase.'?filter=reopened'],
             ['label'=>'Reassigned',     'value'=>$taskOverview['reassigned'],                                    'key'=>'reassigned',    'icon'=>'fa-arrows-rotate',       'bg'=>'#F0FDF4','color'=>'#16A34A', 'url'=>$tasksBase.'?filter=reassigned'],
+            ['label'=>'Decide Later',   'value'=>$decideLaterCount,                                              'key'=>'decide_later',  'icon'=>'fa-hourglass-half',      'bg'=>'#F1F5F9','color'=>'#475569', 'url'=>route('admin.approvals.index').'?tab=decide_later'],
         ];
         @endphp
 
         @foreach($analyticsItems as $item)
         <button onclick="openAnalyticsModal('{{ $item['key'] }}','{{ $item['label'] }}','{{ $item['color'] }}','{{ $item['bg'] }}','{{ $item['icon'] }}','{{ $item['url'] }}')"
-                style="background:{{ $item['bg'] }};border-radius:12px;padding:14px 12px;display:flex;flex-direction:column;gap:6px;border:none;cursor:pointer;text-align:left;width:100%;transition:filter .15s,transform .15s,box-shadow .15s;"
+                style="background:{{ $item['bg'] }};border-radius:10px;padding:10px 11px;display:flex;flex-direction:column;gap:4px;border:none;cursor:pointer;text-align:left;width:100%;transition:filter .15s,transform .15s,box-shadow .15s;"
                 onmouseover="this.style.filter='brightness(0.96)';this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.08)'"
                 onmouseout="this.style.filter='';this.style.transform='';this.style.boxShadow=''">
             <div style="display:flex;align-items:center;justify-content:space-between;">
-                <div style="display:flex;align-items:center;gap:6px;">
-                    <i class="fas {{ $item['icon'] }}" style="font-size:12px;color:{{ $item['color'] }};"></i>
+                <div style="display:flex;align-items:center;gap:5px;">
+                    <i class="fas {{ $item['icon'] }}" style="font-size:11px;color:{{ $item['color'] }};"></i>
                     <span style="font-size:11px;font-weight:600;color:{{ $item['color'] }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $item['label'] }}</span>
                 </div>
                 <i class="fas fa-chevron-right" style="font-size:8px;color:{{ $item['color'] }};opacity:.5;"></i>
             </div>
-            <p data-rv="overview_{{ $item['key'] }}" style="font-size:26px;font-weight:700;color:#111827;margin:0;line-height:1;">{{ $item['value'] }}</p>
+            <p data-rv="overview_{{ $item['key'] }}" style="font-size:22px;font-weight:700;color:#111827;margin:0;line-height:1;">{{ $item['value'] }}</p>
         </button>
         @endforeach
 

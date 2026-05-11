@@ -108,7 +108,7 @@
             <div style="width:28px;height:28px;border-radius:50%;background:{{ $dotBg }};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:{{ $dotText }};position:relative;z-index:1;flex-shrink:0;{{ ($active && $isPending) ? 'box-shadow:0 0 0 3px #FDE68A;' : '' }}">
                 @if($isSocial)
                     @if($done) <i class="fa fa-check" style="font-size:10px;"></i>
-                    @elseif($active) <i class="fa fa-share-nodes" style="font-size:10px;"></i>
+                    @elseif($active) <i class="fa fa-share-alt" style="font-size:10px;"></i>
                     @else {{ $idx + 1 }} @endif
                 @elseif($done)
                     <i class="fa fa-check" style="font-size:10px;"></i>
@@ -289,7 +289,7 @@
                 </h2>
                 <div style="display:flex;flex-direction:column;gap:8px;">
                     @foreach($task->project->attachments as $att)
-                    @php $item = ['name'=>$att->name,'size'=>$att->humanSize(),'url'=>$att->url(),'downloadUrl'=>$att->isFile()?route('user.attachments.download',$att):$att->url(),'icon'=>$att->iconClass(),'isLink'=>$att->isLink(),'isImage'=>in_array(strtolower(pathinfo($att->name,PATHINFO_EXTENSION)),['jpg','jpeg','png','gif','webp','svg'])]; @endphp
+                    @php $item = ['name'=>$att->name,'size'=>$att->humanSize(),'url'=>$att->url(),'downloadUrl'=>$att->isFile()?route('user.attachments.download',$att):$att->url(),'icon'=>$att->iconClass(),'isLink'=>$att->isLink(),'isImage'=>in_array(strtolower(pathinfo($att->name,PATHINFO_EXTENSION)),['jpg','jpeg','png','gif','webp','svg']),'isVideo'=>in_array(strtolower(pathinfo($att->name,PATHINFO_EXTENSION)),['mp4','mov','avi','webm','mkv'])]; @endphp
                     <button type="button" @click="show({{ json_encode($item) }})"
                             style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:#FAFAFA;border:1px solid #F3F4F6;border-radius:10px;width:100%;text-align:left;cursor:pointer;transition:border-color .15s,background .15s;"
                             onmouseover="this.style.background='#F0F0FF';this.style.borderColor='#C7D2FE'" onmouseout="this.style.background='#FAFAFA';this.style.borderColor='#F3F4F6'">
@@ -337,6 +337,12 @@
                             <template x-if="att.isImage">
                                 <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#F9FAFB;display:flex;justify-content:center;">
                                     <img :src="att.url" :alt="att.name" style="max-width:100%;max-height:75vh;border-radius:10px;object-fit:contain;display:block;">
+                                </div>
+                            </template>
+                            {{-- Video preview --}}
+                            <template x-if="att.isVideo">
+                                <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#000;display:flex;justify-content:center;">
+                                    <video :src="att.url" controls style="max-width:100%;max-height:75vh;border-radius:10px;display:block;outline:none;"></video>
                                 </div>
                             </template>
 
@@ -529,10 +535,11 @@
         {{-- Unified: Comment + Submit --}}
         @if(!in_array($task->status, ['revision_requested']) && (auth()->user()->hasPermission('view_comments') || ($canSubmit && auth()->user()->hasPermission('submit_work'))))
         <div x-data="{
-                uFiles: [], showModal: false, body: '{{ old('body') }}',
-                dragging: false,
+                uFiles: [], showModal: false, body: '',
+                dragging: false, dragCount: 0,
+                editorFocused: false, colorOpen: false, selectedColor: '#EF4444', savedRange: null,
                 handleDrop(e) {
-                    this.dragging = false;
+                    this.dragCount = 0; this.dragging = false;
                     const files = Array.from(e.dataTransfer.files);
                     if (!files.length) return;
                     this.uFiles = files.map(f => f.name);
@@ -540,7 +547,14 @@
                     const dt = new DataTransfer();
                     files.forEach(f => dt.items.add(f));
                     input.files = dt.files;
-                }
+                },
+                saveRange() { const s=window.getSelection(); if(s.rangeCount) this.savedRange=s.getRangeAt(0).cloneRange(); },
+                restoreRange() { if(!this.savedRange) return; const s=window.getSelection(); s.removeAllRanges(); s.addRange(this.savedRange); },
+                cmd(c, v=null) { this.restoreRange(); this.$refs.rteEditor.focus(); document.execCommand(c, false, v); },
+                setSize(v) { this.restoreRange(); this.$refs.rteEditor.focus(); document.execCommand('fontSize', false, v); },
+                setColor(c) { this.colorOpen=false; this.selectedColor=c; this.restoreRange(); this.$refs.rteEditor.focus(); document.execCommand('foreColor', false, c); },
+                addLink() { const u=prompt('Enter URL:'); if(!u) return; this.restoreRange(); this.$refs.rteEditor.focus(); document.execCommand('createLink', false, u.startsWith('http')?u:'https://'+u); },
+                getBody() { return this.$refs.rteEditor?.innerHTML?.trim() || ''; }
              }" style="background:#fff;border-radius:14px;border:1.5px solid #6366F1;box-shadow:0 4px 16px rgba(99,102,241,.08);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 4px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-comment" style="color:#6366F1;"></i>
@@ -563,27 +577,88 @@
             </p>
             <form method="POST" enctype="multipart/form-data">
                 @csrf
-                <textarea name="body" rows="3" x-model="body"
-                          @if($task->status !== 'viewed') required @endif
-                          placeholder="{{ $task->status === 'viewed' ? 'Optional — add a note before starting...' : (($canSubmit && auth()->user()->hasPermission('submit_work')) ? 'Describe your work or write a comment...' : 'Write your comment...') }}"
-                          style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;resize:vertical;font-family:'Inter',sans-serif;line-height:1.5;margin-bottom:10px;"
-                          onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">{{ old('body') }}</textarea>
+                <input type="hidden" name="body" x-ref="bodyInput">
+                {{-- RTE --}}
+                <div :style="editorFocused ? 'border:1.5px solid #6366F1;border-radius:10px;overflow:hidden;margin-bottom:10px;box-shadow:0 0 0 3px rgba(99,102,241,.08);' : 'border:1.5px solid #E5E7EB;border-radius:10px;overflow:hidden;margin-bottom:10px;'"
+                     style="border:1.5px solid #E5E7EB;border-radius:10px;overflow:hidden;margin-bottom:10px;">
+                    <div style="background:#F9FAFB;border-bottom:1px solid #E5E7EB;padding:5px 8px;display:flex;align-items:center;gap:1px;flex-wrap:wrap;">
+                        <button type="button" class="rte-toolbar-btn" @mousedown.prevent="cmd('bold')" title="Bold"><b style="font-size:13px;">B</b></button>
+                        <button type="button" class="rte-toolbar-btn" @mousedown.prevent="cmd('italic')" title="Italic"><i style="font-style:italic;font-size:13px;">I</i></button>
+                        <button type="button" class="rte-toolbar-btn" @mousedown.prevent="cmd('underline')" title="Underline"><u style="font-size:13px;">U</u></button>
+                        <button type="button" class="rte-toolbar-btn" @mousedown.prevent="cmd('strikeThrough')" title="Strikethrough"><s style="font-size:12px;">S</s></button>
+                        <div style="width:1px;height:16px;background:#D1D5DB;margin:0 4px;flex-shrink:0;"></div>
+                        <select @mousedown="saveRange()" @change="setSize($event.target.value);$event.target.selectedIndex=0"
+                                style="height:26px;padding:0 6px;border:1px solid #E5E7EB;border-radius:6px;font-size:11px;color:#374151;background:#fff;cursor:pointer;outline:none;">
+                            <option value="" disabled selected>Size</option>
+                            <option value="1">Small</option>
+                            <option value="3">Normal</option>
+                            <option value="5">Large</option>
+                            <option value="6">X-Large</option>
+                        </select>
+                        <div style="width:1px;height:16px;background:#D1D5DB;margin:0 4px;flex-shrink:0;"></div>
+                        <button type="button" class="rte-toolbar-btn" @mousedown.prevent="addLink()" title="Add link"><i class="fa fa-link" style="font-size:11px;"></i></button>
+                        <button type="button" class="rte-toolbar-btn" @mousedown.prevent="cmd('unlink')" title="Remove link"><i class="fa fa-link-slash" style="font-size:11px;"></i></button>
+                        <div style="width:1px;height:16px;background:#D1D5DB;margin:0 4px;flex-shrink:0;"></div>
+                        <button type="button" class="rte-toolbar-btn" @mousedown.prevent="cmd('insertUnorderedList')" title="Bullet list"><i class="fa fa-list-ul" style="font-size:11px;"></i></button>
+                        <button type="button" class="rte-toolbar-btn" @mousedown.prevent="cmd('insertOrderedList')" title="Numbered list"><i class="fa fa-list-ol" style="font-size:11px;"></i></button>
+                        <div style="width:1px;height:16px;background:#D1D5DB;margin:0 4px;flex-shrink:0;"></div>
+                        {{-- Color picker --}}
+                        <div style="position:relative;" @click.outside="colorOpen=false">
+                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="colorOpen=!colorOpen" title="Text color" style="flex-direction:column;gap:1px;">
+                                <span style="font-size:12px;font-weight:700;line-height:1;" :style="'color:'+selectedColor">A</span>
+                                <span style="width:14px;height:3px;border-radius:2px;display:block;" :style="'background:'+selectedColor"></span>
+                            </button>
+                            <div x-show="colorOpen" style="position:fixed;z-index:9999;"
+                                 x-init="$watch('colorOpen', v => { if(v) { const r = $el.previousElementSibling.getBoundingClientRect(); $el.style.left = r.left+'px'; $el.style.top = (r.bottom+6)+'px'; } })">
+                                <div style="background:#fff;border:1px solid #E5E7EB;border-radius:14px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);display:grid;grid-template-columns:repeat(5,1fr);gap:7px;width:192px;">
+                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#212121;" @click="setColor('#212121')"></div>
+                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#F44336;" @click="setColor('#F44336')"></div>
+                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#E91E63;" @click="setColor('#E91E63')"></div>
+                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#9C27B0;" @click="setColor('#9C27B0')"></div>
+                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#673AB7;" @click="setColor('#673AB7')"></div>
+                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#3F51B5;" @click="setColor('#3F51B5')"></div>
+                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#2196F3;" @click="setColor('#2196F3')"></div>
+                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#00BCD4;" @click="setColor('#00BCD4')"></div>
+                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#009688;" @click="setColor('#009688')"></div>
+                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#4CAF50;" @click="setColor('#4CAF50')"></div>
+                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#8BC34A;" @click="setColor('#8BC34A')"></div>
+                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#FFEB3B;" @click="setColor('#FFEB3B')"></div>
+                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#FF9800;" @click="setColor('#FF9800')"></div>
+                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#FF5722;" @click="setColor('#FF5722')"></div>
+                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#795548;" @click="setColor('#795548')"></div>
+                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#9E9E9E;" @click="setColor('#9E9E9E')"></div>
+                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#607D8B;" @click="setColor('#607D8B')"></div>
+                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#6366F1;" @click="setColor('#6366F1')"></div>
+                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#EC4899;" @click="setColor('#EC4899')"></div>
+                                    <div class="rte-color-swatch" @mousedown.prevent style="background:#fff;border:2px solid #D1D5DB;" @click="setColor('#374151')"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="width:1px;height:16px;background:#D1D5DB;margin:0 4px;flex-shrink:0;"></div>
+                        <button type="button" class="rte-toolbar-btn" @mousedown.prevent="cmd('removeFormat')" title="Clear formatting"><i class="fa fa-remove-format" style="font-size:11px;"></i></button>
+                    </div>
+                    <div x-ref="rteEditor" contenteditable="true" class="rte-field"
+                         data-placeholder="{{ $task->status === 'viewed' ? 'Optional — add a note before starting...' : (($canSubmit && auth()->user()->hasPermission('submit_work')) ? 'Describe your work or write a comment...' : 'Write your comment...') }}"
+                         @focus="editorFocused=true"
+                         @blur="editorFocused=false; saveRange()"
+                         @keyup="saveRange()" @mouseup="saveRange()"
+                         style="min-height:84px;padding:10px 14px;font-size:13px;color:#111827;outline:none;font-family:'Inter',sans-serif;line-height:1.6;background:#fff;word-break:break-word;"></div>
+                </div>
                 @error('body')<p style="font-size:11px;color:#DC2626;margin:-6px 0 8px;">{{ $message }}</p>@enderror
                 <div style="margin-bottom:14px;">
                     <label
                         @dragover.prevent="dragging = true"
-                        @dragenter.prevent="dragging = true"
-                        @dragleave.prevent="dragging = false"
+                        @dragenter.prevent="dragCount++; dragging = true"
+                        @dragleave.prevent="dragCount--; dragging = dragCount > 0"
                         @drop.prevent="handleDrop($event)"
                         :style="dragging
                             ? 'display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px dashed #6366F1;border-radius:10px;cursor:pointer;background:#EEF2FF;transition:all .15s;'
-                            : 'display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px dashed #D1D5DB;border-radius:10px;cursor:pointer;background:#FAFAFA;transition:all .15s;'"
-                        onmouseover="if(!this.__dragging)this.style.borderColor='#6366F1'" onmouseout="if(!this.__dragging)this.style.borderColor='#D1D5DB'">
+                            : 'display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px dashed #D1D5DB;border-radius:10px;cursor:pointer;background:#FAFAFA;transition:all .15s;'">
                         <i class="fa fa-paperclip" :style="dragging ? 'color:#6366F1;font-size:16px;' : 'color:#9CA3AF;font-size:16px;'"></i>
                         <div style="flex:1;">
-                            <p x-text="uFiles.length === 0 ? (dragging ? 'Drop files here' : 'Attach files — or drag & drop') : (uFiles.length === 1 ? uFiles[0] : uFiles.length + ' files selected')"
+                            <p x-text="uFiles.length === 0 ? (dragging ? 'Drop files here' : 'Attach files — or drag & drop') : uFiles.length + (uFiles.length === 1 ? ' file selected' : ' files selected')"
                                style="font-size:13px;font-weight:500;color:#374151;margin:0;"></p>
-                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Images, PDF, ZIP and more — select multiple</p>
+                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Images, PDF, ZIP and more — drop multiple files at once</p>
                         </div>
                         <template x-if="uFiles.length > 0">
                             <button type="button" @click.prevent="uFiles=[]; $refs.uFileInput.value=''"
@@ -595,8 +670,8 @@
                                @change="uFiles = Array.from($event.target.files).map(f => f.name)"
                                style="display:none;">
                     </label>
-                    {{-- File list when multiple selected --}}
-                    <template x-if="uFiles.length > 1">
+                    {{-- File chips --}}
+                    <template x-if="uFiles.length > 0">
                         <ul style="margin:6px 0 0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:4px;">
                             <template x-for="name in uFiles" :key="name">
                                 <li style="display:flex;align-items:center;gap:4px;padding:2px 8px;background:#EEF2FF;border-radius:6px;font-size:11px;color:#4F46E5;font-weight:500;">
@@ -619,10 +694,11 @@
 
                 <div style="display:flex;gap:8px;justify-content:flex-end;">
                     <button type="button"
-                            @click="@if($task->status === 'viewed')
+                            @click="$refs.bodyInput.value = getBody();
+                            @if($task->status === 'viewed')
                                 uFiles.length > 0
                                     ? (showModal = true)
-                                    : (body.trim()
+                                    : (getBody()
                                         ? $refs.commentBtn.click()
                                         : document.getElementById('_startForm').submit())
                             @elseif($canSubmit && auth()->user()->hasPermission('submit_work'))
@@ -663,7 +739,7 @@
                             <p style="font-size:12px;color:#9CA3AF;margin:0;line-height:1.5;">You attached a file — is this a comment with an attachment, or your work deliverable?</p>
                         </div>
                         <div style="display:flex;flex-direction:column;gap:10px;">
-                            <button type="button" @click="showModal=false; $refs.commentBtn.click()"
+                            <button type="button" @click="$refs.bodyInput.value=getBody(); showModal=false; $refs.commentBtn.click()"
                                     style="display:flex;align-items:center;gap:14px;padding:14px 16px;border:1.5px solid #E5E7EB;border-radius:12px;background:#fff;cursor:pointer;text-align:left;width:100%;"
                                     onmouseover="this.style.borderColor='#6366F1';this.style.background='#F9FAFB'" onmouseout="this.style.borderColor='#E5E7EB';this.style.background='#fff'">
                                 <div style="width:40px;height:40px;border-radius:10px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -674,7 +750,7 @@
                                     <p style="font-size:11px;color:#9CA3AF;margin:0;">The file is a reference, not the deliverable</p>
                                 </div>
                             </button>
-                            <button type="button" @click="showModal=false; $refs.submitBtn.click()"
+                            <button type="button" @click="$refs.bodyInput.value=getBody(); showModal=false; $refs.submitBtn.click()"
                                     style="display:flex;align-items:center;gap:14px;padding:14px 16px;border:1.5px solid #C7D2FE;border-radius:12px;background:linear-gradient(135deg,#F5F3FF,#EEF2FF);cursor:pointer;text-align:left;width:100%;"
                                     onmouseover="this.style.borderColor='#6366F1';this.style.background='#EDE9FE'" onmouseout="this.style.borderColor='#C7D2FE';this.style.background='linear-gradient(135deg,#F5F3FF,#EEF2FF)'">
                                 <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#6366F1,#4F46E5);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -808,7 +884,7 @@
                                 'tiktok'    => ['fab fa-tiktok',     '#010101', 'TikTok'],
                                 'youtube'   => ['fab fa-youtube',    '#FF0000', 'YouTube'],
                                 'snapchat'  => ['fab fa-snapchat',   '#F7CA00', 'Snapchat'],
-                                'other'     => ['fas fa-share-nodes','#6366F1', 'Other'],
+                                'other'     => ['fas fa-share-alt','#6366F1', 'Other'],
                             ];
                             [$spIcon, $spColor, $spLabel] = $spPlatformMeta[$meta['platform']] ?? $spPlatformMeta['other'];
                             $spUrl = $meta['post_url'] ?? null;
@@ -977,7 +1053,17 @@
                     $cIcon = $cIconMap[$cExt] ?? 'fa-file';
                     $isFirstWork = $firstWorkKey && $entry['at']->toDateTimeString() === $firstWorkKey;
                 @endphp
-                <div x-data="{ editing: false, showHistory: false, body: {{ json_encode($comment->body) }} }" style="display:flex;gap:14px;">
+                <div x-data="{
+                    editing: false, showHistory: false, body: {{ json_encode($comment->body) }},
+                    editorFocused: false, colorOpen: false, selectedColor: '#EF4444', savedRange: null,
+                    saveRange(){ const s=window.getSelection(); if(s.rangeCount) this.savedRange=s.getRangeAt(0).cloneRange(); },
+                    restoreRange(){ if(!this.savedRange) return; const s=window.getSelection(); s.removeAllRanges(); s.addRange(this.savedRange); },
+                    cmd(c,v=null){ this.restoreRange(); this.$refs.editEditor.focus(); document.execCommand(c,false,v); },
+                    setSize(v){ this.restoreRange(); this.$refs.editEditor.focus(); document.execCommand('fontSize',false,v); },
+                    setColor(c){ this.colorOpen=false; this.selectedColor=c; this.restoreRange(); this.$refs.editEditor.focus(); document.execCommand('foreColor',false,c); },
+                    addLink(){ const u=prompt('Enter URL:'); if(!u) return; this.restoreRange(); this.$refs.editEditor.focus(); document.execCommand('createLink',false,u.startsWith('http')?u:'https://'+u); },
+                    openEdit(){ this.editing=true; this.$nextTick(()=>{ if(this.$refs.editEditor) this.$refs.editEditor.innerHTML=this.body; }); }
+                }" style="display:flex;gap:14px;">
                     <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px;">
                         <div style="width:32px;height:32px;border-radius:50%;background:{{ $isAdmin ? 'linear-gradient(135deg,#6366F1,#8B5CF6)' : 'linear-gradient(135deg,#10B981,#059669)' }};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;z-index:1;">
                             {{ strtoupper(substr($comment->user->name ?? 'U', 0, 1)) }}
@@ -993,7 +1079,7 @@
                             <button @click="showHistory=!showHistory" style="font-size:10px;background:#F3F4F6;color:#9CA3AF;border:none;padding:1px 6px;border-radius:4px;cursor:pointer;">edited</button>
                             @endif
                             @if(auth()->id() === $comment->user_id)
-                            <button @click="editing=!editing" style="font-size:10px;background:none;border:none;color:#9CA3AF;cursor:pointer;padding:0;display:flex;align-items:center;gap:3px;" title="Edit comment">
+                            <button @click="editing ? editing=false : openEdit()" style="font-size:10px;background:none;border:none;color:#9CA3AF;cursor:pointer;padding:0;display:flex;align-items:center;gap:3px;" title="Edit comment">
                                 <i class="fa fa-pencil" style="font-size:10px;"></i>
                             </button>
                             @endif
@@ -1001,7 +1087,7 @@
                         </div>
                         <div style="background:{{ $isAdmin ? '#F5F3FF' : '#F9FAFB' }};border:1px solid {{ $isAdmin ? '#EDE9FE' : '#E5E7EB' }};border-radius:10px;padding:10px 14px;{{ $isAdmin ? 'border-left:3px solid #8B5CF6;' : '' }}">
                             <div x-show="!editing">
-                                <p style="font-size:13px;color:#374151;margin:0{{ $comment->file_path ? ' 0 10px' : '' }};line-height:1.6;" x-text="body"></p>
+                                <div class="rte-field" style="font-size:13px;color:#374151;margin:0{{ $comment->file_path ? ' 0 10px' : '' }};line-height:1.6;padding:0;min-height:0;" x-html="body"></div>
                                 @if($comment->file_path)
                                     @php $cItem = json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'isImage'=>$cIsImage,'isVideo'=>$cIsVideo,'version'=>1]); @endphp
                                     @if($cIsImage)
@@ -1047,11 +1133,71 @@
                                 @endif
                             </div>
                             <div x-show="editing">
-                                <form method="POST" action="{{ route('user.tasks.comments.edit', [$task, $comment]) }}">
+                                <form method="POST" action="{{ route('user.tasks.comments.edit', [$task, $comment]) }}"
+                                      @submit.prevent="body=$refs.editEditor.innerHTML.trim(); if(body&&body!=='<br>'){$refs.editBodyInput.value=body;$el.submit();}">
                                     @csrf @method('PATCH')
-                                    <textarea name="body" x-model="body" rows="3"
-                                              style="width:100%;padding:10px 14px;border:1.5px solid #6366F1;border-radius:10px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;resize:vertical;font-family:'Inter',sans-serif;line-height:1.5;"></textarea>
-                                    <div style="display:flex;gap:8px;margin-top:8px;">
+                                    <input type="hidden" name="body" x-ref="editBodyInput">
+                                    <div :style="editorFocused?'border:1.5px solid #6366F1;border-radius:10px;overflow:hidden;margin-bottom:8px;box-shadow:0 0 0 3px rgba(99,102,241,.08);':'border:1.5px solid #6366F1;border-radius:10px;overflow:hidden;margin-bottom:8px;'"
+                                         style="border:1.5px solid #6366F1;border-radius:10px;overflow:hidden;margin-bottom:8px;">
+                                        <div style="background:#F9FAFB;border-bottom:1px solid #E5E7EB;padding:4px 8px;display:flex;align-items:center;gap:1px;flex-wrap:wrap;">
+                                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="cmd('bold')" title="Bold"><b style="font-size:12px;">B</b></button>
+                                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="cmd('italic')" title="Italic"><i style="font-style:italic;font-size:12px;">I</i></button>
+                                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="cmd('underline')" title="Underline"><u style="font-size:12px;">U</u></button>
+                                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="cmd('strikeThrough')" title="Strikethrough"><s style="font-size:11px;">S</s></button>
+                                            <div style="width:1px;height:14px;background:#D1D5DB;margin:0 3px;flex-shrink:0;"></div>
+                                            <select @mousedown="saveRange()" @change="setSize($event.target.value);$event.target.selectedIndex=0"
+                                                    style="height:24px;padding:0 5px;border:1px solid #E5E7EB;border-radius:5px;font-size:10px;color:#374151;background:#fff;cursor:pointer;outline:none;">
+                                                <option value="" disabled selected>Size</option>
+                                                <option value="1">Small</option>
+                                                <option value="3">Normal</option>
+                                                <option value="5">Large</option>
+                                            </select>
+                                            <div style="width:1px;height:14px;background:#D1D5DB;margin:0 3px;flex-shrink:0;"></div>
+                                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="cmd('insertUnorderedList')" title="Bullet list"><i class="fa fa-list-ul" style="font-size:10px;"></i></button>
+                                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="cmd('insertOrderedList')" title="Numbered list"><i class="fa fa-list-ol" style="font-size:10px;"></i></button>
+                                            <div style="width:1px;height:14px;background:#D1D5DB;margin:0 3px;flex-shrink:0;"></div>
+                                            <div style="position:relative;" @click.outside="colorOpen=false">
+                                                <button type="button" class="rte-toolbar-btn" @mousedown.prevent="colorOpen=!colorOpen" title="Text color" style="flex-direction:column;gap:1px;">
+                                                    <span style="font-size:11px;font-weight:700;line-height:1;" :style="'color:'+selectedColor">A</span>
+                                                    <span style="width:12px;height:3px;border-radius:2px;display:block;" :style="'background:'+selectedColor"></span>
+                                                </button>
+                                                <div x-show="colorOpen" style="position:fixed;z-index:9999;"
+                                                     x-init="$watch('colorOpen', v => { if(v) { const r = $el.previousElementSibling.getBoundingClientRect(); $el.style.left = r.left+'px'; $el.style.top = (r.bottom+6)+'px'; } })">
+                                                    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:14px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);display:grid;grid-template-columns:repeat(5,1fr);gap:7px;width:192px;">
+                                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#212121;" @click="setColor('#212121')"></div>
+                                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#F44336;" @click="setColor('#F44336')"></div>
+                                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#E91E63;" @click="setColor('#E91E63')"></div>
+                                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#9C27B0;" @click="setColor('#9C27B0')"></div>
+                                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#673AB7;" @click="setColor('#673AB7')"></div>
+                                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#3F51B5;" @click="setColor('#3F51B5')"></div>
+                                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#2196F3;" @click="setColor('#2196F3')"></div>
+                                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#00BCD4;" @click="setColor('#00BCD4')"></div>
+                                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#009688;" @click="setColor('#009688')"></div>
+                                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#4CAF50;" @click="setColor('#4CAF50')"></div>
+                                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#8BC34A;" @click="setColor('#8BC34A')"></div>
+                                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#FFEB3B;" @click="setColor('#FFEB3B')"></div>
+                                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#FF9800;" @click="setColor('#FF9800')"></div>
+                                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#FF5722;" @click="setColor('#FF5722')"></div>
+                                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#795548;" @click="setColor('#795548')"></div>
+                                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#9E9E9E;" @click="setColor('#9E9E9E')"></div>
+                                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#607D8B;" @click="setColor('#607D8B')"></div>
+                                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#6366F1;" @click="setColor('#6366F1')"></div>
+                                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#EC4899;" @click="setColor('#EC4899')"></div>
+                                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#fff;border:2px solid #D1D5DB;" @click="setColor('#374151')"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div style="width:1px;height:14px;background:#D1D5DB;margin:0 3px;flex-shrink:0;"></div>
+                                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="cmd('removeFormat')" title="Clear formatting"><i class="fa fa-remove-format" style="font-size:10px;"></i></button>
+                                        </div>
+                                        <div x-ref="editEditor" contenteditable="true" class="rte-field"
+                                             data-placeholder="Edit your comment..."
+                                             @focus="editorFocused=true"
+                                             @blur="editorFocused=false; saveRange()"
+                                             @keyup="saveRange()" @mouseup="saveRange()"
+                                             style="min-height:60px;padding:9px 12px;font-size:13px;color:#111827;outline:none;font-family:'Inter',sans-serif;line-height:1.6;background:#fff;word-break:break-word;"></div>
+                                    </div>
+                                    <div style="display:flex;gap:8px;">
                                         <button type="submit" style="background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">Save</button>
                                         <button type="button" @click="editing=false" style="background:#F3F4F6;color:#374151;border:none;padding:7px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">Cancel</button>
                                     </div>
@@ -1218,6 +1364,15 @@
 
         <style>
             @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+            .rte-field:empty:before { content: attr(data-placeholder); color: #9CA3AF; pointer-events: none; display: block; }
+            .rte-field a { color: #4F46E5; text-decoration: underline; }
+            .rte-field ul { list-style-type: disc; padding-left: 1.5em; margin: 4px 0; }
+            .rte-field ol { list-style-type: decimal; padding-left: 1.5em; margin: 4px 0; }
+            .rte-field li { margin: 2px 0; }
+            .rte-toolbar-btn { width:28px;height:28px;border:none;background:none;border-radius:6px;cursor:pointer;font-size:13px;color:#374151;display:flex;align-items:center;justify-content:center;transition:background .12s;flex-shrink:0; }
+            .rte-toolbar-btn:hover { background:#E5E7EB; }
+            .rte-color-swatch { width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex-shrink:0;transition:transform .15s,box-shadow .15s; }
+            .rte-color-swatch:hover { transform:scale(1.2);box-shadow:0 3px 10px rgba(0,0,0,.3); }
         </style>
         <script>
         (function() {
