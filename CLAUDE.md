@@ -102,3 +102,44 @@ Tasks have a legacy `assigned_to` FK plus a `task_assignees` pivot table that su
 ### Frontend
 
 Vite bundles `resources/css/app.css` and `resources/js/app.js`. Additional entry points: `resources/js/calendar.js`. Uses Motion (animation), Axios (AJAX), and FullCalendar. Blade templates are organized under `resources/views/` by role: `admin/`, `manager/`, `user/`, `layouts/`, `auth/`, `messages/`, `activities/`, `team/`, `social/`.
+
+## Development Rules
+
+### Rule 1 — Stat card count must match its modal list count
+Every dashboard stat card that opens a popup modal must show exactly the count the modal query returns (the real DB total, not a display cap). Calculate the card value with the **identical query** used by the modal filter — never derive it from a separate collection with a different scope (e.g. `$allTasks` scoped only to `assigned_to` while the modal uses `$userScope` covering `assigned_to + social_assigned_to + task_assignees`). Any section that displays the same numbers (e.g. a Performance chart or stat grid) must also use these same card variables, not re-derive from the narrower scope.
+
+### Rule 2 — Always take a file backup before editing a controller or view
+Before making any changes to a controller or Blade view, run:
+```bash
+cp <file> <file>.bak
+```
+This applies every session, for every file edited, so the previous working state can be restored quickly if something breaks.
+
+### Rule 4 — Always query the database BEFORE writing or submitting any code that displays data
+This rule applies to **every task without exception** — stat cards, tabs, modals, charts, reports, dashboards, lists. Before writing a single line of query code:
+
+1. Run a tinker query to see the real data for the test user.
+2. Check every status, scope, and filter against the actual DB values.
+3. If a card/tab/section shows 0 or empty, prove it is genuinely empty in the DB before accepting it.
+
+**Never assume the code is correct because it looks reasonable — always verify with real data first.**
+
+Common bugs caught by this rule:
+- `whereNotNull` on a column that is `null` for legacy rows (e.g. `social_platforms`)
+- Missing statuses in a list (e.g. `paused` missing from `in_progress`, `archived` missing from done)
+- Wrong scope — `assigned_to` only instead of `assigned_to + social_assigned_to + task_assignees pivot`
+- Date range filters that silently cut off older data
+
+Example verification pattern:
+```bash
+php artisan tinker --execute="
+\$u = 5; // test user id
+\$s = fn(\$q) => \$q->where('assigned_to',\$u)->orWhere('social_assigned_to',\$u)
+    ->orWhereExists(fn(\$x)=>\$x->selectRaw('1')->from('task_assignees')
+        ->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',\$u));
+App\Models\Task::where(\$s)->get(['id','status','deadline'])->groupBy('status')->map->count()->each(fn(\$c,\$k)=>print(\$k.': '.\$c.PHP_EOL));
+"
+```
+
+### Rule 3 — Always verify the live page before marking work as done
+Before reporting a task as complete, open the affected URL on the live/staging server and visually confirm the change works as expected. Check the golden path and any related sections on the same page (e.g. if fixing a stat card, also check the Performance chart and any other section that uses the same data). Never mark work done based only on code review — always verify in the browser.

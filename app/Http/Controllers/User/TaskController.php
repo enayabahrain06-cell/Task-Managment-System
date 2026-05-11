@@ -32,7 +32,16 @@ class TaskController extends Controller
         $inProgressStatuses = ['in_progress', 'paused', 'submitted'];
         $completedStatuses  = ['approved', 'delivered', 'archived'];
 
-        $base = $user->tasks()->with('project');
+        $userQuery = fn() => Task::where(function ($q) use ($user) {
+            $q->where('assigned_to', $user->id)
+              ->orWhere('social_assigned_to', $user->id)
+              ->orWhereExists(fn($sub) => $sub->selectRaw('1')
+                  ->from('task_assignees')
+                  ->whereColumn('task_assignees.task_id', 'tasks.id')
+                  ->where('task_assignees.user_id', $user->id));
+        });
+
+        $base = $userQuery()->with('project');
 
         match ($filter) {
             'pending'     => $base->whereIn('status', $pendingStatuses),
@@ -44,10 +53,10 @@ class TaskController extends Controller
         $tasks = $base->latest()->paginate(15)->withQueryString();
 
         $counts = [
-            'all'         => $user->tasks()->count(),
-            'pending'     => $user->tasks()->whereIn('status', $pendingStatuses)->count(),
-            'in_progress' => $user->tasks()->whereIn('status', $inProgressStatuses)->count(),
-            'completed'   => $user->tasks()->whereIn('status', $completedStatuses)->count(),
+            'all'         => $userQuery()->count(),
+            'pending'     => $userQuery()->whereIn('status', $pendingStatuses)->count(),
+            'in_progress' => $userQuery()->whereIn('status', $inProgressStatuses)->count(),
+            'completed'   => $userQuery()->whereIn('status', $completedStatuses)->count(),
         ];
 
         return view('user.tasks.index', compact('tasks', 'filter', 'counts'));
@@ -280,8 +289,19 @@ class TaskController extends Controller
 
     public function show(Task $task)
     {
-        if ($task->assigned_to != auth()->id()) {
+        $uid = auth()->id();
+        $isSocialAssignee = $task->social_assigned_to == $uid;
+        if ($task->assigned_to != $uid && !$isSocialAssignee) {
             abort(403);
+        }
+
+        // Social-only viewers (social_assigned_to) don't trigger first_viewed or modify task state
+        if ($isSocialAssignee && $task->assigned_to != $uid) {
+            $task->load('project.attachments', 'project.customer', 'assignees', 'reviewer', 'creator', 'customer', 'logs.user', 'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor', 'comments.user', 'comments.edits.editor', 'transfers.fromUser', 'transfers.transferredBy', 'timerSegments');
+            $completedTimerSeconds = 0;
+            $activeSegment         = null;
+            $incomingTransfer      = null;
+            return view('user.tasks.show', compact('task', 'incomingTransfer', 'completedTimerSeconds', 'activeSegment', 'isSocialAssignee'));
         }
 
         // Auto-advance to "viewed" on first open
@@ -330,7 +350,7 @@ class TaskController extends Controller
             ->sortByDesc('started_at')
             ->first();
 
-        return view('user.tasks.show', compact('task', 'incomingTransfer', 'completedTimerSeconds', 'activeSegment'));
+        return view('user.tasks.show', compact('task', 'incomingTransfer', 'completedTimerSeconds', 'activeSegment', 'isSocialAssignee'));
     }
 
     public function updateStatus(Request $request, Task $task)
@@ -395,36 +415,49 @@ class TaskController extends Controller
         }
 
         $request->validate([
-            'note' => 'nullable|string|max:1000',
-            'body' => 'nullable|string|max:1000',
-            'file' => 'nullable|file',
+            'note'    => 'nullable|string|max:1000',
+            'body'    => 'nullable|string|max:1000',
+            'files'   => 'nullable|array',
+            'files.*' => 'nullable|file',
         ]);
 
-        $note = $request->body ?? $request->note;
+        $note  = $request->body ?? $request->note;
+        $files = array_filter((array) $request->file('files'));
 
-        if (!$request->filled('note') && !$request->filled('body') && !$request->hasFile('file')) {
+        if (!$request->filled('note') && !$request->filled('body') && empty($files)) {
             return back()->withErrors(['body' => 'Please add a note or attach a file.']);
         }
 
         $version = TaskSubmission::where('task_id', $task->id)->max('version') + 1;
 
-        $filePath         = null;
-        $originalFilename = null;
-        if ($request->hasFile('file')) {
-            $file             = $request->file('file');
-            $originalFilename = $file->getClientOriginalName();
-            $filePath         = $file->store('task-submissions/' . $task->id, 'public');
+        if (empty($files)) {
+            TaskSubmission::create([
+                'task_id'           => $task->id,
+                'user_id'           => auth()->id(),
+                'version'           => $version,
+                'note'              => $note,
+                'file_path'         => null,
+                'original_filename' => null,
+                'status'            => 'submitted',
+            ]);
+            $filePath         = null;
+            $originalFilename = null;
+        } else {
+            foreach ($files as $i => $file) {
+                $fp = $file->store('task-submissions/' . $task->id, 'public');
+                $fn = $file->getClientOriginalName();
+                TaskSubmission::create([
+                    'task_id'           => $task->id,
+                    'user_id'           => auth()->id(),
+                    'version'           => $version,
+                    'note'              => $i === 0 ? $note : null,
+                    'file_path'         => $fp,
+                    'original_filename' => $fn,
+                    'status'            => 'submitted',
+                ]);
+                if ($i === 0) { $filePath = $fp; $originalFilename = $fn; }
+            }
         }
-
-        TaskSubmission::create([
-            'task_id'           => $task->id,
-            'user_id'           => auth()->id(),
-            'version'           => $version,
-            'note'              => $note,
-            'file_path'         => $filePath,
-            'original_filename' => $originalFilename,
-            'status'            => 'submitted',
-        ]);
 
         // Close any open timer segment on submission
         $this->closeOpenSegments($task, auth()->id(), 'submitted');
@@ -463,16 +496,18 @@ class TaskController extends Controller
         }
 
         $request->validate([
-            'body' => 'required|string|max:1000',
-            'file' => 'nullable|file',
+            'body'    => 'required|string|max:1000',
+            'files'   => 'nullable|array',
+            'files.*' => 'nullable|file',
         ]);
 
         $filePath = null;
         $originalFilename = null;
-        if ($request->hasFile('file')) {
-            $file = $request->file('file');
+        $uploadedFiles = array_filter((array) $request->file('files'));
+        if (!empty($uploadedFiles)) {
+            $file             = reset($uploadedFiles);
             $originalFilename = $file->getClientOriginalName();
-            $filePath = $file->store("task-comment-files/{$task->id}", 'public');
+            $filePath         = $file->store("task-comment-files/{$task->id}", 'public');
         }
 
         // Auto-advance from viewed → in_progress on first comment

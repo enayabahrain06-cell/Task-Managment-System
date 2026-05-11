@@ -76,6 +76,15 @@
             @endif
         </a>
         @endif
+        @if(!in_array('nav_task_list', $navHidden))
+        <a href="{{ route('user.tasks.index') }}"
+           class="nav-item {{ request()->routeIs('user.tasks.index') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-list-check nav-icon"></i>
+                Task List
+            </div>
+        </a>
+        @endif
         @endif
 
         {{-- Activities --}}

@@ -18,10 +18,32 @@ class DashboardController extends Controller
     public function index()
     {
         $user     = auth()->user();
-        $allTasks = $user->tasks()->with('project')->get();
+        $allTasks = Task::where(function ($q) use ($user) {
+            $q->where('assigned_to', $user->id)
+              ->orWhereExists(fn($sub) => $sub->selectRaw('1')
+                  ->from('task_assignees')
+                  ->whereColumn('task_assignees.task_id', 'tasks.id')
+                  ->where('task_assignees.user_id', $user->id));
+        })->with('project')->get();
 
-        $doneStatuses   = ['approved', 'delivered', 'archived'];
-        $activeStatuses = ['draft', 'assigned', 'viewed', 'in_progress', 'submitted', 'revision_requested'];
+        $doneStatuses    = ['approved', 'delivered', 'archived'];
+        $nonDoneStatuses = ['draft', 'assigned', 'viewed', 'in_progress', 'paused', 'submitted', 'revision_requested'];
+        $activeStatuses  = ['draft', 'assigned', 'viewed', 'in_progress', 'submitted', 'revision_requested'];
+
+        // Same scope used by taskModal — includes social_assigned_to and task_assignees pivot
+        $userScope = fn($q) => $q->where('assigned_to', $user->id)
+            ->orWhere('social_assigned_to', $user->id)
+            ->orWhereExists(fn($sub) => $sub->selectRaw('1')
+                ->from('task_assignees')
+                ->whereColumn('task_assignees.task_id', 'tasks.id')
+                ->where('task_assignees.user_id', $user->id));
+
+        // Stat card counts — identical queries to what each modal filter executes
+        $cardTotal      = Task::where($userScope)->whereIn('status', $nonDoneStatuses)->count();
+        $cardCompleted  = Task::where($userScope)->whereIn('status', $doneStatuses)->count();
+        $cardInProgress = Task::where($userScope)->whereIn('status', ['in_progress', 'paused'])->count();
+        $cardInReview   = Task::where($userScope)->whereIn('status', ['submitted', 'revision_requested'])->count();
+        $cardOverdue    = Task::where($userScope)->where('deadline', '<', now())->whereIn('status', $nonDoneStatuses)->count();
 
         // IDs of tasks bulk-transferred TO this user
         $inheritedIds = TaskTransfer::where('to_user_id', $user->id)
@@ -101,7 +123,25 @@ class DashboardController extends Controller
                 $t->is_received   = $receivedFromOthersIds->contains($t->id);
                 $t->is_social     = false;
                 return $t;
-            })
+            });
+
+        // Also include social-completed tasks (posted) that aren't already in $allTasks
+        $existingIds = $allTasks->pluck('id');
+        $socialCompletedTasks = Task::where('social_assigned_to', $user->id)
+            ->whereNotNull('social_posted_at')
+            ->whereNotIn('id', $existingIds)
+            ->with('project')
+            ->get()
+            ->map(function ($t) {
+                $t->is_inherited  = false;
+                $t->is_reassigned = false;
+                $t->from_user     = null;
+                $t->is_received   = false;
+                $t->is_social     = true;
+                return $t;
+            });
+
+        $completedTasks = $completedTasks->merge($socialCompletedTasks)
             ->sortByDesc('updated_at')
             ->values();
 
@@ -111,10 +151,19 @@ class DashboardController extends Controller
             ->sortBy('deadline')
             ->take(4);
 
+        // Task IDs via task_assignees pivot (for project discovery)
+        $pivotProjectIds = Task::whereExists(fn($sub) => $sub->selectRaw('1')
+            ->from('task_assignees')
+            ->whereColumn('task_assignees.task_id', 'tasks.id')
+            ->where('task_assignees.user_id', $user->id))
+            ->whereNotNull('project_id')
+            ->pluck('project_id');
+
         // Team tasks: tasks in my projects not assigned to me
         $myProjectIds = $user->projects()->pluck('projects.id')
             ->merge(Task::where('assigned_to', $user->id)->whereNotNull('project_id')->pluck('project_id'))
             ->merge(Task::where('social_assigned_to', $user->id)->whereNotNull('project_id')->pluck('project_id'))
+            ->merge($pivotProjectIds)
             ->unique()->values();
         $teamTasks = Task::whereIn('project_id', $myProjectIds)
             ->where('assigned_to', '!=', $user->id)
@@ -124,15 +173,17 @@ class DashboardController extends Controller
             ->take(20)
             ->get();
 
-        // All project IDs this user is involved in (member, task assignee, or social assignee)
+        // All project IDs this user is involved in (member, direct assignee, social assignee, or pivot assignee)
         $involvedProjectIds = $user->projects()->pluck('projects.id')
             ->merge(Task::where('assigned_to', $user->id)->whereNotNull('project_id')->pluck('project_id'))
             ->merge(Task::where('social_assigned_to', $user->id)->whereNotNull('project_id')->pluck('project_id'))
+            ->merge($pivotProjectIds)
             ->unique()
             ->values();
 
-        // My projects with progress
+        // My projects with progress (Quick Tasks excluded per project rules)
         $myProjects = \App\Models\Project::whereIn('id', $involvedProjectIds)
+            ->where('is_quick', false)
             ->withCount([
                 'tasks',
                 'tasks as completed_count' => fn($q) => $q->whereIn('status', $doneStatuses),
@@ -142,11 +193,12 @@ class DashboardController extends Controller
             ->take(6)
             ->get();
 
+        $realProjects = \App\Models\Project::whereIn('id', $involvedProjectIds)->where('is_quick', false);
         $myProjectStats = [
-            'total'     => \App\Models\Project::whereIn('id', $involvedProjectIds)->count(),
-            'active'    => \App\Models\Project::whereIn('id', $involvedProjectIds)->where('status', 'active')->count(),
-            'completed' => \App\Models\Project::whereIn('id', $involvedProjectIds)->where('status', 'completed')->count(),
-            'overdue'   => \App\Models\Project::whereIn('id', $involvedProjectIds)
+            'total'     => (clone $realProjects)->count(),
+            'active'    => (clone $realProjects)->where('status', 'active')->count(),
+            'completed' => (clone $realProjects)->where('status', 'completed')->count(),
+            'overdue'   => (clone $realProjects)
                 ->whereNotNull('deadline')
                 ->where('deadline', '<', now())
                 ->where('status', '!=', 'completed')
@@ -157,7 +209,7 @@ class DashboardController extends Controller
         $recentActivity = TaskLog::where('user_id', $user->id)
             ->with('task')
             ->latest()
-            ->take(8)
+            ->take(5)
             ->get();
 
         // Last 7 days activity bar chart
@@ -187,6 +239,7 @@ class DashboardController extends Controller
 
         return view('user.dashboard', compact(
             'total', 'completed', 'inProgress', 'pending', 'pendingApproval', 'overdue', 'rate',
+            'cardTotal', 'cardCompleted', 'cardInProgress', 'cardInReview', 'cardOverdue',
             'tasks', 'completedTasks', 'upcomingTasks', 'recentActivity', 'weekActivity',
             'teamTasks', 'myProjects', 'myProjectStats', 'socialTasks',
             'inheritedCount', 'nativeTotal', 'nativeCompleted', 'pendingSocialPosts', 'completedSocialPosts',
@@ -251,15 +304,16 @@ class DashboardController extends Controller
         $filter = $request->input('filter', 'total');
 
         $doneStatuses    = ['approved', 'delivered', 'archived'];
-        $nonDoneStatuses = ['draft', 'assigned', 'viewed', 'in_progress', 'submitted', 'revision_requested'];
+        $nonDoneStatuses = ['draft', 'assigned', 'viewed', 'in_progress', 'paused', 'submitted', 'revision_requested'];
 
-        $base = Task::where(function ($q) use ($user) {
-            $q->where('assigned_to', $user->id)
-              ->orWhereExists(fn($sub) => $sub->selectRaw('1')
-                  ->from('task_assignees')
-                  ->whereColumn('task_assignees.task_id', 'tasks.id')
-                  ->where('task_assignees.user_id', $user->id));
-        })->with(['project:id,name']);
+        $userScope = fn($q) => $q->where('assigned_to', $user->id)
+            ->orWhere('social_assigned_to', $user->id)
+            ->orWhereExists(fn($sub) => $sub->selectRaw('1')
+                ->from('task_assignees')
+                ->whereColumn('task_assignees.task_id', 'tasks.id')
+                ->where('task_assignees.user_id', $user->id));
+
+        $base = Task::where($userScope)->with(['project:id,name']);
 
         if ($filter === 'social') {
             $base = Task::where('social_assigned_to', $user->id)
@@ -275,33 +329,11 @@ class DashboardController extends Controller
             // so the modal count matches what the chart bar shows.
             $base = Task::whereIn('id', $taskIds)->with(['project:id,name']);
         } elseif ($filter === 'total') {
-            // All active tasks + pending social posts
-            $base = Task::where(function ($q) use ($user, $nonDoneStatuses) {
-                $q->where(function ($q2) use ($user) {
-                    $q2->where('assigned_to', $user->id)
-                       ->orWhereExists(fn($sub) => $sub->selectRaw('1')
-                           ->from('task_assignees')
-                           ->whereColumn('task_assignees.task_id', 'tasks.id')
-                           ->where('task_assignees.user_id', $user->id));
-                })->whereIn('status', $nonDoneStatuses)
-                  ->orWhere(fn($q3) => $q3
-                      ->where('social_assigned_to', $user->id)
-                      ->whereNull('social_posted_at'));
-            })->with(['project:id,name']);
+            // Active (non-done) tasks only
+            $base = Task::where($userScope)->whereIn('status', $nonDoneStatuses)->with(['project:id,name']);
         } elseif ($filter === 'completed') {
-            // Regular completed tasks (assigned_to or task_assignees) + completed social posts
-            $base = Task::where(function ($q) use ($user, $doneStatuses) {
-                $q->where(function ($q2) use ($user) {
-                    $q2->where('assigned_to', $user->id)
-                       ->orWhereExists(fn($sub) => $sub->selectRaw('1')
-                           ->from('task_assignees')
-                           ->whereColumn('task_assignees.task_id', 'tasks.id')
-                           ->where('task_assignees.user_id', $user->id));
-                })->whereIn('status', $doneStatuses)
-                  ->orWhere(fn($q3) => $q3
-                      ->where('social_assigned_to', $user->id)
-                      ->whereNotNull('social_posted_at'));
-            })->with(['project:id,name']);
+            // Completed tasks for this user (assigned, pivot, or social)
+            $base = Task::where($userScope)->whereIn('status', $doneStatuses)->with(['project:id,name']);
         } elseif ($filter === 'received') {
             $inheritedIds  = \App\Models\TaskTransfer::where('to_user_id', $user->id)->pluck('task_id');
             $reassignedIds = TaskLog::where('action', 'task_reassigned')
@@ -319,7 +351,7 @@ class DashboardController extends Controller
             $base->whereIn('id', $receivedIds);
         } else {
             match ($filter) {
-                'in_progress' => $base->where('status', 'in_progress'),
+                'in_progress' => $base->whereIn('status', ['in_progress', 'paused']),
                 'in_review'   => $base->whereIn('status', ['submitted', 'revision_requested']),
                 'overdue'     => $base->where('deadline', '<', now())->whereIn('status', $nonDoneStatuses),
                 default       => $base->whereIn('status', $nonDoneStatuses),
@@ -331,6 +363,7 @@ class DashboardController extends Controller
             'assigned'           => ['label' => 'Assigned',     'color' => '#4F46E5', 'bg' => '#EEF2FF'],
             'viewed'             => ['label' => 'Viewed',       'color' => '#0369A1', 'bg' => '#E0F2FE'],
             'in_progress'        => ['label' => 'In Progress',  'color' => '#D97706', 'bg' => '#FEF3C7'],
+            'paused'             => ['label' => 'Paused',       'color' => '#92400E', 'bg' => '#FEF3C7'],
             'submitted'          => ['label' => 'In Review',    'color' => '#7C3AED', 'bg' => '#EDE9FE'],
             'revision_requested' => ['label' => 'Revision',     'color' => '#DC2626', 'bg' => '#FEE2E2'],
             'approved'           => ['label' => 'Approved',     'color' => '#059669', 'bg' => '#D1FAE5'],
@@ -342,6 +375,8 @@ class DashboardController extends Controller
             'medium' => ['label' => 'Med',  'color' => '#F59E0B'],
             'low'    => ['label' => 'Low',  'color' => '#10B981'],
         ];
+
+        $totalCount = $base->count();
 
         $tasks = $base->orderByRaw('CASE WHEN deadline IS NULL THEN 1 ELSE 0 END')
             ->orderBy('deadline')
@@ -366,6 +401,6 @@ class DashboardController extends Controller
                 ];
             });
 
-        return response()->json(['tasks' => $tasks, 'filter' => $filter]);
+        return response()->json(['tasks' => $tasks, 'filter' => $filter, 'total' => $totalCount]);
     }
 }

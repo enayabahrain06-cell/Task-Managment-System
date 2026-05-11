@@ -35,11 +35,22 @@ class TeamController extends Controller
             'managers' => User::where('role', 'manager')->count(),
         ];
 
-        $query = User::withCount([
-            'tasks as total_tasks',
-            'tasks as completed_tasks' => fn($q) => $q->whereIn('status', $doneStatuses),
-            'tasks as pending_tasks'   => fn($q) => $q->whereNotIn('status', $doneStatuses),
-        ]);
+        $doneIn = implode("','", $doneStatuses);
+
+        $query = User::selectRaw("users.*,
+            (SELECT COUNT(DISTINCT t.id) FROM tasks t
+             WHERE t.assigned_to = users.id
+                OR t.social_assigned_to = users.id
+                OR t.id IN (SELECT task_id FROM task_assignees WHERE user_id = users.id)
+            ) as total_tasks,
+            (SELECT COUNT(DISTINCT t.id) FROM tasks t
+             WHERE (t.assigned_to = users.id OR t.social_assigned_to = users.id OR t.id IN (SELECT task_id FROM task_assignees WHERE user_id = users.id))
+               AND t.status IN ('{$doneIn}')
+            ) as completed_tasks,
+            (SELECT COUNT(DISTINCT t.id) FROM tasks t
+             WHERE (t.assigned_to = users.id OR t.social_assigned_to = users.id OR t.id IN (SELECT task_id FROM task_assignees WHERE user_id = users.id))
+               AND t.status NOT IN ('{$doneIn}')
+            ) as pending_tasks");
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
@@ -69,12 +80,19 @@ class TeamController extends Controller
             return $member;
         });
 
-        $doneFormer = ['delivered', 'approved', 'archived'];
+        $doneFormer  = ['delivered', 'approved', 'archived'];
+        $doneFormerIn = implode("','", $doneFormer);
+
         $formerEmployees = User::where('status', 'archived')
-            ->withCount([
-                'tasks as total_tasks',
-                'tasks as completed_tasks' => fn($q) => $q->whereIn('status', $doneFormer),
-            ])
+            ->selectRaw("users.*,
+                (SELECT COUNT(DISTINCT t.id) FROM tasks t
+                 WHERE t.assigned_to = users.id
+                    OR t.id IN (SELECT task_id FROM task_assignees WHERE user_id = users.id)
+                ) as total_tasks,
+                (SELECT COUNT(DISTINCT t.id) FROM tasks t
+                 WHERE (t.assigned_to = users.id OR t.id IN (SELECT task_id FROM task_assignees WHERE user_id = users.id))
+                   AND t.status IN ('{$doneFormerIn}')
+                ) as completed_tasks")
             ->with('archivedBy')
             ->orderByDesc('archived_at')
             ->get()

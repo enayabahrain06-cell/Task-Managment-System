@@ -165,6 +165,11 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::get('settings/backup/download',        [AdminSettingsController::class, 'downloadBackup'])->name('settings.backup.download');
     Route::post('settings/backup/restore',        [AdminSettingsController::class, 'restoreBackup'])->name('settings.backup.restore');
     Route::post('settings/clear',                 [AdminSettingsController::class, 'clearData'])->name('settings.clear');
+    Route::post('settings/storage',                    [AdminSettingsController::class, 'updateStorage'])->name('settings.storage');
+    Route::post('settings/storage/test/gdrive',        [AdminSettingsController::class, 'testStorageGdrive'])->name('settings.storage.test.gdrive');
+    Route::post('settings/storage/backup/gdrive',      [AdminSettingsController::class, 'backupToGdrive'])->name('settings.storage.backup.gdrive');
+    Route::post('settings/storage/test/onedrive',      [AdminSettingsController::class, 'testStorageOnedrive'])->name('settings.storage.test.onedrive');
+    Route::post('settings/storage/test/omv',           [AdminSettingsController::class, 'testStorageOmv'])->name('settings.storage.test.omv');
     Route::post('settings/whatsapp',              [AdminSettingsController::class, 'updateWhatsapp'])->name('settings.whatsapp');
     Route::post('settings/whatsapp/test',         [AdminSettingsController::class, 'testWhatsapp'])->name('settings.whatsapp.test');
     Route::post('settings/whatsapp/broadcast',    [AdminSettingsController::class, 'broadcastWhatsapp'])->name('settings.whatsapp.broadcast');
@@ -233,6 +238,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     // Task submission file download
     Route::get('submissions/{submission}/download', function (\App\Models\TaskSubmission $submission) {
         abort_unless($submission->file_path, 404);
+        abort_unless(\Illuminate\Support\Facades\Storage::disk('public')->exists($submission->file_path), 404, 'File not found. It may have been deleted.');
         return \Illuminate\Support\Facades\Storage::disk('public')
             ->download($submission->file_path, $submission->original_filename ?? 'file');
     })->name('submissions.download');

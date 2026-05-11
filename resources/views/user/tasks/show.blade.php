@@ -3,8 +3,9 @@
 
 @section('content')
 @php
+    $isSocialAssignee = $isSocialAssignee ?? false;
     $doneStatuses = ['approved', 'delivered', 'archived'];
-    $isOverdue    = $task->deadline->isPast() && !in_array($task->status, $doneStatuses);
+    $isOverdue    = $task->deadline && $task->deadline->isPast() && !in_array($task->status, $doneStatuses);
 
     $statusMap = [
         'draft'              => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Draft'],
@@ -12,6 +13,7 @@
         'viewed'             => ['bg'=>'#EEF2FF','color'=>'#4F46E5','label'=>'Viewed'],
         'in_progress'        => ['bg'=>'#FEF3C7','color'=>'#D97706','label'=>'In Progress'],
         'paused'             => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Paused'],
+        'pending_customer'   => ['bg'=>'#FFF7ED','color'=>'#C2410C','label'=>'Awaiting Customer Review'],
         'submitted'          => ['bg'=>'#EDE9FE','color'=>'#7C3AED','label'=>'Submitted for Review'],
         'revision_requested' => ['bg'=>'#FEE2E2','color'=>'#DC2626','label'=>'Revision Requested'],
         'approved'           => ['bg'=>'#D1FAE5','color'=>'#059669','label'=>'Approved'],
@@ -24,18 +26,19 @@
     $p = $priorityMap[$task->priority] ?? $priorityMap['medium'];
 
     $latestSubmission = $task->submissions->first();
-    $canSubmit = in_array($task->status, ['viewed', 'in_progress', 'paused', 'revision_requested']);
+    $canSubmit = !$isSocialAssignee && in_array($task->status, ['viewed', 'in_progress', 'paused', 'revision_requested']);
 
     // Workflow step index (for stepper)
-    $stepOrder = ['draft'=>0,'assigned'=>1,'viewed'=>2,'in_progress'=>3,'paused'=>3,'submitted'=>4,'approved'=>5,'delivered'=>6];
+    $stepOrder = ['draft'=>0,'assigned'=>1,'viewed'=>2,'in_progress'=>3,'paused'=>3,'submitted'=>4,'pending_customer'=>5,'approved'=>6,'delivered'=>7];
     $currentStep = $stepOrder[$task->status] ?? ($task->status === 'revision_requested' ? 4 : 0);
     $steps = [
-        ['key'=>'assigned',    'label'=>'Assigned'],
-        ['key'=>'viewed',      'label'=>'Viewed'],
-        ['key'=>'in_progress', 'label'=>'In Progress'],
-        ['key'=>'submitted',   'label'=>'Submitted'],
-        ['key'=>'approved',    'label'=>'Approved'],
-        ['key'=>'delivered',   'label'=>'Delivered'],
+        ['key'=>'assigned',         'label'=>'Assigned'],
+        ['key'=>'viewed',           'label'=>'Viewed'],
+        ['key'=>'in_progress',      'label'=>'In Progress'],
+        ['key'=>'submitted',        'label'=>'Submitted'],
+        ['key'=>'pending_customer', 'label'=>'Awaiting Client'],
+        ['key'=>'approved',         'label'=>'Approved'],
+        ['key'=>'delivered',        'label'=>'Delivered'],
     ];
 
     // Append social media steps when required
@@ -75,10 +78,11 @@
 
 {{-- Workflow Stepper --}}
 <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;margin-bottom:20px;overflow-x:auto;">
-    <div style="display:flex;align-items:center;min-width:{{ $hasSocial ? '760px' : '560px' }};">
+    <div style="display:flex;align-items:center;min-width:{{ $hasSocial ? '900px' : '660px' }};">
         @foreach($steps as $idx => $step)
         @php
-            $isSocial = isset($step['socialState']);
+            $isSocial   = isset($step['socialState']);
+            $isPending  = $step['key'] === 'pending_customer';
             if ($isSocial) {
                 $socialState = $step['socialState'];
                 $done        = $socialState === 'done';
@@ -91,31 +95,35 @@
                 $done    = $currentStep > $idx;
                 $active  = $currentStep === $idx;
                 $isRev   = $task->status === 'revision_requested' && $step['key'] === 'submitted';
-                $dotBg   = $done ? '#6366F1' : ($active ? '#6366F1' : ($isRev ? '#DC2626' : '#E5E7EB'));
-                $dotText = $done ? '#fff' : ($active ? '#fff' : ($isRev ? '#fff' : '#9CA3AF'));
-                $labelColor = $active ? '#111827' : ($done ? '#6366F1' : ($isRev ? '#DC2626' : '#9CA3AF'));
+                $isOverdueClient = $isOverdue && $isPending && $active;
+                if ($isRev)          { $dotBg = '#DC2626'; $dotText = '#fff'; $labelColor = '#DC2626'; }
+                elseif ($active && $isPending) { $dotBg = '#D97706'; $dotText = '#fff'; $labelColor = '#D97706'; }
+                elseif ($done)       { $dotBg = '#6366F1'; $dotText = '#fff'; $labelColor = '#6366F1'; }
+                elseif ($active)     { $dotBg = '#6366F1'; $dotText = '#fff'; $labelColor = '#111827'; }
+                else                 { $dotBg = '#E5E7EB'; $dotText = '#9CA3AF'; $labelColor = '#9CA3AF'; }
             }
         @endphp
         <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
-            <div style="width:28px;height:28px;border-radius:50%;background:{{ $dotBg }};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:{{ $dotText }};position:relative;z-index:1;flex-shrink:0;">
+            <div style="width:28px;height:28px;border-radius:50%;background:{{ $dotBg }};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:{{ $dotText }};position:relative;z-index:1;flex-shrink:0;{{ ($active && $isPending) ? 'box-shadow:0 0 0 3px #FDE68A;' : '' }}">
                 @if($isSocial)
-                    @if($done)
-                        <i class="fa fa-check" style="font-size:10px;"></i>
-                    @elseif($active)
-                        <i class="fa fa-share-nodes" style="font-size:10px;"></i>
-                    @else
-                        {{ $idx + 1 }}
-                    @endif
+                    @if($done) <i class="fa fa-check" style="font-size:10px;"></i>
+                    @elseif($active) <i class="fa fa-share-nodes" style="font-size:10px;"></i>
+                    @else {{ $idx + 1 }} @endif
                 @elseif($done)
                     <i class="fa fa-check" style="font-size:10px;"></i>
                 @elseif($isRev)
                     <i class="fa fa-rotate-left" style="font-size:10px;"></i>
+                @elseif($active && $isPending)
+                    <i class="fa fa-user-clock" style="font-size:10px;"></i>
                 @else
                     {{ $idx + 1 }}
                 @endif
             </div>
             <p style="font-size:10px;font-weight:{{ $active ? '700' : '500' }};color:{{ $labelColor }};margin:4px 0 0;text-align:center;white-space:nowrap;">
-                @if($isRev) Revision @else {{ $step['label'] }} @endif
+                @if($isRev) Revision
+                @elseif($active && $isPending && $isOverdue) Client Late
+                @elseif($active && $isPending) Awaiting Client
+                @else {{ $step['label'] }} @endif
             </p>
         </div>
         @if(!$loop->last)
@@ -137,6 +145,12 @@
     @if($task->status === 'revision_requested')
     <p style="font-size:11px;color:#DC2626;text-align:center;margin:10px 0 0;font-weight:600;">
         <i class="fa fa-rotate-left" style="margin-right:4px;"></i>Revision requested — please review feedback and resubmit
+    </p>
+    @elseif($task->status === 'pending_customer')
+    <p style="font-size:11px;color:#D97706;text-align:center;margin:10px 0 0;font-weight:600;">
+        <i class="fa fa-user-clock" style="margin-right:4px;"></i>Design sent to customer
+        @if($task->design_sent_at) — waiting since {{ $task->design_sent_at->diffForHumans() }}@if($isOverdue) <span style="color:#DC2626;">· Deadline passed</span>@endif
+        @endif
     </p>
     @endif
 </div>
@@ -351,6 +365,7 @@
         @endif
 
         {{-- Status Banner --}}
+        @if(!$isSocialAssignee)
         @if($task->status === 'submitted')
         <div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:14px;padding:20px;display:flex;align-items:flex-start;gap:16px;">
             <div style="width:44px;height:44px;border-radius:50%;background:#EDE9FE;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -393,6 +408,31 @@
                     <i class="fa fa-circle-play"></i> I Accept &amp; Start Revision
                 </button>
             </form>
+        </div>
+
+        @elseif($task->status === 'pending_customer')
+        @php
+            $pcLog = $task->logs->firstWhere('action', 'status_updated_pending_customer');
+            $pcNote = $pcLog?->note;
+            $pcBy   = $pcLog?->user?->name ?? 'Manager';
+        @endphp
+        <div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:14px;padding:18px 20px;display:flex;align-items:flex-start;gap:14px;">
+            <div style="width:40px;height:40px;border-radius:50%;background:#FFEDD5;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
+                <i class="fa fa-user-clock" style="color:#C2410C;font-size:17px;"></i>
+            </div>
+            <div style="flex:1;">
+                <p style="font-size:14px;font-weight:700;color:#7C2D12;margin:0 0 3px;">Awaiting Customer Review</p>
+                <p style="font-size:12px;color:#C2410C;margin:0 0 4px;">
+                    This task is on hold while the manager waits for the customer's decision.
+                    No action is needed from you right now.
+                </p>
+                @if($pcNote && $pcNote !== 'Awaiting customer approval')
+                <p style="font-size:12px;color:#9A3412;background:#FFEDD5;padding:6px 10px;border-radius:8px;border-left:3px solid #FB923C;margin:6px 0 0;">
+                    <i class="fa fa-comment" style="margin-right:4px;font-size:10px;"></i>{{ $pcNote }}
+                </p>
+                @endif
+                <p style="font-size:11px;color:#EA580C;margin:6px 0 0;opacity:.75;">Set by {{ $pcBy }}</p>
+            </div>
         </div>
 
         @elseif($task->status === 'paused')
@@ -483,10 +523,11 @@
             @endif
         </div>
         @endif
+        @endif {{-- !isSocialAssignee --}}
 
         {{-- Unified: Comment + Submit --}}
         @if(!in_array($task->status, ['revision_requested']) && (auth()->user()->hasPermission('view_comments') || ($canSubmit && auth()->user()->hasPermission('submit_work'))))
-        <div x-data="{ uFile: '', showModal: false, body: '{{ old('body') }}' }" style="background:#fff;border-radius:14px;border:1.5px solid #6366F1;box-shadow:0 4px 16px rgba(99,102,241,.08);padding:24px;">
+        <div x-data="{ uFiles: [], showModal: false, body: '{{ old('body') }}' }" style="background:#fff;border-radius:14px;border:1.5px solid #6366F1;box-shadow:0 4px 16px rgba(99,102,241,.08);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 4px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-comment" style="color:#6366F1;"></i>
                 @if($task->status === 'viewed')
@@ -519,12 +560,26 @@
                            onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#D1D5DB'">
                         <i class="fa fa-paperclip" style="color:#9CA3AF;font-size:16px;"></i>
                         <div style="flex:1;">
-                            <p x-text="uFile || 'Attach a file (optional)'" style="font-size:13px;font-weight:500;color:#374151;margin:0;"></p>
-                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Images, PDF, ZIP and more</p>
+                            <p x-text="uFiles.length === 0 ? 'Attach files (optional)' : (uFiles.length === 1 ? uFiles[0] : uFiles.length + ' files selected')"
+                               style="font-size:13px;font-weight:500;color:#374151;margin:0;"></p>
+                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Images, PDF, ZIP and more — select multiple</p>
                         </div>
-                        <input type="file" name="file" @change="uFile = $event.target.files[0]?.name || ''" style="display:none;">
+                        <input type="file" name="files[]" multiple
+                               @change="uFiles = Array.from($event.target.files).map(f => f.name)"
+                               style="display:none;">
                     </label>
-                    @error('file')<p style="font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</p>@enderror
+                    {{-- File list when multiple selected --}}
+                    <template x-if="uFiles.length > 1">
+                        <ul style="margin:6px 0 0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:4px;">
+                            <template x-for="name in uFiles" :key="name">
+                                <li style="display:flex;align-items:center;gap:4px;padding:2px 8px;background:#EEF2FF;border-radius:6px;font-size:11px;color:#4F46E5;font-weight:500;">
+                                    <i class="fa fa-file" style="font-size:9px;"></i>
+                                    <span x-text="name"></span>
+                                </li>
+                            </template>
+                        </ul>
+                    </template>
+                    @error('files.*')<p style="font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</p>@enderror
                 </div>
 
                 {{-- Hidden real submit targets --}}
@@ -538,13 +593,13 @@
                 <div style="display:flex;gap:8px;justify-content:flex-end;">
                     <button type="button"
                             @click="@if($task->status === 'viewed')
-                                uFile
+                                uFiles.length > 0
                                     ? (showModal = true)
                                     : (body.trim()
                                         ? $refs.commentBtn.click()
                                         : document.getElementById('_startForm').submit())
                             @elseif($canSubmit && auth()->user()->hasPermission('submit_work'))
-                                uFile ? (showModal = true) : $refs.commentBtn.click()
+                                uFiles.length > 0 ? (showModal = true) : $refs.commentBtn.click()
                             @else
                                 $refs.commentBtn?.click()
                             @endif"
@@ -653,6 +708,13 @@
             $firstWorkKey = $firstWorkEntry ? $firstWorkEntry['at']->toDateTimeString() : null;
         @endphp
 
+        <div x-data="{
+                subOpen: false,
+                subItem: null,
+                showSub(item) { this.subItem = item; this.subOpen = true; },
+                closeSub() { this.subOpen = false; this.subItem = null; }
+             }"
+             @keydown.escape.window="if(subOpen) closeSub()">
         <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 16px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-timeline" style="color:#6366F1;"></i> Timeline
@@ -709,6 +771,33 @@
                                 <strong>{{ Str::limit($meta['paused_by_task_title'], 50) }}</strong>
                             </span>
                         </div>
+                        @elseif(in_array($log->action, ['social_posted','social_post_edited']) && isset($meta['platform']))
+                        @php
+                            $spPlatformMeta = [
+                                'facebook'  => ['fab fa-facebook',   '#1877F2', 'Facebook'],
+                                'instagram' => ['fab fa-instagram',  '#E1306C', 'Instagram'],
+                                'twitter'   => ['fab fa-x-twitter',  '#000000', 'Twitter/X'],
+                                'linkedin'  => ['fab fa-linkedin',   '#0A66C2', 'LinkedIn'],
+                                'tiktok'    => ['fab fa-tiktok',     '#010101', 'TikTok'],
+                                'youtube'   => ['fab fa-youtube',    '#FF0000', 'YouTube'],
+                                'snapchat'  => ['fab fa-snapchat',   '#F7CA00', 'Snapchat'],
+                                'other'     => ['fas fa-share-nodes','#6366F1', 'Other'],
+                            ];
+                            [$spIcon, $spColor, $spLabel] = $spPlatformMeta[$meta['platform']] ?? $spPlatformMeta['other'];
+                            $spUrl = $meta['post_url'] ?? null;
+                        @endphp
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;align-items:center;">
+                            <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 9px;border-radius:8px;background:#F3F4F6;color:{{ $spColor }};">
+                                <i class="{{ $spIcon }}" style="font-size:11px;"></i> {{ $spLabel }}
+                            </span>
+                            @if($spUrl)
+                            <a href="{{ $spUrl }}" target="_blank" rel="noopener"
+                               style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#4F46E5;background:#EEF2FF;padding:2px 9px;border-radius:8px;text-decoration:none;"
+                               onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'">
+                                <i class="fas fa-arrow-up-right-from-square" style="font-size:9px;"></i> View Post
+                            </a>
+                            @endif
+                        </div>
                         @elseif(isset($meta['old_status'], $meta['new_status']))
                         <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;display:inline-block;margin-top:3px;">
                             {{ str_replace('_',' ',$meta['old_status']) }} → <strong>{{ str_replace('_',' ',$meta['new_status']) }}</strong>
@@ -717,7 +806,7 @@
                         @if(isset($meta['rejection_reason']))
                         <p style="font-size:12px;color:#DC2626;background:#FEF2F2;padding:6px 10px;border-radius:8px;border-left:3px solid #EF4444;margin:5px 0 0;">"{{ $meta['rejection_reason'] }}"</p>
                         @endif
-                        @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','task_reassigned','task_transferred','deadline_updated','auto_paused']))
+                        @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','task_reassigned','task_transferred','deadline_updated','auto_paused','social_posted','social_post_edited']))
                         <p style="font-size:12px;color:#6B7280;background:#F9FAFB;padding:6px 10px;border-radius:8px;border-left:3px solid #E5E7EB;margin:5px 0 0;">"{{ $log->note }}"</p>
                         @endif
                     </div>
@@ -786,17 +875,24 @@
                             </div>
                             @endif
                             @if($sub->file_path)
+                                @php
+                                    $subItem = json_encode(['name'=>$sub->original_filename,'url'=>$subUrl,'isImage'=>$subIsImage,'isVideo'=>$subIsVideo,'version'=>$sub->version ?? 1]);
+                                @endphp
                                 @if($subIsImage)
-                                <a href="{{ $subUrl }}" target="_blank" style="display:block;margin-bottom:10px;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:300px;text-decoration:none;">
+                                <button type="button" @click="showSub({{ $subItem }})"
+                                        style="display:block;margin-bottom:10px;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:300px;width:100%;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;"
+                                        onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                                     <img src="{{ $subUrl }}" alt="{{ $sub->original_filename }}" style="width:100%;max-height:160px;object-fit:cover;display:block;">
                                     <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
                                         <i class="fa fa-image" style="color:#6366F1;font-size:10px;"></i>
                                         <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $sub->original_filename }}</span>
-                                        <i class="fa fa-arrow-up-right-from-square" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
+                                        <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
                                     </div>
-                                </a>
+                                </button>
                                 @elseif($subIsVideo)
-                                <a href="{{ $subUrl }}" target="_blank" style="display:block;margin-bottom:10px;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:300px;text-decoration:none;">
+                                <button type="button" @click="showSub({{ $subItem }})"
+                                        style="display:block;margin-bottom:10px;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:300px;width:100%;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;"
+                                        onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                                     <div style="background:#1F2937;height:110px;display:flex;align-items:center;justify-content:center;">
                                         <div style="width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;">
                                             <i class="fa fa-play" style="color:#fff;font-size:15px;margin-left:3px;"></i>
@@ -805,21 +901,22 @@
                                     <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
                                         <i class="fa fa-video" style="color:#6366F1;font-size:10px;"></i>
                                         <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $sub->original_filename }}</span>
-                                        <i class="fa fa-arrow-up-right-from-square" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
+                                        <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
                                     </div>
-                                </a>
+                                </button>
                                 @else
-                                <a href="{{ $subUrl }}" target="_blank" style="display:inline-flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 14px;background:#fff;border:1px solid #E5E7EB;border-radius:9px;text-decoration:none;max-width:300px;transition:border-color .15s;"
-                                   onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
+                                <button type="button" @click="showSub({{ $subItem }})"
+                                        style="display:inline-flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 14px;background:#fff;border:1px solid #E5E7EB;border-radius:9px;cursor:pointer;max-width:300px;transition:border-color .15s;"
+                                        onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                                     <div style="width:36px;height:36px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                         <i class="fa {{ $subIcon }}" style="color:#6366F1;font-size:16px;"></i>
                                     </div>
-                                    <div style="flex:1;min-width:0;">
+                                    <div style="flex:1;min-width:0;text-align:left;">
                                         <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $sub->original_filename }}</p>
                                         <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;text-transform:uppercase;">{{ $subExt ?: 'file' }}</p>
                                     </div>
-                                    <i class="fa fa-arrow-up-right-from-square" style="font-size:11px;color:#9CA3AF;flex-shrink:0;"></i>
-                                </a>
+                                    <i class="fa fa-eye" style="font-size:11px;color:#9CA3AF;flex-shrink:0;"></i>
+                                </button>
                                 @endif
                             @endif
                             @if($sub->status !== 'submitted')
@@ -879,17 +976,22 @@
                             <div x-show="!editing">
                                 <p style="font-size:13px;color:#374151;margin:0{{ $comment->file_path ? ' 0 10px' : '' }};line-height:1.6;" x-text="body"></p>
                                 @if($comment->file_path)
+                                    @php $cItem = json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'isImage'=>$cIsImage,'isVideo'=>$cIsVideo,'version'=>1]); @endphp
                                     @if($cIsImage)
-                                    <a href="{{ $cUrl }}" target="_blank" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;text-decoration:none;">
+                                    <button type="button" @click="showSub({{ $cItem }})"
+                                            style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;width:100%;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;"
+                                            onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                                         <img src="{{ $cUrl }}" alt="{{ $comment->original_filename }}" style="width:100%;max-height:140px;object-fit:cover;display:block;">
                                         <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
                                             <i class="fa fa-image" style="color:#6366F1;font-size:10px;"></i>
                                             <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $comment->original_filename }}</span>
-                                            <i class="fa fa-arrow-up-right-from-square" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
+                                            <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
                                         </div>
-                                    </a>
+                                    </button>
                                     @elseif($cIsVideo)
-                                    <a href="{{ $cUrl }}" target="_blank" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;text-decoration:none;">
+                                    <button type="button" @click="showSub({{ $cItem }})"
+                                            style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;width:100%;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;"
+                                            onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                                         <div style="background:#1F2937;height:90px;display:flex;align-items:center;justify-content:center;">
                                             <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;">
                                                 <i class="fa fa-play" style="color:#fff;font-size:13px;margin-left:2px;"></i>
@@ -898,21 +1000,22 @@
                                         <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
                                             <i class="fa fa-video" style="color:#6366F1;font-size:10px;"></i>
                                             <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $comment->original_filename }}</span>
-                                            <i class="fa fa-arrow-up-right-from-square" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
+                                            <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
                                         </div>
-                                    </a>
+                                    </button>
                                     @else
-                                    <a href="{{ $cUrl }}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;text-decoration:none;max-width:280px;transition:border-color .15s;"
-                                       onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
+                                    <button type="button" @click="showSub({{ $cItem }})"
+                                            style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;cursor:pointer;max-width:280px;transition:border-color .15s;"
+                                            onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                                         <div style="width:30px;height:30px;border-radius:7px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                             <i class="fa {{ $cIcon }}" style="color:#6366F1;font-size:13px;"></i>
                                         </div>
-                                        <div style="flex:1;min-width:0;">
+                                        <div style="flex:1;min-width:0;text-align:left;">
                                             <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $comment->original_filename }}</p>
                                             <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;text-transform:uppercase;">{{ $cExt ?: 'file' }}</p>
                                         </div>
-                                        <i class="fa fa-arrow-up-right-from-square" style="font-size:10px;color:#9CA3AF;flex-shrink:0;"></i>
-                                    </a>
+                                        <i class="fa fa-eye" style="font-size:10px;color:#9CA3AF;flex-shrink:0;"></i>
+                                    </button>
                                     @endif
                                 @endif
                             </div>
@@ -951,6 +1054,54 @@
             </div>
             @endif
         </div>
+
+        {{-- Submission file preview modal --}}
+        <template x-teleport="body">
+            <div x-show="subOpen" x-cloak
+                 @keydown.escape.window="closeSub()"
+                 style="position:fixed;inset:0;z-index:9999;">
+                <div @click.self="closeSub()"
+                     style="width:100%;height:100%;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;">
+                    <div x-transition style="background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.25);width:100%;max-width:min(90vw,900px);overflow:hidden;">
+                        <template x-if="subItem">
+                        <div>
+                            <div style="padding:18px 22px 14px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;gap:12px;">
+                                <div style="width:38px;height:38px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fa fa-paperclip" style="color:#6366F1;font-size:15px;"></i>
+                                </div>
+                                <div style="flex:1;min-width:0;">
+                                    <p style="font-size:14px;font-weight:700;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="subItem.name"></p>
+                                    <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;" x-text="'Version ' + subItem.version"></p>
+                                </div>
+                                <button @click="closeSub()" style="width:32px;height:32px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fa fa-xmark" style="color:#6B7280;font-size:13px;"></i>
+                                </button>
+                            </div>
+                            <template x-if="subItem.isImage">
+                                <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#F9FAFB;display:flex;justify-content:center;">
+                                    <img :src="subItem.url" :alt="subItem.name" style="max-width:100%;max-height:75vh;border-radius:10px;object-fit:contain;display:block;">
+                                </div>
+                            </template>
+                            <template x-if="subItem.isVideo">
+                                <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#1F2937;display:flex;justify-content:center;">
+                                    <video :src="subItem.url" controls style="max-width:100%;max-height:75vh;border-radius:10px;display:block;"></video>
+                                </div>
+                            </template>
+                            <div style="padding:14px 22px;display:flex;gap:10px;justify-content:flex-end;">
+                                <button @click="closeSub()" style="padding:8px 18px;background:#F3F4F6;color:#6B7280;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Close</button>
+                                <a :href="subItem.url" download style="display:inline-flex;align-items:center;gap:6px;padding:8px 20px;background:#6366F1;color:#fff;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;"
+                                   onmouseover="this.style.background='#4F46E5'" onmouseout="this.style.background='#6366F1'">
+                                    <i class="fa fa-download" style="font-size:11px;"></i> Download
+                                </a>
+                            </div>
+                        </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        </div>{{-- /lightbox wrapper --}}
 
     </div>{{-- /left --}}
 
@@ -1013,9 +1164,9 @@
             </div>
             <p id="timerDisplay" style="font-size:30px;font-weight:700;color:#111827;margin:8px 0 4px;font-variant-numeric:tabular-nums;letter-spacing:-.5px;">00:00:00</p>
             <p id="timerSession" style="font-size:11px;color:#9CA3AF;margin:0 0 14px;">
-                @if($timerRunning) Session running @elseif(in_array($task->status, $timerDoneStatuses)) Work complete @else Timer paused @endif
+                @if($timerRunning) Session running @elseif(in_array($task->status, $timerDoneStatuses)) Work complete @elseif($task->status === 'pending_customer') Awaiting customer @else Timer paused @endif
             </p>
-            @if(!in_array($task->status, $timerDoneStatuses) && !in_array($task->status, ['submitted', 'revision_requested']))
+            @if(!in_array($task->status, $timerDoneStatuses) && !in_array($task->status, ['submitted', 'revision_requested', 'pending_customer']))
                 @if($timerRunning)
                 <form method="POST" action="{{ route('user.tasks.timer.pause', $task) }}" style="display:inline;">
                     @csrf

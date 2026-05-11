@@ -249,8 +249,9 @@ class DashboardController extends Controller
 
         $customers           = Customer::orderBy('name')->get();
         $customerTaskDist    = Customer::withCount('tasks')->orderBy('name')->get(['id', 'name', 'tasks_count']);
-        $unassignedTaskCount = Task::whereNull('customer_id')->count();
-        $recentTasks         = Task::with(['project:id,name', 'assignee:id,name,avatar'])
+        $unassignedTaskCount    = Task::whereNull('customer_id')->count();
+        $awaitingCustomerCount  = Task::where('status', 'pending_customer')->count();
+        $recentTasks            = Task::with(['project:id,name', 'assignee:id,name,avatar'])
             ->orderByDesc('updated_at')
             ->take(12)
             ->get();
@@ -259,7 +260,7 @@ class DashboardController extends Controller
             'users', 'projects', 'allUsers', 'allProjects',
             'customers', 'recentTasks', 'customerTaskDist', 'unassignedTaskCount',
             'overdueTasks', 'completedTasks', 'totalTasks', 'activeProjects',
-            'scheduledMeetings',
+            'scheduledMeetings', 'awaitingCustomerCount',
             'weekLabels', 'weekData',
             'taskStats',
             'workloadLabels', 'workloadData',

@@ -135,7 +135,7 @@
 
 /* ── Scrollable table wrapper ── */
 .tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.tbl-scroll .hist-table { min-width: 680px; }
+.tbl-scroll .hist-table { min-width: 860px; table-layout: fixed; width: 100%; }
 
 /* ══ Responsive ═══════════════════════════════════════════════ */
 
@@ -199,7 +199,7 @@
     .apv-empty { padding: 44px 20px !important; }
 
     /* Table wider on small phones */
-    .tbl-scroll .hist-table { min-width: 580px; }
+    .tbl-scroll .hist-table { min-width: 800px; }
 
     .hist-cards-grid { grid-template-columns: 1fr; }
 }
@@ -263,7 +263,9 @@
                 <img :src="viewerFile.url" :alt="viewerFile.filename" style="max-width:88vw;max-height:82vh;border-radius:12px;object-fit:contain;display:block;box-shadow:0 20px 60px rgba(0,0,0,.5);">
             </template>
             <template x-if="viewerFile && viewerFile.type === 'video'">
-                <video :src="viewerFile.url" controls autoplay style="max-width:88vw;max-height:82vh;border-radius:12px;outline:none;display:block;box-shadow:0 20px 60px rgba(0,0,0,.5);">
+                <video :src="viewerFile.url" controls autoplay x-init="$el.load()"
+                       onerror="this.insertAdjacentHTML('afterend','<div style=\'padding:32px;text-align:center;color:#fff\'><i class=\'fas fa-video-slash\' style=\'font-size:32px;color:#F87171;display:block;margin-bottom:12px\'></i><p style=\'margin:0;font-size:14px\'>Video file could not be loaded</p></div>');this.remove()"
+                       style="max-width:88vw;max-height:82vh;border-radius:12px;outline:none;display:block;box-shadow:0 20px 60px rgba(0,0,0,.5);">
                     Your browser does not support the video tag.
                 </video>
             </template>
@@ -336,7 +338,13 @@
                         </template>
                         <template x-if="fileType(sub.filename) === 'video'">
                             <div @click="openViewer(sub.file, sub.filename)" style="cursor:pointer;margin-bottom:10px;border-radius:12px;overflow:hidden;border:1.5px solid #DDE3F5;position:relative;">
-                                <video :src="sub.file" style="width:100%;max-height:180px;object-fit:cover;display:block;" preload="metadata" muted></video>
+                                <video :src="sub.file" x-init="$el.load()"
+                                       onerror="this.style.display='none';this.parentElement.querySelector('.vid-err')?.style.setProperty('display','flex')"
+                                       style="width:100%;max-height:180px;object-fit:cover;display:block;" preload="metadata" muted></video>
+                                <div class="vid-err" style="display:none;align-items:center;justify-content:center;flex-direction:column;padding:18px;background:#FEF2F2;min-height:80px;">
+                                    <i class="fas fa-video-slash" style="color:#F87171;font-size:18px;margin-bottom:6px;"></i>
+                                    <p style="font-size:11px;color:#EF4444;margin:0;">File not found</p>
+                                </div>
                                 <div style="position:absolute;inset:0;background:rgba(0,0,0,.28);display:flex;align-items:center;justify-content:center;">
                                     <div style="width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.94);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.2);">
                                         <i class="fas fa-play" style="color:#4F46E5;font-size:17px;margin-left:3px;"></i>
@@ -450,9 +458,9 @@
                     <div>
                         {{-- Image --}}
                         <template x-if="fileType(qvTask?.submission_name) === 'image'">
-                            <div @click="openViewer(qvTask.submission_url, qvTask.submission_name)"
+                            <div @click="openViewer(qvTask?.submission_url, qvTask?.submission_name)"
                                  style="cursor:pointer;border-radius:14px;overflow:hidden;border:1.5px solid #DDE3F5;position:relative;box-shadow:0 4px 18px rgba(99,102,241,.1);margin-bottom:8px;">
-                                <img :src="qvTask.submission_url" :alt="qvTask.submission_name"
+                                <img :src="qvTask?.submission_url" :alt="qvTask?.submission_name"
                                      style="width:100%;max-height:280px;object-fit:cover;display:block;">
                                 <div style="position:absolute;inset:0;background:rgba(0,0,0,0);display:flex;align-items:center;justify-content:center;transition:background .2s;"
                                      onmouseover="this.style.background='rgba(0,0,0,.28)';this.querySelector('.qv-lens').style.opacity='1'"
@@ -465,26 +473,36 @@
                         </template>
                         {{-- Video --}}
                         <template x-if="fileType(qvTask?.submission_name) === 'video'">
-                            <div @click="openViewer(qvTask.submission_url, qvTask.submission_name)"
-                                 style="cursor:pointer;border-radius:14px;overflow:hidden;border:1.5px solid #DDE3F5;position:relative;box-shadow:0 4px 18px rgba(99,102,241,.1);margin-bottom:8px;">
-                                <video :src="qvTask.submission_url" style="width:100%;max-height:240px;object-fit:cover;display:block;" preload="metadata" muted></video>
-                                <div style="position:absolute;inset:0;background:rgba(0,0,0,.32);display:flex;align-items:center;justify-content:center;">
-                                    <div style="width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.95);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.22);">
-                                        <i class="fas fa-play" style="color:#4F46E5;font-size:18px;margin-left:3px;"></i>
+                            <div x-data="{ videoError: false }">
+                                <div x-show="!videoError" @click="openViewer(qvTask?.submission_url, qvTask?.submission_name)"
+                                     style="cursor:pointer;border-radius:14px;overflow:hidden;border:1.5px solid #DDE3F5;position:relative;box-shadow:0 4px 18px rgba(99,102,241,.1);margin-bottom:8px;">
+                                    <video :src="qvTask?.submission_url" x-init="$el.load()"
+                                           x-on:error="videoError = true"
+                                           style="width:100%;max-height:240px;object-fit:cover;display:block;" preload="metadata" muted></video>
+                                    <div style="position:absolute;inset:0;background:rgba(0,0,0,.32);display:flex;align-items:center;justify-content:center;">
+                                        <div style="width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.95);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.22);">
+                                            <i class="fas fa-play" style="color:#4F46E5;font-size:18px;margin-left:3px;"></i>
+                                        </div>
                                     </div>
+                                </div>
+                                <div x-show="videoError"
+                                     style="border-radius:14px;border:1.5px dashed #FCA5A5;background:#FEF2F2;padding:24px;text-align:center;margin-bottom:8px;">
+                                    <i class="fas fa-video-slash" style="color:#F87171;font-size:22px;display:block;margin-bottom:8px;"></i>
+                                    <p style="font-size:12px;font-weight:600;color:#EF4444;margin:0 0 2px;">Video file not found</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:0;">The file may have been deleted. Ask the assignee to re-submit.</p>
                                 </div>
                             </div>
                         </template>
                         {{-- Other file types --}}
                         <template x-if="!['image','video'].includes(fileType(qvTask?.submission_name))">
-                            <div @click="openViewer(qvTask.submission_url, qvTask.submission_name)"
+                            <div @click="openViewer(qvTask?.submission_url, qvTask?.submission_name)"
                                  style="display:flex;align-items:center;gap:12px;padding:14px 16px;border:1.5px solid #DDE3F5;border-radius:12px;cursor:pointer;background:#F8FAFF;transition:all .15s;margin-bottom:8px;"
                                  onmouseover="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE'" onmouseout="this.style.background='#F8FAFF';this.style.borderColor='#DDE3F5'">
                                 <div style="width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                     <i class="fas fa-paperclip" style="color:#6366F1;font-size:16px;"></i>
                                 </div>
                                 <div style="flex:1;min-width:0;">
-                                    <p style="font-size:13px;font-weight:600;color:#4F46E5;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="qvTask.submission_name"></p>
+                                    <p style="font-size:13px;font-weight:600;color:#4F46E5;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="qvTask?.submission_name"></p>
                                     <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Click to preview / download</p>
                                 </div>
                                 <i class="fas fa-expand" style="color:#A5B4FC;font-size:12px;flex-shrink:0;"></i>
@@ -520,7 +538,7 @@
                     <i class="fas fa-rotate-left" style="font-size:11px;"></i> Request Revision
                 </button>
                 <div style="flex:1;"></div>
-                <template x-if="qvTask.customer_phone">
+                <template x-if="qvTask?.customer_phone">
                     <button type="button"
                             @click="quickWhatsApp(qvTask.customer_phone, qvTask.customer_name, qvTask.title, qvTask.submission_url)"
                             :disabled="qvWaSending"
@@ -537,7 +555,7 @@
                     <i :class="qvWaResult?.ok ? 'fas fa-circle-check' : 'fas fa-circle-xmark'" style="font-size:10px;"></i>
                     <span x-text="qvWaResult?.message ?? ''"></span>
                 </div>
-                <a :href="qvTask.task_url"
+                <a :href="qvTask?.task_url"
                    style="display:inline-flex;align-items:center;gap:6px;padding:9px 14px;background:#F3F4F6;color:#374151;border:1px solid #E5E7EB;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;white-space:nowrap;"
                    onmouseover="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE';this.style.color='#4F46E5'" onmouseout="this.style.background='#F3F4F6';this.style.borderColor='#E5E7EB';this.style.color='#374151'">
                     <i class="fa fa-arrow-up-right-from-square" style="font-size:11px;"></i> Full View
@@ -827,6 +845,44 @@
                                 @endforeach
                             </select>
                         </div>
+                        {{-- Platform selector --}}
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:8px;">
+                                <i class="fas fa-share-nodes" style="font-size:10px;margin-right:4px;color:#6366F1;"></i>
+                                Platforms <span style="font-weight:400;color:#9CA3AF;">(select all that apply)</span>
+                            </label>
+                            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+                                @php
+                                $approvalPlatforms = [
+                                    'facebook'  => ['Facebook',   'fa-facebook',   '#1877F2','#EBF3FF','#C3DCF7'],
+                                    'instagram' => ['Instagram',  'fa-instagram',  '#E1306C','#FFF0F5','#F9C0D4'],
+                                    'twitter'   => ['Twitter / X','fa-x-twitter',  '#000000','#F5F5F5','#D1D5DB'],
+                                    'linkedin'  => ['LinkedIn',   'fa-linkedin',   '#0A66C2','#EAF2FB','#B3D4EF'],
+                                    'tiktok'    => ['TikTok',     'fa-tiktok',     '#010101','#F5F5F5','#D1D5DB'],
+                                    'youtube'   => ['YouTube',    'fa-youtube',    '#FF0000','#FFF0F0','#FFBBBB'],
+                                    'snapchat'  => ['Snapchat',   'fa-snapchat',   '#F7CA00','#FFFDE7','#FDE68A'],
+                                    'other'     => ['Other',      'fa-share-nodes','#6366F1','#EEF2FF','#C7D2FE'],
+                                ];
+                                @endphp
+                                @foreach($approvalPlatforms as $pKey => [$pLabel, $pIcon, $pColor, $pBg, $pBorder])
+                                <button type="button"
+                                        @click="approvalSocialPlatforms.includes('{{ $pKey }}') ? approvalSocialPlatforms.splice(approvalSocialPlatforms.indexOf('{{ $pKey }}'), 1) : approvalSocialPlatforms.push('{{ $pKey }}')"
+                                        :style="approvalSocialPlatforms.includes('{{ $pKey }}')
+                                            ? 'display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border-radius:10px;border:2px solid {{ $pColor }};background:{{ $pBg }};cursor:pointer;transition:all .15s;'
+                                            : 'display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border-radius:10px;border:1.5px solid #E5E7EB;background:#fff;cursor:pointer;transition:all .15s;'">
+                                    <i class="fab {{ $pIcon }}"
+                                       :style="approvalSocialPlatforms.includes('{{ $pKey }}') ? 'font-size:18px;color:{{ $pColor }};' : 'font-size:18px;color:#D1D5DB;'"></i>
+                                    <span :style="approvalSocialPlatforms.includes('{{ $pKey }}') ? 'font-size:9px;font-weight:700;color:{{ $pColor }};' : 'font-size:9px;font-weight:600;color:#9CA3AF;'"
+                                          style="line-height:1.2;text-align:center;">{{ $pLabel }}</span>
+                                </button>
+                                @endforeach
+                            </div>
+                            {{-- Hidden inputs for selected platforms --}}
+                            <template x-for="p in approvalSocialPlatforms" :key="p">
+                                <input type="hidden" name="social_platforms[]" :value="p">
+                            </template>
+                        </div>
+
                         <div>
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
                                 <i class="fas fa-align-left" style="font-size:10px;margin-right:4px;color:#6366F1;"></i>
@@ -959,6 +1015,52 @@
                 </div>
             </form>
         </div>
+        </div>
+    </div>
+</template>
+
+{{-- ═══════════ PUBLISHED POST DELETE CONFIRMATION MODAL ═══════════ --}}
+<template x-if="pubDeleteModal">
+    <div x-show="pubDeleteModal" x-cloak
+         style="position:fixed;inset:0;z-index:9000;background:rgba(17,24,39,.45);backdrop-filter:blur(3px);">
+        <div @click.self="pubDeleteModal=false" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;">
+            <div style="background:#fff;border-radius:20px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.18);overflow:hidden;" @click.stop>
+                {{-- Header --}}
+                <div style="display:flex;align-items:center;gap:12px;padding:20px 22px 16px;border-bottom:1px solid #F3F4F6;">
+                    <div style="width:38px;height:38px;border-radius:11px;background:#FEE2E2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="fas fa-trash" style="color:#DC2626;font-size:15px;"></i>
+                    </div>
+                    <div>
+                        <p style="font-size:15px;font-weight:800;color:#111827;margin:0;">Remove Post Record</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:0;">This action cannot be undone</p>
+                    </div>
+                    <button @click="pubDeleteModal=false"
+                            style="margin-left:auto;width:30px;height:30px;border-radius:8px;background:#F3F4F6;border:none;cursor:pointer;color:#6B7280;font-size:13px;display:flex;align-items:center;justify-content:center;"
+                            onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                </div>
+                {{-- Body --}}
+                <div style="padding:18px 22px;">
+                    <p style="font-size:13px;color:#374151;margin:0 0 6px;">Are you sure you want to remove this post record?</p>
+                    <p style="font-size:12px;color:#6B7280;margin:0 0 20px;" x-text="pubDeleteLabel"></p>
+                    <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:10px 13px;display:flex;align-items:flex-start;gap:8px;margin-bottom:20px;">
+                        <i class="fas fa-triangle-exclamation" style="color:#EF4444;font-size:12px;margin-top:1px;flex-shrink:0;"></i>
+                        <p style="font-size:12px;color:#B91C1C;margin:0;line-height:1.5;">The post record will be permanently deleted. The task itself will not be affected.</p>
+                    </div>
+                    <div style="display:flex;gap:10px;">
+                        <button type="button" @click="pubDeleteModal=false"
+                                style="flex:1;padding:10px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;"
+                                onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                            Cancel
+                        </button>
+                        <button type="button" @click="confirmPubDelete()"
+                                style="flex:2;padding:10px;background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 4px 14px rgba(239,68,68,.3);">
+                            <i class="fas fa-trash"></i> Yes, Remove It
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </template>
@@ -1187,9 +1289,15 @@
                     $cwMsg   = "Hello {$cwName}, your design for \"{$task->title}\" has been submitted for review. We'd love your feedback before we finalize approval.";
                     if ($cwFile) $cwMsg .= "\n\nView design: {$cwFile}";
                 @endphp
-                <div x-data="{
-                         waOpen: false, waPhone: @js($cwPhone), waMsg: @js($cwMsg), waFile: @js($cwFile),
+                <div data-wa-phone="{{ $cwPhone }}" data-wa-msg="{{ $cwMsg }}" data-wa-file="{{ $cwFile }}"
+                     x-data="{
+                         waOpen: false, waPhone: '', waMsg: '', waFile: '',
                          waTop: 0, waRight: 0, waSending: false, waResult: null,
+                         init() {
+                             this.waPhone = this.$el.dataset.waPhone;
+                             this.waMsg   = this.$el.dataset.waMsg;
+                             this.waFile  = this.$el.dataset.waFile;
+                         },
                          toggleWa(btn) {
                              if (!this.waOpen) {
                                  const r = btn.getBoundingClientRect();
@@ -1407,9 +1515,15 @@
                         if ($lwFile) $lwMsg .= "\n\nView design: {$lwFile}";
                     @endphp
                     {{-- Quick WhatsApp icon + dropdown --}}
-                    <div x-data="{
-                             waOpen: false, waPhone: @js($lwPhone), waMsg: @js($lwMsg), waFile: @js($lwFile),
+                    <div data-wa-phone="{{ $lwPhone }}" data-wa-msg="{{ $lwMsg }}" data-wa-file="{{ $lwFile }}"
+                         x-data="{
+                             waOpen: false, waPhone: '', waMsg: '', waFile: '',
                              waTop: 0, waRight: 0, waSending: false, waResult: null,
+                             init() {
+                                 this.waPhone = this.$el.dataset.waPhone;
+                                 this.waMsg   = this.$el.dataset.waMsg;
+                                 this.waFile  = this.$el.dataset.waFile;
+                             },
                              toggleWa(btn) {
                                  if (!this.waOpen) {
                                      const r = btn.getBoundingClientRect();
@@ -1733,10 +1847,6 @@
 
 {{-- Result count + view toggle --}}
 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
-    <p style="font-size:12px;color:#9CA3AF;margin:0;">
-        {{ $history->total() }} {{ Str::plural('result', $history->total()) }}
-        @if($hHasFilters)<span style="color:#4F46E5;font-weight:600;"> (filtered)</span>@endif
-    </p>
     <div class="hist-view-toggle">
         <button id="histBtnTable" onclick="setHistView('table')" class="hist-view-btn active" title="Table view">
             <i class="fas fa-table-list" style="font-size:11px;"></i> Table
@@ -1745,6 +1855,10 @@
             <i class="fas fa-table-cells-large" style="font-size:11px;"></i> Cards
         </button>
     </div>
+    <p style="font-size:12px;color:#9CA3AF;margin:0;">
+        {{ $history->total() }} {{ Str::plural('result', $history->total()) }}
+        @if($hHasFilters)<span style="color:#4F46E5;font-weight:600;"> (filtered)</span>@endif
+    </p>
 </div>
 
 @if($history->total() === 0)
@@ -1757,138 +1871,195 @@
 
 {{-- ══ TABLE VIEW ══ --}}
 <div id="histTableView">
-<div style="background:#fff;border-radius:18px;border:1px solid #EBEBEB;box-shadow:0 2px 10px rgba(99,102,241,.06);overflow:hidden;">
+<div style="background:#fff;border-radius:18px;border:1px solid #EBEBEB;box-shadow:0 2px 10px rgba(99,102,241,.06);overflow:clip;">
 <div class="tbl-scroll">
-    <table class="hist-table">
+    <table class="hist-table" style="table-layout:auto;">
         <thead>
             <tr>
+                <th style="width:32px;padding:11px 8px 11px 16px;"></th>
                 <th><a href="{{ hSortUrl('task', $hSort, $hDir, $hParams) }}" style="color:inherit;text-decoration:none;display:flex;align-items:center;">Task {!! hSortIcon('task', $hSort, $hDir) !!}</a></th>
                 <th><a href="{{ hSortUrl('assignee', $hSort, $hDir, $hParams) }}" style="color:inherit;text-decoration:none;display:flex;align-items:center;">Assignee {!! hSortIcon('assignee', $hSort, $hDir) !!}</a></th>
-                <th>Project</th>
-                <th>Ver.</th>
                 <th><a href="{{ hSortUrl('decision', $hSort, $hDir, $hParams) }}" style="color:inherit;text-decoration:none;display:flex;align-items:center;">Decision {!! hSortIcon('decision', $hSort, $hDir) !!}</a></th>
-                <th><a href="{{ hSortUrl('reviewer', $hSort, $hDir, $hParams) }}" style="color:inherit;text-decoration:none;display:flex;align-items:center;">Reviewed By {!! hSortIcon('reviewer', $hSort, $hDir) !!}</a></th>
                 <th><a href="{{ hSortUrl('date', $hSort, $hDir, $hParams) }}" style="color:inherit;text-decoration:none;display:flex;align-items:center;">Date {!! hSortIcon('date', $hSort, $hDir) !!}</a></th>
-                <th>Social Media</th>
                 <th></th>
             </tr>
         </thead>
-        <tbody>
-            @foreach($history as $sub)
-            @php
-                $isApproved  = $sub->status === 'approved';
-                $decisionBg  = $isApproved ? 'linear-gradient(135deg,#D1FAE5,#A7F3D0)' : 'linear-gradient(135deg,#FEE2E2,#FECACA)';
-                $decisionCo  = $isApproved ? '#065F46' : '#991B1B';
-                $decisionIco = $isApproved ? 'fa-circle-check' : 'fa-rotate-left';
-                $decisionLbl = $isApproved ? 'Approved' : 'Rejected';
-                $socialAssignee = $sub->task?->socialAssignee;
-                $postedAt       = $sub->task?->social_posted_at;
-            @endphp
+        @foreach($history as $sub)
+        @php
+            $isApproved  = $sub->status === 'approved';
+            $decisionBg  = $isApproved ? 'linear-gradient(135deg,#D1FAE5,#A7F3D0)' : 'linear-gradient(135deg,#FEE2E2,#FECACA)';
+            $decisionCo  = $isApproved ? '#065F46' : '#991B1B';
+            $decisionIco = $isApproved ? 'fa-circle-check' : 'fa-rotate-left';
+            $decisionLbl = $isApproved ? 'Approved' : 'Rejected';
+            $socialAssignee = $sub->task?->socialAssignee;
+            $postedAt       = $sub->task?->social_posted_at;
+            $taskSocialPosts = $sub->task?->socialPosts ?? collect();
+            $pIcons = ['facebook'=>['fa-facebook','#1877F2'],'instagram'=>['fa-instagram','#E1306C'],'twitter'=>['fa-x-twitter','#000000'],'linkedin'=>['fa-linkedin','#0A66C2'],'tiktok'=>['fa-tiktok','#010101'],'youtube'=>['fa-youtube','#FF0000'],'snapchat'=>['fa-snapchat','#F7CA00'],'other'=>['fa-share-nodes','#6366F1']];
+        @endphp
+        <tbody x-data="{ expanded: false }">
+            {{-- Summary row --}}
             <tr>
-                <td>
-                    <p style="font-size:13px;font-weight:600;color:#111827;margin:0;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $sub->task->title ?? '—' }}</p>
+                {{-- Toggle --}}
+                <td style="padding:12px 8px 12px 16px;width:32px;">
+                    <button @click="expanded = !expanded"
+                            style="width:24px;height:24px;border-radius:6px;background:#F3F4F6;border:1px solid #E5E7EB;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;"
+                            :style="expanded ? 'background:#EEF2FF;border-color:#C7D2FE;' : ''"
+                            :title="expanded ? 'Collapse' : 'Expand'">
+                        <i class="fas fa-chevron-right" style="font-size:9px;color:#6B7280;transition:transform .2s;"
+                           :style="expanded ? 'transform:rotate(90deg);color:#4F46E5;' : ''"></i>
+                    </button>
                 </td>
+                {{-- Task --}}
+                <td @click="expanded = !expanded" style="cursor:pointer;">
+                    <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;"
+                       title="{{ $sub->task->title ?? '' }}">{{ $sub->task->title ?? '—' }}</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">
+                        <i class="fas fa-folder" style="font-size:9px;color:#C4B5FD;margin-right:3px;"></i>{{ $sub->task->project->name ?? '—' }}
+                        <span style="margin:0 4px;color:#E5E7EB;">·</span>v{{ $sub->version }}
+                    </p>
+                </td>
+                {{-- Assignee --}}
                 <td>
                     <div style="display:flex;align-items:center;gap:8px;">
                         <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">
                             {{ strtoupper(substr($sub->task->assignee->name ?? 'U', 0, 1)) }}
                         </div>
-                        <span style="font-size:12px;font-weight:500;color:#374151;">{{ $sub->task->assignee->name ?? '—' }}</span>
+                        <span style="font-size:12px;font-weight:500;color:#374151;white-space:nowrap;">{{ $sub->task->assignee->name ?? '—' }}</span>
                     </div>
                 </td>
+                {{-- Decision --}}
                 <td>
-                    <span style="font-size:12px;color:#6B7280;display:flex;align-items:center;gap:4px;">
-                        <i class="fas fa-folder" style="font-size:10px;color:#C4B5FD;"></i>
-                        {{ $sub->task->project->name ?? '—' }}
-                    </span>
-                </td>
-                <td>
-                    <span style="font-size:11px;font-weight:700;color:#4F46E5;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);padding:3px 9px;border-radius:20px;border:1px solid #C7D2FE;">v{{ $sub->version }}</span>
-                </td>
-                <td>
-                    <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 11px;border-radius:20px;background:{{ $decisionBg }};color:{{ $decisionCo }};">
+                    <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 11px;border-radius:20px;background:{{ $decisionBg }};color:{{ $decisionCo }};white-space:nowrap;">
                         <i class="fa {{ $decisionIco }}" style="font-size:10px;"></i> {{ $decisionLbl }}
                     </span>
                 </td>
-                <td>
-                    <span style="font-size:12px;color:#374151;">{{ $sub->reviewer->name ?? '—' }}</span>
-                </td>
+                {{-- Date --}}
                 <td>
                     <span style="font-size:12px;color:#6B7280;white-space:nowrap;">{{ $sub->reviewed_at?->format(config('app.date_format', 'M d, Y')) }}</span>
-                    <p style="font-size:10px;color:#D1D5DB;margin:2px 0 0;">{{ $sub->reviewed_at?->diffForHumans() }}</p>
+                    <p style="font-size:10px;color:#D1D5DB;margin:2px 0 0;white-space:nowrap;">{{ $sub->reviewed_at?->diffForHumans() }}</p>
                 </td>
-
-                {{-- Social Media Column --}}
-                <td style="min-width:200px;">
-                    @if($isApproved && $sub->task_id)
-                    @php
-                        $t               = $sub->task;
-                        $socialRequired  = $t?->social_required;
-                        $taskSocialPosts = $t?->socialPosts ?? collect();
-                        $pIcons = ['facebook'=>['fa-facebook','#1877F2'],'instagram'=>['fa-instagram','#E1306C'],'twitter'=>['fa-x-twitter','#000000'],'linkedin'=>['fa-linkedin','#0A66C2'],'tiktok'=>['fa-tiktok','#010101'],'youtube'=>['fa-youtube','#FF0000'],'snapchat'=>['fa-snapchat','#F7CA00'],'other'=>['fa-share-nodes','#6366F1']];
-                    @endphp
-                        @if($taskSocialPosts->isNotEmpty())
-                        <div style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;background:#D1FAE5;color:#065F46;font-size:11px;font-weight:700;margin-bottom:6px;">
-                            <i class="fas fa-circle-check" style="font-size:9px;"></i> Posted
-                        </div>
-                        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">
-                            @foreach($taskSocialPosts as $sp)
-                            @php [$spIcon,$spColor] = $pIcons[$sp->platform] ?? $pIcons['other']; @endphp
-                            @if($sp->post_url)
-                            <a href="{{ $sp->post_url }}" target="_blank" rel="noopener" title="{{ $sp->platformLabel() }}"
-                               style="width:24px;height:24px;border-radius:6px;background:#F3F4F6;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;"
-                               onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
-                                <i class="fab {{ $spIcon }}" style="font-size:12px;color:{{ $spColor }};"></i>
+                {{-- Actions dropdown --}}
+                <td style="white-space:nowrap;">
+                    @if($sub->task_id)
+                    <div x-data="{ menuOpen: false, dTop: 0, dRight: 0 }"
+                         @click.outside="menuOpen=false"
+                         @scroll.window="menuOpen=false"
+                         @keydown.escape.window="menuOpen=false">
+                        <button x-ref="actBtn"
+                                @click.stop="
+                                    if (!menuOpen) {
+                                        const r = $refs.actBtn.getBoundingClientRect();
+                                        dTop   = r.bottom + 5;
+                                        dRight = window.innerWidth - r.right;
+                                    }
+                                    menuOpen = !menuOpen;
+                                "
+                                style="display:inline-flex;align-items:center;gap:6px;padding:5px 13px;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s;"
+                                onmouseover="this.style.background='#E0E7FF';this.style.borderColor='#A5B4FC'" onmouseout="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE'">
+                            Actions
+                            <i class="fas fa-chevron-down" style="font-size:9px;transition:transform .15s;" :style="menuOpen ? 'transform:rotate(180deg)' : ''"></i>
+                        </button>
+                        <div x-show="menuOpen" x-cloak
+                             :style="`position:fixed;top:${dTop}px;right:${dRight}px;background:#fff;border:1.5px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.13);min-width:170px;z-index:9999;overflow:hidden;`">
+                            {{-- View Details --}}
+                            <button @click="menuOpen=false; openTaskPanel({{ $sub->task_id }})"
+                                    style="display:flex;align-items:center;gap:9px;width:100%;padding:10px 15px;background:none;border:none;border-bottom:1px solid #F3F4F6;font-size:12px;font-weight:600;color:#4F46E5;cursor:pointer;text-align:left;"
+                                    onmouseover="this.style.background='#F5F3FF'" onmouseout="this.style.background=''">
+                                <i class="fas fa-eye" style="font-size:11px;width:14px;text-align:center;color:#6366F1;"></i>
+                                View Details
+                            </button>
+                            {{-- Open Task --}}
+                            <a href="{{ route('admin.tasks.show', $sub->task_id) }}"
+                               @click="menuOpen=false"
+                               style="display:flex;align-items:center;gap:9px;padding:10px 15px;font-size:12px;font-weight:600;color:#374151;text-decoration:none;border-bottom:1px solid #F3F4F6;"
+                               onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                                <i class="fas fa-arrow-up-right-from-square" style="font-size:11px;width:14px;text-align:center;color:#6B7280;"></i>
+                                Open Task
                             </a>
-                            @else
-                            <span title="{{ $sp->platformLabel() }}" style="width:24px;height:24px;border-radius:6px;background:#F3F4F6;display:inline-flex;align-items:center;justify-content:center;">
-                                <i class="fab {{ $spIcon }}" style="font-size:12px;color:{{ $spColor }};"></i>
-                            </span>
+                            @if($isApproved)
+                            {{-- Reopen Task --}}
+                            <form method="POST" action="{{ route('admin.tasks.reopen', $sub->task_id) }}"
+                                  onsubmit="return confirm('Reopen this task and set it back to In Progress?')">
+                                @csrf
+                                <button type="submit"
+                                        style="display:flex;align-items:center;gap:9px;width:100%;padding:10px 15px;background:none;border:none;font-size:12px;font-weight:600;color:#D97706;cursor:pointer;text-align:left;"
+                                        onmouseover="this.style.background='#FFFBEB'" onmouseout="this.style.background=''">
+                                    <i class="fas fa-rotate-right" style="font-size:11px;width:14px;text-align:center;color:#F59E0B;"></i>
+                                    Reopen Task
+                                </button>
+                            </form>
                             @endif
-                            @endforeach
                         </div>
-                        <p style="font-size:10px;color:#9CA3AF;margin:0;">
-                            {{ $postedAt?->format('M d, Y · H:i') }}
-                            @if($socialAssignee) · {{ $socialAssignee->name }}@endif
-                        </p>
-                        @else
-                        <span style="color:#D1D5DB;font-size:13px;">—</span>
-                        @endif
-                    @else
-                        <span style="font-size:11px;color:#E5E7EB;">—</span>
+                    </div>
                     @endif
                 </td>
+            </tr>
 
-                <td>
-                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                        @if($sub->task_id)
-                        <button onclick="openTaskPanel({{ $sub->task_id }})"
-                                style="display:flex;align-items:center;gap:5px;padding:6px 13px;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s;"
-                                onmouseover="this.style.background='#E0E7FF';this.style.borderColor='#A5B4FC'" onmouseout="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE'">
-                            <i class="fas fa-eye" style="font-size:10px;"></i> View
-                        </button>
-                        <a href="{{ route('admin.tasks.show', $sub->task_id) }}"
-                           style="display:flex;align-items:center;gap:5px;padding:6px 13px;background:#F3F4F6;color:#6B7280;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap;transition:all .15s;"
-                           onmouseover="this.style.background='#EEF2FF';this.style.color='#4F46E5';this.style.borderColor='#C7D2FE'" onmouseout="this.style.background='#F3F4F6';this.style.color='#6B7280';this.style.borderColor='#E5E7EB'">
-                            <i class="fas fa-arrow-up-right-from-square" style="font-size:10px;"></i> Task
-                        </a>
-                        @if($isApproved)
-                        <form method="POST" action="{{ route('admin.tasks.reopen', $sub->task_id) }}"
-                              onsubmit="return confirm('Reopen this task and set it back to In Progress?')">
-                            @csrf
-                            <button type="submit"
-                                    style="display:flex;align-items:center;gap:5px;padding:6px 13px;background:#FFFBEB;color:#D97706;border:1.5px solid #FCD34D;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s;"
-                                    onmouseover="this.style.background='#FEF3C7';this.style.borderColor='#F59E0B'" onmouseout="this.style.background='#FFFBEB';this.style.borderColor='#FCD34D'">
-                                <i class="fas fa-rotate-right" style="font-size:10px;"></i> Reopen
-                            </button>
-                        </form>
+            {{-- Expanded details row --}}
+            <tr x-show="expanded" x-collapse style="background:#F8FAFF;">
+                <td></td>
+                <td colspan="5" style="padding:0 16px 16px;">
+                    <div style="display:flex;flex-wrap:wrap;gap:20px;padding-top:14px;border-top:1px solid #EEF2FF;">
+
+                        {{-- Meta info --}}
+                        <div style="display:flex;gap:16px;flex-wrap:wrap;flex:1;min-width:0;">
+                            <div>
+                                <p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Project</p>
+                                <span style="font-size:12px;color:#374151;display:flex;align-items:center;gap:4px;">
+                                    <i class="fas fa-folder" style="font-size:10px;color:#C4B5FD;"></i>
+                                    {{ $sub->task->project->name ?? '—' }}
+                                </span>
+                            </div>
+                            <div>
+                                <p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Version</p>
+                                <span style="font-size:11px;font-weight:700;color:#4F46E5;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);padding:3px 9px;border-radius:20px;border:1px solid #C7D2FE;">v{{ $sub->version }}</span>
+                            </div>
+                            <div>
+                                <p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Reviewed By</p>
+                                <span style="font-size:12px;color:#374151;">{{ $sub->reviewer->name ?? '—' }}</span>
+                            </div>
+                            @if($sub->admin_note)
+                            <div style="flex:1;min-width:160px;">
+                                <p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Note</p>
+                                <span style="font-size:12px;color:#374151;">{{ $sub->admin_note }}</span>
+                            </div>
+                            @endif
+                        </div>
+
+                        {{-- Social media --}}
+                        @if($isApproved && $taskSocialPosts->isNotEmpty())
+                        <div>
+                            <p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;">Social Media</p>
+                            <div style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;background:#D1FAE5;color:#065F46;font-size:11px;font-weight:700;margin-bottom:6px;">
+                                <i class="fas fa-circle-check" style="font-size:9px;"></i> Posted
+                            </div>
+                            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">
+                                @foreach($taskSocialPosts as $sp)
+                                @php [$spIcon,$spColor] = $pIcons[$sp->platform] ?? $pIcons['other']; @endphp
+                                @if($sp->post_url)
+                                <a href="{{ $sp->post_url }}" target="_blank" rel="noopener" title="{{ $sp->platformLabel() }}"
+                                   style="width:26px;height:26px;border-radius:6px;background:#F3F4F6;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;"
+                                   onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                                    <i class="fab {{ $spIcon }}" style="font-size:13px;color:{{ $spColor }};"></i>
+                                </a>
+                                @else
+                                <span title="{{ $sp->platformLabel() }}" style="width:26px;height:26px;border-radius:6px;background:#F3F4F6;display:inline-flex;align-items:center;justify-content:center;">
+                                    <i class="fab {{ $spIcon }}" style="font-size:13px;color:{{ $spColor }};"></i>
+                                </span>
+                                @endif
+                                @endforeach
+                            </div>
+                            @if($postedAt)
+                            <p style="font-size:10px;color:#9CA3AF;margin:0;">{{ $postedAt->format('M d, Y · H:i') }}{{ $socialAssignee ? ' · '.$socialAssignee->name : '' }}</p>
+                            @endif
+                        </div>
                         @endif
-                        @endif
+
                     </div>
                 </td>
             </tr>
-            @endforeach
         </tbody>
+        @endforeach
     </table>
 </div>{{-- .tbl-scroll --}}
 </div>{{-- card --}}
@@ -2043,8 +2214,24 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
     <p style="font-size:13px;color:#9CA3AF;margin:0;">Once social media tasks are posted, they will appear here.</p>
 </div>
 @else
+@php $pubTotalPosts = $publishedSocialTasks->sum(fn($t) => $t->socialPosts->count()); @endphp
 <div>
 
+    {{-- View toggle --}}
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <div class="hist-view-toggle" id="pendViewToggle">
+            <button class="hist-view-btn active" id="pendBtnList" onclick="setPendView('list')" title="Table view">
+                <i class="fas fa-table-list" style="font-size:11px;"></i> Table
+            </button>
+            <button class="hist-view-btn" id="pendBtnCards" onclick="setPendView('cards')" title="Card view">
+                <i class="fas fa-th-large" style="font-size:11px;"></i> Cards
+            </button>
+        </div>
+        <span style="font-size:12px;color:#9CA3AF;">{{ $pubTotalPosts }} published {{ Str::plural('post', $pubTotalPosts) }}</span>
+    </div>
+
+    {{-- ── CARDS VIEW ── --}}
+    <div id="pendingCardsView">
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
         @foreach($publishedSocialTasks as $pt)
         @foreach($pt->socialPosts as $sp)
@@ -2070,10 +2257,10 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
                         <i class="fas fa-pen" style="font-size:9px;"></i>
                         <span x-text="editing ? 'Cancel' : 'Edit'"></span>
                     </button>
-                    <form method="POST" action="{{ route('admin.social-posts.destroy', $sp->id) }}" style="margin:0;"
-                          onsubmit="return confirm('Remove this {{ $sp->platformLabel() }} post record?')">
+                    <form method="POST" action="{{ route('admin.social-posts.destroy', $sp->id) }}" style="margin:0;" id="pub-del-form-{{ $sp->id }}">
                         @csrf @method('DELETE')
-                        <button type="submit" class="pub-del-btn">
+                        <button type="button" class="pub-del-btn"
+                                @click="openPubDelete($el.closest('form'), '{{ $sp->platformLabel() }} post on task: {{ addslashes($pt->title) }}')">
                             <i class="fas fa-trash" style="font-size:9px;"></i>
                         </button>
                     </form>
@@ -2148,6 +2335,115 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
         @endforeach
         @endforeach
     </div>
+    </div>{{-- #pendingCardsView --}}
+
+    {{-- ── TABLE VIEW ── --}}
+    <div id="pendingListView" style="display:none;">
+    <div style="background:#fff;border-radius:18px;border:1px solid #EBEBEB;box-shadow:0 2px 10px rgba(99,102,241,.06);overflow:clip;">
+    <div class="tbl-scroll">
+    <table class="pend-table" style="table-layout:auto;">
+        <thead>
+            <tr>
+                <th>Platform</th>
+                <th>Task</th>
+                <th>Project</th>
+                <th>Post URL</th>
+                <th>Posted</th>
+                <th style="text-align:right;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach($publishedSocialTasks as $pt)
+        @foreach($pt->socialPosts as $sp)
+        @php [$pIconT,$pColorT] = $pubIcons[$sp->platform] ?? $pubIcons['other']; @endphp
+        <tr x-data="{ editing: false }">
+            {{-- Platform --}}
+            <td style="white-space:nowrap;">
+                <div style="display:flex;align-items:center;gap:7px;">
+                    <div style="width:28px;height:28px;border-radius:8px;background:#F9FAFB;border:1px solid #E5E7EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="fab {{ $pIconT }}" style="font-size:14px;color:{{ $pColorT }};"></i>
+                    </div>
+                    <span style="font-size:12px;font-weight:600;color:#374151;">{{ $sp->platformLabel() }}</span>
+                </div>
+            </td>
+            {{-- Task --}}
+            <td style="max-width:200px;">
+                <a href="{{ route('admin.tasks.show', $pt) }}" style="font-size:12px;font-weight:600;color:#4F46E5;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;max-width:190px;" title="{{ $pt->title }}">{{ $pt->title }}</a>
+            </td>
+            {{-- Project --}}
+            <td style="font-size:12px;color:#6B7280;white-space:nowrap;">{{ $pt->project->name ?? '—' }}</td>
+            {{-- Post URL --}}
+            <td style="max-width:200px;">
+                @if($sp->post_url)
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;" title="{{ $sp->post_url }}">{{ $sp->post_url }}</span>
+                    <a href="{{ $sp->post_url }}" target="_blank" rel="noopener"
+                       style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:#EEF2FF;color:#4F46E5;border:1px solid #C7D2FE;border-radius:6px;font-size:10px;font-weight:700;text-decoration:none;flex-shrink:0;">
+                        <i class="fas fa-arrow-up-right-from-square" style="font-size:8px;"></i> Open
+                    </a>
+                </div>
+                @else
+                <span style="font-size:11px;color:#D1D5DB;font-style:italic;">No link</span>
+                @endif
+            </td>
+            {{-- Posted date --}}
+            <td style="font-size:12px;color:#6B7280;white-space:nowrap;">{{ $pt->social_posted_at->format(config('app.date_format', 'M d, Y')) }}</td>
+            {{-- Actions --}}
+            <td style="text-align:right;white-space:nowrap;">
+                <div style="display:flex;align-items:center;gap:4px;justify-content:flex-end;">
+                    <button type="button" @click="editing=!editing" class="pub-edit-btn">
+                        <i class="fas fa-pen" style="font-size:9px;"></i>
+                        <span x-text="editing ? 'Cancel' : 'Edit'"></span>
+                    </button>
+                    <form method="POST" action="{{ route('admin.social-posts.destroy', $sp->id) }}" style="margin:0;" id="pub-del-form-{{ $sp->id }}">
+                        @csrf @method('DELETE')
+                        <button type="button" class="pub-del-btn"
+                                @click="openPubDelete($el.closest('form'), '{{ $sp->platformLabel() }} post on task: {{ addslashes($pt->title) }}')">
+                            <i class="fas fa-trash" style="font-size:9px;"></i>
+                        </button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {{-- Inline edit row --}}
+        <tr x-show="editing" x-cloak style="background:#F9FAFB;">
+            <td colspan="6" style="padding:10px 14px;">
+                <form method="POST" action="{{ route('admin.social-posts.update', $sp->id) }}">
+                    @csrf @method('PUT')
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+                        <div>
+                            <label style="font-size:10px;font-weight:700;color:#374151;display:block;margin-bottom:3px;">Platform</label>
+                            <select name="platform" style="font-size:12px;padding:5px 8px;border:1.5px solid #D1D5DB;border-radius:7px;background:#fff;color:#111827;outline:none;">
+                                @foreach($pubPlatforms as $val => $label)
+                                <option value="{{ $val }}" {{ $sp->platform === $val ? 'selected' : '' }}>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div style="flex:1;min-width:160px;">
+                            <label style="font-size:10px;font-weight:700;color:#374151;display:block;margin-bottom:3px;">Post URL</label>
+                            <input type="url" name="post_url" value="{{ $sp->post_url }}" placeholder="https://..."
+                                   style="width:100%;font-size:12px;padding:5px 8px;border:1.5px solid #D1D5DB;border-radius:7px;background:#fff;color:#111827;outline:none;box-sizing:border-box;">
+                        </div>
+                        <div style="flex:1;min-width:120px;">
+                            <label style="font-size:10px;font-weight:700;color:#374151;display:block;margin-bottom:3px;">Note</label>
+                            <input type="text" name="note" value="{{ $sp->note }}" placeholder="Optional note..."
+                                   style="width:100%;font-size:12px;padding:5px 8px;border:1.5px solid #D1D5DB;border-radius:7px;background:#fff;color:#111827;outline:none;box-sizing:border-box;">
+                        </div>
+                        <div style="display:flex;gap:6px;">
+                            <button type="button" @click="editing=false" class="pub-cancel-btn">Cancel</button>
+                            <button type="submit" class="pub-save-btn">Save</button>
+                        </div>
+                    </div>
+                </form>
+            </td>
+        </tr>
+        @endforeach
+        @endforeach
+        </tbody>
+    </table>
+    </div>
+    </div>
+    </div>{{-- #pendingListView --}}
 
     @if($publishedSocialTasks->hasPages())
     <div style="margin-top:16px;">{{ $publishedSocialTasks->appends(['tab' => 'published'])->links() }}</div>
@@ -2173,33 +2469,37 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
     <p style="font-size:13px;color:#9CA3AF;margin:0;">No pending social media tasks. All posted tasks are recorded in the <a href="{{ route('admin.approvals.index') }}?tab=published" style="color:#4F46E5;text-decoration:none;font-weight:600;">Published Posts tab</a>.</p>
 </div>
 @else
-<div style="background:#fff;border-radius:18px;border:1px solid #EBEBEB;box-shadow:0 2px 10px rgba(99,102,241,.06);overflow:hidden;">
+<div style="background:#fff;border-radius:18px;border:1px solid #EBEBEB;box-shadow:0 2px 10px rgba(99,102,241,.06);overflow:clip;">
 <div class="tbl-scroll">
-    <table class="hist-table">
+    <table class="hist-table" style="table-layout:auto;">
         <thead>
             <tr>
+                <th style="width:32px;padding:11px 8px 11px 16px;"></th>
                 <th>Task</th>
-                <th>Project</th>
-                <th>Assigned To</th>
+                <th>Social Handler</th>
+                <th>Status</th>
                 <th>Assigned</th>
-                <th>Social Status</th>
                 <th></th>
             </tr>
         </thead>
-        <tbody>
-            @foreach($socialTasks as $st)
+        @foreach($socialTasks as $st)
+        <tbody x-data="{ expanded: false }">
             <tr>
-                <td>
-                    <p style="font-size:13px;font-weight:600;color:#111827;margin:0;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $st->title }}</p>
-                    @if($st->assignee)
-                    <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">by {{ $st->assignee->name }}</p>
-                    @endif
+                <td style="padding:12px 8px 12px 16px;width:32px;">
+                    <button @click="expanded = !expanded"
+                            :style="expanded ? 'background:#EEF2FF;border-color:#C7D2FE;' : ''"
+                            :title="expanded ? 'Collapse' : 'Expand'" title="Expand">
+                        <i class="fas fa-chevron-right" :style="expanded ? 'transform:rotate(90deg);color:#4F46E5;' : ''"></i>
+                    </button>
                 </td>
-                <td>
-                    <span style="font-size:12px;color:#6B7280;display:flex;align-items:center;gap:4px;">
-                        <i class="fas fa-folder" style="font-size:10px;color:#C4B5FD;"></i>
-                        {{ $st->project->name ?? '—' }}
-                    </span>
+                <td @click="expanded = !expanded" style="cursor:pointer;">
+                    <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;" title="{{ $st->title }}">{{ $st->title }}</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">
+                        <i class="fas fa-folder" style="font-size:9px;color:#C4B5FD;margin-right:3px;"></i>{{ $st->project->name ?? '—' }}
+                        @if($st->assignee)
+                        <span style="margin:0 4px;color:#E5E7EB;">·</span>{{ $st->assignee->name }}
+                        @endif
+                    </p>
                 </td>
                 <td>
                     @if($st->socialAssignee)
@@ -2207,75 +2507,97 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
                         <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">
                             {{ strtoupper(substr($st->socialAssignee->name, 0, 1)) }}
                         </div>
-                        <span style="font-size:12px;font-weight:600;color:#374151;">{{ $st->socialAssignee->name }}</span>
+                        <span style="font-size:12px;font-weight:500;color:#374151;white-space:nowrap;">{{ $st->socialAssignee->name }}</span>
                     </div>
                     @else
                     <span style="color:#D1D5DB;font-size:12px;">—</span>
                     @endif
                 </td>
                 <td>
-                    <span style="font-size:12px;color:#6B7280;">{{ $st->updated_at->format(config('app.date_format', 'M d, Y')) }}</span>
-                </td>
-                {{-- ── Social Status: always pending here ── --}}
-                <td style="min-width:200px;">
-                    <div style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 11px;border-radius:20px;background:#FEF3C7;color:#D97706;margin-bottom:7px;">
+                    <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 11px;border-radius:20px;background:#FEF3C7;color:#D97706;white-space:nowrap;">
                         <i class="fas fa-clock" style="font-size:9px;"></i> Pending
-                    </div>
+                    </span>
                     @if($st->socialAssignee)
-                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
-                        <div style="width:20px;height:20px;border-radius:6px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0;">
-                            {{ strtoupper(substr($st->socialAssignee->name, 0, 1)) }}
-                        </div>
-                        <span style="font-size:11px;color:#374151;font-weight:500;">{{ $st->socialAssignee->name }}</span>
-                    </div>
-                    <p style="font-size:10px;color:#9CA3AF;margin:0;">
-                        <i class="fas fa-hourglass-half" style="font-size:9px;margin-right:3px;color:#FBB040;"></i>
-                        Waiting since {{ $st->updated_at->diffForHumans() }}
+                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;white-space:nowrap;">
+                        <i class="fas fa-hourglass-half" style="font-size:9px;margin-right:3px;color:#FBB040;"></i>{{ $st->updated_at->diffForHumans() }}
                     </p>
-                    @else
-                    <p style="font-size:11px;color:#D1D5DB;margin:0;">No one assigned yet</p>
                     @endif
                 </td>
                 <td>
-                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                        <a href="{{ route('admin.tasks.show', $st->id) }}"
-                           style="display:flex;align-items:center;gap:5px;padding:6px 13px;background:#F3F4F6;color:#6B7280;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap;transition:all .15s;"
-                           onmouseover="this.style.background='#EEF2FF';this.style.color='#4F46E5';this.style.borderColor='#C7D2FE'" onmouseout="this.style.background='#F3F4F6';this.style.color='#6B7280';this.style.borderColor='#E5E7EB'">
-                            <i class="fas fa-arrow-up-right-from-square" style="font-size:10px;"></i> Task
-                        </a>
-                        <form method="POST" action="{{ route('admin.tasks.social.assign', $st->id) }}" style="display:flex;flex-direction:column;gap:5px;min-width:220px;">
+                    <span style="font-size:12px;color:#6B7280;white-space:nowrap;">{{ $st->updated_at->format(config('app.date_format', 'M d, Y')) }}</span>
+                    <p style="font-size:10px;color:#D1D5DB;margin:2px 0 0;white-space:nowrap;">{{ $st->updated_at->diffForHumans() }}</p>
+                </td>
+                <td style="white-space:nowrap;">
+                    <div x-data="{ menuOpen: false, dTop: 0, dRight: 0 }" @click.outside="menuOpen=false" @scroll.window="menuOpen=false" @keydown.escape.window="menuOpen=false">
+                        <button x-ref="actBtn" @click.stop="
+                                    if (!menuOpen) {
+                                        const r = $refs.actBtn.getBoundingClientRect();
+                                        dTop   = r.bottom + 5;
+                                        dRight = window.innerWidth - r.right;
+                                    }
+                                    menuOpen = !menuOpen;
+                                "
+                                style="display:inline-flex;align-items:center;gap:6px;padding:5px 13px;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s;"
+                                onmouseover="this.style.background='#E0E7FF';this.style.borderColor='#A5B4FC'" onmouseout="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE'">
+                            Actions <i class="fas fa-chevron-down" :style="menuOpen ? 'transform:rotate(180deg)' : ''"></i>
+                        </button>
+                        <div x-show="menuOpen"
+                             :style="`position:fixed;top:${dTop}px;right:${dRight}px;background:#fff;border:1.5px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.13);min-width:170px;z-index:9999;overflow:hidden;`">
+                            <button @click="menuOpen=false; expanded=true"
+                                    style="display:flex;align-items:center;gap:9px;width:100%;padding:10px 15px;background:none;border:none;border-bottom:1px solid #F3F4F6;font-size:12px;font-weight:600;color:#4F46E5;cursor:pointer;text-align:left;"
+                                    onmouseover="this.style.background='#F5F3FF'" onmouseout="this.style.background=''">
+                                <i class="fas fa-user-pen" style="font-size:11px;width:14px;text-align:center;color:#6366F1;"></i> Reassign
+                            </button>
+                            <a href="{{ route('admin.tasks.show', $st->id) }}" @click="menuOpen=false"
+                               style="display:flex;align-items:center;gap:9px;padding:10px 15px;font-size:12px;font-weight:600;color:#374151;text-decoration:none;"
+                               onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                                <i class="fas fa-arrow-up-right-from-square" style="font-size:11px;width:14px;text-align:center;color:#6B7280;"></i> Open Task
+                            </a>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <tr x-show="expanded" x-collapse style="background:rgb(248,250,255);">
+                <td></td>
+                <td colspan="5" style="padding:0 16px 16px;">
+                    <div style="padding-top:14px;border-top:1px solid #EEF2FF;">
+                        <p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px;">
+                            <i class="fas fa-user-pen" style="margin-right:4px;color:#6366F1;"></i>Reassign &amp; Instructions
+                        </p>
+                        <form method="POST" action="{{ route('admin.tasks.social.assign', $st->id) }}" style="display:flex;flex-direction:column;gap:8px;max-width:480px;">
                             @csrf
-                            <div style="display:flex;gap:4px;align-items:center;">
-                                <select name="social_user_id" required style="font-size:11px;padding:4px 8px;border:1.5px solid #E5E7EB;border-radius:7px;background:#fff;color:#374151;outline:none;flex:1;min-width:0;">
-                                    <option value="">Reassign…</option>
+                            <div style="display:flex;gap:6px;align-items:center;">
+                                <select name="social_user_id" required style="font-size:12px;padding:7px 10px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;color:#374151;outline:none;flex:1;min-width:0;"
+                                        onfocus="this.style.borderColor='#A5B4FC'" onblur="this.style.borderColor='#E5E7EB'">
+                                    <option value="">Select handler…</option>
                                     @foreach($socialUsers as $su)
                                     <option value="{{ $su->id }}" {{ $su->id == $st->social_assigned_to ? 'selected' : '' }}>{{ $su->name }}</option>
                                     @endforeach
                                 </select>
                                 <button type="submit"
-                                        style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">
-                                    <i class="fas fa-arrows-rotate" style="font-size:10px;"></i>
+                                        style="display:inline-flex;align-items:center;gap:5px;padding:7px 14px;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;">
+                                    <i class="fas fa-arrows-rotate" style="font-size:11px;"></i> Save
                                 </button>
                             </div>
                             <textarea name="social_description" rows="2"
                                       placeholder="Posting instructions…"
-                                      style="font-size:11px;padding:5px 8px;border:1.5px solid #E5E7EB;border-radius:7px;background:#fff;color:#374151;outline:none;resize:vertical;width:100%;box-sizing:border-box;line-height:1.45;"
+                                      style="font-size:12px;padding:7px 10px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;color:#374151;outline:none;resize:vertical;width:100%;box-sizing:border-box;line-height:1.5;"
                                       onfocus="this.style.borderColor='#A5B4FC'" onblur="this.style.borderColor='#E5E7EB'">{{ $st->social_description }}</textarea>
                             <textarea name="social_caption" rows="2"
                                       placeholder="Ad caption…"
-                                      style="font-size:11px;padding:5px 8px;border:1.5px solid #DDD6FE;border-radius:7px;background:#fff;color:#374151;outline:none;resize:vertical;width:100%;box-sizing:border-box;line-height:1.45;"
+                                      style="font-size:12px;padding:7px 10px;border:1.5px solid #DDD6FE;border-radius:8px;background:#fff;color:#374151;outline:none;resize:vertical;width:100%;box-sizing:border-box;line-height:1.5;"
                                       onfocus="this.style.borderColor='#8B5CF6'" onblur="this.style.borderColor='#DDD6FE'">{{ $st->social_caption }}</textarea>
                             <input type="text" name="social_budget"
                                    value="{{ $st->social_budget }}"
                                    placeholder="Ad budget (e.g. $200)…"
-                                   style="font-size:11px;padding:5px 8px;border:1.5px solid #FDE68A;border-radius:7px;background:#fff;color:#374151;outline:none;width:100%;box-sizing:border-box;"
+                                   style="font-size:12px;padding:7px 10px;border:1.5px solid #FDE68A;border-radius:8px;background:#fff;color:#374151;outline:none;width:100%;box-sizing:border-box;"
                                    onfocus="this.style.borderColor='#F59E0B'" onblur="this.style.borderColor='#FDE68A'">
                         </form>
                     </div>
                 </td>
             </tr>
-            @endforeach
         </tbody>
+        @endforeach
     </table>
 </div>{{-- .tbl-scroll --}}
 </div>{{-- card --}}
@@ -2385,8 +2707,9 @@ function approvalPage() {
         approvalModal:          false,
         approvalTask:           null,
         approvalNote:           '',
-        approvalSocial:         null,   // 'yes' | 'no' | 'later' | null
-        approvalSocialUser:     '',
+        approvalSocial:          null,   // 'yes' | 'no' | 'later' | null
+        approvalSocialUser:      '',
+        approvalSocialPlatforms: [],
         approvalNotifyEmail:    false,
         approvalNotifyWhatsapp: false,
         approvalCustomerMsg:    '',
@@ -2421,8 +2744,9 @@ function approvalPage() {
         openApprovalModal(task) {
             this.approvalTask           = task;
             this.approvalNote           = '';
-            this.approvalSocial         = null;
-            this.approvalSocialUser     = '';
+            this.approvalSocial          = null;
+            this.approvalSocialUser      = '';
+            this.approvalSocialPlatforms = [];
             this.approvalNotifyEmail    = false;
             this.approvalNotifyWhatsapp = false;
             this.approvalCustomerMsg    = '';
@@ -2491,6 +2815,21 @@ function approvalPage() {
             this.rejectTask  = task;
             this.rejectNote  = '';
             this.rejectModal = true;
+        },
+
+        // ── Published post delete confirmation ──
+        pubDeleteModal: false,
+        pubDeleteForm:  null,
+        pubDeleteLabel: '',
+
+        openPubDelete(formEl, label) {
+            this.pubDeleteForm  = formEl;
+            this.pubDeleteLabel = label;
+            this.pubDeleteModal = true;
+        },
+        confirmPubDelete() {
+            if (this.pubDeleteForm) this.pubDeleteForm.submit();
+            this.pubDeleteModal = false;
         },
 
         // ── Quick view (list row click) ──

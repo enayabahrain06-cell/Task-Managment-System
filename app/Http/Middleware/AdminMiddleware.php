@@ -15,7 +15,11 @@ class AdminMiddleware
     {
         $user = auth()->user();
 
-        if (!$user || !in_array($user->role, ['admin', 'manager'])) {
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        if (!in_array($user->role, ['admin', 'manager'])) {
             abort(403, 'Admin or Manager access required.');
         }
 

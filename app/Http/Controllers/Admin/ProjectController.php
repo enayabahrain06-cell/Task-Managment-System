@@ -398,13 +398,15 @@ class ProjectController extends Controller
     public function quickTaskStore(Request $request)
     {
         $request->validate([
-            'title'       => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'project_id'  => 'nullable|exists:projects,id',
-            'customer_id' => 'nullable|exists:customers,id',
-            'assigned_to' => 'required|exists:users,id',
-            'priority'    => 'required|in:low,medium,high',
-            'deadline'    => 'required|date',
+            'title'          => 'required|string|max:255',
+            'description'    => 'nullable|string',
+            'project_id'     => 'nullable|exists:projects,id',
+            'customer_id'    => 'nullable|exists:customers,id',
+            'assigned_to'    => 'required|exists:users,id',
+            'priority'       => 'required|in:low,medium,high',
+            'deadline'       => 'required|date',
+            'attachments'    => 'nullable|array',
+            'attachments.*'  => 'file|max:20480',
         ]);
 
         $projectId = $request->project_id;
@@ -434,6 +436,20 @@ class ProjectController extends Controller
                 'created_by'  => auth()->id(),
             ]
         ));
+
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $path = $file->store("project-attachments/{$task->project_id}", 'public');
+                ProjectAttachment::create([
+                    'project_id'  => $task->project_id,
+                    'type'        => 'file',
+                    'name'        => $file->getClientOriginalName(),
+                    'path'        => $path,
+                    'size'        => $file->getSize(),
+                    'uploaded_by' => auth()->id(),
+                ]);
+            }
+        }
 
         if (Setting::get('notify_on_assign', '1') === '1') {
             $assignee = User::find($request->assigned_to);

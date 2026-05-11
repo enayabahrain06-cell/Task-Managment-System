@@ -87,7 +87,7 @@
     <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
         <h3 style="font-size:13px;font-weight:700;color:#374151;margin:0 0 14px;text-transform:uppercase;letter-spacing:.04em;">Team Members</h3>
         <div style="display:flex;flex-direction:column;gap:10px;">
-            @foreach($project->members as $member)
+            @forelse($members as $member)
             @php
                 $memberTasks    = $project->tasks->where('assigned_to', $member->id);
                 $memberDone     = $memberTasks->where('status','completed')->count();
@@ -106,7 +106,9 @@
                     <p style="font-size:10px;color:#9CA3AF;margin:2px 0 0;">{{ $memberDone }}/{{ $memberTotal }} tasks · {{ $memberRate }}%</p>
                 </div>
             </div>
-            @endforeach
+            @empty
+            <p style="font-size:12px;color:#9CA3AF;text-align:center;padding:16px 0;">No members yet.</p>
+            @endforelse
         </div>
     </div>
 

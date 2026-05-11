@@ -598,7 +598,7 @@ class DashboardController extends Controller
 
         $recentTasks  = Task::with(['project:id,name', 'assignee:id,name,avatar'])
             ->orderByDesc('updated_at')
-            ->take(12)
+            ->take(6)
             ->get();
 
         return view('admin.dashboard', compact(

@@ -25,7 +25,9 @@
 <div class="flex items-center justify-between mb-6">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Activities</h1>
-        <p class="text-sm text-gray-500 mt-0.5">Latest activity feed across all teams</p>
+        <p class="text-sm text-gray-500 mt-0.5">
+            {{ $isPrivileged ? 'Latest activity feed across all teams' : 'Your activity feed' }}
+        </p>
     </div>
     <div class="flex items-center gap-2">
 
@@ -112,14 +114,17 @@
             </div>
         </div>
 
+        @if($isPrivileged)
         <button @click="releaseOpen=true"
                 class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition">
             <i class="fa fa-rocket"></i> Release
         </button>
+        @endif
     </div>
 </div>
 
-{{-- ══ Release Modal ══ --}}
+{{-- ══ Release Modal (privileged only) ══ --}}
+@if($isPrivileged)
 <div x-show="releaseOpen" x-cloak style="position:fixed;inset:0;z-index:9999;">
     <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;">
         <div @click="releaseOpen=false" style="position:absolute;inset:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(3px);"></div>
@@ -177,10 +182,12 @@
         </div>
     </div>
 </div>
+@endif
 
-<div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+<div class="{{ $isPrivileged ? 'grid grid-cols-1 lg:grid-cols-4' : 'grid grid-cols-1' }} gap-4">
 
-    {{-- Left: Teams --}}
+    {{-- Left: Teams (privileged only) --}}
+    @if($isPrivileged)
     <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
         <div class="flex items-center justify-between mb-4">
             <h3 class="font-semibold text-gray-900">Teams</h3>
@@ -226,9 +233,10 @@
             @endif
         </div>
     </div>
+    @endif
 
     {{-- Right: Activity Feed --}}
-    <div class="lg:col-span-3 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="{{ $isPrivileged ? 'lg:col-span-3' : '' }} bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <h3 class="font-semibold text-gray-900">Latest Activity Feed</h3>

@@ -78,6 +78,31 @@ class SettingsController extends Controller
         'wa_tpl_reminder'          => "Hi {user_name},\n\nReminder: your task deadline is in {days_left} day(s).\n📋 {task_title}\n⏰ Due: {deadline}\n\n{company}",
         'wa_tpl_overdue'           => "Hi {user_name},\n\n⚠️ Your task is overdue:\n📋 {task_title}\n⏰ Was due: {deadline}\n\nPlease submit as soon as possible.\n{company}",
         'wa_tpl_social'            => "Hi {user_name},\n\nA task has been assigned to you for social media posting:\n📋 {task_title}\n📁 {project_name}\n👤 Customer: {customer_name}\n\n{company}",
+        'wa_tpl_customer_design'   => "Hello {customer_name},\n\nYour design for \"{task_title}\" has been approved and is ready for your review. 🎨\n\n{admin_note}{design_link}\n\n{company}",
+        // Storage / NAS
+        'storage_gdrive_enabled'       => '0',
+        'storage_gdrive_client_id'     => '',
+        'storage_gdrive_client_sec'    => '',
+        'storage_gdrive_folder_id'     => '',
+        'storage_gdrive_sa_json'       => '',
+        'storage_onedrive_enabled'    => '0',
+        'storage_onedrive_client_id'  => '',
+        'storage_onedrive_client_sec' => '',
+        'storage_onedrive_tenant_id'  => '',
+        'storage_onedrive_folder_id'  => '',
+        'storage_omv_enabled'   => '0',
+        'storage_omv_protocol'  => 'smb',
+        'storage_omv_host'      => '',
+        'storage_omv_port'      => '',
+        'storage_omv_username'  => '',
+        'storage_omv_password'  => '',
+        'storage_omv_path'      => '',
+        // Storage folder structure
+        'storage_root_path'            => 'Marketing_System',
+        'storage_auto_create_folders'  => '1',
+        'storage_auto_move_files'      => '1',
+        'storage_create_brand_assets'  => '1',
+        'storage_file_naming_pattern'  => '{company}_{project}_{type}_{desc}_{date}_v{ver}',
     ];
 
     public function index()
@@ -86,9 +111,18 @@ class SettingsController extends Controller
             abort(403, 'You do not have permission to access Settings.');
         }
 
+        $dbSettings = Setting::all()->pluck('value', 'key')->toArray();
+
+        // Don't let empty DB strings override defaults for template fields
+        foreach ($dbSettings as $key => $value) {
+            if (str_starts_with($key, 'wa_tpl_') && $value === '') {
+                unset($dbSettings[$key]);
+            }
+        }
+
         $settings = array_merge(
             $this->defaults,
-            Setting::all()->pluck('value', 'key')->toArray(),
+            $dbSettings,
             [
                 'mail_host'         => config('mail.mailers.smtp.host',       'smtp.mailtrap.io'),
                 'mail_port'         => config('mail.mailers.smtp.port',       587),
@@ -453,11 +487,12 @@ class SettingsController extends Controller
             'wa_from_number'     => 'nullable|string|max:30',
             'wa_phone_number_id' => 'nullable|string|max:60',
             'wa_waba_id'         => 'nullable|string|max:60',
-            'wa_tpl_assigned'    => 'nullable|string|max:2000',
-            'wa_tpl_approved'    => 'nullable|string|max:2000',
-            'wa_tpl_reminder'    => 'nullable|string|max:2000',
-            'wa_tpl_overdue'     => 'nullable|string|max:2000',
-            'wa_tpl_social'      => 'nullable|string|max:2000',
+            'wa_tpl_assigned'          => 'nullable|string|max:2000',
+            'wa_tpl_approved'          => 'nullable|string|max:2000',
+            'wa_tpl_reminder'          => 'nullable|string|max:2000',
+            'wa_tpl_overdue'           => 'nullable|string|max:2000',
+            'wa_tpl_social'            => 'nullable|string|max:2000',
+            'wa_tpl_customer_design'   => 'nullable|string|max:2000',
         ]);
 
         $data = [
@@ -468,11 +503,12 @@ class SettingsController extends Controller
             'wa_from_number'     => $request->input('wa_from_number', ''),
             'wa_phone_number_id' => $request->input('wa_phone_number_id', ''),
             'wa_waba_id'         => $request->input('wa_waba_id', ''),
-            'wa_tpl_assigned'    => $request->input('wa_tpl_assigned', ''),
-            'wa_tpl_approved'    => $request->input('wa_tpl_approved', ''),
-            'wa_tpl_reminder'    => $request->input('wa_tpl_reminder', ''),
-            'wa_tpl_overdue'     => $request->input('wa_tpl_overdue', ''),
-            'wa_tpl_social'      => $request->input('wa_tpl_social', ''),
+            'wa_tpl_assigned'          => $request->input('wa_tpl_assigned', ''),
+            'wa_tpl_approved'          => $request->input('wa_tpl_approved', ''),
+            'wa_tpl_reminder'          => $request->input('wa_tpl_reminder', ''),
+            'wa_tpl_overdue'           => $request->input('wa_tpl_overdue', ''),
+            'wa_tpl_social'            => $request->input('wa_tpl_social', ''),
+            'wa_tpl_customer_design'   => $request->input('wa_tpl_customer_design', ''),
         ];
 
         if ($request->filled('wa_token')) {
@@ -484,6 +520,287 @@ class SettingsController extends Controller
         AuditLogger::log('settings.updated', null, 'WhatsApp settings updated', ['section' => 'whatsapp', 'provider' => $request->wa_provider]);
 
         return back()->with('success', 'WhatsApp settings saved.')->withFragment('whatsapp');
+    }
+
+    public function updateStorage(Request $request)
+    {
+        $data = [
+            'storage_gdrive_enabled'    => $request->boolean('storage_gdrive_enabled') ? '1' : '0',
+            'storage_gdrive_client_id'  => $request->input('storage_gdrive_client_id', ''),
+            'storage_gdrive_folder_id'  => $request->input('storage_gdrive_folder_id', ''),
+            'storage_onedrive_enabled'    => $request->boolean('storage_onedrive_enabled') ? '1' : '0',
+            'storage_onedrive_client_id'  => $request->input('storage_onedrive_client_id', ''),
+            'storage_onedrive_tenant_id'  => $request->input('storage_onedrive_tenant_id', ''),
+            'storage_onedrive_folder_id'  => $request->input('storage_onedrive_folder_id', ''),
+            'storage_omv_enabled'   => $request->boolean('storage_omv_enabled') ? '1' : '0',
+            'storage_omv_protocol'  => $request->input('storage_omv_protocol', 'smb'),
+            'storage_omv_host'      => $request->input('storage_omv_host', ''),
+            'storage_omv_port'      => $request->input('storage_omv_port', ''),
+            'storage_omv_username'  => $request->input('storage_omv_username', ''),
+            'storage_omv_path'      => $request->input('storage_omv_path', ''),
+            'storage_root_path'           => $request->input('storage_root_path', 'Marketing_System'),
+            'storage_auto_create_folders' => $request->boolean('storage_auto_create_folders') ? '1' : '0',
+            'storage_auto_move_files'     => $request->boolean('storage_auto_move_files') ? '1' : '0',
+            'storage_create_brand_assets' => $request->boolean('storage_create_brand_assets') ? '1' : '0',
+            'storage_file_naming_pattern' => $request->input('storage_file_naming_pattern', '{company}_{project}_{type}_{desc}_{date}_v{ver}'),
+        ];
+
+        if ($request->filled('storage_gdrive_client_sec')) {
+            $data['storage_gdrive_client_sec'] = $request->storage_gdrive_client_sec;
+        }
+        if ($request->filled('storage_gdrive_sa_json')) {
+            $data['storage_gdrive_sa_json'] = $request->storage_gdrive_sa_json;
+        }
+        if ($request->filled('storage_onedrive_client_sec')) {
+            $data['storage_onedrive_client_sec'] = $request->storage_onedrive_client_sec;
+        }
+        if ($request->filled('storage_omv_password')) {
+            $data['storage_omv_password'] = $request->storage_omv_password;
+        }
+
+        Setting::setMany($data);
+
+        AuditLogger::log('settings.updated', null, 'Storage settings updated', ['section' => 'storage']);
+
+        return back()->with('success', 'Storage settings saved.')->withFragment('storage');
+    }
+
+    public function testStorageGdrive(Request $request)
+    {
+        $clientId  = Setting::get('storage_gdrive_client_id', '');
+        $clientSec = Setting::get('storage_gdrive_client_sec', '');
+
+        if (!$clientId || !$clientSec) {
+            return response()->json(['ok' => false, 'message' => 'Client ID and Client Secret are required. Save them first.']);
+        }
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::asForm()
+                ->timeout(10)
+                ->post('https://oauth2.googleapis.com/token', [
+                    'grant_type'    => 'client_credentials',
+                    'client_id'     => $clientId,
+                    'client_secret' => $clientSec,
+                ]);
+
+            // Google will return 400 with "unsupported_grant_type" — that still proves
+            // the credentials reached the server and the Client ID format is valid.
+            $body = $response->json();
+            if ($response->status() === 401 || ($body['error'] ?? '') === 'invalid_client') {
+                return response()->json(['ok' => false, 'message' => 'Invalid Client ID or Client Secret — authentication failed.']);
+            }
+            // Any other response (including 400 unsupported_grant_type) means credentials reached Google OK.
+            return response()->json(['ok' => true, 'message' => 'Google API reachable and credentials accepted. ✓']);
+        } catch (\Throwable $e) {
+            return response()->json(['ok' => false, 'message' => 'Connection failed: ' . $e->getMessage()]);
+        }
+    }
+
+    public function testStorageOnedrive(Request $request)
+    {
+        $clientId  = Setting::get('storage_onedrive_client_id', '');
+        $clientSec = Setting::get('storage_onedrive_client_sec', '');
+        $tenantId  = Setting::get('storage_onedrive_tenant_id', 'common');
+
+        if (!$clientId || !$clientSec) {
+            return response()->json(['ok' => false, 'message' => 'Client ID and Client Secret are required. Save them first.']);
+        }
+
+        $tenant = $tenantId ?: 'common';
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::asForm()
+                ->timeout(10)
+                ->post("https://login.microsoftonline.com/{$tenant}/oauth2/v2.0/token", [
+                    'grant_type'    => 'client_credentials',
+                    'client_id'     => $clientId,
+                    'client_secret' => $clientSec,
+                    'scope'         => 'https://graph.microsoft.com/.default',
+                ]);
+
+            $body = $response->json();
+            if (isset($body['access_token'])) {
+                return response()->json(['ok' => true, 'message' => 'OneDrive connected successfully — access token obtained. ✓']);
+            }
+            $error = $body['error_description'] ?? ($body['error'] ?? 'Authentication failed');
+            return response()->json(['ok' => false, 'message' => $error]);
+        } catch (\Throwable $e) {
+            return response()->json(['ok' => false, 'message' => 'Connection failed: ' . $e->getMessage()]);
+        }
+    }
+
+    public function testStorageOmv(Request $request)
+    {
+        $host     = Setting::get('storage_omv_host', '');
+        $port     = Setting::get('storage_omv_port', '');
+        $protocol = Setting::get('storage_omv_protocol', 'smb');
+        $username = Setting::get('storage_omv_username', '');
+        $password = Setting::get('storage_omv_password', '');
+        $path     = Setting::get('storage_omv_path', '');
+
+        if (!$host) {
+            return response()->json(['ok' => false, 'message' => 'Host / IP address is required. Save it first.']);
+        }
+
+        $defaultPorts = ['smb' => 445, 'nfs' => 2049, 'webdav' => 80, 'ftp' => 21];
+        $checkPort    = (int) ($port ?: ($defaultPorts[$protocol] ?? 80));
+
+        // WebDAV: full HTTP check with credentials
+        if ($protocol === 'webdav') {
+            $url = $path ?: "http://{$host}:{$checkPort}";
+            if (!str_starts_with($url, 'http')) {
+                $url = "http://{$url}";
+            }
+            try {
+                $resp = \Illuminate\Support\Facades\Http::withBasicAuth($username, $password)
+                    ->timeout(8)
+                    ->withOptions(['verify' => false])
+                    ->send('PROPFIND', $url, ['headers' => ['Depth' => '0']]);
+
+                if (in_array($resp->status(), [207, 200, 401])) {
+                    if ($resp->status() === 401) {
+                        return response()->json(['ok' => false, 'message' => 'WebDAV server reachable but credentials were rejected (401 Unauthorized).']);
+                    }
+                    return response()->json(['ok' => true, 'message' => "WebDAV server responded ({$resp->status()}). Connection OK. ✓"]);
+                }
+                return response()->json(['ok' => false, 'message' => "WebDAV responded with HTTP {$resp->status()}."]);
+            } catch (\Throwable $e) {
+                return response()->json(['ok' => false, 'message' => 'WebDAV connection failed: ' . $e->getMessage()]);
+            }
+        }
+
+        // FTP: PHP native check
+        if ($protocol === 'ftp' && function_exists('ftp_connect')) {
+            try {
+                $conn = @ftp_connect($host, $checkPort, 8);
+                if (!$conn) {
+                    return response()->json(['ok' => false, 'message' => "Could not connect to FTP at {$host}:{$checkPort}."]);
+                }
+                $login = $username ? @ftp_login($conn, $username, $password) : false;
+                ftp_close($conn);
+                if ($username && !$login) {
+                    return response()->json(['ok' => false, 'message' => 'FTP server reachable but login failed — check username/password.']);
+                }
+                return response()->json(['ok' => true, 'message' => "FTP connected to {$host}:{$checkPort} successfully. ✓"]);
+            } catch (\Throwable $e) {
+                return response()->json(['ok' => false, 'message' => 'FTP error: ' . $e->getMessage()]);
+            }
+        }
+
+        // SMB / NFS / fallback: TCP socket reachability check
+        $errno  = 0;
+        $errstr = '';
+        $sock   = @fsockopen($host, $checkPort, $errno, $errstr, 8);
+        if ($sock) {
+            fclose($sock);
+            $label = strtoupper($protocol);
+            return response()->json(['ok' => true, 'message' => "{$label} port {$checkPort} on {$host} is open and reachable. ✓"]);
+        }
+
+        return response()->json(['ok' => false, 'message' => "Cannot reach {$host}:{$checkPort} — {$errstr} (errno {$errno})."]);
+    }
+
+    public function backupToGdrive(Request $request)
+    {
+        $saJson   = Setting::get('storage_gdrive_sa_json', '');
+        $folderId = Setting::get('storage_gdrive_folder_id', '');
+
+        if (!$saJson) {
+            return response()->json(['ok' => false, 'message' => 'Service Account JSON is not set. Paste it in the Google Drive card and save.']);
+        }
+
+        $credentials = json_decode($saJson, true);
+        if (json_last_error() !== JSON_ERROR_NONE || !isset($credentials['private_key'], $credentials['client_email'])) {
+            return response()->json(['ok' => false, 'message' => 'Invalid Service Account JSON — check the format.']);
+        }
+
+        try {
+            $token    = $this->googleServiceAccountToken($credentials);
+            $dbPath   = database_path('database.sqlite');
+            $filename = 'backup_' . now()->format('Ymd_His') . '.sqlite';
+            $file     = $this->driveUpload($token, $dbPath, $filename, 'application/x-sqlite3', $folderId);
+
+            $fileId   = $file['id'] ?? 'unknown';
+            $webLink  = $file['webViewLink'] ?? null;
+
+            AuditLogger::log('settings.backup', null, 'Database backed up to Google Drive', ['file' => $filename, 'drive_id' => $fileId]);
+
+            return response()->json([
+                'ok'      => true,
+                'message' => "Backup uploaded: {$filename}",
+                'link'    => $webLink,
+                'file_id' => $fileId,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['ok' => false, 'message' => 'Backup failed: ' . $e->getMessage()]);
+        }
+    }
+
+    private function googleServiceAccountToken(array $creds): string
+    {
+        $now     = time();
+        $header  = $this->b64url(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
+        $payload = $this->b64url(json_encode([
+            'iss'   => $creds['client_email'],
+            'scope' => 'https://www.googleapis.com/auth/drive.file',
+            'aud'   => 'https://oauth2.googleapis.com/token',
+            'iat'   => $now,
+            'exp'   => $now + 3600,
+        ]));
+
+        $sigInput = "{$header}.{$payload}";
+        $key      = openssl_pkey_get_private($creds['private_key']);
+        if (!$key) {
+            throw new \RuntimeException('Could not load private key from Service Account JSON.');
+        }
+        openssl_sign($sigInput, $sig, $key, OPENSSL_ALGO_SHA256);
+        $jwt = "{$sigInput}." . $this->b64url($sig);
+
+        $resp = \Illuminate\Support\Facades\Http::asForm()->timeout(15)
+            ->post('https://oauth2.googleapis.com/token', [
+                'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                'assertion'  => $jwt,
+            ]);
+
+        $body = $resp->json();
+        if (!isset($body['access_token'])) {
+            throw new \RuntimeException($body['error_description'] ?? ($body['error'] ?? 'Failed to get access token'));
+        }
+
+        return $body['access_token'];
+    }
+
+    private function driveUpload(string $token, string $filePath, string $name, string $mime, string $folderId = ''): array
+    {
+        $meta = ['name' => $name, 'mimeType' => $mime];
+        if ($folderId) {
+            $meta['parents'] = [$folderId];
+        }
+
+        $content  = file_get_contents($filePath);
+        $boundary = 'gdrive_' . uniqid();
+        $body     = "--{$boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"
+                  . json_encode($meta)
+                  . "\r\n--{$boundary}\r\nContent-Type: {$mime}\r\n\r\n"
+                  . $content
+                  . "\r\n--{$boundary}--";
+
+        $resp = \Illuminate\Support\Facades\Http::withToken($token)
+            ->withBody($body, "multipart/related; boundary={$boundary}")
+            ->timeout(120)
+            ->post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink');
+
+        if (!$resp->successful()) {
+            $err = $resp->json()['error']['message'] ?? "HTTP {$resp->status()}";
+            throw new \RuntimeException($err);
+        }
+
+        return $resp->json();
+    }
+
+    private function b64url(string $data): string
+    {
+        return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
     }
 
     public function testWhatsapp(Request $request)
@@ -712,7 +1029,7 @@ class SettingsController extends Controller
         fclose($handle);
 
         if (strncmp($magic, "SQLite format 3\000", 16) !== 0) {
-            return back()->withErrors(['backup_file' => 'Invalid file — please upload a .sqlite backup file created by this system.'])->withFragment('backup');
+            return redirect()->route('admin.settings.index')->withErrors(['backup_file' => 'Invalid file — please upload a .sqlite backup file created by this system.'])->with('_fragment', 'backup');
         }
 
         $dbPath = database_path('database.sqlite');
@@ -732,19 +1049,30 @@ class SettingsController extends Controller
             // Roll back
             copy($safeCopy, $dbPath);
             @unlink($safeCopy);
-            return back()->with('error', 'Restore failed: ' . $e->getMessage())->withFragment('backup');
+            return redirect()->route('admin.settings.index')->with('error', 'Restore failed: ' . $e->getMessage())->with('_fragment', 'backup');
         }
 
         AuditLogger::log('system.restored', null, 'Full system backup restored from uploaded file', []);
 
-        return redirect()->route('admin.settings.index')->with('success', 'Full system restore completed successfully. All data has been restored.')->withFragment('backup');
+        return redirect()->route('admin.settings.index')->with('success', 'Full system restore completed successfully. All data has been restored.')->with('_fragment', 'backup');
     }
 
     // ── Restores ─────────────────────────────────────────────────────────
 
+    private function settingsBackupRedirect(array $errors = [], string $success = '')
+    {
+        $redirect = redirect()->route('admin.settings.index')->with('_fragment', 'backup');
+        if ($errors) return $redirect->withErrors($errors);
+        return $redirect->with('success', $success);
+    }
+
     public function restoreUsers(Request $request)
     {
-        $request->validate(['file' => 'required|file|mimes:csv,txt|max:2048']);
+        try {
+            $request->validate(['file' => 'required|file|max:5120|mimetypes:text/csv,text/plain,application/csv,application/vnd.ms-excel,application/octet-stream']);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->settingsBackupRedirect($e->errors());
+        }
 
         [$created, $updated, $skipped] = [0, 0, 0];
         $handle = fopen($request->file('file')->getRealPath(), 'r');
@@ -753,7 +1081,7 @@ class SettingsController extends Controller
         $need = ['name', 'email', 'role'];
         if (count(array_diff($need, $headers)) > 0) {
             fclose($handle);
-            return back()->withErrors(['file' => 'CSV must have columns: name, email, role'])->withFragment('backup');
+            return $this->settingsBackupRedirect(['file' => 'CSV must have columns: name, email, role']);
         }
 
         while (($row = fgetcsv($handle)) !== false) {
@@ -773,12 +1101,16 @@ class SettingsController extends Controller
         }
         fclose($handle);
 
-        return back()->with('success', "Users restored: {$created} created, {$updated} updated, {$skipped} skipped.")->withFragment('backup');
+        return $this->settingsBackupRedirect([], "Users restored: {$created} created, {$updated} updated, {$skipped} skipped.");
     }
 
     public function restoreProjects(Request $request)
     {
-        $request->validate(['file' => 'required|file|mimes:csv,txt|max:2048']);
+        try {
+            $request->validate(['file' => 'required|file|max:5120|mimetypes:text/csv,text/plain,application/csv,application/vnd.ms-excel,application/octet-stream']);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->settingsBackupRedirect($e->errors());
+        }
 
         [$created, $updated, $skipped] = [0, 0, 0];
         $handle  = fopen($request->file('file')->getRealPath(), 'r');
@@ -786,7 +1118,7 @@ class SettingsController extends Controller
 
         if (!in_array('name', $headers) || !in_array('deadline', $headers)) {
             fclose($handle);
-            return back()->withErrors(['file' => 'CSV must have columns: name, deadline'])->withFragment('backup');
+            return $this->settingsBackupRedirect(['file' => 'CSV must have columns: name, deadline']);
         }
 
         $adminId = auth()->id();
@@ -808,12 +1140,16 @@ class SettingsController extends Controller
         }
         fclose($handle);
 
-        return back()->with('success', "Projects restored: {$created} created, {$updated} updated, {$skipped} skipped.")->withFragment('backup');
+        return $this->settingsBackupRedirect([], "Projects restored: {$created} created, {$updated} updated, {$skipped} skipped.");
     }
 
     public function restoreTasks(Request $request)
     {
-        $request->validate(['file' => 'required|file|mimes:csv,txt|max:2048']);
+        try {
+            $request->validate(['file' => 'required|file|max:5120|mimetypes:text/csv,text/plain,application/csv,application/vnd.ms-excel,application/octet-stream']);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return $this->settingsBackupRedirect($e->errors());
+        }
 
         [$created, $skipped] = [0, 0];
         $handle  = fopen($request->file('file')->getRealPath(), 'r');
@@ -822,7 +1158,7 @@ class SettingsController extends Controller
         $need = ['title', 'project', 'assigned to', 'deadline'];
         if (count(array_diff($need, $headers)) > 0) {
             fclose($handle);
-            return back()->withErrors(['file' => 'CSV must have columns: title, project, assigned to, deadline'])->withFragment('backup');
+            return $this->settingsBackupRedirect(['file' => 'CSV must have columns: title, project, assigned to, deadline']);
         }
 
         while (($row = fgetcsv($handle)) !== false) {
@@ -847,7 +1183,7 @@ class SettingsController extends Controller
         }
         fclose($handle);
 
-        return back()->with('success', "Tasks restored: {$created} created, {$skipped} skipped.")->withFragment('backup');
+        return $this->settingsBackupRedirect([], "Tasks restored: {$created} created, {$skipped} skipped.");
     }
 
     // ── Clear Data ───────────────────────────────────────────────────────

@@ -9,16 +9,30 @@
     $_psBg    = ['active'=>'#EEF2FF','completed'=>'#ECFDF5','pending'=>'#FEF3C7','on_hold'=>'#FEF3C7','cancelled'=>'#FEE2E2'];
     $_psColor = ['active'=>'#4F46E5','completed'=>'#16A34A','pending'=>'#D97706','on_hold'=>'#D97706','cancelled'=>'#DC2626'];
     $_psLabel = ['active'=>'Active','completed'=>'Completed','pending'=>'Pending','on_hold'=>'On Hold','cancelled'=>'Cancelled'];
+    $_overdueReason = function($t) {
+        if (!$t->deadline || !$t->deadline->isPast() || in_array($t->status, ['approved','delivered','archived'])) return null;
+        return match($t->status) {
+            'pending_customer'   => ['label'=>'Waiting: Customer',  'bg'=>'#FEF3C7','color'=>'#D97706','icon'=>'fa-user-clock'],
+            'submitted'          => ['label'=>'Waiting: Admin Review','bg'=>'#EEF2FF','color'=>'#4F46E5','icon'=>'fa-user-shield'],
+            'revision_requested' => ['label'=>'Waiting: Revision',  'bg'=>'#FEE2E2','color'=>'#DC2626','icon'=>'fa-rotate-left'],
+            'in_progress'        => ['label'=>'Waiting: Assignee',  'bg'=>'#FFF7ED','color'=>'#EA580C','icon'=>'fa-user-pen'],
+            'viewed'             => ['label'=>'Waiting: Assignee',  'bg'=>'#FFF7ED','color'=>'#EA580C','icon'=>'fa-user-pen'],
+            'assigned'           => ['label'=>'Waiting: Assignee',  'bg'=>'#FFF7ED','color'=>'#EA580C','icon'=>'fa-user-pen'],
+            'draft'              => ['label'=>'Not Started',         'bg'=>'#F3F4F6','color'=>'#6B7280','icon'=>'fa-circle-pause'],
+            default              => ['label'=>'Overdue',             'bg'=>'#FEE2E2','color'=>'#DC2626','icon'=>'fa-triangle-exclamation'],
+        };
+    };
     $_mapTask = fn($t) => [
-        'title'       => $t->title,
-        'project'     => $t->project->name ?? '—',
-        'assignee'    => $t->assignee->name ?? null,
-        'statusLabel' => $_tsLabel[$t->status] ?? ucfirst(str_replace('_',' ',$t->status)),
-        'statusBg'    => $_tsBg[$t->status]    ?? '#F3F4F6',
-        'statusColor' => $_tsColor[$t->status]  ?? '#374151',
-        'deadline'    => $t->deadline ? $t->deadline->format(config('app.date_format', 'M d, Y')) : null,
-        'overdue'     => $t->deadline && $t->deadline->isPast() && !in_array($t->status, ['approved','delivered','archived']),
-        'url'         => route('admin.tasks.show', $t->id),
+        'title'         => $t->title,
+        'project'       => $t->project->name ?? '—',
+        'assignee'      => $t->assignee->name ?? null,
+        'statusLabel'   => $_tsLabel[$t->status] ?? ucfirst(str_replace('_',' ',$t->status)),
+        'statusBg'      => $_tsBg[$t->status]    ?? '#F3F4F6',
+        'statusColor'   => $_tsColor[$t->status]  ?? '#374151',
+        'deadline'      => $t->deadline ? $t->deadline->format(config('app.date_format', 'M d, Y')) : null,
+        'overdue'       => $t->deadline && $t->deadline->isPast() && !in_array($t->status, ['approved','delivered','archived']),
+        'overdueReason' => $_overdueReason($t),
+        'url'           => route('admin.tasks.show', $t->id),
     ];
     $_allTasks = $customer->tasks;
     $taskGroupsJson = json_encode([
@@ -154,7 +168,12 @@
         }
     },
 
-    close() { this.task = null; this.project = null; this.statsModal = null; this.sendModal = false; this.sendResult = null; this.sending = false; this.sendMode = 'text'; this.selectedFile = null; this.fileCaption = ''; document.body.style.overflow=''; }
+    approvalModal: null,
+    approveNote: '',
+    approving: false,
+    openApproval(d) { this.approvalModal = d; this.approveNote = ''; this.approving = false; document.body.style.overflow='hidden'; },
+
+    close() { this.task = null; this.project = null; this.statsModal = null; this.approvalModal = null; this.approveNote = ''; this.approving = false; this.sendModal = false; this.sendResult = null; this.sending = false; this.sendMode = 'text'; this.selectedFile = null; this.fileCaption = ''; document.body.style.overflow=''; }
 }" x-init="editableMsg = sendMsg; $watch('sendMode', () => { editableMsg = sendMsg; }); $watch('selectedFile', () => { editableMsg = sendMsg; }); $watch('sendProject', () => { editableMsg = sendMsg; });" @keydown.escape.window="close()" style="max-width:900px;">
 
 {{-- Project Preview Modal --}}
@@ -256,6 +275,17 @@
                           :style="'font-size:13px;font-weight:600;color:'+(task.overdue?'#DC2626':'#111827')+';'"></span>
                     <span x-show="task.overdue" style="font-size:11px;color:#DC2626;font-weight:600;">⚠ Overdue</span>
                 </div>
+                {{-- Overdue reason row --}}
+                <template x-if="task.overdue && task.overdueReason">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <span style="width:110px;font-size:12px;color:#9CA3AF;flex-shrink:0;"><i class="fa fa-circle-exclamation" style="width:14px;margin-right:5px;"></i>Blocked by</span>
+                    <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;"
+                          :style="'background:'+task.overdueReason.bg+';color:'+task.overdueReason.color+';'">
+                        <i :class="'fas '+task.overdueReason.icon" style="font-size:10px;"></i>
+                        <span x-text="task.overdueReason.label"></span>
+                    </span>
+                </div>
+                </template>
                 <div style="display:flex;align-items:center;gap:12px;" x-show="task.description">
                     <span style="width:110px;font-size:12px;color:#9CA3AF;flex-shrink:0;align-self:flex-start;padding-top:1px;"><i class="fa fa-align-left" style="width:14px;margin-right:5px;"></i>Description</span>
                     <span x-text="task.description" style="font-size:13px;color:#374151;line-height:1.55;"></span>
@@ -326,12 +356,19 @@
                 </template>
                 <template x-for="t in statsModalTasks" :key="t.url">
                     <a :href="t.url"
-                       style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-bottom:1px solid #F9FAFB;text-decoration:none;border-radius:8px;transition:background .12s;"
+                       style="display:flex;align-items:center;gap:12px;padding:12px 8px;border-bottom:1px solid #F9FAFB;text-decoration:none;border-radius:8px;transition:background .12s;"
                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
                         <div style="min-width:0;flex:1;">
-                            <div style="display:flex;align-items:center;gap:6px;">
-                                <p x-text="t.title" style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;"></p>
-                                <span x-show="t.overdue" style="font-size:10px;font-weight:600;color:#DC2626;flex-shrink:0;">⚠ Overdue</span>
+                            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                <p x-text="t.title" style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;"></p>
+                                {{-- Overdue reason badge --}}
+                                <template x-if="t.overdue && t.overdueReason">
+                                    <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0;white-space:nowrap;"
+                                          :style="'background:'+t.overdueReason.bg+';color:'+t.overdueReason.color+';'">
+                                        <i :class="'fa '+t.overdueReason.icon" style="font-size:9px;"></i>
+                                        <span x-text="t.overdueReason.label"></span>
+                                    </span>
+                                </template>
                             </div>
                             <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                                 <span style="display:flex;align-items:center;gap:3px;">
@@ -654,7 +691,7 @@
 
     {{-- Header --}}
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-        <a href="{{ route('admin.customers.index') }}"
+        <a href="{{ route('admin.customers.index') }}" class="no-print"
            style="width:34px;height:34px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;color:#6B7280;text-decoration:none;">
             <i class="fa fa-arrow-left" style="font-size:13px;"></i>
         </a>
@@ -676,10 +713,39 @@
                 </div>
             </div>
         </div>
-        <a href="{{ route('admin.customers.edit', $customer) }}"
+        <a href="{{ route('admin.customers.edit', $customer) }}" class="no-print"
            style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:#EEF2FF;color:#4F46E5;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;">
             <i class="fas fa-pencil" style="font-size:11px;"></i> Edit
         </a>
+
+        {{-- Export / Print dropdown --}}
+        <div x-data="{ exportOpen: false }" style="position:relative;">
+            <button @click="exportOpen = !exportOpen" @click.outside="exportOpen = false"
+                    style="display:inline-flex;align-items:center;gap:7px;padding:8px 14px;background:#F9FAFB;border:1px solid #E5E7EB;color:#374151;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">
+                <i class="fas fa-download" style="font-size:11px;"></i> Export
+                <i class="fas fa-chevron-down" style="font-size:9px;transition:transform .2s;" :style="exportOpen ? 'transform:rotate(180deg)' : ''"></i>
+            </button>
+            <div x-show="exportOpen" x-transition
+                 style="position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.1);min-width:170px;z-index:200;overflow:hidden;">
+                <button @click="exportOpen=false; window.exportCustomerCSV()"
+                        style="width:100%;padding:10px 16px;background:none;border:none;text-align:left;font-size:13px;font-weight:500;color:#374151;cursor:pointer;display:flex;align-items:center;gap:9px;"
+                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                    <i class="fas fa-file-csv" style="font-size:13px;color:#16A34A;width:16px;text-align:center;"></i> Export CSV
+                </button>
+                <div style="height:1px;background:#F3F4F6;"></div>
+                <button @click="exportOpen=false; window.exportCustomerExcel()"
+                        style="width:100%;padding:10px 16px;background:none;border:none;text-align:left;font-size:13px;font-weight:500;color:#374151;cursor:pointer;display:flex;align-items:center;gap:9px;"
+                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                    <i class="fas fa-file-excel" style="font-size:13px;color:#16A34A;width:16px;text-align:center;"></i> Export Excel
+                </button>
+                <div style="height:1px;background:#F3F4F6;"></div>
+                <button @click="exportOpen=false; window.printCustomerPage()"
+                        style="width:100%;padding:10px 16px;background:none;border:none;text-align:left;font-size:13px;font-weight:500;color:#374151;cursor:pointer;display:flex;align-items:center;gap:9px;"
+                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                    <i class="fas fa-print" style="font-size:13px;color:#6366F1;width:16px;text-align:center;"></i> Print / PDF
+                </button>
+            </div>
+        </div>
     </div>
 
     {{-- Quick Stats Bar --}}
@@ -689,6 +755,22 @@
         $statActive   = $allTasks->whereIn('status', ['in_progress','submitted','revision_requested'])->count();
         $statDone     = $allTasks->whereIn('status', ['approved','delivered','archived'])->count();
         $statOverdue  = $allTasks->filter(fn($t) => $t->deadline && $t->deadline->isPast() && !in_array($t->status, ['approved','delivered','archived']))->count();
+
+        // CSV export data
+        $_statusLabel = ['draft'=>'Draft','assigned'=>'Assigned','viewed'=>'Viewed','in_progress'=>'In Progress','submitted'=>'In Review','revision_requested'=>'Revision','approved'=>'Approved','delivered'=>'Delivered','archived'=>'Archived','pending_customer'=>'Awaiting Customer'];
+        $csvRows = $allTasks->map(fn($t) => [
+            'title'          => $t->title,
+            'project'        => $t->project->name ?? '',
+            'status'         => $_statusLabel[$t->status] ?? ucfirst(str_replace('_',' ',$t->status)),
+            'priority'       => ucfirst($t->priority ?? ''),
+            'assignee'       => $t->assignee->name ?? '',
+            'deadline'       => $t->deadline ? $t->deadline->format('Y-m-d') : '',
+            'design_sent'    => $t->design_sent_at ? $t->design_sent_at->format('Y-m-d H:i') : '',
+            'cust_approved'  => $t->customer_approved_at ? $t->customer_approved_at->format('Y-m-d H:i') : '',
+            'approval_time'  => ($t->design_sent_at && $t->customer_approved_at)
+                                ? round(abs($t->design_sent_at->diffInSeconds($t->customer_approved_at)) / 3600, 1) . 'h'
+                                : '',
+        ])->values()->toArray();
     @endphp
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
         <button @click="openStats('pending')"
@@ -956,5 +1038,443 @@
 
         </div>
     </div>
+
+    {{-- ══ Design Approval Timeline ══ --}}
+    @php
+        $approvalTasks = $customer->tasks
+            ->filter(fn($t) => !is_null($t->design_sent_at) || $t->status === 'pending_customer')
+            ->sortByDesc(fn($t) => $t->design_sent_at ?? $t->updated_at);
+        $approvedRows = $approvalTasks->filter(fn($t) => !is_null($t->customer_approved_at));
+        $avgH = $approvedRows->isNotEmpty()
+            ? round($approvedRows->avg(fn($t) => $t->design_sent_at->diffInMinutes($t->customer_approved_at) / 60), 1)
+            : null;
+    @endphp
+    <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;margin-top:20px;">
+
+        {{-- Header --}}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+            <h2 style="font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:0;display:flex;align-items:center;gap:8px;">
+                <span style="width:22px;height:22px;border-radius:6px;background:#FEF3C7;display:inline-flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-stopwatch" style="font-size:10px;color:#D97706;"></i>
+                </span>
+                Design Approval Timeline
+            </h2>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                @if($approvedRows->isNotEmpty())
+                <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:20px;font-size:11px;font-weight:700;color:#16A34A;">
+                    <i class="fas fa-circle-check" style="font-size:10px;"></i>
+                    {{ $approvedRows->count() }} approved
+                </span>
+                @endif
+                @if($approvalTasks->filter(fn($t) => is_null($t->customer_approved_at))->isNotEmpty())
+                <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:20px;font-size:11px;font-weight:700;color:#D97706;">
+                    <i class="fas fa-hourglass-half" style="font-size:10px;"></i>
+                    {{ $approvalTasks->filter(fn($t) => is_null($t->customer_approved_at))->count() }} waiting
+                </span>
+                @endif
+                @if($avgH !== null)
+                <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:20px;font-size:11px;font-weight:700;color:#4F46E5;">
+                    <i class="fas fa-clock" style="font-size:10px;"></i>
+                    Avg {{ $avgH }}h to approve
+                </span>
+                @endif
+            </div>
+        </div>
+
+        @if($approvalTasks->isEmpty())
+        <div style="text-align:center;padding:36px 20px;">
+            <div style="width:46px;height:46px;border-radius:13px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+                <i class="fas fa-stopwatch" style="font-size:19px;color:#D97706;"></i>
+            </div>
+            <p style="font-size:14px;font-weight:700;color:#111827;margin:0 0 5px;">No approval data yet</p>
+            <p style="font-size:12px;color:#9CA3AF;margin:0 auto;max-width:340px;line-height:1.6;">Once a manager marks one of this customer's tasks as <strong>"Awaiting Customer Approval"</strong> from the Approvals page, the send time and approval duration will appear here.</p>
+        </div>
+        @else
+        <div style="display:flex;flex-direction:column;gap:0;">
+        @foreach($approvalTasks as $t)
+        @php
+            $sent        = $t->design_sent_at ?? $t->updated_at;
+            $approved    = $t->customer_approved_at;
+            $isApproved  = !is_null($approved);
+            $diffSec     = abs($isApproved ? $sent->diffInSeconds($approved) : now()->diffInSeconds($sent));
+            $diffMin     = (int) round($diffSec / 60);
+            $diffH       = round($diffSec / 3600, 1);
+            $diffDays    = round($diffSec / 86400, 1);
+            $timeStr     = $diffSec < 3600
+                           ? $diffMin . 'm'
+                           : ($diffH < 24 ? $diffH . 'h' : $diffDays . 'd');
+            $timeBg      = $isApproved
+                           ? ($diffH <= 24 ? '#F0FDF4' : ($diffH <= 72 ? '#FEF3C7' : '#FEF2F2'))
+                           : '#FEF3C7';
+            $timeCo      = $isApproved
+                           ? ($diffH <= 24 ? '#16A34A' : ($diffH <= 72 ? '#D97706' : '#DC2626'))
+                           : '#D97706';
+        @endphp
+        @php
+            $modalData = json_encode([
+                'taskId'       => $t->id,
+                'taskUrl'      => route('admin.tasks.show', $t->id),
+                'title'        => $t->title,
+                'project'      => $t->project->name ?? null,
+                'assignee'     => $t->assignee->name ?? null,
+                'assigneeInit' => $t->assignee ? strtoupper(substr($t->assignee->name, 0, 1)) : null,
+                'status'       => $t->status,
+                'isApproved'   => $isApproved,
+                'sentDate'     => $sent->format(config('app.date_format', 'M d, Y')),
+                'sentTime'     => $sent->format('h:i A'),
+                'sentRaw'      => $sent->toIso8601String(),
+                'approvedDate' => $approved ? $approved->format(config('app.date_format', 'M d, Y')) : null,
+                'approvedTime' => $approved ? $approved->format('h:i A') : null,
+                'timeStr'      => $isApproved ? $timeStr : $timeStr . ' waiting',
+                'timeBg'       => $timeBg,
+                'timeCo'       => $timeCo,
+                'diffH'        => $diffH,
+                'sentHumans'   => $sent->diffForHumans(),
+            ]);
+        @endphp
+        <div @click="openApproval({{ $modalData }})"
+             style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #F9FAFB;cursor:pointer;border-radius:6px;transition:background .15s;"
+             onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+
+            {{-- Left: task + timeline --}}
+            <div style="min-width:0;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                    <span style="font-size:13px;font-weight:600;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px;display:block;"
+                          title="{{ $t->title }}">{{ $t->title }}</span>
+                    @if($t->project)
+                    <span style="font-size:11px;color:#9CA3AF;display:flex;align-items:center;gap:3px;flex-shrink:0;">
+                        <i class="fas fa-folder" style="font-size:9px;"></i> {{ $t->project->name }}
+                    </span>
+                    @endif
+                </div>
+
+                {{-- Timeline row --}}
+                <div style="display:flex;align-items:center;gap:0;flex-wrap:wrap;">
+
+                    {{-- Sent bubble --}}
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#25D366,#128C7E);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fab fa-whatsapp" style="font-size:11px;color:#fff;"></i>
+                        </div>
+                        <div>
+                            <p style="font-size:11px;font-weight:600;color:#374151;margin:0;white-space:nowrap;">Sent</p>
+                            <p style="font-size:10px;color:#9CA3AF;margin:0;white-space:nowrap;">{{ $sent->format(config('app.date_format', 'M d, Y')) }} · {{ $sent->format('h:i A') }}</p>
+                        </div>
+                    </div>
+
+                    {{-- Arrow + duration --}}
+                    <div style="display:flex;align-items:center;gap:6px;margin:0 10px;">
+                        <div style="height:1px;width:20px;background:#E5E7EB;flex-shrink:0;"></div>
+                        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:{{ $timeBg }};color:{{ $timeCo }};white-space:nowrap;">
+                            {{ $isApproved ? $timeStr : $timeStr . ' waiting' }}
+                        </span>
+                        <div style="height:1px;width:20px;background:#E5E7EB;flex-shrink:0;"></div>
+                    </div>
+
+                    {{-- Approved / Waiting bubble --}}
+                    @if($isApproved)
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#10B981,#059669);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas fa-circle-check" style="font-size:11px;color:#fff;"></i>
+                        </div>
+                        <div>
+                            <p style="font-size:11px;font-weight:600;color:#16A34A;margin:0;white-space:nowrap;">Customer Approved</p>
+                            <p style="font-size:10px;color:#9CA3AF;margin:0;white-space:nowrap;">{{ $approved->format(config('app.date_format', 'M d, Y')) }} · {{ $approved->format('h:i A') }}</p>
+                        </div>
+                    </div>
+                    @else
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <div style="width:26px;height:26px;border-radius:50%;background:#FEF3C7;border:2px dashed #FCD34D;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas fa-hourglass-half" style="font-size:10px;color:#D97706;"></i>
+                        </div>
+                        <div>
+                            <p style="font-size:11px;font-weight:600;color:#D97706;margin:0;white-space:nowrap;">Awaiting Response</p>
+                            <p style="font-size:10px;color:#9CA3AF;margin:0;">since {{ $sent->diffForHumans() }}</p>
+                        </div>
+                    </div>
+                    @endif
+
+                </div>
+            </div>
+
+            {{-- Right: assignee + expand hint --}}
+            <div style="text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                @if($t->assignee)
+                <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;">
+                    <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;">
+                        {{ strtoupper(substr($t->assignee->name, 0, 1)) }}
+                    </div>
+                    <span style="font-size:11px;color:#6B7280;">{{ $t->assignee->name }}</span>
+                </div>
+                @endif
+                <span style="font-size:10px;color:#C4B5FD;"><i class="fas fa-expand-alt" style="font-size:9px;"></i> details</span>
+            </div>
+
+        </div>
+        @endforeach
+        </div>
+        @endif
+
+    </div>
+
+    {{-- ══ Approval Detail Modal ══ --}}
+    <template x-if="approvalModal">
+    <div @click.self="close()" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div style="background:#fff;border-radius:16px;width:100%;max-width:520px;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden;">
+
+            {{-- Header --}}
+            <div style="padding:20px 24px 16px;border-bottom:1px solid #F3F4F6;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+                <div style="min-width:0;">
+                    <p style="font-size:11px;font-weight:600;letter-spacing:.06em;color:#9CA3AF;text-transform:uppercase;margin:0 0 4px;">Design Approval</p>
+                    <h3 x-text="approvalModal.title" style="font-size:15px;font-weight:700;color:#111827;margin:0;line-height:1.3;word-break:break-word;"></h3>
+                    <div style="display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap;">
+                        <template x-if="approvalModal.project">
+                            <span style="font-size:11px;color:#9CA3AF;display:flex;align-items:center;gap:4px;">
+                                <i class="fas fa-folder" style="font-size:9px;"></i>
+                                <span x-text="approvalModal.project"></span>
+                            </span>
+                        </template>
+                        <template x-if="approvalModal.assignee">
+                            <span style="font-size:11px;color:#6B7280;display:flex;align-items:center;gap:5px;">
+                                <span style="width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;" x-text="approvalModal.assigneeInit"></span>
+                                <span x-text="approvalModal.assignee"></span>
+                            </span>
+                        </template>
+                    </div>
+                </div>
+                <button @click="close()" style="width:32px;height:32px;border-radius:50%;border:none;background:#F3F4F6;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-times" style="font-size:13px;color:#6B7280;"></i>
+                </button>
+            </div>
+
+            {{-- Timeline --}}
+            <div style="padding:24px;">
+
+                {{-- Step 1: Design Sent --}}
+                <div style="display:flex;gap:14px;align-items:flex-start;">
+                    <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">
+                        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#25D366,#128C7E);display:flex;align-items:center;justify-content:center;">
+                            <i class="fab fa-whatsapp" style="font-size:15px;color:#fff;"></i>
+                        </div>
+                        <div style="width:2px;flex:1;min-height:32px;margin:4px 0;" :style="approvalModal.isApproved ? 'background:#E5E7EB' : 'background:repeating-linear-gradient(to bottom,#FCD34D 0,#FCD34D 4px,transparent 4px,transparent 8px)'"></div>
+                    </div>
+                    <div style="padding-top:6px;padding-bottom:20px;">
+                        <p style="font-size:13px;font-weight:700;color:#374151;margin:0 0 2px;">Design sent via WhatsApp</p>
+                        <p style="font-size:12px;color:#6B7280;margin:0;" x-text="approvalModal.sentDate + ' · ' + approvalModal.sentTime"></p>
+                    </div>
+                </div>
+
+                {{-- Duration badge --}}
+                <div style="display:flex;gap:14px;align-items:center;margin:-8px 0 0 18px;">
+                    <div style="width:2px;"></div>
+                    <span style="font-size:11px;font-weight:700;padding:3px 12px;border-radius:20px;margin-left:-1px;"
+                          :style="'background:' + approvalModal.timeBg + ';color:' + approvalModal.timeCo"
+                          x-text="approvalModal.timeStr"></span>
+                </div>
+
+                {{-- Step 2: Approved or Waiting --}}
+                <div style="display:flex;gap:14px;align-items:flex-start;margin-top:0;">
+                    <div style="flex-shrink:0;">
+                        <template x-if="approvalModal.isApproved">
+                            <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#10B981,#059669);display:flex;align-items:center;justify-content:center;">
+                                <i class="fas fa-circle-check" style="font-size:15px;color:#fff;"></i>
+                            </div>
+                        </template>
+                        <template x-if="!approvalModal.isApproved">
+                            <div style="width:36px;height:36px;border-radius:50%;background:#FEF3C7;border:2px dashed #FCD34D;display:flex;align-items:center;justify-content:center;">
+                                <i class="fas fa-hourglass-half" style="font-size:13px;color:#D97706;"></i>
+                            </div>
+                        </template>
+                    </div>
+                    <div style="padding-top:6px;">
+                        <template x-if="approvalModal.isApproved">
+                            <div>
+                                <p style="font-size:13px;font-weight:700;color:#16A34A;margin:0 0 2px;">Customer Approved</p>
+                                <p style="font-size:12px;color:#6B7280;margin:0;" x-text="approvalModal.approvedDate + ' · ' + approvalModal.approvedTime"></p>
+                            </div>
+                        </template>
+                        <template x-if="!approvalModal.isApproved">
+                            <div>
+                                <p style="font-size:13px;font-weight:700;color:#D97706;margin:0 0 2px;">Awaiting Customer Response</p>
+                                <p style="font-size:12px;color:#9CA3AF;margin:0;">Sent <span x-text="approvalModal.sentHumans"></span> — no reply yet</p>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+            </div>
+
+            {{-- Note field (only when pending) --}}
+            <template x-if="approvalModal && !approvalModal.isApproved">
+            <div style="padding:0 24px 16px;">
+                <textarea x-model="approveNote" placeholder="Add a note (optional)…"
+                          style="width:100%;padding:9px 12px;border:1px solid #E5E7EB;border-radius:8px;font-size:13px;color:#374151;resize:none;outline:none;box-sizing:border-box;line-height:1.5;"
+                          rows="2"
+                          onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"></textarea>
+            </div>
+            </template>
+
+            {{-- Footer --}}
+            <div style="padding:14px 24px;border-top:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                <a :href="approvalModal.taskUrl"
+                   style="font-size:12px;font-weight:600;color:#4F46E5;text-decoration:none;display:flex;align-items:center;gap:5px;">
+                    <i class="fas fa-arrow-up-right-from-square" style="font-size:10px;"></i> Open Task
+                </a>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button @click="close()" style="padding:8px 18px;border-radius:8px;border:1px solid #E5E7EB;background:#fff;font-size:13px;font-weight:600;color:#374151;cursor:pointer;">
+                        Close
+                    </button>
+                    <template x-if="approvalModal && !approvalModal.isApproved">
+                        <button
+                            :disabled="approving"
+                            @click="
+                                approving = true;
+                                $refs.quickApproveForm.querySelector('[name=note]').value = approveNote;
+                                $refs.quickApproveForm.action = '/admin/tasks/' + approvalModal.taskId + '/approve';
+                                $refs.quickApproveForm.submit();
+                            "
+                            :style="approving
+                                ? 'padding:8px 20px;border-radius:8px;border:none;background:#D1FAE5;color:#6EE7B7;font-size:13px;font-weight:700;cursor:not-allowed;display:flex;align-items:center;gap:7px;'
+                                : 'padding:8px 20px;border-radius:8px;border:none;background:linear-gradient(135deg,#10B981,#059669);color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 4px 14px rgba(16,185,129,.3);'">
+                            <i class="fas fa-circle-check"></i>
+                            <span x-text="approving ? 'Approving…' : 'Confirm Approval'"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            {{-- Hidden approval form --}}
+            <form x-ref="quickApproveForm" method="POST" action="#" style="display:none;">
+                @csrf
+                <input type="hidden" name="note" value="">
+            </form>
+
+        </div>
+    </div>
+    </template>
+
 </div>
+
+@push('scripts')
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@media print {
+    .app-sidebar,
+    .sidebar-overlay,
+    header.app-topbar,
+    [x-data*="exportOpen"],
+    .no-print { display:none !important; }
+
+    .app-shell,
+    .app-main  { display:block !important; }
+
+    .app-main  { margin-left:0 !important; padding:0 !important; }
+
+    main.app-content { padding:0 !important; margin:0 !important; }
+
+    body { background:#fff !important; }
+
+    * { box-shadow:none !important; }
+
+    @page { margin:15mm; }
+}
+</style>
+@php
+    $exportCustomerMeta = ['name'=>$customer->name,'company'=>$customer->company,'email'=>$customer->email,'phone'=>$customer->phone];
+    $exportCustomerSlug = Str::slug($customer->name);
+    $exportToday        = now()->format('Y-m-d');
+    $exportProjects     = $customer->projects->map(fn($p) => [
+        'name'        => $p->name,
+        'status'      => $_psLabel[$p->status] ?? ucfirst($p->status),
+        'tasks_count' => $p->tasks_count ?? 0,
+        'deadline'    => $p->deadline ? $p->deadline->format('Y-m-d') : '',
+        'overdue'     => ($p->deadline && $p->deadline->isPast() && $p->status !== 'completed') ? 'Yes' : '',
+    ])->values()->toArray();
+    $exportStats = ['pending'=>$statPending,'active'=>$statActive,'done'=>$statDone,'overdue'=>$statOverdue];
+@endphp
+<script>
+window.exportCustomerCSV = function () {
+    const customer = @json($exportCustomerMeta);
+    const rows     = @json($csvRows);
+
+    const headers  = ['Task','Project','Status','Priority','Assignee','Deadline','Design Sent','Customer Approved','Approval Time'];
+    const fields   = ['title','project','status','priority','assignee','deadline','design_sent','cust_approved','approval_time'];
+
+    const esc = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+
+    let csv = '# Customer: ' + customer.name;
+    if (customer.company) csv += ' — ' + customer.company;
+    if (customer.email)   csv += '\n# Email: ' + customer.email;
+    if (customer.phone)   csv += '\n# Phone: ' + customer.phone;
+    csv += '\n# Exported: ' + new Date().toLocaleString() + '\n\n';
+    csv += headers.map(esc).join(',') + '\n';
+    csv += rows.map(r => fields.map(f => esc(r[f])).join(',')).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = '{{ $exportCustomerSlug }}_tasks_{{ $exportToday }}.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+};
+
+window.exportCustomerExcel = function () {
+    if (typeof XLSX === 'undefined') {
+        alert('Excel library not loaded. Please refresh the page and try again.');
+        return;
+    }
+    const customer = @json($exportCustomerMeta);
+    const rows     = @json($csvRows);
+    const projects = @json($exportProjects);
+    const stats    = @json($exportStats);
+    const today    = new Date().toLocaleString();
+
+    const wb = XLSX.utils.book_new();
+
+    // ── Sheet 1: Summary (customer info + stats + projects) ──
+    const summaryData = [
+        ['CUSTOMER REPORT', '', '', '', ''],
+        ['', '', '', '', ''],
+        ['Customer', customer.name,          '', 'Exported', today],
+        ['Company',  customer.company || '—', '', '',         ''],
+        ['Email',    customer.email   || '—', '', '',         ''],
+        ['Phone',    customer.phone   || '—', '', '',         ''],
+        ['', '', '', '', ''],
+        ['TASK SUMMARY', '', '', '', ''],
+        ['Pending', 'In Progress', 'Completed', 'Overdue', ''],
+        [stats.pending, stats.active, stats.done, stats.overdue, ''],
+        ['', '', '', '', ''],
+    ];
+    if (projects.length) {
+        summaryData.push(['PROJECTS', '', '', '', '']);
+        summaryData.push(['Project Name', 'Status', 'Tasks', 'Deadline', 'Overdue']);
+        projects.forEach(p => summaryData.push([p.name, p.status, p.tasks_count, p.deadline || '—', p.overdue || '']));
+    }
+    const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
+    ws1['!cols'] = [{wch:30},{wch:24},{wch:12},{wch:18},{wch:22}];
+    XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
+
+    // ── Sheet 2: All Tasks ──
+    const taskHeaders = ['Task','Project','Status','Priority','Assignee','Deadline','Design Sent','Customer Approved','Approval Time'];
+    const fields      = ['title','project','status','priority','assignee','deadline','design_sent','cust_approved','approval_time'];
+    const taskData    = [
+        ['TASK LIST — ' + customer.name + (customer.company ? ' / ' + customer.company : ''), '', '', '', '', '', '', '', ''],
+        ['', '', '', '', '', '', '', '', ''],
+        taskHeaders,
+        ...rows.map(r => fields.map(f => r[f] ?? '')),
+    ];
+    const ws2 = XLSX.utils.aoa_to_sheet(taskData);
+    ws2['!cols'] = [{wch:34},{wch:24},{wch:14},{wch:10},{wch:16},{wch:12},{wch:20},{wch:20},{wch:14}];
+    XLSX.utils.book_append_sheet(wb, ws2, 'Tasks');
+
+    XLSX.writeFile(wb, '{{ $exportCustomerSlug }}_report_{{ $exportToday }}.xlsx');
+};
+
+window.printCustomerPage = function () {
+    window.print();
+};
+</script>
+@endpush
+
 @endsection

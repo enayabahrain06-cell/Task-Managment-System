@@ -155,6 +155,26 @@ $pMeta = [
                 </div>
             </div>
 
+            {{-- Target Platforms --}}
+            @if($task->social_platforms && count($task->social_platforms))
+            @php
+            $spMeta = ['facebook'=>['Facebook','fa-facebook','#1877F2','#EBF3FF'],'instagram'=>['Instagram','fa-instagram','#E1306C','#FFF0F5'],'twitter'=>['Twitter / X','fa-x-twitter','#000000','#F5F5F5'],'linkedin'=>['LinkedIn','fa-linkedin','#0A66C2','#EAF2FB'],'tiktok'=>['TikTok','fa-tiktok','#010101','#F5F5F5'],'youtube'=>['YouTube','fa-youtube','#FF0000','#FFF0F0'],'snapchat'=>['Snapchat','fa-snapchat','#F7CA00','#FFFDE7'],'other'=>['Other','fa-share-nodes','#6366F1','#EEF2FF']];
+            @endphp
+            <div style="padding:14px 24px;border-bottom:1px solid #F3F4F6;">
+                <p style="font-size:10px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;display:flex;align-items:center;gap:5px;">
+                    <i class="fas fa-share-nodes" style="font-size:11px;"></i>Target Platforms
+                </p>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                    @foreach($task->social_platforms as $pKey)
+                    @php [$pLabel,$pIcon,$pColor,$pBg] = $spMeta[$pKey] ?? ['Other','fa-share-nodes','#6366F1','#EEF2FF']; @endphp
+                    <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;background:{{ $pBg }};border:1px solid {{ $pColor }}22;font-size:12px;font-weight:600;color:{{ $pColor }};">
+                        <i class="fab {{ $pIcon }}" style="font-size:13px;"></i> {{ $pLabel }}
+                    </span>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
             {{-- Posting Instructions / Caption / Budget --}}
             @if($task->social_description || $task->social_caption || $task->social_budget)
             <div style="padding:18px 24px;border-bottom:1px solid #F3F4F6;background:linear-gradient(135deg,#F5F3FF,#EEF2FF);display:flex;flex-direction:column;gap:14px;">
@@ -244,10 +264,20 @@ $pMeta = [
                 <div style="border-radius:12px;overflow:hidden;border:1.5px solid #DDE3F5;max-height:420px;">
                     <img src="{{ $furl }}" alt="{{ $fname }}" style="width:100%;max-height:420px;object-fit:contain;display:block;background:#F9FAFB;">
                 </div>
+                <a href="{{ $furl }}" download="{{ $fname }}"
+                   style="display:inline-flex;align-items:center;gap:7px;margin-top:10px;padding:8px 16px;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:10px;font-size:12px;font-weight:600;text-decoration:none;"
+                   onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'">
+                    <i class="fas fa-download" style="font-size:11px;"></i> Download {{ $fname }}
+                </a>
                 @elseif($isVid)
                 <div style="border-radius:12px;overflow:hidden;border:1.5px solid #DDE3F5;">
                     <video src="{{ $furl }}" controls style="width:100%;display:block;max-height:360px;background:#000;"></video>
                 </div>
+                <a href="{{ $furl }}" download="{{ $fname }}"
+                   style="display:inline-flex;align-items:center;gap:7px;margin-top:10px;padding:8px 16px;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:10px;font-size:12px;font-weight:600;text-decoration:none;"
+                   onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'">
+                    <i class="fas fa-download" style="font-size:11px;"></i> Download {{ $fname }}
+                </a>
                 @else
                 <a href="{{ $furl }}" download style="display:flex;align-items:center;gap:12px;padding:14px 18px;background:#F8FAFF;border:1.5px solid #DDE3F5;border-radius:12px;text-decoration:none;" onmouseover="this.style.background='#EEF2FF'" onmouseout="this.style.background='#F8FAFF'">
                     <i class="fas fa-file-arrow-down" style="color:#6366F1;font-size:20px;"></i>
@@ -347,6 +377,28 @@ $pMeta = [
                 </button>
             </div>
 
+            {{-- Requested platforms banner --}}
+            @if($task->social_platforms && count($task->social_platforms))
+            @php
+            $rpMeta = ['facebook'=>['Facebook','fa-facebook','#1877F2','#EBF3FF'],'instagram'=>['Instagram','fa-instagram','#E1306C','#FFF0F5'],'twitter'=>['Twitter / X','fa-x-twitter','#000000','#F5F5F5'],'linkedin'=>['LinkedIn','fa-linkedin','#0A66C2','#EAF2FB'],'tiktok'=>['TikTok','fa-tiktok','#010101','#F5F5F5'],'youtube'=>['YouTube','fa-youtube','#FF0000','#FFF0F0'],'snapchat'=>['Snapchat','fa-snapchat','#F7CA00','#FFFDE7'],'other'=>['Other','fa-share-nodes','#6366F1','#EEF2FF']];
+            @endphp
+            <div style="padding:10px 24px;background:#F0FDF4;border-bottom:1px solid #BBF7D0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">
+                    <i class="fas fa-circle-check" style="color:#059669;font-size:12px;"></i>
+                    <span style="font-size:11px;font-weight:700;color:#065F46;">Requested platforms:</span>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:5px;">
+                    @foreach($task->social_platforms as $rp)
+                    @php [$rpLabel,$rpIcon,$rpColor,$rpBg] = $rpMeta[$rp] ?? ['Other','fa-share-nodes','#6366F1','#EEF2FF']; @endphp
+                    <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;background:{{ $rpBg }};border:1px solid {{ $rpColor }}33;font-size:11px;font-weight:600;color:{{ $rpColor }};">
+                        <i class="fab {{ $rpIcon }}" style="font-size:11px;"></i> {{ $rpLabel }}
+                    </span>
+                    @endforeach
+                </div>
+                <span style="font-size:11px;color:#6B7280;margin-left:auto;">Each is pre-selected below — you can still add more</span>
+            </div>
+            @endif
+
             <form method="POST" action="{{ route('social.add-post', $task) }}" style="padding:20px 24px 24px;">
                 @csrf
 
@@ -356,66 +408,86 @@ $pMeta = [
                 </div>
                 @endif
 
-                <div style="display:flex;flex-direction:column;gap:20px;">
+                <div style="display:flex;flex-direction:column;gap:10px;">
                     <template x-for="(entry, idx) in entries" :key="idx">
-                        <div :style="entries.length > 1 ? 'background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:14px;padding:18px 18px 16px;' : ''">
+                        <div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:14px;overflow:hidden;">
 
-                            <div x-show="entries.length > 1" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-                                <span style="font-size:12px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.05em;"
-                                      x-text="'Platform #' + (idx + 1)"></span>
-                                <button type="button" @click="remove(idx)"
-                                        style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#EF4444;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:4px 10px;cursor:pointer;"
-                                        onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
-                                    <i class="fas fa-trash-can" style="font-size:10px;"></i> Remove
-                                </button>
+                            {{-- Row header: platform badge + Change + Remove --}}
+                            <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #F3F4F6;background:#FAFAFA;">
+
+                                {{-- Platform badge or prompt --}}
+                                <div style="flex:1;min-width:0;">
+                                    <template x-if="entry.platform">
+                                        <span :style="`display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;background:${platforms[entry.platform]?.bg ?? '#EEF2FF'};border:1px solid ${platforms[entry.platform]?.color ?? '#6366F1'}33;font-size:12px;font-weight:700;color:${platforms[entry.platform]?.color ?? '#6366F1'};`">
+                                            <i :class="'fab ' + (platforms[entry.platform]?.icon ?? 'fa-share-nodes')"
+                                               :style="'font-size:13px;color:' + (platforms[entry.platform]?.color ?? '#6366F1')"></i>
+                                            <span x-text="platforms[entry.platform]?.label ?? entry.platform"></span>
+                                        </span>
+                                    </template>
+                                    <template x-if="!entry.platform">
+                                        <span style="font-size:12px;font-weight:600;color:#F59E0B;display:inline-flex;align-items:center;gap:5px;">
+                                            <i class="fas fa-arrow-down" style="font-size:10px;"></i> Pick a platform below
+                                        </span>
+                                    </template>
+                                </div>
+
+                                {{-- Change button (only when platform chosen) --}}
+                                <template x-if="entry.platform">
+                                    <button type="button" @click="entry.showPicker = !entry.showPicker"
+                                            :style="entry.showPicker
+                                                ? 'display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#6366F1;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:7px;padding:4px 10px;cursor:pointer;'
+                                                : 'display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#6B7280;background:#F3F4F6;border:1px solid #E5E7EB;border-radius:7px;padding:4px 10px;cursor:pointer;'">
+                                        <i class="fas fa-pen" style="font-size:9px;"></i>
+                                        <span x-text="entry.showPicker ? 'Done' : 'Change'"></span>
+                                    </button>
+                                </template>
+
+                                {{-- Remove (only when more than 1 entry) --}}
+                                <template x-if="entries.length > 1">
+                                    <button type="button" @click="remove(idx)"
+                                            style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;color:#EF4444;background:#FEF2F2;border:1px solid #FECACA;border-radius:7px;cursor:pointer;flex-shrink:0;"
+                                            onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
+                                        <i class="fas fa-xmark" style="font-size:12px;"></i>
+                                    </button>
+                                </template>
                             </div>
 
-                            <div style="margin-bottom:16px;">
-                                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:10px;">
-                                    Platform <span style="color:#EF4444;">*</span>
-                                </label>
-                                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+                            {{-- Platform picker grid — visible when no platform or showPicker --}}
+                            <div x-show="entry.showPicker || !entry.platform" x-collapse style="padding:12px 14px;background:#FAFAFA;border-bottom:1px solid #F3F4F6;">
+                                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
                                     <template x-for="[key, meta] in Object.entries(platforms)" :key="key">
                                         <button type="button"
-                                                @click="entry.platform = key"
+                                                @click="entry.platform = key; entry.showPicker = false"
                                                 :style="entry.platform === key
-                                                    ? `border:2.5px solid ${meta.color};background:${meta.bg};border-radius:12px;padding:13px 8px;text-align:center;cursor:pointer;transition:all .15s;box-shadow:0 2px 8px rgba(0,0,0,.1);`
-                                                    : 'border:1.5px solid #E5E7EB;background:#FAFAFA;border-radius:12px;padding:13px 8px;text-align:center;cursor:pointer;transition:all .15s;'"
+                                                    ? `border:2px solid ${meta.color};background:${meta.bg};border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;transition:all .15s;`
+                                                    : 'border:1.5px solid #E5E7EB;background:#fff;border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;transition:all .15s;'"
                                                 @mouseover="if(entry.platform !== key){ $el.style.borderColor = meta.color; $el.style.background = meta.bg; }"
-                                                @mouseout="if(entry.platform !== key){ $el.style.borderColor = '#E5E7EB'; $el.style.background = '#FAFAFA'; }">
+                                                @mouseout="if(entry.platform !== key){ $el.style.borderColor = '#E5E7EB'; $el.style.background = '#fff'; }">
                                             <i :class="'fab ' + meta.icon"
-                                               :style="'font-size:24px;color:' + meta.color + ';display:block;margin-bottom:6px;'"></i>
-                                            <span x-text="meta.label" style="font-size:11px;font-weight:600;color:#374151;white-space:nowrap;"></span>
+                                               :style="'font-size:20px;color:' + meta.color + ';display:block;margin-bottom:4px;'"></i>
+                                            <span x-text="meta.label" style="font-size:10px;font-weight:600;color:#374151;white-space:nowrap;"></span>
                                         </button>
                                     </template>
                                 </div>
-                                <input type="hidden" :name="'platform[' + idx + ']'" x-model="entry.platform">
-                                <p x-show="submitAttempted && !entry.platform" style="margin:6px 0 0;font-size:11px;color:#EF4444;" x-cloak>
+                                <p x-show="submitAttempted && !entry.platform" style="margin:8px 0 0;font-size:11px;color:#EF4444;" x-cloak>
                                     <i class="fas fa-circle-exclamation" style="margin-right:3px;"></i>Please select a platform
                                 </p>
                             </div>
 
-                            <div style="margin-bottom:14px;">
-                                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
-                                    Post Link <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional but recommended</span>
-                                </label>
+                            {{-- URL + Note fields --}}
+                            <div style="padding:12px 14px;display:flex;flex-direction:column;gap:8px;">
+                                <input type="hidden" :name="'platform[' + idx + ']'" x-model="entry.platform">
                                 <div style="position:relative;">
-                                    <i class="fas fa-link" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;pointer-events:none;"></i>
+                                    <i class="fas fa-link" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:11px;pointer-events:none;"></i>
                                     <input type="url" :name="'post_url[' + idx + ']'" x-model="entry.url"
-                                           placeholder="https://www.facebook.com/your-post-link"
-                                           style="width:100%;padding:10px 14px 10px 34px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;background:#fff;"
+                                           placeholder="Post link — optional but recommended"
+                                           style="width:100%;padding:9px 12px 9px 30px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;background:#fff;"
                                            onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,.1)'"
                                            onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow='none'">
                                 </div>
-                            </div>
-
-                            <div>
-                                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
-                                    Note <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span>
-                                </label>
-                                <textarea :name="'note[' + idx + ']'" x-model="entry.note" rows="2"
-                                          placeholder="Any extra info (e.g. boosted, scheduled, reached X people)..."
-                                          style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;resize:vertical;font-family:'Inter',sans-serif;background:#fff;"
+                                <textarea :name="'note[' + idx + ']'" x-model="entry.note" rows="1"
+                                          placeholder="Note — optional (e.g. boosted, reached X people…)"
+                                          style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;resize:vertical;font-family:'Inter',sans-serif;background:#fff;"
                                           onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,.1)'"
                                           onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow='none'"></textarea>
                             </div>
@@ -456,7 +528,7 @@ $pMeta = [
     <div style="display:flex;flex-direction:column;gap:16px;">
 
         {{-- ── Project Card ── --}}
-        @if($proj)
+        @if($proj && !$proj->is_quick)
         @php [$projStatusLabel,$projStatusBg,$projStatusColor] = $projStatusMap[$proj->status] ?? [ucfirst($proj->status),'#F3F4F6','#6B7280']; @endphp
         <div style="background:#fff;border-radius:18px;border:1px solid #E5E7EB;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow:hidden;">
             <div style="padding:16px 20px;border-bottom:1px solid #F3F4F6;background:linear-gradient(135deg,#F0FDF4,#fff);">
@@ -589,8 +661,11 @@ $pMeta = [
 @push('scripts')
 <script>
 function socialForm() {
+    const preselected = @js($task->social_platforms ?? []);
     return {
-        entries: [{ platform: '', url: '', note: '' }],
+        entries: preselected.length
+            ? preselected.map(p => ({ platform: p, url: '', note: '', showPicker: false }))
+            : [{ platform: '', url: '', note: '', showPicker: true }],
         submitAttempted: false,
         platforms: {
             facebook:  { label: 'Facebook',    icon: 'fa-facebook',    color: '#1877F2', bg: '#EBF3FF' },
@@ -602,7 +677,7 @@ function socialForm() {
             snapchat:  { label: 'Snapchat',    icon: 'fa-snapchat',    color: '#F7CA00', bg: '#FFFDE7' },
             other:     { label: 'Other',       icon: 'fa-share-nodes', color: '#6366F1', bg: '#EEF2FF' },
         },
-        add() { this.entries.push({ platform: '', url: '', note: '' }); },
+        add() { this.entries.push({ platform: '', url: '', note: '', showPicker: true }); },
         remove(idx) { this.entries.splice(idx, 1); },
         get canSubmit() { return this.entries.every(e => e.platform !== ''); },
     };

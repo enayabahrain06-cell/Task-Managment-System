@@ -761,6 +761,121 @@
 </div>
 @endif
 
+{{-- ══ Customer Approval Speed ══ --}}
+<div class="rpt-card" style="margin-bottom:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+        <p class="rpt-section-title" style="margin:0;display:flex;align-items:center;gap:8px;">
+            <span style="width:22px;height:22px;border-radius:6px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-stopwatch" style="font-size:11px;color:#D97706;"></i>
+            </span>
+            Customer Approval Speed
+        </p>
+        @if($approvalSpeedTasks->isNotEmpty())
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;background:#F0FDF4;border-radius:20px;border:1px solid #BBF7D0;">
+                <i class="fas fa-circle-check" style="font-size:11px;color:#16A34A;"></i>
+                <span style="font-size:12px;font-weight:700;color:#16A34A;">{{ $approvedCount }} approved</span>
+            </div>
+            @if($pendingApproval > 0)
+            <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;background:#FFFBEB;border-radius:20px;border:1px solid #FDE68A;">
+                <i class="fas fa-hourglass-half" style="font-size:11px;color:#D97706;"></i>
+                <span style="font-size:12px;font-weight:700;color:#D97706;">{{ $pendingApproval }} waiting</span>
+            </div>
+            @endif
+            @if($avgHours !== null)
+            <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;background:#EEF2FF;border-radius:20px;border:1px solid #C7D2FE;">
+                <i class="fas fa-clock" style="font-size:11px;color:#4F46E5;"></i>
+                <span style="font-size:12px;font-weight:700;color:#4F46E5;">Avg {{ $avgHours }}h to approve</span>
+            </div>
+            @endif
+        </div>
+        @endif
+    </div>
+
+    @if($approvalSpeedTasks->isEmpty())
+    <div style="text-align:center;padding:40px 20px;">
+        <div style="width:48px;height:48px;border-radius:14px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+            <i class="fas fa-stopwatch" style="font-size:20px;color:#D97706;"></i>
+        </div>
+        <p style="font-size:14px;font-weight:700;color:#111827;margin:0 0 6px;">No approval data yet</p>
+        <p style="font-size:12px;color:#9CA3AF;margin:0;max-width:360px;margin:0 auto;">Data appears here once a manager marks a task as <strong>"Awaiting Customer Approval"</strong> from the Approvals page. That action records when the design was sent, and the timer starts.</p>
+    </div>
+    @else
+    <div style="overflow-x:auto;">
+    <table class="rpt-table" id="approval-speed-table">
+        <thead>
+            <tr>
+                <th>Task</th>
+                <th>Customer</th>
+                <th>Assignee</th>
+                <th>Design Sent</th>
+                <th>Customer Approved</th>
+                <th style="text-align:center;">Time to Approve</th>
+                <th style="text-align:center;">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach($approvalSpeedTasks as $row)
+        @php
+            $statusColors = [
+                'delivered'          => ['#F0FDF4','#16A34A','Delivered'],
+                'pending_customer'   => ['#FFFBEB','#D97706','Awaiting Customer'],
+                'approved'           => ['#EEF2FF','#4F46E5','Approved'],
+                'revision_requested' => ['#FEF2F2','#DC2626','Revision'],
+            ];
+            [$sbg,$sco,$slbl] = $statusColors[$row['status']] ?? ['#F3F4F6','#6B7280',ucfirst(str_replace('_',' ',$row['status']))];
+        @endphp
+        <tr>
+            <td>
+                <a href="{{ route('admin.tasks.show', $row['id']) }}" style="font-weight:600;color:#111827;text-decoration:none;" onmouseover="this.style.color='#4F46E5'" onmouseout="this.style.color='#111827'">
+                    {{ Str::limit($row['title'], 40) }}
+                </a>
+            </td>
+            <td style="color:#374151;">{{ $row['customer'] }}</td>
+            <td style="color:#6B7280;">{{ $row['assignee'] }}</td>
+            <td>
+                <span style="font-size:12px;color:#374151;font-weight:600;">{{ $row['sent_at'] }}</span>
+                <span style="font-size:11px;color:#9CA3AF;margin-left:4px;">{{ $row['sent_time'] }}</span>
+            </td>
+            <td>
+                @if($row['approved'])
+                <span style="font-size:12px;color:#16A34A;font-weight:600;">{{ $row['approved_at'] }}</span>
+                <span style="font-size:11px;color:#9CA3AF;margin-left:4px;">{{ $row['approved_time'] }}</span>
+                @else
+                <span style="font-size:12px;color:#D97706;font-style:italic;">Pending...</span>
+                @endif
+            </td>
+            <td style="text-align:center;">
+                @if($row['approved'])
+                @php
+                    $h = $row['hours'];
+                    $timeStr = $h < 1 ? round($h * 60) . 'm' : ($h < 24 ? $h . 'h' : round($row['days'], 1) . 'd');
+                    $timeBg  = $h <= 24 ? '#F0FDF4' : ($h <= 72 ? '#FEF3C7' : '#FEF2F2');
+                    $timeCo  = $h <= 24 ? '#16A34A' : ($h <= 72 ? '#D97706' : '#DC2626');
+                @endphp
+                <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;background:{{ $timeBg }};color:{{ $timeCo }};">
+                    {{ $timeStr }}
+                </span>
+                @else
+                @php
+                    $waitSec = abs(now()->diffInSeconds(\Carbon\Carbon::parse($row['sent_time_raw'] ?? now())));
+                    $waitH   = round($waitSec / 3600, 1);
+                    $waitStr = $waitSec < 3600 ? (int) round($waitSec / 60) . 'm' : ($waitH < 24 ? $waitH . 'h' : round($waitH / 24, 1) . 'd');
+                @endphp
+                <span style="font-size:11px;color:#D97706;font-style:italic;">{{ $waitStr }} waiting</span>
+                @endif
+            </td>
+            <td style="text-align:center;">
+                <span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:{{ $sbg }};color:{{ $sco }};">{{ $slbl }}</span>
+            </td>
+        </tr>
+        @endforeach
+        </tbody>
+    </table>
+    </div>
+    @endif
+</div>
+
 {{-- ══ Row 7: Overdue Tasks ══ --}}
 @if($overdueList->isNotEmpty())
 <div class="rpt-card" style="margin-bottom:10px;">

@@ -4,7 +4,17 @@
 @section('content')
 @php
     $doneStatuses = ['approved','delivered','archived'];
-    $isOverdue  = $task->deadline->isPast() && !in_array($task->status, $doneStatuses);
+    $isOverdue  = $task->deadline && $task->deadline->isPast() && !in_array($task->status, $doneStatuses);
+    $overdueReason = $isOverdue ? match($task->status) {
+        'pending_customer'   => ['label'=>'Waiting: Customer',    'bg'=>'#FEF3C7','color'=>'#D97706','icon'=>'fa-user-clock'],
+        'submitted'          => ['label'=>'Waiting: Admin Review','bg'=>'#EEF2FF','color'=>'#4F46E5','icon'=>'fa-user-shield'],
+        'revision_requested' => ['label'=>'Waiting: Revision',   'bg'=>'#FEE2E2','color'=>'#DC2626','icon'=>'fa-rotate-left'],
+        'in_progress'        => ['label'=>'Waiting: Assignee',   'bg'=>'#FFF7ED','color'=>'#EA580C','icon'=>'fa-user-pen'],
+        'viewed'             => ['label'=>'Waiting: Assignee',   'bg'=>'#FFF7ED','color'=>'#EA580C','icon'=>'fa-user-pen'],
+        'assigned'           => ['label'=>'Waiting: Assignee',   'bg'=>'#FFF7ED','color'=>'#EA580C','icon'=>'fa-user-pen'],
+        'draft'              => ['label'=>'Not Started',          'bg'=>'#F3F4F6','color'=>'#6B7280','icon'=>'fa-circle-pause'],
+        default              => ['label'=>'Overdue',              'bg'=>'#FEE2E2','color'=>'#DC2626','icon'=>'fa-triangle-exclamation'],
+    } : null;
     $statusMap  = [
         'draft'              => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Draft'],
         'assigned'           => ['bg'=>'#E0F2FE','color'=>'#0284C7','label'=>'Assigned'],
@@ -257,6 +267,43 @@
                                 @endforeach
                             </select>
                         </div>
+                        {{-- Platform selector --}}
+                        <div>
+                            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:8px;">
+                                <i class="fas fa-share-nodes" style="font-size:10px;margin-right:4px;color:#6366F1;"></i>
+                                Platforms <span style="font-weight:400;color:#9CA3AF;">(select all that apply)</span>
+                            </label>
+                            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+                                @php
+                                $tskApprovalPlatforms = [
+                                    'facebook'  => ['Facebook',   'fa-facebook',   '#1877F2','#EBF3FF'],
+                                    'instagram' => ['Instagram',  'fa-instagram',  '#E1306C','#FFF0F5'],
+                                    'twitter'   => ['Twitter / X','fa-x-twitter',  '#000000','#F5F5F5'],
+                                    'linkedin'  => ['LinkedIn',   'fa-linkedin',   '#0A66C2','#EAF2FB'],
+                                    'tiktok'    => ['TikTok',     'fa-tiktok',     '#010101','#F5F5F5'],
+                                    'youtube'   => ['YouTube',    'fa-youtube',    '#FF0000','#FFF0F0'],
+                                    'snapchat'  => ['Snapchat',   'fa-snapchat',   '#F7CA00','#FFFDE7'],
+                                    'other'     => ['Other',      'fa-share-nodes','#6366F1','#EEF2FF'],
+                                ];
+                                @endphp
+                                @foreach($tskApprovalPlatforms as $pKey => [$pLabel, $pIcon, $pColor, $pBg])
+                                <button type="button"
+                                        @click="approvalSocialPlatforms.includes('{{ $pKey }}') ? approvalSocialPlatforms.splice(approvalSocialPlatforms.indexOf('{{ $pKey }}'), 1) : approvalSocialPlatforms.push('{{ $pKey }}')"
+                                        :style="approvalSocialPlatforms.includes('{{ $pKey }}')
+                                            ? 'display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border-radius:10px;border:2px solid {{ $pColor }};background:{{ $pBg }};cursor:pointer;transition:all .15s;'
+                                            : 'display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border-radius:10px;border:1.5px solid #E5E7EB;background:#fff;cursor:pointer;transition:all .15s;'">
+                                    <i class="fab {{ $pIcon }}"
+                                       :style="approvalSocialPlatforms.includes('{{ $pKey }}') ? 'font-size:18px;color:{{ $pColor }};' : 'font-size:18px;color:#D1D5DB;'"></i>
+                                    <span :style="approvalSocialPlatforms.includes('{{ $pKey }}') ? 'font-size:9px;font-weight:700;color:{{ $pColor }};' : 'font-size:9px;font-weight:600;color:#9CA3AF;'"
+                                          style="line-height:1.2;text-align:center;">{{ $pLabel }}</span>
+                                </button>
+                                @endforeach
+                            </div>
+                            <template x-for="p in approvalSocialPlatforms" :key="p">
+                                <input type="hidden" name="social_platforms[]" :value="p">
+                            </template>
+                        </div>
+
                         <div>
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
                                 <i class="fas fa-align-left" style="font-size:10px;margin-right:4px;color:#6366F1;"></i>
@@ -394,7 +441,14 @@
         @endif
         <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:{{ $p['bg'] }};color:{{ $p['color'] }};">{{ ucfirst($task->priority) }} Priority</span>
         <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:{{ $s['bg'] }};color:{{ $s['color'] }};">{{ $s['label'] }}</span>
-        @if($isOverdue)<span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#FEE2E2;color:#DC2626;"><i class="fa fa-clock" style="margin-right:3px;"></i>Overdue</span>@endif
+        @if($isOverdue)
+        <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#FEE2E2;color:#DC2626;"><i class="fa fa-clock" style="margin-right:3px;"></i>Overdue</span>
+        @if($overdueReason)
+        <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:{{ $overdueReason['bg'] }};color:{{ $overdueReason['color'] }};display:inline-flex;align-items:center;gap:5px;">
+            <i class="fas {{ $overdueReason['icon'] }}" style="font-size:10px;"></i>{{ $overdueReason['label'] }}
+        </span>
+        @endif
+        @endif
         @if($task->tags)
         @foreach($task->tags as $idx => $tag)
         @php [$tbg,$tco] = explode(':', $tagColors[$idx % count($tagColors)]); @endphp
@@ -471,6 +525,11 @@
                         <p style="font-size:13px;font-weight:700;color:{{ $isOverdue ? '#DC2626' : '#1c1917' }};margin:0;">
                             {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
                         </p>
+                        @if($isOverdue && $overdueReason)
+                        <span style="display:inline-flex;align-items:center;gap:4px;margin-top:5px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:{{ $overdueReason['bg'] }};color:{{ $overdueReason['color'] }};">
+                            <i class="fas {{ $overdueReason['icon'] }}" style="font-size:9px;"></i>{{ $overdueReason['label'] }}
+                        </span>
+                        @endif
                     </div>
 
                     @if($task->creator)
@@ -676,6 +735,50 @@
         </div>
         @endif
 
+        {{-- Customer Approval received (when pending_customer) --}}
+        @if($task->status === 'pending_customer')
+        <div style="background:#fff;border-radius:14px;border:1.5px solid #FCD34D;box-shadow:0 4px 16px rgba(217,119,6,.08);padding:24px;">
+            <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px;">
+                <div style="width:38px;height:38px;border-radius:10px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-user-clock" style="color:#D97706;font-size:15px;"></i>
+                </div>
+                <div>
+                    <h2 style="font-size:15px;font-weight:700;color:#374151;margin:0 0 3px;">Awaiting Customer Approval</h2>
+                    <p style="font-size:12px;color:#9CA3AF;margin:0;">
+                        Design sent
+                        @if($task->design_sent_at)
+                            {{ $task->design_sent_at->format(config('app.date_format','M d, Y')) }} at {{ $task->design_sent_at->format('h:i A') }}
+                            <span style="color:#D97706;font-weight:600;">({{ $task->design_sent_at->diffForHumans() }})</span>
+                        @else
+                            — waiting for customer response
+                        @endif
+                    </p>
+                </div>
+            </div>
+
+            <p style="font-size:12px;color:#6B7280;margin:0 0 16px;padding:10px 12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;">
+                <i class="fas fa-circle-info" style="color:#D97706;margin-right:5px;"></i>
+                Click <strong>Confirm Approval</strong> as soon as the customer gives the green light — this records the exact approval time and marks the task as delivered.
+            </p>
+
+            <button type="button"
+                    @click="openApprovalModal({
+                        id:              {{ $task->id }},
+                        title:           @js($task->title),
+                        assignee:        @js($task->assignee->name ?? 'Unknown'),
+                        url:             '{{ route('admin.tasks.approve', $task) }}',
+                        customer_name:   @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
+                        customer_email:  @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
+                        customer_phone:  @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
+                        submission_url:  @js($task->submissions->first()?->file_path ? url(Storage::url($task->submissions->first()->file_path)) : null),
+                        submission_name: @js($task->submissions->first()?->original_filename ?? ($task->submissions->first()?->file_path ? basename($task->submissions->first()->file_path) : null)),
+                    })"
+                    style="width:100%;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;padding:11px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 4px 14px rgba(16,185,129,.35);transition:opacity .15s;"
+                    onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+                <i class="fas fa-circle-check"></i> Confirm Approval
+            </button>
+        </div>
+        @endif
 
         {{-- Reopen (when approved, delivered, or archived) --}}
         @if(in_array($task->status, ['approved','delivered','archived']))
@@ -733,9 +836,10 @@
             ];
             $timeline = collect();
 
-            foreach ($task->submissions as $sub) {
-                [$sbg,$sco,$sico,$slbl] = $tlSubMap[$sub->status] ?? $tlSubMap['submitted'];
-                $timeline->push(['type'=>'submission','at'=>$sub->created_at,'sub'=>$sub,'sbg'=>$sbg,'sco'=>$sco,'sico'=>$sico,'slbl'=>$slbl]);
+            foreach ($task->submissions->groupBy('version') as $versionSubs) {
+                $primarySub = $versionSubs->first();
+                [$sbg,$sco,$sico,$slbl] = $tlSubMap[$primarySub->status] ?? $tlSubMap['submitted'];
+                $timeline->push(['type'=>'submission','at'=>$primarySub->created_at,'sub'=>$primarySub,'subs'=>$versionSubs,'sbg'=>$sbg,'sco'=>$sco,'sico'=>$sico,'slbl'=>$slbl]);
             }
             foreach ($task->logs->whereNotIn('action', ['comment_added', 'status_updated_submitted', 'status_updated_in_progress', 'status_updated_revision_requested', 'status_updated_approved']) as $log) {
                 [$aico,$aco,$abg] = $log->actionStyle();
@@ -761,9 +865,13 @@
                 open: false,
                 sub: null,
                 show(item) { this.sub = item; this.open = true; },
-                close() { this.open = false; this.sub = null; }
+                close() { this.open = false; this.sub = null; },
+                commentOpen: false,
+                commentItem: null,
+                showComment(item) { this.commentItem = item; this.commentOpen = true; },
+                closeComment() { this.commentOpen = false; this.commentItem = null; }
              }"
-             @keydown.escape.window="if(open) close()"
+             @keydown.escape.window="if(commentOpen) closeComment(); else if(open) close()"
              style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
 
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 16px;display:flex;align-items:center;gap:8px;">
@@ -883,6 +991,9 @@
                                 $spMailBody = $spUrl ? urlencode('Social media post for “' . $task->title . '”' . $spNl . $spNl . $spUrl) : '';
                             @endphp
                             <div style=”display:inline-flex;align-items:center;gap:8px;vertical-align:middle;”
+                                 data-wa-message=”{{ $spWaMsg }}”
+                                 data-wa-fetch-url=”{{ route('admin.approvals.whatsapp-customer') }}”
+                                 data-wa-csrf-token=”{{ csrf_token() }}”
                                  x-data=”{
                                     open: false,
                                     dropX: 0,
@@ -892,6 +1003,14 @@
                                     waSending: false,
                                     waResult: null,
                                     copied: false,
+                                    waFetchUrl: '',
+                                    waCsrfToken: '',
+                                    waMessage: '',
+                                    init() {
+                                        this.waMessage  = this.$el.dataset.waMessage;
+                                        this.waFetchUrl = this.$el.dataset.waFetchUrl;
+                                        this.waCsrfToken = this.$el.dataset.waCsrfToken;
+                                    },
                                     openDrop(btn) {
                                         const r = btn.getBoundingClientRect();
                                         this.dropX = r.left;
@@ -906,10 +1025,10 @@
                                         this.waSending = true;
                                         this.waResult  = null;
                                         try {
-                                            const res = await fetch({{ Js::from(route('admin.approvals.whatsapp-customer')) }}, {
+                                            const res = await fetch(this.waFetchUrl, {
                                                 method: 'POST',
-                                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': {{ Js::from(csrf_token()) }} },
-                                                body: JSON.stringify({ phone: digits, message: {{ Js::from($spWaMsg) }} })
+                                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.waCsrfToken },
+                                                body: JSON.stringify({ phone: digits, message: this.waMessage })
                                             });
                                             this.waResult = await res.json();
                                         } catch(e) {
@@ -1063,20 +1182,7 @@
                 @elseif($entry['type'] === 'submission')
                 @php
                     $sub = $entry['sub'];
-                    $subExt = strtolower(pathinfo($sub->original_filename ?? '', PATHINFO_EXTENSION));
-                    $subIsImage = in_array($subExt, ['jpg','jpeg','png','gif','webp','svg']);
-                    $subIsVideo = in_array($subExt, ['mp4','mov','avi','webm','mkv']);
-                    $subUrl = $sub->fileUrl();
-                    $subIconMap = ['pdf'=>'fa-file-pdf','doc'=>'fa-file-word','docx'=>'fa-file-word','xls'=>'fa-file-excel','xlsx'=>'fa-file-excel','ppt'=>'fa-file-powerpoint','pptx'=>'fa-file-powerpoint','zip'=>'fa-file-zipper','rar'=>'fa-file-zipper','txt'=>'fa-file-lines'];
-                    $subIcon = $subIconMap[$subExt] ?? 'fa-file';
                     $isFirstWork = $firstWorkKey && $entry['at']->toDateTimeString() === $firstWorkKey;
-                    $subItem = $sub->file_path ? [
-                        'name'        => $sub->original_filename ?? 'file',
-                        'url'         => $subUrl,
-                        'downloadUrl' => route('admin.submissions.download', $sub),
-                        'isImage'     => $subIsImage,
-                        'version'     => $sub->version,
-                    ] : null;
                 @endphp
                 <div x-data="{ editingNote: false, showNoteHistory: false, note: {{ json_encode($sub->note ?? '') }} }" style="display:flex;gap:14px;">
                     <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px;">
@@ -1125,20 +1231,30 @@
                                 </div>
                                 @endif
                             </div>
-                            @if($sub->file_path)
-                                @if($subIsImage)
-                                <button type="button" @click="show({{ json_encode($subItem) }})"
+                            @foreach($entry['subs'] as $subFile)
+                            @if($subFile->file_path)
+                                @php
+                                    $sfExt     = strtolower(pathinfo($subFile->original_filename ?? '', PATHINFO_EXTENSION));
+                                    $sfIsImage = in_array($sfExt, ['jpg','jpeg','png','gif','webp','svg']);
+                                    $sfIsVideo = in_array($sfExt, ['mp4','mov','avi','webm','mkv']);
+                                    $sfUrl     = $subFile->fileUrl();
+                                    $sfIconMap = ['pdf'=>'fa-file-pdf','doc'=>'fa-file-word','docx'=>'fa-file-word','xls'=>'fa-file-excel','xlsx'=>'fa-file-excel','ppt'=>'fa-file-powerpoint','pptx'=>'fa-file-powerpoint','zip'=>'fa-file-zipper','rar'=>'fa-file-zipper','txt'=>'fa-file-lines'];
+                                    $sfIcon    = $sfIconMap[$sfExt] ?? 'fa-file';
+                                    $sfItem    = ['name'=>$subFile->original_filename ?? 'file','url'=>$sfUrl,'downloadUrl'=>route('admin.submissions.download',$subFile),'isImage'=>$sfIsImage,'version'=>$subFile->version];
+                                @endphp
+                                @if($sfIsImage)
+                                <button type="button" @click="show({{ json_encode($sfItem) }})"
                                         style="display:block;margin-bottom:10px;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:300px;width:100%;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;"
                                         onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
-                                    <img src="{{ $subUrl }}" alt="{{ $sub->original_filename }}" style="width:100%;max-height:160px;object-fit:cover;display:block;">
+                                    <img src="{{ $sfUrl }}" alt="{{ $subFile->original_filename }}" style="width:100%;max-height:160px;object-fit:cover;display:block;">
                                     <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
                                         <i class="fa fa-image" style="color:#6366F1;font-size:10px;"></i>
-                                        <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $sub->original_filename }}</span>
+                                        <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $subFile->original_filename }}</span>
                                         <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
                                     </div>
                                 </button>
-                                @elseif($subIsVideo)
-                                <button type="button" @click="show({{ json_encode($subItem) }})"
+                                @elseif($sfIsVideo)
+                                <button type="button" @click="show({{ json_encode($sfItem) }})"
                                         style="display:block;margin-bottom:10px;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:300px;width:100%;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;"
                                         onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                                     <div style="background:#1F2937;height:110px;display:flex;align-items:center;justify-content:center;">
@@ -1148,25 +1264,26 @@
                                     </div>
                                     <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
                                         <i class="fa fa-video" style="color:#6366F1;font-size:10px;"></i>
-                                        <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $sub->original_filename }}</span>
-                                        <i class="fa fa-download" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
+                                        <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $subFile->original_filename }}</span>
+                                        <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
                                     </div>
                                 </button>
                                 @else
-                                <button type="button" @click="show({{ json_encode($subItem) }})"
+                                <button type="button" @click="show({{ json_encode($sfItem) }})"
                                         style="display:inline-flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 14px;background:#fff;border:1px solid #E5E7EB;border-radius:9px;cursor:pointer;max-width:300px;transition:border-color .15s;"
                                         onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                                     <div style="width:36px;height:36px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                        <i class="fa {{ $subIcon }}" style="color:#6366F1;font-size:16px;"></i>
+                                        <i class="fa {{ $sfIcon }}" style="color:#6366F1;font-size:16px;"></i>
                                     </div>
                                     <div style="flex:1;min-width:0;text-align:left;">
-                                        <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $sub->original_filename }}</p>
-                                        <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;text-transform:uppercase;">{{ $subExt ?: 'file' }}</p>
+                                        <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $subFile->original_filename }}</p>
+                                        <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;text-transform:uppercase;">{{ $sfExt ?: 'file' }}</p>
                                     </div>
                                     <i class="fa fa-eye" style="font-size:11px;color:#9CA3AF;flex-shrink:0;"></i>
                                 </button>
                                 @endif
                             @endif
+                            @endforeach
                             @if($sub->status !== 'submitted')
                             <div style="background:{{ $sub->status === 'approved' ? '#F0FDF4' : '#FEF2F2' }};border-radius:8px;padding:8px 12px;border-left:3px solid {{ $sub->status === 'approved' ? '#10B981' : '#EF4444' }};">
                                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:{{ $sub->admin_note ? '4px' : '0' }};">
@@ -1225,16 +1342,16 @@
                                 <p style="font-size:13px;color:#374151;margin:0{{ $comment->file_path ? ' 0 10px' : '' }};line-height:1.6;" x-text="body"></p>
                                 @if($comment->file_path)
                                     @if($cIsImage)
-                                    <a href="{{ $cUrl }}" target="_blank" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;text-decoration:none;">
+                                    <button type="button" @click="showComment({{ json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'isImage'=>true,'isVideo'=>false]) }})" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;width:100%;" onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                                         <img src="{{ $cUrl }}" alt="{{ $comment->original_filename }}" style="width:100%;max-height:140px;object-fit:cover;display:block;">
                                         <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
                                             <i class="fa fa-image" style="color:#6366F1;font-size:10px;"></i>
                                             <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $comment->original_filename }}</span>
-                                            <i class="fa fa-arrow-up-right-from-square" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
+                                            <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
                                         </div>
-                                    </a>
+                                    </button>
                                     @elseif($cIsVideo)
-                                    <a href="{{ $cUrl }}" target="_blank" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;text-decoration:none;">
+                                    <button type="button" @click="showComment({{ json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'isImage'=>false,'isVideo'=>true]) }})" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;width:100%;" onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                                         <div style="background:#1F2937;height:90px;display:flex;align-items:center;justify-content:center;">
                                             <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;">
                                                 <i class="fa fa-play" style="color:#fff;font-size:13px;margin-left:2px;"></i>
@@ -1243,9 +1360,9 @@
                                         <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
                                             <i class="fa fa-video" style="color:#6366F1;font-size:10px;"></i>
                                             <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $comment->original_filename }}</span>
-                                            <i class="fa fa-arrow-up-right-from-square" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
+                                            <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
                                         </div>
-                                    </a>
+                                    </button>
                                     @else
                                     <a href="{{ $cUrl }}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;text-decoration:none;max-width:280px;transition:border-color .15s;"
                                        onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
@@ -1295,6 +1412,57 @@
                 <p style="font-size:13px;margin:0;">No activity yet.</p>
             </div>
             @endif
+
+            {{-- Comment file preview modal --}}
+            <template x-teleport="body">
+                <div x-show="commentOpen" x-cloak
+                     @keydown.escape.window="closeComment()"
+                     style="position:fixed;inset:0;z-index:10000;">
+                    <div @click.self="closeComment()"
+                         style="width:100%;height:100%;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;">
+                    <div x-transition
+                         style="background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.2);width:100%;max-width:min(90vw,900px);overflow:hidden;">
+                        <template x-if="commentItem">
+                        <div>
+                            <div style="padding:20px 24px 16px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;gap:12px;">
+                                <div style="width:40px;height:40px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fa fa-paperclip" style="color:#6366F1;font-size:16px;"></i>
+                                </div>
+                                <div style="flex:1;min-width:0;">
+                                    <p style="font-size:14px;font-weight:700;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="commentItem.name"></p>
+                                    <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Comment attachment</p>
+                                </div>
+                                <button @click="closeComment()" style="width:32px;height:32px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fa fa-xmark" style="color:#6B7280;font-size:13px;"></i>
+                                </button>
+                            </div>
+                            <template x-if="commentItem.isImage">
+                                <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#F9FAFB;display:flex;justify-content:center;">
+                                    <img :src="commentItem.url" :alt="commentItem.name" style="max-width:100%;max-height:75vh;border-radius:10px;object-fit:contain;display:block;">
+                                </div>
+                            </template>
+                            <template x-if="commentItem.isVideo">
+                                <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#000;display:flex;justify-content:center;">
+                                    <video :src="commentItem.url" controls style="max-width:100%;max-height:75vh;border-radius:10px;display:block;"></video>
+                                </div>
+                            </template>
+                            <div style="padding:16px 24px;display:flex;gap:10px;justify-content:flex-end;">
+                                <button @click="closeComment()"
+                                        style="padding:9px 18px;background:#F3F4F6;color:#6B7280;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">
+                                    Close
+                                </button>
+                                <a :href="commentItem.url" download
+                                   style="display:inline-flex;align-items:center;gap:6px;padding:9px 20px;background:#6366F1;color:#fff;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;transition:background .15s;"
+                                   onmouseover="this.style.background='#4F46E5'" onmouseout="this.style.background='#6366F1'">
+                                    <i class="fa fa-download" style="font-size:11px;"></i> Download
+                                </a>
+                            </div>
+                        </div>
+                        </template>
+                    </div>
+                    </div>
+                </div>
+            </template>
 
             {{-- Submission file preview modal --}}
             <template x-teleport="body">
@@ -1550,8 +1718,9 @@ function taskApprovalPage() {
         approvalModal:          false,
         approvalTask:           null,
         approvalNote:           '',
-        approvalSocial:         null,
-        approvalSocialUser:     '',
+        approvalSocial:          null,
+        approvalSocialUser:      '',
+        approvalSocialPlatforms: [],
         approvalNotifyEmail:    false,
         approvalNotifyWhatsapp: false,
         approvalCustomerMsg:    '',
@@ -1565,8 +1734,9 @@ function taskApprovalPage() {
         openApprovalModal(task) {
             this.approvalTask           = task;
             this.approvalNote           = '';
-            this.approvalSocial         = null;
-            this.approvalSocialUser     = '';
+            this.approvalSocial          = null;
+            this.approvalSocialUser      = '';
+            this.approvalSocialPlatforms = [];
             this.approvalNotifyEmail    = false;
             this.approvalNotifyWhatsapp = false;
             this.approvalCustomerMsg    = '';

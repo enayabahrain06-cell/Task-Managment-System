@@ -58,11 +58,11 @@
 ════════════════════════════════ --}}
 <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:20px;">
     @foreach([
-        ['Total Tasks',   ($total - $completed) + $pendingSocialPosts, 'fa-list-check', '#EEF2FF', '#4F46E5', 'Assigned to you', 'F0F0F0', 'total', '#4F46E5'],
-        ['Completed',     $completed + $completedSocialPosts, 'fa-circle-check', '#F0FDF4', '#16A34A', $rate.'% rate'.($completedSocialPosts>0?' · '.$completedSocialPosts.' post'.($completedSocialPosts>1?'s':'').' done':''), 'F0F0F0', 'completed', '#16A34A'],
-        ['In Progress',   $inProgress,      'fa-spinner',              '#FFFBEB', '#D97706', 'Active tasks',      'F0F0F0', 'in_progress', '#D97706'],
-        ['In Review',     $pendingApproval, 'fa-hourglass-half',       '#F5F3FF', '#7C3AED', 'Awaiting approval', 'F0F0F0', 'in_review', '#7C3AED'],
-        ['Overdue',       $overdue,         'fa-triangle-exclamation', $overdue>0?'#FEF2F2':'#F8FAFC', $overdue>0?'#DC2626':'#9CA3AF', $overdue>0?'Needs attention':'All on time', $overdue>0?'FECACA':'F0F0F0', 'overdue', '#EF4444'],
+        ['Total Tasks',   $cardTotal,      'fa-list-check',            '#EEF2FF', '#4F46E5', 'Assigned to you',   'F0F0F0', 'total',       '#4F46E5'],
+        ['Completed',     $cardCompleted,  'fa-circle-check',          '#F0FDF4', '#16A34A', $rate.'% rate'.($completedSocialPosts>0?' · '.$completedSocialPosts.' post'.($completedSocialPosts>1?'s':'').' done':''), 'F0F0F0', 'completed', '#16A34A'],
+        ['In Progress',   $cardInProgress, 'fa-spinner',               '#FFFBEB', '#D97706', 'Active tasks',      'F0F0F0', 'in_progress', '#D97706'],
+        ['In Review',     $cardInReview,   'fa-hourglass-half',        '#F5F3FF', '#7C3AED', 'Awaiting approval', 'F0F0F0', 'in_review',   '#7C3AED'],
+        ['Overdue',       $cardOverdue,    'fa-triangle-exclamation',  $cardOverdue>0?'#FEF2F2':'#F8FAFC', $cardOverdue>0?'#DC2626':'#9CA3AF', $cardOverdue>0?'Needs attention':'All on time', $cardOverdue>0?'FECACA':'F0F0F0', 'overdue', '#EF4444'],
         ['Pending Posts', $pendingSocialPosts, 'fa-share-nodes',       $pendingSocialPosts>0?'#FFF7ED':'#F8FAFC', $pendingSocialPosts>0?'#EA580C':'#9CA3AF', $pendingSocialPosts>0?'Needs posting':($completedSocialPosts>0?$completedSocialPosts.' completed':'No pending posts'), $pendingSocialPosts>0?'FED7AA':'F0F0F0', 'social', '#EA580C'],
     ] as $i => [$label,$val,$icon,$bg,$ic,$sub,$border,$filter,$color])
     <div onclick="openUserStatsModal('{{ $filter }}','{{ $label }}','{{ $color }}','{{ $bg }}','{{ $icon }}')"
@@ -177,7 +177,8 @@ function openUserStatsModal(filter, label, color, bg, icon, date) {
             empty.style.display = 'block';
             return;
         }
-        countEl.textContent = tasks.length + ' task' + (tasks.length !== 1 ? 's' : '');
+        var total = data.total != null ? data.total : tasks.length;
+        countEl.textContent = total + ' task' + (total !== 1 ? 's' : '') + (total > tasks.length ? ' (showing ' + tasks.length + ')' : '');
         items.innerHTML = tasks.map(function(t) {
             var deadlineHtml = '';
             if (t.deadline) {
@@ -302,6 +303,7 @@ document.addEventListener('keydown', function(e) {
                             'in_progress'        => ['#FFFBEB','#D97706','In Progress'],
                             'submitted'          => ['#F5F3FF','#7C3AED','In Review'],
                             'revision_requested' => ['#FFF7ED','#C2410C','Revision'],
+                            'pending_customer'   => ['#FEF3C7','#D97706','Awaiting Client'],
                             'approved'           => ['#F0FDF4','#16A34A','Approved'],
                             'delivered'          => ['#ECFDF5','#047857','Delivered'],
                             'archived'           => ['#F3F4F6','#6B7280','Archived'],
@@ -343,8 +345,12 @@ document.addEventListener('keydown', function(e) {
                         </div>
                         <span style="font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;background:{{ $sbg }};color:{{ $sco }};flex-shrink:0;">{{ $slbl }}</span>
                         <span style="font-size:11px;font-weight:{{ $isOv?'700':'500' }};color:{{ $isOv?'#DC2626':($dl<=3?'#D97706':'#9CA3AF') }};flex-shrink:0;white-space:nowrap;min-width:60px;text-align:right;">
-                            @if($isOv)<i class="fas fa-triangle-exclamation" style="font-size:9px;margin-right:2px;"></i>Overdue
+                            @if($isOv && $task->status==='pending_customer')
+                                <i class="fas fa-user-clock" style="font-size:9px;margin-right:2px;"></i>Client Late
+                            @elseif($isOv)
+                                <i class="fas fa-triangle-exclamation" style="font-size:9px;margin-right:2px;"></i>Overdue
                             @elseif($isDone)<i class="fas fa-check" style="font-size:9px;margin-right:2px;color:#16A34A;"></i>Done
+                            @elseif($task->status==='pending_customer')<i class="fas fa-user-clock" style="font-size:9px;margin-right:2px;color:#D97706;"></i>Client
                             @elseif($task->status==='submitted')<i class="fas fa-hourglass-half" style="font-size:9px;margin-right:2px;color:#7C3AED;"></i>Review
                             @elseif(!$task->deadline)—
                             @elseif($dl===0)Today
@@ -366,89 +372,65 @@ document.addEventListener('keydown', function(e) {
                 {{-- Completed Tasks --}}
                 @if($completedTasks->isNotEmpty())
                 <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #F3F4F6;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 12px;border-bottom:1px solid #F3F4F6;">
                         <div>
-                            <h3 style="font-size:14px;font-weight:700;color:#111827;margin:0;">
-                                <i class="fas fa-circle-check" style="color:#16A34A;margin-right:6px;font-size:13px;"></i>Completed Tasks
+                            <h3 style="font-size:13px;font-weight:700;color:#111827;margin:0;">
+                                <i class="fas fa-circle-check" style="color:#16A34A;margin-right:5px;font-size:12px;"></i>Completed Tasks
                             </h3>
-                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Approved &amp; delivered by your manager</p>
+                            <p style="font-size:10.5px;color:#9CA3AF;margin:1px 0 0;">Approved &amp; delivered by your manager</p>
                         </div>
-                        <span style="font-size:11px;font-weight:700;color:#16A34A;background:#F0FDF4;padding:4px 12px;border-radius:20px;border:1px solid #BBF7D0;">{{ $completedTasks->count() }} task{{ $completedTasks->count() !== 1 ? 's' : '' }}</span>
+                        <span style="font-size:11px;font-weight:700;color:#16A34A;background:#F0FDF4;padding:3px 10px;border-radius:20px;border:1px solid #BBF7D0;">{{ $completedTasks->count() }}</span>
                     </div>
-                    @foreach($completedTasks->take(8) as $task)
                     @php
                         $cSm = [
-                            'approved'  => ['#F0FDF4','#16A34A','Approved'],
-                            'delivered' => ['#ECFDF5','#047857','Delivered'],
-                            'archived'  => ['#F3F4F6','#6B7280','Archived'],
+                            'approved'  => ['#F0FDF4','#16A34A','Approved',  'fa-circle-check'],
+                            'delivered' => ['#ECFDF5','#047857','Delivered', 'fa-truck'],
+                            'archived'  => ['#F3F4F6','#6B7280','Archived',  'fa-box-archive'],
                         ];
-                        [$cBg,$cCo,$cLbl] = $cSm[$task->status] ?? ['#F8FAFC','#9CA3AF',ucfirst($task->status)];
+                    @endphp
+                    @foreach($completedTasks->take(3) as $task)
+                    @php
+                        [$cBg,$cCo,$cLbl,$cIcon] = $cSm[$task->status] ?? ['#F8FAFC','#9CA3AF',ucfirst($task->status),'fa-check'];
                         $cPco = ['high'=>'#DC2626','medium'=>'#D97706','low'=>'#16A34A'][$task->priority] ?? '#9CA3AF';
                     @endphp
                     <a href="{{ $isPreview ? route('admin.tasks.show',$task) : route('user.tasks.show',$task) }}"
-                       style="display:flex;align-items:center;gap:12px;padding:11px 20px;border-bottom:1px solid #F9FAFB;text-decoration:none;background:#fff;transition:background .1s;"
+                       style="display:flex;align-items:center;gap:10px;padding:9px 18px;border-bottom:1px solid #F9FAFB;text-decoration:none;background:#fff;transition:background .1s;"
                        onmouseover="this.style.background='#F9FFF9'" onmouseout="this.style.background='#fff'">
-                        <div style="width:8px;height:8px;border-radius:50%;background:{{ $cPco }};flex-shrink:0;margin-top:1px;opacity:0.5;"></div>
+                        <div style="width:28px;height:28px;border-radius:8px;background:{{ $cBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas {{ $cIcon }}" style="font-size:10px;color:{{ $cCo }};"></i>
+                        </div>
                         <div style="flex:1;min-width:0;">
-                            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                                <p style="font-size:13px;font-weight:500;color:#6B7280;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:line-through;">{{ $task->title }}</p>
+                            <p style="font-size:12px;font-weight:500;color:#9CA3AF;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:line-through;">{{ $task->title }}</p>
+                            <div style="display:flex;align-items:center;gap:6px;margin-top:1px;flex-wrap:wrap;">
+                                @if($task->project)
+                                <span style="font-size:10px;color:#C4C9D4;">{{ Str::limit($task->project->name, 28) }}</span>
+                                @endif
                                 @if(!empty($task->is_received))
-                                <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:5px;background:#FEF9C3;color:#854D0E;flex-shrink:0;white-space:nowrap;border:1px solid #FDE68A;">
-                                    <i class="fas fa-arrows-rotate" style="font-size:8px;margin-right:2px;"></i>{{ $task->from_user ? 'from '.$task->from_user : 'Reassigned' }}
+                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#FEF9C3;color:#854D0E;white-space:nowrap;border:1px solid #FDE68A;">
+                                    <i class="fas fa-arrows-rotate" style="font-size:7px;margin-right:1px;"></i>{{ $task->from_user ? 'from '.$task->from_user : 'Reassigned' }}
                                 </span>
                                 @endif
                             </div>
-                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">{{ $task->project?->name }}</p>
                         </div>
-                        <span style="font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;background:{{ $cBg }};color:{{ $cCo }};flex-shrink:0;">{{ $cLbl }}</span>
-                        <span style="font-size:11px;font-weight:500;color:#9CA3AF;flex-shrink:0;white-space:nowrap;min-width:60px;text-align:right;">
-                            <i class="fas fa-check" style="font-size:9px;color:#16A34A;margin-right:2px;"></i>Done
-                        </span>
+                        <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:{{ $cBg }};color:{{ $cCo }};flex-shrink:0;border:1px solid {{ $cBg }};">{{ $cLbl }}</span>
                     </a>
                     @endforeach
-                    @if($completedTasks->count() > 8)
-                    <div style="padding:10px 20px;text-align:center;">
-                        @unless($isPreview)
-                        <a href="{{ route('user.tasks.index') }}" style="font-size:12px;color:#6B7280;text-decoration:none;">+{{ $completedTasks->count() - 8 }} more &mdash; View all tasks</a>
-                        @endunless
+                    <div style="padding:9px 18px;border-top:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
+                        <span style="font-size:10.5px;color:#C4C9D4;">
+                            {{ $completedTasks->count() > 3 ? '+'.($completedTasks->count() - 3).' more' : '' }}
+                        </span>
+                        <a href="{{ $isPreview ? route('admin.users.task-history', $previewUser) : route('user.tasks.index') }}" style="font-size:11px;font-weight:600;color:#6366F1;text-decoration:none;display:flex;align-items:center;gap:4px;">
+                            View all <i class="fas fa-arrow-right" style="font-size:9px;"></i>
+                        </a>
                     </div>
-                    @endif
                 </div>
                 @endif
 
-                {{-- Activity --}}
-                <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
-                    <div style="padding:16px 20px;border-bottom:1px solid #F3F4F6;">
-                        <h3 style="font-size:14px;font-weight:700;color:#111827;margin:0;">Recent Activity</h3>
-                        <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Your latest updates</p>
-                    </div>
-                    @forelse($recentActivity as $log)
-                    @php
-                        $am=['status_updated_completed'=>['fa-circle-check','#16A34A','#F0FDF4','Completed'],'status_updated_in_progress'=>['fa-spinner','#D97706','#FFFBEB','Started'],'status_updated_pending'=>['fa-clock','#64748B','#F8FAFC','Set pending'],'status_updated_submitted'=>['fa-hourglass-half','#7C3AED','#F5F3FF','Submitted']];
-                        [$ai,$ac,$ab,$al]=$am[$log->action]??['fa-circle-dot','#6366F1','#EEF2FF',ucfirst(str_replace('_',' ',$log->action))];
-                    @endphp
-                    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 20px;border-bottom:1px solid #F9FAFB;">
-                        <div style="width:30px;height:30px;border-radius:9px;background:{{ $ab }};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
-                            <i class="fas {{ $ai }}" style="font-size:11px;color:{{ $ac }};"></i>
-                        </div>
-                        <div style="flex:1;min-width:0;">
-                            <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">{{ $al }}
-                                @if($log->task)<span style="font-weight:400;color:#6B7280;">— {{ Str::limit($log->task->title,32) }}</span>@endif
-                            </p>
-                            @if($log->note)<p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;font-style:italic;">"{{ Str::limit($log->note,50) }}"</p>@endif
-                            <p style="font-size:10px;color:#C4C9D4;margin:2px 0 0;">{{ $log->created_at->diffForHumans() }}</p>
-                        </div>
-                    </div>
-                    @empty
-                    <div style="text-align:center;padding:28px;color:#9CA3AF;font-size:12px;">No activity yet</div>
-                    @endforelse
-                </div>
-
                 {{-- Combined Performance & Project Statistics card --}}
                 @php
-                    $perfCompleted = $completed + $completedSocialPosts;
-                    $perfTotal     = $perfCompleted + $inProgress + $pendingApproval + $overdue;
-                    $perfRate      = $perfTotal > 0 ? round($perfCompleted / $perfTotal * 100) : $rate;
+                    $perfCompleted = $cardCompleted;
+                    $perfTotal     = $cardCompleted + $cardInProgress + $cardInReview + $cardOverdue;
+                    $perfRate      = $perfTotal > 0 ? round($cardCompleted / $perfTotal * 100) : $rate;
                 @endphp
                 <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.05);padding:20px;transition:box-shadow .2s,transform .2s;"
                      onmouseover="this.style.boxShadow='0 6px 24px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.05)'">
@@ -479,7 +461,7 @@ document.addEventListener('keydown', function(e) {
                         </div>
                         <div style="flex:1;min-width:0;">
                             <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
-                                @foreach([['Completed','#10B981',$completed + $completedSocialPosts],['In Progress','#F59E0B',$inProgress],['In Review','#8B5CF6',$pendingApproval],['Overdue','#EF4444',$overdue]] as [$lbl,$lco,$lv])
+                                @foreach([['Completed','#10B981',$cardCompleted],['In Progress','#F59E0B',$cardInProgress],['In Review','#8B5CF6',$cardInReview],['Overdue','#EF4444',$cardOverdue]] as [$lbl,$lco,$lv])
                                 <div style="background:#F9FAFB;border-radius:8px;padding:8px 10px;border:1px solid #F0F0F0;">
                                     <p style="font-size:18px;font-weight:800;color:{{ $lco }};margin:0;line-height:1;">{{ $lv }}</p>
                                     <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">{{ $lbl }}</p>
@@ -680,6 +662,51 @@ document.addEventListener('keydown', function(e) {
                         <div style="text-align:center;padding:18px;font-size:12px;color:#9CA3AF;">No upcoming deadlines!</div>
                         @endforelse
                     </div>
+                </div>
+
+                {{-- Activity --}}
+                <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
+                    <div style="padding:14px 18px 12px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
+                        <div>
+                            <h3 style="font-size:13px;font-weight:700;color:#111827;margin:0;">Recent Activity</h3>
+                            <p style="font-size:10.5px;color:#9CA3AF;margin:1px 0 0;">Your last 5 updates</p>
+                        </div>
+                        <a href="{{ route('activities.index') }}" style="font-size:11px;font-weight:600;color:#6366F1;text-decoration:none;display:flex;align-items:center;gap:4px;">
+                            View all <i class="fas fa-arrow-right" style="font-size:9px;"></i>
+                        </a>
+                    </div>
+                    @forelse($recentActivity->take(5) as $log)
+                    @php
+                        [$ai, $ac, $ab] = $log->actionStyle();
+                        $al  = $log->actionLabel();
+                        $trivialNotes = ['Timer started.', 'Timer paused manually.', 'Auto-paused due to task switch.'];
+                        $showNote = $log->note && !in_array(trim($log->note), $trivialNotes)
+                            && !str_starts_with($log->note, 'Task details updated by')
+                            && !str_starts_with($log->note, 'Task "');
+                    @endphp
+                    <div style="display:flex;align-items:flex-start;gap:10px;padding:9px 18px;border-bottom:1px solid #F9FAFB;">
+                        <div style="width:28px;height:28px;border-radius:8px;background:{{ $ab }};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
+                            <i class="fas {{ $ai }}" style="font-size:10px;color:{{ $ac }};"></i>
+                        </div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;">
+                                <span style="font-size:11.5px;font-weight:600;color:#111827;">{{ $al }}</span>
+                                @if($log->task)
+                                <span style="font-size:11px;color:#9CA3AF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px;">{{ Str::limit($log->task->title, 22) }}</span>
+                                @endif
+                                <span style="font-size:10px;color:#D1D5DB;margin-left:auto;white-space:nowrap;">{{ $log->created_at->diffForHumans() }}</span>
+                            </div>
+                            @if($showNote)
+                            <p style="font-size:10.5px;color:#9CA3AF;margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">"{{ Str::limit($log->note, 38) }}"</p>
+                            @endif
+                        </div>
+                    </div>
+                    @empty
+                    <div style="text-align:center;padding:20px;color:#9CA3AF;font-size:12px;">
+                        <i class="fas fa-bolt" style="font-size:20px;color:#E5E7EB;display:block;margin-bottom:6px;"></i>
+                        No activity yet
+                    </div>
+                    @endforelse
                 </div>
 
             </div>{{-- /right --}}
@@ -1215,7 +1242,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 @push('scripts')
 @php
-    $perfData   = $perfTotal > 0 ? [$perfCompleted, $inProgress, $pendingApproval, $overdue] : [1];
+    $perfData   = $perfTotal > 0 ? [$cardCompleted, $cardInProgress, $cardInReview, $cardOverdue] : [1];
     $perfColors = $perfTotal > 0 ? ['#10B981','#F59E0B','#8B5CF6','#EF4444'] : ['#E5E7EB'];
 @endphp
 <script>

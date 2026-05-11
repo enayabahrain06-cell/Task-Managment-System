@@ -107,6 +107,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
             ['id'=>'mail',          'icon'=>'fa-envelope',       'label'=>'Mail / SMTP'],
             ['id'=>'whatsapp',      'icon'=>'fa-brands fa-whatsapp', 'label'=>'WhatsApp'],
             ['id'=>'security',      'icon'=>'fa-shield-halved',  'label'=>'Security'],
+            ['id'=>'storage',        'icon'=>'fa-hard-drive',      'label'=>'Storage / NAS'],
             ['id'=>'backup',        'icon'=>'fa-database',       'label'=>'Backup & Export'],
             ['id'=>'developer',     'icon'=>'fa-code',           'label'=>'Developer'],
             ['id'=>'danger',        'icon'=>'fa-trash-can',      'label'=>'Clear Data'],
@@ -1024,6 +1025,453 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
             </div>
         </div>
 
+        {{-- ════ STORAGE / NAS ════ --}}
+        <div x-show="tab === 'storage'" x-cloak>
+
+            {{-- Google Drive --}}
+            <div class="scard" style="margin-bottom:20px;">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#FEF2F2;color:#EA4335;"><i class="fab fa-google-drive"></i></div>
+                    <div>
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Google Drive</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Store and sync task files with Google Drive</p>
+                    </div>
+                    <div style="margin-left:auto;">
+                        <form method="POST" action="{{ route('admin.settings.storage') }}" id="gdrive-toggle-form">@csrf
+                            <input type="hidden" name="storage_gdrive_enabled" value="{{ $settings['storage_gdrive_enabled'] === '1' ? '0' : '1' }}">
+                            {{-- keep other fields from being reset on toggle --}}
+                            <input type="hidden" name="storage_gdrive_client_id"  value="{{ $settings['storage_gdrive_client_id'] }}">
+                            <input type="hidden" name="storage_gdrive_folder_id"  value="{{ $settings['storage_gdrive_folder_id'] }}">
+                            <input type="hidden" name="storage_onedrive_enabled"    value="{{ $settings['storage_onedrive_enabled'] }}">
+                            <input type="hidden" name="storage_onedrive_client_id"  value="{{ $settings['storage_onedrive_client_id'] }}">
+                            <input type="hidden" name="storage_onedrive_tenant_id"  value="{{ $settings['storage_onedrive_tenant_id'] }}">
+                            <input type="hidden" name="storage_onedrive_folder_id"  value="{{ $settings['storage_onedrive_folder_id'] }}">
+                            <input type="hidden" name="storage_omv_enabled"   value="{{ $settings['storage_omv_enabled'] }}">
+                            <input type="hidden" name="storage_omv_protocol"  value="{{ $settings['storage_omv_protocol'] }}">
+                            <input type="hidden" name="storage_omv_host"      value="{{ $settings['storage_omv_host'] }}">
+                            <input type="hidden" name="storage_omv_port"      value="{{ $settings['storage_omv_port'] }}">
+                            <input type="hidden" name="storage_omv_username"  value="{{ $settings['storage_omv_username'] }}">
+                            <input type="hidden" name="storage_omv_path"      value="{{ $settings['storage_omv_path'] }}">
+                            <button type="submit" style="position:relative;width:44px;height:24px;border-radius:12px;border:none;cursor:pointer;background:{{ $settings['storage_gdrive_enabled']==='1' ? '#6366F1' : '#D1D5DB' }};transition:background .2s;flex-shrink:0;"
+                                    title="{{ $settings['storage_gdrive_enabled']==='1' ? 'Disable' : 'Enable' }} Google Drive">
+                                <span style="position:absolute;top:2px;left:{{ $settings['storage_gdrive_enabled']==='1' ? '22px' : '2px' }};width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);"></span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <form method="POST" action="{{ route('admin.settings.storage') }}">
+                    @csrf
+                    <input type="hidden" name="storage_gdrive_enabled"      value="{{ $settings['storage_gdrive_enabled'] }}">
+                    <input type="hidden" name="storage_onedrive_enabled"    value="{{ $settings['storage_onedrive_enabled'] }}">
+                    <input type="hidden" name="storage_onedrive_client_id"  value="{{ $settings['storage_onedrive_client_id'] }}">
+                    <input type="hidden" name="storage_onedrive_tenant_id"  value="{{ $settings['storage_onedrive_tenant_id'] }}">
+                    <input type="hidden" name="storage_onedrive_folder_id"  value="{{ $settings['storage_onedrive_folder_id'] }}">
+                    <input type="hidden" name="storage_omv_enabled"   value="{{ $settings['storage_omv_enabled'] }}">
+                    <input type="hidden" name="storage_omv_protocol"  value="{{ $settings['storage_omv_protocol'] }}">
+                    <input type="hidden" name="storage_omv_host"      value="{{ $settings['storage_omv_host'] }}">
+                    <input type="hidden" name="storage_omv_port"      value="{{ $settings['storage_omv_port'] }}">
+                    <input type="hidden" name="storage_omv_username"  value="{{ $settings['storage_omv_username'] }}">
+                    <input type="hidden" name="storage_omv_path"      value="{{ $settings['storage_omv_path'] }}">
+                    <div class="scard-body">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+                            <div class="sf-group" style="margin-bottom:0;">
+                                <label class="sf-label">Client ID</label>
+                                <input type="text" name="storage_gdrive_client_id" class="sf-input"
+                                       value="{{ $settings['storage_gdrive_client_id'] }}"
+                                       placeholder="123456789-abc.apps.googleusercontent.com">
+                            </div>
+                            <div class="sf-group" style="margin-bottom:0;">
+                                <label class="sf-label">Client Secret</label>
+                                <input type="password" name="storage_gdrive_client_sec" class="sf-input"
+                                       placeholder="{{ $settings['storage_gdrive_client_sec'] ? '••••••••' : 'GOCSPX-…' }}">
+                            </div>
+                        </div>
+                        <div class="sf-group" style="margin-bottom:14px;">
+                            <label class="sf-label">Folder / Shared Drive ID</label>
+                            <input type="text" name="storage_gdrive_folder_id" class="sf-input"
+                                   value="{{ $settings['storage_gdrive_folder_id'] }}"
+                                   placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
+                            <p class="sf-hint">The ID from the Drive folder URL — <code>drive.google.com/drive/folders/<strong>ID</strong></code></p>
+                        </div>
+                        <div class="sf-group" style="margin-bottom:0;">
+                            <label class="sf-label" style="display:flex;align-items:center;gap:8px;">
+                                Service Account JSON
+                                <span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:6px;background:#FEF3C7;color:#92400E;">Required for Backup</span>
+                            </label>
+                            <textarea name="storage_gdrive_sa_json" class="sf-input" rows="5"
+                                      style="font-family:monospace;font-size:11px;resize:vertical;"
+                                      placeholder='{
+  "type": "service_account",
+  "project_id": "...",
+  "private_key_id": "...",
+  "private_key": "-----BEGIN RSA PRIVATE KEY-----\n...",
+  "client_email": "...@....iam.gserviceaccount.com",
+  ...
+}'>{{ $settings['storage_gdrive_sa_json'] }}</textarea>
+                            <p class="sf-hint">Download from Google Cloud Console → IAM → Service Accounts → Keys → Add Key → JSON. Share the target Drive folder with the <code>client_email</code> from this JSON.</p>
+                        </div>
+                    </div>
+                    <div class="scard-footer" x-data="{ testing:false, backing:false, ok:null, msg:'', link:null }">
+                        <div x-show="msg" style="flex:1;font-size:12px;font-weight:600;padding:6px 10px;border-radius:8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;"
+                             :style="ok ? 'background:#D1FAE5;color:#065F46;' : 'background:#FEE2E2;color:#991B1B;'">
+                            <i :class="ok ? 'fas fa-circle-check' : 'fas fa-circle-xmark'" style="font-size:12px;"></i>
+                            <span x-text="msg"></span>
+                            <a x-show="link" :href="link" target="_blank" style="margin-left:6px;color:#047857;font-size:11px;text-decoration:underline;">Open in Drive →</a>
+                        </div>
+                        <button type="button" @click="
+                            backing=true; ok=null; msg=''; link=null;
+                            fetch('{{ route('admin.settings.storage.backup.gdrive') }}', {method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}})
+                            .then(r=>r.json()).then(d=>{ok=d.ok;msg=d.message;link=d.link||null;}).catch(e=>{ok=false;msg='Request failed.'})
+                            .finally(()=>backing=false)"
+                            :disabled="backing||testing"
+                            style="padding:8px 16px;border:1.5px solid #16A34A33;border-radius:9px;background:#F0FDF4;color:#15803D;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:border-color .15s;"
+                            onmouseover="this.style.borderColor='#16A34A'" onmouseout="this.style.borderColor='#16A34A33'">
+                            <i class="fas fa-cloud-arrow-up" x-show="!backing" style="font-size:11px;"></i>
+                            <i class="fas fa-spinner fa-spin" x-show="backing" style="font-size:11px;"></i>
+                            <span x-text="backing ? 'Uploading…' : 'Backup Now to Drive'">Backup Now to Drive</span>
+                        </button>
+                        <button type="button" @click="
+                            testing=true; ok=null; msg=''; link=null;
+                            fetch('{{ route('admin.settings.storage.test.gdrive') }}', {method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}})
+                            .then(r=>r.json()).then(d=>{ok=d.ok;msg=d.message;}).catch(e=>{ok=false;msg='Request failed.'})
+                            .finally(()=>testing=false)"
+                            :disabled="testing"
+                            style="padding:8px 16px;border:1.5px solid #E5E7EB;border-radius:9px;background:#fff;color:#374151;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:border-color .15s;"
+                            onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
+                            <i class="fas fa-plug" x-show="!testing" style="font-size:11px;color:#6366F1;"></i>
+                            <i class="fas fa-spinner fa-spin" x-show="testing" style="font-size:11px;"></i>
+                            <span x-text="testing ? 'Testing…' : 'Test Connection'">Test Connection</span>
+                        </button>
+                        <button type="submit" class="sf-btn-primary"><i class="fas fa-save" style="margin-right:6px;"></i>Save Google Drive</button>
+                    </div>
+                </form>
+            </div>
+
+            {{-- OneDrive --}}
+            <div class="scard" style="margin-bottom:20px;">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#EFF6FF;color:#0078D4;"><i class="fab fa-microsoft"></i></div>
+                    <div>
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">OneDrive / SharePoint</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Sync task files with Microsoft OneDrive or SharePoint</p>
+                    </div>
+                    <div style="margin-left:auto;">
+                        <form method="POST" action="{{ route('admin.settings.storage') }}">@csrf
+                            <input type="hidden" name="storage_onedrive_enabled" value="{{ $settings['storage_onedrive_enabled'] === '1' ? '0' : '1' }}">
+                            <input type="hidden" name="storage_gdrive_enabled"    value="{{ $settings['storage_gdrive_enabled'] }}">
+                            <input type="hidden" name="storage_gdrive_client_id"  value="{{ $settings['storage_gdrive_client_id'] }}">
+                            <input type="hidden" name="storage_gdrive_folder_id"  value="{{ $settings['storage_gdrive_folder_id'] }}">
+                            <input type="hidden" name="storage_onedrive_client_id"  value="{{ $settings['storage_onedrive_client_id'] }}">
+                            <input type="hidden" name="storage_onedrive_tenant_id"  value="{{ $settings['storage_onedrive_tenant_id'] }}">
+                            <input type="hidden" name="storage_onedrive_folder_id"  value="{{ $settings['storage_onedrive_folder_id'] }}">
+                            <input type="hidden" name="storage_omv_enabled"   value="{{ $settings['storage_omv_enabled'] }}">
+                            <input type="hidden" name="storage_omv_protocol"  value="{{ $settings['storage_omv_protocol'] }}">
+                            <input type="hidden" name="storage_omv_host"      value="{{ $settings['storage_omv_host'] }}">
+                            <input type="hidden" name="storage_omv_port"      value="{{ $settings['storage_omv_port'] }}">
+                            <input type="hidden" name="storage_omv_username"  value="{{ $settings['storage_omv_username'] }}">
+                            <input type="hidden" name="storage_omv_path"      value="{{ $settings['storage_omv_path'] }}">
+                            <button type="submit" style="position:relative;width:44px;height:24px;border-radius:12px;border:none;cursor:pointer;background:{{ $settings['storage_onedrive_enabled']==='1' ? '#6366F1' : '#D1D5DB' }};transition:background .2s;flex-shrink:0;"
+                                    title="{{ $settings['storage_onedrive_enabled']==='1' ? 'Disable' : 'Enable' }} OneDrive">
+                                <span style="position:absolute;top:2px;left:{{ $settings['storage_onedrive_enabled']==='1' ? '22px' : '2px' }};width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);"></span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <form method="POST" action="{{ route('admin.settings.storage') }}">
+                    @csrf
+                    <input type="hidden" name="storage_gdrive_enabled"      value="{{ $settings['storage_gdrive_enabled'] }}">
+                    <input type="hidden" name="storage_gdrive_client_id"    value="{{ $settings['storage_gdrive_client_id'] }}">
+                    <input type="hidden" name="storage_gdrive_folder_id"    value="{{ $settings['storage_gdrive_folder_id'] }}">
+                    <input type="hidden" name="storage_onedrive_enabled"    value="{{ $settings['storage_onedrive_enabled'] }}">
+                    <input type="hidden" name="storage_omv_enabled"   value="{{ $settings['storage_omv_enabled'] }}">
+                    <input type="hidden" name="storage_omv_protocol"  value="{{ $settings['storage_omv_protocol'] }}">
+                    <input type="hidden" name="storage_omv_host"      value="{{ $settings['storage_omv_host'] }}">
+                    <input type="hidden" name="storage_omv_port"      value="{{ $settings['storage_omv_port'] }}">
+                    <input type="hidden" name="storage_omv_username"  value="{{ $settings['storage_omv_username'] }}">
+                    <input type="hidden" name="storage_omv_path"      value="{{ $settings['storage_omv_path'] }}">
+                    <div class="scard-body">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+                            <div class="sf-group" style="margin-bottom:0;">
+                                <label class="sf-label">Application (Client) ID</label>
+                                <input type="text" name="storage_onedrive_client_id" class="sf-input"
+                                       value="{{ $settings['storage_onedrive_client_id'] }}"
+                                       placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                            </div>
+                            <div class="sf-group" style="margin-bottom:0;">
+                                <label class="sf-label">Client Secret</label>
+                                <input type="password" name="storage_onedrive_client_sec" class="sf-input"
+                                       placeholder="{{ $settings['storage_onedrive_client_sec'] ? '••••••••' : 'Secret value from Azure' }}">
+                            </div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:0;">
+                            <div class="sf-group" style="margin-bottom:0;">
+                                <label class="sf-label">Tenant ID</label>
+                                <input type="text" name="storage_onedrive_tenant_id" class="sf-input"
+                                       value="{{ $settings['storage_onedrive_tenant_id'] }}"
+                                       placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                                <p class="sf-hint">Found in Azure Active Directory → Overview</p>
+                            </div>
+                            <div class="sf-group" style="margin-bottom:0;">
+                                <label class="sf-label">Folder / Drive ID</label>
+                                <input type="text" name="storage_onedrive_folder_id" class="sf-input"
+                                       value="{{ $settings['storage_onedrive_folder_id'] }}"
+                                       placeholder="b!abc123...">
+                                <p class="sf-hint">Leave blank to use the root of the drive</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="scard-footer" x-data="{ testing:false, ok:null, msg:'' }">
+                        <div x-show="msg" style="flex:1;font-size:12px;font-weight:600;padding:6px 10px;border-radius:8px;display:flex;align-items:center;gap:6px;"
+                             :style="ok ? 'background:#D1FAE5;color:#065F46;' : 'background:#FEE2E2;color:#991B1B;'">
+                            <i :class="ok ? 'fas fa-circle-check' : 'fas fa-circle-xmark'" style="font-size:12px;"></i>
+                            <span x-text="msg"></span>
+                        </div>
+                        <button type="button" @click="
+                            testing=true; ok=null; msg='';
+                            fetch('{{ route('admin.settings.storage.test.onedrive') }}', {method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}})
+                            .then(r=>r.json()).then(d=>{ok=d.ok;msg=d.message;}).catch(e=>{ok=false;msg='Request failed.'})
+                            .finally(()=>testing=false)"
+                            :disabled="testing"
+                            style="padding:8px 16px;border:1.5px solid #E5E7EB;border-radius:9px;background:#fff;color:#374151;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:border-color .15s;"
+                            onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
+                            <i class="fas fa-plug" x-show="!testing" style="font-size:11px;color:#6366F1;"></i>
+                            <i class="fas fa-spinner fa-spin" x-show="testing" style="font-size:11px;"></i>
+                            <span x-text="testing ? 'Testing…' : 'Test Connection'">Test Connection</span>
+                        </button>
+                        <button type="submit" class="sf-btn-primary"><i class="fas fa-save" style="margin-right:6px;"></i>Save OneDrive</button>
+                    </div>
+                </form>
+            </div>
+
+            {{-- OMV / NAS --}}
+            <div class="scard">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#F0FDF4;color:#16A34A;"><i class="fas fa-server"></i></div>
+                    <div>
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">NAS / OMV Server</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Connect to OpenMediaVault, Synology, QNAP, or any SMB / WebDAV server</p>
+                    </div>
+                    <div style="margin-left:auto;">
+                        <form method="POST" action="{{ route('admin.settings.storage') }}">@csrf
+                            <input type="hidden" name="storage_omv_enabled" value="{{ $settings['storage_omv_enabled'] === '1' ? '0' : '1' }}">
+                            <input type="hidden" name="storage_gdrive_enabled"      value="{{ $settings['storage_gdrive_enabled'] }}">
+                            <input type="hidden" name="storage_gdrive_client_id"    value="{{ $settings['storage_gdrive_client_id'] }}">
+                            <input type="hidden" name="storage_gdrive_folder_id"    value="{{ $settings['storage_gdrive_folder_id'] }}">
+                            <input type="hidden" name="storage_onedrive_enabled"    value="{{ $settings['storage_onedrive_enabled'] }}">
+                            <input type="hidden" name="storage_onedrive_client_id"  value="{{ $settings['storage_onedrive_client_id'] }}">
+                            <input type="hidden" name="storage_onedrive_tenant_id"  value="{{ $settings['storage_onedrive_tenant_id'] }}">
+                            <input type="hidden" name="storage_onedrive_folder_id"  value="{{ $settings['storage_onedrive_folder_id'] }}">
+                            <input type="hidden" name="storage_omv_protocol"  value="{{ $settings['storage_omv_protocol'] }}">
+                            <input type="hidden" name="storage_omv_host"      value="{{ $settings['storage_omv_host'] }}">
+                            <input type="hidden" name="storage_omv_port"      value="{{ $settings['storage_omv_port'] }}">
+                            <input type="hidden" name="storage_omv_username"  value="{{ $settings['storage_omv_username'] }}">
+                            <input type="hidden" name="storage_omv_path"      value="{{ $settings['storage_omv_path'] }}">
+                            <button type="submit" style="position:relative;width:44px;height:24px;border-radius:12px;border:none;cursor:pointer;background:{{ $settings['storage_omv_enabled']==='1' ? '#6366F1' : '#D1D5DB' }};transition:background .2s;flex-shrink:0;"
+                                    title="{{ $settings['storage_omv_enabled']==='1' ? 'Disable' : 'Enable' }} NAS">
+                                <span style="position:absolute;top:2px;left:{{ $settings['storage_omv_enabled']==='1' ? '22px' : '2px' }};width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);"></span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <form method="POST" action="{{ route('admin.settings.storage') }}">
+                    @csrf
+                    <input type="hidden" name="storage_gdrive_enabled"      value="{{ $settings['storage_gdrive_enabled'] }}">
+                    <input type="hidden" name="storage_gdrive_client_id"    value="{{ $settings['storage_gdrive_client_id'] }}">
+                    <input type="hidden" name="storage_gdrive_folder_id"    value="{{ $settings['storage_gdrive_folder_id'] }}">
+                    <input type="hidden" name="storage_onedrive_enabled"    value="{{ $settings['storage_onedrive_enabled'] }}">
+                    <input type="hidden" name="storage_onedrive_client_id"  value="{{ $settings['storage_onedrive_client_id'] }}">
+                    <input type="hidden" name="storage_onedrive_tenant_id"  value="{{ $settings['storage_onedrive_tenant_id'] }}">
+                    <input type="hidden" name="storage_onedrive_folder_id"  value="{{ $settings['storage_onedrive_folder_id'] }}">
+                    <input type="hidden" name="storage_omv_enabled" value="{{ $settings['storage_omv_enabled'] }}">
+                    <div class="scard-body">
+                        <div class="sf-group">
+                            <label class="sf-label">Protocol</label>
+                            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                                @foreach(['smb'=>['SMB / CIFS','#0F766E'],'nfs'=>['NFS','#7C3AED'],'webdav'=>['WebDAV','#0369A1'],'ftp'=>['FTP','#D97706']] as $proto=>[$label,$color])
+                                <label style="display:flex;align-items:center;gap:6px;padding:6px 14px;border:1.5px solid {{ $settings['storage_omv_protocol']===$proto ? $color : '#E5E7EB' }};border-radius:8px;cursor:pointer;background:{{ $settings['storage_omv_protocol']===$proto ? $color.'14' : '#fff' }};font-size:13px;font-weight:600;color:{{ $settings['storage_omv_protocol']===$proto ? $color : '#6B7280' }};">
+                                    <input type="radio" name="storage_omv_protocol" value="{{ $proto }}" {{ $settings['storage_omv_protocol']===$proto ? 'checked' : '' }} style="display:none;">
+                                    {{ $label }}
+                                </label>
+                                @endforeach
+                            </div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 120px;gap:14px;margin-bottom:14px;">
+                            <div class="sf-group" style="margin-bottom:0;">
+                                <label class="sf-label">Host / IP Address</label>
+                                <input type="text" name="storage_omv_host" class="sf-input"
+                                       value="{{ $settings['storage_omv_host'] }}"
+                                       placeholder="192.168.1.100 or nas.local">
+                            </div>
+                            <div class="sf-group" style="margin-bottom:0;">
+                                <label class="sf-label">Port</label>
+                                <input type="text" name="storage_omv_port" class="sf-input"
+                                       value="{{ $settings['storage_omv_port'] }}"
+                                       placeholder="445">
+                                <p class="sf-hint">Leave blank for default</p>
+                            </div>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+                            <div class="sf-group" style="margin-bottom:0;">
+                                <label class="sf-label">Username</label>
+                                <input type="text" name="storage_omv_username" class="sf-input"
+                                       value="{{ $settings['storage_omv_username'] }}"
+                                       placeholder="nas-user">
+                            </div>
+                            <div class="sf-group" style="margin-bottom:0;">
+                                <label class="sf-label">Password</label>
+                                <input type="password" name="storage_omv_password" class="sf-input"
+                                       placeholder="{{ $settings['storage_omv_password'] ? '••••••••' : 'NAS password' }}">
+                            </div>
+                        </div>
+                        <div class="sf-group" style="margin-bottom:0;">
+                            <label class="sf-label">Share / Mount Path</label>
+                            <input type="text" name="storage_omv_path" class="sf-input"
+                                   value="{{ $settings['storage_omv_path'] }}"
+                                   placeholder="//192.168.1.100/tasks  or  /mnt/tasks">
+                            <p class="sf-hint">Full UNC path for SMB, mount point for NFS, base URL for WebDAV</p>
+                        </div>
+                    </div>
+                    <div class="scard-footer" x-data="{ testing:false, ok:null, msg:'' }">
+                        <div x-show="msg" style="flex:1;font-size:12px;font-weight:600;padding:6px 10px;border-radius:8px;display:flex;align-items:center;gap:6px;"
+                             :style="ok ? 'background:#D1FAE5;color:#065F46;' : 'background:#FEE2E2;color:#991B1B;'">
+                            <i :class="ok ? 'fas fa-circle-check' : 'fas fa-circle-xmark'" style="font-size:12px;"></i>
+                            <span x-text="msg"></span>
+                        </div>
+                        <button type="button" @click="
+                            testing=true; ok=null; msg='';
+                            fetch('{{ route('admin.settings.storage.test.omv') }}', {method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}})
+                            .then(r=>r.json()).then(d=>{ok=d.ok;msg=d.message;}).catch(e=>{ok=false;msg='Request failed.'})
+                            .finally(()=>testing=false)"
+                            :disabled="testing"
+                            style="padding:8px 16px;border:1.5px solid #E5E7EB;border-radius:9px;background:#fff;color:#374151;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:border-color .15s;"
+                            onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
+                            <i class="fas fa-plug" x-show="!testing" style="font-size:11px;color:#6366F1;"></i>
+                            <i class="fas fa-spinner fa-spin" x-show="testing" style="font-size:11px;"></i>
+                            <span x-text="testing ? 'Testing…' : 'Test Connection'">Test Connection</span>
+                        </button>
+                        <button type="submit" class="sf-btn-primary"><i class="fas fa-save" style="margin-right:6px;"></i>Save NAS Settings</button>
+                    </div>
+                </form>
+            </div>
+
+            {{-- Folder Organization --}}
+            <div class="scard" style="margin-top:20px;">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#FFF7ED;color:#EA580C;"><i class="fas fa-folder-tree"></i></div>
+                    <div>
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Folder Organization</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Configure how files are structured on your connected storage</p>
+                    </div>
+                </div>
+                <form method="POST" action="{{ route('admin.settings.storage') }}">
+                    @csrf
+                    {{-- preserve connection toggles --}}
+                    <input type="hidden" name="storage_gdrive_enabled"      value="{{ $settings['storage_gdrive_enabled'] }}">
+                    <input type="hidden" name="storage_gdrive_client_id"    value="{{ $settings['storage_gdrive_client_id'] }}">
+                    <input type="hidden" name="storage_gdrive_folder_id"    value="{{ $settings['storage_gdrive_folder_id'] }}">
+                    <input type="hidden" name="storage_onedrive_enabled"    value="{{ $settings['storage_onedrive_enabled'] }}">
+                    <input type="hidden" name="storage_onedrive_client_id"  value="{{ $settings['storage_onedrive_client_id'] }}">
+                    <input type="hidden" name="storage_onedrive_tenant_id"  value="{{ $settings['storage_onedrive_tenant_id'] }}">
+                    <input type="hidden" name="storage_onedrive_folder_id"  value="{{ $settings['storage_onedrive_folder_id'] }}">
+                    <input type="hidden" name="storage_omv_enabled"   value="{{ $settings['storage_omv_enabled'] }}">
+                    <input type="hidden" name="storage_omv_protocol"  value="{{ $settings['storage_omv_protocol'] }}">
+                    <input type="hidden" name="storage_omv_host"      value="{{ $settings['storage_omv_host'] }}">
+                    <input type="hidden" name="storage_omv_port"      value="{{ $settings['storage_omv_port'] }}">
+                    <input type="hidden" name="storage_omv_username"  value="{{ $settings['storage_omv_username'] }}">
+                    <input type="hidden" name="storage_omv_path"      value="{{ $settings['storage_omv_path'] }}">
+
+                    <div class="scard-body">
+
+                        {{-- Root path --}}
+                        <div class="sf-group">
+                            <label class="sf-label">Root Folder Name</label>
+                            <input type="text" name="storage_root_path" class="sf-input"
+                                   value="{{ $settings['storage_root_path'] }}"
+                                   placeholder="Marketing_System">
+                            <p class="sf-hint">Top-level folder created on your storage. All company folders will live inside it.</p>
+                        </div>
+
+                        {{-- File naming pattern --}}
+                        <div class="sf-group">
+                            <label class="sf-label">File Naming Pattern</label>
+                            <input type="text" name="storage_file_naming_pattern" class="sf-input"
+                                   value="{{ $settings['storage_file_naming_pattern'] }}"
+                                   placeholder="{company}_{project}_{type}_{desc}_{date}_v{ver}">
+                            <p class="sf-hint">Available tokens: <code>{company}</code> <code>{project}</code> <code>{type}</code> <code>{desc}</code> <code>{date}</code> <code>{ver}</code> — Example: <strong>ACME_PRJ001_Post_EidOffer_2026-05-07_v02.jpg</strong></p>
+                        </div>
+
+                        {{-- Toggles --}}
+                        <div style="background:#F8FAFC;border:1px solid #E5E7EB;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:14px;">
+                            <p style="font-size:12px;font-weight:700;color:#374151;margin:0 0 2px;text-transform:uppercase;letter-spacing:.05em;">Automation Rules</p>
+
+                            @foreach([
+                                ['storage_auto_create_folders', 'Auto-create project folders', 'When a project or task is created, automatically build the full folder tree (00_Admin → 08_Archive) on the connected storage.'],
+                                ['storage_create_brand_assets', 'Create Brand Assets folder for new companies', 'Creates Logos/Approved, Brand_Guidelines, Fonts, Templates, and Product_Photos subfolders when a new customer/company is added.'],
+                                ['storage_auto_move_files',     'Auto-move files by task status', 'Moves submitted files to 04_Review, approved files to 05_Approved, rejected to 06_Rejected, and delivered to 07_Delivered automatically.'],
+                            ] as [$key, $label, $hint])
+                            <div style="display:flex;align-items:flex-start;gap:14px;">
+                                <label style="position:relative;width:40px;height:22px;flex-shrink:0;margin-top:1px;cursor:pointer;">
+                                    <input type="hidden"   name="{{ $key }}" value="0">
+                                    <input type="checkbox" name="{{ $key }}" value="1" {{ $settings[$key]==='1' ? 'checked' : '' }}
+                                           style="position:absolute;opacity:0;width:0;height:0;"
+                                           onchange="this.previousElementSibling.value=this.checked?'1':'0';this.parentElement.querySelector('span').style.background=this.checked?'#6366F1':'#D1D5DB';this.parentElement.querySelector('span span').style.left=this.checked?'20px':'2px';">
+                                    <span style="position:absolute;inset:0;border-radius:11px;background:{{ $settings[$key]==='1' ? '#6366F1' : '#D1D5DB' }};transition:background .2s;">
+                                        <span style="position:absolute;top:2px;left:{{ $settings[$key]==='1' ? '20px' : '2px' }};width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);"></span>
+                                    </span>
+                                </label>
+                                <div>
+                                    <p style="font-size:13px;font-weight:600;color:#111827;margin:0;">{{ $label }}</p>
+                                    <p style="font-size:11px;color:#6B7280;margin:2px 0 0;line-height:1.5;">{{ $hint }}</p>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+
+                        {{-- Folder structure preview --}}
+                        <div style="margin-top:20px;">
+                            <p style="font-size:12px;font-weight:700;color:#374151;margin:0 0 10px;text-transform:uppercase;letter-spacing:.05em;">Folder Structure Preview</p>
+                            <div style="background:#1E1E1E;border-radius:10px;padding:16px 20px;font-family:'Courier New',monospace;font-size:11.5px;color:#D4D4D4;line-height:1.8;overflow-x:auto;">
+<pre style="margin:0;color:inherit;background:none;font-size:inherit;">{{ $settings['storage_root_path'] ?: 'Marketing_System' }}/
+├── Companies/
+│   └── <span style="color:#9CDCFE;">Company_Name</span>/
+│       ├── <span style="color:#4EC9B0;">Brand_Assets</span>/
+│       │   ├── Logos/
+│       │   │   ├── Approved/
+│       │   │   ├── Old_Versions/
+│       │   │   └── Do_Not_Use/
+│       │   ├── Brand_Guidelines/
+│       │   ├── Fonts/
+│       │   ├── Templates/
+│       │   └── Product_Photos/
+│       └── <span style="color:#DCDCAA;">Projects</span>/
+│           └── 2026/
+│               └── 2026-05/
+│                   └── <span style="color:#CE9178;">PRJ-001_Project_Name</span>/
+│                       ├── 00_Admin/
+│                       ├── 01_Brief/
+│                       ├── 02_Source/
+│                       ├── 03_Working/
+│                       ├── <span style="color:#9CDCFE;">04_Review</span>/         ← submitted
+│                       ├── <span style="color:#4EC9B0;">05_Approved</span>/       ← approved
+│                       ├── <span style="color:#F44747;">06_Rejected</span>/       ← revision requested
+│                       ├── <span style="color:#DCDCAA;">07_Delivered</span>/      ← delivered
+│                       └── 08_Archive/
+├── Internal_Templates/
+├── Shared_Resources/
+└── Archive/</pre>
+                            </div>
+                            <p style="font-size:11px;color:#9CA3AF;margin:8px 0 0;">Files automatically move between stage folders as tasks progress through the approval workflow.</p>
+                        </div>
+
+                    </div>
+                    <div class="scard-footer">
+                        <button type="submit" class="sf-btn-primary"><i class="fas fa-save" style="margin-right:6px;"></i>Save Folder Settings</button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+
         {{-- ════ BACKUP & EXPORT ════ --}}
         <div x-show="tab === 'backup'" x-cloak>
 
@@ -1419,7 +1867,8 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         ['key'=>'nav_recent_projects', 'icon'=>'fa-clock-rotate-left', 'label'=>'Recent Projects'],
                     ],
                     'user'    => [
-                        ['key'=>'nav_my_tasks',      'icon'=>'fa-square-check',    'label'=>'My Tasks'],
+                        ['key'=>'nav_my_tasks',      'icon'=>'fa-square-check',    'label'=>'My Tasks (Dashboard)'],
+                        ['key'=>'nav_task_list',     'icon'=>'fa-list-check',      'label'=>'Task List'],
                         ['key'=>'nav_my_projects',   'icon'=>'fa-diagram-project', 'label'=>'My Projects'],
                         ['key'=>'nav_user_reports',  'icon'=>'fa-chart-bar',       'label'=>'My Reports'],
                     ],
@@ -1727,11 +2176,12 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
                             @php
                             $templates = [
-                                ['key'=>'wa_tpl_assigned',  'icon'=>'fa-user-plus',         'color'=>'#4F46E5', 'label'=>'Task Assigned',          'hint'=>'Sent to user when a task is assigned to them'],
-                                ['key'=>'wa_tpl_approved',  'icon'=>'fa-circle-check',       'color'=>'#16a34a', 'label'=>'Task Approved',           'hint'=>'Sent when admin approves a submitted task'],
-                                ['key'=>'wa_tpl_reminder',  'icon'=>'fa-clock',              'color'=>'#D97706', 'label'=>'Deadline Reminder',       'hint'=>'Sent X days before the task deadline'],
-                                ['key'=>'wa_tpl_overdue',   'icon'=>'fa-triangle-exclamation','color'=>'#DC2626', 'label'=>'Overdue Alert',           'hint'=>'Automated daily alert for overdue tasks'],
-                                ['key'=>'wa_tpl_social',    'icon'=>'fa-share-nodes',        'color'=>'#7C3AED', 'label'=>'Social Media Assigned',   'hint'=>'Sent when a task is assigned for social posting'],
+                                ['key'=>'wa_tpl_assigned',         'icon'=>'fa-user-plus',          'color'=>'#4F46E5', 'label'=>'Task Assigned',          'hint'=>'Sent to user when a task is assigned to them'],
+                                ['key'=>'wa_tpl_approved',         'icon'=>'fa-circle-check',        'color'=>'#16a34a', 'label'=>'Task Approved',           'hint'=>'Sent when admin approves a submitted task'],
+                                ['key'=>'wa_tpl_reminder',         'icon'=>'fa-clock',               'color'=>'#D97706', 'label'=>'Deadline Reminder',       'hint'=>'Sent X days before the task deadline'],
+                                ['key'=>'wa_tpl_overdue',          'icon'=>'fa-triangle-exclamation','color'=>'#DC2626', 'label'=>'Overdue Alert',           'hint'=>'Automated daily alert for overdue tasks'],
+                                ['key'=>'wa_tpl_social',           'icon'=>'fa-share-nodes',         'color'=>'#7C3AED', 'label'=>'Social Media Assigned',   'hint'=>'Sent when a task is assigned for social posting'],
+                                ['key'=>'wa_tpl_customer_design',  'icon'=>'fa-image',               'color'=>'#0891B2', 'label'=>'Customer Design Ready',   'hint'=>'Sent to customer when their design is approved and ready for review. Variables: {customer_name}, {task_title}, {design_link}, {admin_note}, {company}'],
                             ];
                             @endphp
                             @foreach($templates as $tpl)

@@ -29,13 +29,14 @@ class ReportsController extends Controller
             default => null,
         };
 
-        $doneStatuses    = ['approved', 'delivered'];
-        $nonDoneStatuses = ['draft', 'assigned', 'viewed', 'in_progress', 'submitted', 'revision_requested'];
+        $doneStatuses    = ['approved', 'delivered', 'archived'];
+        $nonDoneStatuses = ['draft', 'assigned', 'viewed', 'in_progress', 'paused', 'submitted', 'revision_requested'];
 
-        // Base query: tasks assigned to this user
+        // Base query: tasks assigned to this user (direct, social, or pivot)
         $base = function () use ($user, $from) {
             return Task::where(function ($q) use ($user) {
                 $q->where('assigned_to', $user->id)
+                  ->orWhere('social_assigned_to', $user->id)
                   ->orWhereExists(fn($sub) => $sub->selectRaw('1')
                       ->from('task_assignees')
                       ->whereColumn('task_assignees.task_id', 'tasks.id')
@@ -46,7 +47,7 @@ class ReportsController extends Controller
         // ── KPIs ──────────────────────────────────────────────────────────────
         $totalTasks     = $base()->count();
         $completedTasks = $base()->whereIn('status', $doneStatuses)->count();
-        $inProgress     = $base()->where('status', 'in_progress')->count();
+        $inProgress     = $base()->whereIn('status', ['in_progress', 'paused'])->count();
         $inReview       = $base()->whereIn('status', ['submitted', 'revision_requested'])->count();
         $overdueTasks   = $base()->where('deadline', '<', now())->whereIn('status', $nonDoneStatuses)->count();
         $completionRate = $totalTasks > 0 ? round($completedTasks / $totalTasks * 100) : 0;
@@ -62,7 +63,7 @@ class ReportsController extends Controller
         // ── Status Breakdown ─────────────────────────────────────────────────
         $statusGroups = [
             'pending'     => ['label' => 'Pending',     'statuses' => ['draft', 'assigned', 'viewed'],         'color' => '#6B7280', 'bg' => '#F3F4F6'],
-            'in_progress' => ['label' => 'In Progress', 'statuses' => ['in_progress'],                         'color' => '#F59E0B', 'bg' => '#FEF3C7'],
+            'in_progress' => ['label' => 'In Progress', 'statuses' => ['in_progress', 'paused'],               'color' => '#F59E0B', 'bg' => '#FEF3C7'],
             'in_review'   => ['label' => 'In Review',   'statuses' => ['submitted', 'revision_requested'],     'color' => '#8B5CF6', 'bg' => '#EDE9FE'],
             'completed'   => ['label' => 'Completed',   'statuses' => ['approved'],                            'color' => '#10B981', 'bg' => '#D1FAE5'],
             'delivered'   => ['label' => 'Delivered',   'statuses' => ['delivered', 'archived'],               'color' => '#047857', 'bg' => '#ECFDF5'],
@@ -104,6 +105,7 @@ class ReportsController extends Controller
             $monthLabels[]  = $month->format('M Y');
             $monthlyCreated[] = Task::where(function ($q) use ($user) {
                 $q->where('assigned_to', $user->id)
+                  ->orWhere('social_assigned_to', $user->id)
                   ->orWhereExists(fn($sub) => $sub->selectRaw('1')
                       ->from('task_assignees')
                       ->whereColumn('task_assignees.task_id', 'tasks.id')
@@ -112,6 +114,7 @@ class ReportsController extends Controller
 
             $monthlyCompleted[] = Task::where(function ($q) use ($user) {
                 $q->where('assigned_to', $user->id)
+                  ->orWhere('social_assigned_to', $user->id)
                   ->orWhereExists(fn($sub) => $sub->selectRaw('1')
                       ->from('task_assignees')
                       ->whereColumn('task_assignees.task_id', 'tasks.id')
@@ -183,6 +186,7 @@ class ReportsController extends Controller
         // ── Task IDs for this user (for reassigned/reopened queries) ──────────
         $userTaskIds = Task::where(function ($q) use ($user) {
             $q->where('assigned_to', $user->id)
+              ->orWhere('social_assigned_to', $user->id)
               ->orWhereExists(fn($sub) => $sub->selectRaw('1')
                   ->from('task_assignees')
                   ->whereColumn('task_assignees.task_id', 'tasks.id')
@@ -246,6 +250,7 @@ class ReportsController extends Controller
     {
         $tasks = Task::where(function ($q) use ($user) {
             $q->where('assigned_to', $user->id)
+              ->orWhere('social_assigned_to', $user->id)
               ->orWhereExists(fn($sub) => $sub->selectRaw('1')
                   ->from('task_assignees')
                   ->whereColumn('task_assignees.task_id', 'tasks.id')

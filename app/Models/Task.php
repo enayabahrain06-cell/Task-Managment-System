@@ -27,10 +27,13 @@ class Task extends Model
         'social_description',
         'social_caption',
         'social_budget',
+        'social_platforms',
         'status',
         'priority',
         'deadline',
         'first_viewed_at',
+        'design_sent_at',
+        'customer_approved_at',
         'created_by',
         'reviewer_id',
         'task_type',
@@ -39,9 +42,12 @@ class Task extends Model
 
     protected $casts = [
         'deadline'         => 'date',
-        'first_viewed_at'  => 'datetime',
-        'social_posted_at' => 'datetime',
+        'first_viewed_at'      => 'datetime',
+        'design_sent_at'       => 'datetime',
+        'customer_approved_at' => 'datetime',
+        'social_posted_at'     => 'datetime',
         'social_required'  => 'boolean',
+        'social_platforms' => 'array',
         'tags'             => 'array',
     ];
 

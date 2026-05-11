@@ -502,6 +502,46 @@ class ReportsController extends Controller
                 'status'      => $t->status,
             ]);
 
+        // ── Customer Approval Speed ───────────────────────────────────────────
+        $approvalSpeedTasks = Task::with(['customer', 'project.customer', 'assignee'])
+            ->where(fn($q) => $q->whereNotNull('design_sent_at')->orWhere('status', 'pending_customer'))
+            ->when($from, fn($q) => $q->where(fn($sq) => $sq->where('design_sent_at', '>=', $from)->orWhere('updated_at', '>=', $from)))
+            ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+            ->when($customerId, fn($q) => $q->where(function ($sq) use ($customerId) {
+                $sq->where('customer_id', $customerId)
+                   ->orWhereHas('project', fn($pq) => $pq->where('customer_id', $customerId));
+            }))
+            ->orderByDesc(DB::raw('COALESCE(design_sent_at, updated_at)'))
+            ->get()
+            ->map(function ($t) {
+                $customer = $t->customer?->name ?? $t->project?->customer?->name ?? '—';
+                $sentAt   = $t->design_sent_at ?? $t->updated_at;
+                $approvedAt = $t->customer_approved_at;
+                $hours    = $approvedAt ? round(abs($sentAt->diffInSeconds($approvedAt)) / 3600, 1) : null;
+                $days     = $approvedAt ? round(abs($sentAt->diffInSeconds($approvedAt)) / 86400, 1) : null;
+                return [
+                    'id'          => $t->id,
+                    'title'       => $t->title,
+                    'customer'    => $customer,
+                    'assignee'    => $t->assignee?->name ?? '—',
+                    'sent_at'       => $sentAt->format(config('app.date_format', 'M d, Y')),
+                    'sent_time'     => $sentAt->format('H:i'),
+                    'sent_time_raw' => $sentAt->toIso8601String(),
+                    'approved_at' => $approvedAt?->format(config('app.date_format', 'M d, Y')),
+                    'approved_time' => $approvedAt?->format('H:i'),
+                    'hours'       => $hours,
+                    'days'        => $days,
+                    'approved'    => !is_null($approvedAt),
+                    'status'      => $t->status,
+                ];
+            });
+
+        $approvedCount    = $approvalSpeedTasks->where('approved', true)->count();
+        $avgHours         = $approvedCount > 0
+            ? round($approvalSpeedTasks->where('approved', true)->avg('hours'), 1)
+            : null;
+        $pendingApproval  = $approvalSpeedTasks->where('approved', false)->count();
+
         // ── Project list for filter dropdown ─────────────────────────────────
         $allProjects = Project::orderBy('name')->get(['id', 'name']);
 
@@ -634,7 +674,8 @@ class ReportsController extends Controller
             'overdueList', 'reassignedList', 'reopenedList',
             'allProjects', 'allCustomers', 'allUsers', 'customerStats',
             'billingUsers', 'billingCustomers', 'phaseLabels', 'from',
-            'adBudgetTasks'
+            'adBudgetTasks',
+            'approvalSpeedTasks', 'approvedCount', 'avgHours', 'pendingApproval'
         ));
     }
 

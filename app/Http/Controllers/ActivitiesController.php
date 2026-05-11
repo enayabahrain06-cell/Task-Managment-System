@@ -13,20 +13,27 @@ class ActivitiesController extends Controller
 {
     public function index(\Illuminate\Http\Request $request)
     {
-        $teams = User::withCount('tasks')
-            ->where('role', '!=', 'admin')
-            ->orderBy('role')
-            ->get()
-            ->groupBy('role');
+        $isPrivileged = in_array(auth()->user()->role, ['admin', 'manager']);
+
+        $teams = $isPrivileged
+            ? User::withCount('tasks')->where('role', '!=', 'admin')->orderBy('role')->get()->groupBy('role')
+            : collect();
 
         $query = TaskLog::with(['user', 'task.project', 'reactions.user', 'replies.user']);
 
-        // User filter (sidebar)
-        $selectedUserId = $request->input('user_id');
-        $selectedUser   = null;
-        if ($selectedUserId) {
-            $query->where('user_id', $selectedUserId);
-            $selectedUser = User::find($selectedUserId);
+        // Regular users always see only their own activity
+        if (!$isPrivileged) {
+            $query->where('user_id', auth()->id());
+            $selectedUser   = auth()->user();
+            $selectedUserId = auth()->id();
+        } else {
+            // User filter (sidebar) — privileged only
+            $selectedUserId = $request->input('user_id');
+            $selectedUser   = null;
+            if ($selectedUserId) {
+                $query->where('user_id', $selectedUserId);
+                $selectedUser = User::find($selectedUserId);
+            }
         }
 
         // Action type filter
@@ -51,7 +58,7 @@ class ActivitiesController extends Controller
         // Distinct action types for filter dropdown
         $actionTypes = TaskLog::select('action')->distinct()->orderBy('action')->pluck('action');
 
-        return view('activities.index', compact('teams', 'activities', 'selectedUser', 'actionTypes'));
+        return view('activities.index', compact('teams', 'activities', 'selectedUser', 'actionTypes', 'isPrivileged'));
     }
 
     public function release(Request $request)

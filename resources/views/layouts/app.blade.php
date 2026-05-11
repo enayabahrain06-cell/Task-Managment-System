@@ -14,6 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/fa-all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.14.1/dist/cdn.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -755,21 +756,31 @@ function navHistory() {
     return {
         open:  false,
         items: [],
+        _validUrl(url) {
+            try {
+                const u = new URL(url);
+                if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+                let decoded;
+                try { decoded = decodeURIComponent(url); } catch(e) { return false; }
+                return !/[�\x00-\x1F]/.test(decoded);
+            } catch(e) { return false; }
+        },
         init() {
             // Record this page visit
             const KEY = '_navHist', MAX = 20;
             const hist  = JSON.parse(localStorage.getItem(KEY) || '[]');
             const title = document.title.replace(/\s*[\-–|].*$/, '').trim() || document.title;
             const entry = { url: location.href, title, at: Date.now() };
-            const deduped = hist.filter(h => h.url !== entry.url);
+            if (!this._validUrl(entry.url)) { this.load(); return; }
+            const deduped = hist.filter(h => h.url !== entry.url && this._validUrl(h.url));
             deduped.unshift(entry);
             localStorage.setItem(KEY, JSON.stringify(deduped.slice(0, MAX)));
             this.load();
         },
         load() {
             const raw = JSON.parse(localStorage.getItem('_navHist') || '[]');
-            // Exclude current page from the visible list
-            this.items = raw.filter(h => h.url !== location.href);
+            // Exclude current page and any entries with invalid/corrupted URLs
+            this.items = raw.filter(h => h.url !== location.href && this._validUrl(h.url));
         },
         clear() {
             const raw     = JSON.parse(localStorage.getItem('_navHist') || '[]');

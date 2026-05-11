@@ -163,11 +163,16 @@ class TaskApprovalController extends Controller
 
         $request->validate(['note' => 'nullable|string|max:500']);
 
-        if (!in_array($task->status, ['submitted', 'pending_customer'])) {
-            return back()->with('error', 'Only submitted tasks can be marked as awaiting customer approval.');
+        $allowedStatuses = ['submitted', 'pending_customer', 'paused', 'in_progress'];
+        if (!in_array($task->status, $allowedStatuses)) {
+            return back()->with('error', 'Task cannot be marked as awaiting customer approval from its current status.');
         }
 
-        $task->update(['status' => 'pending_customer']);
+        $oldStatus = $task->status;
+        $task->update([
+            'status'         => 'pending_customer',
+            'design_sent_at' => $task->design_sent_at ?? now(),
+        ]);
 
         TaskLog::create([
             'task_id'  => $task->id,
@@ -175,7 +180,7 @@ class TaskApprovalController extends Controller
             'action'   => 'status_updated_pending_customer',
             'note'     => $request->note ?: 'Awaiting customer approval',
             'metadata' => [
-                'old_status'    => 'submitted',
+                'old_status'    => $oldStatus,
                 'new_status'    => 'pending_customer',
                 'reviewer_id'   => auth()->id(),
                 'reviewer_name' => auth()->user()->name,
@@ -199,6 +204,8 @@ class TaskApprovalController extends Controller
             'note'                      => 'nullable|string|max:500',
             'social_required'           => 'nullable|in:1,0',
             'social_assigned_to'        => 'nullable|exists:users,id',
+            'social_platforms'          => 'nullable|array',
+            'social_platforms.*'        => 'nullable|string|in:facebook,instagram,twitter,linkedin,tiktok,youtube,snapchat,other',
             'social_description'        => 'nullable|string|max:2000',
             'social_caption'            => 'nullable|string|max:5000',
             'social_budget'             => 'nullable|string|max:100',
@@ -228,7 +235,10 @@ class TaskApprovalController extends Controller
         // Auto-record how long this review cycle took
         $this->recordReviewSegment($task);
 
-        $task->update(['status' => 'delivered']);
+        $task->update(array_filter([
+            'status'               => 'delivered',
+            'customer_approved_at' => $task->status === 'pending_customer' ? now() : null,
+        ], fn($v) => $v !== null));
 
         TaskSubmission::where('task_id', $task->id)
             ->where('status', 'submitted')
@@ -308,12 +318,18 @@ class TaskApprovalController extends Controller
             $toPhone     = $customer?->phone ?? $request->input('customer_phone_override');
             $toName      = $customer?->name ?? 'Customer';
             if ($toPhone) {
-                $digits  = preg_replace('/\D/', '', $toPhone);
-                $company = Setting::get('company_name', config('app.name'));
-                $body    = "Hello {$toName}, your design for \"{$task->title}\" has been approved and is ready for your review."
-                         . ($request->customer_message ? "\n\n" . $request->customer_message : '')
-                         . ($latestSub?->file_path ? "\n\nView design: " . url('storage/' . $latestSub->file_path) : '')
-                         . "\n\n{$company}";
+                $digits     = preg_replace('/\D/', '', $toPhone);
+                $company    = Setting::get('company_name', config('app.name'));
+                $designLink = $latestSub?->file_path ? "View design: " . url('storage/' . $latestSub->file_path) : '';
+                $adminNote  = $request->customer_message ? $request->customer_message . "\n\n" : '';
+                $tpl        = Setting::get('wa_tpl_customer_design',
+                    "Hello {customer_name},\n\nYour design for \"{task_title}\" has been approved and is ready for your review. 🎨\n\n{admin_note}{design_link}\n\n{company}"
+                );
+                $body = str_replace(
+                    ['{customer_name}', '{task_title}', '{design_link}', '{admin_note}', '{company}'],
+                    [$toName,          $task->title,   $designLink,     $adminNote,     $company],
+                    $tpl
+                );
                 try {
                     $this->dispatchWhatsapp($digits, $body);
                     TaskLog::create([
@@ -343,15 +359,18 @@ class TaskApprovalController extends Controller
                     'social_description' => null,
                     'social_caption'     => null,
                     'social_budget'      => null,
+                    'social_platforms'   => null,
                 ]);
             } elseif ($request->filled('social_assigned_to')) {
                 $socialUser = User::find($request->social_assigned_to);
                 if ($socialUser) {
+                    $platforms = array_values(array_filter((array) $request->input('social_platforms', [])));
                     $task->update([
                         'social_assigned_to' => $socialUser->id,
                         'social_description' => $request->social_description ?: null,
                         'social_caption'     => $request->social_caption     ?: null,
                         'social_budget'      => $request->social_budget       ?: null,
+                        'social_platforms'   => $platforms ?: null,
                     ]);
                     TaskLog::create([
                         'task_id'  => $task->id,
@@ -362,6 +381,7 @@ class TaskApprovalController extends Controller
                             'social_description' => $request->social_description ?: null,
                             'social_caption'     => $request->social_caption     ?: null,
                             'social_budget'      => $request->social_budget       ?: null,
+                            'social_platforms'   => $platforms ?: null,
                         ],
                     ]);
                     if (Setting::get('notify_on_social', '1') === '1') {
@@ -820,9 +840,10 @@ class TaskApprovalController extends Controller
             'submissions' => fn($q) => $q->latest(),
         ]);
 
-        $projectTaskCount     = $task->project?->tasks()->count() ?? 0;
-        $projectCompletedCount = $task->project?->tasks()->whereIn('status', ['approved','delivered','archived'])->count() ?? 0;
-        $projectProgress      = $projectTaskCount > 0 ? round($projectCompletedCount / $projectTaskCount * 100) : 0;
+        $realProject           = $task->project && !$task->project->is_quick ? $task->project : null;
+        $projectTaskCount      = $realProject?->tasks()->count() ?? 0;
+        $projectCompletedCount = $realProject?->tasks()->whereIn('status', ['approved','delivered','archived'])->count() ?? 0;
+        $projectProgress       = $projectTaskCount > 0 ? round($projectCompletedCount / $projectTaskCount * 100) : 0;
 
         return view('social.show', compact('task', 'projectTaskCount', 'projectCompletedCount', 'projectProgress'));
     }

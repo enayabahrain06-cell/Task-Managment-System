@@ -23,6 +23,8 @@
     files: [],
     links: [],
     dragover: false,
+    qtFiles: [],
+    qtDragover: false,
     nameError: false,
     deadlineError: false,
 
@@ -105,6 +107,22 @@
 
     addLink()      { this.links.push({ url: '', label: '' }); },
     removeLink(i)  { this.links.splice(i, 1); },
+
+    qtHandleFiles(event) {
+        const incoming = event.dataTransfer ? event.dataTransfer.files : event.target.files;
+        const dt = new DataTransfer();
+        for (let f of this.qtFiles) dt.items.add(f);
+        for (let f of incoming) dt.items.add(f);
+        this.qtFiles = Array.from(dt.files);
+        this.$refs.qtFileInput.files = dt.files;
+    },
+
+    qtRemoveFile(i) {
+        const dt = new DataTransfer();
+        this.qtFiles.forEach((f, idx) => { if (idx !== i) dt.items.add(f); });
+        this.qtFiles = Array.from(dt.files);
+        this.$refs.qtFileInput.files = dt.files;
+    },
 
     handleFiles(event) {
         const incoming = event.dataTransfer ? event.dataTransfer.files : event.target.files;
@@ -557,7 +575,7 @@ $statDefs = [
         </div>
 
         {{-- Form --}}
-        <form method="POST" action="{{ route('admin.tasks.quick') }}" style="padding:20px 24px 24px;">
+        <form method="POST" action="{{ route('admin.tasks.quick') }}" enctype="multipart/form-data" style="padding:20px 24px 24px;">
             @csrf
 
             <div style="margin-bottom:14px;">
@@ -617,6 +635,42 @@ $statDefs = [
                     <option value="{{ $p->id }}">{{ $p->name }}</option>
                     @endforeach
                 </select>
+            </div>
+
+            {{-- Attachments --}}
+            <div style="margin-bottom:16px;">
+                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Attachments <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional, max 20 MB each</span></label>
+                <div @dragover.prevent="qtDragover = true"
+                     @dragleave.prevent="qtDragover = false"
+                     @drop.prevent="qtDragover = false; qtHandleFiles($event)"
+                     @click="$refs.qtFileInput.click()"
+                     :style="qtDragover
+                         ? 'border:2px dashed #F59E0B;border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;background:#FFFBEB;'
+                         : 'border:2px dashed #E5E7EB;border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;background:#FAFAFA;'">
+                    <i class="fas fa-cloud-arrow-up" style="font-size:18px;color:#D97706;margin-bottom:6px;display:block;"></i>
+                    <p style="font-size:12px;color:#6B7280;margin:0;">Drop files here or <span style="color:#F59E0B;font-weight:600;">browse</span></p>
+                    <input type="file" name="attachments[]" multiple x-ref="qtFileInput"
+                           @change="qtHandleFiles($event)" style="display:none;">
+                </div>
+                <template x-if="qtFiles.length > 0">
+                    <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px;">
+                        <template x-for="(file, i) in qtFiles" :key="i">
+                            <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;">
+                                <div style="width:28px;height:28px;border-radius:6px;background:#FFFBEB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i :class="'fas ' + fileIcon(file.name)" style="font-size:12px;color:#D97706;"></i>
+                                </div>
+                                <div style="flex:1;min-width:0;">
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="file.name"></p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:0;" x-text="formatSize(file.size)"></p>
+                                </div>
+                                <button type="button" @click.stop="qtRemoveFile(i)"
+                                        style="width:24px;height:24px;border-radius:6px;background:#FEE2E2;color:#DC2626;border:none;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </template>
             </div>
 
             <button type="submit"

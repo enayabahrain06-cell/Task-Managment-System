@@ -14,7 +14,7 @@ class ProjectController extends Controller
         }
 
         $projects = auth()->user()->projects()
-            ->withCount(['tasks', 'tasks as completed_tasks_count' => fn($q) => $q->where('status', 'completed')])
+            ->withCount(['tasks', 'tasks as completed_tasks_count' => fn($q) => $q->whereIn('status', ['approved', 'delivered', 'archived'])])
             ->orderByRaw("CASE WHEN status = 'completed' THEN 1 ELSE 0 END")
             ->orderBy('deadline')
             ->get();
@@ -28,7 +28,7 @@ class ProjectController extends Controller
             return redirect()->route('user.dashboard')->with('error', "You don't have permission to access Projects.");
         }
 
-        // Ensure user is a member
+        // Only users explicitly added to the project by admin may view it
         if (!$project->members()->where('users.id', auth()->id())->exists()) {
             abort(403);
         }
@@ -39,15 +39,17 @@ class ProjectController extends Controller
             'members',
         ]);
 
+        $members = $project->members;
+
         $stats = [
-            'total'            => $project->tasks->count(),
-            'completed'        => $project->tasks->where('status', 'completed')->count(),
-            'in_progress'      => $project->tasks->where('status', 'in_progress')->count(),
-            'pending'          => $project->tasks->where('status', 'pending')->count(),
-            'submitted'        => $project->tasks->where('status', 'submitted')->count(),
+            'total'       => $project->tasks->count(),
+            'completed'   => $project->tasks->where('status', 'completed')->count(),
+            'in_progress' => $project->tasks->where('status', 'in_progress')->count(),
+            'pending'     => $project->tasks->where('status', 'pending')->count(),
+            'submitted'   => $project->tasks->where('status', 'submitted')->count(),
         ];
         $stats['rate'] = $stats['total'] > 0 ? round($stats['completed'] / $stats['total'] * 100) : 0;
 
-        return view('user.projects.show', compact('project', 'stats'));
+        return view('user.projects.show', compact('project', 'stats', 'members'));
     }
 }
