@@ -332,6 +332,7 @@ class SettingsController extends Controller
             'max_upload_mb'         => 'nullable|integer|min:0',
             'work_start_time'       => ['nullable', 'regex:/^\d{2}:\d{2}$/'],
             'work_end_time'         => ['nullable', 'regex:/^\d{2}:\d{2}$/'],
+            'deadline_end_time'     => ['nullable', 'regex:/^\d{2}:\d{2}$/'],
             'work_days'             => 'nullable|array',
             'work_days.*'           => 'integer|between:1,7',
         ]);
@@ -346,6 +347,7 @@ class SettingsController extends Controller
             'max_upload_mb'         => $request->max_upload_mb,
             'work_start_time'       => $request->input('work_start_time', '09:00'),
             'work_end_time'         => $request->input('work_end_time', '18:00'),
+            'deadline_end_time'     => $request->input('deadline_end_time', '23:59'),
             'work_days'             => json_encode(array_map('intval', $workDays)),
         ]);
 
@@ -1029,7 +1031,7 @@ class SettingsController extends Controller
         fclose($handle);
 
         if (strncmp($magic, "SQLite format 3\000", 16) !== 0) {
-            return back()->withErrors(['backup_file' => 'Invalid file — please upload a .sqlite backup file created by this system.'])->withFragment('backup');
+            return redirect()->route('admin.settings.index')->withErrors(['backup_file' => 'Invalid file — please upload a .sqlite backup file created by this system.'])->with('_fragment', 'backup');
         }
 
         $dbPath = database_path('database.sqlite');
@@ -1049,22 +1051,29 @@ class SettingsController extends Controller
             // Roll back
             copy($safeCopy, $dbPath);
             @unlink($safeCopy);
-            return back()->with('error', 'Restore failed: ' . $e->getMessage())->withFragment('backup');
+            return redirect()->route('admin.settings.index')->with('error', 'Restore failed: ' . $e->getMessage())->with('_fragment', 'backup');
         }
 
         AuditLogger::log('system.restored', null, 'Full system backup restored from uploaded file', []);
 
-        return redirect()->route('admin.settings.index')->with('success', 'Full system restore completed successfully. All data has been restored.')->withFragment('backup');
+        return redirect()->route('admin.settings.index')->with('success', 'Full system restore completed successfully. All data has been restored.')->with('_fragment', 'backup');
     }
 
     // ── Restores ─────────────────────────────────────────────────────────
+
+    private function settingsBackupRedirect(array $errors = [], string $success = '')
+    {
+        $redirect = redirect()->route('admin.settings.index')->with('_fragment', 'backup');
+        if ($errors) return $redirect->withErrors($errors);
+        return $redirect->with('success', $success);
+    }
 
     public function restoreUsers(Request $request)
     {
         try {
             $request->validate(['file' => 'required|file|max:5120|mimetypes:text/csv,text/plain,application/csv,application/vnd.ms-excel,application/octet-stream']);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return back()->withErrors($e->errors())->with('_fragment', 'backup');
+            return $this->settingsBackupRedirect($e->errors());
         }
 
         [$created, $updated, $skipped] = [0, 0, 0];
@@ -1074,7 +1083,7 @@ class SettingsController extends Controller
         $need = ['name', 'email', 'role'];
         if (count(array_diff($need, $headers)) > 0) {
             fclose($handle);
-            return back()->withErrors(['file' => 'CSV must have columns: name, email, role'])->with('_fragment', 'backup');
+            return $this->settingsBackupRedirect(['file' => 'CSV must have columns: name, email, role']);
         }
 
         while (($row = fgetcsv($handle)) !== false) {
@@ -1094,7 +1103,7 @@ class SettingsController extends Controller
         }
         fclose($handle);
 
-        return back()->with('success', "Users restored: {$created} created, {$updated} updated, {$skipped} skipped.")->with('_fragment', 'backup');
+        return $this->settingsBackupRedirect([], "Users restored: {$created} created, {$updated} updated, {$skipped} skipped.");
     }
 
     public function restoreProjects(Request $request)
@@ -1102,7 +1111,7 @@ class SettingsController extends Controller
         try {
             $request->validate(['file' => 'required|file|max:5120|mimetypes:text/csv,text/plain,application/csv,application/vnd.ms-excel,application/octet-stream']);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return back()->withErrors($e->errors())->with('_fragment', 'backup');
+            return $this->settingsBackupRedirect($e->errors());
         }
 
         [$created, $updated, $skipped] = [0, 0, 0];
@@ -1111,7 +1120,7 @@ class SettingsController extends Controller
 
         if (!in_array('name', $headers) || !in_array('deadline', $headers)) {
             fclose($handle);
-            return back()->withErrors(['file' => 'CSV must have columns: name, deadline'])->with('_fragment', 'backup');
+            return $this->settingsBackupRedirect(['file' => 'CSV must have columns: name, deadline']);
         }
 
         $adminId = auth()->id();
@@ -1133,7 +1142,7 @@ class SettingsController extends Controller
         }
         fclose($handle);
 
-        return back()->with('success', "Projects restored: {$created} created, {$updated} updated, {$skipped} skipped.")->with('_fragment', 'backup');
+        return $this->settingsBackupRedirect([], "Projects restored: {$created} created, {$updated} updated, {$skipped} skipped.");
     }
 
     public function restoreTasks(Request $request)
@@ -1141,7 +1150,7 @@ class SettingsController extends Controller
         try {
             $request->validate(['file' => 'required|file|max:5120|mimetypes:text/csv,text/plain,application/csv,application/vnd.ms-excel,application/octet-stream']);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return back()->withErrors($e->errors())->with('_fragment', 'backup');
+            return $this->settingsBackupRedirect($e->errors());
         }
 
         [$created, $skipped] = [0, 0];
@@ -1151,7 +1160,7 @@ class SettingsController extends Controller
         $need = ['title', 'project', 'assigned to', 'deadline'];
         if (count(array_diff($need, $headers)) > 0) {
             fclose($handle);
-            return back()->withErrors(['file' => 'CSV must have columns: title, project, assigned to, deadline'])->with('_fragment', 'backup');
+            return $this->settingsBackupRedirect(['file' => 'CSV must have columns: title, project, assigned to, deadline']);
         }
 
         while (($row = fgetcsv($handle)) !== false) {
@@ -1176,7 +1185,7 @@ class SettingsController extends Controller
         }
         fclose($handle);
 
-        return back()->with('success', "Tasks restored: {$created} created, {$skipped} skipped.")->with('_fragment', 'backup');
+        return $this->settingsBackupRedirect([], "Tasks restored: {$created} created, {$skipped} skipped.");
     }
 
     // ── Clear Data ───────────────────────────────────────────────────────

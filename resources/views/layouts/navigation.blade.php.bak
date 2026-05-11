@@ -1,0 +1,266 @@
+@php
+    $role              = auth()->user()->role ?? 'user';
+    $taskCount         = auth()->check() ? auth()->user()->tasks()->where('status','!=','completed')->count() : 0;
+    $dashRoute         = $role === 'admin' ? 'admin.dashboard' : ($role === 'manager' ? 'manager.dashboard' : 'user.dashboard');
+    $tasksRoute        = $role === 'admin' ? 'admin.dashboard' : ($role === 'manager' ? 'manager.dashboard' : 'user.dashboard');
+    $approvalCount     = (in_array($role, ['admin', 'manager']) && auth()->check()) ? \App\Models\Task::where('status','submitted')->count() : 0;
+    $userProjectCount  = ($role === 'user'  && auth()->check()) ? auth()->user()->projects()->count() : 0;
+    $unreadMsgCount    = auth()->check() ? \App\Models\Message::where('receiver_id', auth()->id())->whereNull('read_at')->whereNull('group_id')->count() : 0;
+@endphp
+
+<div style="display:flex;flex-direction:column;height:100%;">
+
+    {{-- Brand --}}
+    <div class="sidebar-brand" style="display:flex;flex-direction:column;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div class="sidebar-logo" style="margin-bottom:0;">
+                @if(!empty($appSettings['logo_path']))
+                    <img src="{{ Storage::url($appSettings['logo_path']) }}"
+                         alt="{{ $appSettings['app_name'] ?? 'Logo' }}"
+                         style="height:42px;width:auto;max-width:140px;object-fit:contain;border-radius:6px;">
+                @else
+                    <div class="sidebar-logo-icon"><i class="fas fa-bolt"></i></div>
+                @endif
+                <div>
+                    <span class="sidebar-logo-text">{{ $appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name', 'Dash') }}</span>
+                    @if(!empty($appSettings['app_tagline']))
+                    <span style="display:block;font-size:10px;color:#9CA3AF;font-weight:400;margin-top:1px;line-height:1;">{{ $appSettings['app_tagline'] }}</span>
+                    @endif
+                </div>
+            </div>
+            {{-- Mobile close button --}}
+            <button @click="sidebarOpen = false"
+                    style="display:none;width:28px;height:28px;border-radius:6px;background:#F3F4F6;border:none;cursor:pointer;align-items:center;justify-content:center;color:#6B7280;font-size:12px;flex-shrink:0;"
+                    id="sidebar-close-btn">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+    <style>
+    @media (max-width: 768px) {
+        #sidebar-close-btn { display: flex !important; }
+    }
+    .recent-proj-link { display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:13px;color:#6B7280;text-decoration:none;border-radius:6px;transition:color 0.15s,background 0.15s;margin-bottom:2px; }
+    .recent-proj-link:hover { color:#4F46E5; background:#F5F3FF; }
+    .logout-btn-wrap { width:100%;background:none;border:none;cursor:pointer;text-align:left;padding:0; }
+    .logout-btn-wrap .nav-item { transition:background 0.15s,color 0.15s; }
+    .logout-btn-wrap:hover .nav-item { background:#FEF2F2 !important; color:#DC2626 !important; }
+    .logout-btn-wrap:hover .nav-icon { color:#DC2626 !important; }
+    </style>
+
+    {{-- Nav --}}
+    @php $navHidden = json_decode($appSettings['nav_hidden'] ?? '[]', true) ?: []; @endphp
+    <nav class="sidebar-nav">
+
+        {{-- Overview / My Tasks --}}
+        @if(in_array($role, ['admin', 'manager']))
+        @if(!in_array('nav_overview', $navHidden))
+        <a href="{{ route($dashRoute) }}"
+           class="nav-item {{ request()->routeIs($dashRoute) ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-table-cells-large nav-icon"></i>
+                Overview
+            </div>
+        </a>
+        @endif
+        @else
+        @if(!in_array('nav_my_tasks', $navHidden))
+        <a href="{{ route($tasksRoute) }}"
+           class="nav-item {{ request()->routeIs($tasksRoute) ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-square-check nav-icon"></i>
+                My Tasks
+            </div>
+            @if($taskCount > 0)
+                <span class="nav-badge nav-badge-blue">{{ $taskCount }}</span>
+            @endif
+        </a>
+        @endif
+        @if(!in_array('nav_task_list', $navHidden))
+        <a href="{{ route('user.tasks.index') }}"
+           class="nav-item {{ request()->routeIs('user.tasks.index') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-list-check nav-icon"></i>
+                Task List
+            </div>
+        </a>
+        @endif
+        @endif
+
+        {{-- Activities --}}
+        @if(!in_array('nav_activities', $navHidden))
+        <a href="{{ route('activities.index') }}"
+           class="nav-item {{ request()->routeIs('activities.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-bolt nav-icon"></i>
+                Activities
+            </div>
+        </a>
+        @endif
+
+        {{-- MENU section --}}
+        <div class="sidebar-section">Menu</div>
+
+        {{-- Messages --}}
+        @if(auth()->user()->hasPermission('view_messages') && !in_array('nav_messages', $navHidden))
+        <a href="{{ route('messages.index') }}"
+           class="nav-item {{ request()->routeIs('messages.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-comment-dots nav-icon"></i>
+                Messages
+            </div>
+            @if($unreadMsgCount > 0)
+            <span class="nav-badge nav-badge-red">{{ $unreadMsgCount > 99 ? '99+' : $unreadMsgCount }}</span>
+            @endif
+        </a>
+        @endif
+
+        {{-- Team Members --}}
+        @if(auth()->user()->hasPermission('view_team') && !in_array('nav_team', $navHidden))
+        <a href="{{ route('team.index') }}"
+           class="nav-item {{ request()->routeIs('team.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-users nav-icon"></i>
+                Team Members
+            </div>
+        </a>
+        @endif
+
+        {{-- Calendar --}}
+        @if(auth()->user()->hasPermission('view_calendar') && !in_array('nav_calendar', $navHidden))
+        <a href="{{ route('calendar.index') }}"
+           class="nav-item {{ request()->routeIs('calendar.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-calendar-days nav-icon"></i>
+                Calendar
+            </div>
+        </a>
+        @endif
+
+        {{-- User-only: My Projects --}}
+        @if($role === 'user' && auth()->user()->hasPermission('view_projects') && !in_array('nav_my_projects', $navHidden))
+        <a href="{{ route('user.projects.index') }}"
+           class="nav-item {{ request()->routeIs('user.projects.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-diagram-project nav-icon"></i>
+                My Projects
+            </div>
+            @if($userProjectCount > 0)
+            <span class="nav-badge nav-badge-blue">{{ $userProjectCount }}</span>
+            @endif
+        </a>
+        @endif
+
+        {{-- User-only: My Reports --}}
+        @if($role === 'user' && auth()->user()->hasPermission('view_reports') && !in_array('nav_user_reports', $navHidden))
+        <a href="{{ route('user.reports.index') }}"
+           class="nav-item {{ request()->routeIs('user.reports.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-chart-bar nav-icon"></i>
+                My Reports
+            </div>
+        </a>
+        @endif
+
+        {{-- Admin & Manager section --}}
+        @php $hasAnyAdminPerm = in_array($role, ['admin', 'manager']); @endphp
+        @if($hasAnyAdminPerm)
+        <div class="sidebar-section">Admin</div>
+
+        @if(auth()->user()->hasPermission('manage_projects') && !in_array('nav_projects', $navHidden))
+        <a href="{{ route('admin.projects.index') }}"
+           class="nav-item {{ request()->routeIs('admin.projects.*') || request()->routeIs('manager.projects.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-diagram-project nav-icon"></i>
+                Projects
+            </div>
+        </a>
+        @endif
+
+        @if(auth()->user()->hasPermission('manage_tasks') && !in_array('nav_tasks', $navHidden))
+        <a href="{{ route('admin.tasks.index') }}"
+           class="nav-item {{ request()->routeIs('admin.tasks.index') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-list-check nav-icon"></i>
+                Tasks
+            </div>
+        </a>
+        @endif
+
+        @if(in_array($role, ['admin', 'manager']) && !in_array('nav_customers', $navHidden))
+        <a href="{{ route('admin.customers.index') }}"
+           class="nav-item {{ request()->routeIs('admin.customers.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-building nav-icon"></i>
+                Customers
+            </div>
+        </a>
+        @endif
+
+        @if(auth()->user()->hasPermission('view_approvals') && !in_array('nav_approvals', $navHidden))
+        <a href="{{ route('admin.approvals.index') }}"
+           class="nav-item {{ request()->routeIs('admin.approvals.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-clipboard-check nav-icon"></i>
+                Approvals
+            </div>
+            @if($approvalCount > 0)
+            <span class="nav-badge nav-badge-red">{{ $approvalCount }}</span>
+            @endif
+        </a>
+        @endif
+
+        @if(auth()->user()->hasPermission('view_audit_log') && !in_array('nav_audit', $navHidden))
+        <a href="{{ route('admin.audit.index') }}"
+           class="nav-item {{ request()->routeIs('admin.audit.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-shield-halved nav-icon"></i>
+                Audit Log
+            </div>
+        </a>
+        @endif
+
+        @if(auth()->user()->hasPermission('view_reports') && !in_array('nav_social_budget', $navHidden))
+        @php $socialPendingNav = \App\Models\Task::where('social_required', true)->whereNull('social_posted_at')->count(); @endphp
+        <a href="{{ route('admin.social-budget.index') }}"
+           class="nav-item {{ request()->routeIs('admin.social-budget.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-wallet nav-icon"></i>
+                Ad Budget
+            </div>
+            @if($socialPendingNav > 0)
+            <span class="nav-badge nav-badge-red">{{ $socialPendingNav }}</span>
+            @endif
+        </a>
+        @endif
+
+        @if(auth()->user()->hasPermission('view_reports') && !in_array('nav_reports', $navHidden))
+        <a href="{{ route('admin.reports.index') }}"
+           class="nav-item {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-chart-bar nav-icon"></i>
+                Reports
+            </div>
+        </a>
+        @endif
+        @endif
+
+        {{-- Recent Projects --}}
+        @if(isset($recentProjects) && $recentProjects->count() && !in_array('nav_recent_projects', $navHidden))
+        <div class="sidebar-section">Recent Project</div>
+        @foreach($recentProjects as $rp)
+        @php $dotColors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6']; @endphp
+        <a href="{{ in_array($role, ['admin', 'manager']) ? route('admin.projects.show', $rp) : '#' }}"
+           class="recent-proj-link">
+            <span style="width:8px;height:8px;border-radius:50%;background:{{ $dotColors[$rp->id % 5] }};flex-shrink:0;"></span>
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $rp->name }}</span>
+        </a>
+        @endforeach
+        @endif
+
+    </nav>
+
+    {{-- Footer (empty — logout and settings moved to topbar dropdown) --}}
+    <div class="sidebar-footer" style="padding:8px 12px;"></div>
+
+</div>
