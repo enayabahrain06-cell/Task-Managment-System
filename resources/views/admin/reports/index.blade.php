@@ -2266,5 +2266,68 @@ async function exportUsersPDF() {
     pdfBtn.innerHTML = '<i class="fas fa-file-pdf" style="font-size:11px;"></i><span>Export PDF (' + selectedIds.length + ')</span>';
     pdfBtn.disabled = false;
 }
+
+/* ── Client-side table paginator ── */
+function rptPaginate(tableId, perPage) {
+    var table = document.getElementById(tableId);
+    if (!table) return;
+    var tbody = table.querySelector('tbody');
+    if (!tbody) return;
+    var rows = Array.from(tbody.querySelectorAll('tr'));
+    if (rows.length <= perPage) return; // no pagination needed
+
+    var totalPages = Math.ceil(rows.length / perPage);
+    var current = 1;
+
+    // Create pagination container
+    var wrap = document.createElement('div');
+    wrap.id = tableId + '-pg';
+    wrap.style.cssText = 'margin-top:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;';
+    table.closest('.rpt-scroll-wrap, div') && table.parentNode.insertBefore && table.parentNode.parentNode
+        ? table.parentNode.parentNode.insertBefore(wrap, table.parentNode.nextSibling)
+        : table.parentNode.insertBefore(wrap, table.nextSibling);
+
+    function render(page) {
+        current = page;
+        var start = (page - 1) * perPage;
+        rows.forEach(function(r, i) {
+            r.style.display = (i >= start && i < start + perPage) ? '' : 'none';
+        });
+        var from = start + 1, to = Math.min(start + perPage, rows.length);
+        wrap.innerHTML = '';
+
+        // Count label
+        var lbl = document.createElement('span');
+        lbl.style.cssText = 'font-size:12px;color:#6B7280;';
+        lbl.textContent = 'Showing ' + from + '–' + to + ' of ' + rows.length + ' results';
+        wrap.appendChild(lbl);
+
+        // Buttons
+        var btns = document.createElement('div');
+        btns.style.cssText = 'display:flex;gap:4px;align-items:center;flex-wrap:wrap;';
+
+        function btn(label, page, active, disabled) {
+            var el = document.createElement(disabled ? 'span' : 'button');
+            el.textContent = label;
+            el.style.cssText = 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:' + (active ? '700' : '600') + ';border:none;cursor:' + (disabled ? 'default' : 'pointer') + ';min-width:32px;text-align:center;background:' + (active ? '#4F46E5' : '#F3F4F6') + ';color:' + (active ? '#fff' : (disabled ? '#D1D5DB' : '#374151')) + ';';
+            if (!disabled && !active) el.addEventListener('click', function() { render(page); });
+            return el;
+        }
+
+        btns.appendChild(btn('‹ Prev', current - 1, false, current === 1));
+        for (var p = 1; p <= totalPages; p++) btns.appendChild(btn(p, p, p === current, false));
+        btns.appendChild(btn('Next ›', current + 1, false, current === totalPages));
+        wrap.appendChild(btns);
+    }
+    render(1);
+}
+
+// Init all report tables
+document.addEventListener('DOMContentLoaded', function() {
+    ['proj-table','team-table','customer-table','approval-speed-table',
+     'overdue-table','reopened-table','reassigned-bottom-table',
+     'billing-user-table','billing-customer-table','ad-budget-table'
+    ].forEach(function(id) { rptPaginate(id, 7); });
+});
 </script>
 @endpush

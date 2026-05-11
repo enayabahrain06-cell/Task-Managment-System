@@ -175,11 +175,7 @@
                 </tbody>
             </table>
 
-            @if($customers->hasPages())
-            <div style="padding:14px 20px;border-top:1px solid #F3F4F6;">
-                {{ $customers->links() }}
-            </div>
-            @endif
+            <x-pagination :paginator="$customers" mt="14px" />
         </div>
     </div>
 
@@ -282,11 +278,7 @@
             @endforeach
         </div>
 
-        @if($customers->hasPages())
-        <div style="margin-top:16px;">
-            {{ $customers->links() }}
-        </div>
-        @endif
+        <x-pagination :paginator="$customers" />
     </div>
 
     @endif

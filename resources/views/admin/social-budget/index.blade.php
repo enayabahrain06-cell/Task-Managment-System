@@ -279,4 +279,30 @@
     </div>
 </div>
 
+@if($tasks->hasPages())
+@php $pgParams = array_filter(['project_id'=>$projectId,'customer_id'=>$customerId,'status'=>$status!=='all'?$status:null], fn($v)=>$v!==null); @endphp
+<div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+    <span style="font-size:12px;color:#6B7280;">Showing {{ $tasks->firstItem() }}–{{ $tasks->lastItem() }} of {{ $tasks->total() }} results</span>
+    <div style="display:flex;gap:4px;align-items:center;">
+        @if($tasks->onFirstPage())
+            <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#D1D5DB;cursor:default;">‹ Prev</span>
+        @else
+            <a href="{{ $tasks->appends($pgParams)->previousPageUrl() }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;">‹ Prev</a>
+        @endif
+        @foreach($tasks->appends($pgParams)->getUrlRange(1, $tasks->lastPage()) as $page => $url)
+            @if($page == $tasks->currentPage())
+                <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;background:#4F46E5;color:#fff;min-width:34px;text-align:center;">{{ $page }}</span>
+            @else
+                <a href="{{ $url }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;min-width:34px;text-align:center;">{{ $page }}</a>
+            @endif
+        @endforeach
+        @if($tasks->hasMorePages())
+            <a href="{{ $tasks->appends($pgParams)->nextPageUrl() }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;">Next ›</a>
+        @else
+            <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#D1D5DB;cursor:default;">Next ›</span>
+        @endif
+    </div>
+</div>
+@endif
+
 @endsection

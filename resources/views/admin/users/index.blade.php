@@ -185,10 +185,7 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
             @endforelse
         </tbody>
     </table>
-    @if($users->hasPages())
-    <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/50">
-        {{ $users->links() }}
-    </div>
+    <x-pagination :paginator="$users" mt="12px" />
     @endif
 </div>
 @endif {{-- users tab --}}

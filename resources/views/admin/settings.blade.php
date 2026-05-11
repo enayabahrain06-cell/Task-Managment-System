@@ -1724,6 +1724,29 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 <span x-text="hideHourly ? 'On' : 'Off'"></span>
                             </button>
                         </div>
+                        {{-- Clear Cache --}}
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
+                             x-data="{ clearing: false, done: false }">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="width:28px;height:28px;border-radius:8px;background:#F5F3FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-broom" style="font-size:11px;color:#7C3AED;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Clear Application Cache</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;" x-text="done ? 'Cache cleared successfully' : 'Clears config, views, routes &amp; data cache'"></p>
+                                </div>
+                            </div>
+                            <button type="button"
+                                    :disabled="clearing"
+                                    @click="clearing=true; done=false;
+                                        fetch('{{ route('admin.settings.clear-cache') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} })
+                                        .then(r=>r.json()).then(d=>{ clearing=false; done=true; setTimeout(()=>done=false,4000); })"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                    :style="done ? 'background:#059669;color:#fff;' : (clearing ? 'background:#E5E7EB;color:#9CA3AF;cursor:not-allowed;' : 'background:#F3F4F6;color:#374151;')">
+                                <i class="fas" :class="clearing ? 'fa-spinner fa-spin' : (done ? 'fa-check' : 'fa-broom')"></i>
+                                <span x-text="clearing ? 'Clearing…' : (done ? 'Done!' : 'Clear Cache')"></span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 

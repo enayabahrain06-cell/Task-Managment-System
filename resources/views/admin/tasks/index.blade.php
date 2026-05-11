@@ -759,10 +759,7 @@ $activeStatDefs = [
 
 </div>{{-- end x-data taskViewToggle --}}
 
-{{-- Pagination --}}
-@if($tasks->hasPages())
-<div class="mt-4">{{ $tasks->links() }}</div>
-@endif
+<x-pagination :paginator="$tasks" />
 @endif
 
 <script>

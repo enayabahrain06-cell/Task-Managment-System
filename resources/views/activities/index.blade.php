@@ -505,11 +505,7 @@
             @endforelse
         </div>
 
-        @if($activities->hasPages())
-        <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/50">
-            {{ $activities->links() }}
-        </div>
-        @endif
+        <x-pagination :paginator="$activities" mt="12px" />
     </div>
 
 </div>

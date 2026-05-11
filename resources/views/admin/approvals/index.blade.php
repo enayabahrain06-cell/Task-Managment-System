@@ -1644,7 +1644,28 @@
 @endif
 
 @if($tasks->hasPages())
-<div style="margin-top:20px;">{{ $tasks->links() }}</div>
+<div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+    <span style="font-size:12px;color:#6B7280;">Showing {{ $tasks->firstItem() }}–{{ $tasks->lastItem() }} of {{ $tasks->total() }} results</span>
+    <div style="display:flex;gap:4px;align-items:center;">
+        @if($tasks->onFirstPage())
+            <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#D1D5DB;cursor:default;">‹ Prev</span>
+        @else
+            <a href="{{ $tasks->previousPageUrl() }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;">‹ Prev</a>
+        @endif
+        @foreach($tasks->getUrlRange(1, $tasks->lastPage()) as $page => $url)
+            @if($page == $tasks->currentPage())
+                <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;background:#4F46E5;color:#fff;min-width:34px;text-align:center;">{{ $page }}</span>
+            @else
+                <a href="{{ $url }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;min-width:34px;text-align:center;">{{ $page }}</a>
+            @endif
+        @endforeach
+        @if($tasks->hasMorePages())
+            <a href="{{ $tasks->nextPageUrl() }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;">Next ›</a>
+        @else
+            <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#D1D5DB;cursor:default;">Next ›</span>
+        @endif
+    </div>
+</div>
 @endif
 
 @endif {{-- end pending tab --}}
@@ -1747,7 +1768,28 @@
 </table>
 </div>
 @if($awaitingTasks->hasPages())
-<div style="margin-top:20px;">{{ $awaitingTasks->appends(['tab' => 'awaiting'])->links() }}</div>
+<div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+    <span style="font-size:12px;color:#6B7280;">Showing {{ $awaitingTasks->firstItem() }}–{{ $awaitingTasks->lastItem() }} of {{ $awaitingTasks->total() }} results</span>
+    <div style="display:flex;gap:4px;align-items:center;">
+        @if($awaitingTasks->onFirstPage())
+            <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#D1D5DB;cursor:default;">‹ Prev</span>
+        @else
+            <a href="{{ $awaitingTasks->appends(['tab'=>'awaiting'])->previousPageUrl() }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;">‹ Prev</a>
+        @endif
+        @foreach($awaitingTasks->appends(['tab'=>'awaiting'])->getUrlRange(1, $awaitingTasks->lastPage()) as $page => $url)
+            @if($page == $awaitingTasks->currentPage())
+                <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;background:#4F46E5;color:#fff;min-width:34px;text-align:center;">{{ $page }}</span>
+            @else
+                <a href="{{ $url }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;min-width:34px;text-align:center;">{{ $page }}</a>
+            @endif
+        @endforeach
+        @if($awaitingTasks->hasMorePages())
+            <a href="{{ $awaitingTasks->appends(['tab'=>'awaiting'])->nextPageUrl() }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;">Next ›</a>
+        @else
+            <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#D1D5DB;cursor:default;">Next ›</span>
+        @endif
+    </div>
+</div>
 @endif
 @endif
 @endif {{-- end awaiting tab --}}
@@ -2184,7 +2226,35 @@
 </div>{{-- #histCardsView --}}
 
 @if($history->hasPages())
-<div style="margin-top:20px;">{{ $history->appends($hParams)->links() }}</div>
+<div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+    <span style="font-size:12px;color:#6B7280;">
+        Showing {{ $history->firstItem() }}–{{ $history->lastItem() }} of {{ $history->total() }} results
+    </span>
+    <div style="display:flex;gap:4px;align-items:center;">
+        {{-- Prev --}}
+        @if($history->onFirstPage())
+            <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#D1D5DB;cursor:default;">‹ Prev</span>
+        @else
+            <a href="{{ $history->appends($hParams)->previousPageUrl() }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;">‹ Prev</a>
+        @endif
+
+        {{-- Page numbers --}}
+        @foreach($history->appends($hParams)->getUrlRange(1, $history->lastPage()) as $page => $url)
+            @if($page == $history->currentPage())
+                <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;background:#4F46E5;color:#fff;min-width:34px;text-align:center;">{{ $page }}</span>
+            @else
+                <a href="{{ $url }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;min-width:34px;text-align:center;">{{ $page }}</a>
+            @endif
+        @endforeach
+
+        {{-- Next --}}
+        @if($history->hasMorePages())
+            <a href="{{ $history->appends($hParams)->nextPageUrl() }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;">Next ›</a>
+        @else
+            <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#D1D5DB;cursor:default;">Next ›</span>
+        @endif
+    </div>
+</div>
 @endif
 
 @endif {{-- end @else (results found) --}}
@@ -2446,7 +2516,28 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
     </div>{{-- #pendingListView --}}
 
     @if($publishedSocialTasks->hasPages())
-    <div style="margin-top:16px;">{{ $publishedSocialTasks->appends(['tab' => 'published'])->links() }}</div>
+    <div style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <span style="font-size:12px;color:#6B7280;">Showing {{ $publishedSocialTasks->firstItem() }}–{{ $publishedSocialTasks->lastItem() }} of {{ $publishedSocialTasks->total() }} results</span>
+        <div style="display:flex;gap:4px;align-items:center;">
+            @if($publishedSocialTasks->onFirstPage())
+                <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#D1D5DB;cursor:default;">‹ Prev</span>
+            @else
+                <a href="{{ $publishedSocialTasks->appends(['tab'=>'published'])->previousPageUrl() }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;">‹ Prev</a>
+            @endif
+            @foreach($publishedSocialTasks->appends(['tab'=>'published'])->getUrlRange(1, $publishedSocialTasks->lastPage()) as $page => $url)
+                @if($page == $publishedSocialTasks->currentPage())
+                    <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;background:#4F46E5;color:#fff;min-width:34px;text-align:center;">{{ $page }}</span>
+                @else
+                    <a href="{{ $url }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;min-width:34px;text-align:center;">{{ $page }}</a>
+                @endif
+            @endforeach
+            @if($publishedSocialTasks->hasMorePages())
+                <a href="{{ $publishedSocialTasks->appends(['tab'=>'published'])->nextPageUrl() }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;">Next ›</a>
+            @else
+                <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#D1D5DB;cursor:default;">Next ›</span>
+            @endif
+        </div>
+    </div>
     @endif
 </div>
 @endif
@@ -2603,7 +2694,28 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
 </div>{{-- card --}}
 
 @if($socialTasks->hasPages())
-<div style="margin-top:20px;">{{ $socialTasks->appends(['tab' => 'social'])->links() }}</div>
+<div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+    <span style="font-size:12px;color:#6B7280;">Showing {{ $socialTasks->firstItem() }}–{{ $socialTasks->lastItem() }} of {{ $socialTasks->total() }} results</span>
+    <div style="display:flex;gap:4px;align-items:center;">
+        @if($socialTasks->onFirstPage())
+            <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#D1D5DB;cursor:default;">‹ Prev</span>
+        @else
+            <a href="{{ $socialTasks->appends(['tab'=>'social'])->previousPageUrl() }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;">‹ Prev</a>
+        @endif
+        @foreach($socialTasks->appends(['tab'=>'social'])->getUrlRange(1, $socialTasks->lastPage()) as $page => $url)
+            @if($page == $socialTasks->currentPage())
+                <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;background:#4F46E5;color:#fff;min-width:34px;text-align:center;">{{ $page }}</span>
+            @else
+                <a href="{{ $url }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;min-width:34px;text-align:center;">{{ $page }}</a>
+            @endif
+        @endforeach
+        @if($socialTasks->hasMorePages())
+            <a href="{{ $socialTasks->appends(['tab'=>'social'])->nextPageUrl() }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;">Next ›</a>
+        @else
+            <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#D1D5DB;cursor:default;">Next ›</span>
+        @endif
+    </div>
+</div>
 @endif
 
 @endif {{-- social tasks not empty --}}

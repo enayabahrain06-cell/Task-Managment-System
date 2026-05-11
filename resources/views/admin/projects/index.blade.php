@@ -371,11 +371,7 @@ $statDefs = [
             @endforelse
         </tbody>
     </table>
-    @if($projects->hasPages())
-    <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/50">
-        {{ $projects->links() }}
-    </div>
-    @endif
+    <x-pagination :paginator="$projects" mt="12px" />
 </div>
 </div>{{-- end table view --}}
 
@@ -543,9 +539,7 @@ $statDefs = [
         @endforeach
     </div>
 
-    @if($projects->hasPages())
-    <div class="mt-4">{{ $projects->links() }}</div>
-    @endif
+    <x-pagination :paginator="$projects" />
     @endif
 </div>{{-- end card view --}}
 

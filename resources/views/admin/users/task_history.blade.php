@@ -136,10 +136,6 @@
         @endforelse
     </div>
 
-    @if($tasks->hasPages())
-    <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/50">
-        {{ $tasks->links() }}
-    </div>
-    @endif
+    <x-pagination :paginator="$tasks" mt="12px" />
 </div>
 @endsection

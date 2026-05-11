@@ -29,7 +29,7 @@ class SocialBudgetController extends Controller
             ->when($status === 'pending', fn($q) => $q->whereNull('social_posted_at'))
             ->orderByRaw('social_posted_at IS NOT NULL, created_at DESC');
 
-        $tasks = $query->get()->map(fn($t) => [
+        $tasks = $query->paginate(10)->through(fn($t) => [
             'id'          => $t->id,
             'title'       => $t->title,
             'project'     => $t->project->name ?? '—',
