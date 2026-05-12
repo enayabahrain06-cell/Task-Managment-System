@@ -424,6 +424,10 @@ class TaskController extends Controller
 
     public function forceDelete(int $id)
     {
+        if (!auth()->user()->hasPermission('delete_tasks')) {
+            abort(403);
+        }
+
         $task = Task::onlyTrashed()->findOrFail($id);
         $title = $task->title;
         AuditLogger::log(
