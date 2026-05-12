@@ -763,7 +763,10 @@ class TaskController extends Controller
 
     public function deleteAttachment(Task $task, \App\Models\ProjectAttachment $attachment)
     {
-        abort_unless($attachment->task_id === $task->id, 403);
+        // Allow deleting task-specific attachments or project-level attachments belonging to the same project
+        $isTaskSpecific  = $attachment->task_id === $task->id;
+        $isProjectLevel  = is_null($attachment->task_id) && $attachment->project_id === $task->project_id;
+        abort_unless($isTaskSpecific || $isProjectLevel, 403);
 
         $filename = $attachment->name;
         \Illuminate\Support\Facades\Storage::disk('public')->delete($attachment->path);

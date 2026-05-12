@@ -752,14 +752,22 @@
                             </div>
                             <i class="fa fa-eye" style="color:#9CA3AF;font-size:13px;flex-shrink:0;"></i>
                         </button>
-                        @if($att->task_id === $task->id)
+                        @php
+                            $isTaskAtt    = $att->task_id === $task->id;
+                            $isProjAtt    = is_null($att->task_id) && $att->project_id === $task->project_id;
+                            $canDelete    = $isTaskAtt || $isProjAtt;
+                            $confirmMsg   = $isProjAtt
+                                ? 'This file belongs to the project and will be removed for ALL tasks. Delete anyway?'
+                                : 'Delete this attachment?';
+                        @endphp
+                        @if($canDelete)
                         <form method="POST" action="{{ route('admin.tasks.attachments.delete', [$task, $att]) }}"
-                              onsubmit="return confirm('Delete this attachment?')" style="margin:0;flex-shrink:0;">
+                              onsubmit="return confirm('{{ $confirmMsg }}')" style="margin:0;flex-shrink:0;">
                             @csrf @method('DELETE')
                             <button type="submit"
                                     style="width:34px;height:34px;border-radius:9px;background:#FEF2F2;border:1px solid #FECACA;color:#EF4444;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;"
                                     onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'"
-                                    title="Delete attachment">
+                                    title="{{ $isProjAtt ? 'Delete from project' : 'Delete attachment' }}">
                                 <i class="fa fa-trash" style="font-size:12px;"></i>
                             </button>
                         </form>
