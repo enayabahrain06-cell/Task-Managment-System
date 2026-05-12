@@ -36,10 +36,11 @@ class DashboardController extends Controller
                                      ->whereNotIn('status', ['approved', 'delivered', 'archived']),
             'reopened'      => $query->whereHas('logs', fn($q) => $q->where('action', 'status_updated_reopened')),
             'reassigned'    => $query->whereHas('logs', fn($q) => $q->whereIn('action', ['task_reassigned', 'task_transferred'])),
-            'decide_later'  => $query->whereIn('status', ['delivered', 'approved', 'archived'])
-                                     ->whereNull('social_required')
-                                     ->whereNull('social_assigned_to'),
-            default         => $query->whereIn('status', ['draft', 'assigned', 'viewed']),
+            'decide_later'        => $query->whereIn('status', ['delivered', 'approved', 'archived'])
+                                          ->whereNull('social_required')
+                                          ->whereNull('social_assigned_to'),
+            'revision_requested'  => $query->where('status', 'revision_requested'),
+            default               => $query->whereIn('status', ['draft', 'assigned', 'viewed']),
         };
 
         $statusMeta = [
