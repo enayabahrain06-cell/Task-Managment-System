@@ -93,16 +93,36 @@ class TaskApprovalController extends Controller
             ->latest()
             ->paginate(10, ['*'], 'apage');
 
-        $decideLaterTasks = Task::whereIn('status', ['delivered', 'approved', 'archived'])
+        $dlSearch   = $request->get('dlsearch');
+        $dlAssignee = $request->get('dlassignee');
+
+        $decideLaterQuery = Task::whereIn('status', ['delivered', 'approved', 'archived'])
             ->whereNull('social_required')
             ->whereNull('social_assigned_to')
-            ->with(['project', 'assignee', 'submissions' => fn($q) => $q->latest()])
-            ->latest()
-            ->paginate(10, ['*'], 'dpage');
+            ->with(['project', 'assignee', 'submissions' => fn($q) => $q->latest()]);
+
+        if ($dlSearch) {
+            $decideLaterQuery->where('title', 'like', "%{$dlSearch}%");
+        }
+        if ($dlAssignee) {
+            $decideLaterQuery->where('assigned_to', $dlAssignee);
+        }
+
+        $decideLaterTasks = $decideLaterQuery->latest()->paginate(10, ['*'], 'dpage');
+
+        $dlAssignees = User::whereIn('id',
+            Task::whereIn('status', ['delivered', 'approved', 'archived'])
+                ->whereNull('social_required')
+                ->whereNull('social_assigned_to')
+                ->whereNotNull('assigned_to')
+                ->pluck('assigned_to')
+                ->unique()
+        )->orderBy('name')->get();
 
         return view('admin.approvals.index', compact(
             'tasks', 'history', 'tab', 'socialTasks', 'publishedSocialTasks', 'socialUsers',
-            'hSort', 'hDir', 'hFrom', 'hTo', 'hDecision', 'hSearch', 'awaitingTasks', 'decideLaterTasks'
+            'hSort', 'hDir', 'hFrom', 'hTo', 'hDecision', 'hSearch', 'awaitingTasks',
+            'decideLaterTasks', 'dlSearch', 'dlAssignee', 'dlAssignees'
         ));
     }
 
@@ -853,5 +873,43 @@ class TaskApprovalController extends Controller
         $projectProgress       = $projectTaskCount > 0 ? round($projectCompletedCount / $projectTaskCount * 100) : 0;
 
         return view('social.show', compact('task', 'projectTaskCount', 'projectCompletedCount', 'projectProgress'));
+    }
+
+    public function bulkDecideLater(Request $request)
+    {
+        $request->validate([
+            'task_ids'       => 'required|array|min:1',
+            'task_ids.*'     => 'exists:tasks,id',
+            'action'         => 'required|in:not_needed,assign',
+            'social_user_id' => 'required_if:action,assign|nullable|exists:users,id',
+        ]);
+
+        $tasks = Task::whereIn('id', $request->task_ids)
+            ->whereIn('status', ['delivered', 'approved', 'archived'])
+            ->whereNull('social_required')
+            ->whereNull('social_assigned_to')
+            ->get();
+
+        if ($tasks->isEmpty()) {
+            return back()->with('error', 'No eligible tasks found.');
+        }
+
+        if ($request->action === 'not_needed') {
+            foreach ($tasks as $task) {
+                $task->update(['social_required' => false, 'social_assigned_to' => null]);
+            }
+            return back()->with('success', $tasks->count() . ' task(s) marked as social not needed.');
+        }
+
+        $user = User::findOrFail($request->social_user_id);
+        foreach ($tasks as $task) {
+            $task->update([
+                'social_required'    => true,
+                'social_assigned_to' => $user->id,
+            ]);
+            $user->notify(new \App\Notifications\SocialMediaAssigned($task));
+        }
+
+        return back()->with('success', $tasks->count() . ' task(s) assigned to ' . $user->name . ' for social media.');
     }
 }

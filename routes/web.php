@@ -182,6 +182,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('tasks/{task}/pending-customer',   [AdminTaskApprovalController::class, 'pendingCustomer'])->name('tasks.pending-customer');
     Route::post('tasks/{task}/social-assign',      [AdminTaskApprovalController::class, 'assignSocial'])->name('tasks.social.assign');
     Route::post('tasks/{task}/social-required',    [AdminTaskApprovalController::class, 'setSocialRequired'])->name('tasks.social.required');
+    Route::post('approvals/bulk-decide-later',     [AdminTaskApprovalController::class, 'bulkDecideLater'])->name('approvals.bulk-decide-later');
     Route::put('social-posts/{post}',              [AdminTaskApprovalController::class, 'updateSocialPost'])->name('social-posts.update');
     Route::delete('social-posts/{post}',           [AdminTaskApprovalController::class, 'deleteSocialPost'])->name('social-posts.destroy');
     Route::post('tasks/{task}/social-reopen',      [AdminTaskApprovalController::class, 'reopenSocial'])->name('tasks.social.reopen');
@@ -211,6 +212,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('users/{user}/transfer-tasks',     [AdminUserController::class, 'transferTasks'])->name('users.transfer-tasks');
     // Hold / release account
     Route::post('users/{user}/hold',               [AdminUserController::class, 'hold'])->name('users.hold');
+    Route::post('users/{user}/clone',              [AdminUserController::class, 'cloneUser'])->name('users.clone');
     // Restore archived user
     Route::post('users/{user}/restore',            [AdminUserController::class, 'restore'])->name('users.restore');
     // Permanently delete user
