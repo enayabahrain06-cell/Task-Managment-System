@@ -1192,7 +1192,7 @@
     <a href="{{ route('admin.approvals.index') }}?tab=decide_later"
        style="display:flex;align-items:center;gap:7px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all .18s;
               {{ $tab === 'decide_later' ? 'background:#fff;color:#D97706;box-shadow:0 2px 8px rgba(217,119,6,.12);' : 'color:#6B7280;' }}">
-        <i class="fas fa-share-nodes" style="font-size:11px;"></i> Social Pending
+        <i class="fas fa-clock" style="font-size:11px;"></i> Decide Later
         @if($decideLaterTasks->total() > 0)
         <span style="background:{{ $tab === 'decide_later' ? 'linear-gradient(135deg,#FEF3C7,#FDE68A)' : '#F3F4F6' }};color:{{ $tab === 'decide_later' ? '#92400E' : '#6B7280' }};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">{{ $decideLaterTasks->total() }}</span>
         @endif

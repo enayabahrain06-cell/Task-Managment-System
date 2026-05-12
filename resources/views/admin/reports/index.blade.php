@@ -840,12 +840,11 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
                 <span style="font-size:12px;font-weight:700;color:#D97706;">{{ $pendingApproval }} waiting</span>
             </div>
             @endif
-            @if($deferredApproval > 0)
-            <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;background:#F5F3FF;border-radius:20px;border:1px solid #DDD6FE;">
-                <i class="fas fa-clock-rotate-left" style="font-size:11px;color:#7C3AED;"></i>
-                <span style="font-size:12px;font-weight:700;color:#7C3AED;">{{ $deferredApproval }} decide later</span>
-            </div>
-            @endif
+            <a href="{{ route('admin.approvals.index') }}?tab=awaiting"
+               style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#EEF2FF;border-radius:20px;border:1px solid #C7D2FE;text-decoration:none;">
+                <i class="fas fa-arrow-right" style="font-size:11px;color:#4F46E5;"></i>
+                <span style="font-size:12px;font-weight:700;color:#4F46E5;">Awaiting Approvals</span>
+            </a>
             @if($avgHours !== null)
             <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;background:#EEF2FF;border-radius:20px;border:1px solid #C7D2FE;">
                 <i class="fas fa-clock" style="font-size:11px;color:#4F46E5;"></i>
@@ -875,7 +874,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
                 <th>Design Sent</th>
                 <th>Customer Approved</th>
                 <th style="text-align:center;">Time to Approve</th>
-                <th style="text-align:center;">Action</th>
+                <th style="text-align:center;">Review</th>
             </tr>
         </thead>
         <tbody>
@@ -909,12 +908,6 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
                     $timeCo  = $h <= 24 ? '#16A34A' : ($h <= 72 ? '#D97706' : '#DC2626');
                 @endphp
                 <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;background:{{ $timeBg }};color:{{ $timeCo }};">{{ $timeStr }}</span>
-                @elseif($row['deferred'])
-                @php
-                    $dh = $row['waited_before_defer'];
-                    $dStr = $dh < 1 ? round($dh * 60).'m' : ($dh < 24 ? $dh.'h' : round($dh/24,1).'d');
-                @endphp
-                <span style="font-size:11px;color:#7C3AED;font-style:italic;">paused after {{ $dStr }}</span>
                 @else
                 @php
                     $waitSec = abs(now()->diffInSeconds(\Carbon\Carbon::parse($row['sent_time_raw'] ?? now())));
@@ -924,32 +917,199 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
                 <span style="font-size:11px;color:#D97706;font-style:italic;">{{ $waitStr }} waiting</span>
                 @endif
             </td>
-            {{-- Merged action column: approved=badge only | deferred=badge+undo | pending=decide-later button --}}
-            <td id="approval-action-{{ $row['id'] }}" style="text-align:center;white-space:nowrap;">
+            <td style="text-align:center;white-space:nowrap;">
                 @if($row['approved'])
                 <span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#F0FDF4;color:#16A34A;">
                     <i class="fas fa-circle-check" style="font-size:10px;margin-right:3px;"></i>Approved
                 </span>
-                @elseif($row['deferred'])
-                <div style="display:inline-flex;align-items:center;gap:6px;">
-                    <span id="approval-badge-{{ $row['id'] }}" style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#F5F3FF;color:#7C3AED;">
-                        <i class="fas fa-clock-rotate-left" style="font-size:10px;margin-right:3px;"></i>Decide Later
-                    </span>
-                    <button onclick="toggleDeferApproval({{ $row['id'] }}, this)" data-deferred="1" title="Resume tracking"
-                        style="border:1px solid #DDD6FE;background:#fff;cursor:pointer;padding:3px 8px;border-radius:8px;font-size:11px;font-weight:600;color:#7C3AED;">
-                        Undo
-                    </button>
+                @else
+                <a href="{{ route('admin.approvals.index') }}?tab=awaiting"
+                   style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:8px;font-size:11px;font-weight:600;color:#4F46E5;text-decoration:none;white-space:nowrap;"
+                   onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'">
+                    <i class="fas fa-arrow-right" style="font-size:9px;"></i> Review
+                </a>
+                @endif
+            </td>
+        </tr>
+        @endforeach
+        </tbody>
+    </table>
+    </div>
+    @endif
+</div>
+
+{{-- ══ Social Pending ══ --}}
+<div class="rpt-card" style="margin-bottom:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+        <p class="rpt-section-title" style="margin:0;display:flex;align-items:center;gap:8px;">
+            <span style="width:22px;height:22px;border-radius:6px;background:#EDE9FE;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-share-nodes" style="font-size:11px;color:#7C3AED;"></i>
+            </span>
+            Social Pending
+        </p>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;background:#F5F3FF;border-radius:20px;border:1px solid #DDD6FE;">
+                <i class="fas fa-clock" style="font-size:11px;color:#7C3AED;"></i>
+                <span style="font-size:12px;font-weight:700;color:#7C3AED;">{{ $socialPendingTasks->count() }} pending</span>
+            </div>
+            <a href="{{ route('admin.approvals.index') }}?tab=social"
+               style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#EDE9FE;border-radius:20px;border:1px solid #DDD6FE;text-decoration:none;">
+                <i class="fas fa-arrow-right" style="font-size:11px;color:#7C3AED;"></i>
+                <span style="font-size:12px;font-weight:700;color:#7C3AED;">Manage in Approvals</span>
+            </a>
+        </div>
+    </div>
+
+    @if($socialPendingTasks->isEmpty())
+    <div style="text-align:center;padding:32px 20px;">
+        <i class="fas fa-share-nodes" style="font-size:28px;color:#DDD6FE;margin-bottom:10px;"></i>
+        <p style="font-size:13px;color:#9CA3AF;margin:0;">No social media posts pending.</p>
+    </div>
+    @else
+    <div style="overflow-x:auto;">
+    <table class="rpt-table">
+        <thead>
+            <tr>
+                <th>Task</th>
+                <th>Customer</th>
+                <th>Social Assignee</th>
+                <th>Platforms</th>
+                <th>Deadline</th>
+                <th style="text-align:center;">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach($socialPendingTasks as $task)
+        @php
+            $spCustomer  = $task->customer?->name ?? $task->project?->customer?->name ?? '—';
+            $spOverdue   = $task->deadline && $task->deadline->isPast();
+            $spPlatforms = is_array($task->social_platforms) ? $task->social_platforms : [];
+            $spStatusMap = [
+                'draft'              => ['#F3F4F6','#6B7280','Draft'],
+                'assigned'           => ['#EEF2FF','#4F46E5','Assigned'],
+                'viewed'             => ['#EEF2FF','#4F46E5','Viewed'],
+                'in_progress'        => ['#FEF3C7','#D97706','In Progress'],
+                'submitted'          => ['#E0F2FE','#0284C7','Submitted'],
+                'revision_requested' => ['#FEF2F2','#DC2626','Revision'],
+                'approved'           => ['#D1FAE5','#059669','Approved'],
+                'delivered'          => ['#F0FDF4','#16A34A','Delivered'],
+                'archived'           => ['#F3F4F6','#6B7280','Archived'],
+                'pending_customer'   => ['#FFFBEB','#D97706','Awaiting Customer'],
+            ];
+            [$spBg, $spCo, $spLbl] = $spStatusMap[$task->status] ?? ['#F3F4F6','#6B7280', ucfirst($task->status)];
+        @endphp
+        <tr>
+            <td style="max-width:200px;">
+                <a href="{{ route('admin.tasks.show', $task) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#7C3AED'" onmouseout="this.style.color='#111827'" title="{{ $task->title }}">
+                    {{ Str::limit($task->title, 40) }}
+                </a>
+            </td>
+            <td style="color:#374151;">{{ $spCustomer }}</td>
+            <td>
+                @if($task->socialAssignee)
+                <span style="font-size:12px;font-weight:600;color:#7C3AED;">{{ $task->socialAssignee->name }}</span>
+                @else
+                <span style="font-size:12px;color:#D1D5DB;">Unassigned</span>
+                @endif
+            </td>
+            <td>
+                @if(count($spPlatforms))
+                <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                    @foreach($spPlatforms as $p)
+                    <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:#EDE9FE;color:#7C3AED;white-space:nowrap;">{{ ucfirst($p) }}</span>
+                    @endforeach
                 </div>
                 @else
-                <span id="approval-badge-{{ $row['id'] }}" style="display:none;"></span>
-                <button onclick="toggleDeferApproval({{ $row['id'] }}, this)" data-deferred="0" title="Decide Later"
-                    style="border:1px solid #E5E7EB;background:#F9FAFB;cursor:pointer;padding:4px 10px;border-radius:8px;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#6B7280;transition:all .15s;"
-                    onmouseover="this.style.borderColor='#A78BFA';this.style.color='#7C3AED';this.style.background='#F5F3FF';"
-                    onmouseout="this.style.borderColor='#E5E7EB';this.style.color='#6B7280';this.style.background='#F9FAFB';">
-                    <i class="fas fa-clock-rotate-left" style="font-size:10px;"></i>
-                    Decide Later
-                </button>
+                <span style="font-size:12px;color:#D1D5DB;">—</span>
                 @endif
+            </td>
+            <td>
+                @if($task->deadline)
+                <span style="font-size:12px;{{ $spOverdue ? 'color:#DC2626;font-weight:600;' : 'color:#6B7280;' }}white-space:nowrap;">
+                    {{ $spOverdue ? '⚠ ' : '' }}{{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
+                </span>
+                @else
+                <span style="font-size:12px;color:#D1D5DB;">—</span>
+                @endif
+            </td>
+            <td style="text-align:center;">
+                <span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:{{ $spBg }};color:{{ $spCo }};white-space:nowrap;">{{ $spLbl }}</span>
+            </td>
+        </tr>
+        @endforeach
+        </tbody>
+    </table>
+    </div>
+    @endif
+</div>
+
+{{-- ══ Decide Later ══ --}}
+<div class="rpt-card" style="margin-bottom:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+        <p class="rpt-section-title" style="margin:0;display:flex;align-items:center;gap:8px;">
+            <span style="width:22px;height:22px;border-radius:6px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-clock" style="font-size:11px;color:#D97706;"></i>
+            </span>
+            Decide Later
+        </p>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;background:#FFFBEB;border-radius:20px;border:1px solid #FDE68A;">
+                <i class="fas fa-clock" style="font-size:11px;color:#D97706;"></i>
+                <span style="font-size:12px;font-weight:700;color:#D97706;">{{ $decideLaterReportTasks->count() }} pending decision</span>
+            </div>
+            <a href="{{ route('admin.approvals.index') }}?tab=decide_later"
+               style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#FFFBEB;border-radius:20px;border:1px solid #FDE68A;text-decoration:none;">
+                <i class="fas fa-arrow-right" style="font-size:11px;color:#D97706;"></i>
+                <span style="font-size:12px;font-weight:700;color:#D97706;">Manage in Approvals</span>
+            </a>
+        </div>
+    </div>
+
+    @if($decideLaterReportTasks->isEmpty())
+    <div style="text-align:center;padding:32px 20px;">
+        <i class="fas fa-clock" style="font-size:28px;color:#FDE68A;margin-bottom:10px;"></i>
+        <p style="font-size:13px;color:#9CA3AF;margin:0;">No tasks pending a social media decision.</p>
+    </div>
+    @else
+    <div style="overflow-x:auto;">
+    <table class="rpt-table">
+        <thead>
+            <tr>
+                <th>Task</th>
+                <th>Customer</th>
+                <th>Assignee</th>
+                <th>Status</th>
+                <th style="text-align:center;">Review</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach($decideLaterReportTasks as $task)
+        @php
+            $dlCustomer = $task->customer?->name ?? $task->project?->customer?->name ?? '—';
+            $dlStatusMap = [
+                'approved'  => ['#D1FAE5','#059669','Approved'],
+                'delivered' => ['#F0FDF4','#16A34A','Delivered'],
+                'archived'  => ['#F3F4F6','#6B7280','Archived'],
+            ];
+            [$dlBg, $dlCo, $dlLbl] = $dlStatusMap[$task->status] ?? ['#F3F4F6','#6B7280', ucfirst($task->status)];
+        @endphp
+        <tr>
+            <td style="max-width:220px;">
+                <a href="{{ route('admin.tasks.show', $task) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#D97706'" onmouseout="this.style.color='#111827'" title="{{ $task->title }}">
+                    {{ Str::limit($task->title, 45) }}
+                </a>
+            </td>
+            <td style="color:#374151;">{{ $dlCustomer }}</td>
+            <td style="color:#6B7280;">{{ $task->assignee?->name ?? '—' }}</td>
+            <td>
+                <span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:{{ $dlBg }};color:{{ $dlCo }};white-space:nowrap;">{{ $dlLbl }}</span>
+            </td>
+            <td style="text-align:center;">
+                <a href="{{ route('admin.approvals.index') }}?tab=decide_later"
+                   style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;font-size:11px;font-weight:600;color:#D97706;text-decoration:none;white-space:nowrap;"
+                   onmouseover="this.style.background='#FEF3C7'" onmouseout="this.style.background='#FFFBEB'">
+                    <i class="fas fa-arrow-right" style="font-size:9px;"></i> Decide
+                </a>
             </td>
         </tr>
         @endforeach
@@ -2414,51 +2574,5 @@ document.addEventListener('DOMContentLoaded', function() {
     ].forEach(function(id) { rptPaginate(id, 7); });
 });
 
-function toggleDeferApproval(taskId, btn) {
-    btn.disabled = true;
-    fetch('{{ route('admin.reports.defer-customer-approval') }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '{{ csrf_token() }}'
-        },
-        body: JSON.stringify({ task_id: taskId })
-    })
-    .then(r => r.json())
-    .then(data => {
-        const deferred = data.deferred;
-
-        // Update timer cell
-        const timerTd = document.getElementById('approval-timer-' + taskId);
-        if (timerTd) {
-            timerTd.innerHTML = deferred
-                ? '<span style="font-size:11px;color:#7C3AED;font-style:italic;">paused</span>'
-                : '<span style="font-size:11px;color:#D97706;font-style:italic;">tracking resumed</span>';
-        }
-
-        // Re-render the action cell
-        const actionTd = document.getElementById('approval-action-' + taskId);
-        if (actionTd) {
-            if (deferred) {
-                actionTd.innerHTML =
-                    '<div style="display:inline-flex;align-items:center;gap:6px;">' +
-                    '<span id="approval-badge-' + taskId + '" style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#F5F3FF;color:#7C3AED;">' +
-                    '<i class="fas fa-clock-rotate-left" style="font-size:10px;margin-right:3px;"></i>Decide Later</span>' +
-                    '<button onclick="toggleDeferApproval(' + taskId + ', this)" data-deferred="1" title="Resume tracking" ' +
-                    'style="border:1px solid #DDD6FE;background:#fff;cursor:pointer;padding:3px 8px;border-radius:8px;font-size:11px;font-weight:600;color:#7C3AED;">Undo</button>' +
-                    '</div>';
-            } else {
-                actionTd.innerHTML =
-                    '<span id="approval-badge-' + taskId + '" style="display:none;"></span>' +
-                    '<button onclick="toggleDeferApproval(' + taskId + ', this)" data-deferred="0" title="Decide Later" ' +
-                    'style="border:1px solid #E5E7EB;background:#F9FAFB;cursor:pointer;padding:4px 10px;border-radius:8px;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#6B7280;transition:all .15s;" ' +
-                    'onmouseover="this.style.borderColor=\'#A78BFA\';this.style.color=\'#7C3AED\';this.style.background=\'#F5F3FF\';" ' +
-                    'onmouseout="this.style.borderColor=\'#E5E7EB\';this.style.color=\'#6B7280\';this.style.background=\'#F9FAFB\';">' +
-                    '<i class="fas fa-clock-rotate-left" style="font-size:10px;"></i> Decide Later</button>';
-            }
-        }
-    })
-    .catch(() => { btn.disabled = false; });
-}
 </script>
 @endpush

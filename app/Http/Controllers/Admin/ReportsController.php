@@ -564,7 +564,7 @@ class ReportsController extends Controller
 
         // ── Customer Approval Speed ───────────────────────────────────────────
         $approvalSpeedTasks = Task::with(['customer', 'project.customer', 'assignee'])
-            ->where(fn($q) => $q->whereNotNull('design_sent_at')->orWhere('status', 'pending_customer'))
+            ->where(fn($q) => $q->where('status', 'pending_customer')->orWhereNotNull('customer_approved_at'))
             ->when($from, fn($q) => $q->where(fn($sq) => $sq->where('design_sent_at', '>=', $from)->orWhere('updated_at', '>=', $from)))
             ->when($projectId, fn($q) => $q->where('project_id', $projectId))
             ->when($customerId, fn($q) => $q->where(function ($sq) use ($customerId) {
@@ -608,6 +608,33 @@ class ReportsController extends Controller
             : null;
         $deferredApproval = $approvalSpeedTasks->where('approved', false)->where('deferred', true)->count();
         $pendingApproval  = $approvalSpeedTasks->where('approved', false)->where('deferred', false)->count();
+
+        // ── Decide Later (delivered tasks with no social decision) ────────────
+        $decideLaterReportTasks = Task::with(['assignee', 'project.customer', 'customer'])
+            ->whereIn('status', ['delivered', 'approved', 'archived'])
+            ->whereNull('social_required')
+            ->whereNull('social_assigned_to')
+            ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+            ->when($customerId, fn($q) => $q->where(fn($sq) =>
+                $sq->where('customer_id', $customerId)
+                   ->orWhereHas('project', fn($pq) => $pq->where('customer_id', $customerId))
+            ))
+            ->when($userId && !$isAdminManagerFilter, fn($q) => $q->where('assigned_to', $userId))
+            ->latest()
+            ->get();
+
+        // ── Social Pending ────────────────────────────────────────────────────
+        $socialPendingTasks = Task::with(['customer', 'project.customer', 'socialAssignee'])
+            ->where(fn($q) => $q->where('social_required', true)->orWhereNotNull('social_assigned_to'))
+            ->whereNull('social_posted_at')
+            ->when($projectId, fn($q) => $q->where('project_id', $projectId))
+            ->when($customerId, fn($q) => $q->where(fn($sq) =>
+                $sq->where('customer_id', $customerId)
+                   ->orWhereHas('project', fn($pq) => $pq->where('customer_id', $customerId))
+            ))
+            ->when($userId && !$isAdminManagerFilter, fn($q) => $q->where('social_assigned_to', $userId))
+            ->orderBy('deadline')
+            ->get();
 
         // ── Project list for filter dropdown ─────────────────────────────────
         $allProjects = Project::orderBy('name')->get(['id', 'name']);
@@ -742,7 +769,8 @@ class ReportsController extends Controller
             'allProjects', 'allCustomers', 'allUsers', 'customerStats',
             'billingUsers', 'billingCustomers', 'phaseLabels', 'from',
             'adBudgetTasks',
-            'approvalSpeedTasks', 'approvedCount', 'avgHours', 'pendingApproval', 'deferredApproval'
+            'approvalSpeedTasks', 'approvedCount', 'avgHours', 'pendingApproval', 'deferredApproval',
+            'socialPendingTasks', 'decideLaterReportTasks'
         ));
     }
 
