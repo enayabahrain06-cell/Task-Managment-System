@@ -339,8 +339,9 @@ class DashboardController extends Controller
             'overdue'       => $overdueTasks,
             'due_today'     => Task::whereDate('deadline', today())->whereIn('status', $analyticsNonDone)->count(),
             'due_this_week' => Task::whereBetween('deadline', [now()->startOfWeek(Carbon::MONDAY), now()->endOfWeek(Carbon::SUNDAY)])->whereIn('status', $analyticsNonDone)->count(),
-            'reopened'      => \App\Models\TaskLog::where('action', 'status_updated_reopened')->distinct('task_id')->count('task_id'),
-            'reassigned'    => \App\Models\TaskLog::whereIn('action', ['task_reassigned', 'task_transferred'])->distinct('task_id')->count('task_id'),
+            'reopened'           => \App\Models\TaskLog::where('action', 'status_updated_reopened')->distinct('task_id')->count('task_id'),
+            'reassigned'         => \App\Models\TaskLog::whereIn('action', ['task_reassigned', 'task_transferred'])->distinct('task_id')->count('task_id'),
+            'revision_requested' => Task::where('status', 'revision_requested')->count(),
         ];
 
         $totalDone      = $taskOverview['completed'] + $taskOverview['delivered'] + $taskOverview['archived'];

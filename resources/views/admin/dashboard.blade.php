@@ -1033,6 +1033,7 @@ function dashModals() {
         ['label'=>'Reopened',      'value'=>$taskOverview['reopened'],       'key'=>'reopened',      'icon'=>'fa-rotate-right',        'color'=>'#EA580C','bg'=>'#FFF7ED', 'url'=>$tasksBase.'?filter=reopened'],
         ['label'=>'Reassigned',    'value'=>$taskOverview['reassigned'],     'key'=>'reassigned',    'icon'=>'fa-arrows-rotate',       'color'=>'#16A34A','bg'=>'#F0FDF4', 'url'=>$tasksBase.'?filter=reassigned'],
         ['label'=>'Decide Later',  'value'=>$decideLaterCount,               'key'=>'decide_later',  'icon'=>'fa-hourglass-half',      'color'=>'#475569','bg'=>'#F1F5F9', 'url'=>route('admin.approvals.index').'?tab=decide_later'],
+        ['label'=>'New Revision',  'value'=>$taskOverview['revision_requested'], 'key'=>'revision_requested', 'icon'=>'fa-rotate-left', 'color'=>'#9333EA','bg'=>'#F3E8FF', 'url'=>$tasksBase.'?status=revision_requested'],
     ];
     @endphp
 
@@ -1058,8 +1059,8 @@ function dashModals() {
         @endforeach
     </div>
 
-    {{-- Tier 2: attention metrics (5 slim chips) --}}
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:14px;">
+    {{-- Tier 2: attention metrics (6 slim chips) --}}
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:14px;">
         @foreach($attentionItems as $item)
         <button onclick="openAnalyticsModal('{{ $item['key'] }}','{{ $item['label'] }}','{{ $item['color'] }}','{{ $item['bg'] }}','{{ $item['icon'] }}','{{ $item['url'] }}')"
                 style="display:flex;align-items:center;gap:7px;padding:7px 10px;background:{{ $item['bg'] }};border:none;border-radius:8px;cursor:pointer;width:100%;transition:filter .15s,transform .15s;"
@@ -2589,8 +2590,9 @@ chartWorkload = new Chart(document.getElementById('workloadChart'), {
                 setRV('overview_overdue',        ov.overdue);
                 setRV('overview_due_today',      ov.due_today);
                 setRV('overview_due_this_week',  ov.due_this_week);
-                setRV('overview_reopened',       ov.reopened   || 0);
-                setRV('overview_reassigned',     ov.reassigned || 0);
+                setRV('overview_reopened',            ov.reopened            || 0);
+                setRV('overview_reassigned',          ov.reassigned          || 0);
+                setRV('overview_revision_requested',  ov.revision_requested  || 0);
                 // ── Pipeline % bars ──
                 (function() {
                     var tot  = Math.max(1, ov.total || 0);
