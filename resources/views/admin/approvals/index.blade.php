@@ -1192,7 +1192,7 @@
     <a href="{{ route('admin.approvals.index') }}?tab=decide_later"
        style="display:flex;align-items:center;gap:7px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all .18s;
               {{ $tab === 'decide_later' ? 'background:#fff;color:#D97706;box-shadow:0 2px 8px rgba(217,119,6,.12);' : 'color:#6B7280;' }}">
-        <i class="fas fa-clock" style="font-size:11px;"></i> Decide Later
+        <i class="fas fa-share-nodes" style="font-size:11px;"></i> Social Pending
         @if($decideLaterTasks->total() > 0)
         <span style="background:{{ $tab === 'decide_later' ? 'linear-gradient(135deg,#FEF3C7,#FDE68A)' : '#F3F4F6' }};color:{{ $tab === 'decide_later' ? '#92400E' : '#6B7280' }};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">{{ $decideLaterTasks->total() }}</span>
         @endif
@@ -1795,7 +1795,14 @@
                 <div style="width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#FCD34D,#F59E0B);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;">
                     {{ strtoupper(substr($task->assignee->name ?? 'U', 0, 1)) }}
                 </div>
-                <a href="{{ route('admin.tasks.show', $task) }}" style="font-size:13px;font-weight:600;color:#111827;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;display:block;" title="{{ $task->title }}">{{ $task->title }}</a>
+                <div style="overflow:hidden;">
+                    <a href="{{ route('admin.tasks.show', $task) }}" style="font-size:13px;font-weight:600;color:#111827;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;display:block;" title="{{ $task->title }}">{{ $task->title }}</a>
+                    @if($task->customer_decision_deferred_at)
+                    <span style="display:inline-block;margin-top:3px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:#F5F3FF;color:#7C3AED;letter-spacing:.03em;white-space:nowrap;">
+                        <i class="fas fa-clock" style="font-size:9px;margin-right:2px;"></i> Decide Later
+                    </span>
+                    @endif
+                </div>
             </div>
         </td>
         <td><span style="font-size:12px;font-weight:600;color:#D97706;">{{ $task->assignee->name ?? '—' }}</span></td>
@@ -2671,8 +2678,8 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
     <p style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">No matching tasks</p>
     <p style="font-size:13px;color:#9CA3AF;margin:0;">Try adjusting your search or filter.</p>
     @else
-    <p style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">No deferred decisions</p>
-    <p style="font-size:13px;color:#9CA3AF;margin:0;">All approved tasks have had their social media decision resolved.</p>
+    <p style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">No pending social media decisions</p>
+    <p style="font-size:13px;color:#9CA3AF;margin:0;">All completed tasks have been assigned or marked as social not needed.</p>
     @endif
 </div>
 @else

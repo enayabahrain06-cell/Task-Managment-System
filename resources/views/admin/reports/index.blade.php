@@ -840,6 +840,12 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
                 <span style="font-size:12px;font-weight:700;color:#D97706;">{{ $pendingApproval }} waiting</span>
             </div>
             @endif
+            @if($deferredApproval > 0)
+            <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;background:#F5F3FF;border-radius:20px;border:1px solid #DDD6FE;">
+                <i class="fas fa-clock-rotate-left" style="font-size:11px;color:#7C3AED;"></i>
+                <span style="font-size:12px;font-weight:700;color:#7C3AED;">{{ $deferredApproval }} decide later</span>
+            </div>
+            @endif
             @if($avgHours !== null)
             <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;background:#EEF2FF;border-radius:20px;border:1px solid #C7D2FE;">
                 <i class="fas fa-clock" style="font-size:11px;color:#4F46E5;"></i>
@@ -869,21 +875,12 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
                 <th>Design Sent</th>
                 <th>Customer Approved</th>
                 <th style="text-align:center;">Time to Approve</th>
-                <th style="text-align:center;">Status</th>
+                <th style="text-align:center;">Action</th>
             </tr>
         </thead>
         <tbody>
         @foreach($approvalSpeedTasks as $row)
-        @php
-            $statusColors = [
-                'delivered'          => ['#F0FDF4','#16A34A','Delivered'],
-                'pending_customer'   => ['#FFFBEB','#D97706','Awaiting Customer'],
-                'approved'           => ['#EEF2FF','#4F46E5','Approved'],
-                'revision_requested' => ['#FEF2F2','#DC2626','Revision'],
-            ];
-            [$sbg,$sco,$slbl] = $statusColors[$row['status']] ?? ['#F3F4F6','#6B7280',ucfirst(str_replace('_',' ',$row['status']))];
-        @endphp
-        <tr>
+        <tr id="approval-row-{{ $row['id'] }}">
             <td>
                 <a href="{{ route('admin.tasks.show', $row['id']) }}" style="font-weight:600;color:#111827;text-decoration:none;" onmouseover="this.style.color='#4F46E5'" onmouseout="this.style.color='#111827'">
                     {{ Str::limit($row['title'], 40) }}
@@ -903,7 +900,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
                 <span style="font-size:12px;color:#D97706;font-style:italic;">Pending...</span>
                 @endif
             </td>
-            <td style="text-align:center;">
+            <td id="approval-timer-{{ $row['id'] }}" style="text-align:center;">
                 @if($row['approved'])
                 @php
                     $h = $row['hours'];
@@ -911,20 +908,48 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
                     $timeBg  = $h <= 24 ? '#F0FDF4' : ($h <= 72 ? '#FEF3C7' : '#FEF2F2');
                     $timeCo  = $h <= 24 ? '#16A34A' : ($h <= 72 ? '#D97706' : '#DC2626');
                 @endphp
-                <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;background:{{ $timeBg }};color:{{ $timeCo }};">
-                    {{ $timeStr }}
-                </span>
+                <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;background:{{ $timeBg }};color:{{ $timeCo }};">{{ $timeStr }}</span>
+                @elseif($row['deferred'])
+                @php
+                    $dh = $row['waited_before_defer'];
+                    $dStr = $dh < 1 ? round($dh * 60).'m' : ($dh < 24 ? $dh.'h' : round($dh/24,1).'d');
+                @endphp
+                <span style="font-size:11px;color:#7C3AED;font-style:italic;">paused after {{ $dStr }}</span>
                 @else
                 @php
                     $waitSec = abs(now()->diffInSeconds(\Carbon\Carbon::parse($row['sent_time_raw'] ?? now())));
                     $waitH   = round($waitSec / 3600, 1);
-                    $waitStr = $waitSec < 3600 ? (int) round($waitSec / 60) . 'm' : ($waitH < 24 ? $waitH . 'h' : round($waitH / 24, 1) . 'd');
+                    $waitStr = $waitSec < 3600 ? (int)round($waitSec/60).'m' : ($waitH < 24 ? $waitH.'h' : round($waitH/24,1).'d');
                 @endphp
                 <span style="font-size:11px;color:#D97706;font-style:italic;">{{ $waitStr }} waiting</span>
                 @endif
             </td>
-            <td style="text-align:center;">
-                <span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:{{ $sbg }};color:{{ $sco }};">{{ $slbl }}</span>
+            {{-- Merged action column: approved=badge only | deferred=badge+undo | pending=decide-later button --}}
+            <td id="approval-action-{{ $row['id'] }}" style="text-align:center;white-space:nowrap;">
+                @if($row['approved'])
+                <span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#F0FDF4;color:#16A34A;">
+                    <i class="fas fa-circle-check" style="font-size:10px;margin-right:3px;"></i>Approved
+                </span>
+                @elseif($row['deferred'])
+                <div style="display:inline-flex;align-items:center;gap:6px;">
+                    <span id="approval-badge-{{ $row['id'] }}" style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#F5F3FF;color:#7C3AED;">
+                        <i class="fas fa-clock-rotate-left" style="font-size:10px;margin-right:3px;"></i>Decide Later
+                    </span>
+                    <button onclick="toggleDeferApproval({{ $row['id'] }}, this)" data-deferred="1" title="Resume tracking"
+                        style="border:1px solid #DDD6FE;background:#fff;cursor:pointer;padding:3px 8px;border-radius:8px;font-size:11px;font-weight:600;color:#7C3AED;">
+                        Undo
+                    </button>
+                </div>
+                @else
+                <span id="approval-badge-{{ $row['id'] }}" style="display:none;"></span>
+                <button onclick="toggleDeferApproval({{ $row['id'] }}, this)" data-deferred="0" title="Decide Later"
+                    style="border:1px solid #E5E7EB;background:#F9FAFB;cursor:pointer;padding:4px 10px;border-radius:8px;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#6B7280;transition:all .15s;"
+                    onmouseover="this.style.borderColor='#A78BFA';this.style.color='#7C3AED';this.style.background='#F5F3FF';"
+                    onmouseout="this.style.borderColor='#E5E7EB';this.style.color='#6B7280';this.style.background='#F9FAFB';">
+                    <i class="fas fa-clock-rotate-left" style="font-size:10px;"></i>
+                    Decide Later
+                </button>
+                @endif
             </td>
         </tr>
         @endforeach
@@ -2388,5 +2413,52 @@ document.addEventListener('DOMContentLoaded', function() {
      'billing-user-table','billing-customer-table','ad-budget-table'
     ].forEach(function(id) { rptPaginate(id, 7); });
 });
+
+function toggleDeferApproval(taskId, btn) {
+    btn.disabled = true;
+    fetch('{{ route('admin.reports.defer-customer-approval') }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]')?.content || '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ task_id: taskId })
+    })
+    .then(r => r.json())
+    .then(data => {
+        const deferred = data.deferred;
+
+        // Update timer cell
+        const timerTd = document.getElementById('approval-timer-' + taskId);
+        if (timerTd) {
+            timerTd.innerHTML = deferred
+                ? '<span style="font-size:11px;color:#7C3AED;font-style:italic;">paused</span>'
+                : '<span style="font-size:11px;color:#D97706;font-style:italic;">tracking resumed</span>';
+        }
+
+        // Re-render the action cell
+        const actionTd = document.getElementById('approval-action-' + taskId);
+        if (actionTd) {
+            if (deferred) {
+                actionTd.innerHTML =
+                    '<div style="display:inline-flex;align-items:center;gap:6px;">' +
+                    '<span id="approval-badge-' + taskId + '" style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#F5F3FF;color:#7C3AED;">' +
+                    '<i class="fas fa-clock-rotate-left" style="font-size:10px;margin-right:3px;"></i>Decide Later</span>' +
+                    '<button onclick="toggleDeferApproval(' + taskId + ', this)" data-deferred="1" title="Resume tracking" ' +
+                    'style="border:1px solid #DDD6FE;background:#fff;cursor:pointer;padding:3px 8px;border-radius:8px;font-size:11px;font-weight:600;color:#7C3AED;">Undo</button>' +
+                    '</div>';
+            } else {
+                actionTd.innerHTML =
+                    '<span id="approval-badge-' + taskId + '" style="display:none;"></span>' +
+                    '<button onclick="toggleDeferApproval(' + taskId + ', this)" data-deferred="0" title="Decide Later" ' +
+                    'style="border:1px solid #E5E7EB;background:#F9FAFB;cursor:pointer;padding:4px 10px;border-radius:8px;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#6B7280;transition:all .15s;" ' +
+                    'onmouseover="this.style.borderColor=\'#A78BFA\';this.style.color=\'#7C3AED\';this.style.background=\'#F5F3FF\';" ' +
+                    'onmouseout="this.style.borderColor=\'#E5E7EB\';this.style.color=\'#6B7280\';this.style.background=\'#F9FAFB\';">' +
+                    '<i class="fas fa-clock-rotate-left" style="font-size:10px;"></i> Decide Later</button>';
+            }
+        }
+    })
+    .catch(() => { btn.disabled = false; });
+}
 </script>
 @endpush
