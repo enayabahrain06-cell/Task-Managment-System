@@ -337,6 +337,7 @@ $activeStatDefs = [
             </button>
         </form>
         @endif
+        @if(auth()->user()->hasPermission('delete_tasks'))
         <form method="POST" action="{{ route('admin.tasks.destroy', $task) }}"
               onsubmit="return confirm('Move &quot;{{ addslashes($task->title) }}&quot; to the Recycle Bin?')"
               style="margin:0;">
@@ -349,6 +350,7 @@ $activeStatDefs = [
                 <i class="fas fa-trash-can"></i>
             </button>
         </form>
+        @endif
     </div>
 
     <a href="{{ route('admin.tasks.show', $task) }}"
@@ -721,6 +723,7 @@ $activeStatDefs = [
                     </button>
                 </form>
                 @endif
+                @if(auth()->user()->hasPermission('delete_tasks'))
                 <form method="POST" action="{{ route('admin.tasks.destroy', $task) }}"
                       onsubmit="return confirm('Move &quot;{{ addslashes($task->title) }}&quot; to the Recycle Bin?')"
                       style="margin:0;">
@@ -732,6 +735,7 @@ $activeStatDefs = [
                         <i class="fas fa-trash-can"></i>
                     </button>
                 </form>
+                @endif
             </div>
         </td>
     </tr>

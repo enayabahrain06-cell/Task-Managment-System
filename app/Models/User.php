@@ -45,6 +45,7 @@ class User extends Authenticatable
         'view_tasks'           => 'View Tasks',
         'submit_work'          => 'Submit Work',
         'manage_tasks'         => 'Create & Assign Tasks',
+        'delete_tasks'         => 'Delete Tasks',
         'approve_tasks'        => 'Approve Submissions',
         'view_activity_log'    => 'Task Activity Log',
         'view_version_history' => 'Version History',

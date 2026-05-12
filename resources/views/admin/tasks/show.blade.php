@@ -2274,6 +2274,7 @@
         @endif
 
         {{-- Move to Recycle Bin --}}
+        @if(auth()->user()->hasPermission('delete_tasks'))
         <form method="POST" action="{{ route('admin.tasks.destroy', $task) }}"
               onsubmit="return confirm('Move this task to the Recycle Bin? You can restore it later.')">
             @csrf @method('DELETE')
@@ -2283,6 +2284,7 @@
                 <i class="fa fa-trash-can"></i> Move to Recycle Bin
             </button>
         </form>
+        @endif
 
     </div>{{-- /right --}}
 

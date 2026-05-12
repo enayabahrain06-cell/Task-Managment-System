@@ -376,6 +376,10 @@ class TaskController extends Controller
 
     public function destroy(Task $task)
     {
+        if (!auth()->user()->hasPermission('delete_tasks')) {
+            abort(403);
+        }
+
         $title = $task->title;
         AuditLogger::log(
             'task.deleted',
