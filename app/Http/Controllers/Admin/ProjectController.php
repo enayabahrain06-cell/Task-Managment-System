@@ -68,6 +68,10 @@ class ProjectController extends Controller
 
     public function store(Request $request)
     {
+        if (!auth()->user()->hasPermission('manage_projects')) {
+            abort(403);
+        }
+
         $request->validate([
             'name'                            => 'required|string|max:255',
             'description'                     => 'nullable|string',
@@ -232,6 +236,10 @@ class ProjectController extends Controller
 
     public function update(Request $request, Project $project)
     {
+        if (!auth()->user()->hasPermission('manage_projects')) {
+            abort(403);
+        }
+
         $request->validate([
             'name'        => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -301,6 +309,10 @@ class ProjectController extends Controller
 
     public function destroy(Project $project)
     {
+        if (!auth()->user()->hasPermission('manage_projects')) {
+            abort(403);
+        }
+
         $name = $project->name;
         AuditLogger::log(
             'project.deleted',

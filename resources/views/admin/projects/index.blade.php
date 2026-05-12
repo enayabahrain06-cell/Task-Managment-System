@@ -167,12 +167,16 @@
         <p class="text-sm text-gray-500 mt-0.5">{{ $projects->total() }} {{ request('status') === 'completed' ? 'completed' : 'active' }} project{{ $projects->total() !== 1 ? 's' : '' }}</p>
     </div>
     <div class="flex items-center gap-2">
+        @if(auth()->user()->hasPermission('manage_projects'))
         <button @click="openWizard()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm shadow-indigo-200">
             <i class="fa fa-plus"></i> New Project
         </button>
+        @endif
+        @if(auth()->user()->hasPermission('manage_tasks'))
         <button @click="quickOpen = true" class="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition border border-gray-200 shadow-sm">
             <i class="fa fa-bolt text-amber-500"></i> Quick Task
         </button>
+        @endif
     </div>
 </div>
 
@@ -353,11 +357,13 @@ $statDefs = [
                             <button type="submit" class="text-xs font-medium text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg transition">Close</button>
                         </form>
                         @endif
+                        @if(auth()->user()->hasPermission('manage_projects'))
                         <form action="{{ route('admin.projects.destroy', $project) }}" method="POST" class="inline"
                               onsubmit="return confirm('Delete {{ addslashes($project->name) }}?')">
                             @csrf @method('DELETE')
                             <button type="submit" class="text-xs font-medium text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition">Delete</button>
                         </form>
+                        @endif
                     </div>
                 </td>
             </tr>
@@ -522,6 +528,7 @@ $statDefs = [
                             </button>
                         </form>
                         @endif
+                        @if(auth()->user()->hasPermission('manage_projects'))
                         <form action="{{ route('admin.projects.destroy', $project) }}" method="POST"
                               onsubmit="return confirm('Delete {{ addslashes($project->name) }}?')" style="display:contents;">
                             @csrf @method('DELETE')
@@ -531,6 +538,7 @@ $statDefs = [
                                 <i class="fa fa-trash" style="font-size:10px;"></i>
                             </button>
                         </form>
+                        @endif
                     </div>
                 </div>
 
@@ -799,10 +807,12 @@ $statDefs = [
                             <p style="font-size:13px;font-weight:700;color:#374151;margin:0;">Assign Tasks</p>
                             <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">Assignees are automatically added as project members</p>
                         </div>
+                        @if(auth()->user()->hasPermission('manage_tasks'))
                         <button type="button" @click="addTask()"
                                 style="display:flex;align-items:center;gap:6px;padding:7px 14px;background:#EEF2FF;color:#4F46E5;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
                             <i class="fas fa-plus" style="font-size:10px;"></i> Add Task
                         </button>
+                        @endif
                     </div>
 
                     <div style="display:flex;flex-direction:column;gap:14px;">
