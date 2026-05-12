@@ -36,6 +36,9 @@ class DashboardController extends Controller
                                      ->whereNotIn('status', ['approved', 'delivered', 'archived']),
             'reopened'      => $query->whereHas('logs', fn($q) => $q->where('action', 'status_updated_reopened')),
             'reassigned'    => $query->whereHas('logs', fn($q) => $q->whereIn('action', ['task_reassigned', 'task_transferred'])),
+            'decide_later'  => $query->whereIn('status', ['delivered', 'approved', 'archived'])
+                                     ->whereNull('social_required')
+                                     ->whereNull('social_assigned_to'),
             default         => $query->whereIn('status', ['draft', 'assigned', 'viewed']),
         };
 
@@ -491,6 +494,12 @@ class DashboardController extends Controller
         // --- Awaiting customer approval ---
         $awaitingCustomerCount = Task::where('status', 'pending_customer')->count();
 
+        // --- Decide Later count ---
+        $decideLaterCount = Task::whereIn('status', ['delivered', 'approved', 'archived'])
+            ->whereNull('social_required')
+            ->whereNull('social_assigned_to')
+            ->count();
+
         // --- Member status stats ---
         $totalMembers    = User::count();
         $activeMembers   = User::where('role', '!=', 'admin')->count();
@@ -604,7 +613,7 @@ class DashboardController extends Controller
         return view('admin.dashboard', compact(
             'users', 'projects', 'allUsers', 'allProjects', 'customers', 'recentTasks', 'customerTaskDist', 'unassignedTaskCount',
             'overdueTasks', 'completedTasks', 'totalTasks', 'activeProjects',
-            'scheduledMeetings', 'awaitingCustomerCount',
+            'scheduledMeetings', 'awaitingCustomerCount', 'decideLaterCount',
             'weekLabels', 'weekData',
             'taskStats',
             'workloadLabels', 'workloadData',

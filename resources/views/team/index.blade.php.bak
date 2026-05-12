@@ -360,9 +360,7 @@
     </div>
     @endforelse
 </div>
-@if($members->hasPages())
-<div class="mt-5">{{ $members->links() }}</div>
-@endif
+<x-pagination :paginator="$members" mt="20px" />
 </div>{{-- end cards view --}}
 
 {{-- ══ TABLE VIEW ══ --}}
@@ -499,9 +497,7 @@
             @endforelse
         </tbody>
     </table>
-    @if($members->hasPages())
-    <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/50">{{ $members->links() }}</div>
-    @endif
+    <x-pagination :paginator="$members" mt="12px" />
 </div>
 </div>{{-- end table view --}}
 

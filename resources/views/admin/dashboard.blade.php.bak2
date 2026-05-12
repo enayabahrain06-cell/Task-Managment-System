@@ -1018,14 +1018,12 @@ function dashModals() {
     </div>
 
     @php
-    $tasksBase  = route('admin.tasks.index');
-    $_ttotal    = max(1, $taskOverview['total'] ?? 1);
-    $_doneVal   = $taskOverview['completed'] + $taskOverview['delivered'] + ($taskOverview['archived'] ?? 0);
+    $tasksBase = route('admin.tasks.index');
     $pipelineItems = [
-        ['label'=>'Pending',        'value'=>$taskOverview['pending'],   'pct'=>round($taskOverview['pending']   / $_ttotal * 100), 'key'=>'pending',     'icon'=>'fa-clock',        'bg'=>'#F3F4F6','color'=>'#6B7280', 'bar'=>'#9CA3AF', 'url'=>$tasksBase.'?filter=pending'],
-        ['label'=>'In Progress',    'value'=>$taskOverview['in_progress'],'pct'=>round($taskOverview['in_progress']/ $_ttotal * 100),'key'=>'in_progress', 'icon'=>'fa-spinner',      'bg'=>'#FEF3C7','color'=>'#D97706', 'bar'=>'#F59E0B', 'url'=>$tasksBase.'?status=in_progress'],
-        ['label'=>'Waiting Review', 'value'=>$taskOverview['in_review'],  'pct'=>round($taskOverview['in_review']  / $_ttotal * 100),'key'=>'in_review',   'icon'=>'fa-gavel',        'bg'=>'#EDE9FE','color'=>'#7C3AED', 'bar'=>'#8B5CF6', 'url'=>$tasksBase.'?status=submitted'],
-        ['label'=>'Done',           'value'=>$_doneVal,                   'pct'=>round($_doneVal                   / $_ttotal * 100), 'key'=>'done',        'icon'=>'fa-circle-check', 'bg'=>'#D1FAE5','color'=>'#059669', 'bar'=>'#10B981', 'url'=>$tasksBase.'?filter=done'],
+        ['label'=>'Pending',        'value'=>$taskOverview['pending'],                                                                   'key'=>'pending',     'icon'=>'fa-clock',        'bg'=>'#F3F4F6','color'=>'#6B7280', 'url'=>$tasksBase.'?filter=pending'],
+        ['label'=>'In Progress',    'value'=>$taskOverview['in_progress'],                                                               'key'=>'in_progress', 'icon'=>'fa-spinner',      'bg'=>'#FEF3C7','color'=>'#D97706', 'url'=>$tasksBase.'?status=in_progress'],
+        ['label'=>'Waiting Review', 'value'=>$taskOverview['in_review'],                                                                 'key'=>'in_review',   'icon'=>'fa-gavel',        'bg'=>'#EDE9FE','color'=>'#7C3AED', 'url'=>$tasksBase.'?status=submitted'],
+        ['label'=>'Done',           'value'=>$taskOverview['completed'] + $taskOverview['delivered'] + ($taskOverview['archived'] ?? 0), 'key'=>'done',        'icon'=>'fa-circle-check', 'bg'=>'#D1FAE5','color'=>'#059669', 'url'=>$tasksBase.'?filter=done'],
     ];
     $attentionItems = [
         ['label'=>'Overdue',       'value'=>$taskOverview['overdue'],        'key'=>'overdue',       'icon'=>'fa-triangle-exclamation','color'=>'#DC2626','bg'=>'#FEE2E2', 'url'=>$tasksBase.'?overdue=1'],
@@ -1043,17 +1041,11 @@ function dashModals() {
                 style="background:{{ $item['bg'] }};border-radius:10px;padding:12px 12px 10px;display:flex;flex-direction:column;gap:6px;border:none;cursor:pointer;text-align:left;width:100%;transition:filter .15s,transform .15s,box-shadow .15s;"
                 onmouseover="this.style.filter='brightness(0.95)';this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,.08)'"
                 onmouseout="this.style.filter='';this.style.transform='';this.style.boxShadow=''">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
-                <div style="display:flex;align-items:center;gap:6px;">
-                    <i class="fas {{ $item['icon'] }}" style="font-size:12px;color:{{ $item['color'] }};"></i>
-                    <span style="font-size:11px;font-weight:600;color:{{ $item['color'] }};">{{ $item['label'] }}</span>
-                </div>
-                <span id="pct_{{ $item['key'] }}" style="font-size:10px;font-weight:700;color:{{ $item['color'] }};opacity:.8;">{{ $item['pct'] }}%</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+                <i class="fas {{ $item['icon'] }}" style="font-size:12px;color:{{ $item['color'] }};"></i>
+                <span style="font-size:11px;font-weight:600;color:{{ $item['color'] }};">{{ $item['label'] }}</span>
             </div>
             <p data-rv="overview_{{ $item['key'] }}" style="font-size:26px;font-weight:700;color:#111827;margin:0;line-height:1;">{{ $item['value'] }}</p>
-            <div style="height:4px;background:rgba(0,0,0,.08);border-radius:2px;overflow:hidden;margin-top:2px;">
-                <div id="bar_{{ $item['key'] }}" style="height:100%;width:{{ $item['pct'] }}%;background:{{ $item['bar'] }};border-radius:2px;transition:width .5s ease;"></div>
-            </div>
         </button>
         @endforeach
     </div>
@@ -2591,19 +2583,6 @@ chartWorkload = new Chart(document.getElementById('workloadChart'), {
                 setRV('overview_due_this_week',  ov.due_this_week);
                 setRV('overview_reopened',       ov.reopened   || 0);
                 setRV('overview_reassigned',     ov.reassigned || 0);
-                // ── Pipeline % bars ──
-                (function() {
-                    var tot  = Math.max(1, ov.total || 0);
-                    var done = (ov.completed || 0) + (ov.delivered || 0) + (ov.archived || 0);
-                    var map  = { pending: ov.pending, in_progress: ov.in_progress, in_review: ov.in_review, done: done };
-                    Object.keys(map).forEach(function(k) {
-                        var pct = Math.round(map[k] / tot * 100);
-                        var bar = document.getElementById('bar_' + k);
-                        var lbl = document.getElementById('pct_' + k);
-                        if (bar) bar.style.width = pct + '%';
-                        if (lbl) lbl.textContent = pct + '%';
-                    });
-                })();
 
                 // ── Rate circles ──
                 updateRateCircle('rateCircleCompletion', 'rateTextCompletion', d.completionRate);

@@ -917,12 +917,20 @@ class UserController extends Controller
 
         $isAdminOrManager = in_array($user->role, ['admin', 'manager']);
 
-        // Admin/manager: tasks they created. Regular users: tasks assigned to them.
-        $baseQuery = $isAdminOrManager
-            ? Task::where('created_by', $user->id)
-            : $user->tasks();
+        if ($isAdminOrManager) {
+            $freshBase = fn() => Task::where('created_by', $user->id);
+        } else {
+            // Match the dashboard scope: assigned_to + social_assigned_to + task_assignees pivot
+            $userScope = fn($q) => $q->where('assigned_to', $user->id)
+                ->orWhere('social_assigned_to', $user->id)
+                ->orWhereExists(fn($sub) => $sub->selectRaw('1')
+                    ->from('task_assignees')
+                    ->whereColumn('task_assignees.task_id', 'tasks.id')
+                    ->where('task_assignees.user_id', $user->id));
+            $freshBase = fn() => Task::where($userScope);
+        }
 
-        $base = $baseQuery->with('project');
+        $base = $freshBase()->with('project');
 
         match ($filter) {
             'pending'     => $base->whereIn('status', $pendingStatuses),
@@ -932,10 +940,6 @@ class UserController extends Controller
         };
 
         $tasks = $base->latest()->paginate(15)->withQueryString();
-
-        $freshBase = fn() => $isAdminOrManager
-            ? Task::where('created_by', $user->id)
-            : $user->tasks();
 
         $counts = [
             'all'         => $freshBase()->count(),
