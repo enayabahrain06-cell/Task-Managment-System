@@ -226,13 +226,6 @@
     background: #fff; border-radius: 16px; border: 1px solid #EBEBEB;
     box-shadow: 0 2px 10px rgba(99,102,241,.07); overflow: hidden;
 }
-/* Reject expand area */
-.pend-reject-row { display: none; }
-.pend-reject-row td {
-    background: #FFF8F8; border-top: 1px dashed #FECACA;
-    padding: 10px 14px;
-}
-.pend-reject-row.open { display: table-row; }
 </style>
 
 <div x-data="approvalPage()" @keydown.escape.window="if(viewer) closeViewer(); else if(approvalModal) approvalModal=false; else if(rejectModal) rejectModal=false; else if(qvModal) closeQuickView(); else closeModal()"
@@ -1676,8 +1669,12 @@
 
                     {{-- Request Revision icon button --}}
                     <button type="button"
-                            onclick="togglePendReject({{ $task->id }})"
-                            id="pend-rej-btn-{{ $task->id }}"
+                            @click.stop="openRejectModal({
+                                id:       {{ $task->id }},
+                                title:    @js($task->title),
+                                assignee: @js($task->assignee->name ?? 'Unknown'),
+                                url:      '{{ route('admin.tasks.reject', $task) }}'
+                            })"
                             style="width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;background:#FEF2F2;border:1.5px solid #FECACA;border-radius:8px;cursor:pointer;transition:all .15s;"
                             onmouseover="this.style.background='#FEE2E2';this.style.borderColor='#FCA5A5';" onmouseout="this.style.background='#FEF2F2';this.style.borderColor='#FECACA';"
                             title="Request Revision">
@@ -1692,27 +1689,6 @@
                         <i class="fa fa-arrow-up-right-from-square" style="font-size:11px;color:#6B7280;"></i>
                     </a>
                 </div>
-            </td>
-        </tr>
-        {{-- Inline reject row --}}
-        <tr class="pend-reject-row" id="pend-rej-{{ $task->id }}">
-            <td colspan="7">
-                <form method="POST" action="{{ route('admin.tasks.reject', $task) }}" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                    @csrf
-                    <i class="fas fa-rotate-left" style="color:#EF4444;font-size:12px;flex-shrink:0;"></i>
-                    <input type="text" name="note" required placeholder="Reason for revision (required)..."
-                           style="flex:1;min-width:200px;padding:8px 12px;border:1.5px solid #FECACA;background:#FEF2F2;border-radius:8px;font-size:12px;color:#111827;outline:none;box-sizing:border-box;transition:border-color .15s,box-shadow .15s;"
-                           onfocus="this.style.borderColor='#F87171';this.style.boxShadow='0 0 0 3px rgba(248,113,113,.12)'"
-                           onblur="this.style.borderColor='#FECACA';this.style.boxShadow='none'">
-                    <button type="submit"
-                            style="display:flex;align-items:center;gap:5px;padding:8px 14px;background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 6px rgba(239,68,68,.25);white-space:nowrap;flex-shrink:0;">
-                        <i class="fas fa-rotate-left" style="font-size:10px;"></i> Send Revision
-                    </button>
-                    <button type="button" onclick="togglePendReject({{ $task->id }})"
-                            style="padding:8px 12px;background:#F3F4F6;color:#6B7280;border:none;border-radius:8px;font-size:12px;cursor:pointer;">
-                        Cancel
-                    </button>
-                </form>
             </td>
         </tr>
         @endforeach
@@ -3666,21 +3642,6 @@ function setPendView(view) {
     try { localStorage.setItem('pendView', view); } catch(e) {}
 }
 
-function togglePendReject(taskId) {
-    var row = document.getElementById('pend-rej-' + taskId);
-    var btn = document.getElementById('pend-rej-btn-' + taskId);
-    if (!row) return;
-    var isOpen = row.classList.contains('open');
-    row.classList.toggle('open');
-    if (btn) {
-        btn.style.background   = isOpen ? '#FEF2F2' : '#FEE2E2';
-        btn.style.borderColor  = isOpen ? '#FECACA' : '#F87171';
-    }
-    if (!isOpen) {
-        var input = row.querySelector('input[name="note"]');
-        if (input) setTimeout(function() { input.focus(); }, 60);
-    }
-}
 
 (function initPendView() {
     var saved = null;
