@@ -571,13 +571,6 @@ class ReportsController extends Controller
                 $sq->where('customer_id', $customerId)
                    ->orWhereHas('project', fn($pq) => $pq->where('customer_id', $customerId));
             }))
-            ->when($userId && !$isAdminManagerFilter, fn($q) => $q->where(fn($uq) =>
-                $uq->where('assigned_to', $userId)
-                   ->orWhere('social_assigned_to', $userId)
-                   ->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')
-                       ->whereColumn('task_assignees.task_id', 'tasks.id')
-                       ->where('task_assignees.user_id', $userId))
-            ))
             ->orderByDesc(DB::raw('COALESCE(design_sent_at, updated_at)'))
             ->get()
             ->map(function ($t) {
@@ -615,20 +608,6 @@ class ReportsController extends Controller
             : null;
         $deferredApproval = $approvalSpeedTasks->where('approved', false)->where('deferred', true)->count();
         $pendingApproval  = $approvalSpeedTasks->where('approved', false)->where('deferred', false)->count();
-
-        // ── Decide Later (delivered tasks with no social decision) ────────────
-        $decideLaterReportTasks = Task::with(['assignee', 'project.customer', 'customer'])
-            ->whereIn('status', ['delivered', 'approved', 'archived'])
-            ->whereNull('social_required')
-            ->whereNull('social_assigned_to')
-            ->when($projectId, fn($q) => $q->where('project_id', $projectId))
-            ->when($customerId, fn($q) => $q->where(fn($sq) =>
-                $sq->where('customer_id', $customerId)
-                   ->orWhereHas('project', fn($pq) => $pq->where('customer_id', $customerId))
-            ))
-            ->when($userId && !$isAdminManagerFilter, fn($q) => $q->where('assigned_to', $userId))
-            ->latest()
-            ->get();
 
         // ── Social Pending ────────────────────────────────────────────────────
         $socialPendingTasks = Task::with(['customer', 'project.customer', 'socialAssignee'])
@@ -777,7 +756,7 @@ class ReportsController extends Controller
             'billingUsers', 'billingCustomers', 'phaseLabels', 'from',
             'adBudgetTasks',
             'approvalSpeedTasks', 'approvedCount', 'avgHours', 'pendingApproval', 'deferredApproval',
-            'socialPendingTasks', 'decideLaterReportTasks'
+            'socialPendingTasks'
         ));
     }
 

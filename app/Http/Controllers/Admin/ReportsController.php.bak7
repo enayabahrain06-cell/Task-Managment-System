@@ -571,13 +571,6 @@ class ReportsController extends Controller
                 $sq->where('customer_id', $customerId)
                    ->orWhereHas('project', fn($pq) => $pq->where('customer_id', $customerId));
             }))
-            ->when($userId && !$isAdminManagerFilter, fn($q) => $q->where(fn($uq) =>
-                $uq->where('assigned_to', $userId)
-                   ->orWhere('social_assigned_to', $userId)
-                   ->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')
-                       ->whereColumn('task_assignees.task_id', 'tasks.id')
-                       ->where('task_assignees.user_id', $userId))
-            ))
             ->orderByDesc(DB::raw('COALESCE(design_sent_at, updated_at)'))
             ->get()
             ->map(function ($t) {

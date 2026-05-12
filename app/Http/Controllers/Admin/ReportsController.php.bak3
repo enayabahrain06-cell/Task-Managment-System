@@ -102,12 +102,6 @@ class ReportsController extends Controller
                 $q->whereIn('action', ['status_updated_approved', 'status_updated_delivered', 'status_updated_completed'])
                   ->whereColumn('task_logs.created_at', '<=', 'tasks.deadline');
             })->count();
-        if ($socialScopedBase) {
-            $onTimeCount += (clone $socialScopedBase)->whereNotNull('social_posted_at')
-                ->whereNotNull('deadline')
-                ->whereColumn('social_posted_at', '<=', 'deadline')
-                ->count();
-        }
         $onTimeRate = $completedTasks > 0 ? round($onTimeCount / $completedTasks * 100) : 0;
 
         $activeProjects = Project::where('status', 'active')->where('is_quick', false)
@@ -116,7 +110,6 @@ class ReportsController extends Controller
             ->when($userId && $isAdminManagerFilter, fn($q) => $q->whereHas('tasks', fn($tq) => $tq->where('created_by', $userId)))
             ->when($userId && !$isAdminManagerFilter, fn($q) => $q->whereHas('tasks', fn($tq) => $tq->where(function ($uq) use ($userId) {
                 $uq->where('assigned_to', $userId)
-                   ->orWhere('social_assigned_to', $userId)
                    ->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId));
             })))
             ->count();
@@ -181,13 +174,6 @@ class ReportsController extends Controller
                 $q->where('deadline', '<', now());
             }
             $count = $q->count();
-            if ($socialScopedBase) {
-                $sq = (clone $socialScopedBase)->whereIn('status', $group['statuses']);
-                if ($key === 'overdue') {
-                    $sq->where('deadline', '<', now());
-                }
-                $count += $sq->count();
-            }
             $statusBreakdown[$key] = array_merge($group, [
                 'count' => $count,
                 'pct'   => $totalTasks > 0 ? round($count / $totalTasks * 100) : 0,
@@ -198,9 +184,6 @@ class ReportsController extends Controller
         $priorityBreakdown = [];
         foreach (['low' => ['#10B981','#D1FAE5'], 'medium' => ['#F59E0B','#FEF3C7'], 'high' => ['#EF4444','#FEE2E2']] as $p => [$color, $bg]) {
             $count = $scoped()->where('priority', $p)->count();
-            if ($socialScopedBase) {
-                $count += (clone $socialScopedBase)->where('priority', $p)->count();
-            }
             $priorityBreakdown[$p] = [
                 'label' => ucfirst($p),
                 'count' => $count,
@@ -283,20 +266,6 @@ class ReportsController extends Controller
                 $grandTotal = $total + $socialTotal;
                 $grandDone  = $done + $socialDone;
 
-                $revisions = TaskLog::where('action', 'status_updated_revision_requested')
-                    ->whereExists(fn($sub) => $sub->selectRaw('1')
-                        ->from('tasks')
-                        ->whereColumn('tasks.id', 'task_logs.task_id')
-                        ->where(fn($q) => $q
-                            ->where('tasks.assigned_to', $user->id)
-                            ->orWhereExists(fn($x) => $x->selectRaw('1')
-                                ->from('task_assignees')
-                                ->whereColumn('task_assignees.task_id', 'tasks.id')
-                                ->where('task_assignees.user_id', $user->id))
-                        ))
-                    ->when($from, fn($q) => $q->where('task_logs.created_at', '>=', $from))
-                    ->count();
-
                 return [
                     'id'               => $user->id,
                     'name'             => $user->name,
@@ -307,7 +276,6 @@ class ReportsController extends Controller
                     'in_progress'      => $inProg + $socialInProg,
                     'in_review'        => $inReview,
                     'overdue'          => $overdue,
-                    'revisions'        => $revisions,
                     'rate'             => $grandTotal > 0 ? round($grandDone / $grandTotal * 100) : 0,
                     'projects_created' => 0,
                     'tasks_reopened'   => 0,
@@ -358,7 +326,6 @@ class ReportsController extends Controller
                     'in_progress'      => $inProg,
                     'in_review'        => $inReview,
                     'overdue'          => $overdue,
-                    'revisions'        => null,
                     'rate'             => $totalCreated > 0 ? round($approved / $totalCreated * 100) : ($approved > 0 ? 100 : 0),
                     'projects_created' => $projectsCreated,
                     'tasks_reopened'   => $tasksReopened,
@@ -564,48 +531,35 @@ class ReportsController extends Controller
 
         // ── Customer Approval Speed ───────────────────────────────────────────
         $approvalSpeedTasks = Task::with(['customer', 'project.customer', 'assignee'])
-            ->where(fn($q) => $q->where('status', 'pending_customer')->orWhereNotNull('customer_approved_at'))
+            ->where(fn($q) => $q->whereNotNull('design_sent_at')->orWhere('status', 'pending_customer'))
             ->when($from, fn($q) => $q->where(fn($sq) => $sq->where('design_sent_at', '>=', $from)->orWhere('updated_at', '>=', $from)))
             ->when($projectId, fn($q) => $q->where('project_id', $projectId))
             ->when($customerId, fn($q) => $q->where(function ($sq) use ($customerId) {
                 $sq->where('customer_id', $customerId)
                    ->orWhereHas('project', fn($pq) => $pq->where('customer_id', $customerId));
             }))
-            ->when($userId && !$isAdminManagerFilter, fn($q) => $q->where(fn($uq) =>
-                $uq->where('assigned_to', $userId)
-                   ->orWhere('social_assigned_to', $userId)
-                   ->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')
-                       ->whereColumn('task_assignees.task_id', 'tasks.id')
-                       ->where('task_assignees.user_id', $userId))
-            ))
             ->orderByDesc(DB::raw('COALESCE(design_sent_at, updated_at)'))
             ->get()
             ->map(function ($t) {
-                $customer   = $t->customer?->name ?? $t->project?->customer?->name ?? '—';
-                $sentAt     = $t->design_sent_at ?? $t->updated_at;
+                $customer = $t->customer?->name ?? $t->project?->customer?->name ?? '—';
+                $sentAt   = $t->design_sent_at ?? $t->updated_at;
                 $approvedAt = $t->customer_approved_at;
-                $deferredAt = $t->customer_decision_deferred_at;
-                $hours      = $approvedAt ? round(abs($sentAt->diffInSeconds($approvedAt)) / 3600, 1) : null;
-                $days       = $approvedAt ? round(abs($sentAt->diffInSeconds($approvedAt)) / 86400, 1) : null;
-                $waitedBeforeDefer = $deferredAt
-                    ? round(abs($sentAt->diffInSeconds($deferredAt)) / 3600, 1)
-                    : null;
+                $hours    = $approvedAt ? round(abs($sentAt->diffInSeconds($approvedAt)) / 3600, 1) : null;
+                $days     = $approvedAt ? round(abs($sentAt->diffInSeconds($approvedAt)) / 86400, 1) : null;
                 return [
-                    'id'                  => $t->id,
-                    'title'               => $t->title,
-                    'customer'            => $customer,
-                    'assignee'            => $t->assignee?->name ?? '—',
-                    'sent_at'             => $sentAt->format(config('app.date_format', 'M d, Y')),
-                    'sent_time'           => $sentAt->format('H:i'),
-                    'sent_time_raw'       => $sentAt->toIso8601String(),
-                    'approved_at'         => $approvedAt?->format(config('app.date_format', 'M d, Y')),
-                    'approved_time'       => $approvedAt?->format('H:i'),
-                    'hours'               => $hours,
-                    'days'                => $days,
-                    'approved'            => !is_null($approvedAt),
-                    'deferred'            => !is_null($deferredAt) && is_null($approvedAt),
-                    'waited_before_defer' => $waitedBeforeDefer,
-                    'status'              => $t->status,
+                    'id'          => $t->id,
+                    'title'       => $t->title,
+                    'customer'    => $customer,
+                    'assignee'    => $t->assignee?->name ?? '—',
+                    'sent_at'       => $sentAt->format(config('app.date_format', 'M d, Y')),
+                    'sent_time'     => $sentAt->format('H:i'),
+                    'sent_time_raw' => $sentAt->toIso8601String(),
+                    'approved_at' => $approvedAt?->format(config('app.date_format', 'M d, Y')),
+                    'approved_time' => $approvedAt?->format('H:i'),
+                    'hours'       => $hours,
+                    'days'        => $days,
+                    'approved'    => !is_null($approvedAt),
+                    'status'      => $t->status,
                 ];
             });
 
@@ -613,35 +567,7 @@ class ReportsController extends Controller
         $avgHours         = $approvedCount > 0
             ? round($approvalSpeedTasks->where('approved', true)->avg('hours'), 1)
             : null;
-        $deferredApproval = $approvalSpeedTasks->where('approved', false)->where('deferred', true)->count();
-        $pendingApproval  = $approvalSpeedTasks->where('approved', false)->where('deferred', false)->count();
-
-        // ── Decide Later (delivered tasks with no social decision) ────────────
-        $decideLaterReportTasks = Task::with(['assignee', 'project.customer', 'customer'])
-            ->whereIn('status', ['delivered', 'approved', 'archived'])
-            ->whereNull('social_required')
-            ->whereNull('social_assigned_to')
-            ->when($projectId, fn($q) => $q->where('project_id', $projectId))
-            ->when($customerId, fn($q) => $q->where(fn($sq) =>
-                $sq->where('customer_id', $customerId)
-                   ->orWhereHas('project', fn($pq) => $pq->where('customer_id', $customerId))
-            ))
-            ->when($userId && !$isAdminManagerFilter, fn($q) => $q->where('assigned_to', $userId))
-            ->latest()
-            ->get();
-
-        // ── Social Pending ────────────────────────────────────────────────────
-        $socialPendingTasks = Task::with(['customer', 'project.customer', 'socialAssignee'])
-            ->where(fn($q) => $q->where('social_required', true)->orWhereNotNull('social_assigned_to'))
-            ->whereNull('social_posted_at')
-            ->when($projectId, fn($q) => $q->where('project_id', $projectId))
-            ->when($customerId, fn($q) => $q->where(fn($sq) =>
-                $sq->where('customer_id', $customerId)
-                   ->orWhereHas('project', fn($pq) => $pq->where('customer_id', $customerId))
-            ))
-            ->when($userId && !$isAdminManagerFilter, fn($q) => $q->where('social_assigned_to', $userId))
-            ->orderBy('deadline')
-            ->get();
+        $pendingApproval  = $approvalSpeedTasks->where('approved', false)->count();
 
         // ── Project list for filter dropdown ─────────────────────────────────
         $allProjects = Project::orderBy('name')->get(['id', 'name']);
@@ -776,8 +702,7 @@ class ReportsController extends Controller
             'allProjects', 'allCustomers', 'allUsers', 'customerStats',
             'billingUsers', 'billingCustomers', 'phaseLabels', 'from',
             'adBudgetTasks',
-            'approvalSpeedTasks', 'approvedCount', 'avgHours', 'pendingApproval', 'deferredApproval',
-            'socialPendingTasks', 'decideLaterReportTasks'
+            'approvalSpeedTasks', 'approvedCount', 'avgHours', 'pendingApproval'
         ));
     }
 
@@ -1351,24 +1276,5 @@ class ReportsController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
-    }
-
-    public function deferCustomerApproval(Request $request)
-    {
-        if (!auth()->user()->hasPermission('view_reports')) abort(403);
-
-        $request->validate(['task_id' => 'required|exists:tasks,id']);
-
-        $task = Task::findOrFail($request->task_id);
-
-        if ($task->customer_decision_deferred_at) {
-            $task->update(['customer_decision_deferred_at' => null]);
-            $deferred = false;
-        } else {
-            $task->update(['customer_decision_deferred_at' => now()]);
-            $deferred = true;
-        }
-
-        return response()->json(['deferred' => $deferred]);
     }
 }
