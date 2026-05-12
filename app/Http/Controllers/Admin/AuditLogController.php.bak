@@ -37,7 +37,7 @@ class AuditLogController extends Controller
             $query->whereDate('created_at', '<=', $request->to);
         }
 
-        $logs  = $query->paginate(40)->withQueryString();
+        $logs  = $query->get();
         $users = User::orderBy('name')->get(['id', 'name']);
 
         $actionGroups = [

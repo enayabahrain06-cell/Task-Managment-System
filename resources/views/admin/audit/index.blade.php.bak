@@ -223,10 +223,6 @@
 
 </div>
 
-@if($logs->hasPages())
-<div style="margin-top:16px;">{{ $logs->links() }}</div>
-@endif
-
 {{-- ── Audit Detail Modal ──────────────────────────────────────────────── --}}
 <div id="auditModal" style="display:none;position:fixed;inset:0;z-index:1000;align-items:center;justify-content:center;">
     {{-- Backdrop --}}
