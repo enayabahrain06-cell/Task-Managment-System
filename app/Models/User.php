@@ -54,6 +54,7 @@ class User extends Authenticatable
         // Projects & Team
         'view_projects'        => 'View Projects',
         'manage_projects'      => 'Create & Manage Projects',
+        'delete_projects'      => 'Delete Projects',
         'view_team_tasks'      => 'View Team Tasks',
         'view_team'            => 'Team Directory',
 

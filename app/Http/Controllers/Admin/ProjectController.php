@@ -309,7 +309,7 @@ class ProjectController extends Controller
 
     public function destroy(Project $project)
     {
-        if (!auth()->user()->hasPermission('manage_projects')) {
+        if (!auth()->user()->hasPermission('delete_projects')) {
             abort(403);
         }
 

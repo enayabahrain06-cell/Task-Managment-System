@@ -357,7 +357,7 @@ $statDefs = [
                             <button type="submit" class="text-xs font-medium text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg transition">Close</button>
                         </form>
                         @endif
-                        @if(auth()->user()->hasPermission('manage_projects'))
+                        @if(auth()->user()->hasPermission('delete_projects'))
                         <form action="{{ route('admin.projects.destroy', $project) }}" method="POST" class="inline"
                               onsubmit="return confirm('Delete {{ addslashes($project->name) }}?')">
                             @csrf @method('DELETE')
@@ -528,7 +528,7 @@ $statDefs = [
                             </button>
                         </form>
                         @endif
-                        @if(auth()->user()->hasPermission('manage_projects'))
+                        @if(auth()->user()->hasPermission('delete_projects'))
                         <form action="{{ route('admin.projects.destroy', $project) }}" method="POST"
                               onsubmit="return confirm('Delete {{ addslashes($project->name) }}?')" style="display:contents;">
                             @csrf @method('DELETE')
