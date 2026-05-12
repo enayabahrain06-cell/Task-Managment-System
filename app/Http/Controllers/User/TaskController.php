@@ -415,17 +415,19 @@ class TaskController extends Controller
         }
 
         $request->validate([
-            'note'    => 'nullable|string|max:1000',
-            'body'    => 'nullable|string|max:1000',
-            'files'   => 'nullable|array',
-            'files.*' => 'nullable|file',
+            'note'         => 'nullable|string|max:1000',
+            'body'         => 'nullable|string|max:1000',
+            'delivery_url' => 'nullable|url|max:2048',
+            'files'        => 'nullable|array',
+            'files.*'      => 'nullable|file',
         ]);
 
-        $note  = $request->body ?? $request->note;
-        $files = array_filter((array) $request->file('files'));
+        $note        = $request->body ?? $request->note;
+        $deliveryUrl = $request->filled('delivery_url') ? trim($request->delivery_url) : null;
+        $files       = array_filter((array) $request->file('files'));
 
-        if (!$request->filled('note') && !$request->filled('body') && empty($files)) {
-            return back()->withErrors(['body' => 'Please add a note or attach a file.']);
+        if (!$request->filled('note') && !$request->filled('body') && empty($files) && !$deliveryUrl) {
+            return back()->withErrors(['body' => 'Please add a note, attach a file, or paste a link.']);
         }
 
         $version = TaskSubmission::where('task_id', $task->id)->max('version') + 1;
@@ -438,6 +440,7 @@ class TaskController extends Controller
                 'note'              => $note,
                 'file_path'         => null,
                 'original_filename' => null,
+                'delivery_url'      => $deliveryUrl,
                 'status'            => 'submitted',
             ]);
             $filePath         = null;
