@@ -750,8 +750,8 @@
                             customer_name:   @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
                             customer_email:  @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
                             customer_phone:  @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
-                            submission_url:  @js($task->submissions->first()?->file_path ? url(Storage::url($task->submissions->first()->file_path)) : null),
-                            submission_name: @js($task->submissions->first()?->original_filename ?? ($task->submissions->first()?->file_path ? basename($task->submissions->first()->file_path) : null)),
+                            submission_url:  @js($task->submissions->first()?->file_path ? url(Storage::url($task->submissions->first()->file_path)) : $task->submissions->first()?->delivery_url),
+                            submission_name: @js($task->submissions->first()?->original_filename ?? ($task->submissions->first()?->file_path ? basename($task->submissions->first()->file_path) : ($task->submissions->first()?->delivery_url ? 'Open Link' : null))),
                         })"
                         style="width:100%;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;padding:10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(16,185,129,.25);transition:opacity .15s;"
                         onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
@@ -1431,7 +1431,20 @@
                                 @endif
                             </div>
                             @foreach($entry['subs'] as $subFile)
-                            @if($subFile->file_path)
+                            @if($subFile->delivery_url)
+                                <a href="{{ $subFile->delivery_url }}" target="_blank" rel="noopener"
+                                   style="display:inline-flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 14px;background:#F0FDF4;border:1.5px solid #A7F3D0;border-radius:9px;text-decoration:none;max-width:340px;transition:border-color .15s;"
+                                   onmouseover="this.style.borderColor='#059669'" onmouseout="this.style.borderColor='#A7F3D0'">
+                                    <div style="width:36px;height:36px;border-radius:8px;background:#D1FAE5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                        <i class="fa fa-link" style="color:#059669;font-size:15px;"></i>
+                                    </div>
+                                    <div style="flex:1;min-width:0;">
+                                        <p style="font-size:12px;font-weight:600;color:#065F46;margin:0;">Delivery Link</p>
+                                        <p style="font-size:11px;color:#6B7280;margin:1px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $subFile->delivery_url }}</p>
+                                    </div>
+                                    <i class="fa fa-arrow-up-right-from-square" style="font-size:11px;color:#059669;flex-shrink:0;"></i>
+                                </a>
+                            @elseif($subFile->file_path)
                                 @php
                                     $sfExt     = strtolower(pathinfo($subFile->original_filename ?? '', PATHINFO_EXTENSION));
                                     $sfIsImage = in_array($sfExt, ['jpg','jpeg','png','gif','webp','svg']);
@@ -1494,7 +1507,7 @@
                                     @endif
                                 </div>
                                 @if($sub->admin_note)
-                                <p style="font-size:12px;color:{{ $sub->status === 'approved' ? '#047857' : '#B91C1C' }};margin:0;line-height:1.5;">{{ $sub->admin_note }}</p>
+                                <div class="rte-field" style="font-size:12px;color:{{ $sub->status === 'approved' ? '#047857' : '#B91C1C' }};margin:0;line-height:1.5;min-height:0;">{!! $sub->admin_note !!}</div>
                                 @endif
                             </div>
                             @endif

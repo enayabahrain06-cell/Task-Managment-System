@@ -433,7 +433,7 @@
                 <p style="font-size:14px;font-weight:700;color:#4C1D95;margin:0 0 4px;">Awaiting Admin Review</p>
                 <p style="font-size:13px;color:#6D28D9;margin:0;">Your submission (v{{ $task->submissions->first()?->version ?? 1 }}) is being reviewed.</p>
                 @if($latestSubmission?->admin_note)
-                <p style="font-size:12px;color:#7C3AED;background:#EDE9FE;padding:8px 12px;border-radius:8px;margin:8px 0 0;font-style:italic;">"{{ $latestSubmission->admin_note }}"</p>
+                <div class="rte-field" style="font-size:12px;color:#7C3AED;background:#EDE9FE;padding:8px 12px;border-radius:8px;margin:8px 0 0;line-height:1.6;min-height:0;">{!! $latestSubmission->admin_note !!}</div>
                 @endif
             </div>
         </div>
@@ -452,7 +452,7 @@
             @if($latestSubmission?->admin_note)
             <div style="background:#fff;border-radius:10px;padding:12px 14px;border-left:3px solid #DC2626;margin-bottom:14px;">
                 <p style="font-size:11px;font-weight:700;color:#DC2626;margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em;">Admin Feedback</p>
-                <p style="font-size:13px;color:#374151;margin:0;line-height:1.6;">{{ $latestSubmission->admin_note }}</p>
+                <div class="rte-field" style="font-size:13px;color:#374151;margin:0;line-height:1.6;min-height:0;">{!! $latestSubmission->admin_note !!}</div>
             </div>
             @endif
             <div style="background:#FFF7F7;border:1px dashed #FECACA;border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
@@ -518,7 +518,7 @@
             <div>
                 <p style="font-size:14px;font-weight:700;color:#065F46;margin:0 0 2px;">Approved!</p>
                 @if($latestSubmission?->admin_note)
-                <p style="font-size:13px;color:#047857;margin:0;">Admin note: {{ $latestSubmission->admin_note }}</p>
+                <div class="rte-field" style="font-size:13px;color:#047857;margin:0;line-height:1.6;min-height:0;"><span style="font-weight:600;">Admin note:</span> {!! $latestSubmission->admin_note !!}</div>
                 @else
                 <p style="font-size:13px;color:#047857;margin:0;">Your submission was approved. Waiting for final delivery.</p>
                 @endif
@@ -587,6 +587,7 @@
         @if(!in_array($task->status, ['revision_requested']) && (auth()->user()->hasPermission('view_comments') || ($canSubmit && auth()->user()->hasPermission('submit_work'))))
         <div x-data="{
                 uFiles: [], showModal: false, body: '',
+                deliveryUrl: '', attachMode: 'file',
                 dragging: false, dragCount: 0,
                 editorFocused: false, colorOpen: false, selectedColor: '#EF4444', savedRange: null,
                 handleDrop(e) {
@@ -697,6 +698,22 @@
                 </div>
                 @error('body')<p style="font-size:11px;color:#DC2626;margin:-6px 0 8px;">{{ $message }}</p>@enderror
                 <div style="margin-bottom:14px;">
+                    @if($canSubmit && auth()->user()->hasPermission('submit_work'))
+                    {{-- Attach mode toggle --}}
+                    <div style="display:flex;gap:4px;margin-bottom:8px;">
+                        <button type="button" @click="attachMode='file'; deliveryUrl=''"
+                                :style="attachMode==='file' ? 'flex:1;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;border:1.5px solid #6366F1;background:#EEF2FF;color:#4F46E5;cursor:pointer;' : 'flex:1;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;border:1.5px solid #E5E7EB;background:#F9FAFB;color:#6B7280;cursor:pointer;'">
+                            <i class="fa fa-paperclip" style="margin-right:5px;"></i>Attach File
+                        </button>
+                        <button type="button" @click="attachMode='link'; uFiles=[]; $refs.uFileInput.value=''"
+                                :style="attachMode==='link' ? 'flex:1;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;border:1.5px solid #6366F1;background:#EEF2FF;color:#4F46E5;cursor:pointer;' : 'flex:1;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;border:1.5px solid #E5E7EB;background:#F9FAFB;color:#6B7280;cursor:pointer;'">
+                            <i class="fa fa-link" style="margin-right:5px;"></i>Paste Link
+                        </button>
+                    </div>
+                    @endif
+
+                    {{-- File upload (default mode) --}}
+                    <div x-show="attachMode === 'file'">
                     <label
                         @dragover.prevent="dragging = true"
                         @dragenter.prevent="dragCount++; dragging = true"
@@ -733,6 +750,26 @@
                         </ul>
                     </template>
                     @error('files.*')<p style="font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</p>@enderror
+                    </div>
+
+                    {{-- Link input (paste link mode) --}}
+                    <div x-show="attachMode === 'link'" style="display:none;">
+                        <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;background:#FAFAFA;transition:border-color .15s;"
+                             :style="deliveryUrl ? 'border-color:#6366F1;background:#F5F3FF;' : ''">
+                            <i class="fa fa-link" style="font-size:14px;color:#6366F1;flex-shrink:0;"></i>
+                            <input type="text" name="delivery_url" x-model="deliveryUrl"
+                                   placeholder="Paste your WeTransfer, Google Drive, Dropbox or any link…"
+                                   style="flex:1;border:none;background:transparent;font-size:13px;color:#111827;outline:none;"
+                                   @input="deliveryUrl = $event.target.value">
+                            <template x-if="deliveryUrl">
+                                <button type="button" @click="deliveryUrl = ''; $el.closest('div').querySelector('input').value = ''"
+                                        style="width:20px;height:20px;border-radius:50%;background:#FEE2E2;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fa fa-xmark" style="font-size:9px;color:#DC2626;"></i>
+                                </button>
+                            </template>
+                        </div>
+                        <p style="font-size:11px;color:#9CA3AF;margin:5px 0 0;padding-left:2px;">Clicking <strong>Submit for Review</strong> below will send this link to the admin for review.</p>
+                    </div>
                 </div>
 
                 {{-- Hidden real submit targets --}}
@@ -753,7 +790,9 @@
                                         ? $refs.commentBtn.click()
                                         : document.getElementById('_startForm').submit())
                             @elseif($canSubmit && auth()->user()->hasPermission('submit_work'))
-                                uFiles.length > 0 ? (showModal = true) : $refs.commentBtn.click()
+                                deliveryUrl.trim()
+                                    ? $refs.submitBtn.click()
+                                    : (uFiles.length > 0 ? (showModal = true) : $refs.commentBtn.click())
                             @else
                                 $refs.commentBtn?.click()
                             @endif"
@@ -1028,7 +1067,20 @@
                                 @endif
                             </div>
                             @endif
-                            @if($sub->file_path)
+                            @if($sub->delivery_url)
+                                <a href="{{ $sub->delivery_url }}" target="_blank" rel="noopener"
+                                   style="display:inline-flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 14px;background:#F0FDF4;border:1.5px solid #A7F3D0;border-radius:9px;text-decoration:none;max-width:340px;transition:border-color .15s;"
+                                   onmouseover="this.style.borderColor='#059669'" onmouseout="this.style.borderColor='#A7F3D0'">
+                                    <div style="width:36px;height:36px;border-radius:8px;background:#D1FAE5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                        <i class="fa fa-link" style="color:#059669;font-size:15px;"></i>
+                                    </div>
+                                    <div style="flex:1;min-width:0;">
+                                        <p style="font-size:12px;font-weight:600;color:#065F46;margin:0;">Delivery Link</p>
+                                        <p style="font-size:11px;color:#6B7280;margin:1px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $sub->delivery_url }}</p>
+                                    </div>
+                                    <i class="fa fa-arrow-up-right-from-square" style="font-size:11px;color:#059669;flex-shrink:0;"></i>
+                                </a>
+                            @elseif($sub->file_path)
                                 @php
                                     $subItem = json_encode(['name'=>$sub->original_filename,'url'=>$subUrl,'isImage'=>$subIsImage,'isVideo'=>$subIsVideo,'version'=>$sub->version ?? 1]);
                                 @endphp
@@ -1084,7 +1136,7 @@
                                     @endif
                                 </div>
                                 @if($sub->admin_note)
-                                <p style="font-size:12px;color:{{ $sub->status === 'approved' ? '#047857' : '#B91C1C' }};margin:0;line-height:1.5;">{{ $sub->admin_note }}</p>
+                                <div class="rte-field" style="font-size:12px;color:{{ $sub->status === 'approved' ? '#047857' : '#B91C1C' }};margin:0;line-height:1.5;min-height:0;">{!! $sub->admin_note !!}</div>
                                 @endif
                             </div>
                             @endif
