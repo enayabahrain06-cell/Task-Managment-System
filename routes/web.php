@@ -121,6 +121,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::get('/reports',                     [AdminReportsController::class, 'index'])->name('reports.index');
     Route::get('/reports/export-users',        [AdminReportsController::class, 'exportUsers'])->name('reports.export-users');
     Route::get('/reports/user-detail',         [AdminReportsController::class, 'userDetail'])->name('reports.user-detail');
+    Route::post('/reports/defer-customer-approval', [AdminReportsController::class, 'deferCustomerApproval'])->name('reports.defer-customer-approval');
     Route::resource('users', AdminUserController::class);
     Route::patch('users/{user}/permissions', [AdminUserController::class, 'updatePermissions'])->name('users.permissions');
     Route::post('roles',              [AdminRoleController::class, 'store'])->name('roles.store');

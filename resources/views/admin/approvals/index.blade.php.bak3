@@ -2678,8 +2678,8 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
     <p style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">No matching tasks</p>
     <p style="font-size:13px;color:#9CA3AF;margin:0;">Try adjusting your search or filter.</p>
     @else
-    <p style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">No pending social media decisions</p>
-    <p style="font-size:13px;color:#9CA3AF;margin:0;">All completed tasks have been assigned or marked as social not needed.</p>
+    <p style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">No deferred decisions</p>
+    <p style="font-size:13px;color:#9CA3AF;margin:0;">All approved tasks have had their social media decision resolved.</p>
     @endif
 </div>
 @else
