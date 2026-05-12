@@ -1014,43 +1014,62 @@ function dashModals() {
             </h3>
             <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">All-time overview across every task in the system</p>
         </div>
-        <a href="{{ $dashProjectsUrl }}" style="font-size:11px;color:#4F46E5;text-decoration:none;font-weight:600;">View Projects →</a>
+        <a href="{{ route('admin.tasks.index') }}" style="font-size:11px;color:#4F46E5;text-decoration:none;font-weight:600;">View Tasks →</a>
     </div>
 
-    {{-- Main grid: status counts --}}
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;">
+    @php
+    $tasksBase  = route('admin.tasks.index');
+    $_ttotal    = max(1, $taskOverview['total'] ?? 1);
+    $_doneVal   = $taskOverview['completed'] + $taskOverview['delivered'] + ($taskOverview['archived'] ?? 0);
+    $pipelineItems = [
+        ['label'=>'Pending',        'value'=>$taskOverview['pending'],   'pct'=>round($taskOverview['pending']   / $_ttotal * 100), 'key'=>'pending',     'icon'=>'fa-clock',        'bg'=>'#F3F4F6','color'=>'#6B7280', 'bar'=>'#9CA3AF', 'url'=>$tasksBase.'?filter=pending'],
+        ['label'=>'In Progress',    'value'=>$taskOverview['in_progress'],'pct'=>round($taskOverview['in_progress']/ $_ttotal * 100),'key'=>'in_progress', 'icon'=>'fa-spinner',      'bg'=>'#FEF3C7','color'=>'#D97706', 'bar'=>'#F59E0B', 'url'=>$tasksBase.'?status=in_progress'],
+        ['label'=>'Waiting Review', 'value'=>$taskOverview['in_review'],  'pct'=>round($taskOverview['in_review']  / $_ttotal * 100),'key'=>'in_review',   'icon'=>'fa-gavel',        'bg'=>'#EDE9FE','color'=>'#7C3AED', 'bar'=>'#8B5CF6', 'url'=>$tasksBase.'?status=submitted'],
+        ['label'=>'Done',           'value'=>$_doneVal,                   'pct'=>round($_doneVal                   / $_ttotal * 100), 'key'=>'done',        'icon'=>'fa-circle-check', 'bg'=>'#D1FAE5','color'=>'#059669', 'bar'=>'#10B981', 'url'=>$tasksBase.'?filter=done'],
+    ];
+    $attentionItems = [
+        ['label'=>'Overdue',       'value'=>$taskOverview['overdue'],        'key'=>'overdue',       'icon'=>'fa-triangle-exclamation','color'=>'#DC2626','bg'=>'#FEE2E2', 'url'=>$tasksBase.'?overdue=1'],
+        ['label'=>'Due This Week', 'value'=>$taskOverview['due_this_week'],  'key'=>'due_this_week', 'icon'=>'fa-calendar-week',       'color'=>'#0284C7','bg'=>'#E0F2FE', 'url'=>$tasksBase.'?filter=due_this_week'],
+        ['label'=>'Reopened',      'value'=>$taskOverview['reopened'],       'key'=>'reopened',      'icon'=>'fa-rotate-right',        'color'=>'#EA580C','bg'=>'#FFF7ED', 'url'=>$tasksBase.'?filter=reopened'],
+        ['label'=>'Reassigned',    'value'=>$taskOverview['reassigned'],     'key'=>'reassigned',    'icon'=>'fa-arrows-rotate',       'color'=>'#16A34A','bg'=>'#F0FDF4', 'url'=>$tasksBase.'?filter=reassigned'],
+        ['label'=>'Decide Later',  'value'=>$decideLaterCount,               'key'=>'decide_later',  'icon'=>'fa-hourglass-half',      'color'=>'#475569','bg'=>'#F1F5F9', 'url'=>route('admin.approvals.index').'?tab=decide_later'],
+    ];
+    @endphp
 
-        @php
-        $tasksBase = route('admin.tasks.index');
-        $analyticsItems = [
-            ['label'=>'Pending',        'value'=>$taskOverview['pending'],                                       'key'=>'pending',       'icon'=>'fa-clock',               'bg'=>'#F3F4F6','color'=>'#6B7280', 'url'=>$tasksBase.'?filter=pending'],
-            ['label'=>'In Progress',    'value'=>$taskOverview['in_progress'],                                   'key'=>'in_progress',   'icon'=>'fa-spinner',             'bg'=>'#FEF3C7','color'=>'#D97706', 'url'=>$tasksBase.'?status=in_progress'],
-            ['label'=>'Waiting Review', 'value'=>$taskOverview['in_review'],                                     'key'=>'in_review',     'icon'=>'fa-gavel',               'bg'=>'#EDE9FE','color'=>'#7C3AED', 'url'=>$tasksBase.'?status=submitted'],
-            ['label'=>'Done',           'value'=>$taskOverview['completed'] + $taskOverview['delivered'] + ($taskOverview['archived'] ?? 0), 'key'=>'done', 'icon'=>'fa-circle-check', 'bg'=>'#D1FAE5','color'=>'#059669', 'url'=>$tasksBase.'?filter=done'],
-            ['label'=>'Overdue',        'value'=>$taskOverview['overdue'],                                       'key'=>'overdue',       'icon'=>'fa-triangle-exclamation','bg'=>'#FEE2E2','color'=>'#DC2626', 'url'=>$tasksBase.'?overdue=1'],
-            ['label'=>'Due This Week',  'value'=>$taskOverview['due_this_week'],                                 'key'=>'due_this_week', 'icon'=>'fa-calendar-week',       'bg'=>'#F0F9FF','color'=>'#0284C7', 'url'=>$tasksBase.'?filter=due_this_week'],
-            ['label'=>'Reopened',       'value'=>$taskOverview['reopened'],                                      'key'=>'reopened',      'icon'=>'fa-rotate-right',        'bg'=>'#FFF7ED','color'=>'#EA580C', 'url'=>$tasksBase.'?filter=reopened'],
-            ['label'=>'Reassigned',     'value'=>$taskOverview['reassigned'],                                    'key'=>'reassigned',    'icon'=>'fa-arrows-rotate',       'bg'=>'#F0FDF4','color'=>'#16A34A', 'url'=>$tasksBase.'?filter=reassigned'],
-            ['label'=>'Decide Later',   'value'=>$decideLaterCount,                                              'key'=>'decide_later',  'icon'=>'fa-hourglass-half',      'bg'=>'#F1F5F9','color'=>'#475569', 'url'=>route('admin.approvals.index').'?tab=decide_later'],
-        ];
-        @endphp
-
-        @foreach($analyticsItems as $item)
+    {{-- Tier 1: core pipeline (4 equal cards) --}}
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;">
+        @foreach($pipelineItems as $item)
         <button onclick="openAnalyticsModal('{{ $item['key'] }}','{{ $item['label'] }}','{{ $item['color'] }}','{{ $item['bg'] }}','{{ $item['icon'] }}','{{ $item['url'] }}')"
-                style="background:{{ $item['bg'] }};border-radius:10px;padding:10px 11px;display:flex;flex-direction:column;gap:4px;border:none;cursor:pointer;text-align:left;width:100%;transition:filter .15s,transform .15s,box-shadow .15s;"
-                onmouseover="this.style.filter='brightness(0.96)';this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.08)'"
+                style="background:{{ $item['bg'] }};border-radius:10px;padding:12px 12px 10px;display:flex;flex-direction:column;gap:6px;border:none;cursor:pointer;text-align:left;width:100%;transition:filter .15s,transform .15s,box-shadow .15s;"
+                onmouseover="this.style.filter='brightness(0.95)';this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,.08)'"
                 onmouseout="this.style.filter='';this.style.transform='';this.style.boxShadow=''">
-            <div style="display:flex;align-items:center;justify-content:space-between;">
-                <div style="display:flex;align-items:center;gap:5px;">
-                    <i class="fas {{ $item['icon'] }}" style="font-size:11px;color:{{ $item['color'] }};"></i>
-                    <span style="font-size:11px;font-weight:600;color:{{ $item['color'] }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $item['label'] }}</span>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <i class="fas {{ $item['icon'] }}" style="font-size:12px;color:{{ $item['color'] }};"></i>
+                    <span style="font-size:11px;font-weight:600;color:{{ $item['color'] }};">{{ $item['label'] }}</span>
                 </div>
-                <i class="fas fa-chevron-right" style="font-size:8px;color:{{ $item['color'] }};opacity:.5;"></i>
+                <span id="pct_{{ $item['key'] }}" style="font-size:10px;font-weight:700;color:{{ $item['color'] }};opacity:.8;">{{ $item['pct'] }}%</span>
             </div>
-            <p data-rv="overview_{{ $item['key'] }}" style="font-size:22px;font-weight:700;color:#111827;margin:0;line-height:1;">{{ $item['value'] }}</p>
+            <p data-rv="overview_{{ $item['key'] }}" style="font-size:26px;font-weight:700;color:#111827;margin:0;line-height:1;">{{ $item['value'] }}</p>
+            <div style="height:4px;background:rgba(0,0,0,.08);border-radius:2px;overflow:hidden;margin-top:2px;">
+                <div id="bar_{{ $item['key'] }}" style="height:100%;width:{{ $item['pct'] }}%;background:{{ $item['bar'] }};border-radius:2px;transition:width .5s ease;"></div>
+            </div>
         </button>
         @endforeach
+    </div>
 
+    {{-- Tier 2: attention metrics (5 slim chips) --}}
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:14px;">
+        @foreach($attentionItems as $item)
+        <button onclick="openAnalyticsModal('{{ $item['key'] }}','{{ $item['label'] }}','{{ $item['color'] }}','{{ $item['bg'] }}','{{ $item['icon'] }}','{{ $item['url'] }}')"
+                style="display:flex;align-items:center;gap:7px;padding:7px 10px;background:{{ $item['bg'] }};border:none;border-radius:8px;cursor:pointer;width:100%;transition:filter .15s,transform .15s;"
+                onmouseover="this.style.filter='brightness(0.95)';this.style.transform='translateY(-1px)'"
+                onmouseout="this.style.filter='';this.style.transform=''">
+            <i class="fas {{ $item['icon'] }}" style="font-size:11px;color:{{ $item['color'] }};flex-shrink:0;"></i>
+            <span style="flex:1;font-size:11px;font-weight:600;color:{{ $item['color'] }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $item['label'] }}</span>
+            <span data-rv="overview_{{ $item['key'] }}" style="font-size:14px;font-weight:700;color:#111827;flex-shrink:0;">{{ $item['value'] }}</span>
+        </button>
+        @endforeach
     </div>
 
     {{-- Rate metrics row --}}
@@ -2572,6 +2591,19 @@ chartWorkload = new Chart(document.getElementById('workloadChart'), {
                 setRV('overview_due_this_week',  ov.due_this_week);
                 setRV('overview_reopened',       ov.reopened   || 0);
                 setRV('overview_reassigned',     ov.reassigned || 0);
+                // ── Pipeline % bars ──
+                (function() {
+                    var tot  = Math.max(1, ov.total || 0);
+                    var done = (ov.completed || 0) + (ov.delivered || 0) + (ov.archived || 0);
+                    var map  = { pending: ov.pending, in_progress: ov.in_progress, in_review: ov.in_review, done: done };
+                    Object.keys(map).forEach(function(k) {
+                        var pct = Math.round(map[k] / tot * 100);
+                        var bar = document.getElementById('bar_' + k);
+                        var lbl = document.getElementById('pct_' + k);
+                        if (bar) bar.style.width = pct + '%';
+                        if (lbl) lbl.textContent = pct + '%';
+                    });
+                })();
 
                 // ── Rate circles ──
                 updateRateCircle('rateCircleCompletion', 'rateTextCompletion', d.completionRate);
