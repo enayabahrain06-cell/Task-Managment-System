@@ -29,11 +29,13 @@ $avatarColors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6','#E
         <p class="text-sm text-gray-500 mt-0.5">{{ $stats['total'] }} total tasks</p>
     </div>
     <div class="flex items-center gap-2">
+        @if(auth()->user()->hasPermission('view_trash'))
         <a href="{{ route('admin.tasks.trash') }}"
            class="flex items-center gap-2 bg-white hover:bg-red-50 text-red-500 text-sm font-medium px-4 py-2 rounded-lg transition border border-red-100 shadow-sm"
            style="text-decoration:none;">
             <i class="fa fa-trash-can"></i> Recycle Bin
         </a>
+        @endif
         <a href="{{ route('admin.projects.index') }}"
            class="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition border border-gray-200 shadow-sm"
            style="text-decoration:none;">

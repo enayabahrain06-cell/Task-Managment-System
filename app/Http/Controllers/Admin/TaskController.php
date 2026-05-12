@@ -399,7 +399,7 @@ class TaskController extends Controller
 
     public function trash(Request $request)
     {
-        if (!auth()->user()->hasPermission('manage_tasks')) {
+        if (!auth()->user()->hasPermission('view_trash')) {
             abort(403);
         }
 
@@ -416,6 +416,10 @@ class TaskController extends Controller
 
     public function restore(int $id)
     {
+        if (!auth()->user()->hasPermission('view_trash')) {
+            abort(403);
+        }
+
         $task = Task::onlyTrashed()->findOrFail($id);
         $task->restore();
 
