@@ -727,7 +727,7 @@
                 <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 16px;display:flex;align-items:center;gap:8px;">
                     <i class="fa fa-paperclip" style="color:#6366F1;"></i> Attachments
                     <span style="font-size:12px;font-weight:400;color:#9CA3AF;">{{ $allAttachments->count() }} {{ Str::plural('file', $allAttachments->count()) }}</span>
-                    @if(in_array(auth()->user()->role, ['admin','manager']))
+                    @if(auth()->user()->hasPermission('manage_tasks'))
                     <button type="button" @click="uploading=!uploading"
                             style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#EEF2FF;border:none;border-radius:8px;font-size:12px;font-weight:600;color:#4F46E5;cursor:pointer;transition:background .15s;"
                             onmouseover="this.style.background='#C7D2FE'" onmouseout="this.style.background='#EEF2FF'">
@@ -764,7 +764,7 @@
                                 ? 'This file belongs to the project and will be removed for ALL tasks. Delete anyway?'
                                 : 'Delete this attachment?';
                         @endphp
-                        @if($canDelete && in_array(auth()->user()->role, ['admin','manager']))
+                        @if($canDelete && auth()->user()->hasPermission('delete_tasks'))
                         <form method="POST" action="{{ route('admin.tasks.attachments.delete', [$task, $att]) }}"
                               onsubmit="return confirm('{{ $confirmMsg }}')" style="margin:0;flex-shrink:0;">
                             @csrf @method('DELETE')
@@ -782,7 +782,7 @@
                 @endif
 
                 {{-- Upload form (collapsible) — admin & manager only --}}
-                @if(in_array(auth()->user()->role, ['admin','manager']))
+                @if(auth()->user()->hasPermission('manage_tasks'))
                 <div x-show="uploading" x-cloak style="border-top:1px solid #F3F4F6;padding-top:14px;">
                     <form method="POST" action="{{ route('admin.tasks.attachments.add', $task) }}"
                           enctype="multipart/form-data">

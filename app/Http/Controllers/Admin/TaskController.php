@@ -735,7 +735,7 @@ class TaskController extends Controller
 
     public function addAttachment(Request $request, Task $task)
     {
-        abort_unless(in_array(auth()->user()->role, ['admin', 'manager']), 403);
+        abort_unless(auth()->user()->hasPermission('manage_tasks'), 403);
 
         $request->validate([
             'attachments'   => 'required|array|min:1',
@@ -773,7 +773,7 @@ class TaskController extends Controller
 
     public function deleteAttachment(Task $task, \App\Models\ProjectAttachment $attachment)
     {
-        abort_unless(in_array(auth()->user()->role, ['admin', 'manager']), 403);
+        abort_unless(auth()->user()->hasPermission('delete_tasks'), 403);
 
         $isTaskSpecific = (int) $attachment->task_id === (int) $task->id;
         $isProjectLevel = is_null($attachment->task_id) && (int) $attachment->project_id === (int) $task->project_id;
