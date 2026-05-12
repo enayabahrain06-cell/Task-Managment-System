@@ -297,7 +297,7 @@ class TaskController extends Controller
 
         // Social-only viewers (social_assigned_to) don't trigger first_viewed or modify task state
         if ($isSocialAssignee && $task->assigned_to != $uid) {
-            $task->load('project.attachments', 'project.customer', 'assignees', 'reviewer', 'creator', 'customer', 'logs.user', 'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor', 'comments.user', 'comments.edits.editor', 'transfers.fromUser', 'transfers.transferredBy', 'timerSegments');
+            $task->load('project.attachments', 'project.customer', 'assignee', 'assignees', 'reviewer', 'creator', 'customer', 'socialAssignee', 'socialPosts', 'logs.user', 'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor', 'comments.user', 'comments.edits.editor', 'transfers.fromUser', 'transfers.transferredBy', 'timerSegments');
             $completedTimerSeconds = 0;
             $activeSegment         = null;
             $incomingTransfer      = null;
@@ -330,7 +330,7 @@ class TaskController extends Controller
             }
         }
 
-        $task->load('project.attachments', 'project.customer', 'assignees', 'reviewer', 'creator', 'customer', 'logs.user', 'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor', 'comments.user', 'comments.edits.editor', 'transfers.fromUser', 'transfers.transferredBy', 'timerSegments');
+        $task->load('project.attachments', 'project.customer', 'assignee', 'assignees', 'reviewer', 'creator', 'customer', 'socialAssignee', 'socialPosts', 'logs.user', 'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor', 'comments.user', 'comments.edits.editor', 'transfers.fromUser', 'transfers.transferredBy', 'timerSegments');
 
         // Find the transfer that handed this task TO the current user
         $incomingTransfer = $task->transfers
@@ -415,17 +415,19 @@ class TaskController extends Controller
         }
 
         $request->validate([
-            'note'    => 'nullable|string|max:1000',
-            'body'    => 'nullable|string|max:1000',
-            'files'   => 'nullable|array',
-            'files.*' => 'nullable|file',
+            'note'         => 'nullable|string|max:1000',
+            'body'         => 'nullable|string|max:1000',
+            'delivery_url' => 'nullable|url|max:2048',
+            'files'        => 'nullable|array',
+            'files.*'      => 'nullable|file',
         ]);
 
-        $note  = $request->body ?? $request->note;
-        $files = array_filter((array) $request->file('files'));
+        $note        = $request->body ?? $request->note;
+        $deliveryUrl = $request->filled('delivery_url') ? trim($request->delivery_url) : null;
+        $files       = array_filter((array) $request->file('files'));
 
-        if (!$request->filled('note') && !$request->filled('body') && empty($files)) {
-            return back()->withErrors(['body' => 'Please add a note or attach a file.']);
+        if (!$request->filled('note') && !$request->filled('body') && empty($files) && !$deliveryUrl) {
+            return back()->withErrors(['body' => 'Please add a note, attach a file, or paste a link.']);
         }
 
         $version = TaskSubmission::where('task_id', $task->id)->max('version') + 1;
@@ -438,6 +440,7 @@ class TaskController extends Controller
                 'note'              => $note,
                 'file_path'         => null,
                 'original_filename' => null,
+                'delivery_url'      => $deliveryUrl,
                 'status'            => 'submitted',
             ]);
             $filePath         = null;
