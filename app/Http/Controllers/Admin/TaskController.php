@@ -727,6 +727,8 @@ class TaskController extends Controller
 
     public function addAttachment(Request $request, Task $task)
     {
+        abort_unless(in_array(auth()->user()->role, ['admin', 'manager']), 403);
+
         $request->validate([
             'attachments'   => 'required|array|min:1',
             'attachments.*' => 'file|max:51200',
@@ -763,9 +765,10 @@ class TaskController extends Controller
 
     public function deleteAttachment(Task $task, \App\Models\ProjectAttachment $attachment)
     {
-        // Allow deleting task-specific attachments or project-level attachments belonging to the same project
-        $isTaskSpecific  = $attachment->task_id === $task->id;
-        $isProjectLevel  = is_null($attachment->task_id) && $attachment->project_id === $task->project_id;
+        abort_unless(in_array(auth()->user()->role, ['admin', 'manager']), 403);
+
+        $isTaskSpecific = (int) $attachment->task_id === (int) $task->id;
+        $isProjectLevel = is_null($attachment->task_id) && (int) $attachment->project_id === (int) $task->project_id;
         abort_unless($isTaskSpecific || $isProjectLevel, 403);
 
         $filename = $attachment->name;
