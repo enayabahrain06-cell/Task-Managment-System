@@ -112,7 +112,7 @@ class TaskController extends Controller
     public function show(Task $task)
     {
         $task->load([
-            'project.attachments' => fn($q) => $q->whereNull('task_id'),
+            'project.attachments' => fn($q) => $q->whereNull('task_id')->whereHas('project', fn($p) => $p->where('is_quick', false)),
             'project.members', 'project.customer',
             'assignee', 'assignees', 'reviewer', 'creator', 'customer',
             'socialAssignee', 'socialPosts',
