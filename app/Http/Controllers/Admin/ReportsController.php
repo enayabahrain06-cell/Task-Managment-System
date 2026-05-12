@@ -266,6 +266,20 @@ class ReportsController extends Controller
                 $grandTotal = $total + $socialTotal;
                 $grandDone  = $done + $socialDone;
 
+                $revisions = TaskLog::where('action', 'status_updated_revision_requested')
+                    ->whereExists(fn($sub) => $sub->selectRaw('1')
+                        ->from('tasks')
+                        ->whereColumn('tasks.id', 'task_logs.task_id')
+                        ->where(fn($q) => $q
+                            ->where('tasks.assigned_to', $user->id)
+                            ->orWhereExists(fn($x) => $x->selectRaw('1')
+                                ->from('task_assignees')
+                                ->whereColumn('task_assignees.task_id', 'tasks.id')
+                                ->where('task_assignees.user_id', $user->id))
+                        ))
+                    ->when($from, fn($q) => $q->where('task_logs.created_at', '>=', $from))
+                    ->count();
+
                 return [
                     'id'               => $user->id,
                     'name'             => $user->name,
@@ -276,6 +290,7 @@ class ReportsController extends Controller
                     'in_progress'      => $inProg + $socialInProg,
                     'in_review'        => $inReview,
                     'overdue'          => $overdue,
+                    'revisions'        => $revisions,
                     'rate'             => $grandTotal > 0 ? round($grandDone / $grandTotal * 100) : 0,
                     'projects_created' => 0,
                     'tasks_reopened'   => 0,
@@ -326,6 +341,7 @@ class ReportsController extends Controller
                     'in_progress'      => $inProg,
                     'in_review'        => $inReview,
                     'overdue'          => $overdue,
+                    'revisions'        => null,
                     'rate'             => $totalCreated > 0 ? round($approved / $totalCreated * 100) : ($approved > 0 ? 100 : 0),
                     'projects_created' => $projectsCreated,
                     'tasks_reopened'   => $tasksReopened,

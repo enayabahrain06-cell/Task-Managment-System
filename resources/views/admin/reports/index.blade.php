@@ -685,6 +685,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
                         <th style="text-align:center;padding:7px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Projects</th>
                         <th style="text-align:center;padding:7px 10px;font-size:10px;font-weight:700;color:#F59E0B;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;" title="Tasks reopened by this admin/manager">Reopened</th>
                         <th style="text-align:center;padding:7px 10px;font-size:10px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;" title="Tasks reassigned by this admin/manager">Reassigned</th>
+                        <th style="text-align:center;padding:7px 10px;font-size:10px;font-weight:700;color:#EF4444;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;" title="Users: tasks sent back for revision | Admin/Manager: revision requests they sent">Revisions</th>
                         <th style="padding:7px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;min-width:110px;">Rate</th>
                     </tr>
                 </thead>
@@ -730,6 +731,15 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
                             <span style="color:{{ $member['tasks_reassigned'] > 0 ? '#6366F1' : '#9CA3AF' }};font-weight:700;">{{ $member['tasks_reassigned'] }}</span>
                             @else
                             <span style="color:#D1D5DB;">—</span>
+                            @endif
+                        </td>
+                        <td style="text-align:center;padding:8px 10px;">
+                            @if(is_null($member['revisions'] ?? null))
+                            <span style="color:#D1D5DB;">—</span>
+                            @elseif($member['revisions'] > 0)
+                            <span style="color:#EF4444;font-weight:700;">{{ $member['revisions'] }}</span>
+                            @else
+                            <span style="color:#9CA3AF;font-weight:700;">0</span>
                             @endif
                         </td>
                         <td style="padding:8px 10px;min-width:110px;">
