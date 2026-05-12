@@ -132,13 +132,17 @@ class TaskController extends Controller
     public function update(Request $request, Task $task)
     {
         $request->validate([
-            'title'       => 'required|string|max:255',
-            'project_id'  => 'nullable|exists:projects,id',
-            'customer_id' => 'nullable|exists:customers,id',
-            'assigned_to' => 'nullable|exists:users,id',
-            'priority'    => 'nullable|in:high,medium,low',
-            'deadline'    => 'nullable|date',
-            'description' => 'nullable|string',
+            'title'                => 'required|string|max:255',
+            'project_id'           => 'nullable|exists:projects,id',
+            'customer_id'          => 'nullable|exists:customers,id',
+            'assigned_to'          => 'nullable|exists:users,id',
+            'priority'             => 'nullable|in:high,medium,low',
+            'deadline'             => 'nullable|date',
+            'description'          => 'nullable|string',
+            'new_attachments'      => 'nullable|array',
+            'new_attachments.*'    => 'file|max:51200',
+            'delete_attachments'   => 'nullable|array',
+            'delete_attachments.*' => 'integer|exists:project_attachments,id',
         ]);
 
         $changes = [];
@@ -177,6 +181,33 @@ class TaskController extends Controller
                 'note'     => 'Task details updated by ' . auth()->user()->name,
                 'metadata' => ['changes' => $changes, 'changed_by' => auth()->user()->name],
             ]);
+        }
+
+        // Delete checked attachments (only task-specific ones belonging to this task)
+        if ($request->filled('delete_attachments')) {
+            $toDelete = \App\Models\ProjectAttachment::whereIn('id', $request->delete_attachments)
+                ->where('task_id', $task->id)
+                ->get();
+            foreach ($toDelete as $att) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($att->path);
+                $att->delete();
+            }
+        }
+
+        // Store new uploaded attachments
+        if ($request->hasFile('new_attachments')) {
+            foreach ($request->file('new_attachments') as $file) {
+                $path = $file->store("task-attachments/{$task->id}", 'public');
+                \App\Models\ProjectAttachment::create([
+                    'project_id'  => $task->project_id,
+                    'task_id'     => $task->id,
+                    'type'        => 'file',
+                    'name'        => $file->getClientOriginalName(),
+                    'path'        => $path,
+                    'size'        => $file->getSize(),
+                    'uploaded_by' => auth()->id(),
+                ]);
+            }
         }
 
         AuditLogger::log(

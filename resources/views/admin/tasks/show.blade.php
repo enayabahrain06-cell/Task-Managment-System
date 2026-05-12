@@ -2315,7 +2315,7 @@ function taskApprovalPage() {
         <div onclick="document.getElementById('taskEditModal').style.display='none'"
              style="position:absolute;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);"></div>
         <div style="position:relative;width:100%;max-width:560px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,.25);">
-            <form action="{{ route('admin.tasks.update', $task) }}" method="POST">
+            <form action="{{ route('admin.tasks.update', $task) }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 @method('PATCH')
                 {{-- Header --}}
@@ -2412,6 +2412,74 @@ function taskApprovalPage() {
                                   style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;outline:none;resize:vertical;transition:border-color .15s;box-sizing:border-box;"
                                   onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"
                                   placeholder="Optional description…">{{ old('description', $task->description) }}</textarea>
+                    </div>
+
+                    {{-- Attachments --}}
+                    <div x-data="{ editFiles: [], dragging: false,
+                        addFiles(e) {
+                            const incoming = e.dataTransfer ? e.dataTransfer.files : e.target.files;
+                            const dt = new DataTransfer();
+                            editFiles.forEach(f => dt.items.add(f));
+                            Array.from(incoming).forEach(f => dt.items.add(f));
+                            editFiles = Array.from(dt.files);
+                            $refs.editFileInput.files = dt.files;
+                        },
+                        remove(i) {
+                            const dt = new DataTransfer();
+                            editFiles.splice(i,1);
+                            editFiles.forEach(f => dt.items.add(f));
+                            $refs.editFileInput.files = dt.files;
+                        },
+                        fmt(b) { if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
+                    }">
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Attachments</label>
+
+                        {{-- Existing attachments --}}
+                        @if($task->attachments->isNotEmpty())
+                        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
+                            @foreach($task->attachments as $att)
+                            <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:9px;">
+                                <i class="fa {{ $att->iconClass() }}" style="color:#6366F1;font-size:13px;flex-shrink:0;"></i>
+                                <span style="flex:1;font-size:12px;font-weight:500;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $att->name }}</span>
+                                <span style="font-size:11px;color:#9CA3AF;white-space:nowrap;">{{ $att->humanSize() }}</span>
+                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0;" title="Delete this attachment">
+                                    <input type="checkbox" name="delete_attachments[]" value="{{ $att->id }}"
+                                           style="accent-color:#EF4444;width:14px;height:14px;cursor:pointer;">
+                                    <span style="font-size:11px;color:#EF4444;font-weight:600;">Delete</span>
+                                </label>
+                            </div>
+                            @endforeach
+                        </div>
+                        @endif
+
+                        {{-- New file drop zone --}}
+                        <div @dragover.prevent="dragging=true" @dragleave.prevent="dragging=false"
+                             @drop.prevent="dragging=false; addFiles($event)"
+                             :style="dragging ? 'border-color:#6366F1;background:#EEF2FF;' : ''"
+                             style="border:2px dashed #E5E7EB;border-radius:10px;padding:14px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:#FAFAFA;"
+                             @click="$refs.editFileInput.click()">
+                            <i class="fa fa-cloud-arrow-up" style="font-size:20px;color:#9CA3AF;margin-bottom:6px;display:block;"></i>
+                            <p style="font-size:12px;color:#6B7280;margin:0;">Drop files here or <span style="color:#6366F1;font-weight:600;">browse</span></p>
+                            <input type="file" name="new_attachments[]" multiple x-ref="editFileInput"
+                                   @change="addFiles($event)" style="display:none;">
+                        </div>
+
+                        {{-- New files list --}}
+                        <template x-if="editFiles.length > 0">
+                            <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+                                <template x-for="(f, i) in editFiles" :key="i">
+                                    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:9px;">
+                                        <i class="fa fa-file" style="color:#6366F1;font-size:12px;flex-shrink:0;"></i>
+                                        <span style="flex:1;font-size:12px;font-weight:500;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="f.name"></span>
+                                        <span style="font-size:11px;color:#9CA3AF;" x-text="fmt(f.size)"></span>
+                                        <button type="button" @click.stop="remove(i)"
+                                                style="width:20px;height:20px;border-radius:50%;border:none;background:#EF4444;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                            <i class="fa fa-xmark"></i>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
                     </div>
                 </div>
                 {{-- Footer --}}
