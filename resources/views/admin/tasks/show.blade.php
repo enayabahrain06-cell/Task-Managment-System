@@ -695,8 +695,9 @@
             </div>
         </div>
 
-        {{-- Project Attachments --}}
-        @if($task->project->attachments->isNotEmpty())
+        {{-- Task & Project Attachments --}}
+        @php $allAttachments = $task->attachments->merge($task->project->attachments); @endphp
+        @if($allAttachments->isNotEmpty())
         <div x-data="{
                 open: false,
                 att: null,
@@ -708,10 +709,10 @@
             <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
                 <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 16px;display:flex;align-items:center;gap:8px;">
                     <i class="fa fa-paperclip" style="color:#6366F1;"></i> Attachments
-                    <span style="margin-left:auto;font-size:12px;font-weight:400;color:#9CA3AF;">{{ $task->project->attachments->count() }} {{ Str::plural('file', $task->project->attachments->count()) }}</span>
+                    <span style="margin-left:auto;font-size:12px;font-weight:400;color:#9CA3AF;">{{ $allAttachments->count() }} {{ Str::plural('file', $allAttachments->count()) }}</span>
                 </h2>
                 <div style="display:flex;flex-direction:column;gap:8px;">
-                    @foreach($task->project->attachments as $att)
+                    @foreach($allAttachments as $att)
                     @php $item = ['name'=>$att->name,'size'=>$att->humanSize(),'url'=>$att->url(),'downloadUrl'=>$att->isFile()?route('admin.attachments.download',$att):$att->url(),'icon'=>$att->iconClass(),'isLink'=>$att->isLink(),'isImage'=>in_array(strtolower(pathinfo($att->name,PATHINFO_EXTENSION)),['jpg','jpeg','png','gif','webp','svg']),'isVideo'=>in_array(strtolower(pathinfo($att->name,PATHINFO_EXTENSION)),['mp4','mov','avi','webm','mkv'])]; @endphp
                     <button type="button" @click="show({{ json_encode($item) }})"
                             style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:#FAFAFA;border:1px solid #F3F4F6;border-radius:10px;width:100%;text-align:left;cursor:pointer;transition:border-color .15s,background .15s;"

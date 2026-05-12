@@ -115,6 +115,11 @@ class Task extends Model
         return $this->hasMany(TaskComment::class)->latest();
     }
 
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(ProjectAttachment::class);
+    }
+
     public function transfers(): HasMany
     {
         return $this->hasMany(TaskTransfer::class)->orderBy('transferred_at');

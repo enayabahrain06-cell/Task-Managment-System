@@ -10,6 +10,7 @@ class ProjectAttachment extends Model
 {
     protected $fillable = [
         'project_id',
+        'task_id',
         'type',
         'name',
         'path',
@@ -20,6 +21,11 @@ class ProjectAttachment extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function task(): BelongsTo
+    {
+        return $this->belongsTo(Task::class);
     }
 
     public function uploader(): BelongsTo
