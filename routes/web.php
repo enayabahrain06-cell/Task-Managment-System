@@ -239,6 +239,10 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
             ->download($attachment->path, $attachment->name);
     })->name('attachments.download');
 
+    // Task attachment upload & delete
+    Route::post('tasks/{task}/attachments',               [\App\Http\Controllers\Admin\TaskController::class, 'addAttachment'])->name('tasks.attachments.add');
+    Route::delete('tasks/{task}/attachments/{attachment}', [\App\Http\Controllers\Admin\TaskController::class, 'deleteAttachment'])->name('tasks.attachments.delete');
+
     // Task submission file download
     Route::get('submissions/{submission}/download', function (\App\Models\TaskSubmission $submission) {
         abort_unless($submission->file_path, 404);

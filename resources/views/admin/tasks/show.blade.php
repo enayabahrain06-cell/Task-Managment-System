@@ -697,38 +697,119 @@
 
         {{-- Task & Project Attachments --}}
         @php $allAttachments = $task->attachments->merge($task->project->attachments); @endphp
-        @if($allAttachments->isNotEmpty())
         <div x-data="{
-                open: false,
-                att: null,
+                open: false, att: null,
+                uploading: false,
+                files: [], dragging: false,
                 show(item) { this.att = item; this.open = true; },
-                close() { this.open = false; this.att = null; }
+                close() { this.open = false; this.att = null; },
+                addFiles(e) {
+                    const inc = e.dataTransfer ? e.dataTransfer.files : e.target.files;
+                    const dt = new DataTransfer();
+                    this.files.forEach(f => dt.items.add(f));
+                    Array.from(inc).forEach(f => dt.items.add(f));
+                    this.files = Array.from(dt.files);
+                    this.$refs.attInput.files = dt.files;
+                },
+                removeFile(i) {
+                    const dt = new DataTransfer();
+                    this.files.splice(i,1);
+                    this.files.forEach(f => dt.items.add(f));
+                    this.$refs.attInput.files = dt.files;
+                },
+                fmt(b) { if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
              }"
              @keydown.escape.window="close()">
 
             <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
                 <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 16px;display:flex;align-items:center;gap:8px;">
                     <i class="fa fa-paperclip" style="color:#6366F1;"></i> Attachments
-                    <span style="margin-left:auto;font-size:12px;font-weight:400;color:#9CA3AF;">{{ $allAttachments->count() }} {{ Str::plural('file', $allAttachments->count()) }}</span>
+                    <span style="font-size:12px;font-weight:400;color:#9CA3AF;">{{ $allAttachments->count() }} {{ Str::plural('file', $allAttachments->count()) }}</span>
+                    <button type="button" @click="uploading=!uploading"
+                            style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#EEF2FF;border:none;border-radius:8px;font-size:12px;font-weight:600;color:#4F46E5;cursor:pointer;transition:background .15s;"
+                            onmouseover="this.style.background='#C7D2FE'" onmouseout="this.style.background='#EEF2FF'">
+                        <i class="fa fa-plus" style="font-size:10px;"></i> Add File
+                    </button>
                 </h2>
-                <div style="display:flex;flex-direction:column;gap:8px;">
+
+                {{-- File list --}}
+                @if($allAttachments->isNotEmpty())
+                <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
                     @foreach($allAttachments as $att)
                     @php $item = ['name'=>$att->name,'size'=>$att->humanSize(),'url'=>$att->url(),'downloadUrl'=>$att->isFile()?route('admin.attachments.download',$att):$att->url(),'icon'=>$att->iconClass(),'isLink'=>$att->isLink(),'isImage'=>in_array(strtolower(pathinfo($att->name,PATHINFO_EXTENSION)),['jpg','jpeg','png','gif','webp','svg']),'isVideo'=>in_array(strtolower(pathinfo($att->name,PATHINFO_EXTENSION)),['mp4','mov','avi','webm','mkv'])]; @endphp
-                    <button type="button" @click="show({{ json_encode($item) }})"
-                            style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:#FAFAFA;border:1px solid #F3F4F6;border-radius:10px;width:100%;text-align:left;cursor:pointer;transition:border-color .15s,background .15s;"
-                            onmouseover="this.style.background='#F0F0FF';this.style.borderColor='#C7D2FE'" onmouseout="this.style.background='#FAFAFA';this.style.borderColor='#F3F4F6'">
-                        <div style="width:36px;height:36px;border-radius:9px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                            <i class="fa {{ $att->iconClass() }}" style="color:#6366F1;font-size:14px;"></i>
-                        </div>
-                        <div style="flex:1;min-width:0;">
-                            <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $att->name }}</p>
-                            @if($att->isFile() && $att->size)
-                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">{{ $att->humanSize() }}</p>
-                            @endif
-                        </div>
-                        <i class="fa fa-eye" style="color:#9CA3AF;font-size:13px;flex-shrink:0;"></i>
-                    </button>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <button type="button" @click="show({{ json_encode($item) }})"
+                                style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:#FAFAFA;border:1px solid #F3F4F6;border-radius:10px;flex:1;text-align:left;cursor:pointer;transition:border-color .15s,background .15s;min-width:0;"
+                                onmouseover="this.style.background='#F0F0FF';this.style.borderColor='#C7D2FE'" onmouseout="this.style.background='#FAFAFA';this.style.borderColor='#F3F4F6'">
+                            <div style="width:36px;height:36px;border-radius:9px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fa {{ $att->iconClass() }}" style="color:#6366F1;font-size:14px;"></i>
+                            </div>
+                            <div style="flex:1;min-width:0;">
+                                <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $att->name }}</p>
+                                @if($att->isFile() && $att->size)
+                                <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">{{ $att->humanSize() }}</p>
+                                @endif
+                            </div>
+                            <i class="fa fa-eye" style="color:#9CA3AF;font-size:13px;flex-shrink:0;"></i>
+                        </button>
+                        @if($att->task_id === $task->id)
+                        <form method="POST" action="{{ route('admin.tasks.attachments.delete', [$task, $att]) }}"
+                              onsubmit="return confirm('Delete this attachment?')" style="margin:0;flex-shrink:0;">
+                            @csrf @method('DELETE')
+                            <button type="submit"
+                                    style="width:34px;height:34px;border-radius:9px;background:#FEF2F2;border:1px solid #FECACA;color:#EF4444;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;"
+                                    onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'"
+                                    title="Delete attachment">
+                                <i class="fa fa-trash" style="font-size:12px;"></i>
+                            </button>
+                        </form>
+                        @endif
+                    </div>
                     @endforeach
+                </div>
+                @endif
+
+                {{-- Upload form (collapsible) --}}
+                <div x-show="uploading" x-cloak style="border-top:1px solid #F3F4F6;padding-top:14px;">
+                    <form method="POST" action="{{ route('admin.tasks.attachments.add', $task) }}"
+                          enctype="multipart/form-data">
+                        @csrf
+                        <div @dragover.prevent="dragging=true" @dragleave.prevent="dragging=false"
+                             @drop.prevent="dragging=false; addFiles($event)"
+                             :style="dragging ? 'border-color:#6366F1;background:#EEF2FF;' : ''"
+                             style="border:2px dashed #E5E7EB;border-radius:10px;padding:14px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:#FAFAFA;"
+                             @click="$refs.attInput.click()">
+                            <i class="fa fa-cloud-arrow-up" style="font-size:20px;color:#9CA3AF;margin-bottom:6px;display:block;"></i>
+                            <p style="font-size:12px;color:#6B7280;margin:0;">Drop files here or <span style="color:#6366F1;font-weight:600;">browse</span></p>
+                            <input type="file" name="attachments[]" multiple x-ref="attInput"
+                                   @change="addFiles($event)" style="display:none;">
+                        </div>
+                        <template x-if="files.length > 0">
+                            <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+                                <template x-for="(f, i) in files" :key="i">
+                                    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:9px;">
+                                        <i class="fa fa-file" style="color:#6366F1;font-size:12px;flex-shrink:0;"></i>
+                                        <span style="flex:1;font-size:12px;font-weight:500;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="f.name"></span>
+                                        <span style="font-size:11px;color:#9CA3AF;" x-text="fmt(f.size)"></span>
+                                        <button type="button" @click.stop="removeFile(i)"
+                                                style="width:20px;height:20px;border-radius:50%;border:none;background:#EF4444;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                            <i class="fa fa-xmark"></i>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                        <div style="display:flex;gap:8px;margin-top:10px;">
+                            <button type="submit" x-show="files.length > 0"
+                                    style="padding:8px 18px;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;">
+                                <i class="fa fa-upload" style="margin-right:5px;font-size:10px;"></i>Upload
+                            </button>
+                            <button type="button" @click="uploading=false;files=[]"
+                                    style="padding:8px 16px;background:#F3F4F6;color:#6B7280;border:none;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
@@ -787,7 +868,6 @@
             </template>
 
         </div>
-        @endif
 
         @php
             $previewPhone   = $task->customer?->phone ?? $task->project?->customer?->phone ?? null;

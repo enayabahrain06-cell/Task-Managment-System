@@ -724,4 +724,36 @@ class TaskController extends Controller
 
         return back()->with('success', 'Deadline updated to ' . $newDeadline->format(config('app.date_format', 'M d, Y')) . '.');
     }
+
+    public function addAttachment(Request $request, Task $task)
+    {
+        $request->validate([
+            'attachments'   => 'required|array|min:1',
+            'attachments.*' => 'file|max:51200',
+        ]);
+
+        foreach ($request->file('attachments') as $file) {
+            $path = $file->store("task-attachments/{$task->id}", 'public');
+            \App\Models\ProjectAttachment::create([
+                'project_id'  => $task->project_id,
+                'task_id'     => $task->id,
+                'type'        => 'file',
+                'name'        => $file->getClientOriginalName(),
+                'path'        => $path,
+                'size'        => $file->getSize(),
+                'uploaded_by' => auth()->id(),
+            ]);
+        }
+
+        return back()->with('success', 'Attachment(s) added.');
+    }
+
+    public function deleteAttachment(Task $task, \App\Models\ProjectAttachment $attachment)
+    {
+        abort_unless($attachment->task_id === $task->id, 403);
+        \Illuminate\Support\Facades\Storage::disk('public')->delete($attachment->path);
+        $attachment->delete();
+
+        return back()->with('success', 'Attachment deleted.');
+    }
 }
