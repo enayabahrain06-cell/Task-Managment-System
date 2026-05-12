@@ -297,7 +297,15 @@ class TaskController extends Controller
 
         // Social-only viewers (social_assigned_to) don't trigger first_viewed or modify task state
         if ($isSocialAssignee && $task->assigned_to != $uid) {
-            $task->load('project.attachments', 'project.customer', 'assignee', 'assignees', 'reviewer', 'creator', 'customer', 'socialAssignee', 'socialPosts', 'logs.user', 'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor', 'comments.user', 'comments.edits.editor', 'transfers.fromUser', 'transfers.transferredBy', 'timerSegments');
+            $task->load([
+                'project.attachments' => fn($q) => $q->whereNull('task_id'),
+                'project.customer', 'assignee', 'assignees', 'reviewer', 'creator', 'customer',
+                'socialAssignee', 'socialPosts', 'logs.user',
+                'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor',
+                'comments.user', 'comments.edits.editor',
+                'transfers.fromUser', 'transfers.transferredBy', 'timerSegments',
+                'attachments',
+            ]);
             $completedTimerSeconds = 0;
             $activeSegment         = null;
             $incomingTransfer      = null;
@@ -330,7 +338,15 @@ class TaskController extends Controller
             }
         }
 
-        $task->load('project.attachments', 'project.customer', 'assignee', 'assignees', 'reviewer', 'creator', 'customer', 'socialAssignee', 'socialPosts', 'logs.user', 'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor', 'comments.user', 'comments.edits.editor', 'transfers.fromUser', 'transfers.transferredBy', 'timerSegments');
+        $task->load([
+            'project.attachments' => fn($q) => $q->whereNull('task_id'),
+            'project.customer', 'assignee', 'assignees', 'reviewer', 'creator', 'customer',
+            'socialAssignee', 'socialPosts', 'logs.user',
+            'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor',
+            'comments.user', 'comments.edits.editor',
+            'transfers.fromUser', 'transfers.transferredBy', 'timerSegments',
+            'attachments',
+        ]);
 
         // Find the transfer that handed this task TO the current user
         $incomingTransfer = $task->transfers

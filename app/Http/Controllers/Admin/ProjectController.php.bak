@@ -406,7 +406,7 @@ class ProjectController extends Controller
             'priority'       => 'required|in:low,medium,high',
             'deadline'       => 'required|date',
             'attachments'    => 'nullable|array',
-            'attachments.*'  => 'file|max:20480',
+            'attachments.*'  => 'file',
         ]);
 
         $projectId = $request->project_id;

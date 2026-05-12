@@ -111,7 +111,17 @@ class TaskController extends Controller
 
     public function show(Task $task)
     {
-        $task->load('project.attachments', 'project.members', 'project.customer', 'assignee', 'assignees', 'reviewer', 'creator', 'customer', 'socialAssignee', 'socialPosts', 'logs.user', 'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor', 'comments.user', 'comments.edits.editor', 'transfers.fromUser', 'transfers.toUser', 'transfers.transferredBy');
+        $task->load([
+            'project.attachments' => fn($q) => $q->whereNull('task_id'),
+            'project.members', 'project.customer',
+            'assignee', 'assignees', 'reviewer', 'creator', 'customer',
+            'socialAssignee', 'socialPosts',
+            'logs.user',
+            'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor',
+            'comments.user', 'comments.edits.editor',
+            'transfers.fromUser', 'transfers.toUser', 'transfers.transferredBy',
+            'attachments',
+        ]);
         $users       = User::whereIn('role', ['user', 'manager'])->orderBy('name')->get();
         $socialUsers = User::where('role', 'user')->orderBy('name')->get();
         $projects    = Project::where('is_quick', false)->orderBy('name')->get();
