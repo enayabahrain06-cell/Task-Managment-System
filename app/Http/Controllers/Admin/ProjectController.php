@@ -314,6 +314,10 @@ class ProjectController extends Controller
 
     public function tasksCreate(Project $project)
     {
+        if (!auth()->user()->hasPermission('manage_tasks')) {
+            abort(403);
+        }
+
         $members = $project->members()->get();
         if ($members->isEmpty()) {
             $members = User::where('role', '!=', 'admin')->get();
@@ -324,6 +328,10 @@ class ProjectController extends Controller
 
     public function tasksStore(Request $request, Project $project)
     {
+        if (!auth()->user()->hasPermission('manage_tasks')) {
+            abort(403);
+        }
+
         $request->validate([
             'title'                  => 'required|string|max:255',
             'description'            => 'nullable|string',
@@ -397,6 +405,10 @@ class ProjectController extends Controller
 
     public function quickTaskStore(Request $request)
     {
+        if (!auth()->user()->hasPermission('manage_tasks')) {
+            abort(403);
+        }
+
         $request->validate([
             'title'          => 'required|string|max:255',
             'description'    => 'nullable|string',

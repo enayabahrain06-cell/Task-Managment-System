@@ -131,6 +131,10 @@ class TaskController extends Controller
 
     public function update(Request $request, Task $task)
     {
+        if (!auth()->user()->hasPermission('manage_tasks')) {
+            abort(403);
+        }
+
         $request->validate([
             'title'                => 'required|string|max:255',
             'project_id'           => 'nullable|exists:projects,id',

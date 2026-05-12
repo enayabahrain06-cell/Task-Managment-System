@@ -52,10 +52,12 @@
             {{ $pendingApprovalCount }} pending {{ Str::plural('review', $pendingApprovalCount) }}
         </a>
         @endif
+        @if(auth()->user()->hasPermission('manage_tasks'))
         <a href="{{ route('admin.projects.tasks.create', $project) }}"
            style="padding:8px 16px;background:#6366F1;color:#fff;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:6px;">
             <i class="fa fa-plus"></i> Add Task
         </a>
+        @endif
         <a href="{{ route('admin.projects.edit', $project) }}"
            style="padding:8px 14px;background:#F3F4F6;color:#374151;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:6px;">
             <i class="fa fa-pen"></i> Edit
@@ -281,8 +283,10 @@
             <i class="fa fa-list-check" style="color:#D1D5DB;font-size:22px;"></i>
         </div>
         <p style="font-size:14px;font-weight:500;color:#374151;margin:0 0 6px;">No tasks yet</p>
+        @if(auth()->user()->hasPermission('manage_tasks'))
         <a href="{{ route('admin.projects.tasks.create', $project) }}"
            style="font-size:13px;color:#6366F1;text-decoration:none;font-weight:500;">Add the first task →</a>
+        @endif
     </div>
     @endforelse
 </div>

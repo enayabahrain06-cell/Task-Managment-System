@@ -545,11 +545,13 @@
         <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:{{ $tbg }};color:{{ $tco }};">#{{ $tag }}</span>
         @endforeach
         @endif
+        @if(auth()->user()->hasPermission('manage_tasks'))
         <button type="button" onclick="document.getElementById('taskEditModal').style.display='flex'"
                 style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(79,70,229,.3);transition:opacity .15s;"
                 onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
             <i class="fa fa-pen" style="font-size:11px;"></i> Edit
         </button>
+        @endif
     </div>
 </div>
 

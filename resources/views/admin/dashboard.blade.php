@@ -161,10 +161,12 @@
                 <i class="fas fa-folder-plus" style="font-size:11px;"></i> New Project
             </button>
             {{-- QUICK TASK BUTTON --}}
+            @if(auth()->user()->hasPermission('manage_tasks'))
             <button @click="taskOpen = true"
                     style="display:flex;align-items:center;gap:7px;background:#F59E0B;color:#fff;font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;border:none;cursor:pointer;box-shadow:0 2px 10px rgba(245,158,11,0.4);">
                 <i class="fas fa-bolt" style="font-size:11px;"></i> Quick Task
             </button>
+            @endif
             <button style="width:36px;height:36px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#9CA3AF;">
                 <i class="fas fa-ellipsis-h"></i>
             </button>
