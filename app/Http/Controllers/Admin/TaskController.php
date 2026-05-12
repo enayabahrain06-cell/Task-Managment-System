@@ -732,6 +732,7 @@ class TaskController extends Controller
             'attachments.*' => 'file|max:51200',
         ]);
 
+        $names = [];
         foreach ($request->file('attachments') as $file) {
             $path = $file->store("task-attachments/{$task->id}", 'public');
             \App\Models\ProjectAttachment::create([
@@ -743,17 +744,49 @@ class TaskController extends Controller
                 'size'        => $file->getSize(),
                 'uploaded_by' => auth()->id(),
             ]);
+            $names[] = $file->getClientOriginalName();
         }
 
-        return back()->with('success', 'Attachment(s) added.');
+        TaskLog::create([
+            'task_id'  => $task->id,
+            'user_id'  => auth()->id(),
+            'action'   => 'attachment_added',
+            'note'     => auth()->user()->name . ' added ' . count($names) . ' attachment(s): ' . implode(', ', $names),
+            'metadata' => [
+                'filenames'   => $names,
+                'uploaded_by' => auth()->user()->name,
+            ],
+        ]);
+
+        return back()->with('success', count($names) . ' attachment(s) added.');
     }
 
     public function deleteAttachment(Task $task, \App\Models\ProjectAttachment $attachment)
     {
         abort_unless($attachment->task_id === $task->id, 403);
+
+        $filename = $attachment->name;
         \Illuminate\Support\Facades\Storage::disk('public')->delete($attachment->path);
         $attachment->delete();
 
-        return back()->with('success', 'Attachment deleted.');
+        TaskLog::create([
+            'task_id'  => $task->id,
+            'user_id'  => auth()->id(),
+            'action'   => 'attachment_deleted',
+            'note'     => auth()->user()->name . ' deleted attachment "' . $filename . '"',
+            'metadata' => [
+                'filename'   => $filename,
+                'deleted_by' => auth()->user()->name,
+            ],
+        ]);
+
+        AuditLogger::log(
+            'task.attachment_deleted',
+            $task,
+            'Attachment "' . $filename . '" deleted from task "' . $task->title . '"',
+            ['task_id' => $task->id, 'filename' => $filename]
+        );
+
+        return back()->with('success', '"' . $filename . '" deleted.');
     }
 }

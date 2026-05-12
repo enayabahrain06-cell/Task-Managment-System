@@ -1311,6 +1311,20 @@
                             @if(!empty($meta['reason']))
                             <span style="font-size:11px;background:#FEF3C7;color:#D97706;padding:2px 8px;border-radius:6px;">{{ Str::limit($meta['reason'], 80) }}</span>
                             @endif
+                            @elseif($log->action === 'attachment_added' && isset($meta['filenames']))
+                            <span style="font-size:11px;background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                                <i class="fa fa-paperclip" style="font-size:9px;"></i>
+                                {{ count($meta['filenames']) }} file(s) added by <strong>{{ $meta['uploaded_by'] }}</strong>
+                            </span>
+                            @foreach($meta['filenames'] as $fn)
+                            <span style="font-size:11px;background:#F3F4F6;color:#374151;padding:2px 8px;border-radius:6px;">{{ $fn }}</span>
+                            @endforeach
+                            @elseif($log->action === 'attachment_deleted' && isset($meta['filename']))
+                            <span style="font-size:11px;background:#FEE2E2;color:#DC2626;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                                <i class="fa fa-trash" style="font-size:9px;"></i>
+                                deleted by <strong>{{ $meta['deleted_by'] }}</strong>
+                            </span>
+                            <span style="font-size:11px;background:#F3F4F6;color:#374151;padding:2px 8px;border-radius:6px;text-decoration:line-through;opacity:.7;">{{ $meta['filename'] }}</span>
                             @elseif($log->action === 'auto_paused' && isset($meta['paused_by_task_id']))
                             <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
                                 <i class="fa fa-circle-pause" style="font-size:9px;"></i>
@@ -1521,7 +1535,7 @@
                             @endif
                         </div>
                         @endif
-                        @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','deadline_updated','auto_paused','social_posted','social_post_edited']))
+                        @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','deadline_updated','auto_paused','social_posted','social_post_edited','attachment_added','attachment_deleted']))
                         <p style="font-size:12px;color:#6B7280;background:#F9FAFB;padding:6px 10px;border-radius:8px;border-left:3px solid #E5E7EB;margin:6px 0 0;">"{{ $log->note }}"</p>
                         @endif
                     </div>
