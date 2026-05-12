@@ -962,7 +962,7 @@
          style="position:fixed;inset:0;z-index:99999;backdrop-filter:blur(4px);background:rgba(15,18,40,.6);">
         <div @click.self="rejectModal=false"
              style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;">
-        <div style="background:#fff;border-radius:22px;width:100%;max-width:440px;box-shadow:0 28px 80px rgba(0,0,0,.25);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="background:#fff;border-radius:22px;width:100%;max-width:580px;box-shadow:0 28px 80px rgba(0,0,0,.25);overflow:hidden;display:flex;flex-direction:column;">
 
             <div style="padding:22px 26px 18px;border-bottom:1px solid #F0F4F8;background:linear-gradient(135deg,#FFF8F8,#fff);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
                 <div style="display:flex;align-items:center;gap:12px;">
@@ -986,17 +986,88 @@
                 <p style="font-size:14px;font-weight:600;color:#111827;margin:0;line-height:1.4;" x-text="rejectTask?.title"></p>
             </div>
 
-            <form :action="rejectTask ? rejectTask.url : '#'" method="POST" style="padding:20px 26px 24px;">
+            <form :action="rejectTask ? rejectTask.url : '#'" method="POST"
+                  style="padding:20px 26px 24px;"
+                  @submit.prevent="revSubmit($el)">
                 @csrf
-                <div style="margin-bottom:20px;">
+                <input type="hidden" name="note" x-ref="revNoteInput">
+                <div style="margin-bottom:16px;">
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
                         Reason for revision <span style="color:#EF4444;">*</span>
                     </label>
-                    <textarea name="note" required x-model="rejectNote" rows="3"
-                              placeholder="Explain what needs to be changed..."
-                              style="width:100%;padding:10px 13px;border:1.5px solid #FECACA;background:#FEF2F2;border-radius:10px;font-size:13px;color:#111827;outline:none;box-sizing:border-box;resize:vertical;transition:border-color .15s,box-shadow .15s;font-family:inherit;"
-                              onfocus="this.style.borderColor='#F87171';this.style.boxShadow='0 0 0 3px rgba(248,113,113,.12)'"
-                              onblur="this.style.borderColor='#FECACA';this.style.boxShadow='none'"></textarea>
+                    {{-- RTE wrapper --}}
+                    <div :style="revEditorFocused
+                            ? 'border:1.5px solid #F87171;border-radius:10px;overflow:hidden;box-shadow:0 0 0 3px rgba(248,113,113,.12);transition:all .15s;'
+                            : 'border:1.5px solid #FECACA;border-radius:10px;overflow:hidden;transition:all .15s;'">
+                        {{-- Toolbar --}}
+                        <div style="background:#FFF5F5;border-bottom:1px solid #FECACA;padding:5px 8px;display:flex;align-items:center;gap:1px;flex-wrap:wrap;">
+                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="revCmd('bold')" title="Bold"><b style="font-size:13px;">B</b></button>
+                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="revCmd('italic')" title="Italic"><i style="font-style:italic;font-size:13px;">I</i></button>
+                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="revCmd('underline')" title="Underline"><u style="font-size:13px;">U</u></button>
+                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="revCmd('strikeThrough')" title="Strikethrough"><s style="font-size:12px;">S</s></button>
+                            <div style="width:1px;height:16px;background:#FECACA;margin:0 4px;flex-shrink:0;"></div>
+                            <select @mousedown="revSaveRange()" @change="revSetSize($event.target.value); $event.target.selectedIndex=0"
+                                    style="height:26px;padding:0 6px;border:1px solid #FECACA;border-radius:6px;font-size:11px;color:#374151;background:#fff;cursor:pointer;outline:none;transition:border-color .12s;"
+                                    onfocus="this.style.borderColor='#F87171'" onblur="this.style.borderColor='#FECACA'">
+                                <option value="" disabled selected>Size</option>
+                                <option value="1">Small</option>
+                                <option value="3">Normal</option>
+                                <option value="5">Large</option>
+                                <option value="6">X-Large</option>
+                            </select>
+                            <div style="width:1px;height:16px;background:#FECACA;margin:0 4px;flex-shrink:0;"></div>
+                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="revAddLink()" title="Add link"><i class="fa fa-link" style="font-size:11px;"></i></button>
+                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="revCmd('unlink')" title="Remove link"><i class="fa fa-link-slash" style="font-size:11px;"></i></button>
+                            <div style="width:1px;height:16px;background:#FECACA;margin:0 4px;flex-shrink:0;"></div>
+                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="revCmd('insertUnorderedList')" title="Bullet list"><i class="fa fa-list-ul" style="font-size:11px;"></i></button>
+                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="revCmd('insertOrderedList')" title="Numbered list"><i class="fa fa-list-ol" style="font-size:11px;"></i></button>
+                            <div style="width:1px;height:16px;background:#FECACA;margin:0 4px;flex-shrink:0;"></div>
+                            {{-- Color picker --}}
+                            <div style="position:relative;" @click.outside="revColorOpen=false">
+                                <button type="button" class="rte-toolbar-btn" @mousedown.prevent="revColorOpen=!revColorOpen" title="Text color"
+                                        style="flex-direction:column;gap:1px;">
+                                    <span style="font-size:12px;font-weight:700;line-height:1;" :style="'color:'+revSelectedColor">A</span>
+                                    <span style="width:14px;height:3px;border-radius:2px;display:block;" :style="'background:'+revSelectedColor"></span>
+                                </button>
+                                <div x-show="revColorOpen"
+                                     style="position:fixed;z-index:999999;"
+                                     x-init="$watch('revColorOpen', v => { if(v) { const r=$el.previousElementSibling.getBoundingClientRect(); $el.style.left=r.left+'px'; $el.style.top=(r.bottom+6)+'px'; } })">
+                                    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:14px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);display:grid;grid-template-columns:repeat(5,1fr);gap:7px;width:192px;">
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#212121;" @click="revSetColor('#212121')" title="Black"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#F44336;" @click="revSetColor('#F44336')" title="Red"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#E91E63;" @click="revSetColor('#E91E63')" title="Pink"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#9C27B0;" @click="revSetColor('#9C27B0')" title="Purple"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#673AB7;" @click="revSetColor('#673AB7')" title="Deep Purple"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#3F51B5;" @click="revSetColor('#3F51B5')" title="Indigo"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#2196F3;" @click="revSetColor('#2196F3')" title="Blue"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#00BCD4;" @click="revSetColor('#00BCD4')" title="Cyan"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#009688;" @click="revSetColor('#009688')" title="Teal"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#4CAF50;" @click="revSetColor('#4CAF50')" title="Green"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#8BC34A;" @click="revSetColor('#8BC34A')" title="Light Green"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#FFEB3B;" @click="revSetColor('#FFEB3B')" title="Yellow"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#FF9800;" @click="revSetColor('#FF9800')" title="Orange"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#FF5722;" @click="revSetColor('#FF5722')" title="Deep Orange"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#795548;" @click="revSetColor('#795548')" title="Brown"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#9E9E9E;" @click="revSetColor('#9E9E9E')" title="Gray"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#607D8B;" @click="revSetColor('#607D8B')" title="Blue Gray"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#6366F1;" @click="revSetColor('#6366F1')" title="Indigo"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#EC4899;" @click="revSetColor('#EC4899')" title="Rose"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#fff;border:2px solid #D1D5DB;" @click="revSetColor('#374151')" title="Reset"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="width:1px;height:16px;background:#FECACA;margin:0 4px;flex-shrink:0;"></div>
+                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="revCmd('removeFormat')" title="Clear formatting"><i class="fa fa-remove-format" style="font-size:11px;"></i></button>
+                        </div>
+                        {{-- Contenteditable area --}}
+                        <div x-ref="revEditor"
+                             contenteditable="true"
+                             class="rte-field"
+                             data-placeholder="Explain what needs to be changed..."
+                             @focus="revEditorFocused=true"
+                             @blur="revEditorFocused=false"
+                             style="min-height:90px;max-height:220px;overflow-y:auto;padding:10px 13px;font-size:13px;color:#111827;outline:none;background:#FEF2F2;line-height:1.6;"></div>
+                    </div>
                 </div>
                 <div style="display:flex;gap:10px;">
                     <button type="button" @click="rejectModal=false"
@@ -1005,8 +1076,8 @@
                         Cancel
                     </button>
                     <button type="submit"
-                            :disabled="!rejectNote.trim()"
-                            :style="!rejectNote.trim()
+                            :disabled="!($refs.revEditor && $refs.revEditor.innerText.trim())"
+                            :style="!($refs.revEditor && $refs.revEditor.innerText.trim())
                                 ? 'flex:2;padding:11px;background:#FEE2E2;color:#FCA5A5;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:7px;'
                                 : 'flex:2;padding:11px;background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 4px 14px rgba(239,68,68,.35);transition:opacity .15s;'">
                         <i class="fas fa-rotate-left"></i>
@@ -3088,6 +3159,17 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
     50%       { opacity: .4; }
 }
 [x-cloak] { display: none !important; }
+.rte-field:empty:before { content: attr(data-placeholder); color: #9CA3AF; pointer-events: none; display: block; }
+.rte-field a { color: #4F46E5; text-decoration: underline; }
+.rte-field ul { list-style-type: disc; padding-left: 1.5em; margin: 4px 0; }
+.rte-field ol { list-style-type: decimal; padding-left: 1.5em; margin: 4px 0; }
+.rte-field li { margin: 2px 0; }
+.rte-toolbar-btn { width:28px;height:28px;border:none;background:none;border-radius:6px;cursor:pointer;font-size:13px;color:#374151;display:flex;align-items:center;justify-content:center;transition:background .12s;flex-shrink:0; }
+.rte-toolbar-btn:hover { background:#E5E7EB; }
+.rte-toolbar-btn.active { background:#FEE2E2; color:#EF4444; }
+.rte-color-swatch { width:28px;height:28px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex-shrink:0;transition:transform .15s,box-shadow .15s,border-color .15s; }
+.rte-color-swatch:hover { transform:scale(1.2);box-shadow:0 3px 10px rgba(0,0,0,.3); }
+.rte-color-swatch.selected { border-color:#fff;box-shadow:0 0 0 2px rgba(0,0,0,.5); }
 </style>
 
 <script>
@@ -3203,11 +3285,38 @@ function approvalPage() {
         rejectModal: false,
         rejectTask:  null,
         rejectNote:  '',
+        revColorOpen: false, revSelectedColor: '#EF4444', revSavedRange: null,
+        revEditorFocused: false,
+
+        revSaveRange()    { const s=window.getSelection(); if(s.rangeCount) this.revSavedRange=s.getRangeAt(0).cloneRange(); },
+        revRestoreRange() { if(!this.revSavedRange) return; const s=window.getSelection(); s.removeAllRanges(); s.addRange(this.revSavedRange); },
+        revCmd(c, v=null) { this.revRestoreRange(); this.$refs.revEditor.focus(); document.execCommand(c, false, v); },
+        revSetSize(v)     { this.revRestoreRange(); this.$refs.revEditor.focus(); document.execCommand('fontSize', false, v); },
+        revSetColor(c)    { this.revColorOpen=false; this.revSelectedColor=c; this.$refs.revEditor.focus(); document.execCommand('foreColor', false, c); },
+        revAddLink()      {
+            const url = prompt('Enter URL:');
+            if (!url) return;
+            this.$refs.revEditor.focus();
+            document.execCommand('createLink', false, url.startsWith('http') ? url : 'https://' + url);
+        },
+        revEditorHtml()   { return this.$refs.revEditor ? this.$refs.revEditor.innerHTML.trim() : ''; },
+        revSubmit(form)   {
+            const html = this.$refs.revEditor.innerHTML.trim();
+            if (!html || html === '<br>') { this.$refs.revEditor.focus(); return; }
+            this.$refs.revNoteInput.value = html;
+            form.submit();
+        },
 
         openRejectModal(task) {
-            this.rejectTask  = task;
-            this.rejectNote  = '';
-            this.rejectModal = true;
+            this.rejectTask       = task;
+            this.rejectNote       = '';
+            this.revColorOpen     = false;
+            this.revSelectedColor = '#EF4444';
+            this.revSavedRange    = null;
+            this.rejectModal      = true;
+            this.$nextTick(() => {
+                if (this.$refs.revEditor) this.$refs.revEditor.innerHTML = '';
+            });
         },
 
         // ── Published post delete confirmation ──
