@@ -750,8 +750,8 @@
                             customer_name:   @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
                             customer_email:  @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
                             customer_phone:  @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
-                            submission_url:  @js($task->submissions->first()?->file_path ? url(Storage::url($task->submissions->first()->file_path)) : null),
-                            submission_name: @js($task->submissions->first()?->original_filename ?? ($task->submissions->first()?->file_path ? basename($task->submissions->first()->file_path) : null)),
+                            submission_url:  @js($task->submissions->first()?->file_path ? url(Storage::url($task->submissions->first()->file_path)) : $task->submissions->first()?->delivery_url),
+                            submission_name: @js($task->submissions->first()?->original_filename ?? ($task->submissions->first()?->file_path ? basename($task->submissions->first()->file_path) : ($task->submissions->first()?->delivery_url ? 'Open Link' : null))),
                         })"
                         style="width:100%;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;padding:10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(16,185,129,.25);transition:opacity .15s;"
                         onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
@@ -1431,7 +1431,20 @@
                                 @endif
                             </div>
                             @foreach($entry['subs'] as $subFile)
-                            @if($subFile->file_path)
+                            @if($subFile->delivery_url)
+                                <a href="{{ $subFile->delivery_url }}" target="_blank" rel="noopener"
+                                   style="display:inline-flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 14px;background:#F0FDF4;border:1.5px solid #A7F3D0;border-radius:9px;text-decoration:none;max-width:340px;transition:border-color .15s;"
+                                   onmouseover="this.style.borderColor='#059669'" onmouseout="this.style.borderColor='#A7F3D0'">
+                                    <div style="width:36px;height:36px;border-radius:8px;background:#D1FAE5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                        <i class="fa fa-link" style="color:#059669;font-size:15px;"></i>
+                                    </div>
+                                    <div style="flex:1;min-width:0;">
+                                        <p style="font-size:12px;font-weight:600;color:#065F46;margin:0;">Delivery Link</p>
+                                        <p style="font-size:11px;color:#6B7280;margin:1px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $subFile->delivery_url }}</p>
+                                    </div>
+                                    <i class="fa fa-arrow-up-right-from-square" style="font-size:11px;color:#059669;flex-shrink:0;"></i>
+                                </a>
+                            @elseif($subFile->file_path)
                                 @php
                                     $sfExt     = strtolower(pathinfo($subFile->original_filename ?? '', PATHINFO_EXTENSION));
                                     $sfIsImage = in_array($sfExt, ['jpg','jpeg','png','gif','webp','svg']);
@@ -1484,17 +1497,90 @@
                             @endif
                             @endforeach
                             @if($sub->status !== 'submitted')
-                            <div style="background:{{ $sub->status === 'approved' ? '#F0FDF4' : '#FEF2F2' }};border-radius:8px;padding:8px 12px;border-left:3px solid {{ $sub->status === 'approved' ? '#10B981' : '#EF4444' }};">
-                                <div style="display:flex;align-items:center;gap:6px;margin-bottom:{{ $sub->admin_note ? '4px' : '0' }};">
-                                    <i class="fa {{ $sub->status === 'approved' ? 'fa-circle-check' : 'fa-rotate-left' }}" style="font-size:10px;color:{{ $sub->status === 'approved' ? '#059669' : '#DC2626' }};"></i>
-                                    <span style="font-size:11px;font-weight:700;color:{{ $sub->status === 'approved' ? '#065F46' : '#991B1B' }};">{{ $sub->status === 'approved' ? 'Approved' : 'Revision Requested' }}</span>
-                                    <span style="font-size:11px;color:{{ $sub->status === 'approved' ? '#059669' : '#DC2626' }};opacity:.7;">by {{ $sub->reviewer?->name ?? 'Admin' }}</span>
-                                    @if($sub->reviewed_at)
-                                    <span style="font-size:10px;color:#9CA3AF;margin-left:auto;">{{ $sub->reviewed_at->format('M d, H:i') }}</span>
+                            @php $noteColor = $sub->status === 'approved' ? ['bg'=>'#F0FDF4','border'=>'#10B981','icon'=>'fa-circle-check','ic'=>'#059669','label'=>'Approved','lc'=>'#065F46','nc'=>'#047857'] : ['bg'=>'#FEF2F2','border'=>'#EF4444','icon'=>'fa-rotate-left','ic'=>'#DC2626','label'=>'Revision Requested','lc'=>'#991B1B','nc'=>'#B91C1C']; @endphp
+                            <div x-data="{
+                                    noteOpen: false,
+                                    noteHtml: {{ json_encode($sub->admin_note ?? '') }},
+                                    copied: false,
+                                    copyNote() {
+                                        const tmp = document.createElement('div');
+                                        tmp.innerHTML = this.noteHtml;
+                                        navigator.clipboard.writeText(tmp.innerText || tmp.textContent).then(() => { this.copied=true; setTimeout(()=>this.copied=false,2000); });
+                                    },
+                                    downloadNote() {
+                                        const tmp = document.createElement('div');
+                                        tmp.innerHTML = this.noteHtml;
+                                        const text = tmp.innerText || tmp.textContent;
+                                        const blob = new Blob([text], {type:'text/plain'});
+                                        const url = URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = url; a.download = 'revision-note.txt'; a.click();
+                                        URL.revokeObjectURL(url);
+                                    }
+                                }">
+                                <div @click="noteOpen=true" style="background:{{ $noteColor['bg'] }};border-radius:8px;padding:8px 12px;border-left:3px solid {{ $noteColor['border'] }};cursor:pointer;transition:box-shadow .15s;"
+                                     onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow='none'">
+                                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:{{ $sub->admin_note ? '4px' : '0' }};">
+                                        <i class="fa {{ $noteColor['icon'] }}" style="font-size:10px;color:{{ $noteColor['ic'] }};"></i>
+                                        <span style="font-size:11px;font-weight:700;color:{{ $noteColor['lc'] }};">{{ $noteColor['label'] }}</span>
+                                        <span style="font-size:11px;color:{{ $noteColor['ic'] }};opacity:.7;">by {{ $sub->reviewer?->name ?? 'Admin' }}</span>
+                                        @if($sub->reviewed_at)
+                                        <span style="font-size:10px;color:#9CA3AF;margin-left:auto;">{{ $sub->reviewed_at->format('M d, H:i') }}</span>
+                                        @endif
+                                        @if($sub->admin_note)
+                                        <i class="fa fa-up-right-and-down-left-from-center" style="font-size:9px;color:#9CA3AF;margin-left:4px;" title="Click to expand"></i>
+                                        @endif
+                                    </div>
+                                    @if($sub->admin_note)
+                                    <div class="rte-field" style="font-size:12px;color:{{ $noteColor['nc'] }};margin:0;line-height:1.5;min-height:0;max-height:48px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">{!! $sub->admin_note !!}</div>
                                     @endif
                                 </div>
+                                {{-- Full note popup --}}
                                 @if($sub->admin_note)
-                                <p style="font-size:12px;color:{{ $sub->status === 'approved' ? '#047857' : '#B91C1C' }};margin:0;line-height:1.5;">{{ $sub->admin_note }}</p>
+                                <template x-teleport="body">
+                                    <div x-show="noteOpen" x-cloak
+                                         style="position:fixed;inset:0;z-index:99999;backdrop-filter:blur(4px);background:rgba(15,18,40,.55);"
+                                         @click.self="noteOpen=false" @keydown.escape.window="noteOpen=false">
+                                        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;">
+                                        <div style="background:#fff;border-radius:20px;width:100%;max-width:540px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 28px 80px rgba(0,0,0,.25);overflow:hidden;">
+                                            {{-- Header --}}
+                                            <div style="padding:18px 22px 14px;border-bottom:1px solid {{ $sub->status === 'approved' ? '#D1FAE5' : '#FEE2E2' }};background:{{ $sub->status === 'approved' ? '#F0FDF4' : '#FFF8F8' }};display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+                                                <div style="display:flex;align-items:center;gap:10px;">
+                                                    <div style="width:36px;height:36px;border-radius:10px;background:{{ $sub->status === 'approved' ? 'linear-gradient(135deg,#10B981,#059669)' : 'linear-gradient(135deg,#EF4444,#DC2626)' }};display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px {{ $sub->status === 'approved' ? 'rgba(16,185,129,.3)' : 'rgba(239,68,68,.3)' }};">
+                                                        <i class="fa {{ $noteColor['icon'] }}" style="color:#fff;font-size:13px;"></i>
+                                                    </div>
+                                                    <div>
+                                                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">{{ $noteColor['label'] }}</p>
+                                                        <p style="font-size:11px;color:#9CA3AF;margin:0;">by {{ $sub->reviewer?->name ?? 'Admin' }}{{ $sub->reviewed_at ? ' · '.$sub->reviewed_at->format('M d, H:i') : '' }}</p>
+                                                    </div>
+                                                </div>
+                                                <button @click="noteOpen=false" style="width:30px;height:30px;border-radius:8px;background:#F3F4F6;border:none;cursor:pointer;color:#6B7280;font-size:12px;display:flex;align-items:center;justify-content:center;"
+                                                        onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                            {{-- Body --}}
+                                            <div style="padding:20px 22px;overflow-y:auto;flex:1;">
+                                                <div class="rte-field" style="font-size:13px;color:#374151;line-height:1.7;min-height:0;">{!! $sub->admin_note !!}</div>
+                                            </div>
+                                            {{-- Footer actions --}}
+                                            <div style="padding:12px 22px;border-top:1px solid #F3F4F6;display:flex;gap:8px;flex-shrink:0;">
+                                                <button @click="copyNote()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:9px;border:1.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;"
+                                                        onmouseover="this.style.borderColor='#6366F1';this.style.color='#4F46E5'" onmouseout="this.style.borderColor='#E5E7EB';this.style.color='#374151'">
+                                                    <i class="fa" :class="copied ? 'fa-check' : 'fa-copy'" style="font-size:11px;"></i>
+                                                    <span x-text="copied ? 'Copied!' : 'Copy text'"></span>
+                                                </button>
+                                                <button @click="downloadNote()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:9px;border:1.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;"
+                                                        onmouseover="this.style.borderColor='#6366F1';this.style.color='#4F46E5'" onmouseout="this.style.borderColor='#E5E7EB';this.style.color='#374151'">
+                                                    <i class="fa fa-download" style="font-size:11px;"></i> Download .txt
+                                                </button>
+                                                <button @click="noteOpen=false" style="margin-left:auto;padding:8px 18px;border-radius:9px;border:none;background:#F3F4F6;color:#374151;font-size:12px;font-weight:600;cursor:pointer;"
+                                                        onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">Close</button>
+                                            </div>
+                                        </div>
+                                        </div>
+                                    </div>
+                                </template>
                                 @endif
                             </div>
                             @endif
