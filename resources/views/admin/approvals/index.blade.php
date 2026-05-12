@@ -1059,6 +1059,7 @@
                              data-placeholder="Explain what needs to be changed..."
                              @focus="revEditorFocused=true"
                              @blur="revEditorFocused=false"
+                             @input="rejectNote = $el.innerText.trim()"
                              style="min-height:90px;max-height:220px;overflow-y:auto;padding:10px 13px;font-size:13px;color:#111827;outline:none;background:#FEF2F2;line-height:1.6;"></div>
                     </div>
                 </div>
@@ -1069,8 +1070,8 @@
                         Cancel
                     </button>
                     <button type="submit"
-                            :disabled="!($refs.revEditor && $refs.revEditor.innerText.trim())"
-                            :style="!($refs.revEditor && $refs.revEditor.innerText.trim())
+                            :disabled="!rejectNote.trim()"
+                            :style="!rejectNote.trim()
                                 ? 'flex:2;padding:11px;background:#FEE2E2;color:#FCA5A5;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:7px;'
                                 : 'flex:2;padding:11px;background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 4px 14px rgba(239,68,68,.35);transition:opacity .15s;'">
                         <i class="fas fa-rotate-left"></i>
