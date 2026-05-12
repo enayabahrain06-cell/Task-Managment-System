@@ -449,8 +449,23 @@
 
                 <template x-if="qvTask?.submission_url">
                     <div>
+                        {{-- Delivery link (no file) --}}
+                        <template x-if="qvTask?.submission_is_link">
+                            <a :href="qvTask.submission_url" target="_blank" rel="noopener"
+                               style="display:flex;align-items:center;gap:12px;padding:14px 16px;border:1.5px solid #BBF7D0;border-radius:12px;background:#F0FDF4;text-decoration:none;margin-bottom:8px;transition:all .15s;"
+                               onmouseover="this.style.background='#DCFCE7';this.style.borderColor='#86EFAC'" onmouseout="this.style.background='#F0FDF4';this.style.borderColor='#BBF7D0'">
+                                <div style="width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#10B981,#059669);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 10px rgba(16,185,129,.3);">
+                                    <i class="fas fa-link" style="color:#fff;font-size:16px;"></i>
+                                </div>
+                                <div style="flex:1;min-width:0;">
+                                    <p style="font-size:13px;font-weight:600;color:#065F46;margin:0;">Delivery Link</p>
+                                    <p style="font-size:11px;color:#6B7280;margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="qvTask.submission_url"></p>
+                                </div>
+                                <i class="fas fa-arrow-up-right-from-square" style="color:#10B981;font-size:12px;flex-shrink:0;"></i>
+                            </a>
+                        </template>
                         {{-- Image --}}
-                        <template x-if="fileType(qvTask?.submission_name) === 'image'">
+                        <template x-if="!qvTask?.submission_is_link && fileType(qvTask?.submission_name) === 'image'">
                             <div @click="openViewer(qvTask?.submission_url, qvTask?.submission_name)"
                                  style="cursor:pointer;border-radius:14px;overflow:hidden;border:1.5px solid #DDE3F5;position:relative;box-shadow:0 4px 18px rgba(99,102,241,.1);margin-bottom:8px;">
                                 <img :src="qvTask?.submission_url" :alt="qvTask?.submission_name"
@@ -465,7 +480,7 @@
                             </div>
                         </template>
                         {{-- Video --}}
-                        <template x-if="fileType(qvTask?.submission_name) === 'video'">
+                        <template x-if="!qvTask?.submission_is_link && fileType(qvTask?.submission_name) === 'video'">
                             <div x-data="{ videoError: false }">
                                 <div x-show="!videoError" @click="openViewer(qvTask?.submission_url, qvTask?.submission_name)"
                                      style="cursor:pointer;border-radius:14px;overflow:hidden;border:1.5px solid #DDE3F5;position:relative;box-shadow:0 4px 18px rgba(99,102,241,.1);margin-bottom:8px;">
@@ -487,7 +502,7 @@
                             </div>
                         </template>
                         {{-- Other file types --}}
-                        <template x-if="!['image','video'].includes(fileType(qvTask?.submission_name))">
+                        <template x-if="!qvTask?.submission_is_link && !['image','video'].includes(fileType(qvTask?.submission_name))">
                             <div @click="openViewer(qvTask?.submission_url, qvTask?.submission_name)"
                                  style="display:flex;align-items:center;gap:12px;padding:14px 16px;border:1.5px solid #DDE3F5;border-radius:12px;cursor:pointer;background:#F8FAFF;transition:all .15s;margin-bottom:8px;"
                                  onmouseover="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE'" onmouseout="this.style.background='#F8FAFF';this.style.borderColor='#DDE3F5'">
@@ -501,12 +516,21 @@
                                 <i class="fas fa-expand" style="color:#A5B4FC;font-size:12px;flex-shrink:0;"></i>
                             </div>
                         </template>
-                        {{-- Download link --}}
-                        <a :href="qvTask?.submission_url" :download="qvTask?.submission_name"
-                           style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#6366F1;text-decoration:none;font-weight:600;"
-                           onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
-                            <i class="fas fa-download" style="font-size:9px;"></i> Download file
-                        </a>
+                        {{-- Download / Open link --}}
+                        <template x-if="!qvTask?.submission_is_link">
+                            <a :href="qvTask?.submission_url" :download="qvTask?.submission_name"
+                               style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#6366F1;text-decoration:none;font-weight:600;"
+                               onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+                                <i class="fas fa-download" style="font-size:9px;"></i> Download file
+                            </a>
+                        </template>
+                        <template x-if="qvTask?.submission_is_link">
+                            <a :href="qvTask?.submission_url" target="_blank" rel="noopener"
+                               style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#10B981;text-decoration:none;font-weight:600;"
+                               onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+                                <i class="fas fa-arrow-up-right-from-square" style="font-size:9px;"></i> Open link
+                            </a>
+                        </template>
                     </div>
                 </template>
                 <template x-if="!qvTask?.submission_url">
@@ -1337,8 +1361,9 @@
                             customer_name:        @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
                             customer_email:       @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
                             customer_phone:       @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
-                            submission_url:       @js($latestSub?->file_path ? url(Storage::url($latestSub->file_path)) : null),
-                            submission_name:      @js($latestSub?->original_filename ?? ($latestSub?->file_path ? basename($latestSub->file_path) : null)),
+                            submission_url:       @js($latestSub?->file_path ? url(Storage::url($latestSub->file_path)) : ($latestSub?->delivery_url ?? null)),
+                            submission_name:      @js($latestSub?->original_filename ?? ($latestSub?->file_path ? basename($latestSub->file_path) : ($latestSub?->delivery_url ? 'Delivery Link' : null))),
+                            submission_is_link:   @js(!$latestSub?->file_path && $latestSub?->delivery_url),
                         })"
                         class="w-6 h-6 rounded-lg bg-green-50 hover:bg-green-100 flex items-center justify-center text-green-500 hover:text-green-600 transition"
                         title="Approve">
@@ -1505,8 +1530,9 @@
                 'deadline'      => $task->deadline?->format(config('app.date_format', 'M d, Y')),
                 'is_overdue'    => $isOverdue2,
                 'versions'      => $task->submissions->count(),
-                'submission_url'  => $latestSub2?->file_path ? url(Storage::url($latestSub2->file_path)) : null,
-                'submission_name' => $latestSub2?->original_filename ?? ($latestSub2?->file_path ? basename($latestSub2->file_path) : null),
+                'submission_url'     => $latestSub2?->file_path ? url(Storage::url($latestSub2->file_path)) : ($latestSub2?->delivery_url ?? null),
+                'submission_name'    => $latestSub2?->original_filename ?? ($latestSub2?->file_path ? basename($latestSub2->file_path) : ($latestSub2?->delivery_url ? 'Delivery Link' : null)),
+                'submission_is_link' => !$latestSub2?->file_path && $latestSub2?->delivery_url,
                 'approve_url'          => route('admin.tasks.approve', $task),
                 'pending_customer_url' => route('admin.tasks.pending-customer', $task),
                 'reject_url'           => route('admin.tasks.reject', $task),
@@ -1567,8 +1593,9 @@
                                 customer_name:        @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
                                 customer_email:       @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
                                 customer_phone:       @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
-                                submission_url:       @js($latestSub2?->file_path ? url(Storage::url($latestSub2->file_path)) : null),
-                                submission_name:      @js($latestSub2?->original_filename ?? ($latestSub2?->file_path ? basename($latestSub2->file_path) : null)),
+                                submission_url:       @js($latestSub2?->file_path ? url(Storage::url($latestSub2->file_path)) : ($latestSub2?->delivery_url ?? null)),
+                                submission_name:      @js($latestSub2?->original_filename ?? ($latestSub2?->file_path ? basename($latestSub2->file_path) : ($latestSub2?->delivery_url ? 'Delivery Link' : null))),
+                                submission_is_link:   @js(!$latestSub2?->file_path && $latestSub2?->delivery_url),
                             })"
                             style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(16,185,129,.25);transition:opacity .15s;white-space:nowrap;"
                             onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"
@@ -1796,8 +1823,9 @@
                             customer_name:        @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
                             customer_email:       @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
                             customer_phone:       @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
-                            submission_url:       @js($latestSubAw?->file_path ? url(Storage::url($latestSubAw->file_path)) : null),
-                            submission_name:      @js($latestSubAw?->original_filename ?? ($latestSubAw?->file_path ? basename($latestSubAw->file_path) : null)),
+                            submission_url:       @js($latestSubAw?->file_path ? url(Storage::url($latestSubAw->file_path)) : ($latestSubAw?->delivery_url ?? null)),
+                            submission_name:      @js($latestSubAw?->original_filename ?? ($latestSubAw?->file_path ? basename($latestSubAw->file_path) : ($latestSubAw?->delivery_url ? 'Delivery Link' : null))),
+                            submission_is_link:   @js(!$latestSubAw?->file_path && $latestSubAw?->delivery_url),
                         })"
                         style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 6px rgba(16,185,129,.25);transition:opacity .15s;white-space:nowrap;"
                         onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
