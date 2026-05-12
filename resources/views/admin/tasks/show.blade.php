@@ -1617,15 +1617,24 @@
                                 </a>
                             @elseif($subFile->file_path)
                                 @php
-                                    $sfExt     = strtolower(pathinfo($subFile->original_filename ?? '', PATHINFO_EXTENSION));
-                                    $sfIsImage = in_array($sfExt, ['jpg','jpeg','png','gif','webp','svg']);
-                                    $sfIsVideo = in_array($sfExt, ['mp4','mov','avi','webm','mkv']);
-                                    $sfUrl     = $subFile->fileUrl();
-                                    $sfIconMap = ['pdf'=>'fa-file-pdf','doc'=>'fa-file-word','docx'=>'fa-file-word','xls'=>'fa-file-excel','xlsx'=>'fa-file-excel','ppt'=>'fa-file-powerpoint','pptx'=>'fa-file-powerpoint','zip'=>'fa-file-zipper','rar'=>'fa-file-zipper','txt'=>'fa-file-lines'];
-                                    $sfIcon    = $sfIconMap[$sfExt] ?? 'fa-file';
-                                    $sfItem    = ['name'=>$subFile->original_filename ?? 'file','url'=>$sfUrl,'downloadUrl'=>route('admin.submissions.download',$subFile),'isImage'=>$sfIsImage,'isVideo'=>$sfIsVideo,'version'=>$subFile->version];
+                                    $sfExt      = strtolower(pathinfo($subFile->original_filename ?? '', PATHINFO_EXTENSION));
+                                    $sfIsImage  = in_array($sfExt, ['jpg','jpeg','png','gif','webp','svg']);
+                                    $sfIsVideo  = in_array($sfExt, ['mp4','mov','avi','webm','mkv']);
+                                    $sfUrl      = $subFile->fileUrl();
+                                    $sfIconMap  = ['pdf'=>'fa-file-pdf','doc'=>'fa-file-word','docx'=>'fa-file-word','xls'=>'fa-file-excel','xlsx'=>'fa-file-excel','ppt'=>'fa-file-powerpoint','pptx'=>'fa-file-powerpoint','zip'=>'fa-file-zipper','rar'=>'fa-file-zipper','txt'=>'fa-file-lines'];
+                                    $sfIcon     = $sfIconMap[$sfExt] ?? 'fa-file';
+                                    $sfItem     = ['name'=>$subFile->original_filename ?? 'file','url'=>$sfUrl,'downloadUrl'=>route('admin.submissions.download',$subFile),'isImage'=>$sfIsImage,'isVideo'=>$sfIsVideo,'version'=>$subFile->version];
+                                    $sfExists   = \Illuminate\Support\Facades\Storage::disk('public')->exists($subFile->file_path);
                                 @endphp
-                                @if($sfIsImage)
+                                @if(!$sfExists)
+                                <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#F9FAFB;border:1px dashed #D1D5DB;border-radius:8px;max-width:300px;margin-bottom:10px;">
+                                    <i class="fa fa-triangle-exclamation" style="color:#D97706;font-size:13px;flex-shrink:0;"></i>
+                                    <div style="min-width:0;">
+                                        <p style="font-size:12px;font-weight:600;color:#374151;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $subFile->original_filename ?? 'File' }}</p>
+                                        <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">File no longer available</p>
+                                    </div>
+                                </div>
+                                @elseif($sfIsImage)
                                 <button type="button" @click="show({{ json_encode($sfItem) }})"
                                         style="display:block;margin-bottom:10px;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:300px;width:100%;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;"
                                         onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
@@ -1808,7 +1817,16 @@
                             <div x-show="!editing">
                                 <div class="rte-field" style="font-size:13px;color:#374151;margin:0{{ $comment->file_path ? ' 0 10px' : '' }};line-height:1.6;word-break:break-word;padding:0;min-height:0;" x-html="body"></div>
                                 @if($comment->file_path)
-                                    @if($cIsImage)
+                                    @php $cFileExists = \Illuminate\Support\Facades\Storage::disk('public')->exists($comment->file_path); @endphp
+                                    @if(!$cFileExists)
+                                    <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#F9FAFB;border:1px dashed #D1D5DB;border-radius:8px;max-width:280px;">
+                                        <i class="fa fa-triangle-exclamation" style="color:#D97706;font-size:13px;flex-shrink:0;"></i>
+                                        <div style="min-width:0;">
+                                            <p style="font-size:12px;font-weight:600;color:#374151;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $comment->original_filename }}</p>
+                                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">File no longer available</p>
+                                        </div>
+                                    </div>
+                                    @elseif($cIsImage)
                                     <button type="button" @click="showComment({{ json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'isImage'=>true,'isVideo'=>false]) }})" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;width:100%;" onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                                         <img src="{{ $cUrl }}" alt="{{ $comment->original_filename }}" style="width:100%;max-height:140px;object-fit:cover;display:block;">
                                         <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
