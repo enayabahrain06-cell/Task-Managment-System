@@ -439,9 +439,10 @@ class ProjectController extends Controller
 
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $file) {
-                $path = $file->store("project-attachments/{$task->project_id}", 'public');
+                $path = $file->store("task-attachments/{$task->id}", 'public');
                 ProjectAttachment::create([
                     'project_id'  => $task->project_id,
+                    'task_id'     => $task->id,
                     'type'        => 'file',
                     'name'        => $file->getClientOriginalName(),
                     'path'        => $path,

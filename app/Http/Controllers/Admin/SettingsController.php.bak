@@ -151,6 +151,16 @@ class SettingsController extends Controller
         return response()->json(['developer_mode' => $new === '1']);
     }
 
+    public function clearCache()
+    {
+        \Artisan::call('cache:clear');
+        \Artisan::call('config:clear');
+        \Artisan::call('view:clear');
+        \Artisan::call('route:clear');
+        AuditLogger::log('settings.updated', null, 'Application cache cleared', []);
+        return response()->json(['success' => true, 'message' => 'Cache cleared successfully']);
+    }
+
     public function toggleMaintenance()
     {
         $current = Setting::get('maintenance_mode', '0');
