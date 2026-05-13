@@ -131,10 +131,6 @@ class TaskController extends Controller
 
     public function update(Request $request, Task $task)
     {
-        if (!auth()->user()->hasPermission('manage_tasks')) {
-            abort(403);
-        }
-
         $request->validate([
             'title'                => 'required|string|max:255',
             'project_id'           => 'nullable|exists:projects,id',
@@ -227,7 +223,7 @@ class TaskController extends Controller
     public function comment(Request $request, Task $task)
     {
         $request->validate([
-            'body' => 'required|string',
+            'body' => 'required|string|max:1000',
             'file' => 'nullable|file',
         ]);
 
@@ -269,7 +265,7 @@ class TaskController extends Controller
         if ($comment->task_id !== $task->id || $comment->user_id !== auth()->id()) {
             abort(403);
         }
-        $request->validate(['body' => 'required|string']);
+        $request->validate(['body' => 'required|string|max:1000']);
         TaskCommentEdit::create([
             'task_comment_id'       => $comment->id,
             'old_body'              => $comment->body,
@@ -380,10 +376,6 @@ class TaskController extends Controller
 
     public function destroy(Task $task)
     {
-        if (!auth()->user()->hasPermission('delete_tasks')) {
-            abort(403);
-        }
-
         $title = $task->title;
         AuditLogger::log(
             'task.deleted',
@@ -399,7 +391,7 @@ class TaskController extends Controller
 
     public function trash(Request $request)
     {
-        if (!auth()->user()->hasPermission('view_trash')) {
+        if (!auth()->user()->hasPermission('manage_tasks')) {
             abort(403);
         }
 
@@ -416,10 +408,6 @@ class TaskController extends Controller
 
     public function restore(int $id)
     {
-        if (!auth()->user()->hasPermission('view_trash')) {
-            abort(403);
-        }
-
         $task = Task::onlyTrashed()->findOrFail($id);
         $task->restore();
 
@@ -428,10 +416,6 @@ class TaskController extends Controller
 
     public function forceDelete(int $id)
     {
-        if (!auth()->user()->hasPermission('delete_tasks')) {
-            abort(403);
-        }
-
         $task = Task::onlyTrashed()->findOrFail($id);
         $title = $task->title;
         AuditLogger::log(
@@ -743,7 +727,7 @@ class TaskController extends Controller
 
     public function addAttachment(Request $request, Task $task)
     {
-        abort_unless(auth()->user()->hasPermission('manage_tasks'), 403);
+        abort_unless(in_array(auth()->user()->role, ['admin', 'manager']), 403);
 
         $request->validate([
             'attachments'   => 'required|array|min:1',
@@ -781,7 +765,7 @@ class TaskController extends Controller
 
     public function deleteAttachment(Task $task, \App\Models\ProjectAttachment $attachment)
     {
-        abort_unless(auth()->user()->hasPermission('delete_tasks'), 403);
+        abort_unless(in_array(auth()->user()->role, ['admin', 'manager']), 403);
 
         $isTaskSpecific = (int) $attachment->task_id === (int) $task->id;
         $isProjectLevel = is_null($attachment->task_id) && (int) $attachment->project_id === (int) $task->project_id;

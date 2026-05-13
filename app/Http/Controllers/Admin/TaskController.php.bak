@@ -46,6 +46,16 @@ class TaskController extends Controller
         if ($request->filled('project')) {
             $query->where('project_id', $request->project);
         }
+        if ($request->filled('assignee')) {
+            $uid = $request->assignee;
+            $query->where(function($q) use ($uid) {
+                $q->where('assigned_to', $uid)
+                  ->orWhere('social_assigned_to', $uid)
+                  ->orWhereExists(fn($x) => $x->selectRaw('1')->from('task_assignees')
+                      ->whereColumn('task_assignees.task_id', 'tasks.id')
+                      ->where('task_assignees.user_id', $uid));
+            });
+        }
         $doneStatuses   = ['approved', 'delivered', 'archived'];
         $isDoneTab      = ($request->get('tab') === 'done');
 
@@ -75,7 +85,7 @@ class TaskController extends Controller
 
         $tasks = $query->orderByRaw('CASE WHEN deadline IS NULL THEN 1 ELSE 0 END')
             ->orderBy('deadline')
-            ->paginate(24)
+            ->paginate($isDoneTab ? 10 : 24)
             ->withQueryString();
 
         $projects  = \App\Models\Project::where('is_quick', false)->orderBy('name')->get(['id','name']);
@@ -101,7 +111,17 @@ class TaskController extends Controller
 
     public function show(Task $task)
     {
-        $task->load('project.attachments', 'project.members', 'project.customer', 'assignee', 'assignees', 'reviewer', 'creator', 'customer', 'logs.user', 'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor', 'comments.user', 'comments.edits.editor', 'transfers.fromUser', 'transfers.toUser', 'transfers.transferredBy');
+        $task->load([
+            'project.attachments' => fn($q) => $q->whereNull('task_id')->whereHas('project', fn($p) => $p->where('is_quick', false)),
+            'project.members', 'project.customer',
+            'assignee', 'assignees', 'reviewer', 'creator', 'customer',
+            'socialAssignee', 'socialPosts',
+            'logs.user',
+            'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor',
+            'comments.user', 'comments.edits.editor',
+            'transfers.fromUser', 'transfers.toUser', 'transfers.transferredBy',
+            'attachments',
+        ]);
         $users       = User::whereIn('role', ['user', 'manager'])->orderBy('name')->get();
         $socialUsers = User::where('role', 'user')->orderBy('name')->get();
         $projects    = Project::where('is_quick', false)->orderBy('name')->get();
@@ -111,14 +131,22 @@ class TaskController extends Controller
 
     public function update(Request $request, Task $task)
     {
+        if (!auth()->user()->hasPermission('manage_tasks')) {
+            abort(403);
+        }
+
         $request->validate([
-            'title'       => 'required|string|max:255',
-            'project_id'  => 'nullable|exists:projects,id',
-            'customer_id' => 'nullable|exists:customers,id',
-            'assigned_to' => 'nullable|exists:users,id',
-            'priority'    => 'nullable|in:high,medium,low',
-            'deadline'    => 'nullable|date',
-            'description' => 'nullable|string',
+            'title'                => 'required|string|max:255',
+            'project_id'           => 'nullable|exists:projects,id',
+            'customer_id'          => 'nullable|exists:customers,id',
+            'assigned_to'          => 'nullable|exists:users,id',
+            'priority'             => 'nullable|in:high,medium,low',
+            'deadline'             => 'nullable|date',
+            'description'          => 'nullable|string',
+            'new_attachments'      => 'nullable|array',
+            'new_attachments.*'    => 'file|max:51200',
+            'delete_attachments'   => 'nullable|array',
+            'delete_attachments.*' => 'integer|exists:project_attachments,id',
         ]);
 
         $changes = [];
@@ -157,6 +185,33 @@ class TaskController extends Controller
                 'note'     => 'Task details updated by ' . auth()->user()->name,
                 'metadata' => ['changes' => $changes, 'changed_by' => auth()->user()->name],
             ]);
+        }
+
+        // Delete checked attachments (only task-specific ones belonging to this task)
+        if ($request->filled('delete_attachments')) {
+            $toDelete = \App\Models\ProjectAttachment::whereIn('id', $request->delete_attachments)
+                ->where('task_id', $task->id)
+                ->get();
+            foreach ($toDelete as $att) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($att->path);
+                $att->delete();
+            }
+        }
+
+        // Store new uploaded attachments
+        if ($request->hasFile('new_attachments')) {
+            foreach ($request->file('new_attachments') as $file) {
+                $path = $file->store("task-attachments/{$task->id}", 'public');
+                \App\Models\ProjectAttachment::create([
+                    'project_id'  => $task->project_id,
+                    'task_id'     => $task->id,
+                    'type'        => 'file',
+                    'name'        => $file->getClientOriginalName(),
+                    'path'        => $path,
+                    'size'        => $file->getSize(),
+                    'uploaded_by' => auth()->id(),
+                ]);
+            }
         }
 
         AuditLogger::log(
@@ -325,6 +380,10 @@ class TaskController extends Controller
 
     public function destroy(Task $task)
     {
+        if (!auth()->user()->hasPermission('delete_tasks')) {
+            abort(403);
+        }
+
         $title = $task->title;
         AuditLogger::log(
             'task.deleted',
@@ -340,7 +399,7 @@ class TaskController extends Controller
 
     public function trash(Request $request)
     {
-        if (!auth()->user()->hasPermission('manage_tasks')) {
+        if (!auth()->user()->hasPermission('view_trash')) {
             abort(403);
         }
 
@@ -357,6 +416,10 @@ class TaskController extends Controller
 
     public function restore(int $id)
     {
+        if (!auth()->user()->hasPermission('view_trash')) {
+            abort(403);
+        }
+
         $task = Task::onlyTrashed()->findOrFail($id);
         $task->restore();
 
@@ -365,6 +428,10 @@ class TaskController extends Controller
 
     public function forceDelete(int $id)
     {
+        if (!auth()->user()->hasPermission('delete_tasks')) {
+            abort(403);
+        }
+
         $task = Task::onlyTrashed()->findOrFail($id);
         $title = $task->title;
         AuditLogger::log(
@@ -672,5 +739,76 @@ class TaskController extends Controller
         }
 
         return back()->with('success', 'Deadline updated to ' . $newDeadline->format(config('app.date_format', 'M d, Y')) . '.');
+    }
+
+    public function addAttachment(Request $request, Task $task)
+    {
+        abort_unless(auth()->user()->hasPermission('manage_tasks'), 403);
+
+        $request->validate([
+            'attachments'   => 'required|array|min:1',
+            'attachments.*' => 'file|max:51200',
+        ]);
+
+        $names = [];
+        foreach ($request->file('attachments') as $file) {
+            $path = $file->store("task-attachments/{$task->id}", 'public');
+            \App\Models\ProjectAttachment::create([
+                'project_id'  => $task->project_id,
+                'task_id'     => $task->id,
+                'type'        => 'file',
+                'name'        => $file->getClientOriginalName(),
+                'path'        => $path,
+                'size'        => $file->getSize(),
+                'uploaded_by' => auth()->id(),
+            ]);
+            $names[] = $file->getClientOriginalName();
+        }
+
+        TaskLog::create([
+            'task_id'  => $task->id,
+            'user_id'  => auth()->id(),
+            'action'   => 'attachment_added',
+            'note'     => auth()->user()->name . ' added ' . count($names) . ' attachment(s): ' . implode(', ', $names),
+            'metadata' => [
+                'filenames'   => $names,
+                'uploaded_by' => auth()->user()->name,
+            ],
+        ]);
+
+        return back()->with('success', count($names) . ' attachment(s) added.');
+    }
+
+    public function deleteAttachment(Task $task, \App\Models\ProjectAttachment $attachment)
+    {
+        abort_unless(auth()->user()->hasPermission('delete_tasks'), 403);
+
+        $isTaskSpecific = (int) $attachment->task_id === (int) $task->id;
+        $isProjectLevel = is_null($attachment->task_id) && (int) $attachment->project_id === (int) $task->project_id;
+        abort_unless($isTaskSpecific || $isProjectLevel, 403);
+
+        $filename = $attachment->name;
+        \Illuminate\Support\Facades\Storage::disk('public')->delete($attachment->path);
+        $attachment->delete();
+
+        TaskLog::create([
+            'task_id'  => $task->id,
+            'user_id'  => auth()->id(),
+            'action'   => 'attachment_deleted',
+            'note'     => auth()->user()->name . ' deleted attachment "' . $filename . '"',
+            'metadata' => [
+                'filename'   => $filename,
+                'deleted_by' => auth()->user()->name,
+            ],
+        ]);
+
+        AuditLogger::log(
+            'task.attachment_deleted',
+            $task,
+            'Attachment "' . $filename . '" deleted from task "' . $task->title . '"',
+            ['task_id' => $task->id, 'filename' => $filename]
+        );
+
+        return back()->with('success', '"' . $filename . '" deleted.');
     }
 }

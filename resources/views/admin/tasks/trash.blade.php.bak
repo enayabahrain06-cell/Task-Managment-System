@@ -164,11 +164,7 @@
     </tbody>
 </table>
 
-@if($tasks->hasPages())
-<div style="padding:14px 20px;border-top:1px solid #FEF2F2;background:#FAFAFA;">
-    {{ $tasks->links() }}
-</div>
-@endif
+<x-pagination :paginator="$tasks" mt="12px" />
 
 </div>{{-- /table card --}}
 @endif

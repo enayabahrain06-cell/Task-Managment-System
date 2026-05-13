@@ -331,6 +331,11 @@
                             class="w-full text-left px-4 py-2.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50 flex items-center gap-2.5 transition">
                         <i class="fa fa-right-left text-xs w-3"></i> Transfer Tasks
                     </button>
+                    <button type="button"
+                            onclick="openCloneModal({{ $member->id }}, '{{ addslashes($member->name) }}', '{{ addslashes($member->role) }}', '{{ addslashes($member->job_title ?? '') }}'); closeActDrop();"
+                            class="w-full text-left px-4 py-2.5 text-xs font-medium text-violet-600 hover:bg-violet-50 flex items-center gap-2.5 transition">
+                        <i class="fa fa-clone text-xs w-3"></i> Clone User
+                    </button>
                     <div style="height:1px;background:#F3F4F6;margin:2px 0;"></div>
                     <button type="button"
                             onclick="openDeleteConfirm('{{ route('admin.users.destroy', $member) }}','{{ addslashes($member->name) }}'); closeActDrop();"
@@ -466,6 +471,11 @@
                                         onclick="openTransferModal({{ $member->id }}, '{{ addslashes($member->name) }}'); closeActDrop();"
                                         class="w-full text-left px-4 py-2.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50 flex items-center gap-2.5 transition">
                                     <i class="fa fa-right-left text-xs w-3"></i> Transfer Tasks
+                                </button>
+                                <button type="button"
+                                        onclick="openCloneModal({{ $member->id }}, '{{ addslashes($member->name) }}', '{{ addslashes($member->role) }}', '{{ addslashes($member->job_title ?? '') }}'); closeActDrop();"
+                                        class="w-full text-left px-4 py-2.5 text-xs font-medium text-violet-600 hover:bg-violet-50 flex items-center gap-2.5 transition">
+                                    <i class="fa fa-clone text-xs w-3"></i> Clone User
                                 </button>
                                 <div style="height:1px;background:#F3F4F6;margin:2px 0;"></div>
                                 <button type="button"
@@ -2507,6 +2517,101 @@ function closePermanentDeleteConfirm() {
     </div>
 </div>
 
+{{-- Clone User Modal --}}
+<div id="clone-modal"
+     style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;"
+     onclick="if(event.target===this)closeCloneModal()">
+    <div style="background:#fff;border-radius:16px;padding:28px 28px 24px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.2);max-height:90vh;overflow-y:auto;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
+            <div style="width:42px;height:42px;border-radius:12px;background:#F5F3FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fa fa-clone" style="color:#7C3AED;font-size:16px;"></i>
+            </div>
+            <div>
+                <p style="font-size:15px;font-weight:700;color:#111827;margin:0;">Clone User</p>
+                <p id="clone-subtitle" style="font-size:12px;color:#9CA3AF;margin:0;">Creates a new account with the same role & permissions — no tasks assigned</p>
+            </div>
+            <button type="button" onclick="closeCloneModal()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:20px;line-height:1;">×</button>
+        </div>
+
+        {{-- Source badge --}}
+        <div id="clone-source-badge" style="display:flex;align-items:center;gap:8px;background:#F5F3FF;border-radius:10px;padding:8px 12px;margin-bottom:18px;margin-top:10px;">
+            <i class="fa fa-user" style="font-size:11px;color:#7C3AED;"></i>
+            <span style="font-size:12px;color:#5B21B6;font-weight:600;">Cloning from: <span id="clone-source-name" style="font-weight:700;"></span></span>
+            <span id="clone-source-role" style="font-size:10px;background:#EDE9FE;color:#7C3AED;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:auto;"></span>
+        </div>
+
+        <form id="clone-form" method="POST">
+            @csrf
+            @method('POST')
+
+            @if($errors->any())
+            <div style="background:#FEE2E2;border-radius:8px;padding:10px 14px;margin-bottom:14px;">
+                @foreach($errors->all() as $err)
+                <p style="font-size:12px;color:#DC2626;margin:0;">{{ $err }}</p>
+                @endforeach
+            </div>
+            @endif
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Full Name <span style="color:#DC2626;">*</span></label>
+                    <input type="text" name="name" id="clone-name" required placeholder="e.g. Jane Smith"
+                           style="width:100%;padding:9px 11px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;color:#111827;outline:none;box-sizing:border-box;"
+                           onfocus="this.style.borderColor='#7C3AED'" onblur="this.style.borderColor='#E5E7EB'">
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Username <span style="font-weight:400;color:#9CA3AF;">(optional)</span></label>
+                    <input type="text" name="username" id="clone-username" placeholder="e.g. jane_smith"
+                           style="width:100%;padding:9px 11px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;color:#111827;outline:none;box-sizing:border-box;"
+                           onfocus="this.style.borderColor='#7C3AED'" onblur="this.style.borderColor='#E5E7EB'">
+                </div>
+            </div>
+
+            <div style="margin-bottom:12px;">
+                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Email Address <span style="color:#DC2626;">*</span></label>
+                <input type="email" name="email" required placeholder="email@example.com"
+                       style="width:100%;padding:9px 11px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;color:#111827;outline:none;box-sizing:border-box;"
+                       onfocus="this.style.borderColor='#7C3AED'" onblur="this.style.borderColor='#E5E7EB'">
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Password <span style="color:#DC2626;">*</span></label>
+                    <input type="password" name="password" required placeholder="Min. 8 characters"
+                           style="width:100%;padding:9px 11px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;color:#111827;outline:none;box-sizing:border-box;"
+                           onfocus="this.style.borderColor='#7C3AED'" onblur="this.style.borderColor='#E5E7EB'">
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Confirm Password <span style="color:#DC2626;">*</span></label>
+                    <input type="password" name="password_confirmation" required placeholder="Repeat password"
+                           style="width:100%;padding:9px 11px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;color:#111827;outline:none;box-sizing:border-box;"
+                           onfocus="this.style.borderColor='#7C3AED'" onblur="this.style.borderColor='#E5E7EB'">
+                </div>
+            </div>
+
+            <div style="background:#F9FAFB;border-radius:10px;padding:10px 13px;margin-bottom:18px;display:flex;align-items:flex-start;gap:8px;">
+                <i class="fa fa-circle-info" style="font-size:12px;color:#6366F1;margin-top:1px;flex-shrink:0;"></i>
+                <p style="font-size:11px;color:#6B7280;margin:0;line-height:1.5;">
+                    The cloned account will inherit the same <strong>role</strong>, <strong>job title</strong>, <strong>phone</strong>, <strong>nationality</strong>, <strong>hourly rate</strong>, and <strong>custom permissions</strong> from the source user. No tasks will be assigned.
+                </p>
+            </div>
+
+            <div style="display:flex;gap:10px;">
+                <button type="button" onclick="closeCloneModal()"
+                        style="flex:1;padding:10px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;"
+                        onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                    Cancel
+                </button>
+                <button type="submit"
+                        style="flex:2;padding:10px;background:linear-gradient(135deg,#8B5CF6,#7C3AED);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(124,58,237,.25);transition:opacity .15s;"
+                        onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+                    <i class="fa fa-clone" style="margin-right:6px;"></i>Create Clone
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 function openTransferModal(userId, userName) {
     document.getElementById('transfer-subtitle').textContent = 'Move all pending tasks from ' + userName;
@@ -2515,6 +2620,18 @@ function openTransferModal(userId, userName) {
 }
 function closeTransferModal() {
     document.getElementById('transfer-modal').style.display = 'none';
+}
+function openCloneModal(userId, userName, userRole, userJobTitle) {
+    document.getElementById('clone-source-name').textContent = userName;
+    document.getElementById('clone-source-role').textContent = userRole.charAt(0).toUpperCase() + userRole.slice(1);
+    document.getElementById('clone-form').action = '/admin/users/' + userId + '/clone';
+    document.getElementById('clone-name').value = '';
+    document.getElementById('clone-username').value = '';
+    document.getElementById('clone-modal').style.display = 'flex';
+    setTimeout(function() { document.getElementById('clone-name').focus(); }, 80);
+}
+function closeCloneModal() {
+    document.getElementById('clone-modal').style.display = 'none';
 }
 
 // ── Actions dropdown (fixed-position, escapes overflow:hidden) ────────────
