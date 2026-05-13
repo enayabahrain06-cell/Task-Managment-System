@@ -432,7 +432,7 @@ class TaskController extends Controller
 
         $request->validate([
             'note'         => 'nullable|string|max:1000',
-            'body'         => 'nullable|string|max:1000',
+            'body'         => 'nullable|string',
             'delivery_url' => 'nullable|url|max:2048',
             'files'        => 'nullable|array',
             'files.*'      => 'nullable|file',
@@ -515,7 +515,7 @@ class TaskController extends Controller
         }
 
         $request->validate([
-            'body'    => 'required|string|max:1000',
+            'body'    => 'required|string',
             'files'   => 'nullable|array',
             'files.*' => 'nullable|file',
         ]);
@@ -570,7 +570,7 @@ class TaskController extends Controller
         if ($comment->task_id !== $task->id || $comment->user_id !== auth()->id()) {
             abort(403);
         }
-        $request->validate(['body' => 'required|string|max:1000']);
+        $request->validate(['body' => 'required|string']);
         TaskCommentEdit::create([
             'task_comment_id'       => $comment->id,
             'old_body'              => $comment->body,
