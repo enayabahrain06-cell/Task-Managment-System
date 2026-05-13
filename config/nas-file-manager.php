@@ -1,0 +1,286 @@
+<?php
+
+return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | NAS Connection
+    |--------------------------------------------------------------------------
+    | Protocol: sftp | ftp | ftps | smb
+    */
+    'connection' => [
+        'protocol'   => env('NAS_PROTOCOL',   'sftp'),
+        'host'       => env('NAS_HOST',        ''),
+        'port'       => (int) env('NAS_PORT',  22),
+        'username'   => env('NAS_USERNAME',    ''),
+        'password'   => env('NAS_PASSWORD',    ''),
+        'path'       => env('NAS_PATH',        '/media'),
+        'smb_share'  => env('NAS_SMB_SHARE',   ''),
+        'smb_domain' => env('NAS_SMB_DOMAIN',  ''),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Routing
+    |--------------------------------------------------------------------------
+    */
+    'route_prefix' => env('NAS_FM_ROUTE_PREFIX', 'nas-file-manager'),
+    'middleware'   => ['web', 'auth'],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Authorization
+    |--------------------------------------------------------------------------
+    */
+    'edit_gate' => null,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Folder Schema
+    | Reflects the exact structure auto-created by the system.
+    |
+    | Stage folders map to task statuses:
+    |   03_Working  → in_progress  (task attachments & comment files)
+    |   04_Review   → submitted    (user submits work for admin review)
+    |   05_Approved → approved     (admin approves submission)
+    |   06_Rejected → revision_requested (admin requests revision)
+    |   07_Delivered→ delivered    (task marked as delivered to client)
+    |--------------------------------------------------------------------------
+    */
+    'schema' => [
+
+        // ── Root ─────────────────────────────────────────────────────────────
+        ['id' =>  1, 'depth' => 0, 'label' => 'Marketing_System-ms',
+         'path' => 'Marketing_System-ms',
+         'parent_path' => null,
+         'is_template' => false, 'can_edit' => false],
+
+        // ── Customers ────────────────────────────────────────────────────────
+        ['id' =>  2, 'depth' => 1, 'label' => 'Customers',
+         'path' => 'Marketing_System-ms/Customers',
+         'parent_path' => 'Marketing_System-ms',
+         'is_template' => false, 'can_edit' => false],
+
+        ['id' =>  3, 'depth' => 2, 'label' => '{Company_Name}',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}',
+         'parent_path' => 'Marketing_System-ms/Customers',
+         'is_template' => true, 'can_edit' => false],
+
+        // Deliverables — auto-filled when a task is marked as Delivered
+        ['id' => 48, 'depth' => 3, 'label' => 'Deliverables',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Deliverables',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}',
+         'is_template' => false, 'can_edit' => true],
+
+        ['id' => 49, 'depth' => 4, 'label' => '{YEAR}',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Deliverables/{YEAR}',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Deliverables',
+         'is_template' => true, 'can_edit' => false],
+
+        ['id' => 50, 'depth' => 5, 'label' => '{YEAR-MM}',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Deliverables/{YEAR}/{YEAR-MM}',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Deliverables/{YEAR}',
+         'is_template' => true, 'can_edit' => true],
+
+        // Reports
+        ['id' => 51, 'depth' => 3, 'label' => 'Reports',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Reports',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}',
+         'is_template' => false, 'can_edit' => true],
+
+        // References — briefs, mood boards, assets provided by the customer
+        ['id' => 52, 'depth' => 3, 'label' => 'References',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/References',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}',
+         'is_template' => false, 'can_edit' => true],
+
+        // Contracts
+        ['id' => 53, 'depth' => 3, 'label' => 'Contracts',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Contracts',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}',
+         'is_template' => false, 'can_edit' => true],
+
+        // Projects (tasks linked to a project)
+        ['id' => 13, 'depth' => 3, 'label' => 'Projects',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Projects',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}',
+         'is_template' => false, 'can_edit' => false],
+
+        ['id' => 14, 'depth' => 4, 'label' => '{YEAR}',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Projects/{YEAR}',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Projects',
+         'is_template' => true, 'can_edit' => false],
+
+        ['id' => 15, 'depth' => 5, 'label' => '{YEAR-MM}',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Projects/{YEAR}/{YEAR-MM}',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Projects/{YEAR}',
+         'is_template' => true, 'can_edit' => false],
+
+        ['id' => 16, 'depth' => 6, 'label' => '{PRJ-ID}_{Project_Name}',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Projects/{YEAR}/{YEAR-MM}/{PRJ-ID}_{Project_Name}',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Projects/{YEAR}/{YEAR-MM}',
+         'is_template' => true, 'can_edit' => false],
+
+        // Project stage folders — auto-created by the system on file upload
+        ['id' => 17, 'depth' => 7, 'label' => '03_Working',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Projects/{YEAR}/{YEAR-MM}/{PRJ-ID}_{Project_Name}/03_Working',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Projects/{YEAR}/{YEAR-MM}/{PRJ-ID}_{Project_Name}',
+         'is_template' => false, 'can_edit' => true],
+
+        ['id' => 18, 'depth' => 7, 'label' => '04_Review',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Projects/{YEAR}/{YEAR-MM}/{PRJ-ID}_{Project_Name}/04_Review',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Projects/{YEAR}/{YEAR-MM}/{PRJ-ID}_{Project_Name}',
+         'is_template' => false, 'can_edit' => true],
+
+        ['id' => 19, 'depth' => 7, 'label' => '05_Approved',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Projects/{YEAR}/{YEAR-MM}/{PRJ-ID}_{Project_Name}/05_Approved',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Projects/{YEAR}/{YEAR-MM}/{PRJ-ID}_{Project_Name}',
+         'is_template' => false, 'can_edit' => true],
+
+        ['id' => 20, 'depth' => 7, 'label' => '06_Rejected',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Projects/{YEAR}/{YEAR-MM}/{PRJ-ID}_{Project_Name}/06_Rejected',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Projects/{YEAR}/{YEAR-MM}/{PRJ-ID}_{Project_Name}',
+         'is_template' => false, 'can_edit' => true],
+
+        ['id' => 21, 'depth' => 7, 'label' => '07_Delivered',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Projects/{YEAR}/{YEAR-MM}/{PRJ-ID}_{Project_Name}/07_Delivered',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Projects/{YEAR}/{YEAR-MM}/{PRJ-ID}_{Project_Name}',
+         'is_template' => false, 'can_edit' => true],
+
+        // Quick Tasks per company (tasks with customer_id, no project)
+        ['id' => 22, 'depth' => 3, 'label' => 'Quick_Tasks',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Quick_Tasks',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}',
+         'is_template' => false, 'can_edit' => false],
+
+        ['id' => 23, 'depth' => 4, 'label' => '{YEAR}',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Quick_Tasks/{YEAR}',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Quick_Tasks',
+         'is_template' => true, 'can_edit' => false],
+
+        ['id' => 24, 'depth' => 5, 'label' => '{YEAR-MM}',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Quick_Tasks/{YEAR}/{YEAR-MM}',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Quick_Tasks/{YEAR}',
+         'is_template' => true, 'can_edit' => false],
+
+        ['id' => 25, 'depth' => 6, 'label' => '{Task_Title}',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Quick_Tasks/{YEAR}/{YEAR-MM}',
+         'is_template' => true, 'can_edit' => false],
+
+        ['id' => 26, 'depth' => 7, 'label' => '03_Working',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}/03_Working',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}',
+         'is_template' => false, 'can_edit' => true],
+
+        ['id' => 27, 'depth' => 7, 'label' => '04_Review',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}/04_Review',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}',
+         'is_template' => false, 'can_edit' => true],
+
+        ['id' => 28, 'depth' => 7, 'label' => '05_Approved',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}/05_Approved',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}',
+         'is_template' => false, 'can_edit' => true],
+
+        ['id' => 29, 'depth' => 7, 'label' => '06_Rejected',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}/06_Rejected',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}',
+         'is_template' => false, 'can_edit' => true],
+
+        ['id' => 30, 'depth' => 7, 'label' => '07_Delivered',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}/07_Delivered',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}',
+         'is_template' => false, 'can_edit' => true],
+
+        // Social Media per company — auto-populated when a task is marked as posted
+        ['id' => 43, 'depth' => 3, 'label' => 'Social_Media',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Social_Media',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}',
+         'is_template' => false, 'can_edit' => false],
+
+        ['id' => 44, 'depth' => 4, 'label' => '{YEAR}',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Social_Media/{YEAR}',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Social_Media',
+         'is_template' => true, 'can_edit' => false],
+
+        ['id' => 45, 'depth' => 5, 'label' => '{YEAR-MM}',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Social_Media/{YEAR}/{YEAR-MM}',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Social_Media/{YEAR}',
+         'is_template' => true, 'can_edit' => false],
+
+        ['id' => 46, 'depth' => 6, 'label' => '{platform}',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Social_Media/{YEAR}/{YEAR-MM}/{platform}',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Social_Media/{YEAR}/{YEAR-MM}',
+         'is_template' => true, 'can_edit' => false],
+
+        ['id' => 47, 'depth' => 7, 'label' => '{Task_Title}',
+         'path' => 'Marketing_System-ms/Customers/{Company_Name}/Social_Media/{YEAR}/{YEAR-MM}/{platform}/{Task_Title}',
+         'parent_path' => 'Marketing_System-ms/Customers/{Company_Name}/Social_Media/{YEAR}/{YEAR-MM}/{platform}',
+         'is_template' => true, 'can_edit' => true],
+
+        // ── Root Quick_Tasks (tasks with no customer attached) ────────────────
+        ['id' => 31, 'depth' => 1, 'label' => 'Quick_Tasks',
+         'path' => 'Marketing_System-ms/Quick_Tasks',
+         'parent_path' => 'Marketing_System-ms',
+         'is_template' => false, 'can_edit' => false],
+
+        ['id' => 32, 'depth' => 2, 'label' => '{YEAR}',
+         'path' => 'Marketing_System-ms/Quick_Tasks/{YEAR}',
+         'parent_path' => 'Marketing_System-ms/Quick_Tasks',
+         'is_template' => true, 'can_edit' => false],
+
+        ['id' => 33, 'depth' => 3, 'label' => '{YEAR-MM}',
+         'path' => 'Marketing_System-ms/Quick_Tasks/{YEAR}/{YEAR-MM}',
+         'parent_path' => 'Marketing_System-ms/Quick_Tasks/{YEAR}',
+         'is_template' => true, 'can_edit' => false],
+
+        ['id' => 34, 'depth' => 4, 'label' => '{Task_Title}',
+         'path' => 'Marketing_System-ms/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}',
+         'parent_path' => 'Marketing_System-ms/Quick_Tasks/{YEAR}/{YEAR-MM}',
+         'is_template' => true, 'can_edit' => false],
+
+        ['id' => 35, 'depth' => 5, 'label' => '03_Working',
+         'path' => 'Marketing_System-ms/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}/03_Working',
+         'parent_path' => 'Marketing_System-ms/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}',
+         'is_template' => false, 'can_edit' => true],
+
+        ['id' => 36, 'depth' => 5, 'label' => '04_Review',
+         'path' => 'Marketing_System-ms/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}/04_Review',
+         'parent_path' => 'Marketing_System-ms/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}',
+         'is_template' => false, 'can_edit' => true],
+
+        ['id' => 37, 'depth' => 5, 'label' => '05_Approved',
+         'path' => 'Marketing_System-ms/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}/05_Approved',
+         'parent_path' => 'Marketing_System-ms/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}',
+         'is_template' => false, 'can_edit' => true],
+
+        ['id' => 38, 'depth' => 5, 'label' => '06_Rejected',
+         'path' => 'Marketing_System-ms/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}/06_Rejected',
+         'parent_path' => 'Marketing_System-ms/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}',
+         'is_template' => false, 'can_edit' => true],
+
+        ['id' => 39, 'depth' => 5, 'label' => '07_Delivered',
+         'path' => 'Marketing_System-ms/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}/07_Delivered',
+         'parent_path' => 'Marketing_System-ms/Quick_Tasks/{YEAR}/{YEAR-MM}/{Task_Title}',
+         'is_template' => false, 'can_edit' => true],
+
+        // ── Shared folders ────────────────────────────────────────────────────
+        ['id' => 40, 'depth' => 1, 'label' => 'Internal_Templates',
+         'path' => 'Marketing_System-ms/Internal_Templates',
+         'parent_path' => 'Marketing_System-ms',
+         'is_template' => false, 'can_edit' => true],
+
+        ['id' => 41, 'depth' => 1, 'label' => 'Shared_Resources',
+         'path' => 'Marketing_System-ms/Shared_Resources',
+         'parent_path' => 'Marketing_System-ms',
+         'is_template' => false, 'can_edit' => true],
+
+        ['id' => 42, 'depth' => 1, 'label' => 'Archive',
+         'path' => 'Marketing_System-ms/Archive',
+         'parent_path' => 'Marketing_System-ms',
+         'is_template' => false, 'can_edit' => true],
+
+    ],
+
+];

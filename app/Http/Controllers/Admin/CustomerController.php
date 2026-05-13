@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Setting;
 use App\Services\AuditLogger;
+use App\Services\NasService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -66,6 +67,8 @@ class CustomerController extends Controller
             'Customer "' . $customer->name . '" created',
             ['customer_id' => $customer->id]
         );
+
+        app(NasService::class)->createCustomerFolders($customer);
 
         return redirect()->route('admin.customers.index')->with('success', 'Customer created successfully.');
     }

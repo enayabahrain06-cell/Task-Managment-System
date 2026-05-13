@@ -172,6 +172,8 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('settings/storage/backup/gdrive',      [AdminSettingsController::class, 'backupToGdrive'])->name('settings.storage.backup.gdrive');
     Route::post('settings/storage/test/onedrive',      [AdminSettingsController::class, 'testStorageOnedrive'])->name('settings.storage.test.onedrive');
     Route::post('settings/storage/test/omv',           [AdminSettingsController::class, 'testStorageOmv'])->name('settings.storage.test.omv');
+    Route::post('settings/nas-schema',                 [AdminSettingsController::class, 'updateNasSchema'])->name('settings.nas-schema');
+    Route::post('settings/nas-schema/reset',           [AdminSettingsController::class, 'resetNasSchema'])->name('settings.nas-schema.reset');
     Route::post('settings/whatsapp',              [AdminSettingsController::class, 'updateWhatsapp'])->name('settings.whatsapp');
     Route::post('settings/whatsapp/test',         [AdminSettingsController::class, 'testWhatsapp'])->name('settings.whatsapp.test');
     Route::post('settings/whatsapp/broadcast',    [AdminSettingsController::class, 'broadcastWhatsapp'])->name('settings.whatsapp.broadcast');

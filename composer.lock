@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "53b5d56b3b7e3cbac1713e68c8850f6c",
+    "content-hash": "9b1bca6fc5a420c4dd41d2bc0238d32a",
     "packages": [
         {
             "name": "brick/math",
@@ -2530,6 +2530,48 @@
                 }
             ],
             "time": "2026-02-16T23:10:27+00:00"
+        },
+        {
+            "name": "p7h/nas-file-manager",
+            "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/itsp7h/File-Structure-package.git",
+                "reference": "3daa53b6ae5646b9dd1ec0416228312f9f1ff9ef"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/itsp7h/File-Structure-package/zipball/3daa53b6ae5646b9dd1ec0416228312f9f1ff9ef",
+                "reference": "3daa53b6ae5646b9dd1ec0416228312f9f1ff9ef",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/support": "^10.0|^11.0|^12.0",
+                "php": "^8.1"
+            },
+            "default-branch": true,
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "P7H\\NasFileManager\\NasFileManagerServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "P7H\\NasFileManager\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "NAS folder-structure schema viewer and live file manager for Laravel",
+            "support": {
+                "source": "https://github.com/itsp7h/File-Structure-package/tree/main",
+                "issues": "https://github.com/itsp7h/File-Structure-package/issues"
+            },
+            "time": "2026-05-13T07:28:46+00:00"
         },
         {
             "name": "phpoption/phpoption",
@@ -8387,8 +8429,10 @@
         }
     ],
     "aliases": [],
-    "minimum-stability": "stable",
-    "stability-flags": {},
+    "minimum-stability": "dev",
+    "stability-flags": {
+        "p7h/nas-file-manager": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

@@ -8,7 +8,8 @@
     "require": {
         "php": "^8.2",
         "laravel/framework": "^12.0",
-        "laravel/tinker": "^2.10.1"
+        "laravel/tinker": "^2.10.1",
+        "p7h/nas-file-manager": "dev-main"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -84,6 +85,12 @@
             "php-http/discovery": true
         }
     },
-    "minimum-stability": "stable",
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "git@github.com:itsp7h/File-Structure-package.git"
+        }
+    ],
+    "minimum-stability": "dev",
     "prefer-stable": true
 }
