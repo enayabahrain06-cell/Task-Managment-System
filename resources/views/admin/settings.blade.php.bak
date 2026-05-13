@@ -84,6 +84,14 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 @media(max-width:600px){
     .export-grid { grid-template-columns:1fr 1fr; }
 }
+
+/* ── Collapsible accordion ── */
+.scard-header.acc-enabled { cursor:pointer; user-select:none; position:relative; padding-right:44px; }
+.scard-header.acc-enabled:hover { background:#FAFAFA; }
+.acc-chevron { position:absolute; right:20px; top:50%; transform:translateY(-50%); color:#9CA3AF; font-size:11px; pointer-events:none; transition:transform 0.2s; }
+.scard.collapsed .acc-chevron { transform:translateY(-50%) rotate(-90deg); }
+.scard.collapsed .scard-body,
+.scard.collapsed .scard-footer { display:none; }
 </style>
 
 {{-- Page Header --}}
@@ -1048,8 +1056,9 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         <form method="POST" action="{{ route('admin.settings.storage') }}" id="gdrive-toggle-form">@csrf
                             <input type="hidden" name="storage_gdrive_enabled" value="{{ $settings['storage_gdrive_enabled'] === '1' ? '0' : '1' }}">
                             {{-- keep other fields from being reset on toggle --}}
-                            <input type="hidden" name="storage_gdrive_client_id"  value="{{ $settings['storage_gdrive_client_id'] }}">
-                            <input type="hidden" name="storage_gdrive_folder_id"  value="{{ $settings['storage_gdrive_folder_id'] }}">
+                            <input type="hidden" name="storage_gdrive_client_id"       value="{{ $settings['storage_gdrive_client_id'] }}">
+                            <input type="hidden" name="storage_gdrive_folder_id"       value="{{ $settings['storage_gdrive_folder_id'] }}">
+                            <input type="hidden" name="storage_gdrive_delegate_email"  value="{{ $settings['storage_gdrive_delegate_email'] }}">
                             <input type="hidden" name="storage_onedrive_enabled"    value="{{ $settings['storage_onedrive_enabled'] }}">
                             <input type="hidden" name="storage_onedrive_client_id"  value="{{ $settings['storage_onedrive_client_id'] }}">
                             <input type="hidden" name="storage_onedrive_tenant_id"  value="{{ $settings['storage_onedrive_tenant_id'] }}">
@@ -1059,6 +1068,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             <input type="hidden" name="storage_omv_host"      value="{{ $settings['storage_omv_host'] }}">
                             <input type="hidden" name="storage_omv_port"      value="{{ $settings['storage_omv_port'] }}">
                             <input type="hidden" name="storage_omv_username"  value="{{ $settings['storage_omv_username'] }}">
+                            <input type="hidden" name="storage_omv_share"     value="{{ $settings['storage_omv_share'] ?? '' }}">
                             <input type="hidden" name="storage_omv_path"      value="{{ $settings['storage_omv_path'] }}">
                             <button type="submit" style="position:relative;width:44px;height:24px;border-radius:12px;border:none;cursor:pointer;background:{{ $settings['storage_gdrive_enabled']==='1' ? '#6366F1' : '#D1D5DB' }};transition:background .2s;flex-shrink:0;"
                                     title="{{ $settings['storage_gdrive_enabled']==='1' ? 'Disable' : 'Enable' }} Google Drive">
@@ -1101,7 +1111,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                    placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
                             <p class="sf-hint">The ID from the Drive folder URL — <code>drive.google.com/drive/folders/<strong>ID</strong></code></p>
                         </div>
-                        <div class="sf-group" style="margin-bottom:0;">
+                        <div class="sf-group" style="margin-bottom:14px;">
                             <label class="sf-label" style="display:flex;align-items:center;gap:8px;">
                                 Service Account JSON
                                 <span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:6px;background:#FEF3C7;color:#92400E;">Required for Backup</span>
@@ -1117,6 +1127,22 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
   ...
 }'>{{ $settings['storage_gdrive_sa_json'] }}</textarea>
                             <p class="sf-hint">Download from Google Cloud Console → IAM → Service Accounts → Keys → Add Key → JSON. Share the target Drive folder with the <code>client_email</code> from this JSON.</p>
+                        </div>
+                        <div class="sf-group" style="margin-bottom:0;">
+                            <label class="sf-label" style="display:flex;align-items:center;gap:8px;">
+                                Delegate As (Google Account Email)
+                                <span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:6px;background:#EEF2FF;color:#4338CA;">Domain-Wide Delegation</span>
+                            </label>
+                            <input type="email" name="storage_gdrive_delegate_email" class="sf-input"
+                                   value="{{ $settings['storage_gdrive_delegate_email'] }}"
+                                   placeholder="admin@yourdomain.com">
+                            <p class="sf-hint">
+                                <strong>Use this if you get a "no storage quota" error.</strong>
+                                The service account will impersonate this Google user and save backups to their Drive.
+                                Requires domain-wide delegation to be enabled in Google Workspace Admin →
+                                Security → API Controls → Domain-wide Delegation.
+                                Leave blank if you are using a <strong>Shared Drive</strong> folder ID above.
+                            </p>
                         </div>
                     </div>
                     <div class="scard-footer" x-data="{ testing:false, backing:false, ok:null, msg:'', link:null }">
@@ -1166,9 +1192,10 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                     <div style="margin-left:auto;">
                         <form method="POST" action="{{ route('admin.settings.storage') }}">@csrf
                             <input type="hidden" name="storage_onedrive_enabled" value="{{ $settings['storage_onedrive_enabled'] === '1' ? '0' : '1' }}">
-                            <input type="hidden" name="storage_gdrive_enabled"    value="{{ $settings['storage_gdrive_enabled'] }}">
-                            <input type="hidden" name="storage_gdrive_client_id"  value="{{ $settings['storage_gdrive_client_id'] }}">
-                            <input type="hidden" name="storage_gdrive_folder_id"  value="{{ $settings['storage_gdrive_folder_id'] }}">
+                            <input type="hidden" name="storage_gdrive_enabled"         value="{{ $settings['storage_gdrive_enabled'] }}">
+                            <input type="hidden" name="storage_gdrive_client_id"       value="{{ $settings['storage_gdrive_client_id'] }}">
+                            <input type="hidden" name="storage_gdrive_folder_id"       value="{{ $settings['storage_gdrive_folder_id'] }}">
+                            <input type="hidden" name="storage_gdrive_delegate_email"  value="{{ $settings['storage_gdrive_delegate_email'] }}">
                             <input type="hidden" name="storage_onedrive_client_id"  value="{{ $settings['storage_onedrive_client_id'] }}">
                             <input type="hidden" name="storage_onedrive_tenant_id"  value="{{ $settings['storage_onedrive_tenant_id'] }}">
                             <input type="hidden" name="storage_onedrive_folder_id"  value="{{ $settings['storage_onedrive_folder_id'] }}">
@@ -1177,6 +1204,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             <input type="hidden" name="storage_omv_host"      value="{{ $settings['storage_omv_host'] }}">
                             <input type="hidden" name="storage_omv_port"      value="{{ $settings['storage_omv_port'] }}">
                             <input type="hidden" name="storage_omv_username"  value="{{ $settings['storage_omv_username'] }}">
+                            <input type="hidden" name="storage_omv_share"     value="{{ $settings['storage_omv_share'] ?? '' }}">
                             <input type="hidden" name="storage_omv_path"      value="{{ $settings['storage_omv_path'] }}">
                             <button type="submit" style="position:relative;width:44px;height:24px;border-radius:12px;border:none;cursor:pointer;background:{{ $settings['storage_onedrive_enabled']==='1' ? '#6366F1' : '#D1D5DB' }};transition:background .2s;flex-shrink:0;"
                                     title="{{ $settings['storage_onedrive_enabled']==='1' ? 'Disable' : 'Enable' }} OneDrive">
@@ -1187,9 +1215,10 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                 </div>
                 <form method="POST" action="{{ route('admin.settings.storage') }}">
                     @csrf
-                    <input type="hidden" name="storage_gdrive_enabled"      value="{{ $settings['storage_gdrive_enabled'] }}">
-                    <input type="hidden" name="storage_gdrive_client_id"    value="{{ $settings['storage_gdrive_client_id'] }}">
-                    <input type="hidden" name="storage_gdrive_folder_id"    value="{{ $settings['storage_gdrive_folder_id'] }}">
+                    <input type="hidden" name="storage_gdrive_enabled"         value="{{ $settings['storage_gdrive_enabled'] }}">
+                    <input type="hidden" name="storage_gdrive_client_id"       value="{{ $settings['storage_gdrive_client_id'] }}">
+                    <input type="hidden" name="storage_gdrive_folder_id"       value="{{ $settings['storage_gdrive_folder_id'] }}">
+                    <input type="hidden" name="storage_gdrive_delegate_email"  value="{{ $settings['storage_gdrive_delegate_email'] }}">
                     <input type="hidden" name="storage_onedrive_enabled"    value="{{ $settings['storage_onedrive_enabled'] }}">
                     <input type="hidden" name="storage_omv_enabled"   value="{{ $settings['storage_omv_enabled'] }}">
                     <input type="hidden" name="storage_omv_protocol"  value="{{ $settings['storage_omv_protocol'] }}">
@@ -1262,9 +1291,10 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                     <div style="margin-left:auto;">
                         <form method="POST" action="{{ route('admin.settings.storage') }}">@csrf
                             <input type="hidden" name="storage_omv_enabled" value="{{ $settings['storage_omv_enabled'] === '1' ? '0' : '1' }}">
-                            <input type="hidden" name="storage_gdrive_enabled"      value="{{ $settings['storage_gdrive_enabled'] }}">
-                            <input type="hidden" name="storage_gdrive_client_id"    value="{{ $settings['storage_gdrive_client_id'] }}">
-                            <input type="hidden" name="storage_gdrive_folder_id"    value="{{ $settings['storage_gdrive_folder_id'] }}">
+                            <input type="hidden" name="storage_gdrive_enabled"         value="{{ $settings['storage_gdrive_enabled'] }}">
+                            <input type="hidden" name="storage_gdrive_client_id"       value="{{ $settings['storage_gdrive_client_id'] }}">
+                            <input type="hidden" name="storage_gdrive_folder_id"       value="{{ $settings['storage_gdrive_folder_id'] }}">
+                            <input type="hidden" name="storage_gdrive_delegate_email"  value="{{ $settings['storage_gdrive_delegate_email'] }}">
                             <input type="hidden" name="storage_onedrive_enabled"    value="{{ $settings['storage_onedrive_enabled'] }}">
                             <input type="hidden" name="storage_onedrive_client_id"  value="{{ $settings['storage_onedrive_client_id'] }}">
                             <input type="hidden" name="storage_onedrive_tenant_id"  value="{{ $settings['storage_onedrive_tenant_id'] }}">
@@ -1273,6 +1303,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             <input type="hidden" name="storage_omv_host"      value="{{ $settings['storage_omv_host'] }}">
                             <input type="hidden" name="storage_omv_port"      value="{{ $settings['storage_omv_port'] }}">
                             <input type="hidden" name="storage_omv_username"  value="{{ $settings['storage_omv_username'] }}">
+                            <input type="hidden" name="storage_omv_share"     value="{{ $settings['storage_omv_share'] ?? '' }}">
                             <input type="hidden" name="storage_omv_path"      value="{{ $settings['storage_omv_path'] }}">
                             <button type="submit" style="position:relative;width:44px;height:24px;border-radius:12px;border:none;cursor:pointer;background:{{ $settings['storage_omv_enabled']==='1' ? '#6366F1' : '#D1D5DB' }};transition:background .2s;flex-shrink:0;"
                                     title="{{ $settings['storage_omv_enabled']==='1' ? 'Disable' : 'Enable' }} NAS">
@@ -1283,23 +1314,31 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                 </div>
                 <form method="POST" action="{{ route('admin.settings.storage') }}">
                     @csrf
-                    <input type="hidden" name="storage_gdrive_enabled"      value="{{ $settings['storage_gdrive_enabled'] }}">
-                    <input type="hidden" name="storage_gdrive_client_id"    value="{{ $settings['storage_gdrive_client_id'] }}">
-                    <input type="hidden" name="storage_gdrive_folder_id"    value="{{ $settings['storage_gdrive_folder_id'] }}">
+                    <input type="hidden" name="storage_gdrive_enabled"         value="{{ $settings['storage_gdrive_enabled'] }}">
+                    <input type="hidden" name="storage_gdrive_client_id"       value="{{ $settings['storage_gdrive_client_id'] }}">
+                    <input type="hidden" name="storage_gdrive_folder_id"       value="{{ $settings['storage_gdrive_folder_id'] }}">
+                    <input type="hidden" name="storage_gdrive_delegate_email"  value="{{ $settings['storage_gdrive_delegate_email'] }}">
                     <input type="hidden" name="storage_onedrive_enabled"    value="{{ $settings['storage_onedrive_enabled'] }}">
                     <input type="hidden" name="storage_onedrive_client_id"  value="{{ $settings['storage_onedrive_client_id'] }}">
                     <input type="hidden" name="storage_onedrive_tenant_id"  value="{{ $settings['storage_onedrive_tenant_id'] }}">
                     <input type="hidden" name="storage_onedrive_folder_id"  value="{{ $settings['storage_onedrive_folder_id'] }}">
                     <input type="hidden" name="storage_omv_enabled" value="{{ $settings['storage_omv_enabled'] }}">
-                    <div class="scard-body">
+                    <div class="scard-body" x-data="{ proto: '{{ $settings['storage_omv_protocol'] ?: 'smb' }}' }">
                         <div class="sf-group">
                             <label class="sf-label">Protocol</label>
                             <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                                @foreach(['smb'=>['SMB / CIFS','#0F766E'],'nfs'=>['NFS','#7C3AED'],'webdav'=>['WebDAV','#0369A1'],'ftp'=>['FTP','#D97706']] as $proto=>[$label,$color])
-                                <label style="display:flex;align-items:center;gap:6px;padding:6px 14px;border:1.5px solid {{ $settings['storage_omv_protocol']===$proto ? $color : '#E5E7EB' }};border-radius:8px;cursor:pointer;background:{{ $settings['storage_omv_protocol']===$proto ? $color.'14' : '#fff' }};font-size:13px;font-weight:600;color:{{ $settings['storage_omv_protocol']===$proto ? $color : '#6B7280' }};">
-                                    <input type="radio" name="storage_omv_protocol" value="{{ $proto }}" {{ $settings['storage_omv_protocol']===$proto ? 'checked' : '' }} style="display:none;">
-                                    {{ $label }}
-                                </label>
+                                @foreach(['smb'=>['SMB / CIFS','#0F766E','#E6FAF8'],'nfs'=>['NFS','#7C3AED','#F5F3FF'],'webdav'=>['WebDAV','#0369A1','#EFF6FF'],'ftp'=>['FTP','#D97706','#FFFBEB']] as $proto=>[$plabel,$color,$bg])
+                                <button type="button"
+                                        @click="proto = '{{ $proto }}'"
+                                        :style="'display:inline-flex;align-items:center;padding:6px 14px;border:1.5px solid;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s;white-space:nowrap;' + (proto === '{{ $proto }}' ? 'border-color:{{ $color }};background:{{ $bg }};color:{{ $color }};' : 'border-color:#E5E7EB;background:#fff;color:#6B7280;')">
+                                    {{ $plabel }}
+                                </button>
+                                @endforeach
+                                {{-- hidden radio inputs carry the actual form value --}}
+                                @foreach(['smb','nfs','webdav','ftp'] as $proto)
+                                <input type="radio" name="storage_omv_protocol" value="{{ $proto }}"
+                                       x-bind:checked="proto === '{{ $proto }}'"
+                                       style="display:none;">
                                 @endforeach
                             </div>
                         </div>
@@ -1331,12 +1370,19 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                        placeholder="{{ $settings['storage_omv_password'] ? '••••••••' : 'NAS password' }}">
                             </div>
                         </div>
+                        <div x-show="proto === 'smb'" class="sf-group">
+                            <label class="sf-label">SMB Share Name</label>
+                            <input type="text" name="storage_omv_share" class="sf-input"
+                                   value="{{ $settings['storage_omv_share'] ?? '' }}"
+                                   placeholder="MediaShare">
+                            <p class="sf-hint">The share name from your NAS — e.g. <code>\\192.168.1.50\<strong>MediaShare</strong></code></p>
+                        </div>
                         <div class="sf-group" style="margin-bottom:0;">
                             <label class="sf-label">Share / Mount Path</label>
                             <input type="text" name="storage_omv_path" class="sf-input"
                                    value="{{ $settings['storage_omv_path'] }}"
                                    placeholder="//192.168.1.100/tasks  or  /mnt/tasks">
-                            <p class="sf-hint">Full UNC path for SMB, mount point for NFS, base URL for WebDAV</p>
+                            <p class="sf-hint">Sub-path inside the share (SMB) or mount point for NFS / base URL for WebDAV</p>
                         </div>
                     </div>
                     <div class="scard-footer" x-data="{ testing:false, ok:null, msg:'' }">
@@ -1374,9 +1420,10 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                 <form method="POST" action="{{ route('admin.settings.storage') }}">
                     @csrf
                     {{-- preserve connection toggles --}}
-                    <input type="hidden" name="storage_gdrive_enabled"      value="{{ $settings['storage_gdrive_enabled'] }}">
-                    <input type="hidden" name="storage_gdrive_client_id"    value="{{ $settings['storage_gdrive_client_id'] }}">
-                    <input type="hidden" name="storage_gdrive_folder_id"    value="{{ $settings['storage_gdrive_folder_id'] }}">
+                    <input type="hidden" name="storage_gdrive_enabled"         value="{{ $settings['storage_gdrive_enabled'] }}">
+                    <input type="hidden" name="storage_gdrive_client_id"       value="{{ $settings['storage_gdrive_client_id'] }}">
+                    <input type="hidden" name="storage_gdrive_folder_id"       value="{{ $settings['storage_gdrive_folder_id'] }}">
+                    <input type="hidden" name="storage_gdrive_delegate_email"  value="{{ $settings['storage_gdrive_delegate_email'] }}">
                     <input type="hidden" name="storage_onedrive_enabled"    value="{{ $settings['storage_onedrive_enabled'] }}">
                     <input type="hidden" name="storage_onedrive_client_id"  value="{{ $settings['storage_onedrive_client_id'] }}">
                     <input type="hidden" name="storage_onedrive_tenant_id"  value="{{ $settings['storage_onedrive_tenant_id'] }}">
@@ -1476,6 +1523,15 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         <button type="submit" class="sf-btn-primary"><i class="fas fa-save" style="margin-right:6px;"></i>Save Folder Settings</button>
                     </div>
                 </form>
+
+                <div style="padding:0 24px 24px;">
+                    @include('nas-file-manager::file-manager', [
+                        'nodes'   => config('nas-file-manager.schema', []),
+                        'canEdit' => true,
+                        'title'   => 'Folder Structure & File Manager',
+                    ])
+                </div>
+
             </div>
 
         </div>
@@ -2552,6 +2608,23 @@ document.addEventListener('DOMContentLoaded', function () {
     @if(($appSettings['maintenance_mode'] ?? '0') !== '1')
     _lockCard('manager-access-card', 'Enable Maintenance Mode to edit manager access');
     @endif
+
+    // Collapsible accordions — top-level scards only, all collapsed by default
+    document.querySelectorAll('.scard').forEach(function(card) {
+        if (card.parentElement.closest('.scard')) return; // skip nested scards
+        var header = card.querySelector('.scard-header');
+        if (!header) return;
+        var chevron = document.createElement('span');
+        chevron.className = 'acc-chevron';
+        chevron.innerHTML = '<i class="fas fa-chevron-down"></i>';
+        header.classList.add('acc-enabled');
+        header.appendChild(chevron);
+        card.classList.add('collapsed');
+        header.addEventListener('click', function(e) {
+            if (e.target.closest('button, input, select, textarea, a, label, [role="button"]')) return;
+            card.classList.toggle('collapsed');
+        });
+    });
 });
 
 function restoreElement(key, btn) {

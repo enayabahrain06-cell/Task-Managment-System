@@ -80,11 +80,12 @@ class SettingsController extends Controller
         'wa_tpl_social'            => "Hi {user_name},\n\nA task has been assigned to you for social media posting:\n📋 {task_title}\n📁 {project_name}\n👤 Customer: {customer_name}\n\n{company}",
         'wa_tpl_customer_design'   => "Hello {customer_name},\n\nYour design for \"{task_title}\" has been approved and is ready for your review. 🎨\n\n{admin_note}{design_link}\n\n{company}",
         // Storage / NAS
-        'storage_gdrive_enabled'       => '0',
-        'storage_gdrive_client_id'     => '',
-        'storage_gdrive_client_sec'    => '',
-        'storage_gdrive_folder_id'     => '',
-        'storage_gdrive_sa_json'       => '',
+        'storage_gdrive_enabled'          => '0',
+        'storage_gdrive_client_id'        => '',
+        'storage_gdrive_client_sec'       => '',
+        'storage_gdrive_folder_id'        => '',
+        'storage_gdrive_sa_json'          => '',
+        'storage_gdrive_delegate_email'   => '',
         'storage_onedrive_enabled'    => '0',
         'storage_onedrive_client_id'  => '',
         'storage_onedrive_client_sec' => '',
@@ -537,9 +538,10 @@ class SettingsController extends Controller
     public function updateStorage(Request $request)
     {
         $data = [
-            'storage_gdrive_enabled'    => $request->boolean('storage_gdrive_enabled') ? '1' : '0',
-            'storage_gdrive_client_id'  => $request->input('storage_gdrive_client_id', ''),
-            'storage_gdrive_folder_id'  => $request->input('storage_gdrive_folder_id', ''),
+            'storage_gdrive_enabled'         => $request->boolean('storage_gdrive_enabled') ? '1' : '0',
+            'storage_gdrive_client_id'       => $request->input('storage_gdrive_client_id', ''),
+            'storage_gdrive_folder_id'       => $request->input('storage_gdrive_folder_id', ''),
+            'storage_gdrive_delegate_email'  => $request->input('storage_gdrive_delegate_email', ''),
             'storage_onedrive_enabled'    => $request->boolean('storage_onedrive_enabled') ? '1' : '0',
             'storage_onedrive_client_id'  => $request->input('storage_onedrive_client_id', ''),
             'storage_onedrive_tenant_id'  => $request->input('storage_onedrive_tenant_id', ''),
@@ -714,11 +716,16 @@ class SettingsController extends Controller
 
     public function backupToGdrive(Request $request)
     {
-        $saJson   = Setting::get('storage_gdrive_sa_json', '');
-        $folderId = Setting::get('storage_gdrive_folder_id', '');
+        $saJson        = Setting::get('storage_gdrive_sa_json', '');
+        $folderId      = Setting::get('storage_gdrive_folder_id', '');
+        $delegateEmail = Setting::get('storage_gdrive_delegate_email', '');
 
         if (!$saJson) {
             return response()->json(['ok' => false, 'message' => 'Service Account JSON is not set. Paste it in the Google Drive card and save.']);
+        }
+
+        if (!$folderId && !$delegateEmail) {
+            return response()->json(['ok' => false, 'message' => 'Set either a Shared Drive Folder ID or a Delegate Email (for domain-wide delegation) so the backup has somewhere to go.']);
         }
 
         $credentials = json_decode($saJson, true);
@@ -727,7 +734,7 @@ class SettingsController extends Controller
         }
 
         try {
-            $token    = $this->googleServiceAccountToken($credentials);
+            $token    = $this->googleServiceAccountToken($credentials, $delegateEmail);
             $dbPath   = database_path('database.sqlite');
             $filename = 'backup_' . now()->format('Ymd_His') . '.sqlite';
             $file     = $this->driveUpload($token, $dbPath, $filename, 'application/x-sqlite3', $folderId);
@@ -748,17 +755,21 @@ class SettingsController extends Controller
         }
     }
 
-    private function googleServiceAccountToken(array $creds): string
+    private function googleServiceAccountToken(array $creds, string $delegateEmail = ''): string
     {
         $now     = time();
         $header  = $this->b64url(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
-        $payload = $this->b64url(json_encode([
+        $claims  = [
             'iss'   => $creds['client_email'],
-            'scope' => 'https://www.googleapis.com/auth/drive.file',
+            'scope' => 'https://www.googleapis.com/auth/drive',
             'aud'   => 'https://oauth2.googleapis.com/token',
             'iat'   => $now,
             'exp'   => $now + 3600,
-        ]));
+        ];
+        if ($delegateEmail) {
+            $claims['sub'] = $delegateEmail;
+        }
+        $payload = $this->b64url(json_encode($claims));
 
         $sigInput = "{$header}.{$payload}";
         $key      = openssl_pkey_get_private($creds['private_key']);
@@ -800,7 +811,7 @@ class SettingsController extends Controller
         $resp = \Illuminate\Support\Facades\Http::withToken($token)
             ->withBody($body, "multipart/related; boundary={$boundary}")
             ->timeout(120)
-            ->post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink');
+            ->post('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,webViewLink');
 
         if (!$resp->successful()) {
             $err = $resp->json()['error']['message'] ?? "HTTP {$resp->status()}";

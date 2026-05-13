@@ -1035,7 +1035,7 @@
                             @if($sub->note || $sub->user_id === auth()->id())
                             <div style="margin-bottom:10px;">
                                 <div style="display:flex;align-items:flex-start;gap:6px;">
-                                    <p x-show="!editingNote" style="font-size:13px;color:#374151;margin:0;line-height:1.6;flex:1;" x-text="note || ''"></p>
+                                    <p x-show="!editingNote" style="font-size:13px;color:#374151;margin:0;line-height:1.6;flex:1;" x-html="note || ''"></p>
                                     @if($sub->user_id === auth()->id())
                                     <button @click="editingNote=!editingNote" style="font-size:10px;background:none;border:none;color:#9CA3AF;cursor:pointer;padding:0;flex-shrink:0;margin-top:2px;" title="Edit note">
                                         <i class="fa fa-pencil" style="font-size:10px;"></i>
