@@ -462,6 +462,7 @@ class TaskController extends Controller
             $filePath         = null;
             $originalFilename = null;
         } else {
+            $nas = app(\App\Services\NasService::class);
             foreach ($files as $i => $file) {
                 $fp = $file->store('task-submissions/' . $task->id, 'public');
                 $fn = $file->getClientOriginalName();
@@ -474,6 +475,7 @@ class TaskController extends Controller
                     'original_filename' => $fn,
                     'status'            => 'submitted',
                 ]);
+                $nas->copyToNas($task, $fp, $fn, '04_Review', $version);
                 if ($i === 0) { $filePath = $fp; $originalFilename = $fn; }
             }
         }
@@ -527,6 +529,9 @@ class TaskController extends Controller
             $file             = reset($uploadedFiles);
             $originalFilename = $file->getClientOriginalName();
             $filePath         = $file->store("task-comment-files/{$task->id}", 'public');
+            $nas = app(\App\Services\NasService::class);
+            $nas->copyToNas($task, $filePath, $originalFilename, '03_Working');
+            $nas->copyToNasReference($task, $filePath, $originalFilename);
         }
 
         // Auto-advance from viewed → in_progress on first comment
@@ -554,7 +559,11 @@ class TaskController extends Controller
             'user_id'  => auth()->id(),
             'action'   => 'comment_added',
             'note'     => \Illuminate\Support\Str::limit($request->body, 120),
-            'metadata' => ['comment_id' => $comment->id, 'author_role' => 'user'],
+            'metadata' => array_filter([
+                'comment_id'  => $comment->id,
+                'author_role' => 'user',
+                'filename'    => $originalFilename,
+            ]),
         ]);
 
         $comment->load('user');

@@ -28,6 +28,30 @@ class AppServiceProvider extends ServiceProvider
             // settings table may not exist yet (migrations)
         }
 
+        // Override NAS file-manager package config with DB settings
+        try {
+            config(['nas-file-manager.connection' => [
+                'protocol'   => Setting::get('storage_omv_protocol', 'smb'),
+                'host'       => Setting::get('storage_omv_host', ''),
+                'port'       => (int) (Setting::get('storage_omv_port', '') ?: 445),
+                'username'   => Setting::get('storage_omv_username', ''),
+                'password'   => Setting::get('storage_omv_password', ''),
+                'path'       => Setting::get('storage_omv_path', '/'),
+                'smb_share'  => Setting::get('storage_omv_share', ''),
+                'smb_domain' => '',
+            ]]);
+            // Load custom NAS schema from DB if admin has saved one
+            $savedSchema = Setting::get('storage_nas_schema', '');
+            if ($savedSchema) {
+                $decoded = json_decode($savedSchema, true);
+                if (is_array($decoded)) {
+                    config(['nas-file-manager.schema' => $decoded]);
+                }
+            }
+        } catch (\Throwable) {
+            // settings table may not exist yet
+        }
+
         // Share recent projects with the navigation sidebar
         View::composer('layouts.navigation', function ($view) {
             if (auth()->check()) {

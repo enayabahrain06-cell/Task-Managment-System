@@ -84,6 +84,14 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 @media(max-width:600px){
     .export-grid { grid-template-columns:1fr 1fr; }
 }
+
+/* ── Collapsible accordion ── */
+.scard-header.acc-enabled { cursor:pointer; user-select:none; position:relative; padding-right:44px; }
+.scard-header.acc-enabled:hover { background:#FAFAFA; }
+.acc-chevron { position:absolute; right:20px; top:50%; transform:translateY(-50%); color:#9CA3AF; font-size:11px; pointer-events:none; transition:transform 0.2s; }
+.scard.collapsed .acc-chevron { transform:translateY(-50%) rotate(-90deg); }
+.scard.collapsed .scard-body,
+.scard.collapsed .scard-footer { display:none; }
 </style>
 
 {{-- Page Header --}}
@@ -1036,6 +1044,113 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
         {{-- ════ STORAGE / NAS ════ --}}
         <div x-show="tab === 'storage'" x-cloak>
 
+            {{-- Storage Mode Selector --}}
+            <div class="scard" style="margin-bottom:20px;">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#EEF2FF;color:#4F46E5;"><i class="fas fa-database"></i></div>
+                    <div>
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Storage Mode</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Choose where uploaded files are stored</p>
+                    </div>
+                </div>
+                <div class="scard-body">
+                    @php $nasActive = ($settings['storage_omv_enabled'] ?? '0') === '1'; @endphp
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+
+                        {{-- Local Storage --}}
+                        <form method="POST" action="{{ route('admin.settings.storage') }}">
+                            @csrf
+                            <input type="hidden" name="storage_omv_enabled"          value="0">
+                            <input type="hidden" name="storage_gdrive_enabled"        value="{{ $settings['storage_gdrive_enabled'] }}">
+                            <input type="hidden" name="storage_gdrive_client_id"      value="{{ $settings['storage_gdrive_client_id'] }}">
+                            <input type="hidden" name="storage_gdrive_folder_id"      value="{{ $settings['storage_gdrive_folder_id'] }}">
+                            <input type="hidden" name="storage_gdrive_delegate_email" value="{{ $settings['storage_gdrive_delegate_email'] }}">
+                            <input type="hidden" name="storage_onedrive_enabled"      value="{{ $settings['storage_onedrive_enabled'] }}">
+                            <input type="hidden" name="storage_onedrive_client_id"    value="{{ $settings['storage_onedrive_client_id'] }}">
+                            <input type="hidden" name="storage_onedrive_tenant_id"    value="{{ $settings['storage_onedrive_tenant_id'] }}">
+                            <input type="hidden" name="storage_onedrive_folder_id"    value="{{ $settings['storage_onedrive_folder_id'] }}">
+                            <input type="hidden" name="storage_omv_protocol"          value="{{ $settings['storage_omv_protocol'] }}">
+                            <input type="hidden" name="storage_omv_host"              value="{{ $settings['storage_omv_host'] }}">
+                            <input type="hidden" name="storage_omv_port"              value="{{ $settings['storage_omv_port'] }}">
+                            <input type="hidden" name="storage_omv_username"          value="{{ $settings['storage_omv_username'] }}">
+                            <input type="hidden" name="storage_omv_share"             value="{{ $settings['storage_omv_share'] ?? '' }}">
+                            <input type="hidden" name="storage_omv_path"              value="{{ $settings['storage_omv_path'] }}">
+                            <input type="hidden" name="storage_root_path"             value="{{ $settings['storage_root_path'] }}">
+                            <input type="hidden" name="storage_auto_create_folders"   value="{{ $settings['storage_auto_create_folders'] }}">
+                            <input type="hidden" name="storage_auto_move_files"       value="{{ $settings['storage_auto_move_files'] }}">
+                            <input type="hidden" name="storage_file_naming_pattern"   value="{{ $settings['storage_file_naming_pattern'] }}">
+                            <button type="{{ $nasActive ? 'submit' : 'button' }}"
+                                style="width:100%;text-align:left;padding:20px;border-radius:12px;cursor:{{ $nasActive ? 'pointer' : 'default' }};border:2px solid {{ !$nasActive ? '#4F46E5' : '#E5E7EB' }};background:{{ !$nasActive ? '#EEF2FF' : '#fff' }};transition:all .2s;display:block;">
+                                <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+                                    <div style="width:38px;height:38px;border-radius:10px;background:{{ !$nasActive ? '#4F46E5' : '#F3F4F6' }};display:flex;align-items:center;justify-content:center;">
+                                        <i class="fas fa-hdd" style="color:{{ !$nasActive ? '#fff' : '#9CA3AF' }};font-size:15px;"></i>
+                                    </div>
+                                    <div>
+                                        <p style="font-size:14px;font-weight:700;color:{{ !$nasActive ? '#1E40AF' : '#374151' }};margin:0;">Local Storage</p>
+                                        <p style="font-size:11px;color:{{ !$nasActive ? '#3B82F6' : '#9CA3AF' }};margin:2px 0 0;">Server disk</p>
+                                    </div>
+                                    @if(!$nasActive)
+                                    <div style="margin-left:auto;width:20px;height:20px;border-radius:50%;background:#4F46E5;display:flex;align-items:center;justify-content:center;">
+                                        <i class="fas fa-check" style="color:#fff;font-size:10px;"></i>
+                                    </div>
+                                    @endif
+                                </div>
+                                <p style="font-size:12px;color:{{ !$nasActive ? '#4338CA' : '#6B7280' }};margin:0;line-height:1.5;">Files saved to <code>storage/app/</code> on this server. Simple, no extra configuration needed.</p>
+                            </button>
+                        </form>
+
+                        {{-- Network Storage --}}
+                        <form method="POST" action="{{ route('admin.settings.storage') }}">
+                            @csrf
+                            <input type="hidden" name="storage_omv_enabled"          value="1">
+                            <input type="hidden" name="storage_gdrive_enabled"        value="{{ $settings['storage_gdrive_enabled'] }}">
+                            <input type="hidden" name="storage_gdrive_client_id"      value="{{ $settings['storage_gdrive_client_id'] }}">
+                            <input type="hidden" name="storage_gdrive_folder_id"      value="{{ $settings['storage_gdrive_folder_id'] }}">
+                            <input type="hidden" name="storage_gdrive_delegate_email" value="{{ $settings['storage_gdrive_delegate_email'] }}">
+                            <input type="hidden" name="storage_onedrive_enabled"      value="{{ $settings['storage_onedrive_enabled'] }}">
+                            <input type="hidden" name="storage_onedrive_client_id"    value="{{ $settings['storage_onedrive_client_id'] }}">
+                            <input type="hidden" name="storage_onedrive_tenant_id"    value="{{ $settings['storage_onedrive_tenant_id'] }}">
+                            <input type="hidden" name="storage_onedrive_folder_id"    value="{{ $settings['storage_onedrive_folder_id'] }}">
+                            <input type="hidden" name="storage_omv_protocol"          value="{{ $settings['storage_omv_protocol'] }}">
+                            <input type="hidden" name="storage_omv_host"              value="{{ $settings['storage_omv_host'] }}">
+                            <input type="hidden" name="storage_omv_port"              value="{{ $settings['storage_omv_port'] }}">
+                            <input type="hidden" name="storage_omv_username"          value="{{ $settings['storage_omv_username'] }}">
+                            <input type="hidden" name="storage_omv_share"             value="{{ $settings['storage_omv_share'] ?? '' }}">
+                            <input type="hidden" name="storage_omv_path"              value="{{ $settings['storage_omv_path'] }}">
+                            <input type="hidden" name="storage_root_path"             value="{{ $settings['storage_root_path'] }}">
+                            <input type="hidden" name="storage_auto_create_folders"   value="{{ $settings['storage_auto_create_folders'] }}">
+                            <input type="hidden" name="storage_auto_move_files"       value="{{ $settings['storage_auto_move_files'] }}">
+                            <input type="hidden" name="storage_file_naming_pattern"   value="{{ $settings['storage_file_naming_pattern'] }}">
+                            <button type="{{ $nasActive ? 'button' : 'submit' }}"
+                                style="width:100%;text-align:left;padding:20px;border-radius:12px;cursor:{{ !$nasActive ? 'pointer' : 'default' }};border:2px solid {{ $nasActive ? '#16A34A' : '#E5E7EB' }};background:{{ $nasActive ? '#F0FDF4' : '#fff' }};transition:all .2s;display:block;">
+                                <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+                                    <div style="width:38px;height:38px;border-radius:10px;background:{{ $nasActive ? '#16A34A' : '#F3F4F6' }};display:flex;align-items:center;justify-content:center;">
+                                        <i class="fas fa-server" style="color:{{ $nasActive ? '#fff' : '#9CA3AF' }};font-size:15px;"></i>
+                                    </div>
+                                    <div>
+                                        <p style="font-size:14px;font-weight:700;color:{{ $nasActive ? '#14532D' : '#374151' }};margin:0;">Network Storage</p>
+                                        <p style="font-size:11px;color:{{ $nasActive ? '#16A34A' : '#9CA3AF' }};margin:2px 0 0;">NAS / SMB share</p>
+                                    </div>
+                                    @if($nasActive)
+                                    <div style="margin-left:auto;width:20px;height:20px;border-radius:50%;background:#16A34A;display:flex;align-items:center;justify-content:center;">
+                                        <i class="fas fa-check" style="color:#fff;font-size:10px;"></i>
+                                    </div>
+                                    @endif
+                                </div>
+                                <p style="font-size:12px;color:{{ $nasActive ? '#15803D' : '#6B7280' }};margin:0;line-height:1.5;">Files copied to your NAS/SMB share in addition to local storage. Configure the server below.</p>
+                            </button>
+                        </form>
+
+                    </div>
+                    @if($nasActive && !$settings['storage_omv_host'])
+                    <div style="margin-top:12px;padding:10px 14px;background:#FEF9C3;border:1px solid #FDE047;border-radius:8px;display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-triangle-exclamation" style="color:#CA8A04;font-size:13px;"></i>
+                        <p style="font-size:12px;color:#854D0E;margin:0;">Network storage is enabled but no NAS host is configured. Fill in the NAS / OMV Server section below.</p>
+                    </div>
+                    @endif
+                </div>
+            </div>
+
             {{-- Google Drive --}}
             <div class="scard" style="margin-bottom:20px;">
                 <div class="scard-header">
@@ -1060,6 +1175,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             <input type="hidden" name="storage_omv_host"      value="{{ $settings['storage_omv_host'] }}">
                             <input type="hidden" name="storage_omv_port"      value="{{ $settings['storage_omv_port'] }}">
                             <input type="hidden" name="storage_omv_username"  value="{{ $settings['storage_omv_username'] }}">
+                            <input type="hidden" name="storage_omv_share"     value="{{ $settings['storage_omv_share'] ?? '' }}">
                             <input type="hidden" name="storage_omv_path"      value="{{ $settings['storage_omv_path'] }}">
                             <button type="submit" style="position:relative;width:44px;height:24px;border-radius:12px;border:none;cursor:pointer;background:{{ $settings['storage_gdrive_enabled']==='1' ? '#6366F1' : '#D1D5DB' }};transition:background .2s;flex-shrink:0;"
                                     title="{{ $settings['storage_gdrive_enabled']==='1' ? 'Disable' : 'Enable' }} Google Drive">
@@ -1195,6 +1311,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             <input type="hidden" name="storage_omv_host"      value="{{ $settings['storage_omv_host'] }}">
                             <input type="hidden" name="storage_omv_port"      value="{{ $settings['storage_omv_port'] }}">
                             <input type="hidden" name="storage_omv_username"  value="{{ $settings['storage_omv_username'] }}">
+                            <input type="hidden" name="storage_omv_share"     value="{{ $settings['storage_omv_share'] ?? '' }}">
                             <input type="hidden" name="storage_omv_path"      value="{{ $settings['storage_omv_path'] }}">
                             <button type="submit" style="position:relative;width:44px;height:24px;border-radius:12px;border:none;cursor:pointer;background:{{ $settings['storage_onedrive_enabled']==='1' ? '#6366F1' : '#D1D5DB' }};transition:background .2s;flex-shrink:0;"
                                     title="{{ $settings['storage_onedrive_enabled']==='1' ? 'Disable' : 'Enable' }} OneDrive">
@@ -1293,6 +1410,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             <input type="hidden" name="storage_omv_host"      value="{{ $settings['storage_omv_host'] }}">
                             <input type="hidden" name="storage_omv_port"      value="{{ $settings['storage_omv_port'] }}">
                             <input type="hidden" name="storage_omv_username"  value="{{ $settings['storage_omv_username'] }}">
+                            <input type="hidden" name="storage_omv_share"     value="{{ $settings['storage_omv_share'] ?? '' }}">
                             <input type="hidden" name="storage_omv_path"      value="{{ $settings['storage_omv_path'] }}">
                             <button type="submit" style="position:relative;width:44px;height:24px;border-radius:12px;border:none;cursor:pointer;background:{{ $settings['storage_omv_enabled']==='1' ? '#6366F1' : '#D1D5DB' }};transition:background .2s;flex-shrink:0;"
                                     title="{{ $settings['storage_omv_enabled']==='1' ? 'Disable' : 'Enable' }} NAS">
@@ -1359,12 +1477,19 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                        placeholder="{{ $settings['storage_omv_password'] ? '••••••••' : 'NAS password' }}">
                             </div>
                         </div>
+                        <div x-show="proto === 'smb'" class="sf-group">
+                            <label class="sf-label">SMB Share Name</label>
+                            <input type="text" name="storage_omv_share" class="sf-input"
+                                   value="{{ $settings['storage_omv_share'] ?? '' }}"
+                                   placeholder="MediaShare">
+                            <p class="sf-hint">The share name from your NAS — e.g. <code>\\192.168.1.50\<strong>MediaShare</strong></code></p>
+                        </div>
                         <div class="sf-group" style="margin-bottom:0;">
                             <label class="sf-label">Share / Mount Path</label>
                             <input type="text" name="storage_omv_path" class="sf-input"
                                    value="{{ $settings['storage_omv_path'] }}"
                                    placeholder="//192.168.1.100/tasks  or  /mnt/tasks">
-                            <p class="sf-hint">Full UNC path for SMB, mount point for NFS, base URL for WebDAV</p>
+                            <p class="sf-hint">Sub-path inside the share (SMB) or mount point for NFS / base URL for WebDAV</p>
                         </div>
                     </div>
                     <div class="scard-footer" x-data="{ testing:false, ok:null, msg:'' }">
@@ -1505,6 +1630,56 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         <button type="submit" class="sf-btn-primary"><i class="fas fa-save" style="margin-right:6px;"></i>Save Folder Settings</button>
                     </div>
                 </form>
+
+                <div style="padding:0 24px 24px;">
+                    @include('nas-file-manager::file-manager', [
+                        'nodes'   => config('nas-file-manager.schema', []),
+                        'canEdit' => true,
+                        'title'   => 'Folder Structure & File Manager',
+                    ])
+                </div>
+
+                {{-- ── Edit Folder Schema ── --}}
+                <div x-data="{ open: false }" style="padding:0 24px 24px;">
+                    <button @click="open = !open" type="button"
+                        style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#4F46E5;background:none;border:none;cursor:pointer;padding:0;">
+                        <svg x-show="!open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:16px;height:16px;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                        <svg x-show="open" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:16px;height:16px;"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
+                        Edit Folder Schema
+                    </button>
+
+                    <div x-show="open" x-cloak style="margin-top:16px;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;">
+                        <div style="background:#F8FAFC;padding:12px 16px;border-bottom:1px solid #E2E8F0;display:flex;align-items:center;justify-content:space-between;">
+                            <div>
+                                <p style="font-size:13px;font-weight:600;color:#1E293B;margin:0;">Folder Schema JSON</p>
+                                <p style="font-size:12px;color:#64748B;margin:4px 0 0;">Edit the raw JSON to customise NAS folder structure. Changes take effect immediately after saving.</p>
+                            </div>
+                            <form method="POST" action="{{ route('admin.settings.nas-schema.reset') }}" onsubmit="return confirm('Reset folder schema to default? Any custom changes will be lost.');">
+                                @csrf
+                                <button type="submit" style="font-size:12px;color:#EF4444;background:none;border:1px solid #FCA5A5;border-radius:6px;padding:4px 10px;cursor:pointer;">Reset to Default</button>
+                            </form>
+                        </div>
+                        <div style="padding:16px;background:#fff;">
+                            @if(session('success') && str_contains(session('success'), 'schema'))
+                                <div style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:12px;">{{ session('success') }}</div>
+                            @endif
+                            @if(session('error') && str_contains(session('error') ?? '', 'JSON'))
+                                <div style="background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:12px;">{{ session('error') }}</div>
+                            @endif
+                            <form method="POST" action="{{ route('admin.settings.nas-schema') }}">
+                                @csrf
+                                <textarea name="schema_json" rows="20" spellcheck="false"
+                                    style="width:100%;font-family:'Courier New',monospace;font-size:12px;line-height:1.6;border:1px solid #CBD5E1;border-radius:8px;padding:12px;color:#1E293B;background:#F8FAFC;resize:vertical;box-sizing:border-box;"
+                                >{{ json_encode(config('nas-file-manager.schema', []), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) }}</textarea>
+                                <div style="margin-top:10px;display:flex;gap:8px;">
+                                    <button type="submit" style="background:#4F46E5;color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer;">Save Schema</button>
+                                    <button type="button" @click="open = false" style="background:#F1F5F9;color:#475569;border:none;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
         </div>
@@ -2581,6 +2756,23 @@ document.addEventListener('DOMContentLoaded', function () {
     @if(($appSettings['maintenance_mode'] ?? '0') !== '1')
     _lockCard('manager-access-card', 'Enable Maintenance Mode to edit manager access');
     @endif
+
+    // Collapsible accordions — top-level scards only, all collapsed by default
+    document.querySelectorAll('.scard').forEach(function(card) {
+        if (card.parentElement.closest('.scard')) return; // skip nested scards
+        var header = card.querySelector('.scard-header');
+        if (!header) return;
+        var chevron = document.createElement('span');
+        chevron.className = 'acc-chevron';
+        chevron.innerHTML = '<i class="fas fa-chevron-down"></i>';
+        header.classList.add('acc-enabled');
+        header.appendChild(chevron);
+        card.classList.add('collapsed');
+        header.addEventListener('click', function(e) {
+            if (e.target.closest('button, input, select, textarea, a, label, [role="button"]')) return;
+            card.classList.toggle('collapsed');
+        });
+    });
 });
 
 function restoreElement(key, btn) {

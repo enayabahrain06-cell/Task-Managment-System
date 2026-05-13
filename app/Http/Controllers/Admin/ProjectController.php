@@ -462,6 +462,7 @@ class ProjectController extends Controller
         ));
 
         if ($request->hasFile('attachments')) {
+            $nas = app(\App\Services\NasService::class);
             foreach ($request->file('attachments') as $file) {
                 $path = $file->store("task-attachments/{$task->id}", 'public');
                 ProjectAttachment::create([
@@ -473,6 +474,7 @@ class ProjectController extends Controller
                     'size'        => $file->getSize(),
                     'uploaded_by' => auth()->id(),
                 ]);
+                $nas->copyToNas($task, $path, $file->getClientOriginalName(), '03_Working');
             }
         }
 

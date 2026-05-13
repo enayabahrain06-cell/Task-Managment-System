@@ -16,6 +16,7 @@ use App\Notifications\SocialMediaPosted;
 use App\Notifications\TaskApproved;
 use App\Notifications\TaskRejected;
 use App\Services\AuditLogger;
+use App\Services\NasService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -275,6 +276,12 @@ class TaskApprovalController extends Controller
                 'reviewed_by' => auth()->id(),
                 'reviewed_at' => now(),
             ]);
+
+        if ($latestSub?->file_path) {
+            $nas = app(NasService::class);
+            $nas->copyToNas($task, $latestSub->file_path, $latestSub->original_filename ?? basename($latestSub->file_path), '07_Delivered', $latestSub->version);
+            $nas->copyToNasDeliverable($task, $latestSub->file_path, $latestSub->original_filename ?? basename($latestSub->file_path));
+        }
 
         TaskLog::create([
             'task_id'  => $task->id,
@@ -627,6 +634,10 @@ class TaskApprovalController extends Controller
                 'reviewed_at' => now(),
             ]);
 
+        if ($latestSub?->file_path) {
+            app(NasService::class)->copyToNas($task, $latestSub->file_path, $latestSub->original_filename ?? basename($latestSub->file_path), '06_Rejected', $latestSub->version);
+        }
+
         TaskLog::create([
             'task_id'  => $task->id,
             'user_id'  => auth()->id(),
@@ -782,6 +793,9 @@ class TaskApprovalController extends Controller
         $notes     = $request->input('note', []);
         $recorded  = [];
 
+        $nas         = app(NasService::class);
+        $approvedSub = $task->submissions()->where('status', 'approved')->latest()->first();
+
         foreach ($platforms as $i => $platform) {
             $url  = $urls[$i] ?? null;
             $note = $notes[$i] ?? null;
@@ -804,6 +818,25 @@ class TaskApprovalController extends Controller
                 'note'     => 'Posted on ' . $label . ($url ? ' — ' . $url : ''),
                 'metadata' => ['platform' => $platform, 'post_url' => $url, 'note' => $note],
             ]);
+
+            // Copy approved file + post info to Social_Media NAS folder
+            if ($approvedSub?->file_path) {
+                $nas->copyToNasSocial(
+                    $task,
+                    $approvedSub->file_path,
+                    $approvedSub->original_filename ?? basename($approvedSub->file_path),
+                    $platform,
+                    [
+                        'task_title' => $task->title,
+                        'company'    => $task->customer?->name ?? $task->project?->customer?->name ?? '—',
+                        'platform'   => $platform,
+                        'posted_by'  => auth()->user()->name . ' (' . auth()->user()->email . ')',
+                        'posted_at'  => now()->format('D, d M Y H:i'),
+                        'post_url'   => $url ?: '',
+                        'note'       => $note ?: '',
+                    ]
+                );
+            }
         }
 
         if (!$task->social_posted_at) {
