@@ -340,7 +340,7 @@
         </div>
 
         {{-- Task & Project Attachments --}}
-        @php $allAttachments = $task->attachments->merge($task->project->attachments); @endphp
+        @php $allAttachments = $task->attachments->merge($task->project && !$task->project->is_quick ? $task->project->attachments->whereNull('task_id') : collect()); @endphp
         @if($allAttachments->isNotEmpty())
         @php
             $attachmentsJson = $allAttachments->map(fn($a) => [

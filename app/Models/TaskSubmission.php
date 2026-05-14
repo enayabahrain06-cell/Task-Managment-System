@@ -36,7 +36,7 @@ class TaskSubmission extends Model
 
     public function fileUrl(): ?string
     {
-        return $this->file_path ? Storage::url($this->file_path) : null;
+        return $this->file_path ? route('submissions.file', $this) . '?inline=1' : null;
     }
 
     public function noteEdits(): HasMany

@@ -107,6 +107,22 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/social/{task}',              [AdminTaskApprovalController::class, 'showSocial'])->name('social.show');
     Route::post('/social/{task}/add-post',    [AdminTaskApprovalController::class, 'addPost'])->name('social.add-post');
     Route::post('/social/{task}/posted',      [AdminTaskApprovalController::class, 'markPosted'])->name('social.posted'); // legacy
+
+    // Submission file download — shared across all roles (add ?inline=1 for browser preview)
+    Route::get('/submissions/{submission}/file', function (\App\Models\TaskSubmission $submission) {
+        abort_unless($submission->file_path, 404);
+        $inline = request()->boolean('inline');
+        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($submission->file_path)) {
+            $fullPath = storage_path('app/public/' . $submission->file_path);
+            return $inline
+                ? response()->file($fullPath)
+                : \Illuminate\Support\Facades\Storage::disk('public')->download($submission->file_path, $submission->original_filename ?? 'file');
+        }
+        if ($submission->nas_path) {
+            return app(\App\Services\NasService::class)->downloadFromNas($submission->nas_path, $submission->original_filename ?? 'file', $inline);
+        }
+        abort(404, 'File not found.');
+    })->name('submissions.file');
 });
 
 // Admin routes

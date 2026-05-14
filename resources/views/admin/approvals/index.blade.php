@@ -1375,7 +1375,7 @@
                             customer_name:        @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
                             customer_email:       @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
                             customer_phone:       @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
-                            submission_url:       @js($latestSub?->file_path ? url(Storage::url($latestSub->file_path)) : ($latestSub?->delivery_url ?? null)),
+                            submission_url:       @js($latestSub?->file_path ? route('submissions.file',$latestSub).'?inline=1' : ($latestSub?->delivery_url ?? null)),
                             submission_name:      @js($latestSub?->original_filename ?? ($latestSub?->file_path ? basename($latestSub->file_path) : ($latestSub?->delivery_url ? 'Delivery Link' : null))),
                             submission_is_link:   @js(!$latestSub?->file_path && $latestSub?->delivery_url),
                         })"
@@ -1544,7 +1544,7 @@
                 'deadline'      => $task->deadline?->format(config('app.date_format', 'M d, Y')),
                 'is_overdue'    => $isOverdue2,
                 'versions'      => $task->submissions->count(),
-                'submission_url'     => $latestSub2?->file_path ? url(Storage::url($latestSub2->file_path)) : ($latestSub2?->delivery_url ?? null),
+                'submission_url'     => $latestSub2?->file_path ? route('submissions.file',$latestSub2).'?inline=1' : ($latestSub2?->delivery_url ?? null),
                 'submission_name'    => $latestSub2?->original_filename ?? ($latestSub2?->file_path ? basename($latestSub2->file_path) : ($latestSub2?->delivery_url ? 'Delivery Link' : null)),
                 'submission_is_link' => !$latestSub2?->file_path && $latestSub2?->delivery_url,
                 'approve_url'          => route('admin.tasks.approve', $task),
@@ -1607,7 +1607,7 @@
                                 customer_name:        @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
                                 customer_email:       @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
                                 customer_phone:       @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
-                                submission_url:       @js($latestSub2?->file_path ? url(Storage::url($latestSub2->file_path)) : ($latestSub2?->delivery_url ?? null)),
+                                submission_url:       @js($latestSub2?->file_path ? route('submissions.file',$latestSub2).'?inline=1' : ($latestSub2?->delivery_url ?? null)),
                                 submission_name:      @js($latestSub2?->original_filename ?? ($latestSub2?->file_path ? basename($latestSub2->file_path) : ($latestSub2?->delivery_url ? 'Delivery Link' : null))),
                                 submission_is_link:   @js(!$latestSub2?->file_path && $latestSub2?->delivery_url),
                             })"
@@ -1844,7 +1844,7 @@
                             customer_name:        @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
                             customer_email:       @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
                             customer_phone:       @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
-                            submission_url:       @js($latestSubAw?->file_path ? url(Storage::url($latestSubAw->file_path)) : ($latestSubAw?->delivery_url ?? null)),
+                            submission_url:       @js($latestSubAw?->file_path ? route('submissions.file',$latestSubAw).'?inline=1' : ($latestSubAw?->delivery_url ?? null)),
                             submission_name:      @js($latestSubAw?->original_filename ?? ($latestSubAw?->file_path ? basename($latestSubAw->file_path) : ($latestSubAw?->delivery_url ? 'Delivery Link' : null))),
                             submission_is_link:   @js(!$latestSubAw?->file_path && $latestSubAw?->delivery_url),
                         })"

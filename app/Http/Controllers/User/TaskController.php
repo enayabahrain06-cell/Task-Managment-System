@@ -339,7 +339,7 @@ class TaskController extends Controller
         }
 
         $task->load([
-            'project.attachments' => fn($q) => $q->whereNull('task_id'),
+            'project.attachments' => fn($q) => $q->whereNull('task_id')->whereHas('project', fn($p) => $p->where('is_quick', false)),
             'project.customer', 'assignee', 'assignees', 'reviewer', 'creator', 'customer',
             'socialAssignee', 'socialPosts', 'logs.user',
             'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor',

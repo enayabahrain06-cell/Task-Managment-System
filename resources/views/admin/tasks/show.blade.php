@@ -731,7 +731,7 @@
         </div>
 
         {{-- Task & Project Attachments --}}
-        @php $allAttachments = $task->attachments->merge($task->project->attachments); @endphp
+        @php $allAttachments = $task->attachments->merge($task->project && !$task->project->is_quick ? $task->project->attachments->whereNull('task_id') : collect()); @endphp
         <div x-data="{
                 open: false, att: null,
                 uploading: false,
@@ -923,7 +923,7 @@
             $previewPhone   = $task->customer?->phone ?? $task->project?->customer?->phone ?? null;
             $previewName    = $task->customer?->name  ?? $task->project?->customer?->name  ?? 'Customer';
             $previewSub     = $task->submissions->first();
-            $previewFile    = $previewSub?->file_path ? url(Storage::url($previewSub->file_path)) : null;
+            $previewFile    = $previewSub?->file_path ? route('submissions.file',$previewSub).'?inline=1' : null;
             $previewMsgBase = "Hello {$previewName}, your design for \"{$task->title}\" has been submitted for review. We'd love your feedback before we finalize approval.";
             $previewMsg     = $previewMsgBase;
             if ($previewFile) $previewMsg .= "\n\nView design: {$previewFile}";
@@ -949,7 +949,7 @@
                             customer_name:   @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
                             customer_email:  @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
                             customer_phone:  @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
-                            submission_url:  @js($task->submissions->first()?->file_path ? url(Storage::url($task->submissions->first()->file_path)) : $task->submissions->first()?->delivery_url),
+                            submission_url:  @js($task->submissions->first()?->file_path ? route('submissions.file',$task->submissions->first()).'?inline=1' : $task->submissions->first()?->delivery_url),
                             submission_name: @js($task->submissions->first()?->original_filename ?? ($task->submissions->first()?->file_path ? basename($task->submissions->first()->file_path) : ($task->submissions->first()?->delivery_url ? 'Open Link' : null))),
                         })"
                         style="width:100%;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;padding:10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(16,185,129,.25);transition:opacity .15s;"
@@ -1033,7 +1033,7 @@
                         customer_name:   @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
                         customer_email:  @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
                         customer_phone:  @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
-                        submission_url:  @js($task->submissions->first()?->file_path ? url(Storage::url($task->submissions->first()->file_path)) : null),
+                        submission_url:  @js($task->submissions->first()?->file_path ? route('submissions.file',$task->submissions->first()).'?inline=1' : null),
                         submission_name: @js($task->submissions->first()?->original_filename ?? ($task->submissions->first()?->file_path ? basename($task->submissions->first()->file_path) : null)),
                     })"
                     style="width:100%;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;padding:11px;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;box-shadow:0 4px 14px rgba(16,185,129,.35);transition:opacity .15s;"
