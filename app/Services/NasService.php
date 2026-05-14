@@ -5,13 +5,27 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\Setting;
 use App\Models\Task;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class NasService
 {
+    public function isEnabled(): bool
+    {
+        return Setting::get('storage_omv_enabled', '0') === '1'
+            && Setting::get('storage_omv_protocol', '') === 'smb'
+            && Setting::get('storage_omv_host', '') !== ''
+            && Setting::get('storage_omv_share', '') !== '';
+    }
+
+    /** True when files should live ONLY on the NAS (no local retention). */
+    public function isNetworkOnly(): bool
+    {
+        return $this->isEnabled() && Setting::get('storage_omv_only', '0') === '1';
+    }
+
     /**
      * Create the standard folder structure for a new customer on the NAS.
-     * Called automatically when a customer is created.
      */
     public function createCustomerFolders(Customer $customer): void
     {
@@ -37,24 +51,16 @@ class NasService
         }
     }
 
-    public function isEnabled(): bool
-    {
-        return Setting::get('storage_omv_enabled', '0') === '1'
-            && Setting::get('storage_omv_protocol', '') === 'smb'
-            && Setting::get('storage_omv_host', '') !== ''
-            && Setting::get('storage_omv_share', '') !== '';
-    }
-
     /**
      * Copy a comment file or task attachment to Customers/{company}/References/{year}/{month}/.
-     * Gives easy top-level access to all files exchanged on a customer's tasks.
+     * Returns the NAS path on success, or null on failure.
      */
-    public function copyToNasReference(Task $task, string $localPath, string $originalFilename): bool
+    public function copyToNasReference(Task $task, string $localPath, string $originalFilename): ?string
     {
-        if (!$this->isEnabled()) return false;
+        if (!$this->isEnabled()) return null;
 
         $localFull = storage_path('app/public/' . $localPath);
-        if (!file_exists($localFull)) return false;
+        if (!file_exists($localFull)) return null;
 
         $cfg      = $this->cfg();
         $root     = $cfg['root'];
@@ -62,41 +68,34 @@ class NasService
         $month    = $task->created_at->format('Y-m');
         $customer = $task->customer ?? $task->project?->customer;
 
-        if (!$customer) return false;
+        if (!$customer) return null;
 
         $company = $this->slug($customer->name);
         $nasDir  = "{$root}/Customers/{$company}/References/{$year}/{$month}";
 
         $this->ensureFolders($cfg, $nasDir);
 
-        $ext     = pathinfo($localFull, PATHINFO_EXTENSION);
-        $tmpName = 'nas_' . uniqid() . ($ext ? ".{$ext}" : '');
-        $tmpFull = sys_get_temp_dir() . '/' . $tmpName;
-        copy($localFull, $tmpFull);
+        $remote  = preg_replace('/[\\\\\/\'"<>|*?]/', '_', $originalFilename);
+        $nasPath = $nasDir . '/' . $remote;
+        $ok      = $this->smbPut($cfg, $localFull, $nasDir, $remote);
 
-        $target = escapeshellarg("//{$cfg['host']}/{$cfg['share']}");
-        $cred   = escapeshellarg("{$cfg['user']}%{$cfg['pass']}");
-        $remote = preg_replace('/[\\\\\/\'"<>|*?]/', '_', $originalFilename);
+        if ($ok && $this->isNetworkOnly()) {
+            $this->deleteLocal($localPath);
+        }
 
-        exec("smbclient {$target} -U {$cred} -c " .
-            escapeshellarg("lcd \"" . sys_get_temp_dir() . "\"; cd \"{$nasDir}\"; put \"{$tmpName}\" \"{$remote}\"") .
-            ' 2>&1', $out, $code);
-
-        @unlink($tmpFull);
-
-        return $code === 0;
+        return $ok ? $nasPath : null;
     }
 
     /**
      * Copy the delivered file to Customers/{company}/Deliverables/{year}/{month}/.
-     * Called when a task is marked as Delivered.
+     * Returns the NAS path on success, or null on failure.
      */
-    public function copyToNasDeliverable(Task $task, string $localPath, string $originalFilename): bool
+    public function copyToNasDeliverable(Task $task, string $localPath, string $originalFilename): ?string
     {
-        if (!$this->isEnabled()) return false;
+        if (!$this->isEnabled()) return null;
 
         $localFull = storage_path('app/public/' . $localPath);
-        if (!file_exists($localFull)) return false;
+        if (!file_exists($localFull)) return null;
 
         $cfg      = $this->cfg();
         $root     = $cfg['root'];
@@ -104,43 +103,34 @@ class NasService
         $month    = $task->created_at->format('Y-m');
         $customer = $task->customer ?? $task->project?->customer;
 
-        if (!$customer) return false;
+        if (!$customer) return null;
 
         $company = $this->slug($customer->name);
         $nasDir  = "{$root}/Customers/{$company}/Deliverables/{$year}/{$month}";
 
         $this->ensureFolders($cfg, $nasDir);
 
-        $ext     = pathinfo($localFull, PATHINFO_EXTENSION);
-        $tmpName = 'nas_' . uniqid() . ($ext ? ".{$ext}" : '');
-        $tmpFull = sys_get_temp_dir() . '/' . $tmpName;
-        copy($localFull, $tmpFull);
+        $remote  = preg_replace('/[\\\\\/\'"<>|*?]/', '_', $originalFilename);
+        $nasPath = $nasDir . '/' . $remote;
+        $ok      = $this->smbPut($cfg, $localFull, $nasDir, $remote);
 
-        $target = escapeshellarg("//{$cfg['host']}/{$cfg['share']}");
-        $cred   = escapeshellarg("{$cfg['user']}%{$cfg['pass']}");
-        $remote = preg_replace('/[\\\\\/\'"<>|*?]/', '_', $originalFilename);
+        if ($ok && $this->isNetworkOnly()) {
+            $this->deleteLocal($localPath);
+        }
 
-        exec("smbclient {$target} -U {$cred} -c " .
-            escapeshellarg("lcd \"" . sys_get_temp_dir() . "\"; cd \"{$nasDir}\"; put \"{$tmpName}\" \"{$remote}\"") .
-            ' 2>&1', $out, $code);
-
-        @unlink($tmpFull);
-
-        return $code === 0;
+        return $ok ? $nasPath : null;
     }
 
     /**
-     * Copy an approved task file + a post_info.txt to the Social_Media NAS folder.
-     * Called when a task is marked as posted to social media.
-     *
-     * @param array $postInfo  ['platform','posted_by','posted_at','post_url','note','task_title','company']
+     * Copy an approved task file to the Social_Media NAS folder.
+     * Returns the NAS path on success, or null on failure.
      */
-    public function copyToNasSocial(Task $task, string $localPath, string $originalFilename, string $platform, array $postInfo = []): bool
+    public function copyToNasSocial(Task $task, string $localPath, string $originalFilename, string $platform, array $postInfo = []): ?string
     {
-        if (!$this->isEnabled()) return false;
+        if (!$this->isEnabled()) return null;
 
         $localFull = storage_path('app/public/' . $localPath);
-        if (!file_exists($localFull)) return false;
+        if (!file_exists($localFull)) return null;
 
         $cfg    = $this->cfg();
         $nasDir = $this->nasDirSocial($task, $platform);
@@ -151,9 +141,8 @@ class NasService
         $cred   = escapeshellarg("{$cfg['user']}%{$cfg['pass']}");
         $tmpDir = sys_get_temp_dir();
 
-        // Upload the design file
-        $ext         = pathinfo($localFull, PATHINFO_EXTENSION);
-        $tmpDesign   = 'nas_' . uniqid() . ($ext ? ".{$ext}" : '');
+        $ext       = pathinfo($localFull, PATHINFO_EXTENSION);
+        $tmpDesign = 'nas_' . uniqid() . ($ext ? ".{$ext}" : '');
         copy($localFull, $tmpDir . '/' . $tmpDesign);
         $remote = preg_replace('/[\\\\\/\'"<>|*?]/', '_', $originalFilename);
 
@@ -162,7 +151,6 @@ class NasService
             ' 2>&1', $out, $code);
         @unlink($tmpDir . '/' . $tmpDesign);
 
-        // Write the post info text file
         $platformLabels = [
             'facebook'  => 'Facebook',  'instagram' => 'Instagram', 'twitter'   => 'Twitter / X',
             'linkedin'  => 'LinkedIn',  'tiktok'    => 'TikTok',    'youtube'   => 'YouTube',
@@ -189,26 +177,30 @@ class NasService
         $tmpInfo     = 'nas_info_' . uniqid() . '.txt';
         file_put_contents($tmpDir . '/' . $tmpInfo, $infoContent);
 
-        $infoRemote = '_post_info.txt';
         exec("smbclient {$target} -U {$cred} -c " .
-            escapeshellarg("lcd \"{$tmpDir}\"; cd \"{$nasDir}\"; put \"{$tmpInfo}\" \"{$infoRemote}\"") .
+            escapeshellarg("lcd \"{$tmpDir}\"; cd \"{$nasDir}\"; put \"{$tmpInfo}\" \"_post_info.txt\"") .
             ' 2>&1');
         @unlink($tmpDir . '/' . $tmpInfo);
 
-        return $code === 0;
+        $nasPath = $nasDir . '/' . $remote;
+
+        if ($code === 0 && $this->isNetworkOnly()) {
+            $this->deleteLocal($localPath);
+        }
+
+        return $code === 0 ? $nasPath : null;
     }
 
     /**
      * Copy a locally stored file to the correct NAS folder for the given task and stage.
-     * $localPath is relative to the public disk (e.g. "task-attachments/5/file.pdf").
-     * $stage is one of: 03_Working | 04_Review | 05_Approved | 06_Rejected | 07_Delivered
+     * Returns the NAS path on success, or null on failure.
      */
-    public function copyToNas(Task $task, string $localPath, string $originalFilename, string $stage = '03_Working', int $version = 0): bool
+    public function copyToNas(Task $task, string $localPath, string $originalFilename, string $stage = '03_Working', int $version = 0): ?string
     {
-        if (!$this->isEnabled()) return false;
+        if (!$this->isEnabled()) return null;
 
         $localFull = storage_path('app/public/' . $localPath);
-        if (!file_exists($localFull)) return false;
+        if (!file_exists($localFull)) return null;
 
         $cfg    = $this->cfg();
         $nasDir = $this->nasDir($task, $stage);
@@ -218,26 +210,70 @@ class NasService
 
         $this->ensureFolders($cfg, $nasDir);
 
-        // Copy to a temp file with a safe name to avoid nested shell quoting issues
+        $remote  = preg_replace('/[\\\\\/\'"<>|*?]/', '_', $originalFilename);
+        $nasPath = $nasDir . '/' . $remote;
+        $ok      = $this->smbPut($cfg, $localFull, $nasDir, $remote);
+
+        if ($ok && $this->isNetworkOnly()) {
+            $this->deleteLocal($localPath);
+        }
+
+        return $ok ? $nasPath : null;
+    }
+
+    /**
+     * Serve a file from the NAS.
+     * Pass $inline=true to serve inline (for browser preview); false forces a download.
+     */
+    public function downloadFromNas(string $nasPath, string $filename, bool $inline = false): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $cfg    = $this->cfg();
+        $target = escapeshellarg("//{$cfg['host']}/{$cfg['share']}");
+        $cred   = escapeshellarg("{$cfg['user']}%{$cfg['pass']}");
+
+        $dir     = dirname($nasPath);
+        $remote  = basename($nasPath);
+        $ext     = pathinfo($remote, PATHINFO_EXTENSION);
+        $tmpFile = sys_get_temp_dir() . '/nas_dl_' . uniqid() . ($ext ? ".{$ext}" : '');
+
+        exec("smbclient {$target} -U {$cred} -c " .
+            escapeshellarg("cd \"{$dir}\"; get \"{$remote}\" \"{$tmpFile}\"") .
+            ' 2>&1', $out, $code);
+
+        abort_if($code !== 0 || !file_exists($tmpFile), 404, 'File not available on network storage.');
+
+        if ($inline) {
+            $response = response()->file($tmpFile);
+            $response->deleteFileAfterSend(true);
+            return $response;
+        }
+
+        return response()->download($tmpFile, $filename)->deleteFileAfterSend(true);
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    private function smbPut(array $cfg, string $localFull, string $nasDir, string $remote): bool
+    {
+        $target  = escapeshellarg("//{$cfg['host']}/{$cfg['share']}");
+        $cred    = escapeshellarg("{$cfg['user']}%{$cfg['pass']}");
         $ext     = pathinfo($localFull, PATHINFO_EXTENSION);
         $tmpName = 'nas_' . uniqid() . ($ext ? ".{$ext}" : '');
         $tmpFull = sys_get_temp_dir() . '/' . $tmpName;
         copy($localFull, $tmpFull);
-
-        $target = escapeshellarg("//{$cfg['host']}/{$cfg['share']}");
-        $cred   = escapeshellarg("{$cfg['user']}%{$cfg['pass']}");
-        $remote = preg_replace('/[\\\\\/\'"<>|*?]/', '_', $originalFilename);
 
         exec("smbclient {$target} -U {$cred} -c " .
             escapeshellarg("lcd \"" . sys_get_temp_dir() . "\"; cd \"{$nasDir}\"; put \"{$tmpName}\" \"{$remote}\"") .
             ' 2>&1', $out, $code);
 
         @unlink($tmpFull);
-
         return $code === 0;
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    private function deleteLocal(string $localPath): void
+    {
+        Storage::disk('public')->delete($localPath);
+    }
 
     private function cfg(): array
     {
@@ -276,16 +312,12 @@ class NasService
         $month = $task->created_at->format('Y-m');
 
         if ($task->project?->is_quick ?? true) {
-            $title = $this->slug($task->title);
-
-            // Quick tasks with a customer go under Customers/{company}/Quick_Tasks/
+            $title    = $this->slug($task->title);
             $customer = $task->customer ?? $task->project?->customer;
             if ($customer) {
                 $company = $this->slug($customer->name);
                 return "{$root}/Customers/{$company}/Quick_Tasks/{$year}/{$month}/{$title}/{$stage}";
             }
-
-            // No customer — root Quick_Tasks bucket
             return "{$root}/Quick_Tasks/{$year}/{$month}/{$title}/{$stage}";
         }
 
@@ -299,9 +331,9 @@ class NasService
 
     private function ensureFolders(array $cfg, string $path): void
     {
-        $target = escapeshellarg("//{$cfg['host']}/{$cfg['share']}");
-        $cred   = escapeshellarg("{$cfg['user']}%{$cfg['pass']}");
-        $parts  = explode('/', $path);
+        $target  = escapeshellarg("//{$cfg['host']}/{$cfg['share']}");
+        $cred    = escapeshellarg("{$cfg['user']}%{$cfg['pass']}");
+        $parts   = explode('/', $path);
         $current = '';
 
         foreach ($parts as $part) {

@@ -11,7 +11,7 @@ class TaskSubmission extends Model
 {
     protected $fillable = [
         'task_id', 'user_id', 'version', 'note',
-        'file_path', 'original_filename', 'delivery_url',
+        'file_path', 'nas_path', 'original_filename', 'delivery_url',
         'status', 'admin_note', 'reviewed_by', 'reviewed_at',
     ];
 

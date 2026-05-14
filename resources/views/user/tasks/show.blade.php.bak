@@ -992,6 +992,24 @@
                             </a>
                             @endif
                         </div>
+                        @elseif($log->action === 'attachment_added' && isset($meta['filenames']))
+                        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;">
+                            <span style="font-size:11px;background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                                <i class="fa fa-paperclip" style="font-size:9px;"></i>
+                                {{ count($meta['filenames']) }} file(s) added by <strong>{{ $meta['uploaded_by'] }}</strong>
+                            </span>
+                            @foreach($meta['filenames'] as $fn)
+                            <span style="font-size:11px;background:#F3F4F6;color:#374151;padding:2px 8px;border-radius:6px;">{{ $fn }}</span>
+                            @endforeach
+                        </div>
+                        @elseif($log->action === 'attachment_deleted' && isset($meta['filename']))
+                        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;">
+                            <span style="font-size:11px;background:#FEE2E2;color:#DC2626;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                                <i class="fa fa-trash" style="font-size:9px;"></i>
+                                deleted by <strong>{{ $meta['deleted_by'] }}</strong>
+                            </span>
+                            <span style="font-size:11px;background:#F3F4F6;color:#374151;padding:2px 8px;border-radius:6px;text-decoration:line-through;opacity:.7;">{{ $meta['filename'] }}</span>
+                        </div>
                         @elseif(isset($meta['old_status'], $meta['new_status']))
                         <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;display:inline-block;margin-top:3px;">
                             {{ str_replace('_',' ',$meta['old_status']) }} → <strong>{{ str_replace('_',' ',$meta['new_status']) }}</strong>
@@ -1000,7 +1018,7 @@
                         @if(isset($meta['rejection_reason']))
                         <p style="font-size:12px;color:#DC2626;background:#FEF2F2;padding:6px 10px;border-radius:8px;border-left:3px solid #EF4444;margin:5px 0 0;">"{{ $meta['rejection_reason'] }}"</p>
                         @endif
-                        @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','task_reassigned','task_transferred','deadline_updated','auto_paused','social_posted','social_post_edited']))
+                        @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','task_reassigned','task_transferred','deadline_updated','auto_paused','social_posted','social_post_edited','attachment_added','attachment_deleted']))
                         <p style="font-size:12px;color:#6B7280;background:#F9FAFB;padding:6px 10px;border-radius:8px;border-left:3px solid #E5E7EB;margin:5px 0 0;">"{{ $log->note }}"</p>
                         @endif
                     </div>
@@ -1251,6 +1269,7 @@
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                             <span style="font-size:12px;font-weight:600;color:#111827;">{{ $comment->user->name ?? 'Unknown' }}</span>
                             @if($isAdmin)<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:#EEF2FF;color:#4F46E5;">Admin</span>@endif
+                            @if($comment->file_path)<span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:10px;background:#D1FAE5;color:#065F46;display:inline-flex;align-items:center;gap:3px;"><i class="fa fa-paperclip" style="font-size:9px;"></i> {{ $comment->original_filename }}</span>@endif
                             @if($isFirstWork)<span style="font-size:10px;font-weight:700;padding:1px 8px;border-radius:10px;background:#D1FAE5;color:#059669;display:inline-flex;align-items:center;gap:3px;"><i class="fa fa-circle-play" style="font-size:9px;"></i> Started Working</span>@endif
                             @if($comment->edits->isNotEmpty())
                             <button @click="showHistory=!showHistory" style="font-size:10px;background:#F3F4F6;color:#9CA3AF;border:none;padding:1px 6px;border-radius:4px;cursor:pointer;">edited</button>

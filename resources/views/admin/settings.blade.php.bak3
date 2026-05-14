@@ -1061,7 +1061,6 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         <form method="POST" action="{{ route('admin.settings.storage') }}">
                             @csrf
                             <input type="hidden" name="storage_omv_enabled"          value="0">
-                            <input type="hidden" name="storage_omv_only"             value="0">
                             <input type="hidden" name="storage_gdrive_enabled"        value="{{ $settings['storage_gdrive_enabled'] }}">
                             <input type="hidden" name="storage_gdrive_client_id"      value="{{ $settings['storage_gdrive_client_id'] }}">
                             <input type="hidden" name="storage_gdrive_folder_id"      value="{{ $settings['storage_gdrive_folder_id'] }}">
@@ -1088,7 +1087,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     </div>
                                     <div>
                                         <p style="font-size:14px;font-weight:700;color:{{ !$nasActive ? '#1E40AF' : '#374151' }};margin:0;">Local Storage</p>
-                                        <p style="font-size:11px;color:{{ !$nasActive ? '#3B82F6' : '#9CA3AF' }};margin:2px 0 0;">Server disk only</p>
+                                        <p style="font-size:11px;color:{{ !$nasActive ? '#3B82F6' : '#9CA3AF' }};margin:2px 0 0;">Server disk</p>
                                     </div>
                                     @if(!$nasActive)
                                     <div style="margin-left:auto;width:20px;height:20px;border-radius:50%;background:#4F46E5;display:flex;align-items:center;justify-content:center;">
@@ -1100,11 +1099,10 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </button>
                         </form>
 
-                        {{-- Network Storage (NAS only) --}}
+                        {{-- Network Storage --}}
                         <form method="POST" action="{{ route('admin.settings.storage') }}">
                             @csrf
                             <input type="hidden" name="storage_omv_enabled"          value="1">
-                            <input type="hidden" name="storage_omv_only"             value="1">
                             <input type="hidden" name="storage_gdrive_enabled"        value="{{ $settings['storage_gdrive_enabled'] }}">
                             <input type="hidden" name="storage_gdrive_client_id"      value="{{ $settings['storage_gdrive_client_id'] }}">
                             <input type="hidden" name="storage_gdrive_folder_id"      value="{{ $settings['storage_gdrive_folder_id'] }}">
@@ -1131,7 +1129,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     </div>
                                     <div>
                                         <p style="font-size:14px;font-weight:700;color:{{ $nasActive ? '#14532D' : '#374151' }};margin:0;">Network Storage</p>
-                                        <p style="font-size:11px;color:{{ $nasActive ? '#16A34A' : '#9CA3AF' }};margin:2px 0 0;">NAS / SMB only</p>
+                                        <p style="font-size:11px;color:{{ $nasActive ? '#16A34A' : '#9CA3AF' }};margin:2px 0 0;">NAS / SMB share</p>
                                     </div>
                                     @if($nasActive)
                                     <div style="margin-left:auto;width:20px;height:20px;border-radius:50%;background:#16A34A;display:flex;align-items:center;justify-content:center;">
@@ -1139,7 +1137,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     </div>
                                     @endif
                                 </div>
-                                <p style="font-size:12px;color:{{ $nasActive ? '#15803D' : '#6B7280' }};margin:0;line-height:1.5;">Files saved <strong>only</strong> to your NAS/SMB share. Local copies are removed after upload. Configure the server below.</p>
+                                <p style="font-size:12px;color:{{ $nasActive ? '#15803D' : '#6B7280' }};margin:0;line-height:1.5;">Files copied to your NAS/SMB share in addition to local storage. Configure the server below.</p>
                             </button>
                         </form>
 

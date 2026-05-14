@@ -234,24 +234,58 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     // Audit log
     Route::get('audit',                            [AdminAuditLogController::class, 'index'])->name('audit.index');
 
-    // Project attachment download
+    // Project attachment download (add ?inline=1 to serve inline for browser preview)
     Route::get('attachments/{attachment}/download', function (\App\Models\ProjectAttachment $attachment) {
         abort_unless($attachment->isFile(), 404);
-        return \Illuminate\Support\Facades\Storage::disk('public')
-            ->download($attachment->path, $attachment->name);
+        $inline = request()->boolean('inline');
+        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($attachment->path)) {
+            $fullPath = storage_path('app/public/' . $attachment->path);
+            return $inline
+                ? response()->file($fullPath)
+                : \Illuminate\Support\Facades\Storage::disk('public')->download($attachment->path, $attachment->name);
+        }
+        if ($attachment->nas_path) {
+            return app(\App\Services\NasService::class)->downloadFromNas($attachment->nas_path, $attachment->name, $inline);
+        }
+        abort(404, 'File not found.');
     })->name('attachments.download');
 
     // Task attachment upload & delete
     Route::post('tasks/{task}/attachments',               [\App\Http\Controllers\Admin\TaskController::class, 'addAttachment'])->name('tasks.attachments.add');
     Route::delete('tasks/{task}/attachments/{attachment}', [\App\Http\Controllers\Admin\TaskController::class, 'deleteAttachment'])->name('tasks.attachments.delete');
 
-    // Task submission file download
+    // Task submission file download (add ?inline=1 to serve inline for browser preview)
     Route::get('submissions/{submission}/download', function (\App\Models\TaskSubmission $submission) {
         abort_unless($submission->file_path, 404);
-        abort_unless(\Illuminate\Support\Facades\Storage::disk('public')->exists($submission->file_path), 404, 'File not found. It may have been deleted.');
-        return \Illuminate\Support\Facades\Storage::disk('public')
-            ->download($submission->file_path, $submission->original_filename ?? 'file');
+        $inline = request()->boolean('inline');
+        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($submission->file_path)) {
+            $fullPath = storage_path('app/public/' . $submission->file_path);
+            return $inline
+                ? response()->file($fullPath)
+                : \Illuminate\Support\Facades\Storage::disk('public')->download($submission->file_path, $submission->original_filename ?? 'file');
+        }
+        if ($submission->nas_path) {
+            return app(\App\Services\NasService::class)->downloadFromNas($submission->nas_path, $submission->original_filename ?? 'file', $inline);
+        }
+        abort(404, 'File not found. It may have been removed from local storage.');
     })->name('submissions.download');
+
+    // Task comment file download (add ?inline=1 to serve inline for browser preview)
+    Route::get('task-comments/{comment}/file', function (\App\Models\TaskComment $comment) {
+        abort_unless($comment->file_path, 404);
+        $inline   = request()->boolean('inline');
+        $filename = $comment->original_filename ?? 'file';
+        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($comment->file_path)) {
+            $fullPath = storage_path('app/public/' . $comment->file_path);
+            return $inline
+                ? response()->file($fullPath)
+                : \Illuminate\Support\Facades\Storage::disk('public')->download($comment->file_path, $filename);
+        }
+        if ($comment->nas_path) {
+            return app(\App\Services\NasService::class)->downloadFromNas($comment->nas_path, $filename, $inline);
+        }
+        abort(404, 'File not found.');
+    })->name('task-comments.file');
 });
 
 // Manager routes
@@ -286,13 +320,21 @@ Route::middleware([UserMiddleware::class])->prefix('user')->name('user.')->group
     Route::get('/reports', [UserReportsController::class, 'index'])->name('reports.index');
     Route::get('/reports/export', [UserReportsController::class, 'exportTasks'])->name('reports.export');
     Route::get('/attachments/{attachment}/download', function (\App\Models\ProjectAttachment $attachment) {
-        // Only allow users assigned to a task in that project
         $allowed = auth()->user()->tasks()
             ->where('project_id', $attachment->project_id)
             ->exists();
         abort_unless($allowed, 403);
         abort_unless($attachment->isFile(), 404);
-        return \Illuminate\Support\Facades\Storage::disk('public')
-            ->download($attachment->path, $attachment->name);
+        $inline = request()->boolean('inline');
+        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($attachment->path)) {
+            $fullPath = storage_path('app/public/' . $attachment->path);
+            return $inline
+                ? response()->file($fullPath)
+                : \Illuminate\Support\Facades\Storage::disk('public')->download($attachment->path, $attachment->name);
+        }
+        if ($attachment->nas_path) {
+            return app(\App\Services\NasService::class)->downloadFromNas($attachment->nas_path, $attachment->name, $inline);
+        }
+        abort(404, 'File not found.');
     })->name('attachments.download');
 });

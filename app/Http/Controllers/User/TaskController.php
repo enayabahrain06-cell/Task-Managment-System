@@ -464,18 +464,19 @@ class TaskController extends Controller
         } else {
             $nas = app(\App\Services\NasService::class);
             foreach ($files as $i => $file) {
-                $fp = $file->store('task-submissions/' . $task->id, 'public');
-                $fn = $file->getClientOriginalName();
+                $fp      = $file->store('task-submissions/' . $task->id, 'public');
+                $fn      = $file->getClientOriginalName();
+                $nasPath = $nas->copyToNas($task, $fp, $fn, '04_Review', $version);
                 TaskSubmission::create([
                     'task_id'           => $task->id,
                     'user_id'           => auth()->id(),
                     'version'           => $version,
                     'note'              => $i === 0 ? $note : null,
                     'file_path'         => $fp,
+                    'nas_path'          => $nasPath,
                     'original_filename' => $fn,
                     'status'            => 'submitted',
                 ]);
-                $nas->copyToNas($task, $fp, $fn, '04_Review', $version);
                 if ($i === 0) { $filePath = $fp; $originalFilename = $fn; }
             }
         }
@@ -528,9 +529,9 @@ class TaskController extends Controller
         if (!empty($uploadedFiles)) {
             $file             = reset($uploadedFiles);
             $originalFilename = $file->getClientOriginalName();
-            $filePath         = $file->store("task-comment-files/{$task->id}", 'public');
-            $nas = app(\App\Services\NasService::class);
-            $nas->copyToNas($task, $filePath, $originalFilename, '03_Working');
+            $nas      = app(\App\Services\NasService::class);
+            $filePath = $file->store("task-comment-files/{$task->id}", 'public');
+            $nasPath  = $nas->copyToNas($task, $filePath, $originalFilename, '03_Working');
             $nas->copyToNasReference($task, $filePath, $originalFilename);
         }
 
@@ -551,6 +552,7 @@ class TaskController extends Controller
             'user_id'           => auth()->id(),
             'body'              => $request->body,
             'file_path'         => $filePath,
+            'nas_path'          => $nasPath ?? null,
             'original_filename' => $originalFilename,
         ]);
 

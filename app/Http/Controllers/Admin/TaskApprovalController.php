@@ -278,9 +278,10 @@ class TaskApprovalController extends Controller
             ]);
 
         if ($latestSub?->file_path) {
-            $nas = app(NasService::class);
-            $nas->copyToNas($task, $latestSub->file_path, $latestSub->original_filename ?? basename($latestSub->file_path), '07_Delivered', $latestSub->version);
+            $nas     = app(NasService::class);
+            $nasPath = $nas->copyToNas($task, $latestSub->file_path, $latestSub->original_filename ?? basename($latestSub->file_path), '07_Delivered', $latestSub->version);
             $nas->copyToNasDeliverable($task, $latestSub->file_path, $latestSub->original_filename ?? basename($latestSub->file_path));
+            if ($nasPath) $latestSub->update(['nas_path' => $nasPath]);
         }
 
         TaskLog::create([
@@ -635,7 +636,9 @@ class TaskApprovalController extends Controller
             ]);
 
         if ($latestSub?->file_path) {
-            app(NasService::class)->copyToNas($task, $latestSub->file_path, $latestSub->original_filename ?? basename($latestSub->file_path), '06_Rejected', $latestSub->version);
+            $nas     = app(NasService::class);
+            $nasPath = $nas->copyToNas($task, $latestSub->file_path, $latestSub->original_filename ?? basename($latestSub->file_path), '06_Rejected', $latestSub->version);
+            if ($nasPath) $latestSub->update(['nas_path' => $nasPath]);
         }
 
         TaskLog::create([

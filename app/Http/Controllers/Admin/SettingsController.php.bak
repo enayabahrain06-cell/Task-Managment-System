@@ -98,6 +98,7 @@ class SettingsController extends Controller
         'storage_omv_username'  => '',
         'storage_omv_password'  => '',
         'storage_omv_path'      => '',
+        'storage_omv_share'     => '',
         // Storage folder structure
         'storage_root_path'            => 'Marketing_System',
         'storage_auto_create_folders'  => '1',
@@ -551,6 +552,7 @@ class SettingsController extends Controller
             'storage_omv_host'      => $request->input('storage_omv_host', ''),
             'storage_omv_port'      => $request->input('storage_omv_port', ''),
             'storage_omv_username'  => $request->input('storage_omv_username', ''),
+            'storage_omv_share'     => $request->input('storage_omv_share', ''),
             'storage_omv_path'      => $request->input('storage_omv_path', ''),
             'storage_root_path'           => $request->input('storage_root_path', 'Marketing_System'),
             'storage_auto_create_folders' => $request->boolean('storage_auto_create_folders') ? '1' : '0',
@@ -577,6 +579,29 @@ class SettingsController extends Controller
         AuditLogger::log('settings.updated', null, 'Storage settings updated', ['section' => 'storage']);
 
         return back()->with('success', 'Storage settings saved.')->withFragment('storage');
+    }
+
+    public function updateNasSchema(Request $request)
+    {
+        $request->validate(['schema_json' => 'required|string']);
+
+        $decoded = json_decode($request->schema_json, true);
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+            return back()->with('error', 'Invalid JSON — please check the schema and try again.')->withFragment('storage');
+        }
+
+        Setting::set('storage_nas_schema', json_encode($decoded));
+        AuditLogger::log('settings.updated', null, 'NAS folder schema updated', ['section' => 'storage']);
+
+        return back()->with('success', 'NAS folder schema saved.')->withFragment('storage');
+    }
+
+    public function resetNasSchema(Request $request)
+    {
+        Setting::where('key', 'storage_nas_schema')->delete();
+        AuditLogger::log('settings.updated', null, 'NAS folder schema reset to default', ['section' => 'storage']);
+
+        return back()->with('success', 'NAS folder schema reset to default.')->withFragment('storage');
     }
 
     public function testStorageGdrive(Request $request)

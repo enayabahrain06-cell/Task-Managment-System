@@ -548,6 +548,7 @@ class SettingsController extends Controller
             'storage_onedrive_tenant_id'  => $request->input('storage_onedrive_tenant_id', ''),
             'storage_onedrive_folder_id'  => $request->input('storage_onedrive_folder_id', ''),
             'storage_omv_enabled'   => $request->boolean('storage_omv_enabled') ? '1' : '0',
+            'storage_omv_only'      => $request->boolean('storage_omv_only') ? '1' : '0',
             'storage_omv_protocol'  => $request->input('storage_omv_protocol', 'smb'),
             'storage_omv_host'      => $request->input('storage_omv_host', ''),
             'storage_omv_port'      => $request->input('storage_omv_port', ''),

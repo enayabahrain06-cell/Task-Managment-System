@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 
 class TaskComment extends Model
 {
-    protected $fillable = ['task_id', 'user_id', 'body', 'file_path', 'original_filename'];
+    protected $fillable = ['task_id', 'user_id', 'body', 'file_path', 'nas_path', 'original_filename'];
 
     public function fileUrl(): ?string
     {

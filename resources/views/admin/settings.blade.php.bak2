@@ -1061,7 +1061,6 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         <form method="POST" action="{{ route('admin.settings.storage') }}">
                             @csrf
                             <input type="hidden" name="storage_omv_enabled"          value="0">
-                            <input type="hidden" name="storage_omv_only"             value="0">
                             <input type="hidden" name="storage_gdrive_enabled"        value="{{ $settings['storage_gdrive_enabled'] }}">
                             <input type="hidden" name="storage_gdrive_client_id"      value="{{ $settings['storage_gdrive_client_id'] }}">
                             <input type="hidden" name="storage_gdrive_folder_id"      value="{{ $settings['storage_gdrive_folder_id'] }}">
@@ -1088,7 +1087,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     </div>
                                     <div>
                                         <p style="font-size:14px;font-weight:700;color:{{ !$nasActive ? '#1E40AF' : '#374151' }};margin:0;">Local Storage</p>
-                                        <p style="font-size:11px;color:{{ !$nasActive ? '#3B82F6' : '#9CA3AF' }};margin:2px 0 0;">Server disk only</p>
+                                        <p style="font-size:11px;color:{{ !$nasActive ? '#3B82F6' : '#9CA3AF' }};margin:2px 0 0;">Server disk</p>
                                     </div>
                                     @if(!$nasActive)
                                     <div style="margin-left:auto;width:20px;height:20px;border-radius:50%;background:#4F46E5;display:flex;align-items:center;justify-content:center;">
@@ -1100,11 +1099,10 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </button>
                         </form>
 
-                        {{-- Network Storage (NAS only) --}}
+                        {{-- Network Storage --}}
                         <form method="POST" action="{{ route('admin.settings.storage') }}">
                             @csrf
                             <input type="hidden" name="storage_omv_enabled"          value="1">
-                            <input type="hidden" name="storage_omv_only"             value="1">
                             <input type="hidden" name="storage_gdrive_enabled"        value="{{ $settings['storage_gdrive_enabled'] }}">
                             <input type="hidden" name="storage_gdrive_client_id"      value="{{ $settings['storage_gdrive_client_id'] }}">
                             <input type="hidden" name="storage_gdrive_folder_id"      value="{{ $settings['storage_gdrive_folder_id'] }}">
@@ -1131,7 +1129,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     </div>
                                     <div>
                                         <p style="font-size:14px;font-weight:700;color:{{ $nasActive ? '#14532D' : '#374151' }};margin:0;">Network Storage</p>
-                                        <p style="font-size:11px;color:{{ $nasActive ? '#16A34A' : '#9CA3AF' }};margin:2px 0 0;">NAS / SMB only</p>
+                                        <p style="font-size:11px;color:{{ $nasActive ? '#16A34A' : '#9CA3AF' }};margin:2px 0 0;">NAS / SMB share</p>
                                     </div>
                                     @if($nasActive)
                                     <div style="margin-left:auto;width:20px;height:20px;border-radius:50%;background:#16A34A;display:flex;align-items:center;justify-content:center;">
@@ -1139,7 +1137,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     </div>
                                     @endif
                                 </div>
-                                <p style="font-size:12px;color:{{ $nasActive ? '#15803D' : '#6B7280' }};margin:0;line-height:1.5;">Files saved <strong>only</strong> to your NAS/SMB share. Local copies are removed after upload. Configure the server below.</p>
+                                <p style="font-size:12px;color:{{ $nasActive ? '#15803D' : '#6B7280' }};margin:0;line-height:1.5;">Files copied to your NAS/SMB share in addition to local storage. Configure the server below.</p>
                             </button>
                         </form>
 
@@ -1526,6 +1524,113 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Configure how files are structured on your connected storage</p>
                     </div>
                 </div>
+                <form method="POST" action="{{ route('admin.settings.storage') }}">
+                    @csrf
+                    {{-- preserve connection toggles --}}
+                    <input type="hidden" name="storage_gdrive_enabled"         value="{{ $settings['storage_gdrive_enabled'] }}">
+                    <input type="hidden" name="storage_gdrive_client_id"       value="{{ $settings['storage_gdrive_client_id'] }}">
+                    <input type="hidden" name="storage_gdrive_folder_id"       value="{{ $settings['storage_gdrive_folder_id'] }}">
+                    <input type="hidden" name="storage_gdrive_delegate_email"  value="{{ $settings['storage_gdrive_delegate_email'] }}">
+                    <input type="hidden" name="storage_onedrive_enabled"    value="{{ $settings['storage_onedrive_enabled'] }}">
+                    <input type="hidden" name="storage_onedrive_client_id"  value="{{ $settings['storage_onedrive_client_id'] }}">
+                    <input type="hidden" name="storage_onedrive_tenant_id"  value="{{ $settings['storage_onedrive_tenant_id'] }}">
+                    <input type="hidden" name="storage_onedrive_folder_id"  value="{{ $settings['storage_onedrive_folder_id'] }}">
+                    <input type="hidden" name="storage_omv_enabled"   value="{{ $settings['storage_omv_enabled'] }}">
+                    <input type="hidden" name="storage_omv_protocol"  value="{{ $settings['storage_omv_protocol'] }}">
+                    <input type="hidden" name="storage_omv_host"      value="{{ $settings['storage_omv_host'] }}">
+                    <input type="hidden" name="storage_omv_port"      value="{{ $settings['storage_omv_port'] }}">
+                    <input type="hidden" name="storage_omv_username"  value="{{ $settings['storage_omv_username'] }}">
+                    <input type="hidden" name="storage_omv_path"      value="{{ $settings['storage_omv_path'] }}">
+
+                    <div class="scard-body">
+
+                        {{-- Root path --}}
+                        <div class="sf-group">
+                            <label class="sf-label">Root Folder Name</label>
+                            <input type="text" name="storage_root_path" class="sf-input"
+                                   value="{{ $settings['storage_root_path'] }}"
+                                   placeholder="Marketing_System">
+                            <p class="sf-hint">Top-level folder created on your storage. All company folders will live inside it.</p>
+                        </div>
+
+                        {{-- File naming pattern --}}
+                        <div class="sf-group">
+                            <label class="sf-label">File Naming Pattern</label>
+                            <input type="text" name="storage_file_naming_pattern" class="sf-input"
+                                   value="{{ $settings['storage_file_naming_pattern'] }}"
+                                   placeholder="{company}_{project}_{type}_{desc}_{date}_v{ver}">
+                            <p class="sf-hint">Available tokens: <code>{company}</code> <code>{project}</code> <code>{type}</code> <code>{desc}</code> <code>{date}</code> <code>{ver}</code> — Example: <strong>ACME_PRJ001_Post_EidOffer_2026-05-07_v02.jpg</strong></p>
+                        </div>
+
+                        {{-- Toggles --}}
+                        <div style="background:#F8FAFC;border:1px solid #E5E7EB;border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:14px;">
+                            <p style="font-size:12px;font-weight:700;color:#374151;margin:0 0 2px;text-transform:uppercase;letter-spacing:.05em;">Automation Rules</p>
+
+                            @foreach([
+                                ['storage_auto_create_folders', 'Auto-create project folders', 'When a project or task is created, automatically build the full folder tree (00_Admin → 08_Archive) on the connected storage.'],
+                                ['storage_create_brand_assets', 'Create Brand Assets folder for new companies', 'Creates Logos/Approved, Brand_Guidelines, Fonts, Templates, and Product_Photos subfolders when a new customer/company is added.'],
+                                ['storage_auto_move_files',     'Auto-move files by task status', 'Moves submitted files to 04_Review, approved files to 05_Approved, rejected to 06_Rejected, and delivered to 07_Delivered automatically.'],
+                            ] as [$key, $label, $hint])
+                            <div style="display:flex;align-items:flex-start;gap:14px;">
+                                <label style="position:relative;width:40px;height:22px;flex-shrink:0;margin-top:1px;cursor:pointer;">
+                                    <input type="hidden"   name="{{ $key }}" value="0">
+                                    <input type="checkbox" name="{{ $key }}" value="1" {{ $settings[$key]==='1' ? 'checked' : '' }}
+                                           style="position:absolute;opacity:0;width:0;height:0;"
+                                           onchange="this.previousElementSibling.value=this.checked?'1':'0';this.parentElement.querySelector('span').style.background=this.checked?'#6366F1':'#D1D5DB';this.parentElement.querySelector('span span').style.left=this.checked?'20px':'2px';">
+                                    <span style="position:absolute;inset:0;border-radius:11px;background:{{ $settings[$key]==='1' ? '#6366F1' : '#D1D5DB' }};transition:background .2s;">
+                                        <span style="position:absolute;top:2px;left:{{ $settings[$key]==='1' ? '20px' : '2px' }};width:18px;height:18px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);"></span>
+                                    </span>
+                                </label>
+                                <div>
+                                    <p style="font-size:13px;font-weight:600;color:#111827;margin:0;">{{ $label }}</p>
+                                    <p style="font-size:11px;color:#6B7280;margin:2px 0 0;line-height:1.5;">{{ $hint }}</p>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+
+                        {{-- Folder structure preview --}}
+                        <div style="margin-top:20px;">
+                            <p style="font-size:12px;font-weight:700;color:#374151;margin:0 0 10px;text-transform:uppercase;letter-spacing:.05em;">Folder Structure Preview</p>
+                            <div style="background:#1E1E1E;border-radius:10px;padding:16px 20px;font-family:'Courier New',monospace;font-size:11.5px;color:#D4D4D4;line-height:1.8;overflow-x:auto;">
+<pre style="margin:0;color:inherit;background:none;font-size:inherit;">{{ $settings['storage_root_path'] ?: 'Marketing_System' }}/
+├── Companies/
+│   └── <span style="color:#9CDCFE;">Company_Name</span>/
+│       ├── <span style="color:#4EC9B0;">Brand_Assets</span>/
+│       │   ├── Logos/
+│       │   │   ├── Approved/
+│       │   │   ├── Old_Versions/
+│       │   │   └── Do_Not_Use/
+│       │   ├── Brand_Guidelines/
+│       │   ├── Fonts/
+│       │   ├── Templates/
+│       │   └── Product_Photos/
+│       └── <span style="color:#DCDCAA;">Projects</span>/
+│           └── 2026/
+│               └── 2026-05/
+│                   └── <span style="color:#CE9178;">PRJ-001_Project_Name</span>/
+│                       ├── 00_Admin/
+│                       ├── 01_Brief/
+│                       ├── 02_Source/
+│                       ├── 03_Working/
+│                       ├── <span style="color:#9CDCFE;">04_Review</span>/         ← submitted
+│                       ├── <span style="color:#4EC9B0;">05_Approved</span>/       ← approved
+│                       ├── <span style="color:#F44747;">06_Rejected</span>/       ← revision requested
+│                       ├── <span style="color:#DCDCAA;">07_Delivered</span>/      ← delivered
+│                       └── 08_Archive/
+├── Internal_Templates/
+├── Shared_Resources/
+└── Archive/</pre>
+                            </div>
+                            <p style="font-size:11px;color:#9CA3AF;margin:8px 0 0;">Files automatically move between stage folders as tasks progress through the approval workflow.</p>
+                        </div>
+
+                    </div>
+                    <div class="scard-footer">
+                        <button type="submit" class="sf-btn-primary"><i class="fas fa-save" style="margin-right:6px;"></i>Save Folder Settings</button>
+                    </div>
+                </form>
+
                 <div style="padding:0 24px 24px;">
                     @include('nas-file-manager::file-manager', [
                         'nodes'   => config('nas-file-manager.schema', []),

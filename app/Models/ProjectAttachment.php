@@ -14,6 +14,7 @@ class ProjectAttachment extends Model
         'type',
         'name',
         'path',
+        'nas_path',
         'size',
         'uploaded_by',
     ];

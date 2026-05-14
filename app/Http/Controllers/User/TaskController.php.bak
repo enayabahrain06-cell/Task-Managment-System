@@ -475,7 +475,7 @@ class TaskController extends Controller
                     'original_filename' => $fn,
                     'status'            => 'submitted',
                 ]);
-                $nas->copyToNas($task, $fp, $fn, '04_Review');
+                $nas->copyToNas($task, $fp, $fn, '04_Review', $version);
                 if ($i === 0) { $filePath = $fp; $originalFilename = $fn; }
             }
         }

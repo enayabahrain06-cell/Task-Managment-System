@@ -202,17 +202,19 @@ class TaskController extends Controller
         if ($request->hasFile('new_attachments')) {
             $nas = app(\App\Services\NasService::class);
             foreach ($request->file('new_attachments') as $file) {
-                $path = $file->store("task-attachments/{$task->id}", 'public');
+                $path    = $file->store("task-attachments/{$task->id}", 'public');
+                $nasPath = $nas->copyToNas($task, $path, $file->getClientOriginalName(), '03_Working');
+                $nas->copyToNasReference($task, $path, $file->getClientOriginalName());
                 \App\Models\ProjectAttachment::create([
                     'project_id'  => $task->project_id,
                     'task_id'     => $task->id,
                     'type'        => 'file',
                     'name'        => $file->getClientOriginalName(),
                     'path'        => $path,
+                    'nas_path'    => $nasPath,
                     'size'        => $file->getSize(),
                     'uploaded_by' => auth()->id(),
                 ]);
-                $nas->copyToNas($task, $path, $file->getClientOriginalName(), '03_Working');
             }
         }
 
@@ -238,8 +240,10 @@ class TaskController extends Controller
         if ($request->hasFile('file')) {
             $file = $request->file('file');
             $originalFilename = $file->getClientOriginalName();
+            $nas      = app(\App\Services\NasService::class);
             $filePath = $file->store("task-comment-files/{$task->id}", 'public');
-            app(\App\Services\NasService::class)->copyToNas($task, $filePath, $originalFilename, '03_Working');
+            $nasPath  = $nas->copyToNas($task, $filePath, $originalFilename, '03_Working');
+            $nas->copyToNasReference($task, $filePath, $originalFilename);
         }
 
         $comment = TaskComment::create([
@@ -247,6 +251,7 @@ class TaskController extends Controller
             'user_id'           => auth()->id(),
             'body'              => $request->body,
             'file_path'         => $filePath,
+            'nas_path'          => $nasPath ?? null,
             'original_filename' => $originalFilename,
         ]);
 
@@ -760,18 +765,20 @@ class TaskController extends Controller
         $names = [];
         $nas   = app(\App\Services\NasService::class);
         foreach ($request->file('attachments') as $file) {
-            $path = $file->store("task-attachments/{$task->id}", 'public');
+            $path    = $file->store("task-attachments/{$task->id}", 'public');
+            $nasPath = $nas->copyToNas($task, $path, $file->getClientOriginalName(), '03_Working');
+            $nas->copyToNasReference($task, $path, $file->getClientOriginalName());
             \App\Models\ProjectAttachment::create([
                 'project_id'  => $task->project_id,
                 'task_id'     => $task->id,
                 'type'        => 'file',
                 'name'        => $file->getClientOriginalName(),
                 'path'        => $path,
+                'nas_path'    => $nasPath,
                 'size'        => $file->getSize(),
                 'uploaded_by' => auth()->id(),
             ]);
             $names[] = $file->getClientOriginalName();
-            $nas->copyToNas($task, $path, $file->getClientOriginalName(), '03_Working');
         }
 
         TaskLog::create([

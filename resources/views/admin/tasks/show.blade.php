@@ -740,7 +740,10 @@
                 @if($allAttachments->isNotEmpty())
                 <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
                     @foreach($allAttachments as $att)
-                    @php $item = ['name'=>$att->name,'size'=>$att->humanSize(),'url'=>$att->url(),'downloadUrl'=>$att->isFile()?route('admin.attachments.download',$att):$att->url(),'icon'=>$att->iconClass(),'isLink'=>$att->isLink(),'isImage'=>in_array(strtolower(pathinfo($att->name,PATHINFO_EXTENSION)),['jpg','jpeg','png','gif','webp','svg']),'isVideo'=>in_array(strtolower(pathinfo($att->name,PATHINFO_EXTENSION)),['mp4','mov','avi','webm','mkv'])]; @endphp
+                    @php
+                        $attDlUrl  = $att->isFile() ? route('admin.attachments.download', $att) : $att->url();
+                        $item = ['name'=>$att->name,'size'=>$att->humanSize(),'url'=>$att->url(),'downloadUrl'=>$attDlUrl,'previewUrl'=>$att->isFile()?($attDlUrl.'?inline=1'):$att->url(),'icon'=>$att->iconClass(),'isLink'=>$att->isLink(),'isImage'=>in_array(strtolower(pathinfo($att->name,PATHINFO_EXTENSION)),['jpg','jpeg','png','gif','webp','svg']),'isVideo'=>in_array(strtolower(pathinfo($att->name,PATHINFO_EXTENSION)),['mp4','mov','avi','webm','mkv'])];
+                    @endphp
                     <div style="display:flex;align-items:center;gap:8px;">
                         <button type="button" @click="show({{ json_encode($item) }})"
                                 style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:#FAFAFA;border:1px solid #F3F4F6;border-radius:10px;flex:1;text-align:left;cursor:pointer;transition:border-color .15s,background .15s;min-width:0;"
@@ -852,12 +855,12 @@
                             </div>
                             <template x-if="att.isImage">
                                 <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#F9FAFB;display:flex;justify-content:center;">
-                                    <img :src="att.url" :alt="att.name" style="max-width:100%;max-height:75vh;border-radius:10px;object-fit:contain;display:block;">
+                                    <img :src="att.previewUrl || att.url" :alt="att.name" style="max-width:100%;max-height:75vh;border-radius:10px;object-fit:contain;display:block;">
                                 </div>
                             </template>
                             <template x-if="att.isVideo">
                                 <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#000;display:flex;justify-content:center;">
-                                    <video :src="att.url" controls style="max-width:100%;max-height:75vh;border-radius:10px;display:block;outline:none;"></video>
+                                    <video :src="att.previewUrl || att.url" controls style="max-width:100%;max-height:75vh;border-radius:10px;display:block;outline:none;"></video>
                                 </div>
                             </template>
                             <div style="padding:16px 24px;display:flex;gap:10px;justify-content:flex-end;">
@@ -1626,11 +1629,12 @@
                                     $sfExt      = strtolower(pathinfo($subFile->original_filename ?? '', PATHINFO_EXTENSION));
                                     $sfIsImage  = in_array($sfExt, ['jpg','jpeg','png','gif','webp','svg']);
                                     $sfIsVideo  = in_array($sfExt, ['mp4','mov','avi','webm','mkv']);
-                                    $sfUrl      = $subFile->fileUrl();
+                                    $sfDlUrl    = route('admin.submissions.download', $subFile);
+                                    $sfUrl      = $sfDlUrl . '?inline=1';
                                     $sfIconMap  = ['pdf'=>'fa-file-pdf','doc'=>'fa-file-word','docx'=>'fa-file-word','xls'=>'fa-file-excel','xlsx'=>'fa-file-excel','ppt'=>'fa-file-powerpoint','pptx'=>'fa-file-powerpoint','zip'=>'fa-file-zipper','rar'=>'fa-file-zipper','txt'=>'fa-file-lines'];
                                     $sfIcon     = $sfIconMap[$sfExt] ?? 'fa-file';
-                                    $sfItem     = ['name'=>$subFile->original_filename ?? 'file','url'=>$sfUrl,'downloadUrl'=>route('admin.submissions.download',$subFile),'isImage'=>$sfIsImage,'isVideo'=>$sfIsVideo,'version'=>$subFile->version];
-                                    $sfExists   = \Illuminate\Support\Facades\Storage::disk('public')->exists($subFile->file_path);
+                                    $sfItem     = ['name'=>$subFile->original_filename ?? 'file','url'=>$sfUrl,'downloadUrl'=>$sfDlUrl,'previewUrl'=>$sfUrl,'isImage'=>$sfIsImage,'isVideo'=>$sfIsVideo,'version'=>$subFile->version];
+                                    $sfExists   = \Illuminate\Support\Facades\Storage::disk('public')->exists($subFile->file_path) || $subFile->nas_path;
                                 @endphp
                                 @if(!$sfExists)
                                 <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#F9FAFB;border:1px dashed #D1D5DB;border-radius:8px;max-width:300px;margin-bottom:10px;">
@@ -1781,7 +1785,8 @@
                     $cExt = strtolower(pathinfo($comment->original_filename ?? '', PATHINFO_EXTENSION));
                     $cIsImage = in_array($cExt, ['jpg','jpeg','png','gif','webp','svg']);
                     $cIsVideo = in_array($cExt, ['mp4','mov','avi','webm','mkv']);
-                    $cUrl = $comment->fileUrl();
+                    $cDlUrl = $comment->file_path ? route('admin.task-comments.file', $comment) : null;
+                    $cUrl = $cDlUrl ? ($cDlUrl . '?inline=1') : $comment->fileUrl();
                     $cIconMap = ['pdf'=>'fa-file-pdf','doc'=>'fa-file-word','docx'=>'fa-file-word','xls'=>'fa-file-excel','xlsx'=>'fa-file-excel','ppt'=>'fa-file-powerpoint','pptx'=>'fa-file-powerpoint','zip'=>'fa-file-zipper','rar'=>'fa-file-zipper','txt'=>'fa-file-lines'];
                     $cIcon = $cIconMap[$cExt] ?? 'fa-file';
                     $isFirstWork = $firstWorkKey && $entry['at']->toDateTimeString() === $firstWorkKey;
@@ -1824,7 +1829,7 @@
                             <div x-show="!editing">
                                 <div class="rte-field" style="font-size:13px;color:#374151;margin:0{{ $comment->file_path ? ' 0 10px' : '' }};line-height:1.6;word-break:break-word;padding:0;min-height:0;" x-html="body"></div>
                                 @if($comment->file_path)
-                                    @php $cFileExists = \Illuminate\Support\Facades\Storage::disk('public')->exists($comment->file_path); @endphp
+                                    @php $cFileExists = \Illuminate\Support\Facades\Storage::disk('public')->exists($comment->file_path) || $comment->nas_path; @endphp
                                     @if(!$cFileExists)
                                     <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#F9FAFB;border:1px dashed #D1D5DB;border-radius:8px;max-width:280px;">
                                         <i class="fa fa-triangle-exclamation" style="color:#D97706;font-size:13px;flex-shrink:0;"></i>
@@ -1834,7 +1839,7 @@
                                         </div>
                                     </div>
                                     @elseif($cIsImage)
-                                    <button type="button" @click="showComment({{ json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'isImage'=>true,'isVideo'=>false]) }})" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;width:100%;" onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
+                                    <button type="button" @click="showComment({{ json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'previewUrl'=>$cUrl,'downloadUrl'=>$cDlUrl,'isImage'=>true,'isVideo'=>false]) }})" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;width:100%;" onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                                         <img src="{{ $cUrl }}" alt="{{ $comment->original_filename }}" style="width:100%;max-height:140px;object-fit:cover;display:block;">
                                         <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
                                             <i class="fa fa-image" style="color:#6366F1;font-size:10px;"></i>
@@ -1843,7 +1848,7 @@
                                         </div>
                                     </button>
                                     @elseif($cIsVideo)
-                                    <button type="button" @click="showComment({{ json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'isImage'=>false,'isVideo'=>true]) }})" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;width:100%;" onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
+                                    <button type="button" @click="showComment({{ json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'previewUrl'=>$cUrl,'downloadUrl'=>$cDlUrl,'isImage'=>false,'isVideo'=>true]) }})" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;width:100%;" onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                                         <div style="background:#1F2937;height:90px;display:flex;align-items:center;justify-content:center;">
                                             <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;">
                                                 <i class="fa fa-play" style="color:#fff;font-size:13px;margin-left:2px;"></i>
@@ -1856,7 +1861,7 @@
                                         </div>
                                     </button>
                                     @else
-                                    <a href="{{ $cUrl }}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;text-decoration:none;max-width:280px;transition:border-color .15s;"
+                                    <a href="{{ $cDlUrl ?? $cUrl }}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;text-decoration:none;max-width:280px;transition:border-color .15s;"
                                        onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                                         <div style="width:30px;height:30px;border-radius:7px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                             <i class="fa {{ $cIcon }}" style="color:#6366F1;font-size:13px;"></i>
@@ -1993,12 +1998,12 @@
                             </div>
                             <template x-if="commentItem.isImage">
                                 <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#F9FAFB;display:flex;justify-content:center;">
-                                    <img :src="commentItem.url" :alt="commentItem.name" style="max-width:100%;max-height:75vh;border-radius:10px;object-fit:contain;display:block;">
+                                    <img :src="commentItem.previewUrl || commentItem.url" :alt="commentItem.name" style="max-width:100%;max-height:75vh;border-radius:10px;object-fit:contain;display:block;">
                                 </div>
                             </template>
                             <template x-if="commentItem.isVideo">
                                 <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#000;display:flex;justify-content:center;">
-                                    <video :src="commentItem.url" controls style="max-width:100%;max-height:75vh;border-radius:10px;display:block;"></video>
+                                    <video :src="commentItem.previewUrl || commentItem.url" controls style="max-width:100%;max-height:75vh;border-radius:10px;display:block;"></video>
                                 </div>
                             </template>
                             <div style="padding:16px 24px;display:flex;gap:10px;justify-content:flex-end;">
@@ -2006,7 +2011,7 @@
                                         style="padding:9px 18px;background:#F3F4F6;color:#6B7280;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">
                                     Close
                                 </button>
-                                <a :href="commentItem.url" download
+                                <a :href="commentItem.downloadUrl || commentItem.url"
                                    style="display:inline-flex;align-items:center;gap:6px;padding:9px 20px;background:#6366F1;color:#fff;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;transition:background .15s;"
                                    onmouseover="this.style.background='#4F46E5'" onmouseout="this.style.background='#6366F1'">
                                     <i class="fa fa-download" style="font-size:11px;"></i> Download
@@ -2044,12 +2049,12 @@
                             </div>
                             <template x-if="sub.isImage">
                                 <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#F9FAFB;display:flex;justify-content:center;">
-                                    <img :src="sub.url" :alt="sub.name" style="max-width:100%;max-height:75vh;border-radius:10px;object-fit:contain;display:block;">
+                                    <img :src="sub.previewUrl || sub.url" :alt="sub.name" style="max-width:100%;max-height:75vh;border-radius:10px;object-fit:contain;display:block;">
                                 </div>
                             </template>
                             <template x-if="sub.isVideo">
                                 <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#000;display:flex;justify-content:center;">
-                                    <video :src="sub.url" controls autoplay style="max-width:100%;max-height:75vh;border-radius:10px;display:block;outline:none;"></video>
+                                    <video :src="sub.previewUrl || sub.url" controls autoplay style="max-width:100%;max-height:75vh;border-radius:10px;display:block;outline:none;"></video>
                                 </div>
                             </template>
                             <div style="padding:16px 24px;display:flex;gap:10px;justify-content:flex-end;">
