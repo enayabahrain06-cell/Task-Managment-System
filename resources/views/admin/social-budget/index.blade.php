@@ -26,7 +26,7 @@
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0; font-size: 16px;
 }
-.sb-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sb-table { width: 100%; min-width: 600px; border-collapse: collapse; font-size: 13px; }
 .sb-table th {
     padding: 9px 12px; text-align: left; font-size: 11px;
     font-weight: 700; color: #9CA3AF; text-transform: uppercase;
@@ -182,7 +182,7 @@
         </div>
     </div>
 
-    <div style="overflow-x:auto;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
     <table class="sb-table">
         <thead>
             <tr>

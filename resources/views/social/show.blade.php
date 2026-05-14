@@ -11,6 +11,8 @@
 @media (max-width: 480px) {
     .social-show-header { flex-direction:column; align-items:flex-start; }
     .social-show-header a { align-self:flex-start; }
+    .social-meta-grid { grid-template-columns: 1fr !important; }
+    .social-platform-picker { grid-template-columns: repeat(2,1fr) !important; }
 }
 </style>
 
@@ -119,7 +121,7 @@ $pMeta = [
             </div>
 
             {{-- Task meta grid --}}
-            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0;border-bottom:1px solid #F3F4F6;">
+            <div class="social-meta-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:0;border-bottom:1px solid #F3F4F6;">
                 @if($task->deadline)
                 <div style="padding:14px 24px;border-right:1px solid #F3F4F6;border-bottom:1px solid #F3F4F6;">
                     <p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 5px;">Deadline</p>
@@ -465,7 +467,7 @@ $pMeta = [
 
                             {{-- Platform picker grid — visible when no platform or showPicker --}}
                             <div x-show="entry.showPicker || !entry.platform" x-collapse style="padding:12px 14px;background:#FAFAFA;border-bottom:1px solid #F3F4F6;">
-                                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+                                <div class="social-platform-picker" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
                                     <template x-for="[key, meta] in Object.entries(platforms)" :key="key">
                                         <button type="button"
                                                 @click="entry.platform = key; entry.showPicker = false"

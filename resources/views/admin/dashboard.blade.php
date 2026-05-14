@@ -62,6 +62,20 @@
     .stat-card-value      { font-size:22px; }
 }
 
+/* ── Mobile: collapse inline grids that have no responsive class ── */
+@media(max-width:768px){
+    /* Project-links modal 3-col grid */
+    [style*="grid-template-columns:1fr 1fr auto"] { grid-template-columns:1fr !important; }
+    /* Recent-tasks card-view auto-fill grid: let it go 1-col */
+    [style*="grid-template-columns:repeat(auto-fill"] { grid-template-columns:1fr !important; }
+    /* Ensure the table scroll wrapper shows a scrollbar hint */
+    .dash-card [style*="overflow-x:auto"] { -webkit-overflow-scrolling:touch; }
+}
+@media(max-width:480px){
+    /* Any remaining 2-col inline grids inside modals */
+    [style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr !important; }
+}
+
 /* ── Card base ── */
 .dash-card {
     background:#fff;
@@ -1562,7 +1576,8 @@ function dashModals() {
     {{-- TABLE VIEW --}}
     <div x-show="view==='table'">
         <div class="dash-card" style="padding:0;overflow:hidden;">
-            <table style="width:100%;border-collapse:collapse;">
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+            <table style="width:100%;min-width:600px;border-collapse:collapse;">
                 <thead>
                     <tr style="border-bottom:1.5px solid #F3F4F6;background:#FAFAFA;">
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Task</th>
@@ -1631,6 +1646,7 @@ function dashModals() {
                     @endforeach
                 </tbody>
             </table>
+        </div>{{-- end overflow-x scroll --}}
         </div>
     </div>
 

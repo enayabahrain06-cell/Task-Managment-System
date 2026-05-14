@@ -6,6 +6,11 @@
 <style>
 .th-filter-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px; }
 .th-header-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+@media(max-width:768px){
+    .th-task-row { flex-wrap:wrap; gap:6px !important; padding:10px 14px !important; }
+    .th-task-row .th-task-title { min-width:0; flex:1 1 100%; order:-1; }
+    .th-task-row .th-task-meta { display:flex; gap:6px; flex-wrap:wrap; width:100%; }
+}
 @media(max-width:480px){
     .th-filter-grid { grid-template-columns:repeat(2,1fr) !important; gap:10px !important; }
     .th-header-row { flex-direction:column; align-items:flex-start; gap:10px; }

@@ -12,6 +12,12 @@
 @media(max-width:400px) {
     .utask-deadline-col { display:none !important; }
 }
+
+/* Mobile: prevent task-list rows from overflowing the card */
+@media(max-width:480px) {
+    .utask-filter-grid { grid-template-columns:repeat(2,1fr) !important; gap:8px !important; }
+}
+.utask-task-row { overflow:hidden; }
 </style>
 <div class="flex items-center justify-between mb-6">
     <div>

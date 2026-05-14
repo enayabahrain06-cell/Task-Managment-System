@@ -96,7 +96,8 @@
     {{-- ── TABLE VIEW ── --}}
     <div x-show="view === 'table'">
         <div class="cust-tbl-scroll" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
-            <table style="width:100%;border-collapse:collapse;">
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+            <table style="width:100%;min-width:600px;border-collapse:collapse;">
                 <thead>
                     <tr style="border-bottom:1.5px solid #F3F4F6;">
                         <th style="padding:12px 20px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Customer</th>
@@ -186,6 +187,7 @@
                     @endforeach
                 </tbody>
             </table>
+        </div>{{-- end overflow-x scroll --}}
 
             <x-pagination :paginator="$customers" mt="14px" />
         </div>

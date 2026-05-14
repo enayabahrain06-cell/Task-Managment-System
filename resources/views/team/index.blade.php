@@ -43,6 +43,7 @@
 .btn-modal-primary:disabled { opacity:0.55;cursor:not-allowed; }
 /* ── Mobile responsiveness ── */
 .team-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.team-table-wrap table { min-width: 700px; }
 .team-form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
 @media (max-width: 480px) {
     .team-form-grid-2 { grid-template-columns: 1fr; }

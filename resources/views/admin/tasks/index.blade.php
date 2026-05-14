@@ -231,13 +231,29 @@ $activeStatDefs = [
 {{-- ── View Toggle ── --}}
 <style>
 /* List view table */
-.task-list-table { width:100%; border-collapse:collapse; }
+.task-list-table { width:100%; min-width:700px; border-collapse:collapse; }
 .task-list-table th { font-size:11px; font-weight:700; color:#9CA3AF; text-transform:uppercase; letter-spacing:.05em; padding:10px 14px; border-bottom:2px solid #F3F4F6; background:#FAFAFA; text-align:left; white-space:nowrap; }
 .task-list-table th:first-child { border-radius:12px 0 0 0; }
 .task-list-table th:last-child  { border-radius:0 12px 0 0; }
 .task-list-table td { padding:11px 14px; border-bottom:1px solid #F9FAFB; vertical-align:middle; }
 .task-list-table tr:last-child td { border-bottom:none; }
 .task-list-table tbody tr:hover td { background:#FAFBFF; }
+
+/* ── Mobile responsive overrides ── */
+@media(max-width:768px){
+    /* Stack the page header */
+    .flex.items-center.justify-between.mb-6 { flex-direction:column; align-items:flex-start !important; gap:10px; }
+    .flex.items-center.justify-between.mb-6 > .flex { flex-wrap:wrap; }
+    /* Filter bar: wrap on mobile */
+    .task-filter-bar { flex-wrap:wrap; gap:8px !important; }
+    /* Tab bar: allow scroll on very small screens */
+    div[style*="width:fit-content"] { max-width:100%; overflow-x:auto; }
+}
+@media(max-width:480px){
+    /* Stat cards row: 2-col on small mobile */
+    .grid.grid-cols-4 { grid-template-columns:repeat(2,1fr) !important; }
+    .proj-stat-card-value { font-size:26px !important; }
+}
 </style>
 
 @if($tasks->isEmpty())

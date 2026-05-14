@@ -6,10 +6,13 @@
 .proj-show-stats { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:24px; }
 .proj-show-layout { display:grid; grid-template-columns:1fr 260px; gap:20px; align-items:start; }
 .proj-show-header { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+@media(max-width:768px){
+    .proj-show-layout { grid-template-columns:1fr !important; }
+    .proj-show-stats { grid-template-columns:repeat(3,1fr) !important; gap:10px !important; }
+    .proj-show-header { flex-wrap:wrap; }
+}
 @media(max-width:480px){
     .proj-show-stats { grid-template-columns:repeat(2,1fr) !important; gap:10px !important; }
-    .proj-show-layout { grid-template-columns:1fr !important; }
-    .proj-show-header { flex-wrap:wrap; }
     .proj-show-header span[style*="margin-left:auto"] { margin-left:0 !important; }
 }
 </style>

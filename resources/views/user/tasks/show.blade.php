@@ -22,6 +22,11 @@
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
 }
+.user-task-table-wrap table { min-width: 600px; }
+@media (max-width: 768px) {
+    .user-task-table-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+    .user-task-table-wrap table { min-width: 600px !important; }
+}
 </style>
 @php
     $isSocialAssignee = $isSocialAssignee ?? false;

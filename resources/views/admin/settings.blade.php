@@ -92,6 +92,35 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 .scard.collapsed .acc-chevron { transform:translateY(-50%) rotate(-90deg); }
 .scard.collapsed .scard-body,
 .scard.collapsed .scard-footer { display:none; }
+
+/* ── Mobile: collapse inline-grid panels that have no responsive class ── */
+@media(max-width:768px){
+    /* Login BG type selector: 3-col → 1-col */
+    [style*="grid-template-columns:repeat(3,1fr)"] { grid-template-columns:1fr !important; }
+    /* SMTP connection row: host + port + encryption → stack */
+    [style*="grid-template-columns:1fr 120px 160px"] { grid-template-columns:1fr !important; }
+    /* Data/backup inline-stats strip: 4-col → 2-col */
+    [style*="grid-template-columns:repeat(4,1fr)"][style*="padding:14px 20px"] { grid-template-columns:repeat(2,1fr) !important; }
+    /* CSV export rows: auto 1fr auto auto → stack label+buttons */
+    [style*="grid-template-columns:auto 1fr auto auto"] { grid-template-columns:1fr 1fr !important; }
+    /* Nav controls grid */
+    #nav-controls-grid { grid-template-columns:1fr !important; }
+    /* Generic 2-col inline grids inside scard-body */
+    .scard-body [style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr !important; }
+    /* 3-col inline grids inside scard panels */
+    .scard-body [style*="grid-template-columns:repeat(3,1fr)"] { grid-template-columns:1fr !important; }
+    /* NAS/storage section layout */
+    [style*="grid-template-columns:1fr 340px"] { grid-template-columns:1fr !important; }
+}
+@media(max-width:480px){
+    /* Stat strip in backup section → 1-col */
+    [style*="grid-template-columns:repeat(4,1fr)"] { grid-template-columns:repeat(2,1fr) !important; }
+    /* Any remaining 2-col grids */
+    [style*="grid-template-columns:1fr 120px"] { grid-template-columns:1fr !important; }
+    /* CSV rows full stack */
+    [style*="grid-template-columns:auto 1fr auto auto"] { grid-template-columns:1fr !important; }
+    .scard-body [style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr !important; }
+}
 </style>
 
 {{-- Page Header --}}

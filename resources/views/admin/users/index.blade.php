@@ -16,10 +16,13 @@
     .perms-layout { flex-direction: column !important; height: auto !important; min-height: auto !important; }
     .perms-sidebar { width: 100% !important; max-height: 260px; }
 }
+@media (max-width: 768px) {
+    .users-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .users-table-wrap table { min-width: 600px; }
+}
 @media (max-width: 480px) {
     .users-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
-    .users-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .users-table-wrap table { min-width: 540px; }
+    .users-table-wrap table { min-width: 540px !important; }
 }
 </style>
 @php
