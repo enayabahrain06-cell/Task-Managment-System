@@ -1130,9 +1130,18 @@
                                 </a>
                             @elseif($sub->file_path)
                                 @php
+                                    $subFileExists = \Illuminate\Support\Facades\Storage::disk('public')->exists($sub->file_path) || $sub->nas_path;
                                     $subItem = json_encode(['name'=>$sub->original_filename,'url'=>$subUrl,'isImage'=>$subIsImage,'isVideo'=>$subIsVideo,'version'=>$sub->version ?? 1]);
                                 @endphp
-                                @if($subIsImage)
+                                @if(!$subFileExists)
+                                <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#F9FAFB;border:1px dashed #D1D5DB;border-radius:8px;max-width:300px;margin-bottom:10px;">
+                                    <i class="fa fa-triangle-exclamation" style="color:#D97706;font-size:13px;flex-shrink:0;"></i>
+                                    <div style="min-width:0;">
+                                        <p style="font-size:12px;font-weight:600;color:#374151;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $sub->original_filename ?? 'File' }}</p>
+                                        <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">File no longer available</p>
+                                    </div>
+                                </div>
+                                @elseif($subIsImage)
                                 <button type="button" @click="showSub({{ $subItem }})"
                                         style="display:block;margin-bottom:10px;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:300px;width:100%;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;"
                                         onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
