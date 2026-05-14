@@ -120,6 +120,37 @@
         .alert-error   { background: #FEF2F2; border: 1px solid #FECACA; color: #DC2626; }
         .alert-close   { margin-left: auto; background: none; border: none; cursor: pointer; color: inherit; opacity: 0.6; font-size: 12px; }
         .alert-close:hover { opacity: 1; }
+
+        /* ── Mobile Enhancements ── */
+        /* Dropdowns snap to full-width on small phones */
+        @media (max-width: 560px) {
+            .app-dropdown {
+                position: fixed !important;
+                left: 8px !important;
+                right: 8px !important;
+                top: 64px !important;
+                width: auto !important;
+                max-width: none !important;
+                max-height: calc(100vh - 80px);
+                overflow-y: auto;
+                z-index: 250 !important;
+                border-radius: 16px !important;
+            }
+            /* Hide low-priority topbar items on very small screens */
+            .topbar-hide-xs { display: none !important; }
+            .dev-label-text { display: none !important; }
+        }
+        /* Profile modal — fluid on small phones */
+        @media (max-width: 520px) {
+            #global-profile-modal { padding: 8px !important; }
+            #global-profile-modal > div { border-radius: 16px; }
+            .gp-pass-grid { grid-template-columns: 1fr !important; }
+        }
+        /* Touch-friendly tap targets */
+        @media (max-width: 768px) {
+            .nav-item { padding: 10px 10px; min-height: 40px; }
+            .icon-btn { width: 36px; height: 36px; }
+        }
     </style>
 </head>
 <body>
@@ -156,6 +187,7 @@
                 @endphp
                 @if(auth()->user()?->role === 'admin')
                 <a href="{{ route('admin.settings.index') }}#storage" title="{{ $storageNasOn ? 'Storage: NAS (SMB) — click to manage' : 'Storage: Local — click to manage' }}"
+                   class="topbar-hide-xs"
                    style="display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:20px;text-decoration:none;font-size:10px;font-weight:700;letter-spacing:.3px;border:1.5px solid {{ $storageNasOn ? '#BBF7D0' : '#E5E7EB' }};background:{{ $storageNasOn ? '#F0FDF4' : '#F9FAFB' }};color:{{ $storageNasOn ? '#15803D' : '#6B7280' }};transition:all .2s;flex-shrink:0;"
                    onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
                     <i class="fas {{ $storageNasOn ? 'fa-network-wired' : 'fa-hdd' }}" style="font-size:9px;"></i>
@@ -178,6 +210,7 @@
                               x-text="items.length>9?'9+':items.length"></span>
                     </button>
                     <div x-show="open" x-cloak
+                         class="app-dropdown"
                          style="position:absolute;right:0;top:calc(100% + 8px);width:320px;background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.12);border:1px solid #F0F0F0;z-index:200;overflow:hidden;">
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #F3F4F6;">
                             <div style="display:flex;align-items:center;gap:8px;">
@@ -230,6 +263,7 @@
 
                     {{-- Dropdown --}}
                     <div x-show="open" x-cloak
+                         class="app-dropdown"
                          style="position:absolute;right:0;top:calc(100% + 8px);width:340px;background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.12);border:1px solid #F0F0F0;z-index:200;overflow:hidden;">
 
                         {{-- Header --}}
@@ -324,7 +358,7 @@
                         title="{{ $devOn ? 'Developer Mode ON — click to disable' : 'Developer Mode OFF — click to enable' }}"
                         style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1.5px solid {{ $devOn ? '#C7D2FE' : '#E5E7EB' }};cursor:pointer;transition:all .2s;flex-shrink:0;{{ $devOn ? 'background:#EEF2FF;color:#4F46E5;' : 'background:#F9FAFB;color:#9CA3AF;' }}">
                     <i class="fas fa-code" style="font-size:9px;"></i>
-                    <span id="global-dev-label">{{ $devOn ? 'Dev On' : 'Dev' }}</span>
+                    <span id="global-dev-label" class="dev-label-text">{{ $devOn ? 'Dev On' : 'Dev' }}</span>
                     <span id="global-dev-dot" style="width:6px;height:6px;border-radius:50%;flex-shrink:0;background:{{ $devOn ? '#4F46E5' : '#D1D5DB' }};"></span>
                 </button>
                 @endif
@@ -339,6 +373,7 @@
                               x-text="count>9?'9+':count"></span>
                     </button>
                     <div x-show="open" x-cloak
+                         class="app-dropdown"
                          style="position:absolute;right:0;top:calc(100% + 8px);width:280px;background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.12);border:1px solid #F0F0F0;z-index:200;overflow:hidden;">
                         <div style="padding:12px 16px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
                             <span style="font-size:14px;font-weight:700;color:#111827;">Who's Online</span>
@@ -606,7 +641,7 @@
                 {{-- New Password --}}
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">New Password <span style="font-weight:400;color:#9CA3AF;">(leave blank to keep current)</span></label>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <div class="gp-pass-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                         <div x-data="{show:false}" style="position:relative;">
                             <i class="fa fa-lock" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;z-index:1;"></i>
                             <input :type="show?'text':'password'" name="password" placeholder="New password"

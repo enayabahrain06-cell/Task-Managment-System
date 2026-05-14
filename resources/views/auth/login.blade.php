@@ -1,11 +1,24 @@
 @extends('layouts.auth')
 
 @section('content')
+<style>
+.login-card { width:100%;max-width:880px;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(79,70,229,0.15);overflow:hidden;display:flex;min-height:540px; }
+.login-form-col { flex:1;padding:48px 44px;display:flex;flex-direction:column;justify-content:center;min-width:0; }
+.login-deco-col  { width:380px;flex-shrink:0; }
+@media(max-width:640px) {
+    .login-card      { flex-direction:column; min-height:unset; border-radius:16px; }
+    .login-form-col  { padding:32px 24px; }
+    .login-deco-col  { display:none !important; }
+}
+@media(max-width:400px) {
+    .login-form-col  { padding:28px 16px; }
+}
+</style>
 {{-- Main card --}}
-<div style="width:100%;max-width:880px;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(79,70,229,0.15);overflow:hidden;display:flex;min-height:540px;">
+<div class="login-card">
 
     {{-- ── Left: Form ── --}}
-    <div style="flex:1;padding:48px 44px;display:flex;flex-direction:column;justify-content:center;min-width:0;">
+    <div class="login-form-col">
 
         {{-- Logo --}}
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:36px;">
@@ -113,7 +126,7 @@
     </div>
 
     {{-- ── Right: Illustration ── --}}
-    <div style="width:380px;flex-shrink:0;background:linear-gradient(145deg,#6EE7F7 0%,#818CF8 40%,#4F46E5 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 32px;position:relative;overflow:hidden;">
+    <div class="login-deco-col" style="background:linear-gradient(145deg,#6EE7F7 0%,#818CF8 40%,#4F46E5 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 32px;position:relative;overflow:hidden;">
 
         {{-- Background blobs --}}
         <div style="position:absolute;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,0.06);top:-80px;right:-80px;"></div>

@@ -546,6 +546,7 @@ $activeStatDefs = [
 {{-- ── LIST / TABLE VIEW ── --}}
 <div x-show="view==='table'" x-cloak>
 <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
+<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
 <table class="task-list-table">
     <thead>
         <tr>
@@ -744,6 +745,7 @@ $activeStatDefs = [
     @endforeach
     </tbody>
 </table>
+</div>{{-- end overflow-x scroll --}}
 </div>
 </div>{{-- end table view --}}
 
@@ -913,7 +915,7 @@ function taskViewToggle() {
     var saved = null;
     try { saved = localStorage.getItem('adminTaskView'); } catch(e) {}
     return {
-        view: saved || 'table',
+        view: saved ? saved : (window.innerWidth <= 768 ? 'cards' : 'table'),
         setView(v) {
             this.view = v;
             try { localStorage.setItem('adminTaskView', v); } catch(e) {}

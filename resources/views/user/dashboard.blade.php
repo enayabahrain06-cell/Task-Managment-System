@@ -2,6 +2,19 @@
 @section('title', isset($previewUser) ? $previewUser->name . ' — Dashboard Preview' : 'My Dashboard')
 
 @section('content')
+<style>
+.usr-stats-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:14px; margin-bottom:20px; }
+@media(max-width:1100px) { .usr-stats-grid { grid-template-columns:repeat(3,1fr); } }
+@media(max-width:700px)  { .usr-stats-grid { grid-template-columns:repeat(2,1fr); } }
+@media(max-width:400px)  { .usr-stats-grid { grid-template-columns:1fr; } }
+
+/* Dashboard header — stack on tiny phones */
+@media(max-width:480px) {
+    .usr-dash-header { flex-direction:column !important; align-items:flex-start !important; gap:12px !important; padding:18px 16px !important; }
+    .usr-dash-header h1 { font-size:18px !important; }
+    .usr-dash-header button { width:100% !important; justify-content:center !important; }
+}
+</style>
 @php
     $user      = $previewUser ?? auth()->user();
     $isPreview = isset($previewUser);
@@ -25,7 +38,7 @@
 {{-- ═══════════════════════════════
      HEADER
 ════════════════════════════════ --}}
-<div style="background:linear-gradient(135deg,#4F46E5 0%,#7C3AED 100%);border-radius:16px;padding:24px 28px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+<div class="usr-dash-header" style="background:linear-gradient(135deg,#4F46E5 0%,#7C3AED 100%);border-radius:16px;padding:24px 28px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
     <div style="display:flex;align-items:center;gap:16px;">
         @if($user->avatarUrl())
             <img src="{{ $user->avatarUrl() }}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.3);" alt="">
@@ -56,7 +69,7 @@
 {{-- ═══════════════════════════════
      STATS  (single row: 6 cards)
 ════════════════════════════════ --}}
-<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:20px;">
+<div class="usr-stats-grid">
     @foreach([
         ['Total Tasks',   $cardTotal,      'fa-list-check',            '#EEF2FF', '#4F46E5', 'Assigned to you',   'F0F0F0', 'total',       '#4F46E5'],
         ['Completed',     $cardCompleted,  'fa-circle-check',          '#F0FDF4', '#16A34A', $rate.'% rate'.($completedSocialPosts>0?' · '.$completedSocialPosts.' post'.($completedSocialPosts>1?'s':'').' done':''), 'F0F0F0', 'completed', '#16A34A'],
