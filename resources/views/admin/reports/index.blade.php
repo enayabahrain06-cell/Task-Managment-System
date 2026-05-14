@@ -45,8 +45,8 @@
     text-transform:uppercase; letter-spacing:.06em;
     margin:0 0 10px; display:flex; align-items:center; gap:7px;
 }
-.rpt-scroll-wrap { overflow-y:auto; overflow-x:auto; max-height:190px; -webkit-overflow-scrolling:touch; }
-.rpt-table { width:100%; border-collapse:collapse; font-size:13px; }
+.rpt-scroll-wrap { overflow-y:auto; overflow-x:auto; max-height:220px; -webkit-overflow-scrolling:touch; }
+.rpt-table { width:100%; border-collapse:collapse; font-size:13px; min-width:540px; }
 .rpt-table th {
     text-align:left; padding:7px 10px;
     font-size:10px; font-weight:700; color:#6B7280;
@@ -693,8 +693,8 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
             <i class="fas fa-circle-info" style="margin-right:3px;"></i>
             Admin/Manager: counted by tasks <strong>created</strong> &amp; tasks <strong>approved</strong>. &nbsp;Users: counted by assigned tasks.
         </div>
-        <div style="overflow-x:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:12px;" id="team-table">
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:780px;" id="team-table">
                 <thead>
                     <tr style="background:#F9FAFB;border-bottom:1px solid #E5E7EB;">
                         <th style="text-align:left;padding:7px 12px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Member</th>
@@ -790,7 +790,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         </p>
         <span style="font-size:11px;color:#4F46E5;background:#EEF2FF;padding:2px 9px;border-radius:20px;font-weight:600;">{{ $customerStats->count() }} Customers</span>
     </div>
-    <div style="overflow-x:auto;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
         <table class="rpt-table" id="customer-table">
             <thead>
                 <tr>
@@ -884,7 +884,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         <p style="font-size:12px;color:#9CA3AF;margin:0;max-width:360px;margin:0 auto;">Data appears here once a manager marks a task as <strong>"Awaiting Customer Approval"</strong> from the Approvals page. That action records when the design was sent, and the timer starts.</p>
     </div>
     @else
-    <div style="overflow-x:auto;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
     <table class="rpt-table" id="approval-speed-table">
         <thead>
             <tr>
@@ -986,7 +986,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         <p style="font-size:13px;color:#9CA3AF;margin:0;">No social media posts pending.</p>
     </div>
     @else
-    <div style="overflow-x:auto;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
     <table class="rpt-table">
         <thead>
             <tr>
@@ -1091,7 +1091,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         <p style="font-size:13px;color:#9CA3AF;margin:0;">No tasks pending a social media decision.</p>
     </div>
     @else
-    <div style="overflow-x:auto;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
     <table class="rpt-table">
         <thead>
             <tr>
@@ -1363,7 +1363,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         </span>
     </div>
 
-    <div style="overflow-x:auto;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
     <table class="rpt-table" id="billing-user-table">
         <thead>
             <tr>
@@ -1456,7 +1456,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         @endforeach
     </div>
 
-    <div style="overflow-x:auto;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
     <table class="rpt-table" id="billing-customer-table">
         <thead>
             <tr>
@@ -1565,7 +1565,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         </div>
     </div>
 
-    <div style="overflow-x:auto;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
     <table class="rpt-table" id="ad-budget-table">
         <thead>
             <tr>
