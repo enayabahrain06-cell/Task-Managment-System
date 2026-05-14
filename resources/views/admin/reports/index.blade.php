@@ -56,8 +56,17 @@
     text-transform:uppercase; letter-spacing:.06em;
     margin:0 0 10px; display:flex; align-items:center; gap:7px;
 }
-.rpt-scroll-wrap { overflow-y:auto; overflow-x:auto; max-height:220px; -webkit-overflow-scrolling:touch; }
-.rpt-table { width:100%; border-collapse:collapse; font-size:13px; min-width:540px; }
+.rpt-scroll-wrap { overflow-x:auto; overflow-y:auto; max-height:220px; -webkit-overflow-scrolling:touch; display:block; }
+.rpt-table { width:100%; border-collapse:collapse; font-size:13px; min-width:560px; }
+/* Per-table min-widths based on column count */
+#proj-table            { min-width:600px; }
+#customer-table        { min-width:660px; }
+#approval-speed-table  { min-width:700px; }
+#overdue-table         { min-width:680px; }
+#reopened-table        { min-width:580px; }
+#billing-user-table    { min-width:600px; }
+#billing-customer-table{ min-width:520px; }
+#ad-budget-table       { min-width:720px; }
 .rpt-table th {
     text-align:left; padding:7px 10px;
     font-size:10px; font-weight:700; color:#6B7280;
