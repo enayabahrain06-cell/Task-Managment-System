@@ -226,6 +226,16 @@
     background: #fff; border-radius: 16px; border: 1px solid #EBEBEB;
     box-shadow: 0 2px 10px rgba(99,102,241,.07); overflow: hidden;
 }
+.pend-tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.pend-tbl-scroll .pend-table { min-width: 640px; }
+
+@media (max-width: 380px) {
+    .apv-header { padding: 10px 12px 9px; }
+    .apv-submission { padding: 9px 12px; }
+    .apv-approve, .apv-reject { padding: 10px 12px 12px; }
+    .apv-task-title { max-width: 160px !important; }
+    .hist-view-btn span { display: none; }
+}
 </style>
 
 <div x-data="approvalPage()" @keydown.escape.window="if(viewer) closeViewer(); else if(approvalModal) approvalModal=false; else if(rejectModal) rejectModal=false; else if(qvModal) closeQuickView(); else closeModal()"
@@ -1795,7 +1805,14 @@
                 <div style="width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#FCD34D,#F59E0B);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;">
                     {{ strtoupper(substr($task->assignee->name ?? 'U', 0, 1)) }}
                 </div>
-                <a href="{{ route('admin.tasks.show', $task) }}" style="font-size:13px;font-weight:600;color:#111827;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;display:block;" title="{{ $task->title }}">{{ $task->title }}</a>
+                <div style="overflow:hidden;">
+                    <a href="{{ route('admin.tasks.show', $task) }}" style="font-size:13px;font-weight:600;color:#111827;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;display:block;" title="{{ $task->title }}">{{ $task->title }}</a>
+                    @if($task->customer_decision_deferred_at)
+                    <span style="display:inline-block;margin-top:3px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:#F5F3FF;color:#7C3AED;letter-spacing:.03em;white-space:nowrap;">
+                        <i class="fas fa-clock" style="font-size:9px;margin-right:2px;"></i> Decide Later
+                    </span>
+                    @endif
+                </div>
             </div>
         </td>
         <td><span style="font-size:12px;font-weight:600;color:#D97706;">{{ $task->assignee->name ?? '—' }}</span></td>
@@ -2671,8 +2688,8 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
     <p style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">No matching tasks</p>
     <p style="font-size:13px;color:#9CA3AF;margin:0;">Try adjusting your search or filter.</p>
     @else
-    <p style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">No deferred decisions</p>
-    <p style="font-size:13px;color:#9CA3AF;margin:0;">All approved tasks have had their social media decision resolved.</p>
+    <p style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">No pending social media decisions</p>
+    <p style="font-size:13px;color:#9CA3AF;margin:0;">All completed tasks have been assigned or marked as social not needed.</p>
     @endif
 </div>
 @else

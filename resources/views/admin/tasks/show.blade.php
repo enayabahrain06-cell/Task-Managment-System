@@ -2,6 +2,39 @@
 @section('title', $task->title)
 
 @section('content')
+<style>
+/* ── Admin task detail – mobile responsiveness ── */
+.task-detail-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 20px;
+    align-items: start;
+}
+.task-action-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+@media (max-width: 768px) {
+    .task-detail-layout {
+        grid-template-columns: 1fr;
+    }
+}
+@media (max-width: 480px) {
+    .task-action-grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
+.task-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.task-table-wrap table { min-width: 600px; }
+@media (max-width: 768px) {
+    .task-table-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+    .task-table-wrap table { min-width: 600px !important; }
+}
+</style>
 @php
     $doneStatuses = ['approved','delivered','archived'];
     $deadlineEOD  = $task->deadline ? \App\Models\Setting::deadlineEOD($task->deadline) : null;
@@ -555,7 +588,7 @@
     </div>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;">
+<div class="task-detail-layout">
 
     {{-- Left column --}}
     <div style="display:flex;flex-direction:column;gap:20px;">
@@ -905,7 +938,7 @@
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 16px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-gavel" style="color:#7C3AED;"></i> Review Submission
             </h2>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="task-action-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                 <button type="button"
                         @click="openApprovalModal({
                             id:              {{ $task->id }},
@@ -2509,7 +2542,7 @@ function taskApprovalPage() {
                                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;outline:none;transition:border-color .15s;box-sizing:border-box;"
                                onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
                     </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="task-action-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                         <div>
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Project</label>
                             <div style="position:relative;">
@@ -2539,7 +2572,7 @@ function taskApprovalPage() {
                             </div>
                         </div>
                     </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="task-action-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                         <div>
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Assignee</label>
                             <div style="position:relative;">

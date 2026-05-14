@@ -41,6 +41,15 @@
 .btn-modal-primary { display:inline-flex;align-items:center;gap:7px;padding:9px 24px;background:linear-gradient(135deg,#6366F1,#4F46E5);border:none;border-radius:10px;font-size:13px;font-weight:600;color:#fff;cursor:pointer;box-shadow:0 4px 12px rgba(99,102,241,.3);transition:opacity .15s,box-shadow .15s;font-family:'Inter',sans-serif; }
 .btn-modal-primary:hover:not(:disabled) { box-shadow:0 6px 16px rgba(99,102,241,.4); }
 .btn-modal-primary:disabled { opacity:0.55;cursor:not-allowed; }
+/* ── Mobile responsiveness ── */
+.team-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.team-form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+@media (max-width: 480px) {
+    .team-form-grid-2 { grid-template-columns: 1fr; }
+    /* Stack the outer tab nav */
+    .team-outer-tabs { flex-direction: column; width: 100%; }
+    .team-outer-tabs a { justify-content: center; }
+}
 </style>
 
 {{-- ═══════ Page Header ═══════ --}}
@@ -370,7 +379,7 @@
 
 {{-- ══ TABLE VIEW ══ --}}
 <div x-show="view === 'table'" x-cloak>
-<div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+<div class="team-table-wrap bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
     <table class="w-full">
         <thead>
             <tr class="border-b border-gray-100 bg-gray-50/50">
@@ -579,6 +588,8 @@ $roleColorMap = ['admin'=>'bg-red-100 text-red-600','manager'=>'bg-amber-100 tex
                 'view_tasks'           => ['icon' => 'fa-list-check',          'label' => 'View Tasks',           'desc' => 'View & manage own tasks'],
                 'submit_work'          => ['icon' => 'fa-paper-plane',         'label' => 'Submit Work',          'desc' => 'Submit deliverables for review'],
                 'manage_tasks'         => ['icon' => 'fa-pen-to-square',       'label' => 'Create & Assign Tasks','desc' => 'Create, edit & assign tasks'],
+                'delete_tasks'         => ['icon' => 'fa-trash',               'label' => 'Delete Tasks',         'desc' => 'Move tasks to recycle bin'],
+                'view_trash'           => ['icon' => 'fa-trash-can',           'label' => 'Recycle Bin',          'desc' => 'Access & restore deleted tasks'],
                 'approve_tasks'        => ['icon' => 'fa-clipboard-check',     'label' => 'Approve Submissions',  'desc' => 'Approve or reject submissions'],
                 'view_activity_log'    => ['icon' => 'fa-bolt',                'label' => 'Task Activity Log',    'desc' => 'Task history & change log'],
                 'view_version_history' => ['icon' => 'fa-clock-rotate-left',   'label' => 'Version History',      'desc' => 'Submitted version history'],
@@ -590,6 +601,7 @@ $roleColorMap = ['admin'=>'bg-red-100 text-red-600','manager'=>'bg-amber-100 tex
             'perms' => [
                 'view_projects'   => ['icon' => 'fa-folder-open',      'label' => 'View Projects',          'desc' => 'Browse own projects'],
                 'manage_projects' => ['icon' => 'fa-folder-plus',      'label' => 'Manage Projects',        'desc' => 'Create & manage projects'],
+                'delete_projects' => ['icon' => 'fa-trash',            'label' => 'Delete Projects',        'desc' => 'Permanently delete projects'],
                 'view_team_tasks' => ['icon' => 'fa-users-viewfinder', 'label' => 'View Team Tasks',        'desc' => 'View tasks of teammates'],
                 'view_team'       => ['icon' => 'fa-users',            'label' => 'Team Directory',         'desc' => 'Team member directory'],
             ],
@@ -1047,8 +1059,8 @@ function permsApp() {
 
                 @php
                     $modalPermGroups = [
-                        'Tasks & Work' => ['icon' => 'fa-square-check', 'color' => '#6366F1', 'bg' => '#EEF2FF', 'perms' => ['view_tasks' => ['icon' => 'fa-list-check', 'desc' => 'View & manage own tasks'], 'submit_work' => ['icon' => 'fa-paper-plane', 'desc' => 'Submit deliverables for review'], 'manage_tasks' => ['icon' => 'fa-pen-to-square', 'desc' => 'Create, edit & assign tasks'], 'approve_tasks' => ['icon' => 'fa-clipboard-check', 'desc' => 'Approve or reject submissions'], 'view_activity_log' => ['icon' => 'fa-bolt', 'desc' => 'Task history & change log'], 'view_version_history' => ['icon' => 'fa-clock-rotate-left', 'desc' => 'Submitted version history'], 'view_comments' => ['icon' => 'fa-comments', 'desc' => 'Read & write task comments']]],
-                        'Projects & Team' => ['icon' => 'fa-diagram-project', 'color' => '#10B981', 'bg' => '#ECFDF5', 'perms' => ['view_projects' => ['icon' => 'fa-folder-open', 'desc' => 'Browse own projects'], 'manage_projects' => ['icon' => 'fa-folder-plus', 'desc' => 'Create & manage projects'], 'view_team_tasks' => ['icon' => 'fa-users-viewfinder', 'desc' => 'View tasks of teammates'], 'view_team' => ['icon' => 'fa-users', 'desc' => 'Team member directory']]],
+                        'Tasks & Work' => ['icon' => 'fa-square-check', 'color' => '#6366F1', 'bg' => '#EEF2FF', 'perms' => ['view_tasks' => ['icon' => 'fa-list-check', 'desc' => 'View & manage own tasks'], 'submit_work' => ['icon' => 'fa-paper-plane', 'desc' => 'Submit deliverables for review'], 'manage_tasks' => ['icon' => 'fa-pen-to-square', 'desc' => 'Create, edit & assign tasks'], 'delete_tasks' => ['icon' => 'fa-trash', 'desc' => 'Move tasks to recycle bin'], 'view_trash' => ['icon' => 'fa-trash-can', 'desc' => 'Access & restore deleted tasks'], 'approve_tasks' => ['icon' => 'fa-clipboard-check', 'desc' => 'Approve or reject submissions'], 'view_activity_log' => ['icon' => 'fa-bolt', 'desc' => 'Task history & change log'], 'view_version_history' => ['icon' => 'fa-clock-rotate-left', 'desc' => 'Submitted version history'], 'view_comments' => ['icon' => 'fa-comments', 'desc' => 'Read & write task comments']]],
+                        'Projects & Team' => ['icon' => 'fa-diagram-project', 'color' => '#10B981', 'bg' => '#ECFDF5', 'perms' => ['view_projects' => ['icon' => 'fa-folder-open', 'desc' => 'Browse own projects'], 'manage_projects' => ['icon' => 'fa-folder-plus', 'desc' => 'Create & manage projects'], 'delete_projects' => ['icon' => 'fa-trash', 'desc' => 'Permanently delete projects'], 'view_team_tasks' => ['icon' => 'fa-users-viewfinder', 'desc' => 'View tasks of teammates'], 'view_team' => ['icon' => 'fa-users', 'desc' => 'Team member directory']]],
                         'Communication' => ['icon' => 'fa-comment-dots', 'color' => '#3B82F6', 'bg' => '#EFF6FF', 'perms' => ['view_messages' => ['icon' => 'fa-envelope', 'desc' => 'Direct messaging'], 'view_calendar' => ['icon' => 'fa-calendar-days', 'desc' => 'Calendar & schedule']]],
                         'Reports & Data' => ['icon' => 'fa-chart-bar', 'color' => '#F59E0B', 'bg' => '#FFFBEB', 'perms' => ['view_reports' => ['icon' => 'fa-chart-column', 'desc' => 'Reports & analytics page'], 'export_data' => ['icon' => 'fa-file-export', 'desc' => 'Export & download data'], 'view_audit_log' => ['icon' => 'fa-shield-halved', 'desc' => 'View audit log entries']]],
                         'Administration' => ['icon' => 'fa-gear', 'color' => '#EF4444', 'bg' => '#FEF2F2', 'perms' => ['manage_users' => ['icon' => 'fa-user-shield', 'desc' => 'Create & manage users'], 'manage_roles' => ['icon' => 'fa-tag', 'desc' => 'Manage roles & permissions'], 'manage_settings' => ['icon' => 'fa-sliders', 'desc' => 'System settings & config'], 'view_approvals' => ['icon' => 'fa-stamp', 'desc' => 'Task approvals queue']]],
@@ -1430,7 +1442,7 @@ function rolesTab() {
                 </div>
 
                 {{-- Basic Info grid --}}
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+                <div class="team-form-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
 
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Full Name <span style="color:#EF4444;">*</span></label>
@@ -1618,7 +1630,7 @@ function rolesTab() {
                         <span style="font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Change Password</span>
                         <span style="font-size:11px;color:#9CA3AF;font-weight:400;text-transform:none;letter-spacing:0;">— leave blank to keep current</span>
                     </div>
-                    <div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;" x-data="{s1:false,s2:false}">
+                    <div class="team-form-grid-2" style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;" x-data="{s1:false,s2:false}">
                         <div style="position:relative;">
                             <input :type="s1?'text':'password'" name="password" placeholder="New password…"
                                    style="width:100%;padding:9px 36px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;">
@@ -1981,8 +1993,8 @@ function editUserModal() {
 @php
     $addPermKeys = array_keys(\App\Models\User::ALL_PERMISSIONS);
     $addPermGroups = [
-        'Tasks & Work'    => ['icon'=>'fa-square-check','color'=>'#6366F1','bg'=>'#EEF2FF','perms'=>['view_tasks'=>'View Tasks','submit_work'=>'Submit Work','manage_tasks'=>'Manage Tasks','approve_tasks'=>'Approve Submissions','view_activity_log'=>'Activity Log','view_version_history'=>'Version History','view_comments'=>'Comments']],
-        'Projects & Team' => ['icon'=>'fa-diagram-project','color'=>'#10B981','bg'=>'#ECFDF5','perms'=>['view_projects'=>'View Projects','manage_projects'=>'Manage Projects','view_team_tasks'=>'Team Tasks','view_team'=>'Team Directory']],
+        'Tasks & Work'    => ['icon'=>'fa-square-check','color'=>'#6366F1','bg'=>'#EEF2FF','perms'=>['view_tasks'=>'View Tasks','submit_work'=>'Submit Work','manage_tasks'=>'Manage Tasks','delete_tasks'=>'Delete Tasks','view_trash'=>'Recycle Bin','approve_tasks'=>'Approve Submissions','view_activity_log'=>'Activity Log','view_version_history'=>'Version History','view_comments'=>'Comments']],
+        'Projects & Team' => ['icon'=>'fa-diagram-project','color'=>'#10B981','bg'=>'#ECFDF5','perms'=>['view_projects'=>'View Projects','manage_projects'=>'Manage Projects','delete_projects'=>'Delete Projects','view_team_tasks'=>'Team Tasks','view_team'=>'Team Directory']],
         'Communication'   => ['icon'=>'fa-comment-dots','color'=>'#3B82F6','bg'=>'#EFF6FF','perms'=>['view_messages'=>'Messages','view_calendar'=>'Calendar']],
         'Reports'         => ['icon'=>'fa-chart-bar','color'=>'#F59E0B','bg'=>'#FFFBEB','perms'=>['view_reports'=>'Reports','export_data'=>'Export Data','view_audit_log'=>'Audit Log']],
         'Admin'           => ['icon'=>'fa-gear','color'=>'#EF4444','bg'=>'#FEF2F2','perms'=>['manage_users'=>'Manage Users','manage_roles'=>'Manage Roles','manage_settings'=>'Settings','view_approvals'=>'Approvals']],
@@ -2048,7 +2060,7 @@ function editUserModal() {
                 </div>
 
                 {{-- Basic Info --}}
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+                <div class="team-form-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Full Name <span style="color:#EF4444;">*</span></label>
                         <input type="text" name="name" required placeholder="John Doe" maxlength="255"
@@ -2213,7 +2225,7 @@ function editUserModal() {
                         <span style="font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Password</span>
                         <span style="font-size:11px;color:#9CA3AF;font-weight:400;text-transform:none;letter-spacing:0;">— required</span>
                     </div>
-                    <div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;" x-data="{s1:false,s2:false}">
+                    <div class="team-form-grid-2" style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;" x-data="{s1:false,s2:false}">
                         <div style="position:relative;">
                             <input :type="s1?'text':'password'" name="password" required placeholder="Min. 8 characters"
                                    style="width:100%;padding:9px 36px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;">
@@ -2552,7 +2564,7 @@ function closePermanentDeleteConfirm() {
             </div>
             @endif
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+            <div class="team-form-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Full Name <span style="color:#DC2626;">*</span></label>
                     <input type="text" name="name" id="clone-name" required placeholder="e.g. Jane Smith"
@@ -2574,7 +2586,7 @@ function closePermanentDeleteConfirm() {
                        onfocus="this.style.borderColor='#7C3AED'" onblur="this.style.borderColor='#E5E7EB'">
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
+            <div class="team-form-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Password <span style="color:#DC2626;">*</span></label>
                     <input type="password" name="password" required placeholder="Min. 8 characters"

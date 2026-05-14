@@ -1,6 +1,16 @@
 @extends('layouts.app')
 @section('title', 'Recycle Bin — Tasks')
 
+@push('styles')
+<style>
+.trash-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+@media(max-width:480px){
+    .trash-search-form { flex-wrap:wrap; }
+    .trash-search-form .search-input { min-width:100% !important; }
+}
+</style>
+@endpush
+
 @section('content')
 
 {{-- Header --}}
@@ -56,7 +66,8 @@
 @else
 
 <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-<table style="width:100%;border-collapse:collapse;">
+<div class="trash-table-wrap">
+<table style="width:100%;border-collapse:collapse;min-width:640px;">
     <thead>
         <tr style="background:#FEF2F2;border-bottom:1px solid #FEE2E2;">
             <th style="padding:12px 20px;text-align:left;font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;">Task</th>
@@ -165,6 +176,7 @@
         @endforeach
     </tbody>
 </table>
+</div>{{-- /trash-table-wrap --}}
 
 <x-pagination :paginator="$tasks" mt="12px" />
 

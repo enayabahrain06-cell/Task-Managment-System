@@ -2,13 +2,33 @@
 @section('title', 'Manage Users')
 
 @section('content')
+<style>
+@media (max-width: 768px) {
+    /* Header: stack title and button */
+    .users-page-header { flex-direction: column; align-items: flex-start !important; gap: 10px; }
+    /* Tabs: allow horizontal scroll */
+    .users-tabs-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+    .users-tabs-wrap > div { width: max-content; }
+    /* Filters: stack */
+    .users-filter-form { flex-direction: column; }
+    .users-filter-form > * { width: 100%; min-width: 0; }
+    /* Permissions panel: stack columns */
+    .perms-layout { flex-direction: column !important; height: auto !important; min-height: auto !important; }
+    .perms-sidebar { width: 100% !important; max-height: 260px; }
+}
+@media (max-width: 480px) {
+    .users-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    .users-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .users-table-wrap table { min-width: 540px; }
+}
+</style>
 @php
 $roleColorMap = ['admin'=>'bg-red-100 text-red-600','manager'=>'bg-amber-100 text-amber-700','user'=>'bg-emerald-100 text-emerald-700'];
 $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
 @endphp
 
 {{-- Header --}}
-<div class="flex items-center justify-between mb-6">
+<div class="users-page-header flex items-center justify-between mb-6">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Manage Users</h1>
         <p class="text-sm text-gray-500 mt-0.5">{{ $stats['total'] }} total members</p>
@@ -20,7 +40,8 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
 </div>
 
 {{-- Tabs --}}
-<div class="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit mb-6">
+<div class="users-tabs-wrap mb-6">
+<div class="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
     <a href="{{ route('admin.users.index') }}?tab=users"
        class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition {{ request('tab','users') === 'users' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
         <i class="fa fa-users text-xs"></i> Users
@@ -35,6 +56,7 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
         <span class="text-xs font-bold px-1.5 py-0.5 rounded-full {{ request('tab') === 'roles' ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-200 text-gray-500' }}">{{ $allRoles->count() }}</span>
     </a>
 </div>
+</div>{{-- /users-tabs-wrap --}}
 
 @if(request('tab','users') === 'users')
 
@@ -54,7 +76,7 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
 </div>
 
 {{-- Search & Filters --}}
-<form method="GET" action="{{ route('admin.users.index') }}" class="flex flex-wrap gap-3 mb-4">
+<form method="GET" action="{{ route('admin.users.index') }}" class="users-filter-form flex flex-wrap gap-3 mb-4">
     <div class="relative flex-1 min-w-[200px]">
         <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
         <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name or email…"
@@ -78,7 +100,7 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
 </form>
 
 {{-- Table --}}
-<div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+<div class="users-table-wrap bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
     <table class="w-full">
         <thead>
             <tr class="border-b border-gray-100 bg-gray-50/60">
@@ -185,10 +207,7 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
             @endforelse
         </tbody>
     </table>
-    @if($users->hasPages())
-    <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/50">
-        {{ $users->links() }}
-    </div>
+    <x-pagination :paginator="$users" mt="12px" />
     @endif
 </div>
 @endif {{-- users tab --}}
@@ -289,10 +308,10 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
 </div>
 @else
 
-<div x-data="permsApp()" x-init="init()" style="display:flex;gap:20px;height:calc(100vh - 230px);min-height:540px;">
+<div x-data="permsApp()" x-init="init()" class="perms-layout" style="display:flex;gap:20px;height:calc(100vh - 230px);min-height:540px;">
 
     {{-- ── Left panel: user list ── --}}
-    <div style="width:272px;flex-shrink:0;background:#fff;border-radius:16px;border:1px solid #E5E7EB;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 1px 4px rgba(0,0,0,.05);">
+    <div class="perms-sidebar" style="width:272px;flex-shrink:0;background:#fff;border-radius:16px;border:1px solid #E5E7EB;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 1px 4px rgba(0,0,0,.05);">
 
         {{-- Search --}}
         <div style="padding:14px;border-bottom:1px solid #F3F4F6;">

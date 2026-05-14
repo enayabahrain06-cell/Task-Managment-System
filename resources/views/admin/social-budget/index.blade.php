@@ -26,7 +26,7 @@
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0; font-size: 16px;
 }
-.sb-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sb-table { width: 100%; min-width: 600px; border-collapse: collapse; font-size: 13px; }
 .sb-table th {
     padding: 9px 12px; text-align: left; font-size: 11px;
     font-weight: 700; color: #9CA3AF; text-transform: uppercase;
@@ -53,6 +53,19 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right 10px center;
 }
+.sb-stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+.sb-filter-bar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:20px; }
+.sb-filter-form { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+@media (max-width: 900px) {
+    .sb-stats-grid { grid-template-columns: repeat(2,1fr); }
+}
+@media (max-width: 480px) {
+    .sb-stats-grid { grid-template-columns: repeat(2,1fr); gap:8px; }
+    .sb-filter-bar { flex-direction:column; align-items:stretch; }
+    .sb-filter-form { flex-direction:column; width:100%; }
+    .sb-filter-form > * { width:100%; min-width:0; }
+    .sb-filter-form .sb-select { width:100%; }
+}
 </style>
 
 {{-- Page Header --}}
@@ -64,7 +77,7 @@
 </div>
 
 {{-- Summary Cards --}}
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+<div class="sb-stats-grid">
     <div class="sb-stat">
         <div class="sb-stat-icon" style="background:#F5F3FF;">
             <i class="fas fa-share-alt" style="color:#7C3AED;"></i>
@@ -105,7 +118,7 @@
 
 {{-- Filter Bar --}}
 <div class="sb-card" style="padding:14px 20px;">
-    <form method="GET" action="{{ route('admin.social-budget.index') }}" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <form method="GET" action="{{ route('admin.social-budget.index') }}" class="sb-filter-form">
 
         {{-- Status tabs --}}
         <div style="display:flex;gap:4px;background:#F3F4F6;border-radius:9px;padding:3px;">
@@ -169,7 +182,7 @@
         </div>
     </div>
 
-    <div style="overflow-x:auto;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
     <table class="sb-table">
         <thead>
             <tr>

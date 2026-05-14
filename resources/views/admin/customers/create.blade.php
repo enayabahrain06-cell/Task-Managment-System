@@ -1,8 +1,20 @@
 @extends('layouts.app')
 @section('title', 'New Customer')
 
+@push('styles')
+<style>
+.cust-create-wrap { max-width:640px; width:100%; }
+.cust-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+@media(max-width:480px){
+    .cust-create-wrap { padding:0; }
+    .cust-create-wrap > div { padding:16px !important; }
+    .cust-grid2 { grid-template-columns:1fr !important; gap:10px !important; }
+}
+</style>
+@endpush
+
 @section('content')
-<div style="max-width:640px;">
+<div class="cust-create-wrap" style="max-width:640px;">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
         <a href="{{ route('admin.customers.index') }}"
            style="width:34px;height:34px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;color:#6B7280;text-decoration:none;">
@@ -15,7 +27,7 @@
         <form method="POST" action="{{ route('admin.customers.store') }}">
             @csrf
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+            <div class="cust-grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
                         Customer Name <span style="color:#EF4444;">*</span>
@@ -33,7 +45,7 @@
                 </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+            <div class="cust-grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Email</label>
                     <input type="email" name="email" value="{{ old('email') }}"

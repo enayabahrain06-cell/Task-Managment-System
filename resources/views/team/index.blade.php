@@ -41,6 +41,16 @@
 .btn-modal-primary { display:inline-flex;align-items:center;gap:7px;padding:9px 24px;background:linear-gradient(135deg,#6366F1,#4F46E5);border:none;border-radius:10px;font-size:13px;font-weight:600;color:#fff;cursor:pointer;box-shadow:0 4px 12px rgba(99,102,241,.3);transition:opacity .15s,box-shadow .15s;font-family:'Inter',sans-serif; }
 .btn-modal-primary:hover:not(:disabled) { box-shadow:0 6px 16px rgba(99,102,241,.4); }
 .btn-modal-primary:disabled { opacity:0.55;cursor:not-allowed; }
+/* ── Mobile responsiveness ── */
+.team-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.team-table-wrap table { min-width: 700px; }
+.team-form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+@media (max-width: 480px) {
+    .team-form-grid-2 { grid-template-columns: 1fr; }
+    /* Stack the outer tab nav */
+    .team-outer-tabs { flex-direction: column; width: 100%; }
+    .team-outer-tabs a { justify-content: center; }
+}
 </style>
 
 {{-- ═══════ Page Header ═══════ --}}
@@ -370,7 +380,7 @@
 
 {{-- ══ TABLE VIEW ══ --}}
 <div x-show="view === 'table'" x-cloak>
-<div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+<div class="team-table-wrap bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
     <table class="w-full">
         <thead>
             <tr class="border-b border-gray-100 bg-gray-50/50">
@@ -1433,7 +1443,7 @@ function rolesTab() {
                 </div>
 
                 {{-- Basic Info grid --}}
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+                <div class="team-form-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
 
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Full Name <span style="color:#EF4444;">*</span></label>
@@ -1621,7 +1631,7 @@ function rolesTab() {
                         <span style="font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Change Password</span>
                         <span style="font-size:11px;color:#9CA3AF;font-weight:400;text-transform:none;letter-spacing:0;">— leave blank to keep current</span>
                     </div>
-                    <div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;" x-data="{s1:false,s2:false}">
+                    <div class="team-form-grid-2" style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;" x-data="{s1:false,s2:false}">
                         <div style="position:relative;">
                             <input :type="s1?'text':'password'" name="password" placeholder="New password…"
                                    style="width:100%;padding:9px 36px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;">
@@ -2051,7 +2061,7 @@ function editUserModal() {
                 </div>
 
                 {{-- Basic Info --}}
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+                <div class="team-form-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Full Name <span style="color:#EF4444;">*</span></label>
                         <input type="text" name="name" required placeholder="John Doe" maxlength="255"
@@ -2216,7 +2226,7 @@ function editUserModal() {
                         <span style="font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Password</span>
                         <span style="font-size:11px;color:#9CA3AF;font-weight:400;text-transform:none;letter-spacing:0;">— required</span>
                     </div>
-                    <div style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;" x-data="{s1:false,s2:false}">
+                    <div class="team-form-grid-2" style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;" x-data="{s1:false,s2:false}">
                         <div style="position:relative;">
                             <input :type="s1?'text':'password'" name="password" required placeholder="Min. 8 characters"
                                    style="width:100%;padding:9px 36px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;">
@@ -2555,7 +2565,7 @@ function closePermanentDeleteConfirm() {
             </div>
             @endif
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+            <div class="team-form-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Full Name <span style="color:#DC2626;">*</span></label>
                     <input type="text" name="name" id="clone-name" required placeholder="e.g. Jane Smith"
@@ -2577,7 +2587,7 @@ function closePermanentDeleteConfirm() {
                        onfocus="this.style.borderColor='#7C3AED'" onblur="this.style.borderColor='#E5E7EB'">
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
+            <div class="team-form-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Password <span style="color:#DC2626;">*</span></label>
                     <input type="password" name="password" required placeholder="Min. 8 characters"

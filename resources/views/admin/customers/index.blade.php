@@ -2,6 +2,18 @@
 @section('title', 'Customers')
 
 @section('content')
+<style>
+@media (max-width: 768px) {
+    .cust-header { flex-direction: column; align-items: flex-start !important; }
+    .cust-search-wrap { max-width: 100% !important; }
+    .cust-tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .cust-tbl-scroll table { min-width: 600px; }
+}
+@media (max-width: 480px) {
+    .cust-view-toggle { flex-wrap: wrap; }
+    .cust-cards-grid { grid-template-columns: 1fr !important; }
+}
+</style>
 <div x-data="{
         modal: {{ $errors->any() ? 'true' : 'false' }},
         view: localStorage.getItem('customers_view') || 'table',
@@ -24,7 +36,7 @@
      }" style="max-width:1100px;">
 
     {{-- Header --}}
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+    <div class="cust-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
         <div>
             <h1 style="font-size:22px;font-weight:700;color:#111827;margin:0;">Customers</h1>
             <p style="font-size:13px;color:#9CA3AF;margin:4px 0 0;">Manage your clients and link them to projects & tasks</p>
@@ -57,7 +69,7 @@
 
     {{-- Search --}}
     <form method="GET" style="margin-bottom:16px;">
-        <div style="position:relative;max-width:360px;">
+        <div class="cust-search-wrap" style="position:relative;max-width:360px;">
             <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:13px;"></i>
             <input type="text" name="search" value="{{ request('search') }}"
                    placeholder="Search by name, company or email..."
@@ -83,8 +95,9 @@
 
     {{-- ── TABLE VIEW ── --}}
     <div x-show="view === 'table'">
-        <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
-            <table style="width:100%;border-collapse:collapse;">
+        <div class="cust-tbl-scroll" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+            <table style="width:100%;min-width:600px;border-collapse:collapse;">
                 <thead>
                     <tr style="border-bottom:1.5px solid #F3F4F6;">
                         <th style="padding:12px 20px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Customer</th>
@@ -174,6 +187,7 @@
                     @endforeach
                 </tbody>
             </table>
+        </div>{{-- end overflow-x scroll --}}
 
             <x-pagination :paginator="$customers" mt="14px" />
         </div>
@@ -181,7 +195,7 @@
 
     {{-- ── CARD VIEW ── --}}
     <div x-show="view === 'cards'">
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
+        <div class="cust-cards-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
             @foreach($customers as $customer)
             <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;display:flex;flex-direction:column;gap:14px;transition:box-shadow .15s;"
                  onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)'">

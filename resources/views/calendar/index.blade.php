@@ -3,6 +3,18 @@
 @section('title', 'Calendar')
 
 @section('content')
+<style>
+@media (max-width: 480px) {
+    /* Collapse 2-col form grids in meeting modal to 1 col */
+    .cal-form-grid-2 { grid-template-columns: 1fr !important; }
+    /* Page header: stack */
+    .cal-page-header { flex-wrap: wrap; gap: 10px; }
+    .cal-page-header .hidden.md\:flex { display:none !important; }
+}
+@media (max-width: 380px) {
+    #calendar { font-size: 11px; }
+}
+</style>
 
 @php
 $isAdmin = $canManageMeetings;
@@ -72,7 +84,7 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
                     </div>
 
                     {{-- Date + Time --}}
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="cal-form-grid-2 grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1.5">Date <span class="text-red-500">*</span></label>
                             <input type="date" name="meeting_date" x-model="form.meeting_date" required
@@ -86,7 +98,7 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
                     </div>
 
                     {{-- Duration + Location --}}
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="cal-form-grid-2 grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1.5">Duration</label>
                             <select name="duration_minutes" x-model="form.duration_minutes"
@@ -301,7 +313,7 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
                         <textarea x-model="form.description" rows="2" placeholder="Agenda or notes..."
                                   class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition resize-none"></textarea>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="cal-form-grid-2 grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1.5">Date <span class="text-red-500">*</span></label>
                             <input type="date" x-model="form.meeting_date"
@@ -313,7 +325,7 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
                                    class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition">
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="cal-form-grid-2 grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-semibold text-gray-700 mb-1.5">Duration</label>
                             <select x-model="form.duration_minutes"
@@ -423,7 +435,7 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
 </div>
 
 {{-- ── Page Header ── --}}
-<div class="flex items-center justify-between mb-6">
+<div class="cal-page-header flex items-center justify-between mb-6">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Calendar & Meetings</h1>
         <p class="text-sm text-gray-500 mt-0.5">Task deadlines and scheduled events</p>

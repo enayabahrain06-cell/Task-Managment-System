@@ -136,6 +136,8 @@
 /* ── Scrollable table wrapper ── */
 .tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .tbl-scroll .hist-table { min-width: 860px; table-layout: fixed; width: 100%; }
+/* hist-table standalone min-width (used outside .tbl-scroll) */
+.hist-table { min-width: 700px; }
 
 /* ══ Responsive ═══════════════════════════════════════════════ */
 
@@ -225,6 +227,18 @@
 .pend-list-wrap {
     background: #fff; border-radius: 16px; border: 1px solid #EBEBEB;
     box-shadow: 0 2px 10px rgba(99,102,241,.07); overflow: hidden;
+}
+.pend-tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.pend-tbl-scroll .pend-table { min-width: 640px; }
+/* pend-table standalone min-width (used inside .tbl-scroll wrappers) */
+.pend-table { min-width: 600px; }
+
+@media (max-width: 380px) {
+    .apv-header { padding: 10px 12px 9px; }
+    .apv-submission { padding: 9px 12px; }
+    .apv-approve, .apv-reject { padding: 10px 12px 12px; }
+    .apv-task-title { max-width: 160px !important; }
+    .hist-view-btn span { display: none; }
 }
 </style>
 
@@ -1769,7 +1783,7 @@
     <p style="font-size:13px;color:#9CA3AF;margin:0;">Tasks marked as "Awaiting Customer Approval" will appear here.</p>
 </div>
 @else
-<div style="overflow-x:auto;border-radius:14px;border:1px solid #F3F4F6;">
+<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:14px;border:1px solid #F3F4F6;">
 <table class="pend-table" style="background:#fff;">
     <thead>
         <tr>

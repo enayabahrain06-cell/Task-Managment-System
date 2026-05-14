@@ -7,6 +7,8 @@
 <style>
 /* ── Box-sizing reset (cross-browser) ── */
 *, *::before, *::after { box-sizing: border-box; }
+/* Grid items must not overflow their track */
+.stats-grid > *, .charts-grid > *, .bottom-grid > * { min-width: 0; }
 
 /* ── Responsive grid helpers ── */
 .stats-grid   { display: -ms-grid; display:grid; -ms-grid-columns: 1fr 16px 1fr 16px 1fr 16px 1fr 16px 1fr; grid-template-columns:repeat(5,1fr); gap:16px; margin-bottom:20px; }
@@ -34,6 +36,66 @@
 }
 @media(max-width:420px){
     .stats-grid { -ms-grid-columns:1fr; grid-template-columns:1fr; }
+}
+
+/* ── Task Analytics inner grids ── */
+.adash-pipeline-grid  { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:8px; }
+.adash-attention-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin-bottom:14px; }
+.adash-rate-grid      { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.adash-modal-2col     { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
+.adash-modal-3col     { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:center; }
+.adash-assignee-row   { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:12px; }
+
+@media(max-width:768px){
+    .adash-pipeline-grid  { grid-template-columns:repeat(2,1fr); }
+    .adash-attention-grid { grid-template-columns:repeat(3,1fr); }
+    .adash-rate-grid      { grid-template-columns:1fr; gap:8px; }
+    .stat-card-value      { font-size:26px; }
+    /* Page title row: stack on mobile */
+    .adash-title-row      { flex-direction:column; align-items:flex-start !important; }
+    .adash-title-btns     { width:100%; }
+}
+@media(max-width:480px){
+    .adash-pipeline-grid  { grid-template-columns:repeat(2,1fr); }
+    .adash-attention-grid { grid-template-columns:repeat(2,1fr); }
+    .adash-modal-2col     { grid-template-columns:1fr; }
+    .adash-modal-3col     { grid-template-columns:1fr; }
+    .adash-assignee-row   { grid-template-columns:1fr; }
+    .stat-card-value      { font-size:22px; }
+}
+
+/* ── Mobile: collapse inline grids that have no responsive class ── */
+@media(max-width:768px){
+    /* Project-links modal 3-col grid */
+    [style*="grid-template-columns:1fr 1fr auto"] { grid-template-columns:1fr !important; }
+    /* Recent-tasks card-view auto-fill grid: let it go 1-col */
+    [style*="grid-template-columns:repeat(auto-fill"] { grid-template-columns:1fr !important; }
+    /* Ensure the table scroll wrapper shows a scrollbar hint */
+    .dash-card [style*="overflow-x:auto"] { -webkit-overflow-scrolling:touch; }
+    /* Recent tasks header: tighten toggle buttons */
+    .recent-tasks-toggle button { padding:6px 12px !important; font-size:12px !important; }
+    .recent-tasks-toggle { gap:2px !important; }
+}
+@media(max-width:480px){
+    /* Recent tasks header: stack on very small screens */
+    .recent-tasks-header { flex-direction:column !important; align-items:flex-start !important; gap:10px !important; }
+    .recent-tasks-header > div:last-child { width:100%; justify-content:space-between; }
+    /* Grid items in grids must not overflow */
+    .stats-grid > *, .charts-grid > *, .bottom-grid > * { min-width:0; }
+}
+@media(max-width:480px){
+    /* Any remaining 2-col inline grids inside modals */
+    [style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr !important; }
+    /* Recent tasks: hide non-essential columns if user forces table view on mobile */
+    .recent-tasks-col-project,
+    .recent-tasks-col-priority { display:none !important; }
+}
+@media(max-width:640px){
+    /* Reduce table cell padding on mobile */
+    .recent-tasks-table th,
+    .recent-tasks-table td { padding:8px 10px !important; font-size:11px !important; }
+    /* Card view: single column on small phones */
+    .recent-tasks-cards { grid-template-columns:1fr !important; }
 }
 
 /* ── Card base ── */
@@ -143,7 +205,7 @@
 <div x-data="dashModals()" x-init="init()" style="margin-bottom:22px;">
 
     {{-- Title row --}}
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div class="adash-title-row" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
         <div>
             <h1 style="font-size:22px;font-weight:700;color:#111827;margin:0;">Overview</h1>
             <p style="font-size:13px;color:#9CA3AF;margin:3px 0 0;">
@@ -154,7 +216,7 @@
                 </span>
             </p>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <div class="adash-title-btns" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             {{-- NEW PROJECT BUTTON --}}
             <button @click="projectOpen = true"
                     style="display:flex;align-items:center;gap:7px;background:#fff;color:#4F46E5;font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;border:1.5px solid #C7D2FE;cursor:pointer;">
@@ -230,7 +292,7 @@
                     </select>
                 </div>
 
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+                <div class="adash-modal-2col">
                     <div>
                         <label class="form-label">Priority <span style="color:#EF4444;">*</span></label>
                         <select name="priority" class="form-input form-select" required>
@@ -246,7 +308,7 @@
                     </div>
                 </div>
 
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+                <div class="adash-modal-2col" style="margin-bottom:20px;">
                     <div>
                         <label class="form-label">Link to Project <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
                         <select name="project_id" class="form-input form-select">
@@ -408,7 +470,7 @@
                                       style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;color:#111827;box-sizing:border-box;outline:none;resize:none;font-family:'Inter',sans-serif;"
                                       onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">{{ old('description') }}</textarea>
                         </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                        <div class="adash-modal-2col" style="margin-bottom:12px;">
                             <div>
                                 <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
                                     First Review Date
@@ -509,7 +571,7 @@
                                         </div>
                                         <div style="display:flex;flex-direction:column;gap:6px;">
                                             <template x-for="(assignee, j) in task.assignees" :key="j">
-                                                <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;">
+                                                <div class="adash-modal-3col">
                                                     <select :name="'tasks['+i+'][assignees]['+j+'][user_id]'" x-model="assignee.user_id"
                                                             @change="task.assigneeError = false"
                                                             :style="task.assigneeError && j === 0
@@ -537,7 +599,7 @@
                                     </div>
 
                                     {{-- Reviewer + Priority + Deadline --}}
-                                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+                                    <div class="adash-assignee-row">
                                         <div>
                                             <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px;">Reviewer</label>
                                             <select :name="'tasks['+i+'][reviewer_id]'" x-model="task.reviewer_id"
@@ -1040,7 +1102,7 @@ function dashModals() {
     @endphp
 
     {{-- Tier 1: core pipeline (4 equal cards) --}}
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;">
+    <div class="adash-pipeline-grid">
         @foreach($pipelineItems as $item)
         <button onclick="openAnalyticsModal('{{ $item['key'] }}','{{ $item['label'] }}','{{ $item['color'] }}','{{ $item['bg'] }}','{{ $item['icon'] }}','{{ $item['url'] }}')"
                 style="background:{{ $item['bg'] }};border-radius:10px;padding:12px 12px 10px;display:flex;flex-direction:column;gap:6px;border:none;cursor:pointer;text-align:left;width:100%;transition:filter .15s,transform .15s,box-shadow .15s;"
@@ -1062,7 +1124,7 @@ function dashModals() {
     </div>
 
     {{-- Tier 2: attention metrics (6 slim chips) --}}
-    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:14px;">
+    <div class="adash-attention-grid">
         @foreach($attentionItems as $item)
         <button onclick="openAnalyticsModal('{{ $item['key'] }}','{{ $item['label'] }}','{{ $item['color'] }}','{{ $item['bg'] }}','{{ $item['icon'] }}','{{ $item['url'] }}')"
                 style="display:flex;align-items:center;gap:7px;padding:7px 10px;background:{{ $item['bg'] }};border:none;border-radius:8px;cursor:pointer;width:100%;transition:filter .15s,transform .15s;"
@@ -1076,7 +1138,7 @@ function dashModals() {
     </div>
 
     {{-- Rate metrics row --}}
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+    <div class="adash-rate-grid">
 
         {{-- Completion Rate --}}
         <div style="background:#F8FAFC;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:14px;">
@@ -1476,12 +1538,12 @@ function dashModals() {
 {{-- ══ Recent Tasks ══ --}}
 @if(!in_array('dash_recent_tasks', $devHidden))
 <div x-data="{
-        view: localStorage.getItem('dash_tasks_view') || 'table',
+        view: localStorage.getItem('dash_tasks_view') || (window.innerWidth <= 768 ? 'cards' : 'table'),
         setView(v) { this.view = v; localStorage.setItem('dash_tasks_view', v); }
      }" style="margin-top:16px;" data-dev-key="dash_recent_tasks" data-dev-label="Recent Tasks">
 
     {{-- Header --}}
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+    <div class="recent-tasks-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
         <div>
             <h3 style="font-size:15px;font-weight:700;color:#111827;margin:0;display:flex;align-items:center;gap:8px;">
                 <i class="fas fa-list-check" style="color:#6366F1;font-size:13px;"></i> Recent Tasks
@@ -1490,7 +1552,7 @@ function dashModals() {
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
             {{-- Toggle --}}
-            <div style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;">
+            <div class="recent-tasks-toggle" style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;">
                 <button @click="setView('table')" :style="view==='table'
                             ? 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);'
                             : 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:transparent;color:#6B7280;'" style="display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);">
@@ -1535,15 +1597,16 @@ function dashModals() {
 
     {{-- TABLE VIEW --}}
     <div x-show="view==='table'">
-        <div class="dash-card" style="padding:0;overflow:hidden;">
-            <table style="width:100%;border-collapse:collapse;">
+        <div class="dash-card" style="padding:0;overflow:hidden;min-width:0;">
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
+            <table class="recent-tasks-table" style="width:100%;min-width:480px;border-collapse:collapse;">
                 <thead>
                     <tr style="border-bottom:1.5px solid #F3F4F6;background:#FAFAFA;">
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Task</th>
-                        <th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Project</th>
+                        <th class="recent-tasks-col-project" style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Project</th>
                         <th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Assignee</th>
                         <th style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Status</th>
-                        <th style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Priority</th>
+                        <th class="recent-tasks-col-priority" style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Priority</th>
                         <th style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Deadline</th>
                     </tr>
                 </thead>
@@ -1563,7 +1626,7 @@ function dashModals() {
                                 {{ $task->title }}
                             </a>
                         </td>
-                        <td style="padding:11px 14px;">
+                        <td class="recent-tasks-col-project" style="padding:11px 14px;">
                             <span style="font-size:12px;color:#6B7280;">{{ $task->project->name ?? '—' }}</span>
                         </td>
                         <td style="padding:11px 14px;">
@@ -1583,7 +1646,7 @@ function dashModals() {
                                 {{ $sm['label'] }}
                             </span>
                         </td>
-                        <td style="padding:11px 14px;text-align:center;">
+                        <td class="recent-tasks-col-priority" style="padding:11px 14px;text-align:center;">
                             @if($pm)
                             <span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:{{ $pm['bg'] }};color:{{ $pm['color'] }};">
                                 {{ $pm['label'] }}
@@ -1605,12 +1668,13 @@ function dashModals() {
                     @endforeach
                 </tbody>
             </table>
+        </div>{{-- end overflow-x scroll --}}
         </div>
     </div>
 
     {{-- CARD VIEW --}}
     <div x-show="view==='cards'">
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">
+        <div class="recent-tasks-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">
             @foreach($recentTasks as $task)
             @php
                 $sm = $statusMeta[$task->status] ?? ['label'=>ucfirst($task->status),'bg'=>'#F3F4F6','color'=>'#6B7280'];

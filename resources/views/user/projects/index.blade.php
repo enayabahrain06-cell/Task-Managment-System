@@ -1,8 +1,17 @@
 @extends('layouts.app')
 @section('title', 'My Projects')
 
+@push('styles')
+<style>
+@media(max-width:480px){
+    .user-proj-header { flex-wrap:wrap; gap:8px; }
+    .user-proj-grid { grid-template-columns:1fr !important; }
+}
+</style>
+@endpush
+
 @section('content')
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+<div class="user-proj-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
     <div>
         <h1 style="font-size:20px;font-weight:700;color:#111827;margin:0;">My Projects</h1>
         <p style="font-size:13px;color:#9CA3AF;margin:3px 0 0;">Projects you're a member of</p>
@@ -16,7 +25,7 @@
     <p style="font-size:13px;color:#9CA3AF;margin:0;">An admin will add you to projects when they're created.</p>
 </div>
 @else
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;">
+<div class="user-proj-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px;">
     @foreach($projects as $proj)
     @php
         $total     = $proj->tasks_count;

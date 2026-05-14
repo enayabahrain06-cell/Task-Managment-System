@@ -2,6 +2,19 @@
 @section('title', 'Social Media Post — ' . $task->title)
 
 @section('content')
+<style>
+.social-show-layout { display:grid; grid-template-columns:1fr 300px; gap:20px; align-items:start; }
+.social-show-header { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:24px; flex-wrap:wrap; }
+@media (max-width: 900px) {
+    .social-show-layout { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+    .social-show-header { flex-direction:column; align-items:flex-start; }
+    .social-show-header a { align-self:flex-start; }
+    .social-meta-grid { grid-template-columns: 1fr !important; }
+    .social-platform-picker { grid-template-columns: repeat(2,1fr) !important; }
+}
+</style>
 
 @php
 $statusMap = [
@@ -46,7 +59,7 @@ $pMeta = [
 @endphp
 
 {{-- ── Page Header ── --}}
-<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:24px;flex-wrap:wrap;">
+<div class="social-show-header">
     <div style="display:flex;align-items:center;gap:14px;">
         <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(99,102,241,.3);">
             <i class="fas fa-share-alt" style="color:#fff;font-size:20px;"></i>
@@ -71,7 +84,7 @@ $pMeta = [
 @endif
 
 {{-- ── Two-column layout ── --}}
-<div style="display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;">
+<div class="social-show-layout">
 
     {{-- LEFT COLUMN --}}
     <div style="display:flex;flex-direction:column;gap:20px;">
@@ -108,7 +121,7 @@ $pMeta = [
             </div>
 
             {{-- Task meta grid --}}
-            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0;border-bottom:1px solid #F3F4F6;">
+            <div class="social-meta-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:0;border-bottom:1px solid #F3F4F6;">
                 @if($task->deadline)
                 <div style="padding:14px 24px;border-right:1px solid #F3F4F6;border-bottom:1px solid #F3F4F6;">
                     <p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 5px;">Deadline</p>
@@ -454,7 +467,7 @@ $pMeta = [
 
                             {{-- Platform picker grid — visible when no platform or showPicker --}}
                             <div x-show="entry.showPicker || !entry.platform" x-collapse style="padding:12px 14px;background:#FAFAFA;border-bottom:1px solid #F3F4F6;">
-                                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+                                <div class="social-platform-picker" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
                                     <template x-for="[key, meta] in Object.entries(platforms)" :key="key">
                                         <button type="button"
                                                 @click="entry.platform = key; entry.showPicker = false"

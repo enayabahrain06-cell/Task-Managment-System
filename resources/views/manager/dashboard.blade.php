@@ -3,8 +3,14 @@
 @section('title', 'Overview')
 
 @section('content')
+<style>
+@media (max-width: 480px) {
+    .mgr-dash-header { flex-wrap: wrap; gap: 10px; }
+    .mgr-dash-header button { width: 100%; justify-content: center; }
+}
+</style>
 
-<div class="flex items-center justify-between mb-6">
+<div class="mgr-dash-header flex items-center justify-between mb-6">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Overview</h1>
         <p class="text-sm text-gray-500 mt-0.5">Welcome back, {{ auth()->user()->name }}!</p>

@@ -1,6 +1,15 @@
 @extends('layouts.app')
 @section('title', 'Create User')
 
+@push('styles')
+<style>
+@media(max-width:480px){
+    .max-w-2xl { padding-left:0 !important; padding-right:0 !important; }
+    .user-create-card { padding:16px !important; }
+}
+</style>
+@endpush
+
 @section('content')
 <div class="max-w-2xl">
     <div class="flex items-center gap-3 mb-6">

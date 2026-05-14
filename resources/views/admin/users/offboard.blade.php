@@ -1,8 +1,22 @@
 @extends('layouts.app')
 @section('title', 'Offboard — ' . $user->name)
 
+@push('styles')
+<style>
+.offboard-wrap { max-width:860px; width:100%; }
+.offboard-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+@media(max-width:700px){
+    .offboard-grid { grid-template-columns:1fr !important; }
+}
+@media(max-width:480px){
+    .offboard-wrap { padding:0; }
+    .offboard-card-pad { padding:14px !important; }
+}
+</style>
+@endpush
+
 @section('content')
-<div style="max-width:860px;">
+<div class="offboard-wrap">
 
     {{-- Header --}}
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
@@ -91,7 +105,7 @@
     <form method="POST" action="{{ route('admin.users.offboard.process', $user) }}" id="offboardForm">
         @csrf
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;" class="offboard-grid">
+        <div class="offboard-grid">
 
             {{-- Left: Action + Reason --}}
             <div style="display:flex;flex-direction:column;gap:16px;">
@@ -292,9 +306,4 @@
     </form>
 </div>
 
-<style>
-@media (max-width:700px) {
-    .offboard-grid { grid-template-columns: 1fr !important; }
-}
-</style>
 @endsection

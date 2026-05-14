@@ -1,8 +1,29 @@
 @extends('layouts.app')
 @section('title', 'Create Project')
 
+@push('styles')
+<style>
+.proj-create-wrap { max-width:780px; width:100%; }
+.proj-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:22px; }
+.proj-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:10px; }
+.proj-grid-2col { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+.proj-assignee-row { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:center; }
+.proj-link-row { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:center; }
+@media(max-width:480px){
+    .proj-create-wrap { padding:0; }
+    .proj-grid-2 { grid-template-columns:1fr !important; gap:10px !important; }
+    .proj-grid-3 { grid-template-columns:1fr !important; gap:10px !important; }
+    .proj-grid-2col { grid-template-columns:1fr !important; gap:10px !important; }
+    .proj-assignee-row { grid-template-columns:1fr auto !important; }
+    .proj-assignee-row > *:nth-child(2) { grid-column:1; }
+    .proj-link-row { grid-template-columns:1fr auto !important; }
+    .proj-link-row > *:nth-child(2) { grid-column:1; }
+}
+</style>
+@endpush
+
 @section('content')
-<div style="max-width:780px;">
+<div class="proj-create-wrap" style="max-width:780px;">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
         <a href="{{ route('admin.projects.index') }}"
            style="width:34px;height:34px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;color:#6B7280;text-decoration:none;">
@@ -138,7 +159,7 @@
             </div>
 
             {{-- Customer + Deadline --}}
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px;">
+            <div class="proj-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px;">
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Customer <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
                     <select name="customer_id"
@@ -211,7 +232,7 @@
                     <template x-if="links.length > 0">
                         <div style="display:flex;flex-direction:column;gap:6px;">
                             <template x-for="(link, i) in links" :key="i">
-                                <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;">
+                                <div class="proj-link-row" style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;">
                                     <input type="url" :name="'links['+i+'][url]'" x-model="link.url"
                                            placeholder="https://..."
                                            style="width:100%;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#111827;box-sizing:border-box;outline:none;background:#fff;">
@@ -269,7 +290,7 @@
                             </div>
 
                             {{-- Task type + Tags --}}
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+                            <div class="proj-grid-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
                                 <div>
                                     <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px;">Task Type</label>
                                     <input type="text" :name="'tasks['+i+'][task_type]'" x-model="task.task_type"
@@ -295,7 +316,7 @@
                                 </div>
                                 <div style="display:flex;flex-direction:column;gap:6px;">
                                     <template x-for="(assignee, j) in task.assignees" :key="j">
-                                        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;">
+                                        <div class="proj-assignee-row" style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;">
                                             <select :name="'tasks['+i+'][assignees]['+j+'][user_id]'" x-model="assignee.user_id"
                                                     style="width:100%;padding:7px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#111827;background:#fff;outline:none;box-sizing:border-box;">
                                                 <option value="">— Select person —</option>
@@ -317,7 +338,7 @@
                             </div>
 
                             {{-- Reviewer + Priority + Deadline --}}
-                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+                            <div class="proj-grid-3" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
                                 <div>
                                     <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px;">Reviewer</label>
                                     <select :name="'tasks['+i+'][reviewer_id]'" x-model="task.reviewer_id"

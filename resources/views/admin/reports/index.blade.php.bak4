@@ -13,6 +13,37 @@
 @media(max-width:1100px){ .rpt-grid-4,.rpt-grid-5 { grid-template-columns:repeat(2,1fr); } }
 @media(max-width:900px) { .rpt-grid-2,.rpt-grid-3 { grid-template-columns:1fr; } }
 @media(max-width:600px) { .rpt-grid-4,.rpt-grid-5 { grid-template-columns:1fr; } }
+/* Inline sub-grids inside cards */
+.rpt-inline-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px; }
+.rpt-inline-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; }
+
+/* ── Mobile ── */
+@media(max-width:768px) {
+    /* Filter bar stacks vertically — !important beats inline style= */
+    #rpt-filter-bar { flex-direction:column !important; align-items:stretch !important; gap:10px !important; }
+    #rpt-filter-bar > div:first-child { width:100% !important; }
+    #rpt-actions-bar { flex-direction:column !important; align-items:stretch !important; width:100% !important; gap:8px !important; }
+    #rpt-actions-bar form { flex-direction:column !important; width:100% !important; gap:8px !important; align-items:stretch !important; }
+    /* Range pill row scrolls horizontally */
+    #rpt-actions-bar form > div:first-child { overflow-x:auto !important; -webkit-overflow-scrolling:touch; white-space:nowrap; width:100% !important; }
+    /* Selects full width */
+    #rpt-actions-bar select { width:100% !important; max-width:100% !important; box-sizing:border-box !important; }
+    /* Export button full width */
+    #rpt-actions-bar > div { width:100% !important; }
+    #rpt-actions-bar > div > button:first-child { width:100% !important; justify-content:center !important; }
+    /* Card grids */
+    .rpt-inline-3 { grid-template-columns:repeat(3,1fr) !important; }
+    .rpt-inline-4 { grid-template-columns:repeat(2,1fr) !important; }
+}
+@media(max-width:480px) {
+    .rpt-grid-2  { grid-template-columns:1fr !important; }
+    .rpt-table th, .rpt-table td { padding:5px 7px !important; font-size:11px !important; }
+    #rpt-capture-zone { padding:0 !important; }
+    .rpt-inline-3 { grid-template-columns:1fr 1fr !important; }
+    .rpt-inline-4 { grid-template-columns:1fr 1fr !important; }
+    /* Card padding tighter on phones */
+    .rpt-card { padding:10px 8px !important; }
+}
 
 .rpt-card {
     background:#fff; border-radius:12px;
@@ -25,8 +56,8 @@
     text-transform:uppercase; letter-spacing:.06em;
     margin:0 0 10px; display:flex; align-items:center; gap:7px;
 }
-.rpt-scroll-wrap { overflow-y:auto; max-height:190px; }
-.rpt-table { width:100%; border-collapse:collapse; font-size:13px; }
+.rpt-scroll-wrap { overflow-y:auto; overflow-x:auto; max-height:220px; -webkit-overflow-scrolling:touch; }
+.rpt-table { width:100%; border-collapse:collapse; font-size:13px; min-width:540px; }
 .rpt-table th {
     text-align:left; padding:7px 10px;
     font-size:10px; font-weight:700; color:#6B7280;
@@ -167,7 +198,7 @@
 <div id="rpt-main-content">
 
 {{-- ══ Filter / Action Bar ══ --}}
-<div id="rpt-filter-bar" class="no-print" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+<div id="rpt-filter-bar" class="no-print" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px;width:100%;box-sizing:border-box;">
     <div>
         <h1 style="font-size:18px;font-weight:700;color:#111827;margin:0;">
             @if($selectedUser) {{ $selectedUser->name }} — Employee Report
@@ -179,7 +210,7 @@
             @if($selectedUser) · {{ ucfirst($selectedUser->role) }}@endif
         </p>
     </div>
-    <div id="rpt-actions-bar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <div id="rpt-actions-bar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;">
 
         {{-- Range selector --}}
         <form method="GET" action="{{ route('admin.reports.index') }}" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
@@ -483,7 +514,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
             </span>
             @if($selectedUser) Priority — {{ $selectedUser->name }}'s Tasks @else Priority Distribution @endif
         </p>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">
+        <div class="rpt-inline-3">
             @foreach($priorityBreakdown as $p => $data)
             <div style="background:{{ $data['bg'] }};border-radius:10px;padding:10px 8px;text-align:center;">
                 <p style="font-size:22px;font-weight:800;color:{{ $data['color'] }};margin:0;line-height:1;">{{ $data['count'] }}</p>
@@ -615,7 +646,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         </div>
 
         {{-- Stat pills --}}
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
+        <div class="rpt-inline-4">
             <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:10px 12px;">
                 <p style="font-size:10px;font-weight:600;color:#6B7280;margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em;">Completed</p>
                 <p style="font-size:22px;font-weight:800;color:#059669;margin:0;line-height:1;">{{ $totalDone12 }}</p>
@@ -673,8 +704,8 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
             <i class="fas fa-circle-info" style="margin-right:3px;"></i>
             Admin/Manager: counted by tasks <strong>created</strong> &amp; tasks <strong>approved</strong>. &nbsp;Users: counted by assigned tasks.
         </div>
-        <div style="overflow-x:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:12px;" id="team-table">
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:780px;" id="team-table">
                 <thead>
                     <tr style="background:#F9FAFB;border-bottom:1px solid #E5E7EB;">
                         <th style="text-align:left;padding:7px 12px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Member</th>
@@ -770,7 +801,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         </p>
         <span style="font-size:11px;color:#4F46E5;background:#EEF2FF;padding:2px 9px;border-radius:20px;font-weight:600;">{{ $customerStats->count() }} Customers</span>
     </div>
-    <div style="overflow-x:auto;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
         <table class="rpt-table" id="customer-table">
             <thead>
                 <tr>
@@ -840,6 +871,11 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
                 <span style="font-size:12px;font-weight:700;color:#D97706;">{{ $pendingApproval }} waiting</span>
             </div>
             @endif
+            <a href="{{ route('admin.approvals.index') }}?tab=awaiting"
+               style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#EEF2FF;border-radius:20px;border:1px solid #C7D2FE;text-decoration:none;">
+                <i class="fas fa-arrow-right" style="font-size:11px;color:#4F46E5;"></i>
+                <span style="font-size:12px;font-weight:700;color:#4F46E5;">Awaiting Approvals</span>
+            </a>
             @if($avgHours !== null)
             <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;background:#EEF2FF;border-radius:20px;border:1px solid #C7D2FE;">
                 <i class="fas fa-clock" style="font-size:11px;color:#4F46E5;"></i>
@@ -859,7 +895,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         <p style="font-size:12px;color:#9CA3AF;margin:0;max-width:360px;margin:0 auto;">Data appears here once a manager marks a task as <strong>"Awaiting Customer Approval"</strong> from the Approvals page. That action records when the design was sent, and the timer starts.</p>
     </div>
     @else
-    <div style="overflow-x:auto;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
     <table class="rpt-table" id="approval-speed-table">
         <thead>
             <tr>
@@ -869,21 +905,12 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
                 <th>Design Sent</th>
                 <th>Customer Approved</th>
                 <th style="text-align:center;">Time to Approve</th>
-                <th style="text-align:center;">Status</th>
+                <th style="text-align:center;">Review</th>
             </tr>
         </thead>
         <tbody>
         @foreach($approvalSpeedTasks as $row)
-        @php
-            $statusColors = [
-                'delivered'          => ['#F0FDF4','#16A34A','Delivered'],
-                'pending_customer'   => ['#FFFBEB','#D97706','Awaiting Customer'],
-                'approved'           => ['#EEF2FF','#4F46E5','Approved'],
-                'revision_requested' => ['#FEF2F2','#DC2626','Revision'],
-            ];
-            [$sbg,$sco,$slbl] = $statusColors[$row['status']] ?? ['#F3F4F6','#6B7280',ucfirst(str_replace('_',' ',$row['status']))];
-        @endphp
-        <tr>
+        <tr id="approval-row-{{ $row['id'] }}">
             <td>
                 <a href="{{ route('admin.tasks.show', $row['id']) }}" style="font-weight:600;color:#111827;text-decoration:none;" onmouseover="this.style.color='#4F46E5'" onmouseout="this.style.color='#111827'">
                     {{ Str::limit($row['title'], 40) }}
@@ -903,7 +930,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
                 <span style="font-size:12px;color:#D97706;font-style:italic;">Pending...</span>
                 @endif
             </td>
-            <td style="text-align:center;">
+            <td id="approval-timer-{{ $row['id'] }}" style="text-align:center;">
                 @if($row['approved'])
                 @php
                     $h = $row['hours'];
@@ -911,20 +938,209 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
                     $timeBg  = $h <= 24 ? '#F0FDF4' : ($h <= 72 ? '#FEF3C7' : '#FEF2F2');
                     $timeCo  = $h <= 24 ? '#16A34A' : ($h <= 72 ? '#D97706' : '#DC2626');
                 @endphp
-                <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;background:{{ $timeBg }};color:{{ $timeCo }};">
-                    {{ $timeStr }}
-                </span>
+                <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;background:{{ $timeBg }};color:{{ $timeCo }};">{{ $timeStr }}</span>
                 @else
                 @php
                     $waitSec = abs(now()->diffInSeconds(\Carbon\Carbon::parse($row['sent_time_raw'] ?? now())));
                     $waitH   = round($waitSec / 3600, 1);
-                    $waitStr = $waitSec < 3600 ? (int) round($waitSec / 60) . 'm' : ($waitH < 24 ? $waitH . 'h' : round($waitH / 24, 1) . 'd');
+                    $waitStr = $waitSec < 3600 ? (int)round($waitSec/60).'m' : ($waitH < 24 ? $waitH.'h' : round($waitH/24,1).'d');
                 @endphp
                 <span style="font-size:11px;color:#D97706;font-style:italic;">{{ $waitStr }} waiting</span>
                 @endif
             </td>
+            <td style="text-align:center;white-space:nowrap;">
+                @if($row['approved'])
+                <span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#F0FDF4;color:#16A34A;">
+                    <i class="fas fa-circle-check" style="font-size:10px;margin-right:3px;"></i>Approved
+                </span>
+                @else
+                <a href="{{ route('admin.approvals.index') }}?tab=awaiting"
+                   style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:8px;font-size:11px;font-weight:600;color:#4F46E5;text-decoration:none;white-space:nowrap;"
+                   onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'">
+                    <i class="fas fa-arrow-right" style="font-size:9px;"></i> Review
+                </a>
+                @endif
+            </td>
+        </tr>
+        @endforeach
+        </tbody>
+    </table>
+    </div>
+    @endif
+</div>
+
+{{-- ══ Social Pending ══ --}}
+<div class="rpt-card" style="margin-bottom:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+        <p class="rpt-section-title" style="margin:0;display:flex;align-items:center;gap:8px;">
+            <span style="width:22px;height:22px;border-radius:6px;background:#EDE9FE;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-share-nodes" style="font-size:11px;color:#7C3AED;"></i>
+            </span>
+            Social Pending
+        </p>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;background:#F5F3FF;border-radius:20px;border:1px solid #DDD6FE;">
+                <i class="fas fa-clock" style="font-size:11px;color:#7C3AED;"></i>
+                <span style="font-size:12px;font-weight:700;color:#7C3AED;">{{ $socialPendingTasks->count() }} pending</span>
+            </div>
+            <a href="{{ route('admin.approvals.index') }}?tab=social"
+               style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#EDE9FE;border-radius:20px;border:1px solid #DDD6FE;text-decoration:none;">
+                <i class="fas fa-arrow-right" style="font-size:11px;color:#7C3AED;"></i>
+                <span style="font-size:12px;font-weight:700;color:#7C3AED;">Manage in Approvals</span>
+            </a>
+        </div>
+    </div>
+
+    @if($socialPendingTasks->isEmpty())
+    <div style="text-align:center;padding:32px 20px;">
+        <i class="fas fa-share-nodes" style="font-size:28px;color:#DDD6FE;margin-bottom:10px;"></i>
+        <p style="font-size:13px;color:#9CA3AF;margin:0;">No social media posts pending.</p>
+    </div>
+    @else
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+    <table class="rpt-table">
+        <thead>
+            <tr>
+                <th>Task</th>
+                <th>Customer</th>
+                <th>Social Assignee</th>
+                <th>Platforms</th>
+                <th>Deadline</th>
+                <th style="text-align:center;">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach($socialPendingTasks as $task)
+        @php
+            $spCustomer  = $task->customer?->name ?? $task->project?->customer?->name ?? '—';
+            $spOverdue   = $task->deadline && $task->deadline->isPast();
+            $spPlatforms = is_array($task->social_platforms) ? $task->social_platforms : [];
+            $spStatusMap = [
+                'draft'              => ['#F3F4F6','#6B7280','Draft'],
+                'assigned'           => ['#EEF2FF','#4F46E5','Assigned'],
+                'viewed'             => ['#EEF2FF','#4F46E5','Viewed'],
+                'in_progress'        => ['#FEF3C7','#D97706','In Progress'],
+                'submitted'          => ['#E0F2FE','#0284C7','Submitted'],
+                'revision_requested' => ['#FEF2F2','#DC2626','Revision'],
+                'approved'           => ['#D1FAE5','#059669','Approved'],
+                'delivered'          => ['#F0FDF4','#16A34A','Delivered'],
+                'archived'           => ['#F3F4F6','#6B7280','Archived'],
+                'pending_customer'   => ['#FFFBEB','#D97706','Awaiting Customer'],
+            ];
+            [$spBg, $spCo, $spLbl] = $spStatusMap[$task->status] ?? ['#F3F4F6','#6B7280', ucfirst($task->status)];
+        @endphp
+        <tr>
+            <td style="max-width:200px;">
+                <a href="{{ route('admin.tasks.show', $task) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#7C3AED'" onmouseout="this.style.color='#111827'" title="{{ $task->title }}">
+                    {{ Str::limit($task->title, 40) }}
+                </a>
+            </td>
+            <td style="color:#374151;">{{ $spCustomer }}</td>
+            <td>
+                @if($task->socialAssignee)
+                <span style="font-size:12px;font-weight:600;color:#7C3AED;">{{ $task->socialAssignee->name }}</span>
+                @else
+                <span style="font-size:12px;color:#D1D5DB;">Unassigned</span>
+                @endif
+            </td>
+            <td>
+                @if(count($spPlatforms))
+                <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                    @foreach($spPlatforms as $p)
+                    <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:#EDE9FE;color:#7C3AED;white-space:nowrap;">{{ ucfirst($p) }}</span>
+                    @endforeach
+                </div>
+                @else
+                <span style="font-size:12px;color:#D1D5DB;">—</span>
+                @endif
+            </td>
+            <td>
+                @if($task->deadline)
+                <span style="font-size:12px;{{ $spOverdue ? 'color:#DC2626;font-weight:600;' : 'color:#6B7280;' }}white-space:nowrap;">
+                    {{ $spOverdue ? '⚠ ' : '' }}{{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
+                </span>
+                @else
+                <span style="font-size:12px;color:#D1D5DB;">—</span>
+                @endif
+            </td>
             <td style="text-align:center;">
-                <span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:{{ $sbg }};color:{{ $sco }};">{{ $slbl }}</span>
+                <span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:{{ $spBg }};color:{{ $spCo }};white-space:nowrap;">{{ $spLbl }}</span>
+            </td>
+        </tr>
+        @endforeach
+        </tbody>
+    </table>
+    </div>
+    @endif
+</div>
+
+{{-- ══ Decide Later ══ --}}
+<div class="rpt-card" style="margin-bottom:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+        <p class="rpt-section-title" style="margin:0;display:flex;align-items:center;gap:8px;">
+            <span style="width:22px;height:22px;border-radius:6px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-clock" style="font-size:11px;color:#D97706;"></i>
+            </span>
+            Decide Later
+        </p>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;background:#FFFBEB;border-radius:20px;border:1px solid #FDE68A;">
+                <i class="fas fa-clock" style="font-size:11px;color:#D97706;"></i>
+                <span style="font-size:12px;font-weight:700;color:#D97706;">{{ $decideLaterReportTasks->count() }} pending decision</span>
+            </div>
+            <a href="{{ route('admin.approvals.index') }}?tab=decide_later"
+               style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#FFFBEB;border-radius:20px;border:1px solid #FDE68A;text-decoration:none;">
+                <i class="fas fa-arrow-right" style="font-size:11px;color:#D97706;"></i>
+                <span style="font-size:12px;font-weight:700;color:#D97706;">Manage in Approvals</span>
+            </a>
+        </div>
+    </div>
+
+    @if($decideLaterReportTasks->isEmpty())
+    <div style="text-align:center;padding:32px 20px;">
+        <i class="fas fa-clock" style="font-size:28px;color:#FDE68A;margin-bottom:10px;"></i>
+        <p style="font-size:13px;color:#9CA3AF;margin:0;">No tasks pending a social media decision.</p>
+    </div>
+    @else
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+    <table class="rpt-table">
+        <thead>
+            <tr>
+                <th>Task</th>
+                <th>Customer</th>
+                <th>Assignee</th>
+                <th>Status</th>
+                <th style="text-align:center;">Review</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach($decideLaterReportTasks as $task)
+        @php
+            $dlCustomer = $task->customer?->name ?? $task->project?->customer?->name ?? '—';
+            $dlStatusMap = [
+                'approved'  => ['#D1FAE5','#059669','Approved'],
+                'delivered' => ['#F0FDF4','#16A34A','Delivered'],
+                'archived'  => ['#F3F4F6','#6B7280','Archived'],
+            ];
+            [$dlBg, $dlCo, $dlLbl] = $dlStatusMap[$task->status] ?? ['#F3F4F6','#6B7280', ucfirst($task->status)];
+        @endphp
+        <tr>
+            <td style="max-width:220px;">
+                <a href="{{ route('admin.tasks.show', $task) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#D97706'" onmouseout="this.style.color='#111827'" title="{{ $task->title }}">
+                    {{ Str::limit($task->title, 45) }}
+                </a>
+            </td>
+            <td style="color:#374151;">{{ $dlCustomer }}</td>
+            <td style="color:#6B7280;">{{ $task->assignee?->name ?? '—' }}</td>
+            <td>
+                <span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:{{ $dlBg }};color:{{ $dlCo }};white-space:nowrap;">{{ $dlLbl }}</span>
+            </td>
+            <td style="text-align:center;">
+                <a href="{{ route('admin.approvals.index') }}?tab=decide_later"
+                   style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;font-size:11px;font-weight:600;color:#D97706;text-decoration:none;white-space:nowrap;"
+                   onmouseover="this.style.background='#FEF3C7'" onmouseout="this.style.background='#FFFBEB'">
+                    <i class="fas fa-arrow-right" style="font-size:9px;"></i> Decide
+                </a>
             </td>
         </tr>
         @endforeach
@@ -1158,7 +1374,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         </span>
     </div>
 
-    <div style="overflow-x:auto;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
     <table class="rpt-table" id="billing-user-table">
         <thead>
             <tr>
@@ -1251,7 +1467,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         @endforeach
     </div>
 
-    <div style="overflow-x:auto;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
     <table class="rpt-table" id="billing-customer-table">
         <thead>
             <tr>
@@ -1360,7 +1576,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         </div>
     </div>
 
-    <div style="overflow-x:auto;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
     <table class="rpt-table" id="ad-budget-table">
         <thead>
             <tr>
@@ -2388,5 +2604,6 @@ document.addEventListener('DOMContentLoaded', function() {
      'billing-user-table','billing-customer-table','ad-budget-table'
     ].forEach(function(id) { rptPaginate(id, 7); });
 });
+
 </script>
 @endpush

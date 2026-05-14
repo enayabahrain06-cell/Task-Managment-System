@@ -2,6 +2,60 @@
 @section('title', isset($previewUser) ? $previewUser->name . ' — Dashboard Preview' : 'My Dashboard')
 
 @section('content')
+<style>
+.usr-stats-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:14px; margin-bottom:20px; }
+.usr-stats-grid > * { min-width:0; }
+@media(max-width:1100px) { .usr-stats-grid { grid-template-columns:repeat(3,1fr); } }
+@media(max-width:700px)  { .usr-stats-grid { grid-template-columns:repeat(2,1fr); } }
+@media(max-width:400px)  { .usr-stats-grid { grid-template-columns:1fr; } }
+
+/* Main task-list + right-panel two-column layout */
+.usr-tasks-main-grid { display:grid; grid-template-columns:10fr 2fr; gap:18px; align-items:start; }
+.usr-tasks-main-grid > * { min-width:0; }
+@media(max-width:900px) { .usr-tasks-main-grid { grid-template-columns:1fr !important; } }
+
+/* 3-col summary grids inside completed / report sections */
+.usr-grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.usr-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+@media(max-width:600px) {
+    .usr-grid-3 { grid-template-columns:repeat(2,1fr) !important; gap:10px !important; }
+}
+@media(max-width:400px) {
+    .usr-grid-3 { grid-template-columns:1fr !important; gap:8px !important; }
+    .usr-grid-2 { grid-template-columns:1fr !important; gap:6px !important; }
+}
+
+/* Dashboard header — stack on mobile */
+@media(max-width:600px) {
+    .usr-dash-header { flex-direction:column !important; align-items:flex-start !important; gap:12px !important; padding:18px 16px !important; }
+    .usr-dash-header h1 { font-size:18px !important; }
+    .usr-dash-header button { width:100% !important; justify-content:center !important; }
+}
+
+/* Performance/projects donut row — stack on narrow phones */
+.usr-perf-row { display:flex; align-items:center; gap:20px; }
+@media(max-width:520px) {
+    .usr-perf-row { flex-direction:column !important; align-items:stretch !important; gap:14px !important; }
+    .usr-perf-donut { align-self:center !important; }
+    .usr-perf-donut canvas { width:100px !important; height:100px !important; }
+    .usr-perf-donut > div { width:100px !important; height:100px !important; }
+}
+
+/* Stat card numbers — shrink on small phones */
+@media(max-width:480px) {
+    .usr-stats-grid > div { padding:12px 14px !important; }
+    .usr-stat-num { font-size:22px !important; }
+}
+
+/* Preview banner wrap */
+.usr-preview-banner { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+
+/* Tab bar — scroll horizontally on very small screens */
+@media(max-width:480px) {
+    #dashboard-tabs { overflow-x:auto; flex-wrap:nowrap !important; -webkit-overflow-scrolling:touch; padding-bottom:4px; }
+    #dashboard-tabs button { flex-shrink:0 !important; font-size:12px !important; padding:6px 12px !important; }
+}
+</style>
 @php
     $user      = $previewUser ?? auth()->user();
     $isPreview = isset($previewUser);
@@ -10,7 +64,7 @@
 @endphp
 
 @isset($previewUser)
-<div style="background:#FEF3C7;border:1.5px solid #FCD34D;border-radius:12px;padding:10px 18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+<div class="usr-preview-banner" style="background:#FEF3C7;border:1.5px solid #FCD34D;border-radius:12px;padding:10px 18px;margin-bottom:18px;">
     <div style="display:flex;align-items:center;gap:10px;">
         <i class="fa fa-eye" style="color:#D97706;font-size:14px;"></i>
         <span style="font-size:13px;font-weight:600;color:#92400E;">Previewing dashboard as <strong>{{ $previewUser->name }}</strong></span>
@@ -25,7 +79,7 @@
 {{-- ═══════════════════════════════
      HEADER
 ════════════════════════════════ --}}
-<div style="background:linear-gradient(135deg,#4F46E5 0%,#7C3AED 100%);border-radius:16px;padding:24px 28px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+<div class="usr-dash-header" style="background:linear-gradient(135deg,#4F46E5 0%,#7C3AED 100%);border-radius:16px;padding:24px 28px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
     <div style="display:flex;align-items:center;gap:16px;">
         @if($user->avatarUrl())
             <img src="{{ $user->avatarUrl() }}" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.3);" alt="">
@@ -56,7 +110,7 @@
 {{-- ═══════════════════════════════
      STATS  (single row: 6 cards)
 ════════════════════════════════ --}}
-<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:20px;">
+<div class="usr-stats-grid">
     @foreach([
         ['Total Tasks',   $cardTotal,      'fa-list-check',            '#EEF2FF', '#4F46E5', 'Assigned to you',   'F0F0F0', 'total',       '#4F46E5'],
         ['Completed',     $cardCompleted,  'fa-circle-check',          '#F0FDF4', '#16A34A', $rate.'% rate'.($completedSocialPosts>0?' · '.$completedSocialPosts.' post'.($completedSocialPosts>1?'s':'').' done':''), 'F0F0F0', 'completed', '#16A34A'],
@@ -75,7 +129,7 @@
                 <i class="fas {{ $icon }}" style="font-size:14px;color:{{ $ic }};"></i>
             </div>
         </div>
-        <p style="font-size:30px;font-weight:800;color:#111827;margin:0 0 2px;line-height:1;">{{ $val }}</p>
+        <p class="usr-stat-num" style="font-size:30px;font-weight:800;color:#111827;margin:0 0 2px;line-height:1;">{{ $val }}</p>
         <p style="font-size:11px;color:#9CA3AF;margin:0;">{{ $sub }}</p>
     </div>
     @endforeach
@@ -274,7 +328,7 @@ document.addEventListener('keydown', function(e) {
 
     {{-- ══ MY TASKS ══ --}}
     <div x-show="tab==='my-tasks'">
-        <div style="display:grid;grid-template-columns:10fr 2fr;gap:18px;align-items:start;">
+        <div class="usr-tasks-main-grid">
 
             {{-- Left: task list + activity --}}
             <div style="display:flex;flex-direction:column;gap:18px;">
@@ -446,8 +500,8 @@ document.addEventListener('keydown', function(e) {
                     </div>
 
                     {{-- Task Performance: donut + stat grid --}}
-                    <div style="display:flex;align-items:center;gap:20px;margin-bottom:16px;">
-                        <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;">
+                    <div class="usr-perf-row" style="margin-bottom:16px;">
+                        <div class="usr-perf-donut" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;">
                             <div style="position:relative;width:130px;height:130px;">
                                 <canvas id="perfChart" style="display:block;width:130px!important;height:130px!important;cursor:pointer;"></canvas>
                                 <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
@@ -475,8 +529,8 @@ document.addEventListener('keydown', function(e) {
                     <div style="border-top:1px solid #F3F4F6;margin-bottom:14px;"></div>
 
                     {{-- Project Statistics: donut + stats + legend --}}
-                    <div style="display:flex;align-items:center;gap:20px;margin-bottom:14px;">
-                        <div style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;">
+                    <div class="usr-perf-row" style="margin-bottom:14px;">
+                        <div class="usr-perf-donut" style="flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;">
                             <div style="position:relative;width:130px;height:130px;">
                                 <canvas id="myProjChart" style="display:block;width:130px!important;height:130px!important;cursor:pointer;"></canvas>
                                 <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
@@ -937,7 +991,7 @@ document.addEventListener('keydown', function(e) {
         <div style="display:flex;flex-direction:column;gap:18px;">
 
             {{-- Summary bar --}}
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+            <div class="usr-grid-3">
                 @php
                     $ctApproved  = $completedTasks->where('status','approved')->count();
                     $ctDelivered = $completedTasks->where('status','delivered')->count();
@@ -1197,7 +1251,7 @@ document.addEventListener('DOMContentLoaded', () => {
             @csrf
             <div style="background:#F8FAFC;border-radius:12px;padding:14px;margin-bottom:16px;border:1px solid #F0F0F0;">
                 <p style="font-size:10px;font-weight:700;color:#9CA3AF;margin:0 0 10px;text-transform:uppercase;letter-spacing:.06em;">Your Stats Today</p>
-                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
+                <div class="usr-grid-3" style="gap:4px !important;">
                     <div style="text-align:center;background:#fff;border-radius:8px;padding:10px 6px;border:1px solid #F0F0F0;">
                         <p style="font-size:20px;font-weight:800;color:#4F46E5;margin:0;line-height:1;">{{ $completed }}</p>
                         <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Completed</p>

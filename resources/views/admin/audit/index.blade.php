@@ -1,6 +1,22 @@
 @extends('layouts.app')
 @section('title', 'Audit Log')
 
+@push('styles')
+<style>
+.audit-modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
+.audit-filter-form { background:#fff; border-radius:14px; border:1px solid #F3F4F6; padding:16px 20px; margin-bottom:20px; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+/* Audit log scroll container */
+.audit-log-scroll { overflow-y:auto; overflow-x:auto; -webkit-overflow-scrolling:touch; max-height:68vh; }
+/* Each audit row: min-width prevents content squash on narrow screens */
+.audit-row-inner { min-width:420px; }
+@media(max-width:480px){
+    .audit-modal-grid { grid-template-columns:1fr !important; gap:8px !important; }
+    .audit-filter-form > div { min-width:100% !important; }
+    .audit-log-scroll { max-height:60vh !important; }
+}
+</style>
+@endpush
+
 @section('content')
 @php
     $actionMeta = [
@@ -120,14 +136,14 @@
 </form>
 
 {{-- Log entries --}}
-<div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow-y:auto;max-height:68vh;">
+<div class="audit-log-scroll" style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow-y:auto;max-height:68vh;">
 
     @forelse($logs as $log)
     @php
         [$icon, $fg, $bg, $label] = $actionMeta[$log->action] ?? ['fa-circle-dot', '#6366F1', '#EEF2FF', ucwords(str_replace(['.','_'],['  ',' '],$log->action))];
         $meta = $log->metadata ?? [];
     @endphp
-    <div class="audit-row"
+    <div class="audit-row audit-row-inner"
          onclick="openAuditModal(this)"
          data-icon="{{ $icon }}"
          data-fg="{{ $fg }}"
@@ -252,7 +268,7 @@
         <div style="padding:20px 24px;overflow-y:auto;flex:1;">
 
             {{-- Who / When / Where --}}
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+            <div class="audit-modal-grid" style="display:grid;gap:12px;margin-bottom:20px;">
                 <div style="background:#F9FAFB;border-radius:10px;padding:12px 14px;">
                     <p style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Performed By</p>
                     <p id="modal-actor" style="font-size:13px;font-weight:600;color:#111827;margin:0;"></p>
