@@ -13,17 +13,25 @@
 @media(max-width:1100px){ .rpt-grid-4,.rpt-grid-5 { grid-template-columns:repeat(2,1fr); } }
 @media(max-width:900px) { .rpt-grid-2,.rpt-grid-3 { grid-template-columns:1fr; } }
 @media(max-width:600px) { .rpt-grid-4,.rpt-grid-5 { grid-template-columns:1fr; } }
+/* Inline sub-grids inside cards (not using rpt-grid-* classes) */
+.rpt-inline-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px; }
+.rpt-inline-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; }
 @media(max-width:768px) {
     #rpt-filter-bar { flex-direction:column; align-items:stretch !important; }
     #rpt-filter-bar > * { width:100%; }
     #rpt-actions-bar { flex-wrap:wrap; width:100%; }
     #rpt-actions-bar form { flex-wrap:wrap; width:100%; }
-    #rpt-actions-bar select { flex:1; min-width:0; }
+    #rpt-actions-bar select { flex:1 1 100%; min-width:0; width:100%; }
+    #rpt-actions-bar form > div:first-child { overflow-x:auto; }
+    .rpt-inline-3 { grid-template-columns:repeat(3,1fr); }
+    .rpt-inline-4 { grid-template-columns:repeat(2,1fr); }
 }
 @media(max-width:480px) {
     .rpt-grid-2 { grid-template-columns:1fr; }
     .rpt-table th, .rpt-table td { padding:6px 8px; font-size:11px; }
     #rpt-capture-zone { padding:0 !important; }
+    .rpt-inline-3 { grid-template-columns:1fr; }
+    .rpt-inline-4 { grid-template-columns:1fr 1fr; }
 }
 
 .rpt-card {
@@ -495,7 +503,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
             </span>
             @if($selectedUser) Priority — {{ $selectedUser->name }}'s Tasks @else Priority Distribution @endif
         </p>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">
+        <div class="rpt-inline-3">
             @foreach($priorityBreakdown as $p => $data)
             <div style="background:{{ $data['bg'] }};border-radius:10px;padding:10px 8px;text-align:center;">
                 <p style="font-size:22px;font-weight:800;color:{{ $data['color'] }};margin:0;line-height:1;">{{ $data['count'] }}</p>
@@ -627,7 +635,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         </div>
 
         {{-- Stat pills --}}
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
+        <div class="rpt-inline-4">
             <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:10px 12px;">
                 <p style="font-size:10px;font-weight:600;color:#6B7280;margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em;">Completed</p>
                 <p style="font-size:22px;font-weight:800;color:#059669;margin:0;line-height:1;">{{ $totalDone12 }}</p>
