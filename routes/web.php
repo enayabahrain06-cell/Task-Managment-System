@@ -111,6 +111,7 @@ Route::middleware(['auth'])->group(function () {
 
 // Admin routes
 Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/', fn() => redirect()->route('admin.dashboard'))->name('index');
     Route::get('/dashboard', [AdminDashboard::class, 'index'])->name('dashboard');
     Route::get('/dashboard/refresh', [AdminDashboard::class, 'refresh'])->name('dashboard.refresh');
     Route::get('/dashboard/working-hours', [AdminDashboard::class, 'workingHours'])->name('dashboard.working-hours');
@@ -165,13 +166,21 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('settings/restore/tasks',         [AdminSettingsController::class, 'restoreTasks'])->name('settings.restore.tasks');
     Route::post('settings/restore/projects',      [AdminSettingsController::class, 'restoreProjects'])->name('settings.restore.projects');
     Route::get('settings/backup/download',        [AdminSettingsController::class, 'downloadBackup'])->name('settings.backup.download');
+    Route::get('settings/backup/download/sqlite', [AdminSettingsController::class, 'downloadBackupSqlite'])->name('settings.backup.download.sqlite');
     Route::post('settings/backup/restore',        [AdminSettingsController::class, 'restoreBackup'])->name('settings.backup.restore');
+    Route::get('settings/backup/server-files',    [AdminSettingsController::class, 'listServerBackups'])->name('settings.backup.server.list');
+    Route::post('settings/backup/restore-server', [AdminSettingsController::class, 'restoreFromServer'])->name('settings.backup.restore.server');
+    Route::post('settings/backup/save-to-nas',    [AdminSettingsController::class, 'saveBackupToNas'])->name('settings.backup.save.nas');
+    Route::get('settings/backup/nas-files',       [AdminSettingsController::class, 'listNasBackups'])->name('settings.backup.nas.list');
+    Route::post('settings/backup/restore-from-nas', [AdminSettingsController::class, 'restoreFromNas'])->name('settings.backup.restore.nas');
     Route::post('settings/clear',                 [AdminSettingsController::class, 'clearData'])->name('settings.clear');
     Route::post('settings/storage',                    [AdminSettingsController::class, 'updateStorage'])->name('settings.storage');
     Route::post('settings/storage/test/gdrive',        [AdminSettingsController::class, 'testStorageGdrive'])->name('settings.storage.test.gdrive');
     Route::post('settings/storage/backup/gdrive',      [AdminSettingsController::class, 'backupToGdrive'])->name('settings.storage.backup.gdrive');
     Route::post('settings/storage/test/onedrive',      [AdminSettingsController::class, 'testStorageOnedrive'])->name('settings.storage.test.onedrive');
     Route::post('settings/storage/test/omv',           [AdminSettingsController::class, 'testStorageOmv'])->name('settings.storage.test.omv');
+    Route::post('settings/storage/migrate-to-nas',    [AdminSettingsController::class, 'migrateLocalToNas'])->name('settings.storage.migrate.nas');
+    Route::post('settings/storage/recover-nas-paths', [AdminSettingsController::class, 'recoverNasPaths'])->name('settings.storage.recover.nas');
     Route::post('settings/nas-schema',                 [AdminSettingsController::class, 'updateNasSchema'])->name('settings.nas-schema');
     Route::post('settings/nas-schema/reset',           [AdminSettingsController::class, 'resetNasSchema'])->name('settings.nas-schema.reset');
     Route::post('settings/whatsapp',              [AdminSettingsController::class, 'updateWhatsapp'])->name('settings.whatsapp');
