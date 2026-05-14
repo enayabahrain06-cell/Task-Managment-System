@@ -29,6 +29,11 @@
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
 }
+.task-table-wrap table { min-width: 600px; }
+@media (max-width: 768px) {
+    .task-table-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+    .task-table-wrap table { min-width: 600px !important; }
+}
 </style>
 @php
     $doneStatuses = ['approved','delivered','archived'];
