@@ -7,11 +7,12 @@
 <style>
 /* ── Screen layout helpers ── */
 .rpt-grid-4  { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:10px; }
+.rpt-grid-5  { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:10px; }
 .rpt-grid-2  { display:grid; grid-template-columns:1fr 1fr;       gap:10px; margin-bottom:10px; }
 .rpt-grid-3  { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:10px; }
-@media(max-width:1100px){ .rpt-grid-4 { grid-template-columns:repeat(2,1fr); } }
+@media(max-width:1100px){ .rpt-grid-4,.rpt-grid-5 { grid-template-columns:repeat(2,1fr); } }
 @media(max-width:900px) { .rpt-grid-2,.rpt-grid-3 { grid-template-columns:1fr; } }
-@media(max-width:600px) { .rpt-grid-4 { grid-template-columns:1fr; } }
+@media(max-width:600px) { .rpt-grid-4,.rpt-grid-5 { grid-template-columns:1fr; } }
 
 .rpt-card {
     background:#fff; border-radius:12px;
@@ -74,6 +75,7 @@
         page-break-inside:avoid;
     }
     .rpt-grid-4 { grid-template-columns:repeat(4,1fr) !important; }
+    .rpt-grid-5 { grid-template-columns:repeat(5,1fr) !important; }
     .rpt-grid-2 { grid-template-columns:1fr 1fr !important; }
     .rpt-grid-3 { grid-template-columns:repeat(3,1fr) !important; }
 
@@ -358,30 +360,49 @@
 {{-- Hidden area used for PDF rendering --}}
 <div id="user-perf-pdf-area" style="position:fixed;left:-9999px;top:0;width:900px;background:#fff;padding:32px;font-family:Inter,system-ui,sans-serif;"></div>
 
-{{-- ══ KPI Summary Row ══ --}}
+{{-- ══ KPI Summary ══ --}}
+@php
+$empName       = $selectedUser ? $selectedUser->name : null;
+$platformIcons = ['facebook'=>['fab fa-facebook','#1877F2'],'instagram'=>['fab fa-instagram','#E1306C'],'twitter'=>['fab fa-x-twitter','#000'],'tiktok'=>['fab fa-tiktok','#010101'],'youtube'=>['fab fa-youtube','#FF0000'],'snapchat'=>['fab fa-snapchat-ghost','#F7CA00'],'linkedin'=>['fab fa-linkedin','#0A66C2'],'other'=>['fas fa-share-nodes','#6366F1']];
+
+// Row 1 — always 4 core metrics
+$kpisRow1 = [
+    ['label' => $empName ? 'Assigned Tasks' : 'Total Tasks',
+     'value' => $totalTasks,         'icon'=>'fa-list-check',   'color'=>'#6366F1','bg'=>'#EEF2FF',
+     'sub'   => $empName ? 'Assigned to '.$empName : 'In selected period'],
+    ['label'=>'Completed',        'value'=>$completedTasks,    'icon'=>'fa-circle-check', 'color'=>'#10B981','bg'=>'#D1FAE5', 'sub'=>'Approved + Delivered'],
+    ['label'=>'Completion Rate',  'value'=>$completionRate.'%','icon'=>'fa-chart-pie',     'color'=>'#F59E0B','bg'=>'#FEF3C7', 'sub'=>'Of all tasks done'],
+    ['label'=>'On-time Rate',     'value'=>$onTimeRate.'%',    'icon'=>'fa-clock',         'color'=>'#8B5CF6','bg'=>'#EDE9FE', 'sub'=>'Before deadline'],
+];
+
+// Row 2 — context metrics (count varies by filter)
+$kpisRow2 = [
+    ['label'=>'Overdue',   'value'=>$overdueTasks, 'icon'=>'fa-triangle-exclamation','color'=>'#EF4444','bg'=>'#FEE2E2', 'sub'=>'Need attention'],
+    ...($empName ? [] : [
+        ['label'=>'Active Projects','value'=>$activeProjects,'icon'=>'fa-diagram-project','color'=>'#3B82F6','bg'=>'#DBEAFE','sub'=>'Currently running'],
+    ]),
+    ['label' => $empName ? 'Submitted Tasks' : 'Pending Review',
+     'value' => $pendingReview,
+     'icon'  => 'fa-gavel', 'color'=>'#7C3AED','bg'=>'#EDE9FE',
+     'sub'   => 'Awaiting approval'],
+    ...($empName ? [] : [
+        ['label'=>'Team Members','value'=>$teamMemberCount,'icon'=>'fa-users','color'=>'#059669','bg'=>'#ECFDF5','sub'=>'Active contributors'],
+    ]),
+    ['label'     => 'Social Posts',
+     'value'     => $socialPostsCount,
+     'icon'      => 'fa-share-nodes',
+     'color'     => '#EC4899','bg'=>'#FCE7F3',
+     'sub'       => $socialPendingCount > 0 ? $socialPendingCount.' pending' : 'All posted',
+     'sub_color' => $socialPendingCount > 0 ? '#D97706' : '#10B981',
+     'platforms' => $socialByPlatform],
+];
+
+$row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? 'rpt-grid-3' : 'rpt-grid-4');
+@endphp
+
+{{-- Row 1: Core metrics (always 4) --}}
 <div class="rpt-grid-4">
-    @php
-    $empName = $selectedUser ? $selectedUser->name : null;
-    $kpis = [
-        ['label' => $empName ? 'Assigned Tasks'   : 'Total Tasks',
-         'value' => $totalTasks,        'icon'=>'fa-list-check',          'color'=>'#6366F1','bg'=>'#EEF2FF',
-         'sub'   => $empName ? 'Tasks assigned to '.$empName : 'In selected period'],
-        ['label'=>'Completed',        'value'=>$completedTasks,    'icon'=>'fa-circle-check',        'color'=>'#10B981','bg'=>'#D1FAE5', 'sub'=>'Approved + Delivered'],
-        ['label'=>'Completion Rate',  'value'=>$completionRate.'%','icon'=>'fa-chart-pie',            'color'=>'#F59E0B','bg'=>'#FEF3C7', 'sub'=>'Of all tasks done'],
-        ['label'=>'On-time Rate',     'value'=>$onTimeRate.'%',    'icon'=>'fa-clock',               'color'=>'#8B5CF6','bg'=>'#EDE9FE', 'sub'=>'Before deadline'],
-        ['label'=>'Overdue',          'value'=>$overdueTasks,      'icon'=>'fa-triangle-exclamation','color'=>'#EF4444','bg'=>'#FEE2E2', 'sub'=>'Need attention'],
-        ...($empName ? [] : [
-            ['label'=>'Active Projects','value'=>$activeProjects,  'icon'=>'fa-diagram-project',     'color'=>'#3B82F6','bg'=>'#DBEAFE', 'sub'=>'Currently running'],
-        ]),
-        ['label' => $empName ? 'Submitted Tasks'  : 'Pending Review',
-         'value' => $pendingReview,     'icon'=>'fa-gavel',               'color'=>'#7C3AED','bg'=>'#EDE9FE',
-         'sub'   => $empName ? 'Awaiting admin approval' : 'Awaiting approval'],
-        ...($empName ? [] : [
-            ['label'=>'Team Members',  'value'=>$teamMemberCount,  'icon'=>'fa-users',               'color'=>'#059669','bg'=>'#ECFDF5', 'sub'=>'Active contributors'],
-        ]),
-    ];
-    @endphp
-    @foreach($kpis as $kpi)
+    @foreach($kpisRow1 as $kpi)
     <div class="rpt-card" style="padding:10px 12px;">
         <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px;">
             <div style="width:28px;height:28px;border-radius:8px;background:{{ $kpi['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -391,6 +412,33 @@
         </div>
         <p style="font-size:22px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $kpi['value'] }}</p>
         <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">{{ $kpi['sub'] }}</p>
+    </div>
+    @endforeach
+</div>
+
+{{-- Row 2: Context metrics (5 cols without filter, 3 cols with user filter) --}}
+<div class="{{ $row2Class }}">
+    @foreach($kpisRow2 as $kpi)
+    <div class="rpt-card" style="padding:10px 12px;">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px;">
+            <div style="width:28px;height:28px;border-radius:8px;background:{{ $kpi['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas {{ $kpi['icon'] }}" style="color:{{ $kpi['color'] }};font-size:11px;"></i>
+            </div>
+            <span style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.04em;line-height:1.2;">{{ $kpi['label'] }}</span>
+        </div>
+        <p style="font-size:22px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $kpi['value'] }}</p>
+        <p style="font-size:10px;margin:3px 0 0;color:{{ $kpi['sub_color'] ?? '#9CA3AF' }};">{{ $kpi['sub'] }}</p>
+        @if(!empty($kpi['platforms']) && $kpi['platforms']->isNotEmpty())
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;padding-top:7px;border-top:1px solid #F3F4F6;">
+            @foreach($kpi['platforms'] as $pl)
+            @php $pIco = $platformIcons[$pl->platform] ?? $platformIcons['other']; @endphp
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:#374151;background:#F9FAFB;border:1px solid #F3F4F6;border-radius:6px;padding:2px 6px;">
+                <i class="{{ $pIco[0] }}" style="color:{{ $pIco[1] }};font-size:10px;"></i>
+                {{ ucfirst($pl->platform) }} <span style="color:#9CA3AF;font-weight:400;">· {{ $pl->cnt }}</span>
+            </span>
+            @endforeach
+        </div>
+        @endif
     </div>
     @endforeach
 </div>
@@ -637,6 +685,7 @@
                         <th style="text-align:center;padding:7px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Projects</th>
                         <th style="text-align:center;padding:7px 10px;font-size:10px;font-weight:700;color:#F59E0B;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;" title="Tasks reopened by this admin/manager">Reopened</th>
                         <th style="text-align:center;padding:7px 10px;font-size:10px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;" title="Tasks reassigned by this admin/manager">Reassigned</th>
+                        <th style="text-align:center;padding:7px 10px;font-size:10px;font-weight:700;color:#EF4444;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;" title="Users: tasks sent back for revision | Admin/Manager: revision requests they sent">Revisions</th>
                         <th style="padding:7px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;min-width:110px;">Rate</th>
                     </tr>
                 </thead>
@@ -682,6 +731,15 @@
                             <span style="color:{{ $member['tasks_reassigned'] > 0 ? '#6366F1' : '#9CA3AF' }};font-weight:700;">{{ $member['tasks_reassigned'] }}</span>
                             @else
                             <span style="color:#D1D5DB;">—</span>
+                            @endif
+                        </td>
+                        <td style="text-align:center;padding:8px 10px;">
+                            @if(is_null($member['revisions'] ?? null))
+                            <span style="color:#D1D5DB;">—</span>
+                            @elseif($member['revisions'] > 0)
+                            <span style="color:#EF4444;font-weight:700;">{{ $member['revisions'] }}</span>
+                            @else
+                            <span style="color:#9CA3AF;font-weight:700;">0</span>
                             @endif
                         </td>
                         <td style="padding:8px 10px;min-width:110px;">
@@ -782,6 +840,11 @@
                 <span style="font-size:12px;font-weight:700;color:#D97706;">{{ $pendingApproval }} waiting</span>
             </div>
             @endif
+            <a href="{{ route('admin.approvals.index') }}?tab=awaiting"
+               style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#EEF2FF;border-radius:20px;border:1px solid #C7D2FE;text-decoration:none;">
+                <i class="fas fa-arrow-right" style="font-size:11px;color:#4F46E5;"></i>
+                <span style="font-size:12px;font-weight:700;color:#4F46E5;">Awaiting Approvals</span>
+            </a>
             @if($avgHours !== null)
             <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;background:#EEF2FF;border-radius:20px;border:1px solid #C7D2FE;">
                 <i class="fas fa-clock" style="font-size:11px;color:#4F46E5;"></i>
@@ -811,21 +874,12 @@
                 <th>Design Sent</th>
                 <th>Customer Approved</th>
                 <th style="text-align:center;">Time to Approve</th>
-                <th style="text-align:center;">Status</th>
+                <th style="text-align:center;">Review</th>
             </tr>
         </thead>
         <tbody>
         @foreach($approvalSpeedTasks as $row)
-        @php
-            $statusColors = [
-                'delivered'          => ['#F0FDF4','#16A34A','Delivered'],
-                'pending_customer'   => ['#FFFBEB','#D97706','Awaiting Customer'],
-                'approved'           => ['#EEF2FF','#4F46E5','Approved'],
-                'revision_requested' => ['#FEF2F2','#DC2626','Revision'],
-            ];
-            [$sbg,$sco,$slbl] = $statusColors[$row['status']] ?? ['#F3F4F6','#6B7280',ucfirst(str_replace('_',' ',$row['status']))];
-        @endphp
-        <tr>
+        <tr id="approval-row-{{ $row['id'] }}">
             <td>
                 <a href="{{ route('admin.tasks.show', $row['id']) }}" style="font-weight:600;color:#111827;text-decoration:none;" onmouseover="this.style.color='#4F46E5'" onmouseout="this.style.color='#111827'">
                     {{ Str::limit($row['title'], 40) }}
@@ -845,7 +899,7 @@
                 <span style="font-size:12px;color:#D97706;font-style:italic;">Pending...</span>
                 @endif
             </td>
-            <td style="text-align:center;">
+            <td id="approval-timer-{{ $row['id'] }}" style="text-align:center;">
                 @if($row['approved'])
                 @php
                     $h = $row['hours'];
@@ -853,20 +907,209 @@
                     $timeBg  = $h <= 24 ? '#F0FDF4' : ($h <= 72 ? '#FEF3C7' : '#FEF2F2');
                     $timeCo  = $h <= 24 ? '#16A34A' : ($h <= 72 ? '#D97706' : '#DC2626');
                 @endphp
-                <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;background:{{ $timeBg }};color:{{ $timeCo }};">
-                    {{ $timeStr }}
-                </span>
+                <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;background:{{ $timeBg }};color:{{ $timeCo }};">{{ $timeStr }}</span>
                 @else
                 @php
                     $waitSec = abs(now()->diffInSeconds(\Carbon\Carbon::parse($row['sent_time_raw'] ?? now())));
                     $waitH   = round($waitSec / 3600, 1);
-                    $waitStr = $waitSec < 3600 ? (int) round($waitSec / 60) . 'm' : ($waitH < 24 ? $waitH . 'h' : round($waitH / 24, 1) . 'd');
+                    $waitStr = $waitSec < 3600 ? (int)round($waitSec/60).'m' : ($waitH < 24 ? $waitH.'h' : round($waitH/24,1).'d');
                 @endphp
                 <span style="font-size:11px;color:#D97706;font-style:italic;">{{ $waitStr }} waiting</span>
                 @endif
             </td>
+            <td style="text-align:center;white-space:nowrap;">
+                @if($row['approved'])
+                <span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#F0FDF4;color:#16A34A;">
+                    <i class="fas fa-circle-check" style="font-size:10px;margin-right:3px;"></i>Approved
+                </span>
+                @else
+                <a href="{{ route('admin.approvals.index') }}?tab=awaiting"
+                   style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:8px;font-size:11px;font-weight:600;color:#4F46E5;text-decoration:none;white-space:nowrap;"
+                   onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'">
+                    <i class="fas fa-arrow-right" style="font-size:9px;"></i> Review
+                </a>
+                @endif
+            </td>
+        </tr>
+        @endforeach
+        </tbody>
+    </table>
+    </div>
+    @endif
+</div>
+
+{{-- ══ Social Pending ══ --}}
+<div class="rpt-card" style="margin-bottom:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+        <p class="rpt-section-title" style="margin:0;display:flex;align-items:center;gap:8px;">
+            <span style="width:22px;height:22px;border-radius:6px;background:#EDE9FE;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-share-nodes" style="font-size:11px;color:#7C3AED;"></i>
+            </span>
+            Social Pending
+        </p>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;background:#F5F3FF;border-radius:20px;border:1px solid #DDD6FE;">
+                <i class="fas fa-clock" style="font-size:11px;color:#7C3AED;"></i>
+                <span style="font-size:12px;font-weight:700;color:#7C3AED;">{{ $socialPendingTasks->count() }} pending</span>
+            </div>
+            <a href="{{ route('admin.approvals.index') }}?tab=social"
+               style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#EDE9FE;border-radius:20px;border:1px solid #DDD6FE;text-decoration:none;">
+                <i class="fas fa-arrow-right" style="font-size:11px;color:#7C3AED;"></i>
+                <span style="font-size:12px;font-weight:700;color:#7C3AED;">Manage in Approvals</span>
+            </a>
+        </div>
+    </div>
+
+    @if($socialPendingTasks->isEmpty())
+    <div style="text-align:center;padding:32px 20px;">
+        <i class="fas fa-share-nodes" style="font-size:28px;color:#DDD6FE;margin-bottom:10px;"></i>
+        <p style="font-size:13px;color:#9CA3AF;margin:0;">No social media posts pending.</p>
+    </div>
+    @else
+    <div style="overflow-x:auto;">
+    <table class="rpt-table">
+        <thead>
+            <tr>
+                <th>Task</th>
+                <th>Customer</th>
+                <th>Social Assignee</th>
+                <th>Platforms</th>
+                <th>Deadline</th>
+                <th style="text-align:center;">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach($socialPendingTasks as $task)
+        @php
+            $spCustomer  = $task->customer?->name ?? $task->project?->customer?->name ?? '—';
+            $spOverdue   = $task->deadline && $task->deadline->isPast();
+            $spPlatforms = is_array($task->social_platforms) ? $task->social_platforms : [];
+            $spStatusMap = [
+                'draft'              => ['#F3F4F6','#6B7280','Draft'],
+                'assigned'           => ['#EEF2FF','#4F46E5','Assigned'],
+                'viewed'             => ['#EEF2FF','#4F46E5','Viewed'],
+                'in_progress'        => ['#FEF3C7','#D97706','In Progress'],
+                'submitted'          => ['#E0F2FE','#0284C7','Submitted'],
+                'revision_requested' => ['#FEF2F2','#DC2626','Revision'],
+                'approved'           => ['#D1FAE5','#059669','Approved'],
+                'delivered'          => ['#F0FDF4','#16A34A','Delivered'],
+                'archived'           => ['#F3F4F6','#6B7280','Archived'],
+                'pending_customer'   => ['#FFFBEB','#D97706','Awaiting Customer'],
+            ];
+            [$spBg, $spCo, $spLbl] = $spStatusMap[$task->status] ?? ['#F3F4F6','#6B7280', ucfirst($task->status)];
+        @endphp
+        <tr>
+            <td style="max-width:200px;">
+                <a href="{{ route('admin.tasks.show', $task) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#7C3AED'" onmouseout="this.style.color='#111827'" title="{{ $task->title }}">
+                    {{ Str::limit($task->title, 40) }}
+                </a>
+            </td>
+            <td style="color:#374151;">{{ $spCustomer }}</td>
+            <td>
+                @if($task->socialAssignee)
+                <span style="font-size:12px;font-weight:600;color:#7C3AED;">{{ $task->socialAssignee->name }}</span>
+                @else
+                <span style="font-size:12px;color:#D1D5DB;">Unassigned</span>
+                @endif
+            </td>
+            <td>
+                @if(count($spPlatforms))
+                <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                    @foreach($spPlatforms as $p)
+                    <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:#EDE9FE;color:#7C3AED;white-space:nowrap;">{{ ucfirst($p) }}</span>
+                    @endforeach
+                </div>
+                @else
+                <span style="font-size:12px;color:#D1D5DB;">—</span>
+                @endif
+            </td>
+            <td>
+                @if($task->deadline)
+                <span style="font-size:12px;{{ $spOverdue ? 'color:#DC2626;font-weight:600;' : 'color:#6B7280;' }}white-space:nowrap;">
+                    {{ $spOverdue ? '⚠ ' : '' }}{{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
+                </span>
+                @else
+                <span style="font-size:12px;color:#D1D5DB;">—</span>
+                @endif
+            </td>
             <td style="text-align:center;">
-                <span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:{{ $sbg }};color:{{ $sco }};">{{ $slbl }}</span>
+                <span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:{{ $spBg }};color:{{ $spCo }};white-space:nowrap;">{{ $spLbl }}</span>
+            </td>
+        </tr>
+        @endforeach
+        </tbody>
+    </table>
+    </div>
+    @endif
+</div>
+
+{{-- ══ Decide Later ══ --}}
+<div class="rpt-card" style="margin-bottom:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+        <p class="rpt-section-title" style="margin:0;display:flex;align-items:center;gap:8px;">
+            <span style="width:22px;height:22px;border-radius:6px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-clock" style="font-size:11px;color:#D97706;"></i>
+            </span>
+            Decide Later
+        </p>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;background:#FFFBEB;border-radius:20px;border:1px solid #FDE68A;">
+                <i class="fas fa-clock" style="font-size:11px;color:#D97706;"></i>
+                <span style="font-size:12px;font-weight:700;color:#D97706;">{{ $decideLaterReportTasks->count() }} pending decision</span>
+            </div>
+            <a href="{{ route('admin.approvals.index') }}?tab=decide_later"
+               style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#FFFBEB;border-radius:20px;border:1px solid #FDE68A;text-decoration:none;">
+                <i class="fas fa-arrow-right" style="font-size:11px;color:#D97706;"></i>
+                <span style="font-size:12px;font-weight:700;color:#D97706;">Manage in Approvals</span>
+            </a>
+        </div>
+    </div>
+
+    @if($decideLaterReportTasks->isEmpty())
+    <div style="text-align:center;padding:32px 20px;">
+        <i class="fas fa-clock" style="font-size:28px;color:#FDE68A;margin-bottom:10px;"></i>
+        <p style="font-size:13px;color:#9CA3AF;margin:0;">No tasks pending a social media decision.</p>
+    </div>
+    @else
+    <div style="overflow-x:auto;">
+    <table class="rpt-table">
+        <thead>
+            <tr>
+                <th>Task</th>
+                <th>Customer</th>
+                <th>Assignee</th>
+                <th>Status</th>
+                <th style="text-align:center;">Review</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach($decideLaterReportTasks as $task)
+        @php
+            $dlCustomer = $task->customer?->name ?? $task->project?->customer?->name ?? '—';
+            $dlStatusMap = [
+                'approved'  => ['#D1FAE5','#059669','Approved'],
+                'delivered' => ['#F0FDF4','#16A34A','Delivered'],
+                'archived'  => ['#F3F4F6','#6B7280','Archived'],
+            ];
+            [$dlBg, $dlCo, $dlLbl] = $dlStatusMap[$task->status] ?? ['#F3F4F6','#6B7280', ucfirst($task->status)];
+        @endphp
+        <tr>
+            <td style="max-width:220px;">
+                <a href="{{ route('admin.tasks.show', $task) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#D97706'" onmouseout="this.style.color='#111827'" title="{{ $task->title }}">
+                    {{ Str::limit($task->title, 45) }}
+                </a>
+            </td>
+            <td style="color:#374151;">{{ $dlCustomer }}</td>
+            <td style="color:#6B7280;">{{ $task->assignee?->name ?? '—' }}</td>
+            <td>
+                <span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:{{ $dlBg }};color:{{ $dlCo }};white-space:nowrap;">{{ $dlLbl }}</span>
+            </td>
+            <td style="text-align:center;">
+                <a href="{{ route('admin.approvals.index') }}?tab=decide_later"
+                   style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;font-size:11px;font-weight:600;color:#D97706;text-decoration:none;white-space:nowrap;"
+                   onmouseover="this.style.background='#FEF3C7'" onmouseout="this.style.background='#FFFBEB'">
+                    <i class="fas fa-arrow-right" style="font-size:9px;"></i> Decide
+                </a>
             </td>
         </tr>
         @endforeach
@@ -1534,6 +1777,7 @@ function prepareCapture() {
     const s = document.createElement('style');
     s.id = '__rpt-grid-override';
     s.textContent = '.rpt-grid-4{grid-template-columns:repeat(4,1fr)!important;}' +
+                    '.rpt-grid-5{grid-template-columns:repeat(5,1fr)!important;}' +
                     '.rpt-grid-2{grid-template-columns:1fr 1fr!important;}' +
                     '.rpt-grid-3{grid-template-columns:repeat(3,1fr)!important;}';
     document.head.appendChild(s);
@@ -2329,5 +2573,6 @@ document.addEventListener('DOMContentLoaded', function() {
      'billing-user-table','billing-customer-table','ad-budget-table'
     ].forEach(function(id) { rptPaginate(id, 7); });
 });
+
 </script>
 @endpush

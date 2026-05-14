@@ -14,8 +14,9 @@
 @media(max-width:900px) { .rpt-grid-2,.rpt-grid-3 { grid-template-columns:1fr; } }
 @media(max-width:600px) { .rpt-grid-4,.rpt-grid-5 { grid-template-columns:1fr; } }
 /* Inline sub-grids inside cards */
-.rpt-inline-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px; }
-.rpt-inline-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; }
+.rpt-inline-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px; min-width:0; }
+.rpt-inline-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; min-width:0; }
+.rpt-inline-3 > *, .rpt-inline-4 > * { min-width:0; }
 
 /* ── Mobile ── */
 @media(max-width:768px) {
@@ -43,20 +44,32 @@
     .rpt-inline-4 { grid-template-columns:1fr 1fr !important; }
     /* Card padding tighter on phones */
     .rpt-card { padding:10px 8px !important; }
+    /* Completion rate bar wraps on small phones */
+    .rpt-rate-bar-row { flex-wrap:wrap !important; gap:6px !important; }
+    .rpt-rate-bar-row .rpt-rate-avg { display:none !important; }
+}
+@media(max-width:380px) {
+    .rpt-inline-4 { grid-template-columns:1fr 1fr !important; }
+    .rpt-rate-bar-row { flex-direction:column !important; }
+    .rpt-rate-bar-row > div { width:100% !important; }
 }
 
+/* Grid items must not overflow their track */
+.rpt-grid-2 > *, .rpt-grid-3 > *,
+.rpt-grid-4 > *, .rpt-grid-5 > * { min-width:0; }
 .rpt-card {
     background:#fff; border-radius:12px;
     border:1px solid #E5E7EB;
     box-shadow:0 1px 3px rgba(0,0,0,.04);
     padding:14px;
+    min-width:0;
 }
 .rpt-section-title {
     font-size:12px; font-weight:700; color:#374151;
     text-transform:uppercase; letter-spacing:.06em;
     margin:0 0 10px; display:flex; align-items:center; gap:7px;
 }
-.rpt-scroll-wrap { overflow-x:auto; overflow-y:auto; max-height:220px; -webkit-overflow-scrolling:touch; display:block; }
+.rpt-scroll-wrap { overflow-x:auto; overflow-y:auto; max-height:220px; -webkit-overflow-scrolling:touch; display:block; width:100%; }
 .rpt-table { width:100%; border-collapse:collapse; font-size:13px; min-width:560px; }
 /* Per-table min-widths based on column count */
 #proj-table            { min-width:600px; }
@@ -641,8 +654,8 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
     @endphp
     <div class="rpt-card" style="display:flex;flex-direction:column;">
         {{-- Header --}}
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-            <p class="rpt-section-title" style="margin:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+            <p class="rpt-section-title" style="margin:0;min-width:0;">
                 <span style="width:22px;height:22px;border-radius:6px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <i class="fas fa-chart-line" style="color:#6366F1;font-size:10px;"></i>
                 </span>
@@ -681,18 +694,18 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         </div>
 
         {{-- Completion rate bar --}}
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 12px;background:#F9FAFB;border-radius:10px;border:1px solid #F0F0F0;">
+        <div class="rpt-rate-bar-row" style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 12px;background:#F9FAFB;border-radius:10px;border:1px solid #F0F0F0;">
             <span style="font-size:11px;font-weight:600;color:#374151;white-space:nowrap;">12-Month Rate</span>
-            <div style="flex:1;height:7px;background:#E5E7EB;border-radius:99px;overflow:hidden;">
+            <div style="flex:1;min-width:60px;height:7px;background:#E5E7EB;border-radius:99px;overflow:hidden;">
                 <div style="height:7px;width:{{ $completionRate12 }}%;background:{{ $completionRate12 >= 80 ? 'linear-gradient(90deg,#059669,#10B981)' : ($completionRate12 >= 50 ? 'linear-gradient(90deg,#D97706,#F59E0B)' : 'linear-gradient(90deg,#DC2626,#EF4444)') }};border-radius:99px;transition:width .6s;"></div>
             </div>
             <span style="font-size:12px;font-weight:700;color:{{ $completionRate12 >= 80 ? '#059669' : ($completionRate12 >= 50 ? '#D97706' : '#DC2626') }};min-width:34px;text-align:right;">{{ $completionRate12 }}%</span>
-            <span style="font-size:10px;color:#9CA3AF;">avg {{ $avgCompletion }}/mo</span>
+            <span class="rpt-rate-avg" style="font-size:10px;color:#9CA3AF;white-space:nowrap;">avg {{ $avgCompletion }}/mo</span>
         </div>
 
         {{-- Chart --}}
-        <div style="flex:1;position:relative;min-height:180px;">
-            <canvas id="projCompletionChart"></canvas>
+        <div style="flex:1;position:relative;min-height:160px;">
+            <canvas id="projCompletionChart" style="max-width:100%;"></canvas>
         </div>
     </div>
 
@@ -713,7 +726,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
             <i class="fas fa-circle-info" style="margin-right:3px;"></i>
             Admin/Manager: counted by tasks <strong>created</strong> &amp; tasks <strong>approved</strong>. &nbsp;Users: counted by assigned tasks.
         </div>
-        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
             <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:780px;" id="team-table">
                 <thead>
                     <tr style="background:#F9FAFB;border-bottom:1px solid #E5E7EB;">
@@ -810,7 +823,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         </p>
         <span style="font-size:11px;color:#4F46E5;background:#EEF2FF;padding:2px 9px;border-radius:20px;font-weight:600;">{{ $customerStats->count() }} Customers</span>
     </div>
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
         <table class="rpt-table" id="customer-table">
             <thead>
                 <tr>
@@ -904,7 +917,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         <p style="font-size:12px;color:#9CA3AF;margin:0;max-width:360px;margin:0 auto;">Data appears here once a manager marks a task as <strong>"Awaiting Customer Approval"</strong> from the Approvals page. That action records when the design was sent, and the timer starts.</p>
     </div>
     @else
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
     <table class="rpt-table" id="approval-speed-table">
         <thead>
             <tr>
@@ -1006,7 +1019,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         <p style="font-size:13px;color:#9CA3AF;margin:0;">No social media posts pending.</p>
     </div>
     @else
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
     <table class="rpt-table">
         <thead>
             <tr>
@@ -1111,7 +1124,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         <p style="font-size:13px;color:#9CA3AF;margin:0;">No tasks pending a social media decision.</p>
     </div>
     @else
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
     <table class="rpt-table">
         <thead>
             <tr>
@@ -1383,7 +1396,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         </span>
     </div>
 
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
     <table class="rpt-table" id="billing-user-table">
         <thead>
             <tr>
@@ -1476,7 +1489,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         @endforeach
     </div>
 
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
     <table class="rpt-table" id="billing-customer-table">
         <thead>
             <tr>
@@ -1585,7 +1598,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         </div>
     </div>
 
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
     <table class="rpt-table" id="ad-budget-table">
         <thead>
             <tr>

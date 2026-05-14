@@ -2,6 +2,34 @@
 @section('title', $task->title)
 
 @section('content')
+<style>
+/* ── Admin task detail – mobile responsiveness ── */
+.task-detail-layout {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 20px;
+    align-items: start;
+}
+.task-action-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+@media (max-width: 768px) {
+    .task-detail-layout {
+        grid-template-columns: 1fr;
+    }
+}
+@media (max-width: 480px) {
+    .task-action-grid-2 {
+        grid-template-columns: 1fr;
+    }
+}
+.task-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+</style>
 @php
     $doneStatuses = ['approved','delivered','archived'];
     $deadlineEOD  = $task->deadline ? \App\Models\Setting::deadlineEOD($task->deadline) : null;
@@ -378,7 +406,7 @@
          style="position:fixed;inset:0;z-index:99999;backdrop-filter:blur(4px);background:rgba(15,18,40,.6);">
         <div @click.self="rejectModal=false"
              style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;">
-        <div style="background:#fff;border-radius:22px;width:100%;max-width:440px;box-shadow:0 28px 80px rgba(0,0,0,.25);overflow:hidden;display:flex;flex-direction:column;">
+        <div style="background:#fff;border-radius:22px;width:100%;max-width:580px;box-shadow:0 28px 80px rgba(0,0,0,.25);overflow:hidden;display:flex;flex-direction:column;">
             <div style="padding:22px 26px 18px;border-bottom:1px solid #F0F4F8;background:linear-gradient(135deg,#FFF8F8,#fff);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
                 <div style="display:flex;align-items:center;gap:12px;">
                     <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#EF4444,#DC2626);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(239,68,68,.3);">
@@ -399,17 +427,85 @@
                 <p style="font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px;">Task</p>
                 <p style="font-size:14px;font-weight:600;color:#111827;margin:0;line-height:1.4;" x-text="rejectTask?.title"></p>
             </div>
-            <form :action="rejectTask ? rejectTask.url : '#'" method="POST" style="padding:20px 26px 24px;">
+            <form :action="rejectTask ? rejectTask.url : '#'" method="POST"
+                  style="padding:20px 26px 24px;"
+                  @submit.prevent="revSubmit($el)">
                 @csrf
-                <div style="margin-bottom:20px;">
+                <input type="hidden" name="note" x-ref="revNoteInput">
+                <div style="margin-bottom:16px;">
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
                         Reason for revision <span style="color:#EF4444;">*</span>
                     </label>
-                    <textarea name="note" required x-model="rejectNote" rows="3"
-                              placeholder="Explain what needs to be changed..."
-                              style="width:100%;padding:10px 13px;border:1.5px solid #FECACA;background:#FEF2F2;border-radius:10px;font-size:13px;color:#111827;outline:none;box-sizing:border-box;resize:vertical;transition:border-color .15s,box-shadow .15s;font-family:inherit;"
-                              onfocus="this.style.borderColor='#F87171';this.style.boxShadow='0 0 0 3px rgba(248,113,113,.12)'"
-                              onblur="this.style.borderColor='#FECACA';this.style.boxShadow='none'"></textarea>
+                    <div :style="revEditorFocused
+                            ? 'border:1.5px solid #F87171;border-radius:10px;overflow:hidden;box-shadow:0 0 0 3px rgba(248,113,113,.12);transition:all .15s;'
+                            : 'border:1.5px solid #FECACA;border-radius:10px;overflow:hidden;transition:all .15s;'">
+                        <div style="background:#FFF5F5;border-bottom:1px solid #FECACA;padding:5px 8px;display:flex;align-items:center;gap:1px;flex-wrap:wrap;">
+                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="revCmd('bold')" title="Bold"><b style="font-size:13px;">B</b></button>
+                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="revCmd('italic')" title="Italic"><i style="font-style:italic;font-size:13px;">I</i></button>
+                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="revCmd('underline')" title="Underline"><u style="font-size:13px;">U</u></button>
+                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="revCmd('strikeThrough')" title="Strikethrough"><s style="font-size:12px;">S</s></button>
+                            <div style="width:1px;height:16px;background:#FECACA;margin:0 4px;flex-shrink:0;"></div>
+                            <select @mousedown="revSaveRange()" @change="revSetSize($event.target.value); $event.target.selectedIndex=0"
+                                    style="height:26px;padding:0 6px;border:1px solid #FECACA;border-radius:6px;font-size:11px;color:#374151;background:#fff;cursor:pointer;outline:none;transition:border-color .12s;"
+                                    onfocus="this.style.borderColor='#F87171'" onblur="this.style.borderColor='#FECACA'">
+                                <option value="" disabled selected>Size</option>
+                                <option value="1">Small</option>
+                                <option value="3">Normal</option>
+                                <option value="5">Large</option>
+                                <option value="6">X-Large</option>
+                            </select>
+                            <div style="width:1px;height:16px;background:#FECACA;margin:0 4px;flex-shrink:0;"></div>
+                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="revAddLink()" title="Add link"><i class="fa fa-link" style="font-size:11px;"></i></button>
+                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="revCmd('unlink')" title="Remove link"><i class="fa fa-link-slash" style="font-size:11px;"></i></button>
+                            <div style="width:1px;height:16px;background:#FECACA;margin:0 4px;flex-shrink:0;"></div>
+                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="revCmd('insertUnorderedList')" title="Bullet list"><i class="fa fa-list-ul" style="font-size:11px;"></i></button>
+                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="revCmd('insertOrderedList')" title="Numbered list"><i class="fa fa-list-ol" style="font-size:11px;"></i></button>
+                            <div style="width:1px;height:16px;background:#FECACA;margin:0 4px;flex-shrink:0;"></div>
+                            <div style="position:relative;" @click.outside="revColorOpen=false">
+                                <button type="button" class="rte-toolbar-btn" @mousedown.prevent="revColorOpen=!revColorOpen" title="Text color"
+                                        style="flex-direction:column;gap:1px;">
+                                    <span style="font-size:12px;font-weight:700;line-height:1;" :style="'color:'+revSelectedColor">A</span>
+                                    <span style="width:14px;height:3px;border-radius:2px;display:block;" :style="'background:'+revSelectedColor"></span>
+                                </button>
+                                <div x-show="revColorOpen"
+                                     style="position:fixed;z-index:999999;"
+                                     x-init="$watch('revColorOpen', v => { if(v) { const r=$el.previousElementSibling.getBoundingClientRect(); $el.style.left=r.left+'px'; $el.style.top=(r.bottom+6)+'px'; } })">
+                                    <div style="background:#fff;border:1px solid #E5E7EB;border-radius:14px;padding:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);display:grid;grid-template-columns:repeat(5,1fr);gap:7px;width:192px;">
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#212121;" @click="revSetColor('#212121')" title="Black"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#F44336;" @click="revSetColor('#F44336')" title="Red"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#E91E63;" @click="revSetColor('#E91E63')" title="Pink"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#9C27B0;" @click="revSetColor('#9C27B0')" title="Purple"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#673AB7;" @click="revSetColor('#673AB7')" title="Deep Purple"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#3F51B5;" @click="revSetColor('#3F51B5')" title="Indigo"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#2196F3;" @click="revSetColor('#2196F3')" title="Blue"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#00BCD4;" @click="revSetColor('#00BCD4')" title="Cyan"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#009688;" @click="revSetColor('#009688')" title="Teal"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#4CAF50;" @click="revSetColor('#4CAF50')" title="Green"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#8BC34A;" @click="revSetColor('#8BC34A')" title="Light Green"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#FFEB3B;" @click="revSetColor('#FFEB3B')" title="Yellow"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#FF9800;" @click="revSetColor('#FF9800')" title="Orange"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#FF5722;" @click="revSetColor('#FF5722')" title="Deep Orange"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#795548;" @click="revSetColor('#795548')" title="Brown"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#9E9E9E;" @click="revSetColor('#9E9E9E')" title="Gray"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#607D8B;" @click="revSetColor('#607D8B')" title="Blue Gray"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#6366F1;" @click="revSetColor('#6366F1')" title="Indigo"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#EC4899;" @click="revSetColor('#EC4899')" title="Rose"></div>
+                                        <div class="rte-color-swatch" @mousedown.prevent style="background:#fff;border:2px solid #D1D5DB;" @click="revSetColor('#374151')" title="Reset"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="width:1px;height:16px;background:#FECACA;margin:0 4px;flex-shrink:0;"></div>
+                            <button type="button" class="rte-toolbar-btn" @mousedown.prevent="revCmd('removeFormat')" title="Clear formatting"><i class="fa fa-remove-format" style="font-size:11px;"></i></button>
+                        </div>
+                        <div x-ref="revEditor"
+                             contenteditable="true"
+                             class="rte-field"
+                             data-placeholder="Explain what needs to be changed..."
+                             @focus="revEditorFocused=true"
+                             @blur="revEditorFocused=false"
+                             @input="rejectNote = $el.innerText.trim()"
+                             style="min-height:90px;max-height:220px;overflow-y:auto;padding:10px 13px;font-size:13px;color:#111827;outline:none;background:#FEF2F2;line-height:1.6;"></div>
+                    </div>
                 </div>
                 <div style="display:flex;gap:10px;">
                     <button type="button" @click="rejectModal=false"
@@ -440,9 +536,21 @@
     </a>
     <div style="flex:1;min-width:0;">
         <h1 style="font-size:20px;font-weight:700;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $task->title }}</h1>
-        <p style="font-size:13px;color:#9CA3AF;margin:2px 0 0;">
+        <p style="font-size:13px;color:#9CA3AF;margin:2px 0 0;display:flex;align-items:center;flex-wrap:wrap;gap:0;">
             <i class="fa fa-folder-open" style="margin-right:4px;"></i>{{ $task->project->name }}
             &nbsp;·&nbsp;<i class="fa fa-user" style="margin-right:4px;"></i>{{ $task->assignee->name ?? '—' }}
+            @if($task->social_required && $task->socialAssignee)
+            &nbsp;·&nbsp;<i class="fas fa-share-nodes" style="margin-right:4px;color:#8B5CF6;"></i><span style="color:#8B5CF6;">{{ $task->socialAssignee->name }}</span>&nbsp;
+            @if($task->socialPosts->isNotEmpty())
+            <span style="font-size:10px;font-weight:700;color:#15803D;background:#DCFCE7;padding:1px 6px;border-radius:4px;white-space:nowrap;">
+                <i class="fas fa-circle-check" style="font-size:8px;"></i> Posted
+            </span>
+            @else
+            <span style="font-size:10px;font-weight:700;color:#D97706;background:#FEF3C7;padding:1px 6px;border-radius:4px;white-space:nowrap;">
+                <i class="fas fa-hourglass-half" style="font-size:8px;"></i> Pending
+            </span>
+            @endif
+            @endif
         </p>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -465,15 +573,17 @@
         <span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:{{ $tbg }};color:{{ $tco }};">#{{ $tag }}</span>
         @endforeach
         @endif
+        @if(auth()->user()->hasPermission('manage_tasks'))
         <button type="button" onclick="document.getElementById('taskEditModal').style.display='flex'"
                 style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(79,70,229,.3);transition:opacity .15s;"
                 onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
             <i class="fa fa-pen" style="font-size:11px;"></i> Edit
         </button>
+        @endif
     </div>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;">
+<div class="task-detail-layout">
 
     {{-- Left column --}}
     <div style="display:flex;flex-direction:column;gap:20px;">
@@ -560,6 +670,42 @@
                     </div>
                     @endif
 
+                    @if($task->social_required && $task->socialAssignee)
+                    @php
+                        $spFirst     = $task->socialPosts->first();
+                        $spPosted    = $spFirst !== null;
+                        $spPlatforms = ['facebook'=>['fab fa-facebook','#1877F2'],'instagram'=>['fab fa-instagram','#E1306C'],'twitter'=>['fab fa-x-twitter','#000'],'tiktok'=>['fab fa-tiktok','#010101'],'youtube'=>['fab fa-youtube','#FF0000'],'snapchat'=>['fab fa-snapchat-ghost','#F7CA00'],'linkedin'=>['fab fa-linkedin','#0A66C2'],'other'=>['fas fa-share-nodes','#6366F1']];
+                        $spIcon      = $spFirst ? ($spPlatforms[$spFirst->platform] ?? $spPlatforms['other']) : null;
+                    @endphp
+                    <div style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:130px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
+                        <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 6px;display:flex;align-items:center;gap:5px;">
+                            <i class="fas fa-share-nodes" style="font-size:9px;"></i> Social
+                        </p>
+                        <p style="font-size:13px;font-weight:700;color:#1c1917;margin:0 0 5px;">{{ $task->socialAssignee->name }}</p>
+                        @if($spPosted)
+                        <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                            @if($spIcon)
+                            <i class="{{ $spIcon[0] }}" style="font-size:12px;color:{{ $spIcon[1] }};flex-shrink:0;"></i>
+                            <span style="font-size:11px;font-weight:600;color:#374151;">{{ ucfirst($spFirst->platform) }}</span>
+                            @endif
+                            <span style="font-size:10px;font-weight:700;color:#15803D;background:#DCFCE7;padding:1px 6px;border-radius:4px;white-space:nowrap;">
+                                <i class="fas fa-circle-check" style="font-size:8px;"></i> {{ $spFirst->created_at->format('M d') }}
+                            </span>
+                            @if($spFirst->post_url)
+                            <a href="{{ $spFirst->post_url }}" target="_blank" rel="noopener"
+                               style="font-size:10px;color:#4F46E5;text-decoration:none;background:#EEF2FF;padding:1px 6px;border-radius:4px;font-weight:600;white-space:nowrap;">
+                                <i class="fas fa-arrow-up-right-from-square" style="font-size:7px;"></i> View
+                            </a>
+                            @endif
+                        </div>
+                        @else
+                        <span style="font-size:10px;font-weight:700;color:#D97706;background:#FEF3C7;padding:2px 7px;border-radius:4px;white-space:nowrap;">
+                            <i class="fas fa-hourglass-half" style="font-size:8px;"></i> Pending post
+                        </span>
+                        @endif
+                    </div>
+                    @endif
+
                     <div style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
                         <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:5px;">
                             <i class="fa fa-clock" style="font-size:9px;"></i> First Viewed
@@ -579,40 +725,137 @@
             </div>
         </div>
 
-        {{-- Project Attachments --}}
-        @if($task->project->attachments->isNotEmpty())
+        {{-- Task & Project Attachments --}}
+        @php $allAttachments = $task->attachments->merge($task->project->attachments); @endphp
         <div x-data="{
-                open: false,
-                att: null,
+                open: false, att: null,
+                uploading: false,
+                files: [], dragging: false,
                 show(item) { this.att = item; this.open = true; },
-                close() { this.open = false; this.att = null; }
+                close() { this.open = false; this.att = null; },
+                addFiles(e) {
+                    const inc = e.dataTransfer ? e.dataTransfer.files : e.target.files;
+                    const dt = new DataTransfer();
+                    this.files.forEach(f => dt.items.add(f));
+                    Array.from(inc).forEach(f => dt.items.add(f));
+                    this.files = Array.from(dt.files);
+                    this.$refs.attInput.files = dt.files;
+                },
+                removeFile(i) {
+                    const dt = new DataTransfer();
+                    this.files.splice(i,1);
+                    this.files.forEach(f => dt.items.add(f));
+                    this.$refs.attInput.files = dt.files;
+                },
+                fmt(b) { if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
              }"
              @keydown.escape.window="close()">
 
             <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
                 <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 16px;display:flex;align-items:center;gap:8px;">
                     <i class="fa fa-paperclip" style="color:#6366F1;"></i> Attachments
-                    <span style="margin-left:auto;font-size:12px;font-weight:400;color:#9CA3AF;">{{ $task->project->attachments->count() }} {{ Str::plural('file', $task->project->attachments->count()) }}</span>
-                </h2>
-                <div style="display:flex;flex-direction:column;gap:8px;">
-                    @foreach($task->project->attachments as $att)
-                    @php $item = ['name'=>$att->name,'size'=>$att->humanSize(),'url'=>$att->url(),'downloadUrl'=>$att->isFile()?route('admin.attachments.download',$att):$att->url(),'icon'=>$att->iconClass(),'isLink'=>$att->isLink(),'isImage'=>in_array(strtolower(pathinfo($att->name,PATHINFO_EXTENSION)),['jpg','jpeg','png','gif','webp','svg']),'isVideo'=>in_array(strtolower(pathinfo($att->name,PATHINFO_EXTENSION)),['mp4','mov','avi','webm','mkv'])]; @endphp
-                    <button type="button" @click="show({{ json_encode($item) }})"
-                            style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:#FAFAFA;border:1px solid #F3F4F6;border-radius:10px;width:100%;text-align:left;cursor:pointer;transition:border-color .15s,background .15s;"
-                            onmouseover="this.style.background='#F0F0FF';this.style.borderColor='#C7D2FE'" onmouseout="this.style.background='#FAFAFA';this.style.borderColor='#F3F4F6'">
-                        <div style="width:36px;height:36px;border-radius:9px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                            <i class="fa {{ $att->iconClass() }}" style="color:#6366F1;font-size:14px;"></i>
-                        </div>
-                        <div style="flex:1;min-width:0;">
-                            <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $att->name }}</p>
-                            @if($att->isFile() && $att->size)
-                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">{{ $att->humanSize() }}</p>
-                            @endif
-                        </div>
-                        <i class="fa fa-eye" style="color:#9CA3AF;font-size:13px;flex-shrink:0;"></i>
+                    <span style="font-size:12px;font-weight:400;color:#9CA3AF;">{{ $allAttachments->count() }} {{ Str::plural('file', $allAttachments->count()) }}</span>
+                    @if(auth()->user()->hasPermission('manage_tasks'))
+                    <button type="button" @click="uploading=!uploading"
+                            style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#EEF2FF;border:none;border-radius:8px;font-size:12px;font-weight:600;color:#4F46E5;cursor:pointer;transition:background .15s;"
+                            onmouseover="this.style.background='#C7D2FE'" onmouseout="this.style.background='#EEF2FF'">
+                        <i class="fa fa-plus" style="font-size:10px;"></i> Add File
                     </button>
+                    @endif
+                </h2>
+
+                {{-- File list --}}
+                @if($allAttachments->isNotEmpty())
+                <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+                    @foreach($allAttachments as $att)
+                    @php
+                        $attDlUrl  = $att->isFile() ? route('admin.attachments.download', $att) : $att->url();
+                        $item = ['name'=>$att->name,'size'=>$att->humanSize(),'url'=>$att->url(),'downloadUrl'=>$attDlUrl,'previewUrl'=>$att->isFile()?($attDlUrl.'?inline=1'):$att->url(),'icon'=>$att->iconClass(),'isLink'=>$att->isLink(),'isImage'=>in_array(strtolower(pathinfo($att->name,PATHINFO_EXTENSION)),['jpg','jpeg','png','gif','webp','svg']),'isVideo'=>in_array(strtolower(pathinfo($att->name,PATHINFO_EXTENSION)),['mp4','mov','avi','webm','mkv'])];
+                    @endphp
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <button type="button" @click="show({{ json_encode($item) }})"
+                                style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:#FAFAFA;border:1px solid #F3F4F6;border-radius:10px;flex:1;text-align:left;cursor:pointer;transition:border-color .15s,background .15s;min-width:0;"
+                                onmouseover="this.style.background='#F0F0FF';this.style.borderColor='#C7D2FE'" onmouseout="this.style.background='#FAFAFA';this.style.borderColor='#F3F4F6'">
+                            <div style="width:36px;height:36px;border-radius:9px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fa {{ $att->iconClass() }}" style="color:#6366F1;font-size:14px;"></i>
+                            </div>
+                            <div style="flex:1;min-width:0;">
+                                <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $att->name }}</p>
+                                @if($att->isFile() && $att->size)
+                                <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">{{ $att->humanSize() }}</p>
+                                @endif
+                            </div>
+                            <i class="fa fa-eye" style="color:#9CA3AF;font-size:13px;flex-shrink:0;"></i>
+                        </button>
+                        @php
+                            $isTaskAtt    = $att->task_id === $task->id;
+                            $isProjAtt    = is_null($att->task_id) && $att->project_id === $task->project_id;
+                            $canDelete    = $isTaskAtt || $isProjAtt;
+                            $confirmMsg   = $isProjAtt
+                                ? 'This file belongs to the project and will be removed for ALL tasks. Delete anyway?'
+                                : 'Delete this attachment?';
+                        @endphp
+                        @if($canDelete && auth()->user()->hasPermission('delete_tasks'))
+                        <form method="POST" action="{{ route('admin.tasks.attachments.delete', [$task, $att]) }}"
+                              onsubmit="return confirm('{{ $confirmMsg }}')" style="margin:0;flex-shrink:0;">
+                            @csrf @method('DELETE')
+                            <button type="submit"
+                                    style="width:34px;height:34px;border-radius:9px;background:#FEF2F2;border:1px solid #FECACA;color:#EF4444;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;"
+                                    onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'"
+                                    title="{{ $isProjAtt ? 'Delete from project' : 'Delete attachment' }}">
+                                <i class="fa fa-trash" style="font-size:12px;"></i>
+                            </button>
+                        </form>
+                        @endif
+                    </div>
                     @endforeach
                 </div>
+                @endif
+
+                {{-- Upload form (collapsible) — admin & manager only --}}
+                @if(auth()->user()->hasPermission('manage_tasks'))
+                <div x-show="uploading" x-cloak style="border-top:1px solid #F3F4F6;padding-top:14px;">
+                    <form method="POST" action="{{ route('admin.tasks.attachments.add', $task) }}"
+                          enctype="multipart/form-data">
+                        @csrf
+                        <div @dragover.prevent="dragging=true" @dragleave.prevent="dragging=false"
+                             @drop.prevent="dragging=false; addFiles($event)"
+                             :style="dragging ? 'border-color:#6366F1;background:#EEF2FF;' : ''"
+                             style="border:2px dashed #E5E7EB;border-radius:10px;padding:14px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:#FAFAFA;"
+                             @click="$refs.attInput.click()">
+                            <i class="fa fa-cloud-arrow-up" style="font-size:20px;color:#9CA3AF;margin-bottom:6px;display:block;"></i>
+                            <p style="font-size:12px;color:#6B7280;margin:0;">Drop files here or <span style="color:#6366F1;font-weight:600;">browse</span></p>
+                            <input type="file" name="attachments[]" multiple x-ref="attInput"
+                                   @change="addFiles($event)" style="display:none;">
+                        </div>
+                        <template x-if="files.length > 0">
+                            <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+                                <template x-for="(f, i) in files" :key="i">
+                                    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:9px;">
+                                        <i class="fa fa-file" style="color:#6366F1;font-size:12px;flex-shrink:0;"></i>
+                                        <span style="flex:1;font-size:12px;font-weight:500;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="f.name"></span>
+                                        <span style="font-size:11px;color:#9CA3AF;" x-text="fmt(f.size)"></span>
+                                        <button type="button" @click.stop="removeFile(i)"
+                                                style="width:20px;height:20px;border-radius:50%;border:none;background:#EF4444;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                            <i class="fa fa-xmark"></i>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                        <div style="display:flex;gap:8px;margin-top:10px;">
+                            <button type="submit" x-show="files.length > 0"
+                                    style="padding:8px 18px;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;">
+                                <i class="fa fa-upload" style="margin-right:5px;font-size:10px;"></i>Upload
+                            </button>
+                            <button type="button" @click="uploading=false;files=[]"
+                                    style="padding:8px 16px;background:#F3F4F6;color:#6B7280;border:none;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                @endif
             </div>
 
             {{-- Attachment preview modal --}}
@@ -640,12 +883,12 @@
                             </div>
                             <template x-if="att.isImage">
                                 <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#F9FAFB;display:flex;justify-content:center;">
-                                    <img :src="att.url" :alt="att.name" style="max-width:100%;max-height:75vh;border-radius:10px;object-fit:contain;display:block;">
+                                    <img :src="att.previewUrl || att.url" :alt="att.name" style="max-width:100%;max-height:75vh;border-radius:10px;object-fit:contain;display:block;">
                                 </div>
                             </template>
                             <template x-if="att.isVideo">
                                 <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#000;display:flex;justify-content:center;">
-                                    <video :src="att.url" controls style="max-width:100%;max-height:75vh;border-radius:10px;display:block;outline:none;"></video>
+                                    <video :src="att.previewUrl || att.url" controls style="max-width:100%;max-height:75vh;border-radius:10px;display:block;outline:none;"></video>
                                 </div>
                             </template>
                             <div style="padding:16px 24px;display:flex;gap:10px;justify-content:flex-end;">
@@ -670,7 +913,6 @@
             </template>
 
         </div>
-        @endif
 
         @php
             $previewPhone   = $task->customer?->phone ?? $task->project?->customer?->phone ?? null;
@@ -691,7 +933,7 @@
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 16px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-gavel" style="color:#7C3AED;"></i> Review Submission
             </h2>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="task-action-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                 <button type="button"
                         @click="openApprovalModal({
                             id:              {{ $task->id }},
@@ -702,8 +944,8 @@
                             customer_name:   @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
                             customer_email:  @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
                             customer_phone:  @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
-                            submission_url:  @js($task->submissions->first()?->file_path ? url(Storage::url($task->submissions->first()->file_path)) : null),
-                            submission_name: @js($task->submissions->first()?->original_filename ?? ($task->submissions->first()?->file_path ? basename($task->submissions->first()->file_path) : null)),
+                            submission_url:  @js($task->submissions->first()?->file_path ? url(Storage::url($task->submissions->first()->file_path)) : $task->submissions->first()?->delivery_url),
+                            submission_name: @js($task->submissions->first()?->original_filename ?? ($task->submissions->first()?->file_path ? basename($task->submissions->first()->file_path) : ($task->submissions->first()?->delivery_url ? 'Open Link' : null))),
                         })"
                         style="width:100%;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;padding:10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(16,185,129,.25);transition:opacity .15s;"
                         onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
@@ -1114,6 +1356,20 @@
                             @if(!empty($meta['reason']))
                             <span style="font-size:11px;background:#FEF3C7;color:#D97706;padding:2px 8px;border-radius:6px;">{{ Str::limit($meta['reason'], 80) }}</span>
                             @endif
+                            @elseif($log->action === 'attachment_added' && isset($meta['filenames']))
+                            <span style="font-size:11px;background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                                <i class="fa fa-paperclip" style="font-size:9px;"></i>
+                                {{ count($meta['filenames']) }} file(s) added by <strong>{{ $meta['uploaded_by'] }}</strong>
+                            </span>
+                            @foreach($meta['filenames'] as $fn)
+                            <span style="font-size:11px;background:#F3F4F6;color:#374151;padding:2px 8px;border-radius:6px;">{{ $fn }}</span>
+                            @endforeach
+                            @elseif($log->action === 'attachment_deleted' && isset($meta['filename']))
+                            <span style="font-size:11px;background:#FEE2E2;color:#DC2626;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
+                                <i class="fa fa-trash" style="font-size:9px;"></i>
+                                deleted by <strong>{{ $meta['deleted_by'] }}</strong>
+                            </span>
+                            <span style="font-size:11px;background:#F3F4F6;color:#374151;padding:2px 8px;border-radius:6px;text-decoration:line-through;opacity:.7;">{{ $meta['filename'] }}</span>
                             @elseif($log->action === 'auto_paused' && isset($meta['paused_by_task_id']))
                             <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
                                 <i class="fa fa-circle-pause" style="font-size:9px;"></i>
@@ -1324,7 +1580,7 @@
                             @endif
                         </div>
                         @endif
-                        @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','deadline_updated','auto_paused','social_posted','social_post_edited']))
+                        @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','deadline_updated','auto_paused','social_posted','social_post_edited','attachment_added','attachment_deleted']))
                         <p style="font-size:12px;color:#6B7280;background:#F9FAFB;padding:6px 10px;border-radius:8px;border-left:3px solid #E5E7EB;margin:6px 0 0;">"{{ $log->note }}"</p>
                         @endif
                     </div>
@@ -1352,7 +1608,7 @@
                         <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:12px 14px;">
                             <div style="margin-bottom:10px;">
                                 <div style="display:flex;align-items:flex-start;gap:6px;">
-                                    <p x-show="!editingNote" style="font-size:13px;color:#374151;margin:0;line-height:1.6;flex:1;" x-text="note || ''"></p>
+                                    <p x-show="!editingNote" style="font-size:13px;color:#374151;margin:0;line-height:1.6;flex:1;" x-html="note || ''"></p>
                                     <button @click="editingNote=!editingNote" style="font-size:10px;background:none;border:none;color:#9CA3AF;cursor:pointer;padding:0;flex-shrink:0;margin-top:2px;" title="Edit note">
                                         <i class="fa fa-pencil" style="font-size:10px;"></i>
                                     </button>
@@ -1383,17 +1639,40 @@
                                 @endif
                             </div>
                             @foreach($entry['subs'] as $subFile)
-                            @if($subFile->file_path)
+                            @if($subFile->delivery_url)
+                                <a href="{{ $subFile->delivery_url }}" target="_blank" rel="noopener"
+                                   style="display:inline-flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 14px;background:#F0FDF4;border:1.5px solid #A7F3D0;border-radius:9px;text-decoration:none;max-width:340px;transition:border-color .15s;"
+                                   onmouseover="this.style.borderColor='#059669'" onmouseout="this.style.borderColor='#A7F3D0'">
+                                    <div style="width:36px;height:36px;border-radius:8px;background:#D1FAE5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                        <i class="fa fa-link" style="color:#059669;font-size:15px;"></i>
+                                    </div>
+                                    <div style="flex:1;min-width:0;">
+                                        <p style="font-size:12px;font-weight:600;color:#065F46;margin:0;">Delivery Link</p>
+                                        <p style="font-size:11px;color:#6B7280;margin:1px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $subFile->delivery_url }}</p>
+                                    </div>
+                                    <i class="fa fa-arrow-up-right-from-square" style="font-size:11px;color:#059669;flex-shrink:0;"></i>
+                                </a>
+                            @elseif($subFile->file_path)
                                 @php
-                                    $sfExt     = strtolower(pathinfo($subFile->original_filename ?? '', PATHINFO_EXTENSION));
-                                    $sfIsImage = in_array($sfExt, ['jpg','jpeg','png','gif','webp','svg']);
-                                    $sfIsVideo = in_array($sfExt, ['mp4','mov','avi','webm','mkv']);
-                                    $sfUrl     = $subFile->fileUrl();
-                                    $sfIconMap = ['pdf'=>'fa-file-pdf','doc'=>'fa-file-word','docx'=>'fa-file-word','xls'=>'fa-file-excel','xlsx'=>'fa-file-excel','ppt'=>'fa-file-powerpoint','pptx'=>'fa-file-powerpoint','zip'=>'fa-file-zipper','rar'=>'fa-file-zipper','txt'=>'fa-file-lines'];
-                                    $sfIcon    = $sfIconMap[$sfExt] ?? 'fa-file';
-                                    $sfItem    = ['name'=>$subFile->original_filename ?? 'file','url'=>$sfUrl,'downloadUrl'=>route('admin.submissions.download',$subFile),'isImage'=>$sfIsImage,'isVideo'=>$sfIsVideo,'version'=>$subFile->version];
+                                    $sfExt      = strtolower(pathinfo($subFile->original_filename ?? '', PATHINFO_EXTENSION));
+                                    $sfIsImage  = in_array($sfExt, ['jpg','jpeg','png','gif','webp','svg']);
+                                    $sfIsVideo  = in_array($sfExt, ['mp4','mov','avi','webm','mkv']);
+                                    $sfDlUrl    = route('admin.submissions.download', $subFile);
+                                    $sfUrl      = $sfDlUrl . '?inline=1';
+                                    $sfIconMap  = ['pdf'=>'fa-file-pdf','doc'=>'fa-file-word','docx'=>'fa-file-word','xls'=>'fa-file-excel','xlsx'=>'fa-file-excel','ppt'=>'fa-file-powerpoint','pptx'=>'fa-file-powerpoint','zip'=>'fa-file-zipper','rar'=>'fa-file-zipper','txt'=>'fa-file-lines'];
+                                    $sfIcon     = $sfIconMap[$sfExt] ?? 'fa-file';
+                                    $sfItem     = ['name'=>$subFile->original_filename ?? 'file','url'=>$sfUrl,'downloadUrl'=>$sfDlUrl,'previewUrl'=>$sfUrl,'isImage'=>$sfIsImage,'isVideo'=>$sfIsVideo,'version'=>$subFile->version];
+                                    $sfExists   = \Illuminate\Support\Facades\Storage::disk('public')->exists($subFile->file_path) || $subFile->nas_path;
                                 @endphp
-                                @if($sfIsImage)
+                                @if(!$sfExists)
+                                <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#F9FAFB;border:1px dashed #D1D5DB;border-radius:8px;max-width:300px;margin-bottom:10px;">
+                                    <i class="fa fa-triangle-exclamation" style="color:#D97706;font-size:13px;flex-shrink:0;"></i>
+                                    <div style="min-width:0;">
+                                        <p style="font-size:12px;font-weight:600;color:#374151;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $subFile->original_filename ?? 'File' }}</p>
+                                        <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">File no longer available</p>
+                                    </div>
+                                </div>
+                                @elseif($sfIsImage)
                                 <button type="button" @click="show({{ json_encode($sfItem) }})"
                                         style="display:block;margin-bottom:10px;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:300px;width:100%;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;"
                                         onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
@@ -1401,6 +1680,11 @@
                                     <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
                                         <i class="fa fa-image" style="color:#6366F1;font-size:10px;"></i>
                                         <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $subFile->original_filename }}</span>
+                                        @if($subFile->nas_path)
+                                            <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;flex-shrink:0;letter-spacing:.3px;">NAS</span>
+                                        @else
+                                            <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;flex-shrink:0;letter-spacing:.3px;">LOCAL</span>
+                                        @endif
                                         <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
                                     </div>
                                 </button>
@@ -1416,6 +1700,11 @@
                                     <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
                                         <i class="fa fa-video" style="color:#6366F1;font-size:10px;"></i>
                                         <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $subFile->original_filename }}</span>
+                                        @if($subFile->nas_path)
+                                            <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;flex-shrink:0;letter-spacing:.3px;">NAS</span>
+                                        @else
+                                            <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;flex-shrink:0;letter-spacing:.3px;">LOCAL</span>
+                                        @endif
                                         <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
                                     </div>
                                 </button>
@@ -1428,7 +1717,14 @@
                                     </div>
                                     <div style="flex:1;min-width:0;text-align:left;">
                                         <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $subFile->original_filename }}</p>
-                                        <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;text-transform:uppercase;">{{ $sfExt ?: 'file' }}</p>
+                                        <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;text-transform:uppercase;display:flex;align-items:center;gap:5px;">
+                                            {{ $sfExt ?: 'file' }}
+                                            @if($subFile->nas_path)
+                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;letter-spacing:.3px;">NAS</span>
+                                            @else
+                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;letter-spacing:.3px;">LOCAL</span>
+                                            @endif
+                                        </p>
                                     </div>
                                     <i class="fa fa-eye" style="font-size:11px;color:#9CA3AF;flex-shrink:0;"></i>
                                 </button>
@@ -1436,17 +1732,90 @@
                             @endif
                             @endforeach
                             @if($sub->status !== 'submitted')
-                            <div style="background:{{ $sub->status === 'approved' ? '#F0FDF4' : '#FEF2F2' }};border-radius:8px;padding:8px 12px;border-left:3px solid {{ $sub->status === 'approved' ? '#10B981' : '#EF4444' }};">
-                                <div style="display:flex;align-items:center;gap:6px;margin-bottom:{{ $sub->admin_note ? '4px' : '0' }};">
-                                    <i class="fa {{ $sub->status === 'approved' ? 'fa-circle-check' : 'fa-rotate-left' }}" style="font-size:10px;color:{{ $sub->status === 'approved' ? '#059669' : '#DC2626' }};"></i>
-                                    <span style="font-size:11px;font-weight:700;color:{{ $sub->status === 'approved' ? '#065F46' : '#991B1B' }};">{{ $sub->status === 'approved' ? 'Approved' : 'Revision Requested' }}</span>
-                                    <span style="font-size:11px;color:{{ $sub->status === 'approved' ? '#059669' : '#DC2626' }};opacity:.7;">by {{ $sub->reviewer?->name ?? 'Admin' }}</span>
-                                    @if($sub->reviewed_at)
-                                    <span style="font-size:10px;color:#9CA3AF;margin-left:auto;">{{ $sub->reviewed_at->format('M d, H:i') }}</span>
+                            @php $noteColor = $sub->status === 'approved' ? ['bg'=>'#F0FDF4','border'=>'#10B981','icon'=>'fa-circle-check','ic'=>'#059669','label'=>'Approved','lc'=>'#065F46','nc'=>'#047857'] : ['bg'=>'#FEF2F2','border'=>'#EF4444','icon'=>'fa-rotate-left','ic'=>'#DC2626','label'=>'Revision Requested','lc'=>'#991B1B','nc'=>'#B91C1C']; @endphp
+                            <div x-data="{
+                                    noteOpen: false,
+                                    noteHtml: {{ json_encode($sub->admin_note ?? '') }},
+                                    copied: false,
+                                    copyNote() {
+                                        const tmp = document.createElement('div');
+                                        tmp.innerHTML = this.noteHtml;
+                                        navigator.clipboard.writeText(tmp.innerText || tmp.textContent).then(() => { this.copied=true; setTimeout(()=>this.copied=false,2000); });
+                                    },
+                                    downloadNote() {
+                                        const tmp = document.createElement('div');
+                                        tmp.innerHTML = this.noteHtml;
+                                        const text = tmp.innerText || tmp.textContent;
+                                        const blob = new Blob([text], {type:'text/plain'});
+                                        const url = URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = url; a.download = 'revision-note.txt'; a.click();
+                                        URL.revokeObjectURL(url);
+                                    }
+                                }">
+                                <div @click="noteOpen=true" style="background:{{ $noteColor['bg'] }};border-radius:8px;padding:8px 12px;border-left:3px solid {{ $noteColor['border'] }};cursor:pointer;transition:box-shadow .15s;"
+                                     onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow='none'">
+                                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:{{ $sub->admin_note ? '4px' : '0' }};">
+                                        <i class="fa {{ $noteColor['icon'] }}" style="font-size:10px;color:{{ $noteColor['ic'] }};"></i>
+                                        <span style="font-size:11px;font-weight:700;color:{{ $noteColor['lc'] }};">{{ $noteColor['label'] }}</span>
+                                        <span style="font-size:11px;color:{{ $noteColor['ic'] }};opacity:.7;">by {{ $sub->reviewer?->name ?? 'Admin' }}</span>
+                                        @if($sub->reviewed_at)
+                                        <span style="font-size:10px;color:#9CA3AF;margin-left:auto;">{{ $sub->reviewed_at->format('M d, H:i') }}</span>
+                                        @endif
+                                        @if($sub->admin_note)
+                                        <i class="fa fa-up-right-and-down-left-from-center" style="font-size:9px;color:#9CA3AF;margin-left:4px;" title="Click to expand"></i>
+                                        @endif
+                                    </div>
+                                    @if($sub->admin_note)
+                                    <div class="rte-field" style="font-size:12px;color:{{ $noteColor['nc'] }};margin:0;line-height:1.5;min-height:0;max-height:48px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">{!! $sub->admin_note !!}</div>
                                     @endif
                                 </div>
+                                {{-- Full note popup --}}
                                 @if($sub->admin_note)
-                                <p style="font-size:12px;color:{{ $sub->status === 'approved' ? '#047857' : '#B91C1C' }};margin:0;line-height:1.5;">{{ $sub->admin_note }}</p>
+                                <template x-teleport="body">
+                                    <div x-show="noteOpen" x-cloak
+                                         style="position:fixed;inset:0;z-index:99999;backdrop-filter:blur(4px);background:rgba(15,18,40,.55);"
+                                         @click.self="noteOpen=false" @keydown.escape.window="noteOpen=false">
+                                        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;">
+                                        <div style="background:#fff;border-radius:20px;width:100%;max-width:540px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 28px 80px rgba(0,0,0,.25);overflow:hidden;">
+                                            {{-- Header --}}
+                                            <div style="padding:18px 22px 14px;border-bottom:1px solid {{ $sub->status === 'approved' ? '#D1FAE5' : '#FEE2E2' }};background:{{ $sub->status === 'approved' ? '#F0FDF4' : '#FFF8F8' }};display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+                                                <div style="display:flex;align-items:center;gap:10px;">
+                                                    <div style="width:36px;height:36px;border-radius:10px;background:{{ $sub->status === 'approved' ? 'linear-gradient(135deg,#10B981,#059669)' : 'linear-gradient(135deg,#EF4444,#DC2626)' }};display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px {{ $sub->status === 'approved' ? 'rgba(16,185,129,.3)' : 'rgba(239,68,68,.3)' }};">
+                                                        <i class="fa {{ $noteColor['icon'] }}" style="color:#fff;font-size:13px;"></i>
+                                                    </div>
+                                                    <div>
+                                                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">{{ $noteColor['label'] }}</p>
+                                                        <p style="font-size:11px;color:#9CA3AF;margin:0;">by {{ $sub->reviewer?->name ?? 'Admin' }}{{ $sub->reviewed_at ? ' · '.$sub->reviewed_at->format('M d, H:i') : '' }}</p>
+                                                    </div>
+                                                </div>
+                                                <button @click="noteOpen=false" style="width:30px;height:30px;border-radius:8px;background:#F3F4F6;border:none;cursor:pointer;color:#6B7280;font-size:12px;display:flex;align-items:center;justify-content:center;"
+                                                        onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                            {{-- Body --}}
+                                            <div style="padding:20px 22px;overflow-y:auto;flex:1;">
+                                                <div class="rte-field" style="font-size:13px;color:#374151;line-height:1.7;min-height:0;">{!! $sub->admin_note !!}</div>
+                                            </div>
+                                            {{-- Footer actions --}}
+                                            <div style="padding:12px 22px;border-top:1px solid #F3F4F6;display:flex;gap:8px;flex-shrink:0;">
+                                                <button @click="copyNote()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:9px;border:1.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;"
+                                                        onmouseover="this.style.borderColor='#6366F1';this.style.color='#4F46E5'" onmouseout="this.style.borderColor='#E5E7EB';this.style.color='#374151'">
+                                                    <i class="fa" :class="copied ? 'fa-check' : 'fa-copy'" style="font-size:11px;"></i>
+                                                    <span x-text="copied ? 'Copied!' : 'Copy text'"></span>
+                                                </button>
+                                                <button @click="downloadNote()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:9px;border:1.5px solid #E5E7EB;background:#fff;color:#374151;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;"
+                                                        onmouseover="this.style.borderColor='#6366F1';this.style.color='#4F46E5'" onmouseout="this.style.borderColor='#E5E7EB';this.style.color='#374151'">
+                                                    <i class="fa fa-download" style="font-size:11px;"></i> Download .txt
+                                                </button>
+                                                <button @click="noteOpen=false" style="margin-left:auto;padding:8px 18px;border-radius:9px;border:none;background:#F3F4F6;color:#374151;font-size:12px;font-weight:600;cursor:pointer;"
+                                                        onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">Close</button>
+                                            </div>
+                                        </div>
+                                        </div>
+                                    </div>
+                                </template>
                                 @endif
                             </div>
                             @endif
@@ -1461,7 +1830,8 @@
                     $cExt = strtolower(pathinfo($comment->original_filename ?? '', PATHINFO_EXTENSION));
                     $cIsImage = in_array($cExt, ['jpg','jpeg','png','gif','webp','svg']);
                     $cIsVideo = in_array($cExt, ['mp4','mov','avi','webm','mkv']);
-                    $cUrl = $comment->fileUrl();
+                    $cDlUrl = $comment->file_path ? route('admin.task-comments.file', $comment) : null;
+                    $cUrl = $cDlUrl ? ($cDlUrl . '?inline=1') : $comment->fileUrl();
                     $cIconMap = ['pdf'=>'fa-file-pdf','doc'=>'fa-file-word','docx'=>'fa-file-word','xls'=>'fa-file-excel','xlsx'=>'fa-file-excel','ppt'=>'fa-file-powerpoint','pptx'=>'fa-file-powerpoint','zip'=>'fa-file-zipper','rar'=>'fa-file-zipper','txt'=>'fa-file-lines'];
                     $cIcon = $cIconMap[$cExt] ?? 'fa-file';
                     $isFirstWork = $firstWorkKey && $entry['at']->toDateTimeString() === $firstWorkKey;
@@ -1488,6 +1858,7 @@
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                             <span style="font-size:12px;font-weight:600;color:#111827;">{{ $comment->user->name ?? 'Unknown' }}</span>
                             @if($isAdmin)<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:#EEF2FF;color:#4F46E5;">Admin</span>@endif
+                            @if($comment->file_path)<span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:10px;background:#D1FAE5;color:#065F46;display:inline-flex;align-items:center;gap:3px;"><i class="fa fa-paperclip" style="font-size:9px;"></i> {{ $comment->original_filename }}</span>@endif
                             @if($isFirstWork)<span style="font-size:10px;font-weight:700;padding:1px 8px;border-radius:10px;background:#D1FAE5;color:#059669;display:inline-flex;align-items:center;gap:3px;"><i class="fa fa-circle-play" style="font-size:9px;"></i> Started Working</span>@endif
                             @if($comment->edits->isNotEmpty())
                             <button @click="showHistory=!showHistory" style="font-size:10px;background:#F3F4F6;color:#9CA3AF;border:none;padding:1px 6px;border-radius:4px;cursor:pointer;">edited</button>
@@ -1503,17 +1874,31 @@
                             <div x-show="!editing">
                                 <div class="rte-field" style="font-size:13px;color:#374151;margin:0{{ $comment->file_path ? ' 0 10px' : '' }};line-height:1.6;word-break:break-word;padding:0;min-height:0;" x-html="body"></div>
                                 @if($comment->file_path)
-                                    @if($cIsImage)
-                                    <button type="button" @click="showComment({{ json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'isImage'=>true,'isVideo'=>false]) }})" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;width:100%;" onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
+                                    @php $cFileExists = \Illuminate\Support\Facades\Storage::disk('public')->exists($comment->file_path) || $comment->nas_path; @endphp
+                                    @if(!$cFileExists)
+                                    <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#F9FAFB;border:1px dashed #D1D5DB;border-radius:8px;max-width:280px;">
+                                        <i class="fa fa-triangle-exclamation" style="color:#D97706;font-size:13px;flex-shrink:0;"></i>
+                                        <div style="min-width:0;">
+                                            <p style="font-size:12px;font-weight:600;color:#374151;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $comment->original_filename }}</p>
+                                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">File no longer available</p>
+                                        </div>
+                                    </div>
+                                    @elseif($cIsImage)
+                                    <button type="button" @click="showComment({{ json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'previewUrl'=>$cUrl,'downloadUrl'=>$cDlUrl,'isImage'=>true,'isVideo'=>false]) }})" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;width:100%;" onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                                         <img src="{{ $cUrl }}" alt="{{ $comment->original_filename }}" style="width:100%;max-height:140px;object-fit:cover;display:block;">
                                         <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
                                             <i class="fa fa-image" style="color:#6366F1;font-size:10px;"></i>
                                             <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $comment->original_filename }}</span>
+                                            @if($comment->nas_path)
+                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;flex-shrink:0;letter-spacing:.3px;">NAS</span>
+                                            @else
+                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;flex-shrink:0;letter-spacing:.3px;">LOCAL</span>
+                                            @endif
                                             <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
                                         </div>
                                     </button>
                                     @elseif($cIsVideo)
-                                    <button type="button" @click="showComment({{ json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'isImage'=>false,'isVideo'=>true]) }})" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;width:100%;" onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
+                                    <button type="button" @click="showComment({{ json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'previewUrl'=>$cUrl,'downloadUrl'=>$cDlUrl,'isImage'=>false,'isVideo'=>true]) }})" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;width:100%;" onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                                         <div style="background:#1F2937;height:90px;display:flex;align-items:center;justify-content:center;">
                                             <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;">
                                                 <i class="fa fa-play" style="color:#fff;font-size:13px;margin-left:2px;"></i>
@@ -1522,18 +1907,30 @@
                                         <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
                                             <i class="fa fa-video" style="color:#6366F1;font-size:10px;"></i>
                                             <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $comment->original_filename }}</span>
+                                            @if($comment->nas_path)
+                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;flex-shrink:0;letter-spacing:.3px;">NAS</span>
+                                            @else
+                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;flex-shrink:0;letter-spacing:.3px;">LOCAL</span>
+                                            @endif
                                             <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
                                         </div>
                                     </button>
                                     @else
-                                    <a href="{{ $cUrl }}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;text-decoration:none;max-width:280px;transition:border-color .15s;"
+                                    <a href="{{ $cDlUrl ?? $cUrl }}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;text-decoration:none;max-width:280px;transition:border-color .15s;"
                                        onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                                         <div style="width:30px;height:30px;border-radius:7px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                             <i class="fa {{ $cIcon }}" style="color:#6366F1;font-size:13px;"></i>
                                         </div>
                                         <div style="flex:1;min-width:0;">
                                             <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $comment->original_filename }}</p>
-                                            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;text-transform:uppercase;">{{ $cExt ?: 'file' }}</p>
+                                            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;text-transform:uppercase;display:flex;align-items:center;gap:5px;">
+                                                {{ $cExt ?: 'file' }}
+                                                @if($comment->nas_path)
+                                                    <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;letter-spacing:.3px;">NAS</span>
+                                                @else
+                                                    <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;letter-spacing:.3px;">LOCAL</span>
+                                                @endif
+                                            </p>
                                         </div>
                                         <i class="fa fa-arrow-up-right-from-square" style="font-size:10px;color:#9CA3AF;flex-shrink:0;"></i>
                                     </a>
@@ -1663,12 +2060,12 @@
                             </div>
                             <template x-if="commentItem.isImage">
                                 <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#F9FAFB;display:flex;justify-content:center;">
-                                    <img :src="commentItem.url" :alt="commentItem.name" style="max-width:100%;max-height:75vh;border-radius:10px;object-fit:contain;display:block;">
+                                    <img :src="commentItem.previewUrl || commentItem.url" :alt="commentItem.name" style="max-width:100%;max-height:75vh;border-radius:10px;object-fit:contain;display:block;">
                                 </div>
                             </template>
                             <template x-if="commentItem.isVideo">
                                 <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#000;display:flex;justify-content:center;">
-                                    <video :src="commentItem.url" controls style="max-width:100%;max-height:75vh;border-radius:10px;display:block;"></video>
+                                    <video :src="commentItem.previewUrl || commentItem.url" controls style="max-width:100%;max-height:75vh;border-radius:10px;display:block;"></video>
                                 </div>
                             </template>
                             <div style="padding:16px 24px;display:flex;gap:10px;justify-content:flex-end;">
@@ -1676,7 +2073,7 @@
                                         style="padding:9px 18px;background:#F3F4F6;color:#6B7280;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">
                                     Close
                                 </button>
-                                <a :href="commentItem.url" download
+                                <a :href="commentItem.downloadUrl || commentItem.url"
                                    style="display:inline-flex;align-items:center;gap:6px;padding:9px 20px;background:#6366F1;color:#fff;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;transition:background .15s;"
                                    onmouseover="this.style.background='#4F46E5'" onmouseout="this.style.background='#6366F1'">
                                     <i class="fa fa-download" style="font-size:11px;"></i> Download
@@ -1714,12 +2111,12 @@
                             </div>
                             <template x-if="sub.isImage">
                                 <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#F9FAFB;display:flex;justify-content:center;">
-                                    <img :src="sub.url" :alt="sub.name" style="max-width:100%;max-height:75vh;border-radius:10px;object-fit:contain;display:block;">
+                                    <img :src="sub.previewUrl || sub.url" :alt="sub.name" style="max-width:100%;max-height:75vh;border-radius:10px;object-fit:contain;display:block;">
                                 </div>
                             </template>
                             <template x-if="sub.isVideo">
                                 <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#000;display:flex;justify-content:center;">
-                                    <video :src="sub.url" controls autoplay style="max-width:100%;max-height:75vh;border-radius:10px;display:block;outline:none;"></video>
+                                    <video :src="sub.previewUrl || sub.url" controls autoplay style="max-width:100%;max-height:75vh;border-radius:10px;display:block;outline:none;"></video>
                                 </div>
                             </template>
                             <div style="padding:16px 24px;display:flex;gap:10px;justify-content:flex-end;">
@@ -1862,6 +2259,27 @@
                     <span style="font-size:13px;color:#6B7280;"><i class="fa fa-circle-half-stroke" style="width:16px;color:#9CA3AF;margin-right:6px;"></i>Status</span>
                     <span style="padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;background:{{ $s['bg'] }};color:{{ $s['color'] }};">{{ $s['label'] }}</span>
                 </div>
+                @php
+                    $adminDoneLog = in_array($task->status, ['approved','delivered','archived'])
+                        ? $task->logs->whereIn('action', ['status_updated_approved','status_updated_delivered','status_updated_archived'])->sortByDesc('created_at')->first()
+                        : null;
+                    if ($adminDoneLog) {
+                        $adminDiffSec = $task->created_at->diffInSeconds($adminDoneLog->created_at);
+                        $adminDays = intdiv($adminDiffSec, 86400);
+                        $adminHrs  = intdiv($adminDiffSec % 86400, 3600);
+                        $adminMins = intdiv($adminDiffSec % 3600, 60);
+                        $adminFinishDuration = $adminDays > 0
+                            ? "{$adminDays}d " . ($adminHrs > 0 ? "{$adminHrs}h" : '')
+                            : ($adminHrs > 0 ? "{$adminHrs}h {$adminMins}m" : "{$adminMins}m");
+                        $adminFinishDuration = trim($adminFinishDuration);
+                    }
+                @endphp
+                @if($adminDoneLog)
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:13px;color:#6B7280;"><i class="fa fa-hourglass-end" style="width:16px;color:#9CA3AF;margin-right:6px;"></i>Time to Finish</span>
+                    <span style="font-size:12px;font-weight:600;color:#059669;">{{ $adminFinishDuration }}</span>
+                </div>
+                @endif
             </div>
         </div>
 
@@ -1926,6 +2344,7 @@
         @endif
 
         {{-- Move to Recycle Bin --}}
+        @if(auth()->user()->hasPermission('delete_tasks'))
         <form method="POST" action="{{ route('admin.tasks.destroy', $task) }}"
               onsubmit="return confirm('Move this task to the Recycle Bin? You can restore it later.')">
             @csrf @method('DELETE')
@@ -1935,6 +2354,7 @@
                 <i class="fa fa-trash-can"></i> Move to Recycle Bin
             </button>
         </form>
+        @endif
 
     </div>{{-- /right --}}
 
@@ -2047,11 +2467,37 @@ function taskApprovalPage() {
         rejectModal: false,
         rejectTask:  null,
         rejectNote:  '',
+        revColorOpen: false, revSelectedColor: '#EF4444', revSavedRange: null,
+        revEditorFocused: false,
+
+        revSaveRange()    { const s=window.getSelection(); if(s.rangeCount) this.revSavedRange=s.getRangeAt(0).cloneRange(); },
+        revRestoreRange() { if(!this.revSavedRange) return; const s=window.getSelection(); s.removeAllRanges(); s.addRange(this.revSavedRange); },
+        revCmd(c, v=null) { this.revRestoreRange(); this.$refs.revEditor.focus(); document.execCommand(c, false, v); },
+        revSetSize(v)     { this.revRestoreRange(); this.$refs.revEditor.focus(); document.execCommand('fontSize', false, v); },
+        revSetColor(c)    { this.revColorOpen=false; this.revSelectedColor=c; this.$refs.revEditor.focus(); document.execCommand('foreColor', false, c); },
+        revAddLink()      {
+            const url = prompt('Enter URL:');
+            if (!url) return;
+            this.$refs.revEditor.focus();
+            document.execCommand('createLink', false, url.startsWith('http') ? url : 'https://' + url);
+        },
+        revSubmit(form)   {
+            const html = this.$refs.revEditor.innerHTML.trim();
+            if (!html || html === '<br>') { this.$refs.revEditor.focus(); return; }
+            this.$refs.revNoteInput.value = html;
+            form.submit();
+        },
 
         openRejectModal(task) {
-            this.rejectTask  = task;
-            this.rejectNote  = '';
-            this.rejectModal = true;
+            this.rejectTask       = task;
+            this.rejectNote       = '';
+            this.revColorOpen     = false;
+            this.revSelectedColor = '#EF4444';
+            this.revSavedRange    = null;
+            this.rejectModal      = true;
+            this.$nextTick(() => {
+                if (this.$refs.revEditor) this.$refs.revEditor.innerHTML = '';
+            });
         },
     };
 }
@@ -2065,7 +2511,7 @@ function taskApprovalPage() {
         <div onclick="document.getElementById('taskEditModal').style.display='none'"
              style="position:absolute;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);"></div>
         <div style="position:relative;width:100%;max-width:560px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,.25);">
-            <form action="{{ route('admin.tasks.update', $task) }}" method="POST">
+            <form action="{{ route('admin.tasks.update', $task) }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 @method('PATCH')
                 {{-- Header --}}
@@ -2091,7 +2537,7 @@ function taskApprovalPage() {
                                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;outline:none;transition:border-color .15s;box-sizing:border-box;"
                                onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
                     </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="task-action-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                         <div>
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Project</label>
                             <div style="position:relative;">
@@ -2121,7 +2567,7 @@ function taskApprovalPage() {
                             </div>
                         </div>
                     </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="task-action-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                         <div>
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Assignee</label>
                             <div style="position:relative;">
@@ -2162,6 +2608,74 @@ function taskApprovalPage() {
                                   style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;outline:none;resize:vertical;transition:border-color .15s;box-sizing:border-box;"
                                   onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"
                                   placeholder="Optional description…">{{ old('description', $task->description) }}</textarea>
+                    </div>
+
+                    {{-- Attachments --}}
+                    <div x-data="{ editFiles: [], dragging: false,
+                        addFiles(e) {
+                            const incoming = e.dataTransfer ? e.dataTransfer.files : e.target.files;
+                            const dt = new DataTransfer();
+                            editFiles.forEach(f => dt.items.add(f));
+                            Array.from(incoming).forEach(f => dt.items.add(f));
+                            editFiles = Array.from(dt.files);
+                            $refs.editFileInput.files = dt.files;
+                        },
+                        remove(i) {
+                            const dt = new DataTransfer();
+                            editFiles.splice(i,1);
+                            editFiles.forEach(f => dt.items.add(f));
+                            $refs.editFileInput.files = dt.files;
+                        },
+                        fmt(b) { if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
+                    }">
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Attachments</label>
+
+                        {{-- Existing attachments --}}
+                        @if($task->attachments->isNotEmpty())
+                        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
+                            @foreach($task->attachments as $att)
+                            <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:9px;">
+                                <i class="fa {{ $att->iconClass() }}" style="color:#6366F1;font-size:13px;flex-shrink:0;"></i>
+                                <span style="flex:1;font-size:12px;font-weight:500;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $att->name }}</span>
+                                <span style="font-size:11px;color:#9CA3AF;white-space:nowrap;">{{ $att->humanSize() }}</span>
+                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;flex-shrink:0;" title="Delete this attachment">
+                                    <input type="checkbox" name="delete_attachments[]" value="{{ $att->id }}"
+                                           style="accent-color:#EF4444;width:14px;height:14px;cursor:pointer;">
+                                    <span style="font-size:11px;color:#EF4444;font-weight:600;">Delete</span>
+                                </label>
+                            </div>
+                            @endforeach
+                        </div>
+                        @endif
+
+                        {{-- New file drop zone --}}
+                        <div @dragover.prevent="dragging=true" @dragleave.prevent="dragging=false"
+                             @drop.prevent="dragging=false; addFiles($event)"
+                             :style="dragging ? 'border-color:#6366F1;background:#EEF2FF;' : ''"
+                             style="border:2px dashed #E5E7EB;border-radius:10px;padding:14px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;background:#FAFAFA;"
+                             @click="$refs.editFileInput.click()">
+                            <i class="fa fa-cloud-arrow-up" style="font-size:20px;color:#9CA3AF;margin-bottom:6px;display:block;"></i>
+                            <p style="font-size:12px;color:#6B7280;margin:0;">Drop files here or <span style="color:#6366F1;font-weight:600;">browse</span></p>
+                            <input type="file" name="new_attachments[]" multiple x-ref="editFileInput"
+                                   @change="addFiles($event)" style="display:none;">
+                        </div>
+
+                        {{-- New files list --}}
+                        <template x-if="editFiles.length > 0">
+                            <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+                                <template x-for="(f, i) in editFiles" :key="i">
+                                    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:9px;">
+                                        <i class="fa fa-file" style="color:#6366F1;font-size:12px;flex-shrink:0;"></i>
+                                        <span style="flex:1;font-size:12px;font-weight:500;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="f.name"></span>
+                                        <span style="font-size:11px;color:#9CA3AF;" x-text="fmt(f.size)"></span>
+                                        <button type="button" @click.stop="remove(i)"
+                                                style="width:20px;height:20px;border-radius:50%;border:none;background:#EF4444;color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                            <i class="fa fa-xmark"></i>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
                     </div>
                 </div>
                 {{-- Footer --}}

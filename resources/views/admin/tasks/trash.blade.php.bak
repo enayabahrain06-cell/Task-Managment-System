@@ -147,6 +147,7 @@
                     </form>
 
                     {{-- Permanently delete --}}
+                    @if(auth()->user()->hasPermission('delete_tasks'))
                     <form method="POST" action="{{ route('admin.tasks.force-delete', $task->id) }}"
                           onsubmit="return confirm('Permanently delete &quot;{{ addslashes($task->title) }}&quot;? This cannot be undone.')">
                         @csrf @method('DELETE')
@@ -156,6 +157,7 @@
                             <i class="fa fa-trash" style="font-size:10px;"></i> Delete Forever
                         </button>
                     </form>
+                    @endif
 
                 </div>
             </td>

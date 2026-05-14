@@ -2,6 +2,18 @@
 
 @section('title', $user->name . ' — Task History')
 
+@push('styles')
+<style>
+.th-filter-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px; }
+.th-header-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+@media(max-width:480px){
+    .th-filter-grid { grid-template-columns:repeat(2,1fr) !important; gap:10px !important; }
+    .th-header-row { flex-direction:column; align-items:flex-start; gap:10px; }
+    .th-header-row a { align-self:flex-start; }
+}
+</style>
+@endpush
+
 @section('content')
 
 {{-- Breadcrumb --}}
@@ -13,7 +25,7 @@
     <span style="color:#111827;font-weight:600;">Task History</span>
 </div>
 
-<div class="flex items-center justify-between mb-6">
+<div class="th-header-row flex items-center justify-between mb-6">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">{{ $user->name }} — Task History</h1>
         <p class="text-sm text-gray-500 mt-0.5">All tasks assigned to this user</p>
@@ -34,7 +46,7 @@
         ['completed',   'Completed',   'fa-circle-check', '#F0FDF4', '#16A34A', $counts['completed']],
     ];
 @endphp
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;">
+<div class="th-filter-grid">
     @foreach($filterCards as [$key, $label, $icon, $bg, $color, $count])
     @php $isActive = $filter === $key; @endphp
     <a href="{{ route('admin.users.task-history', [$user, 'filter' => $key]) }}"
@@ -136,10 +148,6 @@
         @endforelse
     </div>
 
-    @if($tasks->hasPages())
-    <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/50">
-        {{ $tasks->links() }}
-    </div>
-    @endif
+    <x-pagination :paginator="$tasks" mt="12px" />
 </div>
 @endsection

@@ -53,6 +53,19 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right 10px center;
 }
+.sb-stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+.sb-filter-bar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:20px; }
+.sb-filter-form { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+@media (max-width: 900px) {
+    .sb-stats-grid { grid-template-columns: repeat(2,1fr); }
+}
+@media (max-width: 480px) {
+    .sb-stats-grid { grid-template-columns: repeat(2,1fr); gap:8px; }
+    .sb-filter-bar { flex-direction:column; align-items:stretch; }
+    .sb-filter-form { flex-direction:column; width:100%; }
+    .sb-filter-form > * { width:100%; min-width:0; }
+    .sb-filter-form .sb-select { width:100%; }
+}
 </style>
 
 {{-- Page Header --}}
@@ -64,10 +77,10 @@
 </div>
 
 {{-- Summary Cards --}}
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+<div class="sb-stats-grid">
     <div class="sb-stat">
         <div class="sb-stat-icon" style="background:#F5F3FF;">
-            <i class="fas fa-share-nodes" style="color:#7C3AED;"></i>
+            <i class="fas fa-share-alt" style="color:#7C3AED;"></i>
         </div>
         <div>
             <p style="font-size:22px;font-weight:800;color:#111827;margin:0;">{{ $totalCount }}</p>
@@ -105,7 +118,7 @@
 
 {{-- Filter Bar --}}
 <div class="sb-card" style="padding:14px 20px;">
-    <form method="GET" action="{{ route('admin.social-budget.index') }}" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <form method="GET" action="{{ route('admin.social-budget.index') }}" class="sb-filter-form">
 
         {{-- Status tabs --}}
         <div style="display:flex;gap:4px;background:#F3F4F6;border-radius:9px;padding:3px;">
@@ -203,7 +216,7 @@
                 <td>
                     @if($t['social_user'] !== '—')
                         <span class="sb-badge" style="background:#E0F2FE;color:#0284C7;">
-                            <i class="fas fa-share-nodes" style="font-size:9px;"></i>
+                            <i class="fas fa-share-alt" style="font-size:9px;"></i>
                             {{ $t['social_user'] }}
                         </span>
                     @else
@@ -278,5 +291,31 @@
     </table>
     </div>
 </div>
+
+@if($tasks->hasPages())
+@php $pgParams = array_filter(['project_id'=>$projectId,'customer_id'=>$customerId,'status'=>$status!=='all'?$status:null], fn($v)=>$v!==null); @endphp
+<div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+    <span style="font-size:12px;color:#6B7280;">Showing {{ $tasks->firstItem() }}–{{ $tasks->lastItem() }} of {{ $tasks->total() }} results</span>
+    <div style="display:flex;gap:4px;align-items:center;">
+        @if($tasks->onFirstPage())
+            <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#D1D5DB;cursor:default;">‹ Prev</span>
+        @else
+            <a href="{{ $tasks->appends($pgParams)->previousPageUrl() }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;">‹ Prev</a>
+        @endif
+        @foreach($tasks->appends($pgParams)->getUrlRange(1, $tasks->lastPage()) as $page => $url)
+            @if($page == $tasks->currentPage())
+                <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;background:#4F46E5;color:#fff;min-width:34px;text-align:center;">{{ $page }}</span>
+            @else
+                <a href="{{ $url }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;min-width:34px;text-align:center;">{{ $page }}</a>
+            @endif
+        @endforeach
+        @if($tasks->hasMorePages())
+            <a href="{{ $tasks->appends($pgParams)->nextPageUrl() }}" style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;text-decoration:none;">Next ›</a>
+        @else
+            <span style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#F3F4F6;color:#D1D5DB;cursor:default;">Next ›</span>
+        @endif
+    </div>
+</div>
+@endif
 
 @endsection

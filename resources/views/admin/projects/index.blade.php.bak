@@ -167,12 +167,16 @@
         <p class="text-sm text-gray-500 mt-0.5">{{ $projects->total() }} {{ request('status') === 'completed' ? 'completed' : 'active' }} project{{ $projects->total() !== 1 ? 's' : '' }}</p>
     </div>
     <div class="flex items-center gap-2">
+        @if(auth()->user()->hasPermission('manage_projects'))
         <button @click="openWizard()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm shadow-indigo-200">
             <i class="fa fa-plus"></i> New Project
         </button>
+        @endif
+        @if(auth()->user()->hasPermission('manage_tasks'))
         <button @click="quickOpen = true" class="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition border border-gray-200 shadow-sm">
             <i class="fa fa-bolt text-amber-500"></i> Quick Task
         </button>
+        @endif
     </div>
 </div>
 
@@ -184,6 +188,12 @@
 .proj-stat-card-label { font-size:12px; font-weight:500; color:rgba(255,255,255,0.75); margin:0 0 8px; }
 .proj-stat-card-value { font-size:34px; font-weight:700; line-height:1; margin:0; }
 .proj-stat-card-sub   { font-size:11px; color:rgba(255,255,255,0.6); margin:6px 0 0; }
+/* ── Mobile responsiveness ── */
+.proj-stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+@media (max-width: 768px) { .proj-stat-grid { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 480px) { .proj-stat-grid { grid-template-columns: 1fr; } }
+.proj-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.proj-tab-bar { flex-wrap: wrap; }
 </style>
 
 @php
@@ -193,7 +203,7 @@ $isCompletedTab  = ($currentStatus === 'completed');
 @endphp
 
 {{-- Tab Bar --}}
-<div style="display:flex;align-items:center;gap:3px;background:#F3F4F6;border-radius:12px;padding:4px;width:fit-content;margin-bottom:20px;">
+<div class="proj-tab-bar" style="display:flex;align-items:center;gap:3px;background:#F3F4F6;border-radius:12px;padding:4px;width:fit-content;margin-bottom:20px;">
     <a href="{{ route('admin.projects.index') }}"
        style="display:flex;align-items:center;gap:8px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;{{ !$isCompletedTab ? 'background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);' : 'background:transparent;color:#6B7280;' }}">
         <i class="fa fa-circle-play" style="font-size:11px;"></i>
@@ -222,7 +232,7 @@ $statDefs = [
     ['label'=>'Completed',   'value'=>$stats['completed'],                   'sub'=>'All time done',    'grad'=>'linear-gradient(135deg,#7C3AED,#8B5CF6)', 'shadow'=>'rgba(124,58,237,.4)',  'url'=> route('admin.projects.index', ['status'=>'completed']),'active'=> false],
 ];
 @endphp
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;">
+<div class="proj-stat-grid">
     @foreach($statDefs as $card)
     @php $isActive = $card['active']; @endphp
     <a href="{{ $card['url'] }}" style="text-decoration:none;display:flex;">
@@ -282,7 +292,7 @@ $statDefs = [
 
 {{-- ══ TABLE VIEW ══ --}}
 <div x-show="view === 'table'" x-cloak>
-<div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+<div class="proj-table-wrap bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
     <table class="w-full">
         <thead>
             <tr class="border-b border-gray-100 bg-gray-50/50">
@@ -353,11 +363,13 @@ $statDefs = [
                             <button type="submit" class="text-xs font-medium text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg transition">Close</button>
                         </form>
                         @endif
+                        @if(auth()->user()->hasPermission('delete_projects'))
                         <form action="{{ route('admin.projects.destroy', $project) }}" method="POST" class="inline"
                               onsubmit="return confirm('Delete {{ addslashes($project->name) }}?')">
                             @csrf @method('DELETE')
                             <button type="submit" class="text-xs font-medium text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition">Delete</button>
                         </form>
+                        @endif
                     </div>
                 </td>
             </tr>
@@ -371,11 +383,7 @@ $statDefs = [
             @endforelse
         </tbody>
     </table>
-    @if($projects->hasPages())
-    <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/50">
-        {{ $projects->links() }}
-    </div>
-    @endif
+    <x-pagination :paginator="$projects" mt="12px" />
 </div>
 </div>{{-- end table view --}}
 
@@ -526,6 +534,7 @@ $statDefs = [
                             </button>
                         </form>
                         @endif
+                        @if(auth()->user()->hasPermission('delete_projects'))
                         <form action="{{ route('admin.projects.destroy', $project) }}" method="POST"
                               onsubmit="return confirm('Delete {{ addslashes($project->name) }}?')" style="display:contents;">
                             @csrf @method('DELETE')
@@ -535,6 +544,7 @@ $statDefs = [
                                 <i class="fa fa-trash" style="font-size:10px;"></i>
                             </button>
                         </form>
+                        @endif
                     </div>
                 </div>
 
@@ -543,9 +553,7 @@ $statDefs = [
         @endforeach
     </div>
 
-    @if($projects->hasPages())
-    <div class="mt-4">{{ $projects->links() }}</div>
-    @endif
+    <x-pagination :paginator="$projects" />
     @endif
 </div>{{-- end card view --}}
 
@@ -639,7 +647,7 @@ $statDefs = [
 
             {{-- Attachments --}}
             <div style="margin-bottom:16px;">
-                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Attachments <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional, max 20 MB each</span></label>
+                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Attachments <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
                 <div @dragover.prevent="qtDragover = true"
                      @dragleave.prevent="qtDragover = false"
                      @drop.prevent="qtDragover = false; qtHandleFiles($event)"
@@ -805,10 +813,12 @@ $statDefs = [
                             <p style="font-size:13px;font-weight:700;color:#374151;margin:0;">Assign Tasks</p>
                             <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">Assignees are automatically added as project members</p>
                         </div>
+                        @if(auth()->user()->hasPermission('manage_tasks'))
                         <button type="button" @click="addTask()"
                                 style="display:flex;align-items:center;gap:6px;padding:7px 14px;background:#EEF2FF;color:#4F46E5;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
                             <i class="fas fa-plus" style="font-size:10px;"></i> Add Task
                         </button>
+                        @endif
                     </div>
 
                     <div style="display:flex;flex-direction:column;gap:14px;">
@@ -963,7 +973,7 @@ $statDefs = [
 
                     {{-- Drop Zone (fixed: all styles inside :style) --}}
                     <p style="font-size:12px;font-weight:600;color:#374151;margin:0 0 10px;">
-                        Files <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— max 20 MB each</span>
+                        Files <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span>
                     </p>
                     <div @dragover.prevent="dragover = true"
                          @dragleave.prevent="dragover = false"
@@ -976,7 +986,7 @@ $statDefs = [
                             <i class="fas fa-cloud-arrow-up" style="font-size:20px;color:#0EA5E9;"></i>
                         </div>
                         <p style="font-size:13px;font-weight:600;color:#374151;margin:0 0 4px;">Drop files here or <span style="color:#6366F1;">browse</span></p>
-                        <p style="font-size:11px;color:#9CA3AF;margin:0;">PDF, Word, Images, Video — up to 20 MB</p>
+                        <p style="font-size:11px;color:#9CA3AF;margin:0;">PDF, Word, Images, Video</p>
                         <input type="file" name="attachments[]" multiple x-ref="fileInput"
                                @change="handleFiles($event)" style="display:none;">
                     </div>

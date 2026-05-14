@@ -175,7 +175,7 @@
                      style="border:2px dashed;border-radius:10px;padding:22px;text-align:center;cursor:pointer;transition:all .2s;">
                     <i class="fas fa-cloud-upload-alt" style="font-size:22px;color:#9CA3AF;margin-bottom:6px;display:block;"></i>
                     <p style="font-size:13px;color:#6B7280;margin:0;">Drag &amp; drop files or <span style="color:#6366F1;font-weight:600;">browse</span></p>
-                    <p style="font-size:11px;color:#9CA3AF;margin:4px 0 0;">Max 20 MB per file</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:4px 0 0;">PDF, Word, Images, Video</p>
                     <input type="file" name="attachments[]" multiple x-ref="fileInput"
                            @change="handleFiles($event)" style="display:none;">
                 </div>

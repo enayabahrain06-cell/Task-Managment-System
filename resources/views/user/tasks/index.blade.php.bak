@@ -3,6 +3,16 @@
 @section('title', 'Task History')
 
 @section('content')
+<style>
+.utask-filter-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px; }
+@media(max-width:640px) { .utask-filter-grid { grid-template-columns:repeat(2,1fr); gap:10px; } }
+@media(max-width:360px) { .utask-filter-grid { grid-template-columns:1fr 1fr; gap:8px; } }
+
+/* Task list rows — hide deadline on very small phones */
+@media(max-width:400px) {
+    .utask-deadline-col { display:none !important; }
+}
+</style>
 <div class="flex items-center justify-between mb-6">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Task History</h1>
@@ -37,7 +47,7 @@
         ['completed',   'Completed',    'fa-circle-check',         '#F0FDF4', '#16A34A', $counts['completed']],
     ];
 @endphp
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;">
+<div class="utask-filter-grid">
     @foreach($filterCards as [$key, $label, $icon, $bg, $color, $count])
     @php $isActive = $filter === $key; @endphp
     <a href="{{ route('user.tasks.index', ['filter' => $key]) }}"
@@ -117,11 +127,11 @@
                 {{ ucfirst($task->priority ?? 'low') }}
             </span>
             @if($task->deadline)
-            <span class="text-xs flex-shrink-0 {{ $isOverdue ? 'text-red-500 font-semibold' : 'text-gray-400' }}">
+            <span class="utask-deadline-col text-xs flex-shrink-0 {{ $isOverdue ? 'text-red-500 font-semibold' : 'text-gray-400' }}">
                 {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
             </span>
             @else
-            <span class="text-xs text-gray-300 flex-shrink-0">No deadline</span>
+            <span class="utask-deadline-col text-xs text-gray-300 flex-shrink-0">No deadline</span>
             @endif
             <span class="text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 {{ $statusMeta[1] }}">
                 {{ $statusMeta[0] }}
@@ -139,10 +149,6 @@
         @endforelse
     </div>
 
-    @if($tasks->hasPages())
-    <div class="px-5 py-3 border-t border-gray-100 bg-gray-50/50">
-        {{ $tasks->links() }}
-    </div>
-    @endif
+    <x-pagination :paginator="$tasks" mt="12px" />
 </div>
 @endsection
