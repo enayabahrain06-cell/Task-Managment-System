@@ -2,6 +2,17 @@
 @section('title', 'Social Media Post — ' . $task->title)
 
 @section('content')
+<style>
+.social-show-layout { display:grid; grid-template-columns:1fr 300px; gap:20px; align-items:start; }
+.social-show-header { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:24px; flex-wrap:wrap; }
+@media (max-width: 900px) {
+    .social-show-layout { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+    .social-show-header { flex-direction:column; align-items:flex-start; }
+    .social-show-header a { align-self:flex-start; }
+}
+</style>
 
 @php
 $statusMap = [
@@ -46,7 +57,7 @@ $pMeta = [
 @endphp
 
 {{-- ── Page Header ── --}}
-<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:24px;flex-wrap:wrap;">
+<div class="social-show-header">
     <div style="display:flex;align-items:center;gap:14px;">
         <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(99,102,241,.3);">
             <i class="fas fa-share-alt" style="color:#fff;font-size:20px;"></i>
@@ -71,7 +82,7 @@ $pMeta = [
 @endif
 
 {{-- ── Two-column layout ── --}}
-<div style="display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;">
+<div class="social-show-layout">
 
     {{-- LEFT COLUMN --}}
     <div style="display:flex;flex-direction:column;gap:20px;">

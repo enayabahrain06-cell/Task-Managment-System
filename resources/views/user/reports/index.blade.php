@@ -10,6 +10,14 @@
 .rpt-grid-6 { display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:16px; }
 @media(max-width:1100px){ .rpt-grid-6 { grid-template-columns:repeat(3,1fr); } .rpt-grid-3 { grid-template-columns:repeat(2,1fr); } }
 @media(max-width:700px)  { .rpt-grid-6,.rpt-grid-3,.rpt-grid-2 { grid-template-columns:1fr; } }
+@media(max-width:768px) {
+    #rpt-header-gradient { padding:14px 16px !important; flex-direction:column; align-items:flex-start !important; }
+    #rpt-header-gradient > div:last-child { flex-wrap:wrap; width:100%; }
+}
+@media(max-width:480px) {
+    .rpt-table th, .rpt-table td { padding:6px 7px; font-size:11px; }
+    .rpt-tab { padding:6px 12px; font-size:12px; }
+}
 
 .rpt-card {
     background:#fff;
@@ -40,7 +48,7 @@
 .chip-low    { background:#D1FAE5;color:#059669;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600; }
 .chip-medium { background:#FEF3C7;color:#D97706;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600; }
 .chip-high   { background:#FEE2E2;color:#DC2626;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600; }
-.rpt-scroll  { overflow-y:auto; max-height:240px; }
+.rpt-scroll  { overflow-y:auto; overflow-x:auto; max-height:240px; -webkit-overflow-scrolling:touch; }
 
 /* ── Tabs ── */
 .rpt-tab { padding:8px 18px;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center; }

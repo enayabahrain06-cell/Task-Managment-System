@@ -1,8 +1,22 @@
 @extends('layouts.app')
 @section('title', $project->name)
 
+@push('styles')
+<style>
+.proj-show-stats { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:24px; }
+.proj-show-layout { display:grid; grid-template-columns:1fr 260px; gap:20px; align-items:start; }
+.proj-show-header { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+@media(max-width:480px){
+    .proj-show-stats { grid-template-columns:repeat(2,1fr) !important; gap:10px !important; }
+    .proj-show-layout { grid-template-columns:1fr !important; }
+    .proj-show-header { flex-wrap:wrap; }
+    .proj-show-header span[style*="margin-left:auto"] { margin-left:0 !important; }
+}
+</style>
+@endpush
+
 @section('content')
-<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+<div class="proj-show-header" style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
     <a href="{{ route('user.projects.index') }}"
        style="width:36px;height:36px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;color:#6B7280;text-decoration:none;flex-shrink:0;">
         <i class="fa fa-arrow-left" style="font-size:13px;"></i>
@@ -18,7 +32,7 @@
 </div>
 
 {{-- Stats --}}
-<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px;">
+<div class="proj-show-stats" style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:24px;">
 @foreach([['Total','fa-list-check','#EEF2FF','#4F46E5',$stats['total']],['Completed','fa-circle-check','#F0FDF4','#16A34A',$stats['completed']],['In Progress','fa-spinner','#FFFBEB','#D97706',$stats['in_progress']],['In Review','fa-hourglass-half','#F5F3FF','#7C3AED',$stats['submitted']],['Pending','fa-clock','#F8FAFC','#64748B',$stats['pending']]] as [$lbl,$ico,$bg,$ic,$val])
 <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
@@ -44,7 +58,7 @@
     <p style="font-size:12px;color:#9CA3AF;margin:8px 0 0;">Due {{ $project->deadline->format('l, F j, Y') }} · {{ $project->deadline->diffForHumans() }}</p>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 260px;gap:20px;align-items:start;">
+<div class="proj-show-layout" style="display:grid;grid-template-columns:1fr 260px;gap:20px;align-items:start;">
 
     {{-- All tasks --}}
     <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);">

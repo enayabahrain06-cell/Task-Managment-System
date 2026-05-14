@@ -67,6 +67,19 @@
         'url'         => route('admin.projects.show', $p->id),
     ])->values());
 @endphp
+<style>
+.cust-show-stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+.cust-show-split { display:grid; grid-template-columns:1fr 2fr; gap:20px; align-items:start; }
+@media (max-width: 900px) {
+    .cust-show-stats-grid { grid-template-columns: repeat(2,1fr); }
+    .cust-show-split { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+    .cust-show-stats-grid { grid-template-columns: repeat(2,1fr); gap:8px; }
+    .cust-tbl-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .cust-tbl-scroll table { min-width:500px; }
+}
+</style>
 <script>window._reviewSuffix = @json("has been submitted for review. We'd love your feedback before we finalize approval.");</script>
 <div x-data="{
     task: null,    openTask(t) { this.task = t; document.body.style.overflow='hidden'; },
@@ -772,7 +785,7 @@
                                 : '',
         ])->values()->toArray();
     @endphp
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+    <div class="cust-show-stats-grid">
         <button @click="openStats('pending')"
                 style="background:#fff;border-radius:12px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;transition:box-shadow .15s,border-color .15s;"
                 onmouseover="this.style.boxShadow='0 4px 12px rgba(99,102,241,.15)';this.style.borderColor='#C7D2FE';"
@@ -823,7 +836,7 @@
         </button>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 2fr;gap:20px;align-items:start;">
+    <div class="cust-show-split" style="gap:20px;align-items:start;">
 
         {{-- Contact card --}}
         <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;">

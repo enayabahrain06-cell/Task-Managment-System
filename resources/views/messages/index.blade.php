@@ -24,6 +24,39 @@
 
 .vp-bar { width:3px; border-radius:3px; transition:background 0.1s; cursor:pointer; }
 .vp-wrap { display:flex; align-items:center; gap:8px; min-width:220px; max-width:280px; }
+
+/* ── Mobile responsiveness ── */
+@media (max-width: 768px) {
+    /* Chat panel: use a fixed mobile height instead of viewport calc */
+    .msg-chat-grid {
+        height: auto !important;
+        min-height: 0;
+    }
+    /* Contacts sidebar gets a capped height on mobile */
+    .msg-contacts-sidebar {
+        max-height: 280px;
+    }
+    /* Chat window gets its own scroll height */
+    .msg-chat-window {
+        height: 60vh;
+        min-height: 300px;
+    }
+    /* Details panel hidden on mobile by default — shown if active */
+    .msg-details-panel {
+        display: none;
+    }
+    /* Header action buttons smaller */
+    .msg-header-actions .btn-text-label {
+        display: none;
+    }
+}
+@media (max-width: 480px) {
+    .msg-chat-window {
+        height: 55vh;
+    }
+    /* voice player wrap can shrink */
+    .vp-wrap { min-width: 140px; max-width: 200px; }
+}
 </style>
 
 @php
@@ -136,30 +169,30 @@ $colors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
     </div>
 </div>
 
-<div class="flex items-center justify-between mb-6">
+<div class="flex items-center justify-between mb-6 flex-wrap gap-2">
     <h1 class="text-2xl font-bold text-gray-900">Messages</h1>
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-2 msg-header-actions">
         @if(in_array(auth()->user()->role, ['admin', 'manager']))
         <button @click="$dispatch('open-new-group')"
                 class="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm border border-gray-200">
-            <i class="fa fa-users text-indigo-500"></i> New Group
+            <i class="fa fa-users text-indigo-500"></i> <span class="btn-text-label">New Group</span>
         </button>
         @endif
         <button @click="$dispatch('open-new-msg')"
                 class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm">
-            <i class="fa fa-edit"></i> New Message
+            <i class="fa fa-edit"></i> <span class="btn-text-label">New Message</span>
         </button>
     </div>
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-4 gap-4" style="height:calc(100vh - 14rem);"
+<div class="msg-chat-grid grid grid-cols-1 lg:grid-cols-4 gap-4" style="height:calc(100vh - 14rem);"
      x-data="messageApp()"
      x-init="init()"
      @open-new-msg.window="$dispatch('open-new-msg-modal')"
      @group-created.window="onGroupCreated($event.detail)">
 
     {{-- ── Contacts + Groups Sidebar ── --}}
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col overflow-hidden">
+    <div class="msg-contacts-sidebar bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col overflow-hidden">
         <div class="p-3 border-b border-gray-100">
             <div class="relative">
                 <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
@@ -236,7 +269,7 @@ $colors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
     </div>
 
     {{-- ── Chat Window ── --}}
-    <div class="lg:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col overflow-hidden">
+    <div class="msg-chat-window lg:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col overflow-hidden">
 
         <template x-if="activeUserId===null && !isGroup">
             <div class="flex flex-col items-center justify-center h-full text-gray-400 gap-3">
@@ -499,7 +532,7 @@ $colors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
     </div>
 
     {{-- ── Details Panel ── --}}
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 overflow-y-auto">
+    <div class="msg-details-panel bg-white rounded-xl border border-gray-100 shadow-sm p-5 overflow-y-auto">
 
         {{-- Group details --}}
         <template x-if="isGroup">

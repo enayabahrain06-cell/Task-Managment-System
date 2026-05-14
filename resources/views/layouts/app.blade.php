@@ -19,6 +19,8 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
+    @stack('styles')
+
     <style>
         * { box-sizing: border-box; }
         html, body { height: 100%; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }

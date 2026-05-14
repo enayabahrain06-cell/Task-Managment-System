@@ -20,16 +20,24 @@
     }
 @endphp
 
+<style>
+/* ── Activities – mobile responsiveness ── */
+@media (max-width: 480px) {
+    .act-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .act-header-actions { flex-wrap: wrap; }
+}
+</style>
+
 <div x-data="{ releaseOpen: false }">
 
-<div class="flex items-center justify-between mb-6">
+<div class="act-header flex items-center justify-between mb-6 gap-3">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Activities</h1>
         <p class="text-sm text-gray-500 mt-0.5">
             {{ $isPrivileged ? 'Latest activity feed across all teams' : 'Your activity feed' }}
         </p>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="act-header-actions flex items-center gap-2">
 
         {{-- ── Filters dropdown ── --}}
         <div x-data="{ open: false }" style="position:relative;">

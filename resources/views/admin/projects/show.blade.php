@@ -2,6 +2,30 @@
 @section('title', $project->name)
 
 @section('content')
+<style>
+/* ── Admin project detail – mobile responsiveness ── */
+.proj-show-stat-grid {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 24px;
+}
+.proj-show-stat-grid-4  { grid-template-columns: repeat(4, 1fr); }
+.proj-show-stat-grid-5  { grid-template-columns: repeat(5, 1fr); }
+@media (max-width: 768px) {
+    .proj-show-stat-grid-4,
+    .proj-show-stat-grid-5 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+    .proj-show-stat-grid-4,
+    .proj-show-stat-grid-5 { grid-template-columns: 1fr; }
+}
+.proj-show-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+</style>
 @php
     $statusMap = [
         'pending'            => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Pending'],
@@ -91,7 +115,7 @@
     $active        = $project->tasks->whereIn('status', ['pending','in_progress','assigned','viewed'])->count();
     $socialPending = $project->tasks->filter(fn($t) => $t->social_required && !$t->social_posted_at)->count();
 @endphp
-<div style="display:grid;grid-template-columns:repeat({{ $socialPending > 0 ? 5 : 4 }},1fr);gap:14px;margin-bottom:24px;">
+<div class="proj-show-stat-grid {{ $socialPending > 0 ? 'proj-show-stat-grid-5' : 'proj-show-stat-grid-4' }}">
     @foreach([['Tasks','fa-list-check','#EEF2FF','#6366F1',$total],['In Progress','fa-circle-play','#FEF3C7','#D97706',$active],['In Review','fa-hourglass-half','#EDE9FE','#7C3AED',$inReview],['Completed','fa-circle-check','#D1FAE5','#059669',$done]] as [$label,$icon,$bg,$col,$val])
     <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">

@@ -1,8 +1,22 @@
 @extends('layouts.app')
 @section('title', 'Edit Customer')
 
+@push('styles')
+<style>
+.cust-edit-wrap { max-width:640px; width:100%; }
+.cust-edit-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+.cust-logo-row { display:flex; align-items:flex-start; gap:20px; margin-bottom:22px; padding-bottom:22px; border-bottom:1px solid #F3F4F6; }
+@media(max-width:480px){
+    .cust-edit-wrap { padding:0; }
+    .cust-edit-wrap > div { padding:16px !important; }
+    .cust-edit-grid2 { grid-template-columns:1fr !important; gap:10px !important; }
+    .cust-logo-row { flex-direction:column; align-items:center; text-align:center; }
+}
+</style>
+@endpush
+
 @section('content')
-<div style="max-width:640px;">
+<div class="cust-edit-wrap" style="max-width:640px;">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
         <a href="{{ route('admin.customers.index') }}"
            style="width:34px;height:34px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;color:#6B7280;text-decoration:none;">
@@ -27,7 +41,7 @@
             <input type="hidden" name="remove_logo" :value="removeLogo ? '1' : '0'">
 
             {{-- Logo --}}
-            <div style="display:flex;align-items:flex-start;gap:20px;margin-bottom:22px;padding-bottom:22px;border-bottom:1px solid #F3F4F6;">
+            <div class="cust-logo-row" style="display:flex;align-items:flex-start;gap:20px;margin-bottom:22px;padding-bottom:22px;border-bottom:1px solid #F3F4F6;">
                 <div>
                     {{-- Current / preview --}}
                     <div style="position:relative;width:88px;height:88px;">
@@ -61,7 +75,7 @@
                 </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+            <div class="cust-edit-grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
                         Customer Name <span style="color:#EF4444;">*</span>
@@ -77,7 +91,7 @@
                 </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+            <div class="cust-edit-grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Email</label>
                     <input type="email" name="email" value="{{ old('email', $customer->email) }}"

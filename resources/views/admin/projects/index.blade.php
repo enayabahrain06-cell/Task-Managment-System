@@ -188,6 +188,12 @@
 .proj-stat-card-label { font-size:12px; font-weight:500; color:rgba(255,255,255,0.75); margin:0 0 8px; }
 .proj-stat-card-value { font-size:34px; font-weight:700; line-height:1; margin:0; }
 .proj-stat-card-sub   { font-size:11px; color:rgba(255,255,255,0.6); margin:6px 0 0; }
+/* ── Mobile responsiveness ── */
+.proj-stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+@media (max-width: 768px) { .proj-stat-grid { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 480px) { .proj-stat-grid { grid-template-columns: 1fr; } }
+.proj-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.proj-tab-bar { flex-wrap: wrap; }
 </style>
 
 @php
@@ -197,7 +203,7 @@ $isCompletedTab  = ($currentStatus === 'completed');
 @endphp
 
 {{-- Tab Bar --}}
-<div style="display:flex;align-items:center;gap:3px;background:#F3F4F6;border-radius:12px;padding:4px;width:fit-content;margin-bottom:20px;">
+<div class="proj-tab-bar" style="display:flex;align-items:center;gap:3px;background:#F3F4F6;border-radius:12px;padding:4px;width:fit-content;margin-bottom:20px;">
     <a href="{{ route('admin.projects.index') }}"
        style="display:flex;align-items:center;gap:8px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;{{ !$isCompletedTab ? 'background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);' : 'background:transparent;color:#6B7280;' }}">
         <i class="fa fa-circle-play" style="font-size:11px;"></i>
@@ -226,7 +232,7 @@ $statDefs = [
     ['label'=>'Completed',   'value'=>$stats['completed'],                   'sub'=>'All time done',    'grad'=>'linear-gradient(135deg,#7C3AED,#8B5CF6)', 'shadow'=>'rgba(124,58,237,.4)',  'url'=> route('admin.projects.index', ['status'=>'completed']),'active'=> false],
 ];
 @endphp
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;">
+<div class="proj-stat-grid">
     @foreach($statDefs as $card)
     @php $isActive = $card['active']; @endphp
     <a href="{{ $card['url'] }}" style="text-decoration:none;display:flex;">
@@ -286,7 +292,7 @@ $statDefs = [
 
 {{-- ══ TABLE VIEW ══ --}}
 <div x-show="view === 'table'" x-cloak>
-<div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+<div class="proj-table-wrap bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
     <table class="w-full">
         <thead>
             <tr class="border-b border-gray-100 bg-gray-50/50">

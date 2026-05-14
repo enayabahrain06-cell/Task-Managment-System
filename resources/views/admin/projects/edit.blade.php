@@ -1,8 +1,20 @@
 @extends('layouts.app')
 @section('title', 'Edit Project')
 
+@push('styles')
+<style>
+.proj-edit-wrap { max-width:680px; width:100%; }
+.proj-edit-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px; }
+@media(max-width:480px){
+    .proj-edit-wrap { padding:0; }
+    .proj-edit-wrap > div { padding:16px !important; }
+    .proj-edit-grid2 { grid-template-columns:1fr !important; gap:10px !important; }
+}
+</style>
+@endpush
+
 @section('content')
-<div style="max-width:680px;">
+<div class="proj-edit-wrap" style="max-width:680px;">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
         <a href="{{ route('admin.projects.index') }}"
            style="width:34px;height:34px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;color:#6B7280;text-decoration:none;">
@@ -42,7 +54,7 @@
                 </select>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
+            <div class="proj-edit-grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Deadline <span style="color:#EF4444;">*</span></label>
                     <input type="date" name="deadline" value="{{ old('deadline', $project->deadline->format('Y-m-d')) }}" required

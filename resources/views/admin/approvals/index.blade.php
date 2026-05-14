@@ -226,6 +226,16 @@
     background: #fff; border-radius: 16px; border: 1px solid #EBEBEB;
     box-shadow: 0 2px 10px rgba(99,102,241,.07); overflow: hidden;
 }
+.pend-tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.pend-tbl-scroll .pend-table { min-width: 640px; }
+
+@media (max-width: 380px) {
+    .apv-header { padding: 10px 12px 9px; }
+    .apv-submission { padding: 9px 12px; }
+    .apv-approve, .apv-reject { padding: 10px 12px 12px; }
+    .apv-task-title { max-width: 160px !important; }
+    .hist-view-btn span { display: none; }
+}
 </style>
 
 <div x-data="approvalPage()" @keydown.escape.window="if(viewer) closeViewer(); else if(approvalModal) approvalModal=false; else if(rejectModal) rejectModal=false; else if(qvModal) closeQuickView(); else closeModal()"

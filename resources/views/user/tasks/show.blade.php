@@ -2,6 +2,27 @@
 @section('title', $task->title)
 
 @section('content')
+<style>
+/* ── User task detail – mobile responsiveness ── */
+.user-task-layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+    align-items: start;
+}
+@media (max-width: 900px) {
+    .user-task-layout { grid-template-columns: 1fr; }
+}
+/* Stepper: reduce forced min-width on small screens */
+.uts-stepper-inner { display:flex; align-items:center; }
+@media (max-width: 640px)  { .uts-stepper-inner { min-width: 520px !important; } }
+@media (max-width: 480px)  { .uts-stepper-inner { min-width: 420px !important; } }
+@media (max-width: 380px)  { .uts-stepper-inner { min-width: 340px !important; } }
+.user-task-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+</style>
 @php
     $isSocialAssignee = $isSocialAssignee ?? false;
     $doneStatuses = ['approved', 'delivered', 'archived'];
@@ -79,7 +100,7 @@
 
 {{-- Workflow Stepper --}}
 <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;margin-bottom:20px;overflow-x:auto;">
-    <div style="display:flex;align-items:center;min-width:{{ $hasSocial ? '900px' : '660px' }};">
+    <div class="uts-stepper-inner" style="min-width:{{ $hasSocial ? '900px' : '660px' }};">
         @foreach($steps as $idx => $step)
         @php
             $isSocial   = isset($step['socialState']);
@@ -198,7 +219,7 @@
 </div>
 @endif
 
-<div style="display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start;">
+<div class="user-task-layout">
 
     {{-- Left --}}
     <div style="display:flex;flex-direction:column;gap:20px;">

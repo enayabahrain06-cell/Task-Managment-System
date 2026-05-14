@@ -8,6 +8,20 @@
 @media(max-width:700px)  { .usr-stats-grid { grid-template-columns:repeat(2,1fr); } }
 @media(max-width:400px)  { .usr-stats-grid { grid-template-columns:1fr; } }
 
+/* Main task-list + right-panel two-column layout */
+.usr-tasks-main-grid { display:grid; grid-template-columns:10fr 2fr; gap:18px; align-items:start; }
+@media(max-width:900px) { .usr-tasks-main-grid { grid-template-columns:1fr; } }
+
+/* 3-col summary grids inside completed / report sections */
+.usr-grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.usr-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+@media(max-width:600px) {
+    .usr-grid-3 { grid-template-columns:1fr !important; gap:10px !important; }
+}
+@media(max-width:480px) {
+    .usr-grid-2 { grid-template-columns:1fr !important; gap:6px !important; }
+}
+
 /* Dashboard header — stack on tiny phones */
 @media(max-width:480px) {
     .usr-dash-header { flex-direction:column !important; align-items:flex-start !important; gap:12px !important; padding:18px 16px !important; }
@@ -287,7 +301,7 @@ document.addEventListener('keydown', function(e) {
 
     {{-- ══ MY TASKS ══ --}}
     <div x-show="tab==='my-tasks'">
-        <div style="display:grid;grid-template-columns:10fr 2fr;gap:18px;align-items:start;">
+        <div class="usr-tasks-main-grid">
 
             {{-- Left: task list + activity --}}
             <div style="display:flex;flex-direction:column;gap:18px;">
@@ -950,7 +964,7 @@ document.addEventListener('keydown', function(e) {
         <div style="display:flex;flex-direction:column;gap:18px;">
 
             {{-- Summary bar --}}
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+            <div class="usr-grid-3">
                 @php
                     $ctApproved  = $completedTasks->where('status','approved')->count();
                     $ctDelivered = $completedTasks->where('status','delivered')->count();
@@ -1210,7 +1224,7 @@ document.addEventListener('DOMContentLoaded', () => {
             @csrf
             <div style="background:#F8FAFC;border-radius:12px;padding:14px;margin-bottom:16px;border:1px solid #F0F0F0;">
                 <p style="font-size:10px;font-weight:700;color:#9CA3AF;margin:0 0 10px;text-transform:uppercase;letter-spacing:.06em;">Your Stats Today</p>
-                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
+                <div class="usr-grid-3" style="gap:4px !important;">
                     <div style="text-align:center;background:#fff;border-radius:8px;padding:10px 6px;border:1px solid #F0F0F0;">
                         <p style="font-size:20px;font-weight:800;color:#4F46E5;margin:0;line-height:1;">{{ $completed }}</p>
                         <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Completed</p>
