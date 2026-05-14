@@ -13,25 +13,36 @@
 @media(max-width:1100px){ .rpt-grid-4,.rpt-grid-5 { grid-template-columns:repeat(2,1fr); } }
 @media(max-width:900px) { .rpt-grid-2,.rpt-grid-3 { grid-template-columns:1fr; } }
 @media(max-width:600px) { .rpt-grid-4,.rpt-grid-5 { grid-template-columns:1fr; } }
-/* Inline sub-grids inside cards (not using rpt-grid-* classes) */
+/* Inline sub-grids inside cards */
 .rpt-inline-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px; }
 .rpt-inline-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; }
+
+/* ── Mobile ── */
 @media(max-width:768px) {
-    #rpt-filter-bar { flex-direction:column; align-items:stretch !important; }
-    #rpt-filter-bar > * { width:100%; }
-    #rpt-actions-bar { flex-wrap:wrap; width:100%; }
-    #rpt-actions-bar form { flex-wrap:wrap; width:100%; }
-    #rpt-actions-bar select { flex:1 1 100%; min-width:0; width:100%; }
-    #rpt-actions-bar form > div:first-child { overflow-x:auto; }
-    .rpt-inline-3 { grid-template-columns:repeat(3,1fr); }
-    .rpt-inline-4 { grid-template-columns:repeat(2,1fr); }
+    /* Filter bar stacks vertically — !important beats inline style= */
+    #rpt-filter-bar { flex-direction:column !important; align-items:stretch !important; gap:10px !important; }
+    #rpt-filter-bar > div:first-child { width:100% !important; }
+    #rpt-actions-bar { flex-direction:column !important; align-items:stretch !important; width:100% !important; gap:8px !important; }
+    #rpt-actions-bar form { flex-direction:column !important; width:100% !important; gap:8px !important; align-items:stretch !important; }
+    /* Range pill row scrolls horizontally */
+    #rpt-actions-bar form > div:first-child { overflow-x:auto !important; -webkit-overflow-scrolling:touch; white-space:nowrap; width:100% !important; }
+    /* Selects full width */
+    #rpt-actions-bar select { width:100% !important; max-width:100% !important; box-sizing:border-box !important; }
+    /* Export button full width */
+    #rpt-actions-bar > div { width:100% !important; }
+    #rpt-actions-bar > div > button:first-child { width:100% !important; justify-content:center !important; }
+    /* Card grids */
+    .rpt-inline-3 { grid-template-columns:repeat(3,1fr) !important; }
+    .rpt-inline-4 { grid-template-columns:repeat(2,1fr) !important; }
 }
 @media(max-width:480px) {
-    .rpt-grid-2 { grid-template-columns:1fr; }
-    .rpt-table th, .rpt-table td { padding:6px 8px; font-size:11px; }
+    .rpt-grid-2  { grid-template-columns:1fr !important; }
+    .rpt-table th, .rpt-table td { padding:5px 7px !important; font-size:11px !important; }
     #rpt-capture-zone { padding:0 !important; }
-    .rpt-inline-3 { grid-template-columns:1fr; }
-    .rpt-inline-4 { grid-template-columns:1fr 1fr; }
+    .rpt-inline-3 { grid-template-columns:1fr 1fr !important; }
+    .rpt-inline-4 { grid-template-columns:1fr 1fr !important; }
+    /* Card padding tighter on phones */
+    .rpt-card { padding:10px 8px !important; }
 }
 
 .rpt-card {
@@ -187,7 +198,7 @@
 <div id="rpt-main-content">
 
 {{-- ══ Filter / Action Bar ══ --}}
-<div id="rpt-filter-bar" class="no-print" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+<div id="rpt-filter-bar" class="no-print" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px;width:100%;box-sizing:border-box;">
     <div>
         <h1 style="font-size:18px;font-weight:700;color:#111827;margin:0;">
             @if($selectedUser) {{ $selectedUser->name }} — Employee Report
@@ -199,7 +210,7 @@
             @if($selectedUser) · {{ ucfirst($selectedUser->role) }}@endif
         </p>
     </div>
-    <div id="rpt-actions-bar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <div id="rpt-actions-bar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;">
 
         {{-- Range selector --}}
         <form method="GET" action="{{ route('admin.reports.index') }}" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
