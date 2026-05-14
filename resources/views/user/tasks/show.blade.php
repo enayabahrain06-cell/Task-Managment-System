@@ -1114,6 +1114,11 @@
                                     <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
                                         <i class="fa fa-image" style="color:#6366F1;font-size:10px;"></i>
                                         <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $sub->original_filename }}</span>
+                                        @if($sub->nas_path)
+                                            <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;flex-shrink:0;letter-spacing:.3px;">NAS</span>
+                                        @else
+                                            <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;flex-shrink:0;letter-spacing:.3px;">LOCAL</span>
+                                        @endif
                                         <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
                                     </div>
                                 </button>
@@ -1129,6 +1134,11 @@
                                     <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
                                         <i class="fa fa-video" style="color:#6366F1;font-size:10px;"></i>
                                         <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $sub->original_filename }}</span>
+                                        @if($sub->nas_path)
+                                            <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;flex-shrink:0;letter-spacing:.3px;">NAS</span>
+                                        @else
+                                            <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;flex-shrink:0;letter-spacing:.3px;">LOCAL</span>
+                                        @endif
                                         <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
                                     </div>
                                 </button>
@@ -1141,7 +1151,14 @@
                                     </div>
                                     <div style="flex:1;min-width:0;text-align:left;">
                                         <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $sub->original_filename }}</p>
-                                        <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;text-transform:uppercase;">{{ $subExt ?: 'file' }}</p>
+                                        <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;text-transform:uppercase;display:flex;align-items:center;gap:5px;">
+                                            {{ $subExt ?: 'file' }}
+                                            @if($sub->nas_path)
+                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;letter-spacing:.3px;">NAS</span>
+                                            @else
+                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;letter-spacing:.3px;">LOCAL</span>
+                                            @endif
+                                        </p>
                                     </div>
                                     <i class="fa fa-eye" style="font-size:11px;color:#9CA3AF;flex-shrink:0;"></i>
                                 </button>
@@ -1297,6 +1314,11 @@
                                         <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
                                             <i class="fa fa-image" style="color:#6366F1;font-size:10px;"></i>
                                             <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $comment->original_filename }}</span>
+                                            @if($comment->nas_path)
+                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;flex-shrink:0;letter-spacing:.3px;">NAS</span>
+                                            @else
+                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;flex-shrink:0;letter-spacing:.3px;">LOCAL</span>
+                                            @endif
                                             <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
                                         </div>
                                     </button>
@@ -1312,6 +1334,11 @@
                                         <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
                                             <i class="fa fa-video" style="color:#6366F1;font-size:10px;"></i>
                                             <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $comment->original_filename }}</span>
+                                            @if($comment->nas_path)
+                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;flex-shrink:0;letter-spacing:.3px;">NAS</span>
+                                            @else
+                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;flex-shrink:0;letter-spacing:.3px;">LOCAL</span>
+                                            @endif
                                             <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
                                         </div>
                                     </button>
@@ -1324,7 +1351,14 @@
                                         </div>
                                         <div style="flex:1;min-width:0;text-align:left;">
                                             <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $comment->original_filename }}</p>
-                                            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;text-transform:uppercase;">{{ $cExt ?: 'file' }}</p>
+                                            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;text-transform:uppercase;display:flex;align-items:center;gap:5px;">
+                                                {{ $cExt ?: 'file' }}
+                                                @if($comment->nas_path)
+                                                    <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;letter-spacing:.3px;">NAS</span>
+                                                @else
+                                                    <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;letter-spacing:.3px;">LOCAL</span>
+                                                @endif
+                                            </p>
                                         </div>
                                         <i class="fa fa-eye" style="font-size:10px;color:#9CA3AF;flex-shrink:0;"></i>
                                     </button>

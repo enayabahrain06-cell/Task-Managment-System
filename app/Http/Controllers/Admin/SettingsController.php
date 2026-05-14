@@ -4,10 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Project;
+use App\Models\ProjectAttachment;
 use App\Models\Setting;
 use App\Models\Task;
+use App\Models\TaskComment;
+use App\Models\TaskSubmission;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\NasService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -135,11 +139,14 @@ class SettingsController extends Controller
             ]
         );
 
+        $dbBytes = file_exists(database_path('database.sqlite')) ? filesize(database_path('database.sqlite')) : 0;
         $stats = [
-            'users'    => User::count(),
-            'projects' => Project::count(),
-            'tasks'    => Task::count(),
-            'db_size'  => $this->dbSizeKb(),
+            'users'      => User::count(),
+            'projects'   => Project::count(),
+            'tasks'      => Task::count(),
+            'db_size'    => $dbBytes >= 1048576
+                                ? round($dbBytes / 1048576, 1) . ' MB'
+                                : round($dbBytes / 1024) . ' KB',
         ];
 
         return view('admin.settings', compact('settings', 'stats'));
@@ -740,6 +747,153 @@ class SettingsController extends Controller
         return response()->json(['ok' => false, 'message' => "Cannot reach {$host}:{$checkPort} — {$errstr} (errno {$errno})."]);
     }
 
+    public function migrateLocalToNas(Request $request)
+    {
+        $nas = app(NasService::class);
+
+        if (!$nas->isEnabled()) {
+            return response()->json(['ok' => false, 'message' => 'NAS is not fully configured. Fill in Host, Share, Username and Password and save first.']);
+        }
+
+        $success = 0;
+        $failed  = 0;
+        $skipped = 0;
+
+        // Submissions
+        TaskSubmission::whereNotNull('file_path')->whereNull('nas_path')
+            ->with('task.project.customer', 'task.customer')
+            ->chunk(50, function ($rows) use ($nas, &$success, &$failed, &$skipped) {
+                foreach ($rows as $sub) {
+                    if (!$sub->task) { $skipped++; continue; }
+                    if (!Storage::disk('public')->exists($sub->file_path)) { $skipped++; continue; }
+                    $nasPath = $nas->copyToNas($sub->task, $sub->file_path, $sub->original_filename ?? basename($sub->file_path), '03_Working', $sub->version ?? 0);
+                    if ($nasPath) {
+                        $sub->update(['nas_path' => $nasPath]);
+                        $success++;
+                    } else {
+                        $failed++;
+                    }
+                }
+            });
+
+        // Comment attachments
+        TaskComment::whereNotNull('file_path')->whereNull('nas_path')
+            ->with('task.project.customer', 'task.customer')
+            ->chunk(50, function ($rows) use ($nas, &$success, &$failed, &$skipped) {
+                foreach ($rows as $comment) {
+                    if (!$comment->task) { $skipped++; continue; }
+                    if (!Storage::disk('public')->exists($comment->file_path)) { $skipped++; continue; }
+                    $nasPath = $nas->copyToNasReference($comment->task, $comment->file_path, $comment->original_filename ?? basename($comment->file_path));
+                    if ($nasPath) {
+                        $comment->update(['nas_path' => $nasPath]);
+                        $success++;
+                    } else {
+                        $failed++;
+                    }
+                }
+            });
+
+        // Project/task attachments
+        ProjectAttachment::where('type', 'file')->whereNotNull('path')->whereNull('nas_path')
+            ->with('task.project.customer', 'task.customer')
+            ->chunk(50, function ($rows) use ($nas, &$success, &$failed, &$skipped) {
+                foreach ($rows as $att) {
+                    if (!$att->task) { $skipped++; continue; }
+                    if (!Storage::disk('public')->exists($att->path)) { $skipped++; continue; }
+                    $nasPath = $nas->copyToNasReference($att->task, $att->path, $att->name);
+                    if ($nasPath) {
+                        $att->update(['nas_path' => $nasPath]);
+                        $success++;
+                    } else {
+                        $failed++;
+                    }
+                }
+            });
+
+        $total = $success + $failed + $skipped;
+
+        if ($total === 0) {
+            return response()->json(['ok' => true, 'message' => 'No local-only files found. Everything is already on NAS or there are no files yet.', 'results' => compact('success', 'failed', 'skipped')]);
+        }
+
+        $msg = "{$success} of {$total} files migrated to NAS successfully.";
+        if ($failed  > 0) $msg .= " {$failed} failed (check NAS connection).";
+        if ($skipped > 0) $msg .= " {$skipped} skipped (file missing from disk or no linked task).";
+
+        return response()->json(['ok' => $failed === 0, 'message' => $msg, 'results' => compact('success', 'failed', 'skipped')]);
+    }
+
+    public function recoverNasPaths(Request $request)
+    {
+        $nas = app(NasService::class);
+
+        if (!$nas->isEnabled()) {
+            return response()->json(['ok' => false, 'message' => 'NAS is not configured.']);
+        }
+
+        $recovered = 0;
+        $notFound  = 0;
+
+        // Submissions
+        TaskSubmission::whereNotNull('file_path')->whereNull('nas_path')
+            ->with('task.project.customer', 'task.customer')
+            ->chunk(50, function ($rows) use ($nas, &$recovered, &$notFound) {
+                foreach ($rows as $sub) {
+                    if (!$sub->task) { $notFound++; continue; }
+                    $nasPath = $nas->findNasPath($sub->task, $sub->original_filename ?? basename($sub->file_path), '03_Working', $sub->version ?? 0);
+                    if ($nasPath) {
+                        $sub->update(['nas_path' => $nasPath]);
+                        $recovered++;
+                    } else {
+                        $notFound++;
+                    }
+                }
+            });
+
+        // Comment attachments
+        TaskComment::whereNotNull('file_path')->whereNull('nas_path')
+            ->with('task.project.customer', 'task.customer')
+            ->chunk(50, function ($rows) use ($nas, &$recovered, &$notFound) {
+                foreach ($rows as $comment) {
+                    if (!$comment->task) { $notFound++; continue; }
+                    $nasPath = $nas->findNasPathReference($comment->task, $comment->original_filename ?? basename($comment->file_path));
+                    if ($nasPath) {
+                        $comment->update(['nas_path' => $nasPath]);
+                        $recovered++;
+                    } else {
+                        $notFound++;
+                    }
+                }
+            });
+
+        // Project/task attachments
+        ProjectAttachment::where('type', 'file')->whereNotNull('path')->whereNull('nas_path')
+            ->with('task.project.customer', 'task.customer')
+            ->chunk(50, function ($rows) use ($nas, &$recovered, &$notFound) {
+                foreach ($rows as $att) {
+                    if (!$att->task) { $notFound++; continue; }
+                    $nasPath = $nas->findNasPathReference($att->task, $att->name);
+                    if ($nasPath) {
+                        $att->update(['nas_path' => $nasPath]);
+                        $recovered++;
+                    } else {
+                        $notFound++;
+                    }
+                }
+            });
+
+        $total = $recovered + $notFound;
+
+        if ($total === 0) {
+            return response()->json(['ok' => true, 'message' => 'No missing NAS paths found — everything is already linked.', 'recovered' => 0, 'notFound' => 0]);
+        }
+
+        $msg = "{$recovered} of {$total} records recovered — NAS paths restored in database.";
+        if ($notFound > 0) $msg .= " {$notFound} could not be found on NAS (files were never uploaded or are in an unknown location).";
+
+        return response()->json(['ok' => true, 'message' => $msg, 'recovered' => $recovered, 'notFound' => $notFound]);
+    }
+
     public function backupToGdrive(Request $request)
     {
         $saJson        = Setting::get('storage_gdrive_sa_json', '');
@@ -1056,54 +1210,232 @@ class SettingsController extends Controller
 
     public function downloadBackup()
     {
-        $dbPath  = database_path('database.sqlite');
-        $filename = 'backup_' . now()->format('Ymd_His') . '.sqlite';
+        $stamp       = now()->format('Ymd_His');
+        $filename    = 'backup_' . $stamp . '.zip';
+        $dbPath      = database_path('database.sqlite');
+        $storageBase = storage_path('app/public');
 
-        return response()->download($dbPath, $filename, [
-            'Content-Type'        => 'application/octet-stream',
+        // Stream the ZIP directly to the browser using the system zip command.
+        // -0 = store only (no compression) so it starts instantly even for large files.
+        // We pipe: database file + all storage files, with path prefixes via -j/-r tricks.
+        // Strategy: create a tmp dir with symlinks so paths inside the ZIP are clean.
+        $tmpDir = sys_get_temp_dir() . '/bk_' . $stamp;
+        mkdir($tmpDir);
+        mkdir($tmpDir . '/database');
+        symlink($dbPath, $tmpDir . '/database/database.sqlite');
+        symlink($storageBase, $tmpDir . '/storage');
+
+        // Run zip from inside tmpDir so archive paths are relative (database/... storage/...)
+        $zipCmd = 'cd ' . escapeshellarg($tmpDir) . ' && zip -0 -r - database storage 2>/dev/null';
+
+        return response()->stream(function () use ($zipCmd, $tmpDir) {
+            $proc = popen($zipCmd, 'r');
+            while (!feof($proc)) {
+                echo fread($proc, 65536);
+                flush();
+            }
+            pclose($proc);
+            // Cleanup symlinks and tmp dir
+            @unlink($tmpDir . '/database/database.sqlite');
+            @unlink($tmpDir . '/storage');
+            @rmdir($tmpDir . '/database');
+            @rmdir($tmpDir);
+        }, 200, [
+            'Content-Type'        => 'application/zip',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'X-Accel-Buffering'   => 'no',
         ]);
+    }
+
+    public function downloadBackupSqlite()
+    {
+        $dbPath = database_path('database.sqlite');
+        $stamp  = now()->format('Ymd_His');
+        return response()->download($dbPath, 'backup_' . $stamp . '.sqlite', [
+            'Content-Type' => 'application/octet-stream',
+        ]);
+    }
+
+    public function restoreFromNas(Request $request)
+    {
+        $request->validate(['nas_path' => 'required|string|max:500']);
+
+        $nas     = app(\App\Services\NasService::class);
+        $nasPath = $request->input('nas_path');
+        $tmpPath = sys_get_temp_dir() . '/restore_nas_' . now()->format('YmdHis') . '_' . basename($nasPath);
+
+        if (!$nas->pullFromNas($nasPath, $tmpPath)) {
+            return redirect()->route('admin.settings.index')
+                ->with('error', 'Failed to download backup from NAS. Check NAS connection.')
+                ->with('_fragment', 'backup');
+        }
+
+        $result = $this->performRestore($tmpPath);
+        @unlink($tmpPath);
+        return $result;
+    }
+
+    public function saveBackupToNas()
+    {
+        $nas = app(\App\Services\NasService::class);
+        if (!$nas->isEnabled()) {
+            return response()->json(['ok' => false, 'msg' => 'NAS is not enabled.']);
+        }
+
+        $stamp       = now()->format('Ymd_His');
+        $filename    = 'backup_' . $stamp . '.zip';
+        $zipPath     = sys_get_temp_dir() . '/' . $filename;
+        $dbPath      = database_path('database.sqlite');
+        $storageBase = storage_path('app/public');
+
+        // Build temp dir with symlinks for clean ZIP paths
+        $tmpDir = sys_get_temp_dir() . '/bk_' . $stamp;
+        mkdir($tmpDir);
+        mkdir($tmpDir . '/database');
+        symlink($dbPath, $tmpDir . '/database/database.sqlite');
+        symlink($storageBase, $tmpDir . '/storage');
+
+        exec('cd ' . escapeshellarg($tmpDir) . ' && zip -0 -r ' . escapeshellarg($zipPath) . ' database storage 2>/dev/null', $out, $code);
+
+        @unlink($tmpDir . '/database/database.sqlite');
+        @unlink($tmpDir . '/storage');
+        @rmdir($tmpDir . '/database');
+        @rmdir($tmpDir);
+
+        if ($code !== 0 || !file_exists($zipPath)) {
+            return response()->json(['ok' => false, 'msg' => 'Failed to create ZIP archive.']);
+        }
+
+        $ok = $nas->saveBackupToNas($zipPath, $filename);
+        @unlink($zipPath);
+
+        if (!$ok) {
+            return response()->json(['ok' => false, 'msg' => 'ZIP created but upload to NAS failed. Check NAS connection.']);
+        }
+
+        AuditLogger::log('system.backup', null, 'Full backup saved to NAS: ' . $filename, []);
+
+        return response()->json(['ok' => true, 'msg' => 'Backup saved to NAS: Backups/' . now()->format('Y/Y-m') . '/' . $filename]);
+    }
+
+    public function listNasBackups()
+    {
+        $nas = app(\App\Services\NasService::class);
+        if (!$nas->isEnabled()) {
+            return response()->json(['files' => [], 'error' => 'NAS not enabled']);
+        }
+        return response()->json(['files' => $nas->listNasBackups()]);
+    }
+
+    public function listServerBackups()
+    {
+        $dir   = storage_path('app/backups');
+        $files = [];
+        foreach (glob($dir . '/*.{zip,sqlite}', GLOB_BRACE) as $path) {
+            $files[] = [
+                'name'     => basename($path),
+                'size'     => round(filesize($path) / 1048576, 1),
+                'modified' => date('Y-m-d H:i', filemtime($path)),
+            ];
+        }
+        usort($files, fn($a, $b) => strcmp($b['modified'], $a['modified']));
+        return response()->json(['files' => $files, 'path' => $dir]);
+    }
+
+    public function restoreFromServer(Request $request)
+    {
+        $request->validate(['filename' => 'required|string|max:255']);
+
+        $filename = basename($request->input('filename'));
+        $path     = storage_path('app/backups/' . $filename);
+
+        if (!file_exists($path)) {
+            return back()->with('error', 'File not found on server: ' . $filename);
+        }
+
+        return $this->performRestore($path);
     }
 
     public function restoreBackup(Request $request)
     {
-        $request->validate(['backup_file' => 'required|file|max:51200']);
+        $request->validate(['backup_file' => 'required|file']);
+        return $this->performRestore($request->file('backup_file')->getRealPath());
+    }
 
-        $file    = $request->file('backup_file');
-        $tmpPath = $file->getRealPath();
-
-        // Verify it is a valid SQLite file by checking the header magic bytes
-        $handle = fopen($tmpPath, 'rb');
+    private function performRestore(string $filePath)
+    {
+        $handle = fopen($filePath, 'rb');
         $magic  = fread($handle, 16);
         fclose($handle);
 
-        if (strncmp($magic, "SQLite format 3\000", 16) !== 0) {
-            return redirect()->route('admin.settings.index')->withErrors(['backup_file' => 'Invalid file — please upload a .sqlite backup file created by this system.'])->with('_fragment', 'backup');
+        $isZip    = substr($magic, 0, 4) === "PK\x03\x04";
+        $isSqlite = strncmp($magic, "SQLite format 3\000", 16) === 0;
+
+        if (!$isZip && !$isSqlite) {
+            return redirect()->route('admin.settings.index')
+                ->with('error', 'Invalid file — must be a .zip or .sqlite backup created by this system.')
+                ->with('_fragment', 'backup');
         }
 
-        $dbPath = database_path('database.sqlite');
-
-        // Close all DB connections before replacing the file
-        DB::disconnect();
-
-        // Keep a copy of the current DB just in case
+        $dbPath   = database_path('database.sqlite');
         $safeCopy = $dbPath . '.pre_restore_' . now()->format('YmdHis');
         copy($dbPath, $safeCopy);
 
         try {
-            copy($tmpPath, $dbPath);
-            // Remove the safety copy on success
+            if ($isSqlite) {
+                DB::disconnect();
+                copy($filePath, $dbPath);
+
+            } else {
+                $zip = new \ZipArchive();
+                if ($zip->open($filePath) !== true) {
+                    throw new \RuntimeException('Could not open ZIP archive.');
+                }
+
+                $dbEntry = $zip->getFromName('database/database.sqlite');
+                if ($dbEntry === false) {
+                    $zip->close();
+                    throw new \RuntimeException('ZIP does not contain database/database.sqlite.');
+                }
+                DB::disconnect();
+                file_put_contents($dbPath, $dbEntry);
+
+                // Restore files — supports both path formats:
+                //   new: storage/branding/file.jpg  → storage/app/public/branding/file.jpg
+                //   old: storage/public/branding/file.jpg → storage/app/public/branding/file.jpg
+                $storageBase = storage_path('app/public');
+                for ($i = 0; $i < $zip->numFiles; $i++) {
+                    $name = $zip->getNameIndex($i);
+                    if (str_starts_with($name, 'storage/public/')) {
+                        $relative = substr($name, strlen('storage/public/'));
+                    } elseif (str_starts_with($name, 'storage/') && !str_ends_with($name, '/')) {
+                        $relative = substr($name, strlen('storage/'));
+                    } else {
+                        continue;
+                    }
+                    if ($relative === '') continue;
+                    $dest = $storageBase . '/' . $relative;
+                    @mkdir(dirname($dest), 0755, true);
+                    file_put_contents($dest, $zip->getFromIndex($i));
+                }
+                $zip->close();
+            }
+
             @unlink($safeCopy);
+
         } catch (\Throwable $e) {
-            // Roll back
             copy($safeCopy, $dbPath);
             @unlink($safeCopy);
-            return redirect()->route('admin.settings.index')->with('error', 'Restore failed: ' . $e->getMessage())->with('_fragment', 'backup');
+            return redirect()->route('admin.settings.index')
+                ->with('error', 'Restore failed: ' . $e->getMessage())
+                ->with('_fragment', 'backup');
         }
 
-        AuditLogger::log('system.restored', null, 'Full system backup restored from uploaded file', []);
+        AuditLogger::log('system.restored', null, 'Full system backup restored', []);
 
-        return redirect()->route('admin.settings.index')->with('success', 'Full system restore completed successfully. All data has been restored.')->with('_fragment', 'backup');
+        return redirect()->route('admin.settings.index')
+            ->with('success', 'Full system restore completed. Database and all files have been restored.')
+            ->with('_fragment', 'backup');
     }
 
     // ── Restores ─────────────────────────────────────────────────────────

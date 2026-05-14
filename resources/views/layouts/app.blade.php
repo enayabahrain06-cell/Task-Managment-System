@@ -150,7 +150,18 @@
                 </div>
             </div>
             <div class="topbar-right">
-                @php $headerHidden = json_decode($appSettings['nav_hidden'] ?? '[]', true) ?: []; @endphp
+                @php
+                    $headerHidden = json_decode($appSettings['nav_hidden'] ?? '[]', true) ?: [];
+                    $storageNasOn = app(\App\Services\NasService::class)->isEnabled();
+                @endphp
+                @if(auth()->user()?->role === 'admin')
+                <a href="{{ route('admin.settings.index') }}#storage" title="{{ $storageNasOn ? 'Storage: NAS (SMB) — click to manage' : 'Storage: Local — click to manage' }}"
+                   style="display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:20px;text-decoration:none;font-size:10px;font-weight:700;letter-spacing:.3px;border:1.5px solid {{ $storageNasOn ? '#BBF7D0' : '#E5E7EB' }};background:{{ $storageNasOn ? '#F0FDF4' : '#F9FAFB' }};color:{{ $storageNasOn ? '#15803D' : '#6B7280' }};transition:all .2s;flex-shrink:0;"
+                   onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+                    <i class="fas {{ $storageNasOn ? 'fa-network-wired' : 'fa-hdd' }}" style="font-size:9px;"></i>
+                    {{ $storageNasOn ? 'NAS' : 'LOCAL' }}
+                </a>
+                @endif
                 @if(!in_array('nav_search', $headerHidden))
                 <div class="topbar-search" id="topbar-search-wrap">
                     <i class="fas fa-search"></i>
