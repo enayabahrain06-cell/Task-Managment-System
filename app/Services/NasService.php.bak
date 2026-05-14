@@ -222,10 +222,10 @@ class NasService
     }
 
     /**
-     * Serve a file from the NAS as a download response.
-     * Uses smbclient to fetch the file to a temp path then streams it.
+     * Serve a file from the NAS.
+     * Pass $inline=true to serve inline (for browser preview); false forces a download.
      */
-    public function downloadFromNas(string $nasPath, string $filename): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    public function downloadFromNas(string $nasPath, string $filename, bool $inline = false): \Symfony\Component\HttpFoundation\BinaryFileResponse
     {
         $cfg    = $this->cfg();
         $target = escapeshellarg("//{$cfg['host']}/{$cfg['share']}");
@@ -241,6 +241,12 @@ class NasService
             ' 2>&1', $out, $code);
 
         abort_if($code !== 0 || !file_exists($tmpFile), 404, 'File not available on network storage.');
+
+        if ($inline) {
+            $response = response()->file($tmpFile);
+            $response->deleteFileAfterSend(true);
+            return $response;
+        }
 
         return response()->download($tmpFile, $filename)->deleteFileAfterSend(true);
     }

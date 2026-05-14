@@ -1061,6 +1061,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         <form method="POST" action="{{ route('admin.settings.storage') }}">
                             @csrf
                             <input type="hidden" name="storage_omv_enabled"          value="0">
+                            <input type="hidden" name="storage_omv_only"             value="0">
                             <input type="hidden" name="storage_gdrive_enabled"        value="{{ $settings['storage_gdrive_enabled'] }}">
                             <input type="hidden" name="storage_gdrive_client_id"      value="{{ $settings['storage_gdrive_client_id'] }}">
                             <input type="hidden" name="storage_gdrive_folder_id"      value="{{ $settings['storage_gdrive_folder_id'] }}">
@@ -1087,7 +1088,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     </div>
                                     <div>
                                         <p style="font-size:14px;font-weight:700;color:{{ !$nasActive ? '#1E40AF' : '#374151' }};margin:0;">Local Storage</p>
-                                        <p style="font-size:11px;color:{{ !$nasActive ? '#3B82F6' : '#9CA3AF' }};margin:2px 0 0;">Server disk</p>
+                                        <p style="font-size:11px;color:{{ !$nasActive ? '#3B82F6' : '#9CA3AF' }};margin:2px 0 0;">Server disk only</p>
                                     </div>
                                     @if(!$nasActive)
                                     <div style="margin-left:auto;width:20px;height:20px;border-radius:50%;background:#4F46E5;display:flex;align-items:center;justify-content:center;">
@@ -1099,10 +1100,11 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </button>
                         </form>
 
-                        {{-- Network Storage --}}
+                        {{-- Network Storage (NAS only) --}}
                         <form method="POST" action="{{ route('admin.settings.storage') }}">
                             @csrf
                             <input type="hidden" name="storage_omv_enabled"          value="1">
+                            <input type="hidden" name="storage_omv_only"             value="1">
                             <input type="hidden" name="storage_gdrive_enabled"        value="{{ $settings['storage_gdrive_enabled'] }}">
                             <input type="hidden" name="storage_gdrive_client_id"      value="{{ $settings['storage_gdrive_client_id'] }}">
                             <input type="hidden" name="storage_gdrive_folder_id"      value="{{ $settings['storage_gdrive_folder_id'] }}">
@@ -1129,7 +1131,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     </div>
                                     <div>
                                         <p style="font-size:14px;font-weight:700;color:{{ $nasActive ? '#14532D' : '#374151' }};margin:0;">Network Storage</p>
-                                        <p style="font-size:11px;color:{{ $nasActive ? '#16A34A' : '#9CA3AF' }};margin:2px 0 0;">NAS / SMB share</p>
+                                        <p style="font-size:11px;color:{{ $nasActive ? '#16A34A' : '#9CA3AF' }};margin:2px 0 0;">NAS / SMB only</p>
                                     </div>
                                     @if($nasActive)
                                     <div style="margin-left:auto;width:20px;height:20px;border-radius:50%;background:#16A34A;display:flex;align-items:center;justify-content:center;">
@@ -1137,7 +1139,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     </div>
                                     @endif
                                 </div>
-                                <p style="font-size:12px;color:{{ $nasActive ? '#15803D' : '#6B7280' }};margin:0;line-height:1.5;">Files copied to your NAS/SMB share in addition to local storage. Configure the server below.</p>
+                                <p style="font-size:12px;color:{{ $nasActive ? '#15803D' : '#6B7280' }};margin:0;line-height:1.5;">Files saved <strong>only</strong> to your NAS/SMB share. Local copies are removed after upload. Configure the server below.</p>
                             </button>
                         </form>
 
@@ -1148,6 +1150,99 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         <p style="font-size:12px;color:#854D0E;margin:0;">Network storage is enabled but no NAS host is configured. Fill in the NAS / OMV Server section below.</p>
                     </div>
                     @endif
+                </div>
+            </div>
+
+            {{-- How it works hint --}}
+            <div x-data="{ open: false }" style="margin-bottom:20px;">
+                <button @click="open = !open" type="button"
+                    style="width:100%;display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;border:1px dashed #C7D2FE;background:#EEF2FF;cursor:pointer;text-align:left;">
+                    <i class="fas fa-circle-info" style="color:#6366F1;font-size:14px;flex-shrink:0;"></i>
+                    <span style="font-size:13px;font-weight:600;color:#4338CA;flex:1;">How does storage work?</span>
+                    <i class="fas fa-chevron-down" style="color:#6366F1;font-size:11px;transition:transform .2s;" :style="open ? 'transform:rotate(180deg)' : ''"></i>
+                </button>
+                <div x-show="open" x-collapse style="margin-top:8px;border:1px solid #E0E7FF;border-radius:10px;overflow:hidden;">
+
+                    {{-- Local Mode --}}
+                    <div style="padding:16px;border-bottom:1px solid #E0E7FF;background:#fff;">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                            <div style="width:28px;height:28px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-hdd" style="color:#4F46E5;font-size:12px;"></i>
+                            </div>
+                            <p style="font-size:13px;font-weight:700;color:#1E40AF;margin:0;">Local Mode</p>
+                        </div>
+                        <div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+                            <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;background:#F3F4F6;font-size:11px;color:#374151;">
+                                <i class="fas fa-upload" style="color:#6B7280;font-size:10px;"></i> File uploaded
+                            </div>
+                            <i class="fas fa-arrow-right" style="color:#9CA3AF;font-size:10px;margin-top:9px;"></i>
+                            <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;background:#EEF2FF;font-size:11px;color:#4338CA;">
+                                <i class="fas fa-server" style="font-size:10px;"></i> Saved to server disk
+                            </div>
+                            <i class="fas fa-arrow-right" style="color:#9CA3AF;font-size:10px;margin-top:9px;"></i>
+                            <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;background:#D1FAE5;font-size:11px;color:#065F46;">
+                                <i class="fas fa-check" style="font-size:10px;"></i> Done — stays on server
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- NAS Mode --}}
+                    <div style="padding:16px;border-bottom:1px solid #E0E7FF;background:#fff;">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                            <div style="width:28px;height:28px;border-radius:8px;background:#F0FDF4;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-network-wired" style="color:#16A34A;font-size:12px;"></i>
+                            </div>
+                            <p style="font-size:13px;font-weight:700;color:#14532D;margin:0;">NAS Mode — upload flow</p>
+                        </div>
+                        <div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+                            <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;background:#F3F4F6;font-size:11px;color:#374151;">
+                                <i class="fas fa-upload" style="color:#6B7280;font-size:10px;"></i> File uploaded
+                            </div>
+                            <i class="fas fa-arrow-right" style="color:#9CA3AF;font-size:10px;margin-top:9px;"></i>
+                            <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;background:#FEF9C3;font-size:11px;color:#854D0E;">
+                                <i class="fas fa-clock" style="font-size:10px;"></i> Saved temporarily to server
+                            </div>
+                            <i class="fas fa-arrow-right" style="color:#9CA3AF;font-size:10px;margin-top:9px;"></i>
+                            <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;background:#EEF2FF;font-size:11px;color:#4338CA;">
+                                <i class="fas fa-share-nodes" style="font-size:10px;"></i> Copied to NAS via SMB
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                            <div style="flex:1;min-width:200px;padding:10px 12px;border-radius:8px;background:#F0FDF4;border:1px solid #BBF7D0;">
+                                <p style="font-size:11px;font-weight:700;color:#15803D;margin:0 0 4px;">Copy succeeded</p>
+                                <p style="font-size:11px;color:#166534;margin:0;line-height:1.5;">Local temp file is <strong>deleted</strong>. NAS is the only copy. Path saved in database.</p>
+                            </div>
+                            <div style="flex:1;min-width:200px;padding:10px 12px;border-radius:8px;background:#FFF7ED;border:1px solid #FED7AA;">
+                                <p style="font-size:11px;font-weight:700;color:#C2410C;margin:0 0 4px;">Copy failed (NAS unreachable)</p>
+                                <p style="font-size:11px;color:#9A3412;margin:0;line-height:1.5;">Local file is <strong>kept</strong> as safety fallback. NAS path is not saved.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Download flow --}}
+                    <div style="padding:16px;background:#FAFAFA;">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                            <div style="width:28px;height:28px;border-radius:8px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-download" style="color:#6B7280;font-size:12px;"></i>
+                            </div>
+                            <p style="font-size:13px;font-weight:700;color:#374151;margin:0;">When someone opens or downloads a file</p>
+                        </div>
+                        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                            <div style="flex:1;min-width:180px;padding:10px 12px;border-radius:8px;background:#EEF2FF;border:1px solid #C7D2FE;">
+                                <p style="font-size:11px;font-weight:700;color:#4338CA;margin:0 0 3px;"><i class="fas fa-database" style="font-size:10px;margin-right:4px;"></i>NAS path in database</p>
+                                <p style="font-size:11px;color:#4338CA;margin:0;">File is fetched from NAS via SMB and served.</p>
+                            </div>
+                            <div style="flex:1;min-width:180px;padding:10px 12px;border-radius:8px;background:#F3F4F6;border:1px solid #E5E7EB;">
+                                <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 3px;"><i class="fas fa-hdd" style="font-size:10px;margin-right:4px;"></i>No NAS path</p>
+                                <p style="font-size:11px;color:#6B7280;margin:0;">File is served directly from the server disk.</p>
+                            </div>
+                        </div>
+                        <div style="margin-top:10px;padding:8px 12px;border-radius:7px;background:#FEF2F2;border:1px solid #FECACA;display:flex;gap:8px;align-items:flex-start;">
+                            <i class="fas fa-triangle-exclamation" style="color:#DC2626;font-size:11px;margin-top:2px;flex-shrink:0;"></i>
+                            <p style="font-size:11px;color:#991B1B;margin:0;line-height:1.5;"><strong>Important:</strong> If you switch from NAS to Local after files were uploaded in NAS mode, those files will return a 404 error because the local copy was deleted. Always keep the NAS reachable when using NAS mode.</p>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -1492,23 +1587,55 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             <p class="sf-hint">Sub-path inside the share (SMB) or mount point for NFS / base URL for WebDAV</p>
                         </div>
                     </div>
-                    <div class="scard-footer" x-data="{ testing:false, ok:null, msg:'' }">
+                    <div class="scard-footer" x-data="{ testing:false, migrating:false, recovering:false, ok:null, msg:'', results:null }">
                         <div x-show="msg" style="flex:1;font-size:12px;font-weight:600;padding:6px 10px;border-radius:8px;display:flex;align-items:center;gap:6px;"
                              :style="ok ? 'background:#D1FAE5;color:#065F46;' : 'background:#FEE2E2;color:#991B1B;'">
                             <i :class="ok ? 'fas fa-circle-check' : 'fas fa-circle-xmark'" style="font-size:12px;"></i>
                             <span x-text="msg"></span>
+                            <template x-if="results">
+                                <span style="margin-left:6px;font-weight:400;opacity:.8;">
+                                    (<span x-text="results.success"></span> moved,
+                                    <span x-text="results.failed"></span> failed,
+                                    <span x-text="results.skipped"></span> skipped)
+                                </span>
+                            </template>
                         </div>
                         <button type="button" @click="
-                            testing=true; ok=null; msg='';
+                            testing=true; ok=null; msg=''; results=null;
                             fetch('{{ route('admin.settings.storage.test.omv') }}', {method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}})
                             .then(r=>r.json()).then(d=>{ok=d.ok;msg=d.message;}).catch(e=>{ok=false;msg='Request failed.'})
                             .finally(()=>testing=false)"
-                            :disabled="testing"
+                            :disabled="testing || migrating"
                             style="padding:8px 16px;border:1.5px solid #E5E7EB;border-radius:9px;background:#fff;color:#374151;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:border-color .15s;"
                             onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                             <i class="fas fa-plug" x-show="!testing" style="font-size:11px;color:#6366F1;"></i>
                             <i class="fas fa-spinner fa-spin" x-show="testing" style="font-size:11px;"></i>
                             <span x-text="testing ? 'Testing…' : 'Test Connection'">Test Connection</span>
+                        </button>
+                        <button type="button" @click="
+                            if(!window.confirm('This will copy all local-only files to NAS and remove the local copies. Continue?')) return;
+                            migrating=true; ok=null; msg=''; results=null;
+                            fetch('{{ route('admin.settings.storage.migrate.nas') }}', {method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}})
+                            .then(r=>r.json()).then(d=>{ok=d.ok;msg=d.message;results=d.results;}).catch(e=>{ok=false;msg='Request failed.'})
+                            .finally(()=>migrating=false)"
+                            :disabled="testing || migrating"
+                            style="padding:8px 16px;border:1.5px solid #FDE68A;border-radius:9px;background:#FFFBEB;color:#92400E;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .15s;"
+                            onmouseover="this.style.borderColor='#F59E0B';this.style.background='#FEF3C7'" onmouseout="this.style.borderColor='#FDE68A';this.style.background='#FFFBEB'">
+                            <i class="fas fa-arrow-right-to-bracket" x-show="!migrating" style="font-size:11px;color:#D97706;"></i>
+                            <i class="fas fa-spinner fa-spin" x-show="migrating" style="font-size:11px;"></i>
+                            <span x-text="migrating ? 'Migrating…' : 'Migrate Local Files to NAS'">Migrate Local Files to NAS</span>
+                        </button>
+                        <button type="button" @click="
+                            recovering=true; ok=null; msg=''; results=null;
+                            fetch('{{ route('admin.settings.storage.recover.nas') }}', {method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}})
+                            .then(r=>r.json()).then(d=>{ok=d.ok;msg=d.message;results={success:d.recovered,failed:d.notFound,skipped:0};}).catch(e=>{ok=false;msg='Request failed.'})
+                            .finally(()=>recovering=false)"
+                            :disabled="testing || migrating || recovering"
+                            style="padding:8px 16px;border:1.5px solid #BFDBFE;border-radius:9px;background:#EFF6FF;color:#1D4ED8;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .15s;"
+                            onmouseover="this.style.borderColor='#3B82F6';this.style.background='#DBEAFE'" onmouseout="this.style.borderColor='#BFDBFE';this.style.background='#EFF6FF'">
+                            <i class="fas fa-rotate" x-show="!recovering" style="font-size:11px;color:#3B82F6;"></i>
+                            <i class="fas fa-spinner fa-spin" x-show="recovering" style="font-size:11px;"></i>
+                            <span x-text="recovering ? 'Scanning NAS…' : 'Recover NAS Paths'">Recover NAS Paths</span>
                         </button>
                         <button type="submit" class="sf-btn-primary"><i class="fas fa-save" style="margin-right:6px;"></i>Save NAS Settings</button>
                     </div>

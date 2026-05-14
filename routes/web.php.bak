@@ -172,6 +172,8 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('settings/storage/backup/gdrive',      [AdminSettingsController::class, 'backupToGdrive'])->name('settings.storage.backup.gdrive');
     Route::post('settings/storage/test/onedrive',      [AdminSettingsController::class, 'testStorageOnedrive'])->name('settings.storage.test.onedrive');
     Route::post('settings/storage/test/omv',           [AdminSettingsController::class, 'testStorageOmv'])->name('settings.storage.test.omv');
+    Route::post('settings/storage/migrate-to-nas',    [AdminSettingsController::class, 'migrateLocalToNas'])->name('settings.storage.migrate.nas');
+    Route::post('settings/storage/recover-nas-paths', [AdminSettingsController::class, 'recoverNasPaths'])->name('settings.storage.recover.nas');
     Route::post('settings/nas-schema',                 [AdminSettingsController::class, 'updateNasSchema'])->name('settings.nas-schema');
     Route::post('settings/nas-schema/reset',           [AdminSettingsController::class, 'resetNasSchema'])->name('settings.nas-schema.reset');
     Route::post('settings/whatsapp',              [AdminSettingsController::class, 'updateWhatsapp'])->name('settings.whatsapp');
@@ -234,14 +236,18 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     // Audit log
     Route::get('audit',                            [AdminAuditLogController::class, 'index'])->name('audit.index');
 
-    // Project attachment download
+    // Project attachment download (add ?inline=1 to serve inline for browser preview)
     Route::get('attachments/{attachment}/download', function (\App\Models\ProjectAttachment $attachment) {
         abort_unless($attachment->isFile(), 404);
+        $inline = request()->boolean('inline');
         if (\Illuminate\Support\Facades\Storage::disk('public')->exists($attachment->path)) {
-            return \Illuminate\Support\Facades\Storage::disk('public')->download($attachment->path, $attachment->name);
+            $fullPath = storage_path('app/public/' . $attachment->path);
+            return $inline
+                ? response()->file($fullPath)
+                : \Illuminate\Support\Facades\Storage::disk('public')->download($attachment->path, $attachment->name);
         }
         if ($attachment->nas_path) {
-            return app(\App\Services\NasService::class)->downloadFromNas($attachment->nas_path, $attachment->name);
+            return app(\App\Services\NasService::class)->downloadFromNas($attachment->nas_path, $attachment->name, $inline);
         }
         abort(404, 'File not found.');
     })->name('attachments.download');
@@ -250,18 +256,38 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('tasks/{task}/attachments',               [\App\Http\Controllers\Admin\TaskController::class, 'addAttachment'])->name('tasks.attachments.add');
     Route::delete('tasks/{task}/attachments/{attachment}', [\App\Http\Controllers\Admin\TaskController::class, 'deleteAttachment'])->name('tasks.attachments.delete');
 
-    // Task submission file download
+    // Task submission file download (add ?inline=1 to serve inline for browser preview)
     Route::get('submissions/{submission}/download', function (\App\Models\TaskSubmission $submission) {
         abort_unless($submission->file_path, 404);
+        $inline = request()->boolean('inline');
         if (\Illuminate\Support\Facades\Storage::disk('public')->exists($submission->file_path)) {
-            return \Illuminate\Support\Facades\Storage::disk('public')
-                ->download($submission->file_path, $submission->original_filename ?? 'file');
+            $fullPath = storage_path('app/public/' . $submission->file_path);
+            return $inline
+                ? response()->file($fullPath)
+                : \Illuminate\Support\Facades\Storage::disk('public')->download($submission->file_path, $submission->original_filename ?? 'file');
         }
         if ($submission->nas_path) {
-            return app(\App\Services\NasService::class)->downloadFromNas($submission->nas_path, $submission->original_filename ?? 'file');
+            return app(\App\Services\NasService::class)->downloadFromNas($submission->nas_path, $submission->original_filename ?? 'file', $inline);
         }
         abort(404, 'File not found. It may have been removed from local storage.');
     })->name('submissions.download');
+
+    // Task comment file download (add ?inline=1 to serve inline for browser preview)
+    Route::get('task-comments/{comment}/file', function (\App\Models\TaskComment $comment) {
+        abort_unless($comment->file_path, 404);
+        $inline   = request()->boolean('inline');
+        $filename = $comment->original_filename ?? 'file';
+        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($comment->file_path)) {
+            $fullPath = storage_path('app/public/' . $comment->file_path);
+            return $inline
+                ? response()->file($fullPath)
+                : \Illuminate\Support\Facades\Storage::disk('public')->download($comment->file_path, $filename);
+        }
+        if ($comment->nas_path) {
+            return app(\App\Services\NasService::class)->downloadFromNas($comment->nas_path, $filename, $inline);
+        }
+        abort(404, 'File not found.');
+    })->name('task-comments.file');
 });
 
 // Manager routes
@@ -296,13 +322,21 @@ Route::middleware([UserMiddleware::class])->prefix('user')->name('user.')->group
     Route::get('/reports', [UserReportsController::class, 'index'])->name('reports.index');
     Route::get('/reports/export', [UserReportsController::class, 'exportTasks'])->name('reports.export');
     Route::get('/attachments/{attachment}/download', function (\App\Models\ProjectAttachment $attachment) {
-        // Only allow users assigned to a task in that project
         $allowed = auth()->user()->tasks()
             ->where('project_id', $attachment->project_id)
             ->exists();
         abort_unless($allowed, 403);
         abort_unless($attachment->isFile(), 404);
-        return \Illuminate\Support\Facades\Storage::disk('public')
-            ->download($attachment->path, $attachment->name);
+        $inline = request()->boolean('inline');
+        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($attachment->path)) {
+            $fullPath = storage_path('app/public/' . $attachment->path);
+            return $inline
+                ? response()->file($fullPath)
+                : \Illuminate\Support\Facades\Storage::disk('public')->download($attachment->path, $attachment->name);
+        }
+        if ($attachment->nas_path) {
+            return app(\App\Services\NasService::class)->downloadFromNas($attachment->nas_path, $attachment->name, $inline);
+        }
+        abort(404, 'File not found.');
     })->name('attachments.download');
 });
