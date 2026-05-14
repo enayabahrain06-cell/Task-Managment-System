@@ -10,12 +10,20 @@ use Illuminate\Support\Str;
 
 class NasService
 {
+    /** Cached per-request so we don't hit the DB on every call */
+    private ?array $cfgCache    = null;
+    private ?bool  $enabledCache = null;
+
     public function isEnabled(): bool
     {
-        return Setting::get('storage_omv_enabled', '0') === '1'
+        if ($this->enabledCache !== null) return $this->enabledCache;
+        $cfg = $this->cfg();
+        return $this->enabledCache = (
+            Setting::get('storage_omv_enabled', '0') === '1'
             && Setting::get('storage_omv_protocol', '') === 'smb'
-            && Setting::get('storage_omv_host', '') !== ''
-            && Setting::get('storage_omv_share', '') !== '';
+            && $cfg['host'] !== ''
+            && $cfg['share'] !== ''
+        );
     }
 
     /** When NAS is enabled, files live ONLY on the NAS — no local retention. */
@@ -331,17 +339,11 @@ class NasService
 
     private function uniqueRemoteName(array $cfg, string $nasDir, string $remote): string
     {
-        if (!$this->nasFileExists($cfg, $nasDir, $remote)) return $remote;
-
-        $ext     = pathinfo($remote, PATHINFO_EXTENSION);
-        $base    = $ext ? substr($remote, 0, -(strlen($ext) + 1)) : $remote;
-        $counter = 1;
-        do {
-            $candidate = $ext ? "{$base}_{$counter}.{$ext}" : "{$base}_{$counter}";
-            $counter++;
-        } while ($this->nasFileExists($cfg, $nasDir, $candidate) && $counter < 100);
-
-        return $candidate;
+        // Prepend a short unique token to guarantee uniqueness without extra SMB round-trips
+        $ext  = pathinfo($remote, PATHINFO_EXTENSION);
+        $base = $ext ? substr($remote, 0, -(strlen($ext) + 1)) : $remote;
+        $uid  = substr(uniqid(), -6);
+        return $ext ? "{$base}_{$uid}.{$ext}" : "{$base}_{$uid}";
     }
 
     private function smbPut(array $cfg, string $localFull, string $nasDir, string $remote): bool
@@ -353,8 +355,20 @@ class NasService
         $tmpFull = sys_get_temp_dir() . '/' . $tmpName;
         copy($localFull, $tmpFull);
 
+        // Combine all mkdir + put into ONE smbclient session (one TCP connection)
+        $parts  = explode('/', $nasDir);
+        $cmds   = [];
+        $current = '';
+        foreach ($parts as $part) {
+            $current = $current ? "{$current}/{$part}" : $part;
+            $cmds[] = "mkdir \"{$current}\"";
+        }
+        $cmds[] = "lcd \"" . sys_get_temp_dir() . "\"";
+        $cmds[] = "cd \"{$nasDir}\"";
+        $cmds[] = "put \"{$tmpName}\" \"{$remote}\"";
+
         exec("smbclient {$target} -U {$cred} -c " .
-            escapeshellarg("lcd \"" . sys_get_temp_dir() . "\"; cd \"{$nasDir}\"; put \"{$tmpName}\" \"{$remote}\"") .
+            escapeshellarg(implode('; ', $cmds)) .
             ' 2>&1', $out, $code);
 
         @unlink($tmpFull);
@@ -368,7 +382,8 @@ class NasService
 
     private function cfg(): array
     {
-        return [
+        if ($this->cfgCache !== null) return $this->cfgCache;
+        return $this->cfgCache = [
             'host'  => Setting::get('storage_omv_host', ''),
             'share' => trim(Setting::get('storage_omv_share', ''), '/'),
             'user'  => Setting::get('storage_omv_username', ''),
@@ -422,15 +437,17 @@ class NasService
 
     private function ensureFolders(array $cfg, string $path): void
     {
-        $target  = escapeshellarg("//{$cfg['host']}/{$cfg['share']}");
-        $cred    = escapeshellarg("{$cfg['user']}%{$cfg['pass']}");
-        $parts   = explode('/', $path);
+        // Build all mkdir commands in one smbclient session (one TCP connection)
+        $target = escapeshellarg("//{$cfg['host']}/{$cfg['share']}");
+        $cred   = escapeshellarg("{$cfg['user']}%{$cfg['pass']}");
+        $parts  = explode('/', $path);
+        $cmds   = [];
         $current = '';
-
         foreach ($parts as $part) {
             $current = $current ? "{$current}/{$part}" : $part;
-            exec("smbclient {$target} -U {$cred} -c " . escapeshellarg("mkdir \"{$current}\"") . ' 2>&1');
+            $cmds[] = "mkdir \"{$current}\"";
         }
+        exec("smbclient {$target} -U {$cred} -c " . escapeshellarg(implode('; ', $cmds)) . ' 2>&1');
     }
 
     public function pullFromNas(string $nasPath, string $localDest): bool
