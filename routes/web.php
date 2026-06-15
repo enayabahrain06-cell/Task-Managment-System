@@ -261,6 +261,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
 
     // Audit log
     Route::get('audit',                            [AdminAuditLogController::class, 'index'])->name('audit.index');
+    Route::post('audit/clear-logs',               [AdminAuditLogController::class, 'clearLogs'])->name('audit.clear-logs');
 
     // Project attachment download (add ?inline=1 to serve inline for browser preview)
     Route::get('attachments/{attachment}/download', function (\App\Models\ProjectAttachment $attachment) {
