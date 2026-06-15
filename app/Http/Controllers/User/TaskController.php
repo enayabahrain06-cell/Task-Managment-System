@@ -498,18 +498,20 @@ class TaskController extends Controller
         $oldStatus = $task->status;
         $task->update(['status' => 'submitted']);
 
+        $cleanNote = $note ? trim(strip_tags($note)) : null;
+
         TaskLog::create([
             'task_id'  => $task->id,
             'user_id'  => auth()->id(),
             'action'   => 'status_updated_submitted',
-            'note'     => 'Submitted version ' . $version . ($note ? ': ' . $note : ''),
+            'note'     => 'Submitted version ' . $version . ($cleanNote ? ': ' . $cleanNote : ''),
             'metadata' => [
                 'old_status'      => $oldStatus,
                 'new_status'      => 'submitted',
                 'version'         => $version,
                 'has_file'        => !is_null($filePath),
                 'filename'        => $originalFilename,
-                'submission_note' => $note,
+                'submission_note' => $cleanNote,
             ],
         ]);
 

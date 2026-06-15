@@ -1119,7 +1119,7 @@
                         @endif
                         @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','task_reassigned','task_transferred','deadline_updated','auto_paused','social_posted','social_post_edited','attachment_added','attachment_deleted']))
                         @php
-                            $noteHtml = e($log->note);
+                            $noteHtml = e(strip_tags($log->note));
                             $noteHtml = preg_replace_callback('/(https?:\/\/[^\s<>"\']+)/i', function($m) {
                                 $url   = $m[1];
                                 $label = preg_replace('/^https?:\/\/(www\.)?/', '', $url);

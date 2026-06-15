@@ -409,7 +409,7 @@
 
                     @if($showNote)
                     <div class="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-100 text-sm text-gray-600 whitespace-pre-line">
-                        {{ $log->note }}
+                        {{ strip_tags($log->note) }}
                     </div>
                     @endif
 

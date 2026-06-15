@@ -756,7 +756,7 @@ document.addEventListener('keydown', function(e) {
                                 <span style="font-size:10px;color:#D1D5DB;margin-left:auto;white-space:nowrap;">{{ $log->created_at->diffForHumans() }}</span>
                             </div>
                             @if($showNote)
-                            <p style="font-size:10.5px;color:#9CA3AF;margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">"{{ Str::limit($log->note, 38) }}"</p>
+                            <p style="font-size:10.5px;color:#9CA3AF;margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">"{{ Str::limit(strip_tags($log->note), 38) }}"</p>
                             @endif
                         </div>
                     </div>
