@@ -452,6 +452,39 @@
         </div>
         @endif
 
+        {{-- Social-only assignee CTA --}}
+        @if($isSocialAssignee && !$task->social_posted_at)
+        <div style="background:linear-gradient(135deg,#EEF2FF,#F5F3FF);border:1.5px solid #C7D2FE;border-radius:14px;padding:20px;display:flex;align-items:center;gap:16px;">
+            <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(99,102,241,.3);">
+                <i class="fas fa-share-alt" style="color:#fff;font-size:18px;"></i>
+            </div>
+            <div style="flex:1;">
+                <p style="font-size:14px;font-weight:700;color:#3730A3;margin:0 0 4px;">Social Media Post Pending</p>
+                <p style="font-size:12px;color:#6D28D9;margin:0;">You're assigned to post this content on social media. Record the post once it's live.</p>
+            </div>
+            <a href="{{ route('social.show', $task) }}"
+               style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;box-shadow:0 4px 12px rgba(99,102,241,.3);flex-shrink:0;white-space:nowrap;"
+               onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">
+                <i class="fas fa-arrow-right" style="font-size:11px;"></i> Record Post
+            </a>
+        </div>
+        @elseif($isSocialAssignee && $task->social_posted_at)
+        <div style="background:linear-gradient(135deg,#ECFDF5,#F0FDF4);border:1.5px solid #A7F3D0;border-radius:14px;padding:20px;display:flex;align-items:center;gap:16px;">
+            <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#059669,#10B981);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-circle-check" style="color:#fff;font-size:18px;"></i>
+            </div>
+            <div style="flex:1;">
+                <p style="font-size:14px;font-weight:700;color:#065F46;margin:0 0 4px;">Social Post Submitted</p>
+                <p style="font-size:12px;color:#047857;margin:0;">Posted on {{ $task->social_posted_at->format(config('app.date_format', 'M d, Y') . ' · H:i') }}.</p>
+            </div>
+            <a href="{{ route('social.show', $task) }}"
+               style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:#ECFDF5;color:#059669;border:1.5px solid #A7F3D0;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;flex-shrink:0;white-space:nowrap;"
+               onmouseover="this.style.background='#D1FAE5'" onmouseout="this.style.background='#ECFDF5'">
+                <i class="fas fa-eye" style="font-size:11px;"></i> View Post
+            </a>
+        </div>
+        @endif
+
         {{-- Status Banner --}}
         @if(!$isSocialAssignee)
         @if($task->status === 'submitted')
@@ -620,6 +653,7 @@
                 deliveryUrl: '', attachMode: 'file',
                 dragging: false, dragCount: 0,
                 editorFocused: false, colorOpen: false, selectedColor: '#EF4444', savedRange: null,
+                linkOpen: false, linkUrl: '',
                 handleDrop(e) {
                     this.dragCount = 0; this.dragging = false;
                     const files = Array.from(e.dataTransfer.files);
@@ -635,7 +669,14 @@
                 cmd(c, v=null) { this.restoreRange(); this.$refs.rteEditor.focus(); document.execCommand(c, false, v); },
                 setSize(v) { this.restoreRange(); this.$refs.rteEditor.focus(); document.execCommand('fontSize', false, v); },
                 setColor(c) { this.colorOpen=false; this.selectedColor=c; this.restoreRange(); this.$refs.rteEditor.focus(); document.execCommand('foreColor', false, c); },
-                addLink() { const u=prompt('Enter URL:'); if(!u) return; this.restoreRange(); this.$refs.rteEditor.focus(); document.execCommand('createLink', false, u.startsWith('http')?u:'https://'+u); },
+                addLink() { this.saveRange(); this.linkOpen=!this.linkOpen; this.linkUrl=''; this.$nextTick(()=>this.$refs.linkUrlInput?.focus()); },
+                insertLink() {
+                    if (!this.linkUrl.trim()) { this.linkOpen=false; return; }
+                    const url = this.linkUrl.startsWith('http') ? this.linkUrl.trim() : 'https://'+this.linkUrl.trim();
+                    this.linkOpen=false; this.restoreRange(); this.$refs.rteEditor.focus();
+                    document.execCommand('createLink', false, url);
+                    this.$nextTick(()=>this.$refs.rteEditor.querySelectorAll('a[href]').forEach(a=>{ a.setAttribute('target','_blank'); a.setAttribute('rel','noopener'); }));
+                },
                 getBody() { return this.$refs.rteEditor?.innerHTML?.trim() || ''; }
              }" style="background:#fff;border-radius:14px;border:1.5px solid #6366F1;box-shadow:0 4px 16px rgba(99,102,241,.08);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 4px;display:flex;align-items:center;gap:8px;">
@@ -652,7 +693,7 @@
                 @if($task->status === 'viewed')
                     Click <strong style="color:#6366F1;">Start</strong> to begin — or add a note or file first if you'd like.
                 @elseif($canSubmit && auth()->user()->hasPermission('submit_work'))
-                    Post a comment to discuss, or attach your work and submit it for review.
+                    Use <strong style="color:#374151;">Comment</strong> for updates, or click <strong style="color:#6366F1;">Submit for Review</strong> when you're done — files are optional.
                 @else
                     Ask a question, share an update, or leave a note.
                 @endif
@@ -718,6 +759,21 @@
                         </div>
                         <div style="width:1px;height:16px;background:#D1D5DB;margin:0 4px;flex-shrink:0;"></div>
                         <button type="button" class="rte-toolbar-btn" @mousedown.prevent="cmd('removeFormat')" title="Clear formatting"><i class="fa fa-remove-format" style="font-size:11px;"></i></button>
+                    </div>
+                    {{-- Inline link input --}}
+                    <div x-show="linkOpen" x-transition style="background:#F0F4FF;border-bottom:1px solid #C7D2FE;padding:6px 10px;display:none;">
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <i class="fa fa-link" style="color:#6366F1;font-size:11px;flex-shrink:0;"></i>
+                            <input x-ref="linkUrlInput" type="text" x-model="linkUrl"
+                                   placeholder="Paste or type a URL…"
+                                   @keydown.enter.prevent="insertLink()"
+                                   @keydown.escape="linkOpen=false"
+                                   style="flex:1;border:1px solid #C7D2FE;border-radius:6px;padding:4px 8px;font-size:12px;outline:none;background:#fff;color:#111827;">
+                            <button type="button" @mousedown.prevent="insertLink()"
+                                    style="padding:4px 12px;background:#6366F1;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">Add Link</button>
+                            <button type="button" @mousedown.prevent="linkOpen=false"
+                                    style="padding:4px 8px;background:#F3F4F6;color:#6B7280;border:none;border-radius:6px;font-size:11px;cursor:pointer;">✕</button>
+                        </div>
                     </div>
                     <div x-ref="rteEditor" contenteditable="true" class="rte-field"
                          data-placeholder="{{ $task->status === 'viewed' ? 'Optional — add a note before starting...' : (($canSubmit && auth()->user()->hasPermission('submit_work')) ? 'Describe your work or write a comment...' : 'Write your comment...') }}"
@@ -811,6 +867,23 @@
                 @endif
 
                 <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    @if($canSubmit && auth()->user()->hasPermission('submit_work'))
+                    {{-- Comment button (secondary) --}}
+                    <button type="button"
+                            @click="$refs.bodyInput.value = getBody(); $refs.commentBtn?.click()"
+                            style="background:#F3F4F6;color:#374151;border:1.5px solid #E5E7EB;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;">
+                        <i class="fa fa-comment"></i> Comment
+                    </button>
+                    {{-- Submit for Review button (primary) --}}
+                    <button type="button"
+                            @click="$refs.bodyInput.value = getBody();
+                                deliveryUrl.trim()
+                                    ? $refs.submitBtn.click()
+                                    : (uFiles.length > 0 ? (showModal = true) : $refs.submitBtn.click())"
+                            style="background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:10px 22px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 4px 12px rgba(99,102,241,.3);">
+                        <i class="fa fa-upload"></i> Submit for Review
+                    </button>
+                    @else
                     <button type="button"
                             @click="$refs.bodyInput.value = getBody();
                             @if($task->status === 'viewed')
@@ -819,10 +892,6 @@
                                     : (getBody()
                                         ? $refs.commentBtn.click()
                                         : document.getElementById('_startForm').submit())
-                            @elseif($canSubmit && auth()->user()->hasPermission('submit_work'))
-                                deliveryUrl.trim()
-                                    ? $refs.submitBtn.click()
-                                    : (uFiles.length > 0 ? (showModal = true) : $refs.commentBtn.click())
                             @else
                                 $refs.commentBtn?.click()
                             @endif"
@@ -833,6 +902,7 @@
                             <i class="fa fa-paper-plane"></i> Send
                         @endif
                     </button>
+                    @endif
                 </div>
             </form>
 
@@ -1048,7 +1118,17 @@
                         <p style="font-size:12px;color:#DC2626;background:#FEF2F2;padding:6px 10px;border-radius:8px;border-left:3px solid #EF4444;margin:5px 0 0;">"{{ $meta['rejection_reason'] }}"</p>
                         @endif
                         @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','task_reassigned','task_transferred','deadline_updated','auto_paused','social_posted','social_post_edited','attachment_added','attachment_deleted']))
-                        <p style="font-size:12px;color:#6B7280;background:#F9FAFB;padding:6px 10px;border-radius:8px;border-left:3px solid #E5E7EB;margin:5px 0 0;">"{{ $log->note }}"</p>
+                        @php
+                            $noteHtml = e($log->note);
+                            $noteHtml = preg_replace_callback('/(https?:\/\/[^\s<>"\']+)/i', function($m) {
+                                $url   = $m[1];
+                                $label = preg_replace('/^https?:\/\/(www\.)?/', '', $url);
+                                $label = rtrim(strlen($label) > 40 ? substr($label, 0, 40) . '…' : $label, '/');
+                                return '<a href="' . e($url) . '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:#EEF2FF;color:#4F46E5;border:1px solid #C7D2FE;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;vertical-align:middle;"><i class="fa fa-arrow-up-right-from-square" style="font-size:9px;"></i>' . e($label) . '</a>';
+                            }, $noteHtml);
+                            $noteHtml = preg_replace('/\b(done)\b/i', '<strong style="color:#16A34A;"><i class="fa fa-circle-check" style="font-size:11px;margin-right:3px;"></i>$1</strong>', $noteHtml);
+                        @endphp
+                        <p style="font-size:12px;color:#6B7280;background:#F9FAFB;padding:6px 10px;border-radius:8px;border-left:3px solid #E5E7EB;margin:5px 0 0;">"{!! $noteHtml !!}"</p>
                         @endif
                     </div>
                 </div>
@@ -1082,7 +1162,7 @@
                             @if($sub->note || $sub->user_id === auth()->id())
                             <div style="margin-bottom:10px;">
                                 <div style="display:flex;align-items:flex-start;gap:6px;">
-                                    <p x-show="!editingNote" style="font-size:13px;color:#374151;margin:0;line-height:1.6;flex:1;" x-html="note || ''"></p>
+                                    <p x-show="!editingNote" style="font-size:13px;color:#374151;margin:0;line-height:1.6;flex:1;" x-html="linkifyHtml(note)"></p>
                                     @if($sub->user_id === auth()->id())
                                     <button @click="editingNote=!editingNote" style="font-size:10px;background:none;border:none;color:#9CA3AF;cursor:pointer;padding:0;flex-shrink:0;margin-top:2px;" title="Edit note">
                                         <i class="fa fa-pencil" style="font-size:10px;"></i>
@@ -1297,12 +1377,14 @@
                 <div x-data="{
                     editing: false, showHistory: false, body: {{ json_encode($comment->body) }},
                     editorFocused: false, colorOpen: false, selectedColor: '#EF4444', savedRange: null,
+                    linkOpen: false, linkUrl: '',
                     saveRange(){ const s=window.getSelection(); if(s.rangeCount) this.savedRange=s.getRangeAt(0).cloneRange(); },
                     restoreRange(){ if(!this.savedRange) return; const s=window.getSelection(); s.removeAllRanges(); s.addRange(this.savedRange); },
                     cmd(c,v=null){ this.restoreRange(); this.$refs.editEditor.focus(); document.execCommand(c,false,v); },
                     setSize(v){ this.restoreRange(); this.$refs.editEditor.focus(); document.execCommand('fontSize',false,v); },
                     setColor(c){ this.colorOpen=false; this.selectedColor=c; this.restoreRange(); this.$refs.editEditor.focus(); document.execCommand('foreColor',false,c); },
-                    addLink(){ const u=prompt('Enter URL:'); if(!u) return; this.restoreRange(); this.$refs.editEditor.focus(); document.execCommand('createLink',false,u.startsWith('http')?u:'https://'+u); },
+                    addLink(){ this.saveRange(); this.linkOpen=!this.linkOpen; this.linkUrl=''; this.$nextTick(()=>this.$refs.editLinkInput?.focus()); },
+                    insertLink(){ if(!this.linkUrl.trim()){this.linkOpen=false;return;} const url=this.linkUrl.startsWith('http')?this.linkUrl.trim():'https://'+this.linkUrl.trim(); this.linkOpen=false; this.restoreRange(); this.$refs.editEditor.focus(); document.execCommand('createLink',false,url); this.$nextTick(()=>this.$refs.editEditor.querySelectorAll('a[href]').forEach(a=>{a.setAttribute('target','_blank');a.setAttribute('rel','noopener');})); },
                     openEdit(){ this.editing=true; this.$nextTick(()=>{ if(this.$refs.editEditor) this.$refs.editEditor.innerHTML=this.body; }); }
                 }" style="display:flex;gap:14px;">
                     <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:32px;">
@@ -1329,7 +1411,7 @@
                         </div>
                         <div style="background:{{ $isAdmin ? '#F5F3FF' : '#F9FAFB' }};border:1px solid {{ $isAdmin ? '#EDE9FE' : '#E5E7EB' }};border-radius:10px;padding:10px 14px;{{ $isAdmin ? 'border-left:3px solid #8B5CF6;' : '' }}">
                             <div x-show="!editing">
-                                <div class="rte-field" style="font-size:13px;color:#374151;margin:0{{ $comment->file_path ? ' 0 10px' : '' }};line-height:1.6;padding:0;min-height:0;" x-html="body"></div>
+                                <div class="rte-field" style="font-size:13px;color:#374151;margin:0{{ $comment->file_path ? ' 0 10px' : '' }};line-height:1.6;padding:0;min-height:0;" x-html="linkifyHtml(body)"></div>
                                 @if($comment->file_path)
                                     @php $cItem = json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'isImage'=>$cIsImage,'isVideo'=>$cIsVideo,'version'=>1]); @endphp
                                     @if($cIsImage)
@@ -1448,6 +1530,18 @@
                                             </div>
                                             <div style="width:1px;height:14px;background:#D1D5DB;margin:0 3px;flex-shrink:0;"></div>
                                             <button type="button" class="rte-toolbar-btn" @mousedown.prevent="cmd('removeFormat')" title="Clear formatting"><i class="fa fa-remove-format" style="font-size:10px;"></i></button>
+                                        </div>
+                                        <div x-show="linkOpen" x-transition style="background:#F0F4FF;border-bottom:1px solid #C7D2FE;padding:5px 8px;display:none;">
+                                            <div style="display:flex;align-items:center;gap:5px;">
+                                                <i class="fa fa-link" style="color:#6366F1;font-size:10px;flex-shrink:0;"></i>
+                                                <input x-ref="editLinkInput" type="text" x-model="linkUrl"
+                                                       placeholder="Paste or type a URL…"
+                                                       @keydown.enter.prevent="insertLink()"
+                                                       @keydown.escape="linkOpen=false"
+                                                       style="flex:1;border:1px solid #C7D2FE;border-radius:5px;padding:3px 7px;font-size:11px;outline:none;background:#fff;color:#111827;">
+                                                <button type="button" @mousedown.prevent="insertLink()" style="padding:3px 10px;background:#6366F1;color:#fff;border:none;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;">Add</button>
+                                                <button type="button" @mousedown.prevent="linkOpen=false" style="padding:3px 7px;background:#F3F4F6;color:#6B7280;border:none;border-radius:5px;font-size:11px;cursor:pointer;">✕</button>
+                                            </div>
                                         </div>
                                         <div x-ref="editEditor" contenteditable="true" class="rte-field"
                                              data-placeholder="Edit your comment..."
@@ -1645,7 +1739,7 @@
         <style>
             @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
             .rte-field:empty:before { content: attr(data-placeholder); color: #9CA3AF; pointer-events: none; display: block; }
-            .rte-field a { color: #4F46E5; text-decoration: underline; }
+            .rte-field a { color: #4F46E5; text-decoration: underline; cursor: pointer; }
             .rte-field ul { list-style-type: disc; padding-left: 1.5em; margin: 4px 0; }
             .rte-field ol { list-style-type: decimal; padding-left: 1.5em; margin: 4px 0; }
             .rte-field li { margin: 2px 0; }
@@ -1686,6 +1780,27 @@
                 if (session && completedSeconds === 0) session.textContent = 'No time tracked yet';
             }
         })();
+
+        // Convert bare URLs to styled button links, and highlight "done" in green
+        window.linkifyHtml = function(html) {
+            if (!html) return '';
+            // 1. linkify URLs
+            html = html.replace(/(https?:\/\/[^\s<"']+)/gi, function(url) {
+                const label = url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '').substring(0, 40) + (url.length > 50 ? '…' : '');
+                return '<a href="' + url + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:#EEF2FF;color:#4F46E5;border:1px solid #C7D2FE;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;vertical-align:middle;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.background=\'#E0E7FF\'" onmouseout="this.style.background=\'#EEF2FF\'"><i class="fa fa-arrow-up-right-from-square" style="font-size:9px;flex-shrink:0;"></i>' + label + '</a>';
+            });
+            // 2. highlight "done" as a whole word (skip inside tags/attributes)
+            html = html.replace(/(?<=>|^|[\s,;:.!?()\-])(\bdone\b)(?=[<\s,;:.!?()\-]|$)/gi, function(m, word) {
+                return '<strong style="color:#16A34A;"><i class="fa fa-circle-check" style="font-size:11px;margin-right:3px;"></i>' + word + '</strong>';
+            });
+            return html;
+        };
+
+        // Make all existing RTE links open in a new tab
+        document.querySelectorAll('.rte-field a[href]').forEach(a => {
+            a.setAttribute('target', '_blank');
+            a.setAttribute('rel', 'noopener');
+        });
         </script>
 
         {{-- Time remaining --}}

@@ -108,11 +108,16 @@
                 default              => [ucfirst($task->status), 'bg-gray-100 text-gray-600'],
             };
         @endphp
-        <a href="{{ route('user.tasks.show', $task) }}"
+        @php
+            $isSocialOnlyTask = $task->social_assigned_to == auth()->id() && $task->assigned_to != auth()->id();
+            $taskUrl = $isSocialOnlyTask ? route('social.show', $task) : route('user.tasks.show', $task);
+        @endphp
+        <a href="{{ $taskUrl }}"
            class="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/70 transition group
                {{ $isPaused   ? 'bg-amber-50/40 border-l-2 border-amber-300'  : '' }}
                {{ $isRevision ? 'bg-red-50/40 border-l-2 border-red-300'      : '' }}
-               {{ $isOverdue && !$isPaused && !$isRevision ? 'bg-red-50/30'  : '' }}">
+               {{ $isOverdue && !$isPaused && !$isRevision ? 'bg-red-50/30'  : '' }}
+               {{ $isSocialOnlyTask ? 'bg-indigo-50/30' : '' }}">
             <div class="w-2.5 h-2.5 rounded-full flex-shrink-0
                 {{ $isDone ? 'bg-emerald-400' : ($task->status === 'in_progress' ? 'bg-amber-400' : ($isPaused ? 'bg-gray-400' : ($isOverdue ? 'bg-red-400' : 'bg-gray-300'))) }}">
             </div>
@@ -123,6 +128,11 @@
                     @if($isPaused)
                     <span class="inline-flex items-center gap-1 ml-1 text-xs font-normal text-amber-600">
                         <i class="fa fa-circle-pause" style="font-size:9px;"></i> paused
+                    </span>
+                    @endif
+                    @if($isSocialOnlyTask)
+                    <span class="inline-flex items-center gap-1 ml-1 text-xs font-semibold text-indigo-600" style="font-size:10px;">
+                        <i class="fas fa-share-alt" style="font-size:9px;"></i> Post Pending
                     </span>
                     @endif
                 </p>

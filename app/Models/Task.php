@@ -39,10 +39,12 @@ class Task extends Model
         'reviewer_id',
         'task_type',
         'tags',
+        'delivered_at',
     ];
 
     protected $casts = [
         'deadline'         => 'date',
+        'delivered_at'     => 'datetime',
         'first_viewed_at'      => 'datetime',
         'design_sent_at'                  => 'datetime',
         'customer_approved_at'            => 'datetime',

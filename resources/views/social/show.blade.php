@@ -371,6 +371,24 @@ $pMeta = [
             </div>
         </div>
         @else
+        {{-- ── Social Timer Banner ── --}}
+        @if($task->social_assigned_to == auth()->id())
+        <div id="smTimerBanner" style="display:flex;align-items:center;gap:12px;padding:12px 20px;background:linear-gradient(135deg,#F0FDF4,#ECFDF5);border:1.5px solid #BBF7D0;border-radius:14px;margin-bottom:14px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#10B981,#059669);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 10px rgba(16,185,129,.3);">
+                <i class="fas fa-stopwatch" style="color:#fff;font-size:15px;"></i>
+            </div>
+            <div style="flex:1;">
+                <p id="smTimerLabel" style="font-size:13px;font-weight:700;color:#065F46;margin:0 0 2px;">Timer running</p>
+                <p style="font-size:11px;color:#6EE7B7;margin:0;">Time is tracked while this page is open · stops when you submit</p>
+            </div>
+            <div style="font-size:22px;font-weight:800;color:#059669;font-variant-numeric:tabular-nums;letter-spacing:.5px;font-family:monospace;" id="smTimerDisplay">00:00:00</div>
+        </div>
+        <div id="smTimerAfterHours" style="display:none;align-items:center;gap:10px;padding:10px 16px;background:#FFF7ED;border:1.5px solid #FDE68A;border-radius:12px;margin-bottom:14px;">
+            <i class="fas fa-moon" style="color:#D97706;font-size:16px;flex-shrink:0;"></i>
+            <p style="font-size:13px;font-weight:600;color:#92400E;margin:0;">Work hours are over — timer paused. Come back tomorrow to continue.</p>
+        </div>
+        @endif
+
         {{-- Open: user can record posts --}}
         <div style="background:#fff;border-radius:18px;border:1px solid #E5E7EB;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow:hidden;"
              x-data="socialForm()">
@@ -540,6 +558,65 @@ $pMeta = [
     {{-- RIGHT COLUMN (sidebar) --}}
     <div style="display:flex;flex-direction:column;gap:16px;">
 
+        @php
+            $smTimerRunning  = $socialActiveSegment !== null;
+            $smActiveStartTs = $socialActiveSegment ? $socialActiveSegment->started_at->timestamp : 0;
+        @endphp
+
+        {{-- ── Social Timer Widget ── --}}
+        @if($task->social_assigned_to == auth()->id() && !$task->social_posted_at)
+
+        @if(session('timer_warning'))
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:14px;font-size:13px;color:#92400E;">
+            <i class="fas fa-clock" style="color:#D97706;flex-shrink:0;"></i>
+            {{ session('timer_warning') }}
+        </div>
+        @endif
+
+        <div id="smTimerWidget"
+             style="background:#fff;border-radius:18px;border:1.5px solid {{ $smTimerRunning ? '#FDE68A' : '#F3F4F6' }};box-shadow:0 2px 12px rgba(0,0,0,.06);padding:20px;text-align:center;transition:border-color .3s;">
+            <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px;">
+                <i class="fa fa-stopwatch" style="color:{{ $smTimerRunning ? '#D97706' : '#9CA3AF' }};font-size:13px;"></i>
+                <h3 style="font-size:12px;font-weight:600;color:#6B7280;margin:0;text-transform:uppercase;letter-spacing:.04em;">Social Time Tracked</h3>
+                @if($smTimerRunning)
+                <span style="width:8px;height:8px;border-radius:50%;background:#D97706;animation:pulse 1.5s infinite;display:inline-block;margin-left:2px;"></span>
+                @endif
+            </div>
+            <p id="smTimerDisplay"
+               style="font-size:30px;font-weight:700;color:#111827;margin:8px 0 4px;font-variant-numeric:tabular-nums;letter-spacing:-.5px;">00:00:00</p>
+            <p id="smTimerLabel" style="font-size:11px;color:#9CA3AF;margin:0 0 14px;">
+                @if($smTimerRunning) Session running @elseif($socialCompletedSeconds > 0) Timer paused @else No time tracked yet @endif
+            </p>
+
+            @if($smTimerRunning)
+            {{-- Pause button --}}
+            <form method="POST" action="{{ route('social.timer.pause', $task) }}" style="display:inline;">
+                @csrf
+                <button type="submit"
+                        style="background:#F3F4F6;color:#374151;border:none;padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;"
+                        onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                    <i class="fa fa-circle-pause"></i> Pause Timer
+                </button>
+            </form>
+            @else
+            {{-- Start / Resume button --}}
+            <form method="POST" action="{{ route('social.timer.start', $task) }}" style="display:inline;">
+                @csrf
+                <button type="submit"
+                        style="background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(217,119,6,.3);"
+                        onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">
+                    <i class="fa fa-circle-play"></i>
+                    {{ $socialCompletedSeconds > 0 ? 'Resume Timer' : 'Start Timer' }}
+                </button>
+            </form>
+            @endif
+
+            @if($socialCompletedSeconds > 0 && $smTimerRunning)
+            <p style="font-size:10px;color:#D1D5DB;margin:10px 0 0;">includes previous sessions</p>
+            @endif
+        </div>
+        @endif
+
         {{-- ── Project Card ── --}}
         @if($proj && !$proj->is_quick)
         @php [$projStatusLabel,$projStatusBg,$projStatusColor] = $projStatusMap[$proj->status] ?? [ucfirst($proj->status),'#F3F4F6','#6B7280']; @endphp
@@ -695,6 +772,68 @@ function socialForm() {
         get canSubmit() { return this.entries.every(e => e.platform !== ''); },
     };
 }
+
+/* ── Social Timer Widget JS ── */
+(function () {
+    var completedSeconds = {{ $socialCompletedSeconds }};
+    var activeStartTs    = {{ $smActiveStartTs }};
+    var display          = document.getElementById('smTimerDisplay');
+    var label            = document.getElementById('smTimerLabel');
+    var widget           = document.getElementById('smTimerWidget');
+
+    function fmt(s) {
+        var h   = Math.floor(s / 3600);
+        var m   = Math.floor((s % 3600) / 60);
+        var sec = s % 60;
+        return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (sec < 10 ? '0' : '') + sec;
+    }
+
+    function tick() {
+        var total = completedSeconds;
+        if (activeStartTs > 0) {
+            total += Math.max(0, Math.floor(Date.now() / 1000) - activeStartTs);
+        }
+        if (display) display.textContent = fmt(total);
+    }
+
+    // Initial render + ticking clock when a session is active
+    tick();
+    if (activeStartTs > 0) {
+        setInterval(tick, 1000);
+    }
+
+    @if($smTimerRunning)
+    // ── Auto-pause safety net at end of work day ──
+    var pauseUrl  = @js(route('social.timer.pause', $task));
+    var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    var endHour   = {{ (int) explode(':', \App\Models\Setting::get('work_end_time','18:00'))[0] }};
+    var endMin    = {{ (int) (explode(':', \App\Models\Setting::get('work_end_time','18:00'))[1] ?? 0) }};
+
+    function isAfterHours() {
+        var n = new Date();
+        return n.getHours() > endHour || (n.getHours() === endHour && n.getMinutes() >= endMin);
+    }
+
+    function sendPause() {
+        var data = new FormData();
+        data.append('_token', csrfToken);
+        navigator.sendBeacon(pauseUrl, data);
+    }
+
+    // Check every minute — if past end of day, beacon-pause and reload so widget shows paused state
+    setInterval(function () {
+        if (isAfterHours()) {
+            sendPause();
+            location.reload();
+        }
+    }, 60000);
+
+    // Safety beacon on page leave (handles browser close, navigation, etc.)
+    window.addEventListener('beforeunload', function () {
+        sendPause();
+    });
+    @endif
+})();
 </script>
 @endpush
 

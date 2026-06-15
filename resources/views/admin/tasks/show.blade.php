@@ -2326,8 +2326,21 @@
         {{-- Close Task --}}
         @if(!in_array($task->status, ['delivered','archived']))
         <form method="POST" action="{{ route('admin.tasks.forceClose', $task) }}"
+              x-data="{ showDate: false }"
               onsubmit="return confirm('Close this task and mark it as Delivered? This will notify the assignee.')">
             @csrf
+            <div style="margin-bottom:6px;">
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#6B7280;cursor:pointer;margin-bottom:6px;">
+                    <input type="checkbox" x-model="showDate" style="accent-color:#059669;">
+                    Set a specific close date (backdate)
+                </label>
+                <div x-show="showDate" x-transition style="display:none;">
+                    <input type="date" name="close_date"
+                           max="{{ now()->format('Y-m-d') }}"
+                           value="{{ now()->format('Y-m-d') }}"
+                           style="width:100%;padding:7px 10px;border:1.5px solid #D1FAE5;border-radius:8px;font-size:13px;color:#065F46;background:#F0FDF4;outline:none;box-sizing:border-box;">
+                </div>
+            </div>
             <button type="submit"
                     style="width:100%;background:linear-gradient(135deg,#059669,#10B981);color:#fff;border:none;padding:10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(5,150,105,.25);transition:opacity .15s;"
                     onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">

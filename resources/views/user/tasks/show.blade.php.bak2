@@ -10,14 +10,22 @@
     gap: 20px;
     align-items: start;
 }
-@media (max-width: 768px) {
-    .user-task-layout {
-        grid-template-columns: 1fr;
-    }
+@media (max-width: 900px) {
+    .user-task-layout { grid-template-columns: 1fr; }
 }
+/* Stepper: reduce forced min-width on small screens */
+.uts-stepper-inner { display:flex; align-items:center; }
+@media (max-width: 640px)  { .uts-stepper-inner { min-width: 520px !important; } }
+@media (max-width: 480px)  { .uts-stepper-inner { min-width: 420px !important; } }
+@media (max-width: 380px)  { .uts-stepper-inner { min-width: 340px !important; } }
 .user-task-table-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+}
+.user-task-table-wrap table { min-width: 600px; }
+@media (max-width: 768px) {
+    .user-task-table-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+    .user-task-table-wrap table { min-width: 600px !important; }
 }
 </style>
 @php
@@ -97,7 +105,7 @@
 
 {{-- Workflow Stepper --}}
 <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;margin-bottom:20px;overflow-x:auto;">
-    <div style="display:flex;align-items:center;min-width:{{ $hasSocial ? '900px' : '660px' }};">
+    <div class="uts-stepper-inner" style="min-width:{{ $hasSocial ? '900px' : '660px' }};">
         @foreach($steps as $idx => $step)
         @php
             $isSocial   = isset($step['socialState']);
@@ -332,7 +340,7 @@
         </div>
 
         {{-- Task & Project Attachments --}}
-        @php $allAttachments = $task->attachments->merge($task->project->attachments); @endphp
+        @php $allAttachments = $task->attachments->merge($task->project && !$task->project->is_quick ? $task->project->attachments->whereNull('task_id') : collect()); @endphp
         @if($allAttachments->isNotEmpty())
         @php
             $attachmentsJson = $allAttachments->map(fn($a) => [
@@ -644,7 +652,7 @@
                 @if($task->status === 'viewed')
                     Click <strong style="color:#6366F1;">Start</strong> to begin — or add a note or file first if you'd like.
                 @elseif($canSubmit && auth()->user()->hasPermission('submit_work'))
-                    Post a comment to discuss, or attach your work and submit it for review.
+                    Use <strong style="color:#374151;">Comment</strong> for updates, or click <strong style="color:#6366F1;">Submit for Review</strong> when you're done — files are optional.
                 @else
                     Ask a question, share an update, or leave a note.
                 @endif
@@ -803,6 +811,23 @@
                 @endif
 
                 <div style="display:flex;gap:8px;justify-content:flex-end;">
+                    @if($canSubmit && auth()->user()->hasPermission('submit_work'))
+                    {{-- Comment button (secondary) --}}
+                    <button type="button"
+                            @click="$refs.bodyInput.value = getBody(); $refs.commentBtn?.click()"
+                            style="background:#F3F4F6;color:#374151;border:1.5px solid #E5E7EB;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;">
+                        <i class="fa fa-comment"></i> Comment
+                    </button>
+                    {{-- Submit for Review button (primary) --}}
+                    <button type="button"
+                            @click="$refs.bodyInput.value = getBody();
+                                deliveryUrl.trim()
+                                    ? $refs.submitBtn.click()
+                                    : (uFiles.length > 0 ? (showModal = true) : $refs.submitBtn.click())"
+                            style="background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:10px 22px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 4px 12px rgba(99,102,241,.3);">
+                        <i class="fa fa-upload"></i> Submit for Review
+                    </button>
+                    @else
                     <button type="button"
                             @click="$refs.bodyInput.value = getBody();
                             @if($task->status === 'viewed')
@@ -811,10 +836,6 @@
                                     : (getBody()
                                         ? $refs.commentBtn.click()
                                         : document.getElementById('_startForm').submit())
-                            @elseif($canSubmit && auth()->user()->hasPermission('submit_work'))
-                                deliveryUrl.trim()
-                                    ? $refs.submitBtn.click()
-                                    : (uFiles.length > 0 ? (showModal = true) : $refs.commentBtn.click())
                             @else
                                 $refs.commentBtn?.click()
                             @endif"
@@ -825,6 +846,7 @@
                             <i class="fa fa-paper-plane"></i> Send
                         @endif
                     </button>
+                    @endif
                 </div>
             </form>
 

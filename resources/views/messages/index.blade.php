@@ -279,7 +279,24 @@ $colors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
         </template>
 
         <template x-if="activeUserId!==null || isGroup">
-            <div class="flex flex-col h-full overflow-hidden">
+            <div class="flex flex-col h-full overflow-hidden" style="position:relative;"
+                 @dragenter.prevent="dragCount++; dragOver=true"
+                 @dragleave.prevent="dragCount--; if(dragCount<=0){dragOver=false;dragCount=0;}"
+                 @dragover.prevent
+                 @drop.prevent="dragCount=0;dragOver=false;addFiles($event.dataTransfer.files)">
+
+                {{-- Drag overlay --}}
+                <div x-show="dragOver" x-transition:enter="transition-opacity duration-150" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                     style="position:absolute;inset:0;z-index:50;pointer-events:none;display:none;">
+                    <div style="position:absolute;inset:0;background:rgba(99,102,241,.08);backdrop-filter:blur(2px);border-radius:inherit;"></div>
+                    <div style="position:absolute;inset:12px;border:2px dashed #6366F1;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;">
+                        <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#4F46E5);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(99,102,241,.35);">
+                            <i class="fa fa-cloud-arrow-up" style="color:#fff;font-size:20px;"></i>
+                        </div>
+                        <p style="font-size:14px;font-weight:700;color:#4F46E5;margin:0;">Drop files to attach</p>
+                        <p style="font-size:12px;color:#6366F1;opacity:.7;margin:0;">Images, documents, or any file</p>
+                    </div>
+                </div>
 
                 {{-- Header --}}
                 <div class="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
@@ -438,27 +455,33 @@ $colors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
                     </div>
                 </template>
 
-                {{-- File preview --}}
-                <template x-if="pendingFile">
-                    <div class="flex items-center gap-3 px-4 py-2 bg-gray-50 border-t border-gray-200 flex-shrink-0">
-                        <template x-if="pendingFileIsImage">
-                            <img :src="pendingFilePreview" class="h-10 w-10 object-cover rounded-lg flex-shrink-0">
-                        </template>
-                        <template x-if="pendingFileIsVoice">
-                            <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <i class="fa fa-microphone text-red-500"></i>
-                            </div>
-                        </template>
-                        <template x-if="!pendingFileIsImage && !pendingFileIsVoice">
-                            <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <i class="fa fa-file-alt text-indigo-500"></i>
-                            </div>
-                        </template>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-xs font-medium text-gray-800 truncate" x-text="pendingFile.name"></p>
-                            <p class="text-xs text-gray-400" x-text="formatFileSize(pendingFile.size)"></p>
+                {{-- File queue preview (multi-file) --}}
+                <template x-if="pendingFiles.length > 0">
+                    <div class="px-4 py-2 bg-gray-50 border-t border-gray-200 flex-shrink-0">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-xs font-semibold text-gray-500" x-text="pendingFiles.length + ' file' + (pendingFiles.length>1?'s':'') + ' queued'"></span>
+                            <button @click="clearFile()" class="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1">
+                                <i class="fa fa-times" style="font-size:10px;"></i> Clear all
+                            </button>
                         </div>
-                        <button @click="clearFile()" class="text-gray-400 hover:text-red-500"><i class="fa fa-times text-sm"></i></button>
+                        <div class="flex flex-wrap gap-2">
+                            <template x-for="(pf, idx) in pendingFiles" :key="idx">
+                                <div class="flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-2 py-1.5" style="max-width:180px;">
+                                    <template x-if="pf.isImage">
+                                        <img :src="pf.preview" class="w-7 h-7 object-cover rounded flex-shrink-0">
+                                    </template>
+                                    <template x-if="!pf.isImage">
+                                        <div class="w-7 h-7 rounded flex items-center justify-center flex-shrink-0" :class="pf.isVoice ? 'bg-red-100' : 'bg-indigo-100'">
+                                            <i :class="pf.isVoice ? 'fa fa-microphone text-red-500' : 'fa fa-file-alt text-indigo-500'" style="font-size:11px;"></i>
+                                        </div>
+                                    </template>
+                                    <span class="text-xs text-gray-700 truncate flex-1 min-w-0" x-text="pf.name" style="max-width:90px;"></span>
+                                    <button @click="removeFile(idx)" class="text-gray-300 hover:text-red-500 flex-shrink-0 ml-0.5">
+                                        <i class="fa fa-times" style="font-size:9px;"></i>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
                     </div>
                 </template>
 
@@ -497,7 +520,7 @@ $colors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
                     <template x-if="!recording">
                         <div class="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-200 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100 transition">
                             <label class="cursor-pointer flex-shrink-0" title="Attach file">
-                                <input type="file" x-ref="fileInput" class="hidden" @change="onFileSelected($event)">
+                                <input type="file" x-ref="fileInput" class="hidden" multiple @change="onFileSelected($event)">
                                 <span class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 transition text-gray-400 hover:text-indigo-500">
                                     <i class="fa fa-paperclip text-sm"></i>
                                 </span>
@@ -518,7 +541,7 @@ $colors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
                                    @keydown.tab.prevent="mentionSearch!==null&&mentionResults.length?insertMention(mentionResults[mentionIndex]):null"
                                    class="flex-1 bg-transparent text-sm text-gray-700 focus:outline-none placeholder-gray-400 min-w-0">
                             <button type="button"
-                                    :disabled="sending||(newMessage.trim()===''&&!pendingFile)"
+                                    :disabled="sending||(newMessage.trim()===''&&pendingFiles.length===0)"
                                     @click="sendMessage()"
                                     class="w-8 h-8 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 rounded-lg flex items-center justify-center text-white transition flex-shrink-0">
                                 <i :class="sending?'fa fa-spinner fa-spin':'fa fa-paper-plane'" class="text-xs"></i>
@@ -770,7 +793,7 @@ function messageApp() {
         search: '', unreadCounts: {}, pollTimer: null, replyingTo: null,
         groups: {!! $groupsJson !!},
         // File
-        pendingFile: null, pendingFilePreview: null, pendingFileIsImage: false, pendingFileIsVoice: false,
+        pendingFiles: [], dragOver: false, dragCount: 0,
         // Voice recording
         recording: false, recorder: null, audioChunks: [], recordingTime: 0, recordingTimer: null, mediaStream: null,
         // @mention
@@ -847,35 +870,42 @@ function messageApp() {
             } finally { this.loading = false; }
         },
 
-        /* ── Send message (handles both direct and group) ── */
+        /* ── Send message (handles both direct and group, supports multiple files) ── */
         async sendMessage() {
             const body = this.newMessage.trim();
-            if ((!body && !this.pendingFile) || this.sending) return;
+            if ((!body && this.pendingFiles.length === 0) || this.sending) return;
             this.sending = true;
+            const url = this.isGroup ? `/messages/groups/${this.activeGroupId}/send` : '/messages/send';
+            const csrf = document.querySelector('meta[name="csrf-token"]').content;
+            const headers = { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' };
+            const files = [...this.pendingFiles];
+            const replyId = this.replyingTo?.id;
             try {
+                // First request: text body + first file (if any)
                 const fd = new FormData();
-                if (body)                    fd.append('body', body);
-                if (this.pendingFile)        fd.append('file', this.pendingFile);
-                if (this.pendingFileIsVoice) fd.append('is_voice', '1');
-                if (this.replyingTo)         fd.append('reply_to_id', this.replyingTo.id);
-
-                const url = this.isGroup
-                    ? `/messages/groups/${this.activeGroupId}/send`
-                    : '/messages/send';
+                if (body) fd.append('body', body);
                 if (!this.isGroup) fd.append('receiver_id', this.activeUserId);
-
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'X-Requested-With': 'XMLHttpRequest' },
-                    body: fd,
-                });
-                if (res.ok) {
-                    const msg = await res.json();
-                    this.messages.push(msg);
-                    this.newMessage = ''; this.replyingTo = null;
-                    this.clearFile(); this.mentionSearch = null;
-                    this.$nextTick(() => this.scrollToBottom());
+                if (replyId) fd.append('reply_to_id', replyId);
+                if (files.length > 0) {
+                    fd.append('file', files[0].file);
+                    if (files[0].isVoice) fd.append('is_voice', '1');
                 }
+                const res = await fetch(url, { method: 'POST', headers, body: fd });
+                if (res.ok) { this.messages.push(await res.json()); }
+
+                // Remaining files: one request each
+                for (let i = 1; i < files.length; i++) {
+                    const fd2 = new FormData();
+                    if (!this.isGroup) fd2.append('receiver_id', this.activeUserId);
+                    fd2.append('file', files[i].file);
+                    if (files[i].isVoice) fd2.append('is_voice', '1');
+                    const r2 = await fetch(url, { method: 'POST', headers, body: fd2 });
+                    if (r2.ok) { this.messages.push(await r2.json()); }
+                }
+
+                this.newMessage = ''; this.replyingTo = null;
+                this.clearFile(); this.mentionSearch = null;
+                this.$nextTick(() => this.scrollToBottom());
             } finally { this.sending = false; }
         },
 
@@ -932,12 +962,18 @@ function messageApp() {
             setTimeout(() => parent.style.background = '', 1400);
         },
 
-        onFileSelected(e) {
-            const file = e.target.files[0]; if (!file) return;
-            this.pendingFile = file; this.pendingFileIsImage = file.type.startsWith('image/'); this.pendingFileIsVoice = file.type.startsWith('audio/');
-            if (this.pendingFileIsImage) { const r = new FileReader(); r.onload = ev => this.pendingFilePreview = ev.target.result; r.readAsDataURL(file); }
+        addFiles(fileList) {
+            Array.from(fileList).forEach(file => {
+                const isImage = file.type.startsWith('image/');
+                const isVoice = file.type.startsWith('audio/');
+                const entry = { file, name: file.name, size: file.size, isImage, isVoice, preview: null };
+                if (isImage) { const r = new FileReader(); r.onload = ev => entry.preview = ev.target.result; r.readAsDataURL(file); }
+                this.pendingFiles.push(entry);
+            });
         },
-        clearFile() { this.pendingFile = null; this.pendingFilePreview = null; this.pendingFileIsImage = false; this.pendingFileIsVoice = false; if (this.$refs.fileInput) this.$refs.fileInput.value = ''; },
+        onFileSelected(e) { if (e.target.files.length) this.addFiles(e.target.files); },
+        removeFile(idx) { this.pendingFiles.splice(idx, 1); if (!this.pendingFiles.length && this.$refs.fileInput) this.$refs.fileInput.value = ''; },
+        clearFile() { this.pendingFiles = []; if (this.$refs.fileInput) this.$refs.fileInput.value = ''; },
         formatFileSize(b) { if (b<1024) return b+' B'; if (b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; },
 
         async startRecording() {
@@ -951,8 +987,8 @@ function messageApp() {
                 this.recorder.onstop = () => {
                     const blob = new Blob(this.audioChunks, { type: this.recorder.mimeType || 'audio/webm' });
                     const ext  = (this.recorder.mimeType || 'audio/webm').split('/')[1].split(';')[0];
-                    this.pendingFile = new File([blob], `voice-${Date.now()}.${ext}`, { type: blob.type });
-                    this.pendingFileIsVoice = true; this.pendingFileIsImage = false;
+                    const voiceFile = new File([blob], `voice-${Date.now()}.${ext}`, { type: blob.type });
+                    this.pendingFiles = [{ file: voiceFile, name: voiceFile.name, size: voiceFile.size, isImage: false, isVoice: true, preview: null }];
                     this.stopMediaTracks();
                     this.$nextTick(() => this.sendMessage());
                 };

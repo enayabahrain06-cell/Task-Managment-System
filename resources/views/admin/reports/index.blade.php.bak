@@ -13,20 +13,73 @@
 @media(max-width:1100px){ .rpt-grid-4,.rpt-grid-5 { grid-template-columns:repeat(2,1fr); } }
 @media(max-width:900px) { .rpt-grid-2,.rpt-grid-3 { grid-template-columns:1fr; } }
 @media(max-width:600px) { .rpt-grid-4,.rpt-grid-5 { grid-template-columns:1fr; } }
+/* Inline sub-grids inside cards */
+.rpt-inline-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px; min-width:0; }
+.rpt-inline-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; min-width:0; }
+.rpt-inline-3 > *, .rpt-inline-4 > * { min-width:0; }
 
+/* ── Mobile ── */
+@media(max-width:768px) {
+    /* Filter bar stacks vertically — !important beats inline style= */
+    #rpt-filter-bar { flex-direction:column !important; align-items:stretch !important; gap:10px !important; }
+    #rpt-filter-bar > div:first-child { width:100% !important; }
+    #rpt-actions-bar { flex-direction:column !important; align-items:stretch !important; width:100% !important; gap:8px !important; }
+    #rpt-actions-bar form { flex-direction:column !important; width:100% !important; gap:8px !important; align-items:stretch !important; }
+    /* Range pill row scrolls horizontally */
+    #rpt-actions-bar form > div:first-child { overflow-x:auto !important; -webkit-overflow-scrolling:touch; white-space:nowrap; width:100% !important; }
+    /* Selects full width */
+    #rpt-actions-bar select { width:100% !important; max-width:100% !important; box-sizing:border-box !important; }
+    /* Export button full width */
+    #rpt-actions-bar > div { width:100% !important; }
+    #rpt-actions-bar > div > button:first-child { width:100% !important; justify-content:center !important; }
+    /* Card grids */
+    .rpt-inline-3 { grid-template-columns:repeat(3,1fr) !important; }
+    .rpt-inline-4 { grid-template-columns:repeat(2,1fr) !important; }
+}
+@media(max-width:480px) {
+    .rpt-grid-2  { grid-template-columns:1fr !important; }
+    .rpt-table th, .rpt-table td { padding:5px 7px !important; font-size:11px !important; }
+    #rpt-capture-zone { padding:0 !important; }
+    .rpt-inline-3 { grid-template-columns:1fr 1fr !important; }
+    .rpt-inline-4 { grid-template-columns:1fr 1fr !important; }
+    /* Card padding tighter on phones */
+    .rpt-card { padding:10px 8px !important; }
+    /* Completion rate bar wraps on small phones */
+    .rpt-rate-bar-row { flex-wrap:wrap !important; gap:6px !important; }
+    .rpt-rate-bar-row .rpt-rate-avg { display:none !important; }
+}
+@media(max-width:380px) {
+    .rpt-inline-4 { grid-template-columns:1fr 1fr !important; }
+    .rpt-rate-bar-row { flex-direction:column !important; }
+    .rpt-rate-bar-row > div { width:100% !important; }
+}
+
+/* Grid items must not overflow their track */
+.rpt-grid-2 > *, .rpt-grid-3 > *,
+.rpt-grid-4 > *, .rpt-grid-5 > * { min-width:0; }
 .rpt-card {
     background:#fff; border-radius:12px;
     border:1px solid #E5E7EB;
     box-shadow:0 1px 3px rgba(0,0,0,.04);
     padding:14px;
+    min-width:0;
 }
 .rpt-section-title {
     font-size:12px; font-weight:700; color:#374151;
     text-transform:uppercase; letter-spacing:.06em;
     margin:0 0 10px; display:flex; align-items:center; gap:7px;
 }
-.rpt-scroll-wrap { overflow-y:auto; max-height:190px; }
-.rpt-table { width:100%; border-collapse:collapse; font-size:13px; }
+.rpt-scroll-wrap { overflow-x:auto; overflow-y:auto; max-height:220px; -webkit-overflow-scrolling:touch; display:block; width:100%; }
+.rpt-table { width:100%; border-collapse:collapse; font-size:13px; min-width:560px; }
+/* Per-table min-widths based on column count */
+#proj-table            { min-width:600px; }
+#customer-table        { min-width:660px; }
+#approval-speed-table  { min-width:700px; }
+#overdue-table         { min-width:680px; }
+#reopened-table        { min-width:580px; }
+#billing-user-table    { min-width:600px; }
+#billing-customer-table{ min-width:520px; }
+#ad-budget-table       { min-width:720px; }
 .rpt-table th {
     text-align:left; padding:7px 10px;
     font-size:10px; font-weight:700; color:#6B7280;
@@ -167,7 +220,7 @@
 <div id="rpt-main-content">
 
 {{-- ══ Filter / Action Bar ══ --}}
-<div id="rpt-filter-bar" class="no-print" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+<div id="rpt-filter-bar" class="no-print" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px;width:100%;box-sizing:border-box;">
     <div>
         <h1 style="font-size:18px;font-weight:700;color:#111827;margin:0;">
             @if($selectedUser) {{ $selectedUser->name }} — Employee Report
@@ -179,7 +232,7 @@
             @if($selectedUser) · {{ ucfirst($selectedUser->role) }}@endif
         </p>
     </div>
-    <div id="rpt-actions-bar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+    <div id="rpt-actions-bar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;">
 
         {{-- Range selector --}}
         <form method="GET" action="{{ route('admin.reports.index') }}" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
@@ -369,10 +422,14 @@ $platformIcons = ['facebook'=>['fab fa-facebook','#1877F2'],'instagram'=>['fab f
 $kpisRow1 = [
     ['label' => $empName ? 'Assigned Tasks' : 'Total Tasks',
      'value' => $totalTasks,         'icon'=>'fa-list-check',   'color'=>'#6366F1','bg'=>'#EEF2FF',
-     'sub'   => $empName ? 'Assigned to '.$empName : 'In selected period'],
-    ['label'=>'Completed',        'value'=>$completedTasks,    'icon'=>'fa-circle-check', 'color'=>'#10B981','bg'=>'#D1FAE5', 'sub'=>'Approved + Delivered'],
-    ['label'=>'Completion Rate',  'value'=>$completionRate.'%','icon'=>'fa-chart-pie',     'color'=>'#F59E0B','bg'=>'#FEF3C7', 'sub'=>'Of all tasks done'],
-    ['label'=>'On-time Rate',     'value'=>$onTimeRate.'%',    'icon'=>'fa-clock',         'color'=>'#8B5CF6','bg'=>'#EDE9FE', 'sub'=>'Before deadline'],
+     'sub'   => $empName ? 'Assigned to '.$empName : 'In selected period',
+     'modal' => 'total-tasks-modal'],
+    ['label'=>'Completed',        'value'=>$completedTasks,    'icon'=>'fa-circle-check', 'color'=>'#10B981','bg'=>'#D1FAE5', 'sub'=>'Approved + Delivered',
+     'modal' => 'completed-tasks-modal'],
+    ['label'=>'Completion Rate',  'value'=>$completionRate.'%','icon'=>'fa-chart-pie',     'color'=>'#F59E0B','bg'=>'#FEF3C7', 'sub'=>'Of all tasks done',
+     'modal' => 'completed-tasks-modal'],
+    ['label'=>'On-time Rate',     'value'=>$onTimeRate.'%',    'icon'=>'fa-clock',         'color'=>'#8B5CF6','bg'=>'#EDE9FE', 'sub'=>'Before deadline',
+     'modal' => 'ontime-tasks-modal'],
 ];
 
 // Row 2 — context metrics (count varies by filter)
@@ -403,7 +460,9 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
 {{-- Row 1: Core metrics (always 4) --}}
 <div class="rpt-grid-4">
     @foreach($kpisRow1 as $kpi)
-    <div class="rpt-card" style="padding:10px 12px;">
+    @php $modal1 = $kpi['modal'] ?? null; @endphp
+    <div class="rpt-card" style="padding:10px 12px;{{ $modal1 ? 'cursor:pointer;transition:box-shadow .15s;' : '' }}"
+         @if($modal1) onclick="document.getElementById('{{ $modal1 }}').style.display='flex'" onmouseover="this.style.boxShadow='0 4px 16px rgba(99,102,241,.1)'" onmouseout="this.style.boxShadow=''" @endif>
         <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px;">
             <div style="width:28px;height:28px;border-radius:8px;background:{{ $kpi['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fas {{ $kpi['icon'] }}" style="color:{{ $kpi['color'] }};font-size:11px;"></i>
@@ -419,7 +478,9 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
 {{-- Row 2: Context metrics (5 cols without filter, 3 cols with user filter) --}}
 <div class="{{ $row2Class }}">
     @foreach($kpisRow2 as $kpi)
-    <div class="rpt-card" style="padding:10px 12px;">
+    @php $isSocialCard = ($kpi['label'] === 'Social Posts'); @endphp
+    <div class="rpt-card" style="padding:10px 12px;{{ $isSocialCard ? 'cursor:pointer;transition:box-shadow .15s;' : '' }}"
+         @if($isSocialCard) onclick="document.getElementById('social-posts-modal').style.display='flex'" onmouseover="this.style.boxShadow='0 4px 16px rgba(236,72,153,.13)'" onmouseout="this.style.boxShadow=''" @endif>
         <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px;">
             <div style="width:28px;height:28px;border-radius:8px;background:{{ $kpi['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fas {{ $kpi['icon'] }}" style="color:{{ $kpi['color'] }};font-size:11px;"></i>
@@ -441,6 +502,205 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         @endif
     </div>
     @endforeach
+</div>
+
+{{-- ══ Social Posts Modal ══ --}}
+<div id="social-posts-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.45);" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#fff;border-radius:18px;width:100%;max-width:780px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.22);overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #F3F4F6;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:9px;background:#FCE7F3;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-share-nodes" style="color:#EC4899;font-size:13px;"></i>
+                </div>
+                <div>
+                    <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Social Posts</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;">{{ $socialPostsCount }} published</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('social-posts-modal').style.display='none'" style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;font-size:16px;color:#6B7280;display:flex;align-items:center;justify-content:center;">×</button>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:0 22px 22px;">
+            @if($socialPostsList->isEmpty())
+            <div style="text-align:center;padding:40px 20px;">
+                <i class="fas fa-share-nodes" style="font-size:28px;color:#FCE7F3;margin-bottom:10px;"></i>
+                <p style="font-size:13px;color:#9CA3AF;margin:0;">No social posts in this period.</p>
+            </div>
+            @else
+            <div style="overflow-x:auto;margin-top:16px;">
+            <table class="rpt-table" id="social-posts-modal-table">
+                <thead>
+                    <tr>
+                        <th>Task</th>
+                        <th>Customer</th>
+                        <th style="text-align:center;">Platform</th>
+                        <th>Posted By</th>
+                        <th style="text-align:right;">Date</th>
+                        <th style="text-align:center;">Link</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach($socialPostsList as $sp)
+                @php $spIco = $platformIcons[$sp['platform']] ?? $platformIcons['other']; @endphp
+                <tr>
+                    <td style="max-width:200px;">
+                        <a href="{{ route('admin.tasks.show', $sp['task_id']) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#EC4899'" onmouseout="this.style.color='#111827'" title="{{ $sp['task'] }}">
+                            {{ Str::limit($sp['task'], 40) }}
+                        </a>
+                    </td>
+                    <td style="color:#374151;font-size:12px;">{{ $sp['customer'] }}</td>
+                    <td style="text-align:center;">
+                        <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#374151;background:#F9FAFB;border:1px solid #F3F4F6;border-radius:6px;padding:2px 8px;">
+                            <i class="{{ $spIco[0] }}" style="color:{{ $spIco[1] }};font-size:10px;"></i>
+                            {{ ucfirst($sp['platform']) }}
+                        </span>
+                    </td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $sp['poster'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;text-align:right;white-space:nowrap;">{{ $sp['date'] }}</td>
+                    <td style="text-align:center;">
+                        @if($sp['url'])
+                        <a href="{{ $sp['url'] }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:#FCE7F3;border-radius:6px;font-size:11px;font-weight:600;color:#EC4899;text-decoration:none;" onmouseover="this.style.background='#FBCFE8'" onmouseout="this.style.background='#FCE7F3'">
+                            <i class="fas fa-arrow-up-right-from-square" style="font-size:9px;"></i> View
+                        </a>
+                        @else
+                        <span style="font-size:11px;color:#D1D5DB;">—</span>
+                        @endif
+                    </td>
+                </tr>
+                @endforeach
+                </tbody>
+            </table>
+            </div>
+            @endif
+        </div>
+    </div>
+</div>
+
+@php
+$statusBgMap    = ['draft'=>'#F3F4F6','assigned'=>'#EEF2FF','viewed'=>'#E0F2FE','in_progress'=>'#FFF7ED','submitted'=>'#F5F3FF','revision_requested'=>'#FEE2E2','approved'=>'#ECFDF5','delivered'=>'#ECFDF5','archived'=>'#F3F4F6','paused'=>'#FEF3C7'];
+$statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1','in_progress'=>'#EA580C','submitted'=>'#7C3AED','revision_requested'=>'#DC2626','approved'=>'#16A34A','delivered'=>'#16A34A','archived'=>'#9CA3AF','paused'=>'#D97706'];
+@endphp
+
+{{-- ══ Total Tasks Modal ══ --}}
+<div id="total-tasks-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.45);" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#fff;border-radius:18px;width:100%;max-width:820px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.22);overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #F3F4F6;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:9px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-list-check" style="color:#6366F1;font-size:13px;"></i>
+                </div>
+                <div>
+                    <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">All Tasks</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;">{{ $totalTasks }} in selected period</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('total-tasks-modal').style.display='none'" style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;font-size:16px;color:#6B7280;display:flex;align-items:center;justify-content:center;">×</button>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:0 22px 22px;">
+            @if($totalTasksList->isEmpty())
+            <p style="text-align:center;color:#9CA3AF;font-size:13px;padding:32px 0;">No tasks in this period.</p>
+            @else
+            <div style="overflow-x:auto;margin-top:16px;">
+            <table class="rpt-table" id="total-tasks-modal-table">
+                <thead><tr><th>Task</th><th>Project</th><th>Customer</th><th>Assignee</th><th style="text-align:center;">Status</th><th style="text-align:right;">Deadline</th></tr></thead>
+                <tbody>
+                @foreach($totalTasksList as $ct)
+                <tr>
+                    <td style="max-width:200px;"><a href="{{ route('admin.tasks.show', $ct['task_id']) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#111827'" title="{{ $ct['title'] }}">{{ Str::limit($ct['title'], 40) }}</a></td>
+                    <td style="color:#374151;font-size:12px;">{{ $ct['project'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $ct['customer'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $ct['assignee'] }}</td>
+                    <td style="text-align:center;"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;background:{{ $statusBgMap[$ct['status']] ?? '#F3F4F6' }};color:{{ $statusColorMap[$ct['status']] ?? '#374151' }};">{{ $ct['status_label'] }}</span></td>
+                    <td style="text-align:right;font-size:12px;white-space:nowrap;color:{{ $ct['overdue'] ? '#DC2626' : '#6B7280' }};">{{ $ct['deadline'] ?? '—' }}{{ $ct['overdue'] ? ' ⚠' : '' }}</td>
+                </tr>
+                @endforeach
+                </tbody>
+            </table>
+            </div>
+            @endif
+        </div>
+    </div>
+</div>
+
+{{-- ══ Completed Tasks Modal ══ --}}
+<div id="completed-tasks-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.45);" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#fff;border-radius:18px;width:100%;max-width:820px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.22);overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #F3F4F6;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:9px;background:#D1FAE5;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-circle-check" style="color:#10B981;font-size:13px;"></i>
+                </div>
+                <div>
+                    <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Completed Tasks</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;">{{ $completedTasks }} approved or delivered</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('completed-tasks-modal').style.display='none'" style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;font-size:16px;color:#6B7280;display:flex;align-items:center;justify-content:center;">×</button>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:0 22px 22px;">
+            @if($completedTasksList->isEmpty())
+            <p style="text-align:center;color:#9CA3AF;font-size:13px;padding:32px 0;">No completed tasks in this period.</p>
+            @else
+            <div style="overflow-x:auto;margin-top:16px;">
+            <table class="rpt-table" id="completed-tasks-modal-table">
+                <thead><tr><th>Task</th><th>Project</th><th>Customer</th><th>Assignee</th><th style="text-align:center;">Status</th><th style="text-align:right;">Deadline</th></tr></thead>
+                <tbody>
+                @foreach($completedTasksList as $ct)
+                <tr>
+                    <td style="max-width:200px;"><a href="{{ route('admin.tasks.show', $ct['task_id']) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#10B981'" onmouseout="this.style.color='#111827'" title="{{ $ct['title'] }}">{{ Str::limit($ct['title'], 40) }}</a></td>
+                    <td style="color:#374151;font-size:12px;">{{ $ct['project'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $ct['customer'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $ct['assignee'] }}</td>
+                    <td style="text-align:center;"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;background:{{ $statusBgMap[$ct['status']] ?? '#F3F4F6' }};color:{{ $statusColorMap[$ct['status']] ?? '#374151' }};">{{ $ct['status_label'] }}</span></td>
+                    <td style="text-align:right;font-size:12px;white-space:nowrap;color:#6B7280;">{{ $ct['deadline'] ?? '—' }}</td>
+                </tr>
+                @endforeach
+                </tbody>
+            </table>
+            </div>
+            @endif
+        </div>
+    </div>
+</div>
+
+{{-- ══ On-time Tasks Modal ══ --}}
+<div id="ontime-tasks-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.45);" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#fff;border-radius:18px;width:100%;max-width:820px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.22);overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #F3F4F6;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:9px;background:#EDE9FE;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-clock" style="color:#8B5CF6;font-size:13px;"></i>
+                </div>
+                <div>
+                    <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">On-time Tasks</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;">{{ $onTimeTasksList->count() }} completed before deadline</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('ontime-tasks-modal').style.display='none'" style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;font-size:16px;color:#6B7280;display:flex;align-items:center;justify-content:center;">×</button>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:0 22px 22px;">
+            @if($onTimeTasksList->isEmpty())
+            <p style="text-align:center;color:#9CA3AF;font-size:13px;padding:32px 0;">No on-time completions in this period.</p>
+            @else
+            <div style="overflow-x:auto;margin-top:16px;">
+            <table class="rpt-table" id="ontime-tasks-modal-table">
+                <thead><tr><th>Task</th><th>Project</th><th>Customer</th><th>Assignee</th><th style="text-align:center;">Status</th><th style="text-align:right;">Deadline</th></tr></thead>
+                <tbody>
+                @foreach($onTimeTasksList as $ct)
+                <tr>
+                    <td style="max-width:200px;"><a href="{{ route('admin.tasks.show', $ct['task_id']) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#8B5CF6'" onmouseout="this.style.color='#111827'" title="{{ $ct['title'] }}">{{ Str::limit($ct['title'], 40) }}</a></td>
+                    <td style="color:#374151;font-size:12px;">{{ $ct['project'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $ct['customer'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $ct['assignee'] }}</td>
+                    <td style="text-align:center;"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;background:{{ $statusBgMap[$ct['status']] ?? '#F3F4F6' }};color:{{ $statusColorMap[$ct['status']] ?? '#374151' }};">{{ $ct['status_label'] }}</span></td>
+                    <td style="text-align:right;font-size:12px;white-space:nowrap;color:#6B7280;">{{ $ct['deadline'] ?? '—' }}</td>
+                </tr>
+                @endforeach
+                </tbody>
+            </table>
+            </div>
+            @endif
+        </div>
+    </div>
 </div>
 
 {{-- ══ Row 2: Status + Priority + Trend (3-col) ══ --}}
@@ -483,7 +743,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
             </span>
             @if($selectedUser) Priority — {{ $selectedUser->name }}'s Tasks @else Priority Distribution @endif
         </p>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">
+        <div class="rpt-inline-3">
             @foreach($priorityBreakdown as $p => $data)
             <div style="background:{{ $data['bg'] }};border-radius:10px;padding:10px 8px;text-align:center;">
                 <p style="font-size:22px;font-weight:800;color:{{ $data['color'] }};margin:0;line-height:1;">{{ $data['count'] }}</p>
@@ -601,8 +861,8 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
     @endphp
     <div class="rpt-card" style="display:flex;flex-direction:column;">
         {{-- Header --}}
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-            <p class="rpt-section-title" style="margin:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+            <p class="rpt-section-title" style="margin:0;min-width:0;">
                 <span style="width:22px;height:22px;border-radius:6px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <i class="fas fa-chart-line" style="color:#6366F1;font-size:10px;"></i>
                 </span>
@@ -615,7 +875,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         </div>
 
         {{-- Stat pills --}}
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
+        <div class="rpt-inline-4">
             <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:10px 12px;">
                 <p style="font-size:10px;font-weight:600;color:#6B7280;margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em;">Completed</p>
                 <p style="font-size:22px;font-weight:800;color:#059669;margin:0;line-height:1;">{{ $totalDone12 }}</p>
@@ -641,18 +901,18 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         </div>
 
         {{-- Completion rate bar --}}
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 12px;background:#F9FAFB;border-radius:10px;border:1px solid #F0F0F0;">
+        <div class="rpt-rate-bar-row" style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 12px;background:#F9FAFB;border-radius:10px;border:1px solid #F0F0F0;">
             <span style="font-size:11px;font-weight:600;color:#374151;white-space:nowrap;">12-Month Rate</span>
-            <div style="flex:1;height:7px;background:#E5E7EB;border-radius:99px;overflow:hidden;">
+            <div style="flex:1;min-width:60px;height:7px;background:#E5E7EB;border-radius:99px;overflow:hidden;">
                 <div style="height:7px;width:{{ $completionRate12 }}%;background:{{ $completionRate12 >= 80 ? 'linear-gradient(90deg,#059669,#10B981)' : ($completionRate12 >= 50 ? 'linear-gradient(90deg,#D97706,#F59E0B)' : 'linear-gradient(90deg,#DC2626,#EF4444)') }};border-radius:99px;transition:width .6s;"></div>
             </div>
             <span style="font-size:12px;font-weight:700;color:{{ $completionRate12 >= 80 ? '#059669' : ($completionRate12 >= 50 ? '#D97706' : '#DC2626') }};min-width:34px;text-align:right;">{{ $completionRate12 }}%</span>
-            <span style="font-size:10px;color:#9CA3AF;">avg {{ $avgCompletion }}/mo</span>
+            <span class="rpt-rate-avg" style="font-size:10px;color:#9CA3AF;white-space:nowrap;">avg {{ $avgCompletion }}/mo</span>
         </div>
 
         {{-- Chart --}}
-        <div style="flex:1;position:relative;min-height:180px;">
-            <canvas id="projCompletionChart"></canvas>
+        <div style="flex:1;position:relative;min-height:160px;">
+            <canvas id="projCompletionChart" style="max-width:100%;"></canvas>
         </div>
     </div>
 
@@ -673,8 +933,8 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
             <i class="fas fa-circle-info" style="margin-right:3px;"></i>
             Admin/Manager: counted by tasks <strong>created</strong> &amp; tasks <strong>approved</strong>. &nbsp;Users: counted by assigned tasks.
         </div>
-        <div style="overflow-x:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:12px;" id="team-table">
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:780px;" id="team-table">
                 <thead>
                     <tr style="background:#F9FAFB;border-bottom:1px solid #E5E7EB;">
                         <th style="text-align:left;padding:7px 12px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;">Member</th>
@@ -770,7 +1030,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         </p>
         <span style="font-size:11px;color:#4F46E5;background:#EEF2FF;padding:2px 9px;border-radius:20px;font-weight:600;">{{ $customerStats->count() }} Customers</span>
     </div>
-    <div style="overflow-x:auto;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
         <table class="rpt-table" id="customer-table">
             <thead>
                 <tr>
@@ -864,7 +1124,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         <p style="font-size:12px;color:#9CA3AF;margin:0;max-width:360px;margin:0 auto;">Data appears here once a manager marks a task as <strong>"Awaiting Customer Approval"</strong> from the Approvals page. That action records when the design was sent, and the timer starts.</p>
     </div>
     @else
-    <div style="overflow-x:auto;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
     <table class="rpt-table" id="approval-speed-table">
         <thead>
             <tr>
@@ -966,7 +1226,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         <p style="font-size:13px;color:#9CA3AF;margin:0;">No social media posts pending.</p>
     </div>
     @else
-    <div style="overflow-x:auto;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
     <table class="rpt-table">
         <thead>
             <tr>
@@ -1071,8 +1331,8 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         <p style="font-size:13px;color:#9CA3AF;margin:0;">No tasks pending a social media decision.</p>
     </div>
     @else
-    <div style="overflow-x:auto;">
-    <table class="rpt-table">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
+    <table class="rpt-table" id="decide-later-table">
         <thead>
             <tr>
                 <th>Task</th>
@@ -1343,7 +1603,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         </span>
     </div>
 
-    <div style="overflow-x:auto;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
     <table class="rpt-table" id="billing-user-table">
         <thead>
             <tr>
@@ -1436,7 +1696,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         @endforeach
     </div>
 
-    <div style="overflow-x:auto;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
     <table class="rpt-table" id="billing-customer-table">
         <thead>
             <tr>
@@ -1545,7 +1805,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         </div>
     </div>
 
-    <div style="overflow-x:auto;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
     <table class="rpt-table" id="ad-budget-table">
         <thead>
             <tr>
@@ -2569,9 +2829,14 @@ function rptPaginate(tableId, perPage) {
 // Init all report tables
 document.addEventListener('DOMContentLoaded', function() {
     ['proj-table','team-table','customer-table','approval-speed-table',
+     'decide-later-table',
      'overdue-table','reopened-table','reassigned-bottom-table',
      'billing-user-table','billing-customer-table','ad-budget-table'
     ].forEach(function(id) { rptPaginate(id, 7); });
+    rptPaginate('social-posts-modal-table', 10);
+    rptPaginate('total-tasks-modal-table', 10);
+    rptPaginate('completed-tasks-modal-table', 10);
+    rptPaginate('ontime-tasks-modal-table', 10);
 });
 
 </script>

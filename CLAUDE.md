@@ -143,3 +143,12 @@ App\Models\Task::where(\$s)->get(['id','status','deadline'])->groupBy('status')-
 
 ### Rule 3 — Always verify the live page before marking work as done
 Before reporting a task as complete, open the affected URL on the live/staging server and visually confirm the change works as expected. Check the golden path and any related sections on the same page (e.g. if fixing a stat card, also check the Performance chart and any other section that uses the same data). Never mark work done based only on code review — always verify in the browser.
+
+### Rule 5 — File upload fields must always use drag-and-drop and support multiple files
+Every file attachment field in any form — modal, page, or inline — must:
+1. Show a styled drop zone (`border: 2px dashed`) that responds to `@dragover`, `@dragleave`, and `@drop` events
+2. Accept multiple files (`<input type="file" multiple>`)
+3. Display a chip list of staged files with filename, size, icon, and an individual remove button
+4. Sync the hidden `<input>` file list via `DataTransfer` when files are added or removed
+
+Never use a plain bare `<input type="file">` as the sole UI. Use the `qtHandleFiles` / `qtRemoveFile` pattern from the Quick Task modal (`resources/views/admin/dashboard.blade.php`) as the reference implementation.

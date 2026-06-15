@@ -388,6 +388,11 @@ document.addEventListener('keydown', function(e) {
                         <div style="width:8px;height:8px;border-radius:50%;background:{{ $pco }};flex-shrink:0;margin-top:1px;"></div>
                         <div style="flex:1;min-width:0;">
                             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                @if($task->status === 'submitted')
+                                <span style="display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;padding:2px 7px;border-radius:5px;background:#EDE9FE;color:#6D28D9;border:1px solid #DDD6FE;white-space:nowrap;flex-shrink:0;">
+                                    <i class="fas fa-clock" style="font-size:8px;"></i> Under Review
+                                </span>
+                                @endif
                                 <p style="font-size:13px;font-weight:600;color:{{ $isDone?'#9CA3AF':'#111827' }};margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;{{ $isDone?'text-decoration:line-through;':'' }}">{{ $task->title }}</p>
                                 @if(!empty($task->is_received))
                                 <span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:5px;background:#FEF9C3;color:#854D0E;flex-shrink:0;white-space:nowrap;border:1px solid #FDE68A;">

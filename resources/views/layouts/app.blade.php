@@ -116,12 +116,36 @@
         /* User info hidden on mobile */
         #user-info-block { display: none; }
 
-        /* Alert */
+        /* Alert (kept for legacy inline use) */
         .alert { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
         .alert-success { background: #F0FDF4; border: 1px solid #BBF7D0; color: #15803D; }
         .alert-error   { background: #FEF2F2; border: 1px solid #FECACA; color: #DC2626; }
         .alert-close   { margin-left: auto; background: none; border: none; cursor: pointer; color: inherit; opacity: 0.6; font-size: 12px; }
         .alert-close:hover { opacity: 1; }
+
+        /* ── Floating Toast ── */
+        #appToastWrap {
+            position: fixed; bottom: 28px; right: 28px; z-index: 99999;
+            display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+        }
+        .app-toast {
+            pointer-events: all;
+            display: flex; align-items: flex-start; gap: 12px;
+            padding: 14px 16px; border-radius: 14px; min-width: 280px; max-width: 380px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.18); font-size: 13px; line-height: 1.5;
+            animation: toastIn .25s cubic-bezier(.34,1.56,.64,1) both;
+        }
+        .app-toast.toast-out { animation: toastOut .2s ease-in both; }
+        .app-toast-success { background: #fff; border: 1.5px solid #BBF7D0; color: #15803D; }
+        .app-toast-error   { background: #fff; border: 1.5px solid #FECACA; color: #B91C1C; }
+        .app-toast-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+        .app-toast-body { flex: 1; }
+        .app-toast-title { font-weight: 700; font-size: 13px; margin: 0 0 2px; }
+        .app-toast-msg   { font-size: 12px; margin: 0; opacity: .85; }
+        .app-toast-close { background: none; border: none; cursor: pointer; color: inherit; opacity: .5; font-size: 12px; padding: 0; flex-shrink: 0; }
+        .app-toast-close:hover { opacity: 1; }
+        @keyframes toastIn  { from { opacity:0; transform:translateY(16px) scale(.95); } to { opacity:1; transform:none; } }
+        @keyframes toastOut { from { opacity:1; transform:none; } to { opacity:0; transform:translateY(8px) scale(.95); } }
 
         /* ── Mobile Enhancements ── */
         /* Dropdowns snap to full-width on small phones */
@@ -523,20 +547,6 @@
 
         {{-- Content --}}
         <main class="app-content">
-            @if (session('success'))
-                <div class="alert alert-success" x-data="{ show: true }" x-show="show" x-init="setTimeout(()=>show=false,4000)">
-                    <i class="fas fa-check-circle"></i>
-                    {{ session('success') }}
-                    <button class="alert-close" @click="show=false"><i class="fas fa-times"></i></button>
-                </div>
-            @endif
-            @if (session('error'))
-                <div class="alert alert-error" x-data="{ show: true }" x-show="show">
-                    <i class="fas fa-exclamation-circle"></i>
-                    {{ session('error') }}
-                    <button class="alert-close" @click="show=false"><i class="fas fa-times"></i></button>
-                </div>
-            @endif
             @yield('content')
         </main>
 
@@ -1049,6 +1059,60 @@ function onlineUsers() {
 </script>
 @endif
 @endauth
+
+{{-- ══ Global Floating Toast Container ══ --}}
+<div id="appToastWrap"></div>
+
+<script>
+(function () {
+    /* showToast(title, message, type, durationMs)
+       type = 'success' | 'error'
+       Call from anywhere: window.showToast(...) */
+    window.showToast = function (title, message, type, duration) {
+        type     = type     || 'success';
+        duration = duration || (type === 'success' ? 4000 : 7000);
+
+        const wrap = document.getElementById('appToastWrap');
+        if (!wrap) return;
+
+        const icon = type === 'success'
+            ? '<i class="fas fa-check-circle app-toast-icon" style="color:#16A34A;"></i>'
+            : '<i class="fas fa-exclamation-circle app-toast-icon" style="color:#DC2626;"></i>';
+
+        const t = document.createElement('div');
+        t.className = 'app-toast app-toast-' + type;
+        t.innerHTML = icon +
+            '<div class="app-toast-body">' +
+                '<p class="app-toast-title">' + title + '</p>' +
+                (message ? '<p class="app-toast-msg">' + message + '</p>' : '') +
+            '</div>' +
+            '<button class="app-toast-close" onclick="window._dismissToast(this.parentElement)"><i class="fas fa-times"></i></button>';
+
+        wrap.appendChild(t);
+
+        const timer = setTimeout(function () { window._dismissToast(t); }, duration);
+        t._toastTimer = timer;
+    };
+
+    window._dismissToast = function (el) {
+        if (!el || el._dismissing) return;
+        el._dismissing = true;
+        clearTimeout(el._toastTimer);
+        el.classList.add('toast-out');
+        setTimeout(function () { el.remove(); }, 220);
+    };
+
+    /* Fire toasts from server-side flash messages */
+    document.addEventListener('DOMContentLoaded', function () {
+        @if (session('success'))
+            window.showToast('Done!', @json(session('success')), 'success');
+        @endif
+        @if (session('error'))
+            window.showToast('Error', @json(session('error')), 'error');
+        @endif
+    });
+})();
+</script>
 
 </body>
 </html>

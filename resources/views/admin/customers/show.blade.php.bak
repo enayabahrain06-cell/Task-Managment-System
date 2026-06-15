@@ -74,10 +74,14 @@
     .cust-show-stats-grid { grid-template-columns: repeat(2,1fr); }
     .cust-show-split { grid-template-columns: 1fr; }
 }
+.cust-tbl-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.cust-tbl-scroll table { min-width:500px; }
+@media (max-width: 768px) {
+    .cust-tbl-scroll { overflow-x:auto !important; -webkit-overflow-scrolling:touch; }
+    .cust-tbl-scroll table { min-width:500px !important; }
+}
 @media (max-width: 480px) {
     .cust-show-stats-grid { grid-template-columns: repeat(2,1fr); gap:8px; }
-    .cust-tbl-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
-    .cust-tbl-scroll table { min-width:500px; }
 }
 </style>
 <script>window._reviewSuffix = @json("has been submitted for review. We'd love your feedback before we finalize approval.");</script>

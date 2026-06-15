@@ -104,7 +104,6 @@ class DashboardController extends Controller
         // Merge pending social media assignments into My Tasks
         $pendingSocialTasks = Task::where('social_assigned_to', $user->id)
             ->whereNull('social_posted_at')
-            ->whereNotNull('social_platforms')
             ->with('project')
             ->get()
             ->map(function ($t) {
@@ -130,7 +129,6 @@ class DashboardController extends Controller
         $existingIds = $allTasks->pluck('id');
         $socialCompletedTasks = Task::where('social_assigned_to', $user->id)
             ->whereNotNull('social_posted_at')
-            ->whereNotNull('social_platforms')
             ->whereNotIn('id', $existingIds)
             ->with('project')
             ->get()
@@ -231,7 +229,6 @@ class DashboardController extends Controller
 
         // Social media tasks assigned to this user
         $socialTasks = Task::where('social_assigned_to', $user->id)
-            ->whereNotNull('social_platforms')
             ->with(['project', 'socialPosts'])
             ->orderByRaw('social_posted_at IS NOT NULL')
             ->orderBy('deadline')
@@ -321,7 +318,6 @@ class DashboardController extends Controller
         if ($filter === 'social') {
             $base = Task::where('social_assigned_to', $user->id)
                 ->whereNull('social_posted_at')
-                ->whereNotNull('social_platforms')
                 ->with(['project:id,name']);
         } elseif ($filter === 'date') {
             $date    = $request->input('date');

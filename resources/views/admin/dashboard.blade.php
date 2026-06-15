@@ -228,6 +228,11 @@
                     style="display:flex;align-items:center;gap:7px;background:#F59E0B;color:#fff;font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;border:none;cursor:pointer;box-shadow:0 2px 10px rgba(245,158,11,0.4);">
                 <i class="fas fa-bolt" style="font-size:11px;"></i> Quick Task
             </button>
+            {{-- QUICK SM POST BUTTON --}}
+            <button @click="smPostOpen = true"
+                    style="display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;border:none;cursor:pointer;box-shadow:0 2px 10px rgba(99,102,241,0.4);">
+                <i class="fas fa-share-alt" style="font-size:11px;"></i> Quick SM Post
+            </button>
             @endif
             <button style="width:36px;height:36px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#9CA3AF;">
                 <i class="fas fa-ellipsis-h"></i>
@@ -263,6 +268,7 @@
             {{-- Form --}}
             <form method="POST" action="{{ $dashQuickTaskUrl }}" enctype="multipart/form-data" style="padding:20px 24px 24px;">
                 @csrf
+                <input type="hidden" name="_form" value="quick_task">
 
                 <div style="margin-bottom:14px;">
                     <label class="form-label">Task Title <span style="color:#EF4444;">*</span></label>
@@ -381,6 +387,195 @@
     </div>
     </div>
 
+    {{-- ══ Quick SM Post Modal ══ --}}
+    <div x-show="smPostOpen" x-cloak style="position:fixed;inset:0;z-index:9999;">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;">
+
+        <div @click="smPostOpen = false" style="position:absolute;inset:0;background:rgba(0,0,0,0.45);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);"></div>
+
+        <div style="position:relative;width:100%;max-width:520px;max-height:92vh;background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,0.2);overflow:hidden;display:flex;flex-direction:column;">
+
+            {{-- Header --}}
+            <div style="padding:20px 24px 16px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:34px;height:34px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-share-alt" style="color:#4F46E5;font-size:15px;"></i>
+                    </div>
+                    <div>
+                        <h2 style="font-size:16px;font-weight:700;color:#111827;margin:0;">Quick SM Post</h2>
+                        <p style="font-size:11px;color:#9CA3AF;margin:0;">Assign a social media post directly to the SM team</p>
+                    </div>
+                </div>
+                <button @click="smPostOpen = false"
+                        style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:13px;">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+
+            {{-- Form --}}
+            <form method="POST" action="{{ route('admin.tasks.quick-sm') }}" enctype="multipart/form-data" style="padding:20px 24px 24px;overflow-y:auto;flex:1;">
+                @csrf
+                <input type="hidden" name="_form" value="quick_sm_post">
+
+                @if(old('_form') === 'quick_sm_post' && $errors->any())
+                <div style="margin-bottom:14px;padding:10px 14px;background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;display:flex;align-items:flex-start;gap:8px;">
+                    <i class="fas fa-circle-exclamation" style="color:#DC2626;font-size:13px;margin-top:1px;flex-shrink:0;"></i>
+                    <div>
+                        @foreach($errors->all() as $error)
+                        <p style="font-size:12px;color:#991B1B;margin:0;line-height:1.5;">{{ $error }}</p>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
+                <div style="margin-bottom:14px;">
+                    <label class="form-label">Post Title <span style="color:#EF4444;">*</span></label>
+                    <input type="text" name="title" class="form-input" placeholder="e.g. Ramadan promotion post" required
+                           value="{{ old('title') }}"
+                           onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.12)'"
+                           onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">
+                </div>
+
+                <div style="margin-bottom:14px;">
+                    <label class="form-label">Assign To <span style="color:#EF4444;">*</span></label>
+                    <select name="social_assigned_to" class="form-input form-select" required
+                            onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.12)'"
+                            onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">
+                        <option value="">— Select SM team member —</option>
+                        @foreach($allUsers as $member)
+                        <option value="{{ $member->id }}" {{ old('social_assigned_to') == $member->id ? 'selected' : '' }}>
+                            {{ $member->name }} ({{ ucfirst($member->role) }})
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Platforms --}}
+                <div style="margin-bottom:14px;">
+                    <label class="form-label">Platforms <span style="color:#EF4444;">*</span></label>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">
+                        @php
+                            $smPlatforms = [
+                                'instagram' => ['fa-instagram',  '#E1306C', 'Instagram'],
+                                'facebook'  => ['fa-facebook',   '#1877F2', 'Facebook'],
+                                'tiktok'    => ['fa-tiktok',     '#010101', 'TikTok'],
+                                'twitter'   => ['fa-x-twitter',  '#000000', 'X / Twitter'],
+                                'linkedin'  => ['fa-linkedin',   '#0A66C2', 'LinkedIn'],
+                                'snapchat'  => ['fa-snapchat',   '#F7CA00', 'Snapchat'],
+                                'youtube'   => ['fa-youtube',    '#FF0000', 'YouTube'],
+                            ];
+                        @endphp
+                        @foreach($smPlatforms as $key => [$icon, $color, $label])
+                        <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1.5px solid #E5E7EB;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;color:#374151;transition:all .15s;"
+                               onmouseover="this.style.borderColor='{{ $color }}';this.style.background='{{ $color }}18';"
+                               onmouseout="if(!this.querySelector('input').checked){this.style.borderColor='#E5E7EB';this.style.background='';}">
+                            <input type="checkbox" name="social_platforms[]" value="{{ $key }}"
+                                   {{ is_array(old('social_platforms')) && in_array($key, old('social_platforms')) ? 'checked' : '' }}
+                                   style="display:none;"
+                                   onchange="const lbl=this.closest('label'); if(this.checked){lbl.style.borderColor='{{ $color }}';lbl.style.background='{{ $color }}18';lbl.style.color='{{ $color }}';}else{lbl.style.borderColor='#E5E7EB';lbl.style.background='';lbl.style.color='#374151';}">
+                            <i class="fab {{ $icon }}" style="font-size:13px;color:{{ $color }};"></i>
+                            {{ $label }}
+                        </label>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div style="margin-bottom:14px;">
+                    <label class="form-label">Posting Instructions</label>
+                    <textarea name="social_description" class="form-input" rows="3"
+                              placeholder="What should be posted? Any specific guidelines, tone, or references..."
+                              style="resize:vertical;"
+                              onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.12)'"
+                              onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">{{ old('social_description') }}</textarea>
+                </div>
+
+                <div style="margin-bottom:14px;">
+                    <label class="form-label">Caption / Copy</label>
+                    <textarea name="social_caption" class="form-input" rows="3"
+                              placeholder="Ready-to-post caption text (optional)..."
+                              style="resize:vertical;"
+                              onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.12)'"
+                              onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">{{ old('social_caption') }}</textarea>
+                </div>
+
+                <div class="adash-modal-2col" style="margin-bottom:14px;">
+                    <div>
+                        <label class="form-label">Budget <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
+                        <input type="number" name="social_budget" class="form-input" placeholder="0.00" min="0" step="0.01"
+                               value="{{ old('social_budget') }}"
+                               onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.12)'"
+                               onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">
+                    </div>
+                    <div>
+                        <label class="form-label">Deadline <span style="color:#EF4444;">*</span></label>
+                        <input type="date" name="deadline" class="form-input" required
+                               min="{{ date('Y-m-d') }}" value="{{ old('deadline') }}"
+                               onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.12)'"
+                               onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">
+                    </div>
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <label class="form-label">Customer <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
+                    <select name="customer_id" class="form-input form-select"
+                            onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.12)'"
+                            onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">
+                        <option value="">— No customer —</option>
+                        @foreach($customers as $c)
+                        <option value="{{ $c->id }}" {{ old('customer_id') == $c->id ? 'selected' : '' }}>
+                            {{ $c->name }}{{ $c->company ? ' ('.$c->company.')' : '' }}
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Attachments --}}
+                <div style="margin-bottom:20px;">
+                    <label class="form-label" style="margin-bottom:6px;display:block;">Attachments <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
+                    <div @dragover.prevent="smDragover = true"
+                         @dragleave.prevent="smDragover = false"
+                         @drop.prevent="smDragover = false; smHandleFiles($event)"
+                         @click="$refs.smFileInput.click()"
+                         :style="smDragover
+                             ? 'border:2px dashed #6366F1;border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;background:#EEF2FF;'
+                             : 'border:2px dashed #E5E7EB;border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;background:#FAFAFA;'">
+                        <i class="fas fa-cloud-arrow-up" style="font-size:18px;color:#6366F1;margin-bottom:6px;display:block;"></i>
+                        <p style="font-size:12px;color:#6B7280;margin:0;">Drop files here or <span style="color:#4F46E5;font-weight:600;">browse</span></p>
+                        <input type="file" name="attachments[]" multiple x-ref="smFileInput"
+                               @change="smHandleFiles($event)" style="display:none;">
+                    </div>
+                    <template x-if="smFiles.length > 0">
+                        <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px;">
+                            <template x-for="(file, i) in smFiles" :key="i">
+                                <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;">
+                                    <div style="width:28px;height:28px;border-radius:6px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                        <i :class="'fas ' + pFileIcon(file.name)" style="font-size:12px;color:#4F46E5;"></i>
+                                    </div>
+                                    <div style="flex:1;min-width:0;">
+                                        <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="file.name"></p>
+                                        <p style="font-size:11px;color:#9CA3AF;margin:0;" x-text="pFormatSize(file.size)"></p>
+                                    </div>
+                                    <button type="button" @click.stop="smRemoveFile(i)"
+                                            style="width:24px;height:24px;border-radius:6px;background:#FEE2E2;color:#DC2626;border:none;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+
+                <button type="submit" id="smPostSubmitBtn"
+                        style="width:100%;padding:11px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(99,102,241,.35);">
+                    <i class="fas fa-share-alt"></i> Assign SM Post
+                </button>
+
+            </form>
+
+        </div>
+    </div>
+    </div>
+
     {{-- ══ New Project Wizard Modal ══ --}}
     <div x-show="projectOpen" x-cloak style="position:fixed;inset:0;z-index:9999;">
     <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;">
@@ -431,10 +626,11 @@
             {{-- Body --}}
             <form method="POST" action="{{ $dashProjectStoreUrl }}" enctype="multipart/form-data" style="display:flex;flex-direction:column;flex:1;min-height:0;">
                 @csrf
+                <input type="hidden" name="_form" value="new_project">
                 <div style="flex:1;overflow-y:auto;padding:0 28px 4px;">
 
                     {{-- Validation errors banner --}}
-                    @if($errors->hasAny(['name','deadline','customer_id']) || preg_grep('/^tasks\./', array_keys($errors->toArray())))
+                    @if(old('_form') === 'new_project' && ($errors->hasAny(['name','deadline','customer_id']) || preg_grep('/^tasks\./', array_keys($errors->toArray()))))
                     <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px;">
                         <i class="fas fa-circle-exclamation" style="color:#DC2626;margin-top:1px;font-size:13px;flex-shrink:0;"></i>
                         <div style="font-size:12px;color:#B91C1C;line-height:1.6;">
@@ -788,15 +984,20 @@
 function dashModals() {
     return {
         /* ── Quick Task ── */
-        taskOpen:       {{ ($errors->any() && !$errors->hasAny(['name','deadline','customer_id']) && !preg_grep('/^tasks\./', array_keys($errors->toArray()))) ? 'true' : 'false' }},
+        taskOpen:       {{ (old('_form') === 'quick_task' && $errors->any()) ? 'true' : 'false' }},
         taskSubmitting: false,
         priority:       '{{ old('priority', 'medium') }}',
         qtFiles:        [],
         qtDragover:     false,
 
+        /* ── Quick SM Post ── */
+        smPostOpen:     {{ (old('_form') === 'quick_sm_post' && $errors->any()) ? 'true' : 'false' }},
+        smFiles:        [],
+        smDragover:     false,
+
         /* ── Project Wizard ── */
-        projectOpen:    {{ $errors->hasAny(['name','deadline','customer_id']) || $errors->has('tasks') || preg_grep('/^tasks\./', array_keys($errors->toArray())) ? 'true' : 'false' }},
-        projectStep:    {{ preg_grep('/^tasks\./', array_keys($errors->toArray())) ? 2 : ($errors->hasAny(['name','deadline','customer_id']) ? 1 : 1) }},
+        projectOpen:    {{ (old('_form') === 'new_project' && ($errors->hasAny(['name','deadline','customer_id']) || $errors->has('tasks') || preg_grep('/^tasks\./', array_keys($errors->toArray())))) ? 'true' : 'false' }},
+        projectStep:    {{ (old('_form') === 'new_project' && preg_grep('/^tasks\./', array_keys($errors->toArray()))) ? 2 : 1 }},
         pDragover:      false,
         pFiles:         [],
         pLinks:         [],
@@ -937,8 +1138,45 @@ function dashModals() {
             if (['mp3','wav','aac'].includes(ext))                        return 'fa-file-audio';
             return 'fa-file';
         },
+
+        smHandleFiles(event) {
+            const incoming = event.dataTransfer ? event.dataTransfer.files : event.target.files;
+            const dt = new DataTransfer();
+            for (let f of this.smFiles) dt.items.add(f);
+            for (let f of incoming) dt.items.add(f);
+            this.smFiles = Array.from(dt.files);
+            this.$refs.smFileInput.files = dt.files;
+        },
+
+        smRemoveFile(i) {
+            const dt = new DataTransfer();
+            this.smFiles.forEach((f, idx) => { if (idx !== i) dt.items.add(f); });
+            this.smFiles = Array.from(dt.files);
+            this.$refs.smFileInput.files = dt.files;
+        },
     };
 }
+
+/* ── SM Post submit feedback ── */
+document.addEventListener('DOMContentLoaded', function () {
+    const btn = document.getElementById('smPostSubmitBtn');
+    if (btn) {
+        btn.closest('form').addEventListener('submit', function () {
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Assigning...';
+            btn.disabled  = true;
+            btn.style.opacity = '0.8';
+        });
+    }
+
+    @if(old('_form') === 'quick_sm_post' && $errors->any())
+    /* Modal re-opened due to validation errors — fire error toast */
+    window.showToast(
+        'Could not assign post',
+        @json(implode(' • ', $errors->all())),
+        'error'
+    );
+    @endif
+});
 </script>
 @endpush
 
@@ -1448,6 +1686,229 @@ function dashModals() {
 
 </div>
 @endif
+
+{{-- ══ Social Media Posts Section ══ --}}
+@php
+    $spIcons = [
+        'instagram' => ['fa-instagram',  '#E1306C'],
+        'facebook'  => ['fa-facebook',   '#1877F2'],
+        'tiktok'    => ['fa-tiktok',     '#010101'],
+        'twitter'   => ['fa-x-twitter',  '#000000'],
+        'linkedin'  => ['fa-linkedin',   '#0A66C2'],
+        'snapchat'  => ['fa-snapchat',   '#F7CA00'],
+        'youtube'   => ['fa-youtube',    '#FF0000'],
+        'other'     => ['fa-share-alt',  '#6366F1'],
+    ];
+@endphp
+<div class="dash-card anim-card" style="margin-top:16px;margin-bottom:16px;" x-data="{ smTab: 'pending' }">
+
+    {{-- Header --}}
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#EEF2FF,#DDD6FE);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-share-alt" style="color:#6366F1;font-size:15px;"></i>
+            </div>
+            <div>
+                <h3 style="font-size:15px;font-weight:700;color:#111827;margin:0;">Social Media Posts</h3>
+                <p style="font-size:11px;color:#9CA3AF;margin:0;">Track pending assignments and completed posts</p>
+            </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+            {{-- Stats pills --}}
+            <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#FEF3C7;border-radius:20px;font-size:12px;font-weight:700;color:#D97706;">
+                <i class="fas fa-clock" style="font-size:10px;"></i>
+                {{ $smPendingTasks->count() }} Pending
+            </span>
+            <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#F0FDF4;border-radius:20px;font-size:12px;font-weight:700;color:#16A34A;">
+                <i class="fas fa-check-circle" style="font-size:10px;"></i>
+                {{ $socialPostsTotal }} Posted
+            </span>
+            <a href="{{ route('admin.approvals.index') }}?tab=social"
+               style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:#EEF2FF;border-radius:8px;font-size:12px;font-weight:600;color:#4F46E5;text-decoration:none;">
+                View All <i class="fas fa-arrow-right" style="font-size:10px;"></i>
+            </a>
+        </div>
+    </div>
+
+    {{-- Tabs --}}
+    <div style="display:flex;gap:4px;margin-bottom:16px;background:#F9FAFB;padding:4px;border-radius:10px;width:fit-content;">
+        <button @click="smTab='pending'"
+                :style="smTab==='pending'
+                    ? 'padding:6px 18px;border-radius:7px;border:none;cursor:pointer;font-size:12px;font-weight:700;background:#fff;color:#D97706;box-shadow:0 1px 4px rgba(0,0,0,.1);'
+                    : 'padding:6px 18px;border-radius:7px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:transparent;color:#6B7280;'"
+                >
+            <i class="fas fa-clock" style="font-size:10px;margin-right:4px;"></i>
+            Pending
+            @if($smPendingTasks->count() > 0)
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#FEF3C7;border-radius:50%;font-size:10px;font-weight:800;color:#D97706;margin-left:4px;">{{ $smPendingTasks->count() }}</span>
+            @endif
+        </button>
+        <button @click="smTab='completed'"
+                :style="smTab==='completed'
+                    ? 'padding:6px 18px;border-radius:7px;border:none;cursor:pointer;font-size:12px;font-weight:700;background:#fff;color:#16A34A;box-shadow:0 1px 4px rgba(0,0,0,.1);'
+                    : 'padding:6px 18px;border-radius:7px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:transparent;color:#6B7280;'"
+                >
+            <i class="fas fa-check-circle" style="font-size:10px;margin-right:4px;"></i>
+            Completed
+        </button>
+    </div>
+
+    {{-- ── PENDING TAB ── --}}
+    <div x-show="smTab==='pending'" x-cloak>
+        @if($smPendingTasks->isEmpty())
+        <div style="text-align:center;padding:40px 20px;">
+            <div style="width:56px;height:56px;border-radius:50%;background:#F0FDF4;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+                <i class="fas fa-check-circle" style="color:#16A34A;font-size:22px;"></i>
+            </div>
+            <p style="font-size:14px;font-weight:600;color:#111827;margin:0 0 4px;">All clear!</p>
+            <p style="font-size:12px;color:#9CA3AF;margin:0;">No pending social media posts right now.</p>
+        </div>
+        @else
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;">
+            @foreach($smPendingTasks as $smTask)
+            @php
+                $isOverdue = $smTask->deadline && $smTask->deadline < now();
+                $platforms = is_array($smTask->social_platforms)
+                    ? $smTask->social_platforms
+                    : (is_string($smTask->social_platforms) && str_starts_with($smTask->social_platforms,'[')
+                        ? json_decode($smTask->social_platforms, true)
+                        : array_filter(explode(',', $smTask->social_platforms ?? '')));
+            @endphp
+            <div style="border:1.5px solid {{ $isOverdue ? '#FECACA' : '#E5E7EB' }};border-radius:12px;padding:14px;background:{{ $isOverdue ? '#FFF5F5' : '#FAFAFA' }};position:relative;">
+                {{-- Overdue badge --}}
+                @if($isOverdue)
+                <span style="position:absolute;top:10px;right:10px;display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:#FEE2E2;border-radius:20px;font-size:10px;font-weight:700;color:#DC2626;">
+                    <i class="fas fa-exclamation-circle" style="font-size:9px;"></i> Overdue
+                </span>
+                @endif
+
+                {{-- Title --}}
+                <p style="font-size:13px;font-weight:700;color:#111827;margin:0 0 6px;padding-right:{{ $isOverdue ? '70px' : '0' }};line-height:1.4;">{{ $smTask->title }}</p>
+
+                {{-- Customer + Assignee --}}
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+                    @if($smTask->customer)
+                    <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#6B7280;">
+                        <i class="fas fa-building" style="font-size:9px;color:#9CA3AF;"></i>
+                        {{ $smTask->customer->name }}
+                    </span>
+                    <span style="color:#D1D5DB;font-size:10px;">•</span>
+                    @endif
+                    <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#6B7280;">
+                        <i class="fas fa-user" style="font-size:9px;color:#9CA3AF;"></i>
+                        {{ $smTask->socialAssignee->name ?? '—' }}
+                    </span>
+                </div>
+
+                {{-- Platform icons --}}
+                @if(!empty($platforms))
+                <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;">
+                    @foreach($platforms as $plat)
+                    @php [$ico,$col] = $spIcons[trim($plat)] ?? $spIcons['other']; @endphp
+                    <span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:#fff;border:1px solid #E5E7EB;border-radius:6px;font-size:11px;font-weight:600;color:{{ $col }};">
+                        <i class="fab {{ $ico }}" style="font-size:11px;"></i>
+                        {{ ucfirst(trim($plat)) }}
+                    </span>
+                    @endforeach
+                </div>
+                @endif
+
+                {{-- Deadline + Action --}}
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+                    <span style="font-size:11px;{{ $isOverdue ? 'color:#DC2626;font-weight:700;' : 'color:#9CA3AF;' }}">
+                        <i class="fas fa-calendar{{ $isOverdue ? '-times' : '' }}" style="font-size:10px;margin-right:3px;"></i>
+                        {{ $smTask->deadline ? $smTask->deadline->format(config('app.date_format','M d, Y')) : 'No deadline' }}
+                    </span>
+                    <a href="{{ route('admin.tasks.show', $smTask) }}"
+                       style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;background:#EEF2FF;border-radius:7px;font-size:11px;font-weight:700;color:#4F46E5;text-decoration:none;">
+                        View <i class="fas fa-arrow-right" style="font-size:9px;"></i>
+                    </a>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        @endif
+    </div>
+
+    {{-- ── COMPLETED TAB ── --}}
+    <div x-show="smTab==='completed'" x-cloak>
+        @if($smRecentCompleted->isEmpty())
+        <div style="text-align:center;padding:40px 20px;">
+            <p style="font-size:13px;color:#9CA3AF;margin:0;">No completed social posts yet.</p>
+        </div>
+        @else
+        <div style="border-radius:10px;overflow:hidden;border:1px solid #F3F4F6;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead>
+                    <tr style="background:#F9FAFB;">
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.04em;">Post</th>
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.04em;">Platforms</th>
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.04em;">Posted by</th>
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.04em;">Posted on</th>
+                        <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.04em;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($smRecentCompleted as $smDone)
+                    @php
+                        $dPlatforms = is_array($smDone->social_platforms)
+                            ? $smDone->social_platforms
+                            : (is_string($smDone->social_platforms) && str_starts_with($smDone->social_platforms,'[')
+                                ? json_decode($smDone->social_platforms, true)
+                                : array_filter(explode(',', $smDone->social_platforms ?? '')));
+                    @endphp
+                    <tr style="border-top:1px solid #F3F4F6;" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background=''">
+                        <td style="padding:12px 14px;">
+                            <p style="font-size:13px;font-weight:600;color:#111827;margin:0 0 2px;">{{ $smDone->title }}</p>
+                            @if($smDone->customer)
+                            <p style="font-size:11px;color:#9CA3AF;margin:0;">{{ $smDone->customer->name }}</p>
+                            @endif
+                        </td>
+                        <td style="padding:12px 14px;">
+                            <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                                @if(!empty($dPlatforms))
+                                    @foreach($dPlatforms as $plat)
+                                    @php [$ico,$col] = $spIcons[trim($plat)] ?? $spIcons['other']; @endphp
+                                    <span title="{{ ucfirst(trim($plat)) }}" style="width:24px;height:24px;border-radius:6px;background:#F3F4F6;display:inline-flex;align-items:center;justify-content:center;">
+                                        <i class="fab {{ $ico }}" style="font-size:12px;color:{{ $col }};"></i>
+                                    </span>
+                                    @endforeach
+                                @else
+                                    <span style="font-size:11px;color:#D1D5DB;">—</span>
+                                @endif
+                            </div>
+                        </td>
+                        <td style="padding:12px 14px;">
+                            <span style="font-size:12px;color:#374151;">{{ $smDone->socialAssignee->name ?? '—' }}</span>
+                        </td>
+                        <td style="padding:12px 14px;white-space:nowrap;">
+                            <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#F0FDF4;border-radius:6px;font-size:11px;font-weight:600;color:#16A34A;">
+                                <i class="fas fa-check" style="font-size:9px;"></i>
+                                {{ $smDone->social_posted_at->format(config('app.date_format','M d, Y')) }}
+                            </span>
+                        </td>
+                        <td style="padding:12px 14px;text-align:center;">
+                            <a href="{{ route('admin.tasks.show', $smDone) }}"
+                               style="display:inline-flex;align-items:center;gap:3px;padding:4px 10px;background:#EEF2FF;border-radius:6px;font-size:11px;font-weight:600;color:#4F46E5;text-decoration:none;">
+                                View <i class="fas fa-arrow-right" style="font-size:9px;"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            @if($socialPostsTotal > 10)
+            <div style="padding:10px 14px;background:#F9FAFB;border-top:1px solid #F3F4F6;text-align:center;">
+                <a href="{{ route('admin.approvals.index') }}?tab=social" style="font-size:12px;color:#4F46E5;font-weight:600;text-decoration:none;">
+                    View all {{ $socialPostsTotal }} posts <i class="fas fa-arrow-right" style="font-size:10px;"></i>
+                </a>
+            </div>
+            @endif
+        </div>
+        @endif
+    </div>
+
+</div>
 
 {{-- ══ EXTRA: Tasks by Priority ══ --}}
 @if(in_array('dash_priority_chart', $devExtras))

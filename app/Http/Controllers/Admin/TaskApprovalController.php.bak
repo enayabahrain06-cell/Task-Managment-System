@@ -278,9 +278,10 @@ class TaskApprovalController extends Controller
             ]);
 
         if ($latestSub?->file_path) {
-            $nas = app(NasService::class);
-            $nas->copyToNas($task, $latestSub->file_path, $latestSub->original_filename ?? basename($latestSub->file_path), '07_Delivered', $latestSub->version);
+            $nas     = app(NasService::class);
+            $nasPath = $nas->copyToNas($task, $latestSub->file_path, $latestSub->original_filename ?? basename($latestSub->file_path), '07_Delivered', $latestSub->version);
             $nas->copyToNasDeliverable($task, $latestSub->file_path, $latestSub->original_filename ?? basename($latestSub->file_path));
+            if ($nasPath) $latestSub->update(['nas_path' => $nasPath]);
         }
 
         TaskLog::create([
@@ -401,6 +402,7 @@ class TaskApprovalController extends Controller
                     $platforms = array_values(array_filter((array) $request->input('social_platforms', [])));
                     $task->update([
                         'social_assigned_to' => $socialUser->id,
+                        'social_posted_at'   => null,
                         'social_description' => $request->social_description ?: null,
                         'social_caption'     => $request->social_caption     ?: null,
                         'social_budget'      => $request->social_budget       ?: null,
@@ -635,7 +637,9 @@ class TaskApprovalController extends Controller
             ]);
 
         if ($latestSub?->file_path) {
-            app(NasService::class)->copyToNas($task, $latestSub->file_path, $latestSub->original_filename ?? basename($latestSub->file_path), '06_Rejected', $latestSub->version);
+            $nas     = app(NasService::class);
+            $nasPath = $nas->copyToNas($task, $latestSub->file_path, $latestSub->original_filename ?? basename($latestSub->file_path), '06_Rejected', $latestSub->version);
+            if ($nasPath) $latestSub->update(['nas_path' => $nasPath]);
         }
 
         TaskLog::create([
@@ -939,6 +943,7 @@ class TaskApprovalController extends Controller
             $task->update([
                 'social_required'    => true,
                 'social_assigned_to' => $user->id,
+                'social_posted_at'   => null,
             ]);
             $user->notify(new \App\Notifications\SocialMediaAssigned($task));
         }
