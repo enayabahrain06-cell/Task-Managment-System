@@ -480,7 +480,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
     @foreach($kpisRow2 as $kpi)
     @php $isSocialCard = ($kpi['label'] === 'Social Posts'); @endphp
     <div class="rpt-card" style="padding:10px 12px;{{ $isSocialCard ? 'cursor:pointer;transition:box-shadow .15s;' : '' }}"
-         @if($isSocialCard) onclick="document.getElementById('social-posts-modal').style.display='flex'" onmouseover="this.style.boxShadow='0 4px 16px rgba(236,72,153,.13)'" onmouseout="this.style.boxShadow=''" @endif>
+         @if($isSocialCard) onclick="document.getElementById('social-posts-modal').style.display='flex';spClearSearch()" onmouseover="this.style.boxShadow='0 4px 16px rgba(236,72,153,.13)'" onmouseout="this.style.boxShadow=''" @endif>
         <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px;">
             <div style="width:28px;height:28px;border-radius:8px;background:{{ $kpi['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fas {{ $kpi['icon'] }}" style="color:{{ $kpi['color'] }};font-size:11px;"></i>
@@ -517,7 +517,21 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
                     <p style="font-size:11px;color:#9CA3AF;margin:0;">{{ $socialPostsCount }} published</p>
                 </div>
             </div>
-            <button onclick="document.getElementById('social-posts-modal').style.display='none'" style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;font-size:16px;color:#6B7280;display:flex;align-items:center;justify-content:center;">×</button>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <button onclick="exportSocialPostsPDF()" style="height:30px;padding:0 12px;border-radius:8px;background:#FDF4FF;border:1px solid #E9D5FF;cursor:pointer;font-size:11px;font-weight:600;color:#7C3AED;display:flex;align-items:center;gap:5px;">
+                    <i class="fas fa-file-pdf" style="font-size:10px;"></i> Export PDF
+                </button>
+                <button onclick="document.getElementById('social-posts-modal').style.display='none'" style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;font-size:16px;color:#6B7280;display:flex;align-items:center;justify-content:center;">×</button>
+            </div>
+        </div>
+        {{-- Search bar --}}
+        <div style="padding:10px 22px;border-bottom:1px solid #F3F4F6;flex-shrink:0;background:#FAFAFA;">
+            <div style="position:relative;">
+                <i class="fas fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:11px;pointer-events:none;"></i>
+                <input id="social-posts-search" type="text" placeholder="Search task, customer, platform, poster…"
+                    style="width:100%;padding:7px 12px 7px 30px;border:1px solid #E5E7EB;border-radius:8px;font-size:12px;outline:none;box-sizing:border-box;background:#fff;"
+                    oninput="spSearch()" onfocus="this.style.borderColor='#EC4899'" onblur="this.style.borderColor='#E5E7EB'">
+            </div>
         </div>
         <div style="overflow-y:auto;flex:1;padding:0 22px 22px;">
             @if($socialPostsList->isEmpty())
@@ -2833,11 +2847,142 @@ document.addEventListener('DOMContentLoaded', function() {
      'overdue-table','reopened-table','reassigned-bottom-table',
      'billing-user-table','billing-customer-table','ad-budget-table'
     ].forEach(function(id) { rptPaginate(id, 7); });
-    rptPaginate('social-posts-modal-table', 10);
+    initSocialPostsModal();
     rptPaginate('total-tasks-modal-table', 10);
     rptPaginate('completed-tasks-modal-table', 10);
     rptPaginate('ontime-tasks-modal-table', 10);
 });
+
+// ── Social Posts Modal: search + paginate + PDF export ──────────────────────
+var _spAllRows = [], _spFiltered = [], _spPage = 1, _spPer = 10;
+
+function initSocialPostsModal() {
+    var tbody = document.querySelector('#social-posts-modal-table tbody');
+    if (!tbody) return;
+    _spAllRows = Array.from(tbody.querySelectorAll('tr'));
+    _spFiltered = _spAllRows.slice();
+    _spRender();
+}
+
+function spClearSearch() {
+    var inp = document.getElementById('social-posts-search');
+    if (inp) { inp.value = ''; }
+    _spFiltered = _spAllRows.slice();
+    _spPage = 1;
+    _spRender();
+}
+
+function spSearch() {
+    var term = (document.getElementById('social-posts-search').value || '').toLowerCase().trim();
+    _spFiltered = term
+        ? _spAllRows.filter(function(r) { return r.textContent.toLowerCase().indexOf(term) !== -1; })
+        : _spAllRows.slice();
+    _spPage = 1;
+    _spRender();
+}
+
+function _spRender() {
+    var total = _spFiltered.length;
+    var totalPages = Math.ceil(total / _spPer) || 1;
+    _spAllRows.forEach(function(r) { r.style.display = 'none'; });
+    var start = (_spPage - 1) * _spPer;
+    _spFiltered.slice(start, start + _spPer).forEach(function(r) { r.style.display = ''; });
+
+    var wrap = document.getElementById('social-posts-modal-table-pg');
+    if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.id = 'social-posts-modal-table-pg';
+        wrap.style.cssText = 'margin-top:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;';
+        var tbl = document.getElementById('social-posts-modal-table');
+        tbl.parentNode.insertBefore(wrap, tbl.nextSibling);
+    }
+    var from = total ? start + 1 : 0, to = Math.min(start + _spPer, total);
+    wrap.innerHTML = '';
+
+    // "no results" message
+    var noRes = document.getElementById('sp-no-results');
+    if (!noRes) {
+        noRes = document.createElement('p');
+        noRes.id = 'sp-no-results';
+        noRes.style.cssText = 'text-align:center;color:#9CA3AF;font-size:13px;padding:24px 0;margin:0;display:none;';
+        noRes.textContent = 'No posts match your search.';
+        var tbl2 = document.getElementById('social-posts-modal-table');
+        tbl2.parentNode.insertBefore(noRes, tbl2.nextSibling);
+    }
+    noRes.style.display = total === 0 ? '' : 'none';
+    document.getElementById('social-posts-modal-table').style.display = total === 0 ? 'none' : '';
+
+    if (total === 0) return;
+
+    var lbl = document.createElement('span');
+    lbl.style.cssText = 'font-size:12px;color:#6B7280;';
+    lbl.textContent = 'Showing ' + from + '–' + to + ' of ' + total + ' results';
+    wrap.appendChild(lbl);
+
+    var btns = document.createElement('div');
+    btns.style.cssText = 'display:flex;gap:4px;align-items:center;flex-wrap:wrap;';
+
+    function mkBtn(label, pg, active, disabled) {
+        var el = document.createElement(disabled ? 'span' : 'button');
+        el.textContent = label;
+        el.style.cssText = 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:' + (active ? '700' : '600') + ';border:none;cursor:' + (disabled ? 'default' : 'pointer') + ';min-width:32px;text-align:center;background:' + (active ? '#4F46E5' : '#F3F4F6') + ';color:' + (active ? '#fff' : (disabled ? '#D1D5DB' : '#374151')) + ';';
+        if (!disabled && !active) el.addEventListener('click', function() { _spPage = pg; _spRender(); });
+        return el;
+    }
+
+    btns.appendChild(mkBtn('‹ Prev', _spPage - 1, false, _spPage === 1));
+    if (totalPages <= 8) {
+        for (var p = 1; p <= totalPages; p++) btns.appendChild(mkBtn(p, p, p === _spPage, false));
+    } else {
+        btns.appendChild(mkBtn(1, 1, _spPage === 1, false));
+        if (_spPage > 3) { var d1 = document.createElement('span'); d1.textContent = '…'; d1.style.cssText = 'padding:5px 4px;font-size:12px;color:#9CA3AF;'; btns.appendChild(d1); }
+        for (var p2 = Math.max(2, _spPage - 1); p2 <= Math.min(totalPages - 1, _spPage + 1); p2++) btns.appendChild(mkBtn(p2, p2, p2 === _spPage, false));
+        if (_spPage < totalPages - 2) { var d2 = document.createElement('span'); d2.textContent = '…'; d2.style.cssText = 'padding:5px 4px;font-size:12px;color:#9CA3AF;'; btns.appendChild(d2); }
+        btns.appendChild(mkBtn(totalPages, totalPages, _spPage === totalPages, false));
+    }
+    btns.appendChild(mkBtn('Next ›', _spPage + 1, false, _spPage >= totalPages));
+    wrap.appendChild(btns);
+}
+
+function exportSocialPostsPDF() {
+    var rows = _spFiltered.length ? _spFiltered : _spAllRows;
+    var css = 'body{font-family:Arial,sans-serif;font-size:11px;color:#111;padding:20px;margin:0;}'
+        + 'h2{font-size:15px;margin:0 0 2px;}p.sub{font-size:11px;color:#6B7280;margin:0 0 14px;}'
+        + 'table{width:100%;border-collapse:collapse;}th{background:#F3F4F6;font-size:10px;font-weight:700;color:#374151;text-align:left;padding:6px 8px;border-bottom:2px solid #E5E7EB;}'
+        + 'td{padding:5px 8px;border-bottom:1px solid #F3F4F6;font-size:10px;color:#374151;vertical-align:top;}'
+        + 'tr:nth-child(even) td{background:#FAFAFA;} a{color:#4F46E5;text-decoration:none;}'
+        + '@media print{@page{margin:12mm;size:A4 landscape;}}';
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Social Posts</title><style>' + css + '</style></head><body>'
+        + '<h2>Social Posts Report</h2>'
+        + '<p class="sub">Exported ' + rows.length + ' record' + (rows.length !== 1 ? 's' : '') + '</p>'
+        + '<table><thead><tr><th>Task</th><th>Customer</th><th>Platform</th><th>Posted By</th><th>Date</th><th>Link</th></tr></thead><tbody>';
+
+    rows.forEach(function(r) {
+        var cells = r.querySelectorAll('td');
+        if (!cells.length) return;
+        var taskA   = r.querySelector('td:first-child a');
+        var task    = taskA ? (taskA.getAttribute('title') || taskA.textContent.trim()) : '';
+        var href    = taskA ? taskA.href : '';
+        var cust    = cells[1] ? cells[1].textContent.trim() : '';
+        var plat    = cells[2] ? cells[2].textContent.trim() : '';
+        var poster  = cells[3] ? cells[3].textContent.trim() : '';
+        var date    = cells[4] ? cells[4].textContent.trim() : '';
+        var linkA   = cells[5] ? cells[5].querySelector('a') : null;
+        var url     = linkA ? linkA.href : '';
+        html += '<tr>'
+            + '<td>' + (href ? '<a href="' + href + '">' + task + '</a>' : task) + '</td>'
+            + '<td>' + cust + '</td>'
+            + '<td>' + plat + '</td>'
+            + '<td>' + poster + '</td>'
+            + '<td>' + date + '</td>'
+            + '<td>' + (url ? '<a href="' + url + '">' + url + '</a>' : '—') + '</td>'
+            + '</tr>';
+    });
+
+    html += '</tbody></table><script>setTimeout(function(){window.print();},400);<\/script></body></html>';
+    var win = window.open('', '_blank', 'width=960,height=700');
+    if (win) { win.document.write(html); win.document.close(); }
+}
 
 </script>
 @endpush
