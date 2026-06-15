@@ -472,7 +472,9 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
 {{-- Row 2: Context metrics (5 cols without filter, 3 cols with user filter) --}}
 <div class="{{ $row2Class }}">
     @foreach($kpisRow2 as $kpi)
-    <div class="rpt-card" style="padding:10px 12px;">
+    @php $isSocialCard = ($kpi['label'] === 'Social Posts'); @endphp
+    <div class="rpt-card" style="padding:10px 12px;{{ $isSocialCard ? 'cursor:pointer;transition:box-shadow .15s;' : '' }}"
+         @if($isSocialCard) onclick="document.getElementById('social-posts-modal').style.display='flex'" onmouseover="this.style.boxShadow='0 4px 16px rgba(236,72,153,.13)'" onmouseout="this.style.boxShadow=''" @endif>
         <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px;">
             <div style="width:28px;height:28px;border-radius:8px;background:{{ $kpi['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fas {{ $kpi['icon'] }}" style="color:{{ $kpi['color'] }};font-size:11px;"></i>
@@ -494,6 +496,77 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         @endif
     </div>
     @endforeach
+</div>
+
+{{-- ══ Social Posts Modal ══ --}}
+<div id="social-posts-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.45);" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#fff;border-radius:18px;width:100%;max-width:780px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.22);overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #F3F4F6;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:9px;background:#FCE7F3;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-share-nodes" style="color:#EC4899;font-size:13px;"></i>
+                </div>
+                <div>
+                    <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Social Posts</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;">{{ $socialPostsCount }} published</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('social-posts-modal').style.display='none'" style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;font-size:16px;color:#6B7280;display:flex;align-items:center;justify-content:center;">×</button>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:0 22px 22px;">
+            @if($socialPostsList->isEmpty())
+            <div style="text-align:center;padding:40px 20px;">
+                <i class="fas fa-share-nodes" style="font-size:28px;color:#FCE7F3;margin-bottom:10px;"></i>
+                <p style="font-size:13px;color:#9CA3AF;margin:0;">No social posts in this period.</p>
+            </div>
+            @else
+            <div style="overflow-x:auto;margin-top:16px;">
+            <table class="rpt-table" id="social-posts-modal-table">
+                <thead>
+                    <tr>
+                        <th>Task</th>
+                        <th>Customer</th>
+                        <th style="text-align:center;">Platform</th>
+                        <th>Posted By</th>
+                        <th style="text-align:right;">Date</th>
+                        <th style="text-align:center;">Link</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach($socialPostsList as $sp)
+                @php $spIco = $platformIcons[$sp['platform']] ?? $platformIcons['other']; @endphp
+                <tr>
+                    <td style="max-width:200px;">
+                        <a href="{{ route('admin.tasks.show', $sp['task_id']) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#EC4899'" onmouseout="this.style.color='#111827'" title="{{ $sp['task'] }}">
+                            {{ Str::limit($sp['task'], 40) }}
+                        </a>
+                    </td>
+                    <td style="color:#374151;font-size:12px;">{{ $sp['customer'] }}</td>
+                    <td style="text-align:center;">
+                        <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#374151;background:#F9FAFB;border:1px solid #F3F4F6;border-radius:6px;padding:2px 8px;">
+                            <i class="{{ $spIco[0] }}" style="color:{{ $spIco[1] }};font-size:10px;"></i>
+                            {{ ucfirst($sp['platform']) }}
+                        </span>
+                    </td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $sp['poster'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;text-align:right;white-space:nowrap;">{{ $sp['date'] }}</td>
+                    <td style="text-align:center;">
+                        @if($sp['url'])
+                        <a href="{{ $sp['url'] }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:#FCE7F3;border-radius:6px;font-size:11px;font-weight:600;color:#EC4899;text-decoration:none;" onmouseover="this.style.background='#FBCFE8'" onmouseout="this.style.background='#FCE7F3'">
+                            <i class="fas fa-arrow-up-right-from-square" style="font-size:9px;"></i> View
+                        </a>
+                        @else
+                        <span style="font-size:11px;color:#D1D5DB;">—</span>
+                        @endif
+                    </td>
+                </tr>
+                @endforeach
+                </tbody>
+            </table>
+            </div>
+            @endif
+        </div>
+    </div>
 </div>
 
 {{-- ══ Row 2: Status + Priority + Trend (3-col) ══ --}}
@@ -2626,6 +2699,7 @@ document.addEventListener('DOMContentLoaded', function() {
      'overdue-table','reopened-table','reassigned-bottom-table',
      'billing-user-table','billing-customer-table','ad-budget-table'
     ].forEach(function(id) { rptPaginate(id, 7); });
+    rptPaginate('social-posts-modal-table', 10);
 });
 
 </script>

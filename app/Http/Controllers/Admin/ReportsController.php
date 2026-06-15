@@ -764,6 +764,30 @@ class ReportsController extends Controller
             })
             ->values();
 
+        // Social posts detail list for the modal
+        $socialPostsList = \App\Models\TaskSocialPost::with([
+                'task:id,title,customer_id,project_id',
+                'task.customer:id,name',
+                'task.project:id,name,customer_id',
+                'task.project.customer:id,name',
+                'user:id,name',
+            ])
+            ->when($isRegularUserFilter, fn($q) => $q->where('user_id', $userId))
+            ->when($from, fn($q) => $q->where('task_social_posts.created_at', '>=', $from))
+            ->when($projectId, fn($q) => $q->whereHas('task', fn($tq) => $tq->where('project_id', $projectId)))
+            ->when($customerId, fn($q) => $q->whereHas('task', fn($tq) => $tq->where('customer_id', $customerId)))
+            ->orderByDesc('task_social_posts.created_at')
+            ->get()
+            ->map(fn($p) => [
+                'task'     => $p->task?->title ?? '—',
+                'task_id'  => $p->task_id,
+                'customer' => $p->task?->customer?->name ?? $p->task?->project?->customer?->name ?? '—',
+                'platform' => $p->platform,
+                'poster'   => $p->user?->name ?? '—',
+                'date'     => $p->created_at->format(config('app.date_format', 'M d, Y')),
+                'url'      => $p->post_url,
+            ]);
+
         return view('admin.reports.index', compact(
             'range', 'projectId', 'customerId', 'userId', 'selectedUser',
             'totalTasks', 'completedTasks', 'overdueTasks', 'completionRate',
@@ -777,7 +801,7 @@ class ReportsController extends Controller
             'billingUsers', 'billingCustomers', 'phaseLabels', 'from',
             'adBudgetTasks',
             'approvalSpeedTasks', 'approvedCount', 'avgHours', 'pendingApproval', 'deferredApproval',
-            'socialPendingTasks', 'decideLaterReportTasks'
+            'socialPendingTasks', 'decideLaterReportTasks', 'socialPostsList'
         ));
     }
 
