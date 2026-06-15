@@ -141,6 +141,9 @@
 
     /* Allow natural multi-page flow; only avoid breaks inside cards */
     .rpt-card { page-break-inside: avoid; break-inside: avoid; }
+
+    /* Hide pagination controls — all rows are expanded during print */
+    [id$="-pg"] { display:none !important; }
 }
 
 /* Print header (hidden on screen, shown when printing/PDF) */
@@ -2044,6 +2047,8 @@ new Chart(document.getElementById('projCompletionChart'), {
 /* ══════════════════════════════════════════════════════════
    Shared helpers: show/hide UI for export capture
 ══════════════════════════════════════════════════════════ */
+let _hiddenPaginatedRows = [];
+
 function prepareCapture() {
     document.getElementById('rpt-print-header').style.display = 'block';
     document.getElementById('rpt-filter-bar').style.display   = 'none';
@@ -2055,11 +2060,24 @@ function prepareCapture() {
                     '.rpt-grid-2{grid-template-columns:1fr 1fr!important;}' +
                     '.rpt-grid-3{grid-template-columns:repeat(3,1fr)!important;}';
     document.head.appendChild(s);
+
+    // Expand all paginated tables so every row prints
+    _hiddenPaginatedRows = [];
+    document.querySelectorAll('#rpt-capture-zone .rpt-table tbody tr').forEach(function(r) {
+        if (r.style.display === 'none') {
+            _hiddenPaginatedRows.push(r);
+            r.style.display = '';
+        }
+    });
 }
 function restoreCapture() {
     document.getElementById('rpt-print-header').style.display = 'none';
     document.getElementById('rpt-filter-bar').style.display   = '';
     document.getElementById('__rpt-grid-override')?.remove();
+
+    // Restore hidden rows to their paginated state
+    _hiddenPaginatedRows.forEach(function(r) { r.style.display = 'none'; });
+    _hiddenPaginatedRows = [];
 }
 
 /* Convert <canvas> elements to <img> so browser/html2canvas renders them */
