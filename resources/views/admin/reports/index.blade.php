@@ -1125,7 +1125,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
     </div>
     @else
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
-    <table class="rpt-table">
+    <table class="rpt-table" id="decide-later-table">
         <thead>
             <tr>
                 <th>Task</th>
@@ -2622,6 +2622,7 @@ function rptPaginate(tableId, perPage) {
 // Init all report tables
 document.addEventListener('DOMContentLoaded', function() {
     ['proj-table','team-table','customer-table','approval-speed-table',
+     'decide-later-table',
      'overdue-table','reopened-table','reassigned-bottom-table',
      'billing-user-table','billing-customer-table','ad-budget-table'
     ].forEach(function(id) { rptPaginate(id, 7); });
