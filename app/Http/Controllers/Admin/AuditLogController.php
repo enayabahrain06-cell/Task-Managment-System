@@ -67,7 +67,6 @@ class AuditLogController extends Controller
         }
 
         AuditLogger::log(
-            auth()->user(),
             'data.cleared',
             null,
             'Error logs cleared by ' . auth()->user()->name,
