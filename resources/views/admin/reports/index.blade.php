@@ -422,10 +422,14 @@ $platformIcons = ['facebook'=>['fab fa-facebook','#1877F2'],'instagram'=>['fab f
 $kpisRow1 = [
     ['label' => $empName ? 'Assigned Tasks' : 'Total Tasks',
      'value' => $totalTasks,         'icon'=>'fa-list-check',   'color'=>'#6366F1','bg'=>'#EEF2FF',
-     'sub'   => $empName ? 'Assigned to '.$empName : 'In selected period'],
-    ['label'=>'Completed',        'value'=>$completedTasks,    'icon'=>'fa-circle-check', 'color'=>'#10B981','bg'=>'#D1FAE5', 'sub'=>'Approved + Delivered'],
-    ['label'=>'Completion Rate',  'value'=>$completionRate.'%','icon'=>'fa-chart-pie',     'color'=>'#F59E0B','bg'=>'#FEF3C7', 'sub'=>'Of all tasks done'],
-    ['label'=>'On-time Rate',     'value'=>$onTimeRate.'%',    'icon'=>'fa-clock',         'color'=>'#8B5CF6','bg'=>'#EDE9FE', 'sub'=>'Before deadline'],
+     'sub'   => $empName ? 'Assigned to '.$empName : 'In selected period',
+     'modal' => 'total-tasks-modal'],
+    ['label'=>'Completed',        'value'=>$completedTasks,    'icon'=>'fa-circle-check', 'color'=>'#10B981','bg'=>'#D1FAE5', 'sub'=>'Approved + Delivered',
+     'modal' => 'completed-tasks-modal'],
+    ['label'=>'Completion Rate',  'value'=>$completionRate.'%','icon'=>'fa-chart-pie',     'color'=>'#F59E0B','bg'=>'#FEF3C7', 'sub'=>'Of all tasks done',
+     'modal' => 'completed-tasks-modal'],
+    ['label'=>'On-time Rate',     'value'=>$onTimeRate.'%',    'icon'=>'fa-clock',         'color'=>'#8B5CF6','bg'=>'#EDE9FE', 'sub'=>'Before deadline',
+     'modal' => 'ontime-tasks-modal'],
 ];
 
 // Row 2 — context metrics (count varies by filter)
@@ -456,7 +460,9 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
 {{-- Row 1: Core metrics (always 4) --}}
 <div class="rpt-grid-4">
     @foreach($kpisRow1 as $kpi)
-    <div class="rpt-card" style="padding:10px 12px;">
+    @php $modal1 = $kpi['modal'] ?? null; @endphp
+    <div class="rpt-card" style="padding:10px 12px;{{ $modal1 ? 'cursor:pointer;transition:box-shadow .15s;' : '' }}"
+         @if($modal1) onclick="document.getElementById('{{ $modal1 }}').style.display='flex'" onmouseover="this.style.boxShadow='0 4px 16px rgba(99,102,241,.1)'" onmouseout="this.style.boxShadow=''" @endif>
         <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px;">
             <div style="width:28px;height:28px;border-radius:8px;background:{{ $kpi['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fas {{ $kpi['icon'] }}" style="color:{{ $kpi['color'] }};font-size:11px;"></i>
@@ -559,6 +565,134 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
                         <span style="font-size:11px;color:#D1D5DB;">—</span>
                         @endif
                     </td>
+                </tr>
+                @endforeach
+                </tbody>
+            </table>
+            </div>
+            @endif
+        </div>
+    </div>
+</div>
+
+@php
+$statusBgMap    = ['draft'=>'#F3F4F6','assigned'=>'#EEF2FF','viewed'=>'#E0F2FE','in_progress'=>'#FFF7ED','submitted'=>'#F5F3FF','revision_requested'=>'#FEE2E2','approved'=>'#ECFDF5','delivered'=>'#ECFDF5','archived'=>'#F3F4F6','paused'=>'#FEF3C7'];
+$statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1','in_progress'=>'#EA580C','submitted'=>'#7C3AED','revision_requested'=>'#DC2626','approved'=>'#16A34A','delivered'=>'#16A34A','archived'=>'#9CA3AF','paused'=>'#D97706'];
+@endphp
+
+{{-- ══ Total Tasks Modal ══ --}}
+<div id="total-tasks-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.45);" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#fff;border-radius:18px;width:100%;max-width:820px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.22);overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #F3F4F6;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:9px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-list-check" style="color:#6366F1;font-size:13px;"></i>
+                </div>
+                <div>
+                    <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">All Tasks</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;">{{ $totalTasks }} in selected period</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('total-tasks-modal').style.display='none'" style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;font-size:16px;color:#6B7280;display:flex;align-items:center;justify-content:center;">×</button>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:0 22px 22px;">
+            @if($totalTasksList->isEmpty())
+            <p style="text-align:center;color:#9CA3AF;font-size:13px;padding:32px 0;">No tasks in this period.</p>
+            @else
+            <div style="overflow-x:auto;margin-top:16px;">
+            <table class="rpt-table" id="total-tasks-modal-table">
+                <thead><tr><th>Task</th><th>Project</th><th>Customer</th><th>Assignee</th><th style="text-align:center;">Status</th><th style="text-align:right;">Deadline</th></tr></thead>
+                <tbody>
+                @foreach($totalTasksList as $ct)
+                <tr>
+                    <td style="max-width:200px;"><a href="{{ route('admin.tasks.show', $ct['task_id']) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#111827'" title="{{ $ct['title'] }}">{{ Str::limit($ct['title'], 40) }}</a></td>
+                    <td style="color:#374151;font-size:12px;">{{ $ct['project'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $ct['customer'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $ct['assignee'] }}</td>
+                    <td style="text-align:center;"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;background:{{ $statusBgMap[$ct['status']] ?? '#F3F4F6' }};color:{{ $statusColorMap[$ct['status']] ?? '#374151' }};">{{ $ct['status_label'] }}</span></td>
+                    <td style="text-align:right;font-size:12px;white-space:nowrap;color:{{ $ct['overdue'] ? '#DC2626' : '#6B7280' }};">{{ $ct['deadline'] ?? '—' }}{{ $ct['overdue'] ? ' ⚠' : '' }}</td>
+                </tr>
+                @endforeach
+                </tbody>
+            </table>
+            </div>
+            @endif
+        </div>
+    </div>
+</div>
+
+{{-- ══ Completed Tasks Modal ══ --}}
+<div id="completed-tasks-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.45);" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#fff;border-radius:18px;width:100%;max-width:820px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.22);overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #F3F4F6;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:9px;background:#D1FAE5;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-circle-check" style="color:#10B981;font-size:13px;"></i>
+                </div>
+                <div>
+                    <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Completed Tasks</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;">{{ $completedTasks }} approved or delivered</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('completed-tasks-modal').style.display='none'" style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;font-size:16px;color:#6B7280;display:flex;align-items:center;justify-content:center;">×</button>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:0 22px 22px;">
+            @if($completedTasksList->isEmpty())
+            <p style="text-align:center;color:#9CA3AF;font-size:13px;padding:32px 0;">No completed tasks in this period.</p>
+            @else
+            <div style="overflow-x:auto;margin-top:16px;">
+            <table class="rpt-table" id="completed-tasks-modal-table">
+                <thead><tr><th>Task</th><th>Project</th><th>Customer</th><th>Assignee</th><th style="text-align:center;">Status</th><th style="text-align:right;">Deadline</th></tr></thead>
+                <tbody>
+                @foreach($completedTasksList as $ct)
+                <tr>
+                    <td style="max-width:200px;"><a href="{{ route('admin.tasks.show', $ct['task_id']) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#10B981'" onmouseout="this.style.color='#111827'" title="{{ $ct['title'] }}">{{ Str::limit($ct['title'], 40) }}</a></td>
+                    <td style="color:#374151;font-size:12px;">{{ $ct['project'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $ct['customer'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $ct['assignee'] }}</td>
+                    <td style="text-align:center;"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;background:{{ $statusBgMap[$ct['status']] ?? '#F3F4F6' }};color:{{ $statusColorMap[$ct['status']] ?? '#374151' }};">{{ $ct['status_label'] }}</span></td>
+                    <td style="text-align:right;font-size:12px;white-space:nowrap;color:#6B7280;">{{ $ct['deadline'] ?? '—' }}</td>
+                </tr>
+                @endforeach
+                </tbody>
+            </table>
+            </div>
+            @endif
+        </div>
+    </div>
+</div>
+
+{{-- ══ On-time Tasks Modal ══ --}}
+<div id="ontime-tasks-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.45);" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#fff;border-radius:18px;width:100%;max-width:820px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.22);overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #F3F4F6;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:9px;background:#EDE9FE;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-clock" style="color:#8B5CF6;font-size:13px;"></i>
+                </div>
+                <div>
+                    <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">On-time Tasks</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;">{{ $onTimeTasksList->count() }} completed before deadline</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('ontime-tasks-modal').style.display='none'" style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;font-size:16px;color:#6B7280;display:flex;align-items:center;justify-content:center;">×</button>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:0 22px 22px;">
+            @if($onTimeTasksList->isEmpty())
+            <p style="text-align:center;color:#9CA3AF;font-size:13px;padding:32px 0;">No on-time completions in this period.</p>
+            @else
+            <div style="overflow-x:auto;margin-top:16px;">
+            <table class="rpt-table" id="ontime-tasks-modal-table">
+                <thead><tr><th>Task</th><th>Project</th><th>Customer</th><th>Assignee</th><th style="text-align:center;">Status</th><th style="text-align:right;">Deadline</th></tr></thead>
+                <tbody>
+                @foreach($onTimeTasksList as $ct)
+                <tr>
+                    <td style="max-width:200px;"><a href="{{ route('admin.tasks.show', $ct['task_id']) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#8B5CF6'" onmouseout="this.style.color='#111827'" title="{{ $ct['title'] }}">{{ Str::limit($ct['title'], 40) }}</a></td>
+                    <td style="color:#374151;font-size:12px;">{{ $ct['project'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $ct['customer'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $ct['assignee'] }}</td>
+                    <td style="text-align:center;"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;background:{{ $statusBgMap[$ct['status']] ?? '#F3F4F6' }};color:{{ $statusColorMap[$ct['status']] ?? '#374151' }};">{{ $ct['status_label'] }}</span></td>
+                    <td style="text-align:right;font-size:12px;white-space:nowrap;color:#6B7280;">{{ $ct['deadline'] ?? '—' }}</td>
                 </tr>
                 @endforeach
                 </tbody>
@@ -2700,6 +2834,9 @@ document.addEventListener('DOMContentLoaded', function() {
      'billing-user-table','billing-customer-table','ad-budget-table'
     ].forEach(function(id) { rptPaginate(id, 7); });
     rptPaginate('social-posts-modal-table', 10);
+    rptPaginate('total-tasks-modal-table', 10);
+    rptPaginate('completed-tasks-modal-table', 10);
+    rptPaginate('ontime-tasks-modal-table', 10);
 });
 
 </script>

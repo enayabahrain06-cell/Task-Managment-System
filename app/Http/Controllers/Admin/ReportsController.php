@@ -764,6 +764,44 @@ class ReportsController extends Controller
             })
             ->values();
 
+        // ── Row-1 card modal task lists ───────────────────────────────────────
+        $cardTaskMap = fn($task) => [
+            'title'        => $task->title,
+            'task_id'      => $task->id,
+            'project'      => $task->project?->name ?? '—',
+            'customer'     => $task->customer?->name ?? $task->project?->customer?->name ?? '—',
+            'assignee'     => $task->assignee?->name ?? '—',
+            'status'       => $task->status,
+            'status_label' => ucwords(str_replace('_', ' ', $task->status)),
+            'deadline'     => $task->deadline?->format(config('app.date_format', 'M d, Y')),
+            'overdue'      => $task->deadline && $task->deadline->isPast() && !in_array($task->status, $doneStatuses),
+        ];
+
+        $totalTasksList = $scoped()
+            ->with(['assignee:id,name', 'project:id,name,customer_id', 'project.customer:id,name', 'customer:id,name'])
+            ->orderByDesc('created_at')
+            ->take(300)
+            ->get()
+            ->map($cardTaskMap);
+
+        $completedTasksList = $scoped()
+            ->whereIn('status', $doneStatuses)
+            ->with(['assignee:id,name', 'project:id,name,customer_id', 'project.customer:id,name', 'customer:id,name'])
+            ->orderByDesc('updated_at')
+            ->take(300)
+            ->get()
+            ->map($cardTaskMap);
+
+        $onTimeTasksList = $scoped()
+            ->whereIn('status', $doneStatuses)
+            ->whereNotNull('deadline')
+            ->whereHas('logs', fn($q) => $q->whereIn('action', ['status_updated_approved', 'status_updated_delivered', 'status_updated_completed'])->whereColumn('task_logs.created_at', '<=', 'tasks.deadline'))
+            ->with(['assignee:id,name', 'project:id,name,customer_id', 'project.customer:id,name', 'customer:id,name'])
+            ->orderByDesc('updated_at')
+            ->take(300)
+            ->get()
+            ->map($cardTaskMap);
+
         // Social posts detail list for the modal
         $socialPostsList = \App\Models\TaskSocialPost::with([
                 'task:id,title,customer_id,project_id',
@@ -801,7 +839,8 @@ class ReportsController extends Controller
             'billingUsers', 'billingCustomers', 'phaseLabels', 'from',
             'adBudgetTasks',
             'approvalSpeedTasks', 'approvedCount', 'avgHours', 'pendingApproval', 'deferredApproval',
-            'socialPendingTasks', 'decideLaterReportTasks', 'socialPostsList'
+            'socialPendingTasks', 'decideLaterReportTasks', 'socialPostsList',
+            'totalTasksList', 'completedTasksList', 'onTimeTasksList'
         ));
     }
 
