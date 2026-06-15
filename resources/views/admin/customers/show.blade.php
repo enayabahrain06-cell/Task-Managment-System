@@ -191,7 +191,7 @@
     openApproval(d) { this.approvalModal = d; this.approveNote = ''; this.approving = false; document.body.style.overflow='hidden'; },
 
     close() { this.task = null; this.project = null; this.statsModal = null; this.approvalModal = null; this.approveNote = ''; this.approving = false; this.sendModal = false; this.sendResult = null; this.sending = false; this.sendMode = 'text'; this.selectedFile = null; this.fileCaption = ''; document.body.style.overflow=''; }
-}" x-init="editableMsg = sendMsg; $watch('sendMode', () => { editableMsg = sendMsg; }); $watch('selectedFile', () => { editableMsg = sendMsg; }); $watch('sendProject', () => { editableMsg = sendMsg; });" @keydown.escape.window="close()" style="max-width:900px;">
+}" x-init="editableMsg = sendMsg; $watch('sendMode', () => { editableMsg = sendMsg; }); $watch('selectedFile', () => { editableMsg = sendMsg; }); $watch('sendProject', () => { editableMsg = sendMsg; });" @keydown.escape.window="close()" @open-customer-task.window="openTask($event.detail)" style="max-width:900px;">
 
 {{-- Project Preview Modal --}}
 <template x-if="project">
@@ -994,62 +994,90 @@
                 $tsLabel = ['draft'=>'Draft','assigned'=>'Assigned','viewed'=>'Viewed','in_progress'=>'In Progress','submitted'=>'In Review','revision_requested'=>'Revision','approved'=>'Approved','delivered'=>'Delivered','archived'=>'Archived'];
                 $prBg    = ['high'=>'#FEE2E2','medium'=>'#FEF3C7','low'=>'#DCFCE7'];
                 $prColor = ['high'=>'#DC2626','medium'=>'#D97706','low'=>'#16A34A'];
+                $directTasksJson = $directTasks->map(fn($task) => [
+                    'title'         => $task->title,
+                    'project'       => $task->project->name ?? '—',
+                    'assignee'      => $task->assignee->name ?? null,
+                    'status'        => $task->status,
+                    'statusLabel'   => $tsLabel[$task->status] ?? ucfirst(str_replace('_',' ',$task->status)),
+                    'statusBg'      => $tsBg[$task->status]    ?? '#F3F4F6',
+                    'statusColor'   => $tsColor[$task->status]  ?? '#374151',
+                    'priorityLabel' => $task->priority ? ucfirst($task->priority) : null,
+                    'priorityBg'    => $prBg[$task->priority]   ?? '#F3F4F6',
+                    'priorityColor' => $prColor[$task->priority] ?? '#374151',
+                    'deadline'      => $task->deadline ? $task->deadline->format(config('app.date_format', 'M d, Y')) : null,
+                    'overdue'       => $task->deadline && $task->deadline->isPast() && !in_array($task->status, ['approved','delivered','archived']),
+                    'description'   => $task->description ? \Illuminate\Support\Str::limit($task->description, 200) : null,
+                    'url'           => route('admin.tasks.show', $task->id),
+                ])->values();
             @endphp
-            <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;">
+            <div x-data="{
+                allTasks: {{ $directTasksJson }},
+                page: 1,
+                perPage: 10,
+                get total() { return this.allTasks.length; },
+                get totalPages() { return Math.ceil(this.total / this.perPage); },
+                get start() { return (this.page - 1) * this.perPage; },
+                get end() { return Math.min(this.start + this.perPage, this.total); },
+                get pageTasks() { return this.allTasks.slice(this.start, this.end); },
+                prevPage() { if (this.page > 1) this.page--; },
+                nextPage() { if (this.page < this.totalPages) this.page++; },
+                goPage(n) { this.page = n; },
+                openTask(t) { window.dispatchEvent(new CustomEvent('open-customer-task', { detail: t })); }
+            }" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
                     <h2 style="font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:0;">
                         Tasks <span style="font-weight:500;color:#9CA3AF;">({{ $directTasks->count() }})</span>
                     </h2>
                 </div>
 
-                @forelse($directTasks as $task)
-                @php
-                    $isOverdue = $task->deadline && $task->deadline->isPast() && !in_array($task->status, ['approved','delivered','archived']);
-                    $tGroup    = in_array($task->status, ['draft','assigned','viewed']) ? 'pending'
-                               : (in_array($task->status, ['in_progress','submitted','revision_requested']) ? 'active' : 'done');
-                    $taskData  = json_encode([
-                        'title'         => $task->title,
-                        'project'       => $task->project->name ?? '—',
-                        'assignee'      => $task->assignee->name ?? null,
-                        'status'        => $task->status,
-                        'statusLabel'   => $tsLabel[$task->status] ?? ucfirst(str_replace('_',' ',$task->status)),
-                        'statusBg'      => $tsBg[$task->status]    ?? '#F3F4F6',
-                        'statusColor'   => $tsColor[$task->status]  ?? '#374151',
-                        'priorityLabel' => $task->priority ? ucfirst($task->priority) : null,
-                        'priorityBg'    => $prBg[$task->priority]   ?? '#F3F4F6',
-                        'priorityColor' => $prColor[$task->priority] ?? '#374151',
-                        'deadline'      => $task->deadline ? $task->deadline->format(config('app.date_format', 'M d, Y')) : null,
-                        'overdue'       => $isOverdue,
-                        'description'   => $task->description ? \Illuminate\Support\Str::limit($task->description, 200) : null,
-                        'url'           => route('admin.tasks.show', $task->id),
-                    ]);
-                @endphp
-                <button @click="openTask({{ $taskData }})"
-                        style="display:flex;align-items:center;justify-content:space-between;padding:10px 8px;border-bottom:1px solid #F9FAFB;width:100%;background:none;border-left:none;border-right:none;border-top:none;cursor:pointer;text-align:left;transition:background .12s;border-radius:6px;"
-                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
-                    <div style="min-width:0;flex:1;padding-right:12px;">
-                        <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                            {{ $task->title }}
-                            @if($isOverdue)
-                            <span style="font-size:10px;font-weight:600;color:#DC2626;margin-left:6px;">⚠ Overdue</span>
-                            @endif
-                        </p>
-                        <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">
-                            {{ $task->project->name ?? '—' }}
-                            @if($task->assignee) · {{ $task->assignee->name }} @endif
-                            @if($task->deadline) · {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }} @endif
-                        </p>
-                    </div>
-                    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-                        <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:{{ $tsBg[$task->status] ?? '#F3F4F6' }};color:{{ $tsColor[$task->status] ?? '#374151' }};">
-                            {{ $tsLabel[$task->status] ?? ucfirst(str_replace('_', ' ', $task->status)) }}
+                <template x-if="total === 0">
+                    <p style="font-size:13px;color:#9CA3AF;text-align:center;padding:16px 0 4px;">No tasks linked yet.</p>
+                </template>
+
+                <template x-for="task in pageTasks" :key="task.url">
+                    <button @click="openTask(task)"
+                            style="display:flex;align-items:center;justify-content:space-between;padding:10px 8px;border-bottom:1px solid #F9FAFB;width:100%;background:none;border-left:none;border-right:none;border-top:none;cursor:pointer;text-align:left;transition:background .12s;border-radius:6px;"
+                            onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                        <div style="min-width:0;flex:1;padding-right:12px;">
+                            <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                                <span x-text="task.title"></span>
+                                <span x-show="task.overdue" style="font-size:10px;font-weight:600;color:#DC2626;margin-left:6px;">⚠ Overdue</span>
+                            </p>
+                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">
+                                <span x-text="task.project"></span>
+                                <template x-if="task.assignee"><span x-text="' · ' + task.assignee"></span></template>
+                                <template x-if="task.deadline"><span x-text="' · ' + task.deadline"></span></template>
+                            </p>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                            <span x-text="task.statusLabel"
+                                  :style="'font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+task.statusBg+';color:'+task.statusColor+';'"></span>
+                            <i class="fa fa-chevron-right" style="font-size:10px;color:#D1D5DB;"></i>
+                        </div>
+                    </button>
+                </template>
+
+                <template x-if="totalPages > 1">
+                    <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                        <span style="font-size:12px;color:#6B7280;">
+                            Showing <span x-text="start + 1"></span>–<span x-text="end"></span> of <span x-text="total"></span> tasks
                         </span>
-                        <i class="fa fa-chevron-right" style="font-size:10px;color:#D1D5DB;"></i>
+                        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
+                            <button @click="prevPage()"
+                                    :disabled="page === 1"
+                                    :style="page === 1 ? 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:default;min-width:32px;text-align:center;background:#F3F4F6;color:#D1D5DB;' : 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;min-width:32px;text-align:center;background:#F3F4F6;color:#374151;'">‹ Prev</button>
+                            <template x-for="n in totalPages" :key="n">
+                                <button @click="goPage(n)"
+                                        :style="n === page ? 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:700;border:none;cursor:pointer;min-width:32px;text-align:center;background:#4F46E5;color:#fff;' : 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;min-width:32px;text-align:center;background:#F3F4F6;color:#374151;'"
+                                        x-text="n"></button>
+                            </template>
+                            <button @click="nextPage()"
+                                    :disabled="page === totalPages"
+                                    :style="page === totalPages ? 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:default;min-width:32px;text-align:center;background:#F3F4F6;color:#D1D5DB;' : 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;min-width:32px;text-align:center;background:#F3F4F6;color:#374151;'">Next ›</button>
+                        </div>
                     </div>
-                </button>
-                @empty
-                <p style="font-size:13px;color:#9CA3AF;text-align:center;padding:16px 0 4px;">No tasks linked yet.</p>
-                @endforelse
+                </template>
 
             </div>
 
