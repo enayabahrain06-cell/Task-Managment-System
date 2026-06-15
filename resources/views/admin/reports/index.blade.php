@@ -2946,42 +2946,70 @@ function _spRender() {
 
 function exportSocialPostsPDF() {
     var rows = _spFiltered.length ? _spFiltered : _spAllRows;
-    var css = 'body{font-family:Arial,sans-serif;font-size:11px;color:#111;padding:20px;margin:0;}'
-        + 'h2{font-size:15px;margin:0 0 2px;}p.sub{font-size:11px;color:#6B7280;margin:0 0 14px;}'
-        + 'table{width:100%;border-collapse:collapse;}th{background:#F3F4F6;font-size:10px;font-weight:700;color:#374151;text-align:left;padding:6px 8px;border-bottom:2px solid #E5E7EB;}'
-        + 'td{padding:5px 8px;border-bottom:1px solid #F3F4F6;font-size:10px;color:#374151;vertical-align:top;}'
-        + 'tr:nth-child(even) td{background:#FAFAFA;} a{color:#4F46E5;text-decoration:none;}'
-        + '@media print{@page{margin:12mm;size:A4 landscape;}}';
-    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Social Posts</title><style>' + css + '</style></head><body>'
-        + '<h2>Social Posts Report</h2>'
-        + '<p class="sub">Exported ' + rows.length + ' record' + (rows.length !== 1 ? 's' : '') + '</p>'
-        + '<table><thead><tr><th>Task</th><th>Customer</th><th>Platform</th><th>Posted By</th><th>Date</th><th>Link</th></tr></thead><tbody>';
 
-    rows.forEach(function(r) {
+    var css = [
+        'body{font-family:Arial,sans-serif;font-size:11px;color:#111;margin:0;background:#F9FAFB;}',
+        '.preview-bar{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #E5E7EB;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 4px rgba(0,0,0,.06);}',
+        '.preview-bar h2{margin:0;font-size:14px;color:#111827;}',
+        '.preview-bar p{margin:0;font-size:11px;color:#6B7280;}',
+        '.preview-bar .print-btn{padding:8px 20px;background:#7C3AED;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;}',
+        '.preview-bar .print-btn:hover{background:#6D28D9;}',
+        '.table-wrap{padding:24px 28px;}',
+        'table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);}',
+        'thead tr{background:#F3F4F6;}',
+        'th{font-size:10px;font-weight:700;color:#374151;text-align:left;padding:8px 10px;border-bottom:2px solid #E5E7EB;}',
+        'td{padding:7px 10px;border-bottom:1px solid #F3F4F6;font-size:10px;color:#374151;vertical-align:middle;}',
+        'tbody tr:nth-child(even) td{background:#FAFAFA;}',
+        'a{color:#4F46E5;text-decoration:none;}',
+        '@media print{',
+        '  .preview-bar{display:none !important;}',
+        '  body{background:#fff;}',
+        '  .table-wrap{padding:0;}',
+        '  table{box-shadow:none;border-radius:0;}',
+        '  thead{display:table-header-group;}',
+        '  tr{page-break-inside:avoid;}',
+        '  @page{margin:12mm;size:A4 landscape;}',
+        '}'
+    ].join('');
+
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Social Posts Report</title><style>' + css + '</style></head><body>'
+        + '<div class="preview-bar">'
+        +   '<div><h2>Social Posts Report</h2><p>' + rows.length + ' record' + (rows.length !== 1 ? 's' : '') + ' — scroll to review, then click Print</p></div>'
+        +   '<button class="print-btn" onclick="window.print()">&#128438; Print / Save as PDF</button>'
+        + '</div>'
+        + '<div class="table-wrap">'
+        + '<table><thead><tr>'
+        + '<th>#</th><th>Task</th><th>Customer</th><th>Platform</th><th>Posted By</th><th>Date</th><th>Link</th>'
+        + '</tr></thead><tbody>';
+
+    rows.forEach(function(r, i) {
         var cells = r.querySelectorAll('td');
         if (!cells.length) return;
-        var taskA   = r.querySelector('td:first-child a');
-        var task    = taskA ? (taskA.getAttribute('title') || taskA.textContent.trim()) : '';
-        var href    = taskA ? taskA.href : '';
-        var cust    = cells[1] ? cells[1].textContent.trim() : '';
-        var plat    = cells[2] ? cells[2].textContent.trim() : '';
-        var poster  = cells[3] ? cells[3].textContent.trim() : '';
-        var date    = cells[4] ? cells[4].textContent.trim() : '';
-        var linkA   = cells[5] ? cells[5].querySelector('a') : null;
-        var url     = linkA ? linkA.href : '';
+        var taskA  = r.querySelector('td:first-child a');
+        var task   = taskA ? (taskA.getAttribute('title') || taskA.textContent.trim()) : '';
+        var href   = taskA ? taskA.href : '';
+        var cust   = cells[1] ? cells[1].textContent.trim() : '';
+        var plat   = cells[2] ? cells[2].textContent.trim() : '';
+        var poster = cells[3] ? cells[3].textContent.trim() : '';
+        var date   = cells[4] ? cells[4].textContent.trim() : '';
+        var linkA  = cells[5] ? cells[5].querySelector('a') : null;
+        var url    = linkA ? linkA.href : '';
         html += '<tr>'
-            + '<td>' + (href ? '<a href="' + href + '">' + task + '</a>' : task) + '</td>'
+            + '<td style="color:#9CA3AF;width:30px;">' + (i + 1) + '</td>'
+            + '<td style="max-width:220px;">' + (href ? '<a href="' + href + '">' + task + '</a>' : task) + '</td>'
             + '<td>' + cust + '</td>'
             + '<td>' + plat + '</td>'
             + '<td>' + poster + '</td>'
-            + '<td>' + date + '</td>'
-            + '<td>' + (url ? '<a href="' + url + '">' + url + '</a>' : '—') + '</td>'
+            + '<td style="white-space:nowrap;">' + date + '</td>'
+            + '<td>' + (url ? '<a href="' + url + '">View</a>' : '—') + '</td>'
             + '</tr>';
     });
 
-    html += '</tbody></table><script>setTimeout(function(){window.print();},400);<\/script></body></html>';
-    var win = window.open('', '_blank', 'width=960,height=700');
+    html += '</tbody></table></div></body></html>';
+
+    var win = window.open('', '_blank');
     if (win) { win.document.write(html); win.document.close(); }
+    else { alert('Pop-up blocked — please allow pop-ups for this site and try again.'); }
 }
 
 </script>
