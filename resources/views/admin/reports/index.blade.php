@@ -119,28 +119,29 @@
     #rpt-main-content { margin:0 !important; padding:0 !important; }
     #rpt-print-header { display:block !important; margin-bottom:24px !important; }
 
-    /* ── Cards & grids preserve layout ── */
+    /* ── Cards: border only, NO break-inside avoid (avoidance causes the page gaps) ── */
     .rpt-card {
         border:1px solid #D1D5DB !important;
         box-shadow:none !important;
-        break-inside:avoid;
-        -webkit-column-break-inside:avoid;
-        page-break-inside:avoid;
     }
     .rpt-grid-4 { grid-template-columns:repeat(4,1fr) !important; }
     .rpt-grid-5 { grid-template-columns:repeat(5,1fr) !important; }
     .rpt-grid-2 { grid-template-columns:1fr 1fr !important; }
     .rpt-grid-3 { grid-template-columns:repeat(3,1fr) !important; }
 
+    /* ── Avoid splitting individual table rows across pages ── */
+    .rpt-table tr { break-inside:avoid; page-break-inside:avoid; }
+
     /* ── Progress bars, badges & gradients print in color ── */
     .rpt-bar-fill  { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     .rpt-badge     { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
 
-    @page { size: A4 portrait; margin: 0; }
+    /* Proper margins so content doesn't touch the paper edge */
+    @page { size: A4 portrait; margin: 12mm 8mm; }
 
-    /* Allow natural multi-page flow; only avoid breaks inside cards */
-    .rpt-card { page-break-inside: avoid; break-inside: avoid; }
+    /* Hide pagination controls — all rows are expanded during print */
+    [id$="-pg"] { display:none !important; }
 }
 
 /* Print header (hidden on screen, shown when printing/PDF) */
@@ -422,10 +423,14 @@ $platformIcons = ['facebook'=>['fab fa-facebook','#1877F2'],'instagram'=>['fab f
 $kpisRow1 = [
     ['label' => $empName ? 'Assigned Tasks' : 'Total Tasks',
      'value' => $totalTasks,         'icon'=>'fa-list-check',   'color'=>'#6366F1','bg'=>'#EEF2FF',
-     'sub'   => $empName ? 'Assigned to '.$empName : 'In selected period'],
-    ['label'=>'Completed',        'value'=>$completedTasks,    'icon'=>'fa-circle-check', 'color'=>'#10B981','bg'=>'#D1FAE5', 'sub'=>'Approved + Delivered'],
-    ['label'=>'Completion Rate',  'value'=>$completionRate.'%','icon'=>'fa-chart-pie',     'color'=>'#F59E0B','bg'=>'#FEF3C7', 'sub'=>'Of all tasks done'],
-    ['label'=>'On-time Rate',     'value'=>$onTimeRate.'%',    'icon'=>'fa-clock',         'color'=>'#8B5CF6','bg'=>'#EDE9FE', 'sub'=>'Before deadline'],
+     'sub'   => $empName ? 'Assigned to '.$empName : 'In selected period',
+     'modal' => 'total-tasks-modal'],
+    ['label'=>'Completed',        'value'=>$completedTasks,    'icon'=>'fa-circle-check', 'color'=>'#10B981','bg'=>'#D1FAE5', 'sub'=>'Approved + Delivered',
+     'modal' => 'completed-tasks-modal'],
+    ['label'=>'Completion Rate',  'value'=>$completionRate.'%','icon'=>'fa-chart-pie',     'color'=>'#F59E0B','bg'=>'#FEF3C7', 'sub'=>'Of all tasks done',
+     'modal' => 'completed-tasks-modal'],
+    ['label'=>'On-time Rate',     'value'=>$onTimeRate.'%',    'icon'=>'fa-clock',         'color'=>'#8B5CF6','bg'=>'#EDE9FE', 'sub'=>'Before deadline',
+     'modal' => 'ontime-tasks-modal'],
 ];
 
 // Row 2 — context metrics (count varies by filter)
@@ -456,7 +461,9 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
 {{-- Row 1: Core metrics (always 4) --}}
 <div class="rpt-grid-4">
     @foreach($kpisRow1 as $kpi)
-    <div class="rpt-card" style="padding:10px 12px;">
+    @php $modal1 = $kpi['modal'] ?? null; @endphp
+    <div class="rpt-card" style="padding:10px 12px;{{ $modal1 ? 'cursor:pointer;transition:box-shadow .15s;' : '' }}"
+         @if($modal1) onclick="document.getElementById('{{ $modal1 }}').style.display='flex'" onmouseover="this.style.boxShadow='0 4px 16px rgba(99,102,241,.1)'" onmouseout="this.style.boxShadow=''" @endif>
         <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px;">
             <div style="width:28px;height:28px;border-radius:8px;background:{{ $kpi['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fas {{ $kpi['icon'] }}" style="color:{{ $kpi['color'] }};font-size:11px;"></i>
@@ -472,7 +479,9 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
 {{-- Row 2: Context metrics (5 cols without filter, 3 cols with user filter) --}}
 <div class="{{ $row2Class }}">
     @foreach($kpisRow2 as $kpi)
-    <div class="rpt-card" style="padding:10px 12px;">
+    @php $isSocialCard = ($kpi['label'] === 'Social Posts'); @endphp
+    <div class="rpt-card" style="padding:10px 12px;{{ $isSocialCard ? 'cursor:pointer;transition:box-shadow .15s;' : '' }}"
+         @if($isSocialCard) onclick="document.getElementById('social-posts-modal').style.display='flex';spClearSearch()" onmouseover="this.style.boxShadow='0 4px 16px rgba(236,72,153,.13)'" onmouseout="this.style.boxShadow=''" @endif>
         <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px;">
             <div style="width:28px;height:28px;border-radius:8px;background:{{ $kpi['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fas {{ $kpi['icon'] }}" style="color:{{ $kpi['color'] }};font-size:11px;"></i>
@@ -494,6 +503,219 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
         @endif
     </div>
     @endforeach
+</div>
+
+{{-- ══ Social Posts Modal ══ --}}
+<div id="social-posts-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.45);" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#fff;border-radius:18px;width:100%;max-width:780px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.22);overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #F3F4F6;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:9px;background:#FCE7F3;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-share-nodes" style="color:#EC4899;font-size:13px;"></i>
+                </div>
+                <div>
+                    <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Social Posts</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;">{{ $socialPostsCount }} published</p>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <button onclick="exportSocialPostsPDF()" style="height:30px;padding:0 12px;border-radius:8px;background:#FDF4FF;border:1px solid #E9D5FF;cursor:pointer;font-size:11px;font-weight:600;color:#7C3AED;display:flex;align-items:center;gap:5px;">
+                    <i class="fas fa-file-pdf" style="font-size:10px;"></i> Export PDF
+                </button>
+                <button onclick="document.getElementById('social-posts-modal').style.display='none'" style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;font-size:16px;color:#6B7280;display:flex;align-items:center;justify-content:center;">×</button>
+            </div>
+        </div>
+        {{-- Search bar --}}
+        <div style="padding:10px 22px;border-bottom:1px solid #F3F4F6;flex-shrink:0;background:#FAFAFA;">
+            <div style="position:relative;">
+                <i class="fas fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:11px;pointer-events:none;"></i>
+                <input id="social-posts-search" type="text" placeholder="Search task, customer, platform, poster…"
+                    style="width:100%;padding:7px 12px 7px 30px;border:1px solid #E5E7EB;border-radius:8px;font-size:12px;outline:none;box-sizing:border-box;background:#fff;"
+                    oninput="spSearch()" onfocus="this.style.borderColor='#EC4899'" onblur="this.style.borderColor='#E5E7EB'">
+            </div>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:0 22px 22px;">
+            @if($socialPostsList->isEmpty())
+            <div style="text-align:center;padding:40px 20px;">
+                <i class="fas fa-share-nodes" style="font-size:28px;color:#FCE7F3;margin-bottom:10px;"></i>
+                <p style="font-size:13px;color:#9CA3AF;margin:0;">No social posts in this period.</p>
+            </div>
+            @else
+            <div style="overflow-x:auto;margin-top:16px;">
+            <table class="rpt-table" id="social-posts-modal-table">
+                <thead>
+                    <tr>
+                        <th>Task</th>
+                        <th>Customer</th>
+                        <th style="text-align:center;">Platform</th>
+                        <th>Posted By</th>
+                        <th style="text-align:right;">Date</th>
+                        <th style="text-align:center;">Link</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach($socialPostsList as $sp)
+                @php $spIco = $platformIcons[$sp['platform']] ?? $platformIcons['other']; @endphp
+                <tr>
+                    <td style="max-width:200px;">
+                        <a href="{{ route('admin.tasks.show', $sp['task_id']) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#EC4899'" onmouseout="this.style.color='#111827'" title="{{ $sp['task'] }}">
+                            {{ Str::limit($sp['task'], 40) }}
+                        </a>
+                    </td>
+                    <td style="color:#374151;font-size:12px;">{{ $sp['customer'] }}</td>
+                    <td style="text-align:center;">
+                        <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#374151;background:#F9FAFB;border:1px solid #F3F4F6;border-radius:6px;padding:2px 8px;">
+                            <i class="{{ $spIco[0] }}" style="color:{{ $spIco[1] }};font-size:10px;"></i>
+                            {{ ucfirst($sp['platform']) }}
+                        </span>
+                    </td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $sp['poster'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;text-align:right;white-space:nowrap;">{{ $sp['date'] }}</td>
+                    <td style="text-align:center;">
+                        @if($sp['url'])
+                        <a href="{{ $sp['url'] }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:#FCE7F3;border-radius:6px;font-size:11px;font-weight:600;color:#EC4899;text-decoration:none;" onmouseover="this.style.background='#FBCFE8'" onmouseout="this.style.background='#FCE7F3'">
+                            <i class="fas fa-arrow-up-right-from-square" style="font-size:9px;"></i> View
+                        </a>
+                        @else
+                        <span style="font-size:11px;color:#D1D5DB;">—</span>
+                        @endif
+                    </td>
+                </tr>
+                @endforeach
+                </tbody>
+            </table>
+            </div>
+            @endif
+        </div>
+    </div>
+</div>
+
+@php
+$statusBgMap    = ['draft'=>'#F3F4F6','assigned'=>'#EEF2FF','viewed'=>'#E0F2FE','in_progress'=>'#FFF7ED','submitted'=>'#F5F3FF','revision_requested'=>'#FEE2E2','approved'=>'#ECFDF5','delivered'=>'#ECFDF5','archived'=>'#F3F4F6','paused'=>'#FEF3C7'];
+$statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1','in_progress'=>'#EA580C','submitted'=>'#7C3AED','revision_requested'=>'#DC2626','approved'=>'#16A34A','delivered'=>'#16A34A','archived'=>'#9CA3AF','paused'=>'#D97706'];
+@endphp
+
+{{-- ══ Total Tasks Modal ══ --}}
+<div id="total-tasks-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.45);" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#fff;border-radius:18px;width:100%;max-width:820px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.22);overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #F3F4F6;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:9px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-list-check" style="color:#6366F1;font-size:13px;"></i>
+                </div>
+                <div>
+                    <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">All Tasks</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;">{{ $totalTasks }} in selected period</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('total-tasks-modal').style.display='none'" style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;font-size:16px;color:#6B7280;display:flex;align-items:center;justify-content:center;">×</button>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:0 22px 22px;">
+            @if($totalTasksList->isEmpty())
+            <p style="text-align:center;color:#9CA3AF;font-size:13px;padding:32px 0;">No tasks in this period.</p>
+            @else
+            <div style="overflow-x:auto;margin-top:16px;">
+            <table class="rpt-table" id="total-tasks-modal-table">
+                <thead><tr><th>Task</th><th>Project</th><th>Customer</th><th>Assignee</th><th style="text-align:center;">Status</th><th style="text-align:right;">Deadline</th></tr></thead>
+                <tbody>
+                @foreach($totalTasksList as $ct)
+                <tr>
+                    <td style="max-width:200px;"><a href="{{ route('admin.tasks.show', $ct['task_id']) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#111827'" title="{{ $ct['title'] }}">{{ Str::limit($ct['title'], 40) }}</a></td>
+                    <td style="color:#374151;font-size:12px;">{{ $ct['project'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $ct['customer'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $ct['assignee'] }}</td>
+                    <td style="text-align:center;"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;background:{{ $statusBgMap[$ct['status']] ?? '#F3F4F6' }};color:{{ $statusColorMap[$ct['status']] ?? '#374151' }};">{{ $ct['status_label'] }}</span></td>
+                    <td style="text-align:right;font-size:12px;white-space:nowrap;color:{{ $ct['overdue'] ? '#DC2626' : '#6B7280' }};">{{ $ct['deadline'] ?? '—' }}{{ $ct['overdue'] ? ' ⚠' : '' }}</td>
+                </tr>
+                @endforeach
+                </tbody>
+            </table>
+            </div>
+            @endif
+        </div>
+    </div>
+</div>
+
+{{-- ══ Completed Tasks Modal ══ --}}
+<div id="completed-tasks-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.45);" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#fff;border-radius:18px;width:100%;max-width:820px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.22);overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #F3F4F6;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:9px;background:#D1FAE5;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-circle-check" style="color:#10B981;font-size:13px;"></i>
+                </div>
+                <div>
+                    <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Completed Tasks</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;">{{ $completedTasks }} approved or delivered</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('completed-tasks-modal').style.display='none'" style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;font-size:16px;color:#6B7280;display:flex;align-items:center;justify-content:center;">×</button>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:0 22px 22px;">
+            @if($completedTasksList->isEmpty())
+            <p style="text-align:center;color:#9CA3AF;font-size:13px;padding:32px 0;">No completed tasks in this period.</p>
+            @else
+            <div style="overflow-x:auto;margin-top:16px;">
+            <table class="rpt-table" id="completed-tasks-modal-table">
+                <thead><tr><th>Task</th><th>Project</th><th>Customer</th><th>Assignee</th><th style="text-align:center;">Status</th><th style="text-align:right;">Deadline</th></tr></thead>
+                <tbody>
+                @foreach($completedTasksList as $ct)
+                <tr>
+                    <td style="max-width:200px;"><a href="{{ route('admin.tasks.show', $ct['task_id']) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#10B981'" onmouseout="this.style.color='#111827'" title="{{ $ct['title'] }}">{{ Str::limit($ct['title'], 40) }}</a></td>
+                    <td style="color:#374151;font-size:12px;">{{ $ct['project'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $ct['customer'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $ct['assignee'] }}</td>
+                    <td style="text-align:center;"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;background:{{ $statusBgMap[$ct['status']] ?? '#F3F4F6' }};color:{{ $statusColorMap[$ct['status']] ?? '#374151' }};">{{ $ct['status_label'] }}</span></td>
+                    <td style="text-align:right;font-size:12px;white-space:nowrap;color:#6B7280;">{{ $ct['deadline'] ?? '—' }}</td>
+                </tr>
+                @endforeach
+                </tbody>
+            </table>
+            </div>
+            @endif
+        </div>
+    </div>
+</div>
+
+{{-- ══ On-time Tasks Modal ══ --}}
+<div id="ontime-tasks-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.45);" onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#fff;border-radius:18px;width:100%;max-width:820px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.22);overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid #F3F4F6;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:9px;background:#EDE9FE;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-clock" style="color:#8B5CF6;font-size:13px;"></i>
+                </div>
+                <div>
+                    <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">On-time Tasks</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;">{{ $onTimeTasksList->count() }} completed before deadline</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('ontime-tasks-modal').style.display='none'" style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;font-size:16px;color:#6B7280;display:flex;align-items:center;justify-content:center;">×</button>
+        </div>
+        <div style="overflow-y:auto;flex:1;padding:0 22px 22px;">
+            @if($onTimeTasksList->isEmpty())
+            <p style="text-align:center;color:#9CA3AF;font-size:13px;padding:32px 0;">No on-time completions in this period.</p>
+            @else
+            <div style="overflow-x:auto;margin-top:16px;">
+            <table class="rpt-table" id="ontime-tasks-modal-table">
+                <thead><tr><th>Task</th><th>Project</th><th>Customer</th><th>Assignee</th><th style="text-align:center;">Status</th><th style="text-align:right;">Deadline</th></tr></thead>
+                <tbody>
+                @foreach($onTimeTasksList as $ct)
+                <tr>
+                    <td style="max-width:200px;"><a href="{{ route('admin.tasks.show', $ct['task_id']) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#8B5CF6'" onmouseout="this.style.color='#111827'" title="{{ $ct['title'] }}">{{ Str::limit($ct['title'], 40) }}</a></td>
+                    <td style="color:#374151;font-size:12px;">{{ $ct['project'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $ct['customer'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;">{{ $ct['assignee'] }}</td>
+                    <td style="text-align:center;"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;background:{{ $statusBgMap[$ct['status']] ?? '#F3F4F6' }};color:{{ $statusColorMap[$ct['status']] ?? '#374151' }};">{{ $ct['status_label'] }}</span></td>
+                    <td style="text-align:right;font-size:12px;white-space:nowrap;color:#6B7280;">{{ $ct['deadline'] ?? '—' }}</td>
+                </tr>
+                @endforeach
+                </tbody>
+            </table>
+            </div>
+            @endif
+        </div>
+    </div>
 </div>
 
 {{-- ══ Row 2: Status + Priority + Trend (3-col) ══ --}}
@@ -1125,7 +1347,7 @@ $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? '
     </div>
     @else
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
-    <table class="rpt-table">
+    <table class="rpt-table" id="decide-later-table">
         <thead>
             <tr>
                 <th>Task</th>
@@ -1823,6 +2045,8 @@ new Chart(document.getElementById('projCompletionChart'), {
 /* ══════════════════════════════════════════════════════════
    Shared helpers: show/hide UI for export capture
 ══════════════════════════════════════════════════════════ */
+let _hiddenPaginatedRows = [];
+
 function prepareCapture() {
     document.getElementById('rpt-print-header').style.display = 'block';
     document.getElementById('rpt-filter-bar').style.display   = 'none';
@@ -1834,11 +2058,24 @@ function prepareCapture() {
                     '.rpt-grid-2{grid-template-columns:1fr 1fr!important;}' +
                     '.rpt-grid-3{grid-template-columns:repeat(3,1fr)!important;}';
     document.head.appendChild(s);
+
+    // Expand all paginated tables so every row prints
+    _hiddenPaginatedRows = [];
+    document.querySelectorAll('#rpt-capture-zone .rpt-table tbody tr').forEach(function(r) {
+        if (r.style.display === 'none') {
+            _hiddenPaginatedRows.push(r);
+            r.style.display = '';
+        }
+    });
 }
 function restoreCapture() {
     document.getElementById('rpt-print-header').style.display = 'none';
     document.getElementById('rpt-filter-bar').style.display   = '';
     document.getElementById('__rpt-grid-override')?.remove();
+
+    // Restore hidden rows to their paginated state
+    _hiddenPaginatedRows.forEach(function(r) { r.style.display = 'none'; });
+    _hiddenPaginatedRows = [];
 }
 
 /* Convert <canvas> elements to <img> so browser/html2canvas renders them */
@@ -2622,10 +2859,174 @@ function rptPaginate(tableId, perPage) {
 // Init all report tables
 document.addEventListener('DOMContentLoaded', function() {
     ['proj-table','team-table','customer-table','approval-speed-table',
+     'decide-later-table',
      'overdue-table','reopened-table','reassigned-bottom-table',
      'billing-user-table','billing-customer-table','ad-budget-table'
     ].forEach(function(id) { rptPaginate(id, 7); });
+    initSocialPostsModal();
+    rptPaginate('total-tasks-modal-table', 10);
+    rptPaginate('completed-tasks-modal-table', 10);
+    rptPaginate('ontime-tasks-modal-table', 10);
 });
+
+// ── Social Posts Modal: search + paginate + PDF export ──────────────────────
+var _spAllRows = [], _spFiltered = [], _spPage = 1, _spPer = 10;
+
+function initSocialPostsModal() {
+    var tbody = document.querySelector('#social-posts-modal-table tbody');
+    if (!tbody) return;
+    _spAllRows = Array.from(tbody.querySelectorAll('tr'));
+    _spFiltered = _spAllRows.slice();
+    _spRender();
+}
+
+function spClearSearch() {
+    var inp = document.getElementById('social-posts-search');
+    if (inp) { inp.value = ''; }
+    _spFiltered = _spAllRows.slice();
+    _spPage = 1;
+    _spRender();
+}
+
+function spSearch() {
+    var term = (document.getElementById('social-posts-search').value || '').toLowerCase().trim();
+    _spFiltered = term
+        ? _spAllRows.filter(function(r) { return r.textContent.toLowerCase().indexOf(term) !== -1; })
+        : _spAllRows.slice();
+    _spPage = 1;
+    _spRender();
+}
+
+function _spRender() {
+    var total = _spFiltered.length;
+    var totalPages = Math.ceil(total / _spPer) || 1;
+    _spAllRows.forEach(function(r) { r.style.display = 'none'; });
+    var start = (_spPage - 1) * _spPer;
+    _spFiltered.slice(start, start + _spPer).forEach(function(r) { r.style.display = ''; });
+
+    var wrap = document.getElementById('social-posts-modal-table-pg');
+    if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.id = 'social-posts-modal-table-pg';
+        wrap.style.cssText = 'margin-top:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;';
+        var tbl = document.getElementById('social-posts-modal-table');
+        tbl.parentNode.insertBefore(wrap, tbl.nextSibling);
+    }
+    var from = total ? start + 1 : 0, to = Math.min(start + _spPer, total);
+    wrap.innerHTML = '';
+
+    // "no results" message
+    var noRes = document.getElementById('sp-no-results');
+    if (!noRes) {
+        noRes = document.createElement('p');
+        noRes.id = 'sp-no-results';
+        noRes.style.cssText = 'text-align:center;color:#9CA3AF;font-size:13px;padding:24px 0;margin:0;display:none;';
+        noRes.textContent = 'No posts match your search.';
+        var tbl2 = document.getElementById('social-posts-modal-table');
+        tbl2.parentNode.insertBefore(noRes, tbl2.nextSibling);
+    }
+    noRes.style.display = total === 0 ? '' : 'none';
+    document.getElementById('social-posts-modal-table').style.display = total === 0 ? 'none' : '';
+
+    if (total === 0) return;
+
+    var lbl = document.createElement('span');
+    lbl.style.cssText = 'font-size:12px;color:#6B7280;';
+    lbl.textContent = 'Showing ' + from + '–' + to + ' of ' + total + ' results';
+    wrap.appendChild(lbl);
+
+    var btns = document.createElement('div');
+    btns.style.cssText = 'display:flex;gap:4px;align-items:center;flex-wrap:wrap;';
+
+    function mkBtn(label, pg, active, disabled) {
+        var el = document.createElement(disabled ? 'span' : 'button');
+        el.textContent = label;
+        el.style.cssText = 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:' + (active ? '700' : '600') + ';border:none;cursor:' + (disabled ? 'default' : 'pointer') + ';min-width:32px;text-align:center;background:' + (active ? '#4F46E5' : '#F3F4F6') + ';color:' + (active ? '#fff' : (disabled ? '#D1D5DB' : '#374151')) + ';';
+        if (!disabled && !active) el.addEventListener('click', function() { _spPage = pg; _spRender(); });
+        return el;
+    }
+
+    btns.appendChild(mkBtn('‹ Prev', _spPage - 1, false, _spPage === 1));
+    if (totalPages <= 8) {
+        for (var p = 1; p <= totalPages; p++) btns.appendChild(mkBtn(p, p, p === _spPage, false));
+    } else {
+        btns.appendChild(mkBtn(1, 1, _spPage === 1, false));
+        if (_spPage > 3) { var d1 = document.createElement('span'); d1.textContent = '…'; d1.style.cssText = 'padding:5px 4px;font-size:12px;color:#9CA3AF;'; btns.appendChild(d1); }
+        for (var p2 = Math.max(2, _spPage - 1); p2 <= Math.min(totalPages - 1, _spPage + 1); p2++) btns.appendChild(mkBtn(p2, p2, p2 === _spPage, false));
+        if (_spPage < totalPages - 2) { var d2 = document.createElement('span'); d2.textContent = '…'; d2.style.cssText = 'padding:5px 4px;font-size:12px;color:#9CA3AF;'; btns.appendChild(d2); }
+        btns.appendChild(mkBtn(totalPages, totalPages, _spPage === totalPages, false));
+    }
+    btns.appendChild(mkBtn('Next ›', _spPage + 1, false, _spPage >= totalPages));
+    wrap.appendChild(btns);
+}
+
+function exportSocialPostsPDF() {
+    var rows = _spFiltered.length ? _spFiltered : _spAllRows;
+
+    var css = [
+        'body{font-family:Arial,sans-serif;font-size:11px;color:#111;margin:0;background:#F9FAFB;}',
+        '.preview-bar{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #E5E7EB;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 4px rgba(0,0,0,.06);}',
+        '.preview-bar h2{margin:0;font-size:14px;color:#111827;}',
+        '.preview-bar p{margin:0;font-size:11px;color:#6B7280;}',
+        '.preview-bar .print-btn{padding:8px 20px;background:#7C3AED;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;}',
+        '.preview-bar .print-btn:hover{background:#6D28D9;}',
+        '.table-wrap{padding:24px 28px;}',
+        'table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);}',
+        'thead tr{background:#F3F4F6;}',
+        'th{font-size:10px;font-weight:700;color:#374151;text-align:left;padding:8px 10px;border-bottom:2px solid #E5E7EB;}',
+        'td{padding:7px 10px;border-bottom:1px solid #F3F4F6;font-size:10px;color:#374151;vertical-align:middle;}',
+        'tbody tr:nth-child(even) td{background:#FAFAFA;}',
+        'a{color:#4F46E5;text-decoration:none;}',
+        '@media print{',
+        '  .preview-bar{display:none !important;}',
+        '  body{background:#fff;}',
+        '  .table-wrap{padding:0;}',
+        '  table{box-shadow:none;border-radius:0;}',
+        '  thead{display:table-header-group;}',
+        '  tr{page-break-inside:avoid;}',
+        '  @page{margin:12mm;size:A4 landscape;}',
+        '}'
+    ].join('');
+
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Social Posts Report</title><style>' + css + '</style></head><body>'
+        + '<div class="preview-bar">'
+        +   '<div><h2>Social Posts Report</h2><p>' + rows.length + ' record' + (rows.length !== 1 ? 's' : '') + ' — scroll to review, then click Print</p></div>'
+        +   '<button class="print-btn" onclick="window.print()">&#128438; Print / Save as PDF</button>'
+        + '</div>'
+        + '<div class="table-wrap">'
+        + '<table><thead><tr>'
+        + '<th>#</th><th>Task</th><th>Customer</th><th>Platform</th><th>Posted By</th><th>Date</th><th>Link</th>'
+        + '</tr></thead><tbody>';
+
+    rows.forEach(function(r, i) {
+        var cells = r.querySelectorAll('td');
+        if (!cells.length) return;
+        var taskA  = r.querySelector('td:first-child a');
+        var task   = taskA ? (taskA.getAttribute('title') || taskA.textContent.trim()) : '';
+        var href   = taskA ? taskA.href : '';
+        var cust   = cells[1] ? cells[1].textContent.trim() : '';
+        var plat   = cells[2] ? cells[2].textContent.trim() : '';
+        var poster = cells[3] ? cells[3].textContent.trim() : '';
+        var date   = cells[4] ? cells[4].textContent.trim() : '';
+        var linkA  = cells[5] ? cells[5].querySelector('a') : null;
+        var url    = linkA ? linkA.href : '';
+        html += '<tr>'
+            + '<td style="color:#9CA3AF;width:30px;">' + (i + 1) + '</td>'
+            + '<td style="max-width:220px;">' + (href ? '<a href="' + href + '">' + task + '</a>' : task) + '</td>'
+            + '<td>' + cust + '</td>'
+            + '<td>' + plat + '</td>'
+            + '<td>' + poster + '</td>'
+            + '<td style="white-space:nowrap;">' + date + '</td>'
+            + '<td>' + (url ? '<a href="' + url + '">View</a>' : '—') + '</td>'
+            + '</tr>';
+    });
+
+    html += '</tbody></table></div></body></html>';
+
+    var win = window.open('', '_blank');
+    if (win) { win.document.write(html); win.document.close(); }
+    else { alert('Pop-up blocked — please allow pop-ups for this site and try again.'); }
+}
 
 </script>
 @endpush

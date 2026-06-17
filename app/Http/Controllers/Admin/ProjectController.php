@@ -8,8 +8,10 @@ use App\Models\Project;
 use App\Models\ProjectAttachment;
 use App\Models\Setting;
 use App\Models\Task;
+use App\Models\TaskLog;
 use App\Models\User;
 use App\Notifications\TaskAssigned;
+use App\Notifications\SocialMediaAssigned;
 use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 
@@ -486,5 +488,111 @@ class ProjectController extends Controller
         }
 
         return redirect()->route('admin.dashboard')->with('success', 'Task created and assigned.');
+    }
+
+    public function quickSMPostStore(Request $request)
+    {
+        if (!auth()->user()->hasPermission('manage_tasks')) {
+            abort(403);
+        }
+
+        // Fallback: never let max_upload_mb of 0 break uploads — treat 0 as 20 MB
+        $maxKb = max(1, (int) Setting::get('max_upload_mb', 20)) * 1024;
+
+        $request->validate([
+            'title'              => 'required|string|max:255',
+            'social_assigned_to' => 'required|exists:users,id',
+            'social_platforms'   => 'required|array|min:1',
+            'social_platforms.*' => 'string',
+            'social_description' => 'nullable|string',
+            'social_caption'     => 'nullable|string',
+            'social_budget'      => 'nullable|numeric|min:0',
+            'deadline'           => 'required|date',
+            'customer_id'        => 'nullable|exists:customers,id',
+            'attachments'        => 'nullable|array',
+            'attachments.*'      => 'nullable|file|max:' . $maxKb,
+        ]);
+
+        $quickProject = Project::firstOrCreate(
+            ['name' => 'Quick Tasks'],
+            [
+                'description' => 'Auto-created project for standalone quick tasks.',
+                'status'      => 'active',
+                'is_quick'    => true,
+                'deadline'    => now()->addYears(10),
+                'created_by'  => auth()->id(),
+            ]
+        );
+        if (!$quickProject->is_quick) {
+            $quickProject->update(['is_quick' => true]);
+        }
+
+        $task = Task::create([
+            'project_id'         => $quickProject->id,
+            'customer_id'        => $request->customer_id ?: null,
+            'title'              => $request->title,
+            'assigned_to'        => auth()->id(),
+            'social_assigned_to' => $request->social_assigned_to,
+            'social_required'    => true,
+            'social_platforms'   => $request->social_platforms,
+            'social_description' => $request->social_description,
+            'social_caption'     => $request->social_caption,
+            'social_budget'      => $request->social_budget ?: null,
+            'deadline'           => $request->deadline,
+            'status'             => 'approved',
+            'priority'           => 'medium',
+            'created_by'         => auth()->id(),
+            'task_type'          => 'social',
+        ]);
+
+        if ($request->hasFile('attachments')) {
+            $nas = app(\App\Services\NasService::class);
+            foreach ($request->file('attachments') as $file) {
+                $path = $file->store("task-attachments/{$task->id}", 'public');
+                ProjectAttachment::create([
+                    'project_id'  => $task->project_id,
+                    'task_id'     => $task->id,
+                    'type'        => 'file',
+                    'name'        => $file->getClientOriginalName(),
+                    'path'        => $path,
+                    'size'        => $file->getSize(),
+                    'uploaded_by' => auth()->id(),
+                ]);
+                $nas->copyToNas($task, $path, $file->getClientOriginalName(), '03_Working');
+            }
+        }
+
+        // Log the task creation and social assignment in the activity feed
+        TaskLog::create([
+            'task_id'  => $task->id,
+            'user_id'  => auth()->id(),
+            'action'   => 'task_created',
+            'note'     => 'Quick SM Post created by ' . auth()->user()->name,
+            'metadata' => ['creator_id' => auth()->id(), 'creator_name' => auth()->user()->name],
+        ]);
+
+        $assignee = User::find($request->social_assigned_to);
+        if ($assignee) {
+            TaskLog::create([
+                'task_id'  => $task->id,
+                'user_id'  => auth()->id(),
+                'action'   => 'social_assigned',
+                'note'     => 'Social media post assigned to ' . $assignee->name,
+                'metadata' => [
+                    'assignee_id'   => $assignee->id,
+                    'assignee_name' => $assignee->name,
+                    'assigned_by'   => auth()->user()->name,
+                ],
+            ]);
+
+            if ($assignee->id !== auth()->id()) {
+                $assignee->notify(new SocialMediaAssigned($task, auth()->user()));
+            }
+        }
+
+        AuditLogger::log('quick_sm_post_created', $task, "Quick SM Post created: {$task->title}");
+
+        return redirect()->route('admin.dashboard')
+            ->with('success', '✓ SM Post "' . $task->title . '" assigned to ' . ($assignee?->name ?? 'user') . ' successfully.');
     }
 }

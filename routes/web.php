@@ -104,9 +104,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/notifications/count',          [NotificationsController::class, 'unreadCount'])->name('notifications.count');
 
     // Social media posting (accessible by any authenticated user)
-    Route::get('/social/{task}',              [AdminTaskApprovalController::class, 'showSocial'])->name('social.show');
-    Route::post('/social/{task}/add-post',    [AdminTaskApprovalController::class, 'addPost'])->name('social.add-post');
-    Route::post('/social/{task}/posted',      [AdminTaskApprovalController::class, 'markPosted'])->name('social.posted'); // legacy
+    Route::get('/social/{task}',                    [AdminTaskApprovalController::class, 'showSocial'])->name('social.show');
+    Route::post('/social/{task}/add-post',          [AdminTaskApprovalController::class, 'addPost'])->name('social.add-post');
+    Route::post('/social/{task}/timer/start',       [AdminTaskApprovalController::class, 'startSocialTimer'])->name('social.timer.start');
+    Route::post('/social/{task}/timer/pause',       [AdminTaskApprovalController::class, 'pauseSocialTimer'])->name('social.timer.pause');
+    Route::post('/social/{task}/posted',            [AdminTaskApprovalController::class, 'markPosted'])->name('social.posted'); // legacy
 
     // Submission file download — shared across all roles (add ?inline=1 for browser preview)
     Route::get('/submissions/{submission}/file', function (\App\Models\TaskSubmission $submission) {
@@ -150,6 +152,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::get('projects/{project}/tasks/create', [AdminProjectController::class, 'tasksCreate'])->name('projects.tasks.create');
     Route::post('projects/{project}/tasks', [AdminProjectController::class, 'tasksStore'])->name('projects.tasks.store');
     Route::post('tasks/quick', [AdminProjectController::class, 'quickTaskStore'])->name('tasks.quick');
+    Route::post('tasks/quick-sm', [AdminProjectController::class, 'quickSMPostStore'])->name('tasks.quick-sm');
     Route::resource('customers', AdminCustomerController::class);
 
     // Settings
@@ -258,6 +261,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
 
     // Audit log
     Route::get('audit',                            [AdminAuditLogController::class, 'index'])->name('audit.index');
+    Route::post('audit/clear-logs',               [AdminAuditLogController::class, 'clearLogs'])->name('audit.clear-logs');
 
     // Project attachment download (add ?inline=1 to serve inline for browser preview)
     Route::get('attachments/{attachment}/download', function (\App\Models\ProjectAttachment $attachment) {

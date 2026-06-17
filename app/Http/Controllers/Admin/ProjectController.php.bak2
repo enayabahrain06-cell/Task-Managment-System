@@ -8,7 +8,6 @@ use App\Models\Project;
 use App\Models\ProjectAttachment;
 use App\Models\Setting;
 use App\Models\Task;
-use App\Models\TaskLog;
 use App\Models\User;
 use App\Notifications\TaskAssigned;
 use App\Notifications\SocialMediaAssigned;
@@ -559,36 +558,13 @@ class ProjectController extends Controller
             }
         }
 
-        // Log the task creation and social assignment in the activity feed
-        TaskLog::create([
-            'task_id'  => $task->id,
-            'user_id'  => auth()->id(),
-            'action'   => 'task_created',
-            'note'     => 'Quick SM Post created by ' . auth()->user()->name,
-            'metadata' => ['creator_id' => auth()->id(), 'creator_name' => auth()->user()->name],
-        ]);
-
         $assignee = User::find($request->social_assigned_to);
-        if ($assignee) {
-            TaskLog::create([
-                'task_id'  => $task->id,
-                'user_id'  => auth()->id(),
-                'action'   => 'social_assigned',
-                'note'     => 'Social media post assigned to ' . $assignee->name,
-                'metadata' => [
-                    'assignee_id'   => $assignee->id,
-                    'assignee_name' => $assignee->name,
-                    'assigned_by'   => auth()->user()->name,
-                ],
-            ]);
-
-            if ($assignee->id !== auth()->id()) {
-                $assignee->notify(new SocialMediaAssigned($task, auth()->user()));
-            }
+        if ($assignee && $assignee->id !== auth()->id()) {
+            $assignee->notify(new SocialMediaAssigned($task, auth()->user()));
         }
 
         AuditLogger::log('quick_sm_post_created', $task, "Quick SM Post created: {$task->title}");
 
-        return redirect()->route('admin.approvals.index', ['tab' => 'social'])->with('success', 'Social media post "' . $task->title . '" assigned to ' . ($assignee?->name ?? 'user') . '. It now appears in the Social Media pending list below.');
+        return redirect()->route('admin.dashboard')->with('success', 'Social media post assigned successfully.');
     }
 }

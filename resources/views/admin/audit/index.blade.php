@@ -4,14 +4,12 @@
 @push('styles')
 <style>
 .audit-modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
-.audit-filter-form { background:#fff; border-radius:14px; border:1px solid #F3F4F6; padding:16px 20px; margin-bottom:20px; display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
-/* Audit log scroll container */
 .audit-log-scroll { overflow-y:auto; overflow-x:auto; -webkit-overflow-scrolling:touch; max-height:68vh; }
-/* Each audit row: min-width prevents content squash on narrow screens */
-.audit-row-inner { min-width:420px; }
+.audit-row-inner  { min-width:420px; }
+.audit-row:hover  { background:#F9FAFB; }
+.err-row:hover    { background:#FFF7F7; }
 @media(max-width:480px){
     .audit-modal-grid { grid-template-columns:1fr !important; gap:8px !important; }
-    .audit-filter-form > div { min-width:100% !important; }
     .audit-log-scroll { max-height:60vh !important; }
 }
 </style>
@@ -20,7 +18,6 @@
 @section('content')
 @php
     $actionMeta = [
-        // User
         'user.created'          => ['fa-user-plus',      '#059669', '#D1FAE5', 'Account Created'],
         'user.updated'          => ['fa-user-pen',        '#6366F1', '#EEF2FF', 'Profile Updated'],
         'user.deleted'          => ['fa-user-slash',      '#DC2626', '#FEE2E2', 'Account Deleted'],
@@ -32,7 +29,6 @@
         'user.restored'         => ['fa-rotate-left',     '#059669', '#D1FAE5', 'User Restored'],
         'user.held'             => ['fa-hand',            '#D97706', '#FEF3C7', 'Account On Hold'],
         'user.released'         => ['fa-hand-sparkles',   '#059669', '#D1FAE5', 'Account Released'],
-        // Tasks
         'task.approved'         => ['fa-circle-check',   '#059669', '#D1FAE5', 'Task Approved'],
         'task.rejected'         => ['fa-circle-xmark',   '#DC2626', '#FEE2E2', 'Revision Requested'],
         'task.reassigned'       => ['fa-arrows-rotate',  '#6366F1', '#EEF2FF', 'Task Reassigned'],
@@ -42,35 +38,66 @@
         'task.archived'         => ['fa-box-archive',     '#6B7280', '#F3F4F6', 'Task Archived'],
         'task.delivered'        => ['fa-truck',           '#047857', '#ECFDF5', 'Task Delivered'],
         'tasks.bulk_transferred'=> ['fa-right-left',      '#D97706', '#FEF3C7', 'Tasks Transferred'],
-        // Projects
         'project.created'       => ['fa-folder-plus',    '#059669', '#D1FAE5', 'Project Created'],
         'project.updated'       => ['fa-folder-open',    '#6366F1', '#EEF2FF', 'Project Updated'],
         'project.deleted'       => ['fa-folder-minus',   '#DC2626', '#FEE2E2', 'Project Deleted'],
         'project.reopened'      => ['fa-folder',          '#D97706', '#FEF3C7', 'Project Reopened'],
         'project.closed'        => ['fa-folder-closed',  '#6B7280', '#F3F4F6', 'Project Closed'],
-        // Roles
         'role.created'          => ['fa-id-badge',       '#059669', '#D1FAE5', 'Role Created'],
         'role.updated'          => ['fa-id-card',        '#6366F1', '#EEF2FF', 'Role Updated'],
         'role.deleted'          => ['fa-id-card-clip',   '#DC2626', '#FEE2E2', 'Role Deleted'],
-        // Settings / System
         'settings.updated'      => ['fa-gear',           '#6B7280', '#F3F4F6', 'Settings Updated'],
         'data.cleared'          => ['fa-eraser',         '#DC2626', '#FEE2E2', 'Data Cleared'],
         'system.restored'       => ['fa-database',       '#D97706', '#FEF3C7', 'System Restored'],
     ];
+
+    $activeTab = request('tab', 'audit');
+
+    $errCount  = count($errorLogs);
+    $errErrors = collect($errorLogs)->where('level', 'ERROR')->count()
+               + collect($errorLogs)->whereIn('level', ['CRITICAL','ALERT','EMERGENCY'])->count();
+    $errWarns  = collect($errorLogs)->where('level', 'WARNING')->count();
 @endphp
 
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
+{{-- ── Page header ── --}}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
     <div>
-        <h1 style="font-size:20px;font-weight:700;color:#111827;margin:0;">System Audit Log</h1>
-        <p style="font-size:13px;color:#9CA3AF;margin:3px 0 0;">Full record of administrative actions — who did what and when</p>
+        <h1 style="font-size:20px;font-weight:700;color:#111827;margin:0;">System Logs</h1>
+        <p style="font-size:13px;color:#9CA3AF;margin:3px 0 0;">Audit trail and application error logs</p>
     </div>
-    <span style="background:#EEF2FF;color:#4F46E5;font-size:13px;font-weight:700;padding:6px 14px;border-radius:20px;">
-        {{ number_format($logs->count()) }} {{ Str::plural('entry', $logs->count()) }}
-    </span>
 </div>
 
-{{-- Filters --}}
+@if(session('success'))
+<div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;padding:10px 16px;margin-bottom:16px;font-size:13px;color:#065F46;display:flex;align-items:center;gap:8px;">
+    <i class="fas fa-check-circle"></i> {{ session('success') }}
+</div>
+@endif
+
+{{-- ── Tabs ── --}}
+<div style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;margin-bottom:20px;width:fit-content;">
+    <button id="tab-audit" onclick="switchTab('audit')"
+        style="padding:7px 20px;border-radius:9px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:7px;">
+        <i class="fas fa-shield-halved"></i>
+        Audit Log
+        <span style="background:#E0E7FF;color:#4F46E5;font-size:11px;font-weight:700;padding:1px 7px;border-radius:8px;">{{ number_format($logs->count()) }}</span>
+    </button>
+    <button id="tab-errors" onclick="switchTab('errors')"
+        style="padding:7px 20px;border-radius:9px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:7px;">
+        <i class="fas fa-triangle-exclamation"></i>
+        Error Logs
+        @if($errCount > 0)
+        <span style="background:#FEE2E2;color:#DC2626;font-size:11px;font-weight:700;padding:1px 7px;border-radius:8px;">{{ $errCount }}</span>
+        @endif
+    </button>
+</div>
+
+{{-- ════════════════════════════════════════════
+     TAB 1 — AUDIT LOG
+════════════════════════════════════════════ --}}
+<div id="pane-audit">
+
 <form method="GET" style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;padding:16px 20px;margin-bottom:20px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+    <input type="hidden" name="tab" value="audit">
     <div style="flex:1;min-width:160px;">
         <label style="font-size:11px;font-weight:600;color:#6B7280;display:block;margin-bottom:4px;">Action Type</label>
         <select name="action" style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#111827;background:#fff;outline:none;">
@@ -122,8 +149,7 @@
                style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#111827;outline:none;">
     </div>
     <div style="display:flex;gap:8px;">
-        <button type="submit"
-                style="padding:8px 20px;background:#6366F1;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
+        <button type="submit" style="padding:8px 20px;background:#6366F1;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
             <i class="fa fa-filter" style="margin-right:4px;"></i> Filter
         </button>
         @if(request()->hasAny(['action','actor_id','from','to']))
@@ -135,9 +161,7 @@
     </div>
 </form>
 
-{{-- Log entries --}}
 <div class="audit-log-scroll" style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow-y:auto;max-height:68vh;">
-
     @forelse($logs as $log)
     @php
         [$icon, $fg, $bg, $label] = $actionMeta[$log->action] ?? ['fa-circle-dot', '#6366F1', '#EEF2FF', ucwords(str_replace(['.','_'],['  ',' '],$log->action))];
@@ -145,12 +169,8 @@
     @endphp
     <div class="audit-row audit-row-inner"
          onclick="openAuditModal(this)"
-         data-icon="{{ $icon }}"
-         data-fg="{{ $fg }}"
-         data-bg="{{ $bg }}"
-         data-label="{{ $label }}"
-         data-action="{{ $log->action }}"
-         data-actor="{{ $log->actor->name ?? 'System' }}"
+         data-icon="{{ $icon }}" data-fg="{{ $fg }}" data-bg="{{ $bg }}" data-label="{{ $label }}"
+         data-action="{{ $log->action }}" data-actor="{{ $log->actor->name ?? 'System' }}"
          data-description="{{ $log->description }}"
          data-date="{{ $log->created_at->format(config('app.date_format', 'M d, Y')) }}"
          data-time="{{ $log->created_at->format('H:i:s') }}"
@@ -160,13 +180,9 @@
          data-subject-id="{{ $log->subject_id ?? '' }}"
          data-meta="{{ json_encode($meta) }}"
          style="display:flex;gap:14px;padding:14px 20px;border-bottom:1px solid #F9FAFB;cursor:pointer;transition:background .15s;">
-
-        {{-- Icon --}}
         <div style="width:38px;height:38px;border-radius:10px;background:{{ $bg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
             <i class="fa {{ $icon }}" style="color:{{ $fg }};font-size:14px;"></i>
         </div>
-
-        {{-- Content --}}
         <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                 <div>
@@ -179,8 +195,6 @@
                         @endif
                     </div>
                     <p style="font-size:13px;color:#374151;margin:0 0 4px;line-height:1.5;">{{ $log->description }}</p>
-
-                    {{-- Metadata tags preview --}}
                     @if(!empty($meta))
                     <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;">
                         @foreach($meta as $key => $value)
@@ -201,7 +215,7 @@
                         @endif
                         @if(isset($meta['task_ids']) && is_array($meta['task_ids']))
                         <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;">
-                            task IDs: {{ implode(', ', array_slice($meta['task_ids'], 0, 5)) }}{{ count($meta['task_ids']) > 5 ? ' +'.( count($meta['task_ids'])-5).' more' : '' }}
+                            task IDs: {{ implode(', ', array_slice($meta['task_ids'], 0, 5)) }}{{ count($meta['task_ids']) > 5 ? ' +'.(count($meta['task_ids'])-5).' more' : '' }}
                         </span>
                         @endif
                     </div>
@@ -219,7 +233,6 @@
                 </div>
             </div>
         </div>
-
     </div>
     @empty
     <div style="padding:60px;text-align:center;">
@@ -236,18 +249,118 @@
         </p>
     </div>
     @endforelse
-
 </div>
 
-{{-- ── Audit Detail Modal ──────────────────────────────────────────────── --}}
+</div>{{-- /pane-audit --}}
+
+{{-- ════════════════════════════════════════════
+     TAB 2 — ERROR LOGS
+════════════════════════════════════════════ --}}
+<div id="pane-errors" style="display:none;">
+
+{{-- Header bar --}}
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        {{-- Level pills --}}
+        <div id="err-level-btns" style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button onclick="errFilterLevel('all')" data-level="all"
+                style="padding:5px 14px;border-radius:20px;border:1.5px solid #E5E7EB;font-size:12px;font-weight:600;cursor:pointer;background:#4F46E5;color:#fff;">
+                All <span style="opacity:.8;">({{ $errCount }})</span>
+            </button>
+            <button onclick="errFilterLevel('error')" data-level="error"
+                style="padding:5px 14px;border-radius:20px;border:1.5px solid #E5E7EB;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#374151;">
+                Error / Critical <span style="color:#DC2626;">({{ $errErrors }})</span>
+            </button>
+            <button onclick="errFilterLevel('warning')" data-level="warning"
+                style="padding:5px 14px;border-radius:20px;border:1.5px solid #E5E7EB;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#374151;">
+                Warning <span style="color:#D97706;">({{ $errWarns }})</span>
+            </button>
+        </div>
+        {{-- Search --}}
+        <div style="position:relative;">
+            <i class="fas fa-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:11px;pointer-events:none;"></i>
+            <input id="err-search" type="text" placeholder="Search messages…"
+                style="padding:6px 12px 6px 28px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;outline:none;width:220px;"
+                oninput="errSearch()" onfocus="this.style.borderColor='#DC2626'" onblur="this.style.borderColor='#E5E7EB'">
+        </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:11px;color:#9CA3AF;">File: {{ $logFileSize }}</span>
+        <form method="POST" action="{{ route('admin.audit.clear-logs') }}" onsubmit="return confirm('Clear the entire error log file? This cannot be undone.');">
+            @csrf
+            <button type="submit" style="padding:6px 14px;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;font-size:12px;font-weight:600;color:#DC2626;cursor:pointer;display:flex;align-items:center;gap:5px;">
+                <i class="fas fa-trash-can" style="font-size:10px;"></i> Clear Log File
+            </button>
+        </form>
+    </div>
+</div>
+
+{{-- Error list --}}
+<div id="err-list" style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
+
+@forelse($errorLogs as $i => $err)
+@php
+    $lvl   = $err['level'];
+    $isErr = in_array($lvl, ['ERROR','CRITICAL','ALERT','EMERGENCY']);
+    $lvlBg    = $isErr ? '#FEE2E2' : '#FEF3C7';
+    $lvlColor = $isErr ? '#DC2626'  : '#D97706';
+    $iconCls  = $isErr ? 'fa-circle-xmark' : 'fa-triangle-exclamation';
+    $shortMsg = Str::limit($err['message'], 160);
+    $hasTrace = !empty(trim($err['trace']));
+@endphp
+<div class="err-row" data-level="{{ strtolower($lvl) }}" data-msg="{{ strtolower($err['message']) }}"
+     style="border-bottom:1px solid #F9FAFB;transition:background .12s;">
+
+    {{-- Summary row (always visible) --}}
+    <div style="display:flex;gap:12px;padding:13px 18px;align-items:flex-start;cursor:{{ $hasTrace ? 'pointer' : 'default' }};"
+         @if($hasTrace) onclick="toggleTrace({{ $i }})" @endif>
+
+        <div style="width:34px;height:34px;border-radius:9px;background:{{ $lvlBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
+            <i class="fas {{ $iconCls }}" style="color:{{ $lvlColor }};font-size:13px;"></i>
+        </div>
+
+        <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+                <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;background:{{ $lvlBg }};color:{{ $lvlColor }};">{{ $lvl }}</span>
+                <span style="font-size:11px;color:#9CA3AF;font-family:monospace;">{{ $err['channel'] }}</span>
+                <span style="font-size:11px;color:#9CA3AF;">{{ $err['datetime'] }}</span>
+            </div>
+            <p style="font-size:12px;color:#374151;margin:0;line-height:1.55;word-break:break-word;">{{ $shortMsg }}</p>
+        </div>
+
+        @if($hasTrace)
+        <i id="err-chevron-{{ $i }}" class="fas fa-chevron-down" style="color:#D1D5DB;font-size:11px;margin-top:10px;flex-shrink:0;transition:transform .2s;"></i>
+        @endif
+    </div>
+
+    {{-- Stack trace (collapsed) --}}
+    @if($hasTrace)
+    <div id="err-trace-{{ $i }}" style="display:none;border-top:1px solid #F3F4F6;background:#1E1E2E;border-radius:0 0 14px 14px;max-height:340px;overflow-y:auto;">
+        <pre style="margin:0;padding:16px 18px;font-size:11px;color:#CDD6F4;white-space:pre-wrap;word-break:break-word;line-height:1.6;font-family:'Courier New',monospace;">{{ trim($err['full'] . "\n" . $err['trace']) }}</pre>
+    </div>
+    @endif
+
+</div>
+@empty
+<div style="padding:60px;text-align:center;">
+    <div style="width:56px;height:56px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+        <i class="fas fa-circle-check" style="color:#10B981;font-size:24px;"></i>
+    </div>
+    <p style="font-size:15px;font-weight:600;color:#374151;margin:0 0 6px;">No errors found</p>
+    <p style="font-size:13px;color:#9CA3AF;margin:0;">The application log has no error or warning entries.</p>
+</div>
+@endforelse
+
+<p id="err-no-results" style="display:none;text-align:center;padding:32px;font-size:13px;color:#9CA3AF;">No entries match your filter.</p>
+
+</div>{{-- /err-list --}}
+</div>{{-- /pane-errors --}}
+
+
+{{-- ── Audit Detail Modal ────────────────────────────────────────── --}}
 <div id="auditModal" style="display:none;position:fixed;inset:0;z-index:1000;align-items:center;justify-content:center;">
-    {{-- Backdrop --}}
     <div onclick="closeAuditModal()" style="position:absolute;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(2px);"></div>
-
-    {{-- Panel --}}
     <div style="position:relative;width:100%;max-width:560px;margin:16px;background:#fff;border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.18);overflow:hidden;max-height:92vh;display:flex;flex-direction:column;">
-
-        {{-- Header --}}
         <div id="modal-header" style="padding:20px 24px 16px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;gap:14px;">
             <div id="modal-icon-wrap" style="width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i id="modal-icon" class="fa" style="font-size:18px;"></i>
@@ -263,11 +376,7 @@
                 <i class="fa fa-xmark" style="font-size:18px;"></i>
             </button>
         </div>
-
-        {{-- Body --}}
         <div style="padding:20px 24px;overflow-y:auto;flex:1;">
-
-            {{-- Who / When / Where --}}
             <div class="audit-modal-grid" style="display:grid;gap:12px;margin-bottom:20px;">
                 <div style="background:#F9FAFB;border-radius:10px;padding:12px 14px;">
                     <p style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Performed By</p>
@@ -287,62 +396,127 @@
                     <p id="modal-subject" style="font-size:13px;font-weight:600;color:#111827;margin:0;"></p>
                 </div>
             </div>
-
-            {{-- Metadata --}}
             <div id="modal-meta-section" style="display:none;">
                 <p style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;">Details</p>
                 <div id="modal-meta-body" style="border:1px solid #F3F4F6;border-radius:10px;overflow:hidden;"></div>
             </div>
-
         </div>
     </div>
 </div>
 
-<style>
-.audit-row:hover { background: #F9FAFB; }
-</style>
-
 <script>
+// ── Tab switching ─────────────────────────────────────────────────
+function switchTab(tab) {
+    const isAudit = tab === 'audit';
+    document.getElementById('pane-audit').style.display  = isAudit  ? '' : 'none';
+    document.getElementById('pane-errors').style.display = !isAudit ? '' : 'none';
+
+    const auditBtn  = document.getElementById('tab-audit');
+    const errorsBtn = document.getElementById('tab-errors');
+
+    const activeStyle   = 'background:#fff;color:#111827;box-shadow:0 1px 4px rgba(0,0,0,.08);';
+    const inactiveStyle = 'background:transparent;color:#6B7280;box-shadow:none;';
+
+    auditBtn.style.cssText  += isAudit  ? activeStyle : inactiveStyle;
+    errorsBtn.style.cssText += !isAudit ? activeStyle : inactiveStyle;
+
+    // Update URL without reload
+    const url = new URL(window.location);
+    url.searchParams.set('tab', tab);
+    history.replaceState(null, '', url);
+}
+
+// Initialise correct tab on page load
+(function() {
+    const tab = new URLSearchParams(window.location.search).get('tab') || 'audit';
+    switchTab(tab);
+})();
+
+// ── Error Logs: level filter ──────────────────────────────────────
+var _errActiveLevel = 'all';
+var _errSearch      = '';
+
+function errFilterLevel(level) {
+    _errActiveLevel = level;
+    document.querySelectorAll('#err-level-btns button').forEach(function(b) {
+        const active = b.dataset.level === level;
+        b.style.background = active ? '#4F46E5' : '#fff';
+        b.style.color      = active ? '#fff'    : '#374151';
+    });
+    errApplyFilter();
+}
+
+function errSearch() {
+    _errSearch = document.getElementById('err-search').value.toLowerCase().trim();
+    errApplyFilter();
+}
+
+function errApplyFilter() {
+    var rows    = document.querySelectorAll('#err-list .err-row');
+    var visible = 0;
+    rows.forEach(function(r) {
+        var lvl = r.dataset.level || '';
+        var msg = r.dataset.msg   || '';
+
+        var levelOk = _errActiveLevel === 'all'
+            || (_errActiveLevel === 'error'   && ['error','critical','alert','emergency'].indexOf(lvl) !== -1)
+            || (_errActiveLevel === 'warning' && lvl === 'warning');
+
+        var searchOk = !_errSearch || msg.indexOf(_errSearch) !== -1;
+
+        var show = levelOk && searchOk;
+        r.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+    document.getElementById('err-no-results').style.display = visible === 0 ? '' : 'none';
+}
+
+// ── Error Logs: trace toggle ──────────────────────────────────────
+function toggleTrace(i) {
+    var trace   = document.getElementById('err-trace-' + i);
+    var chevron = document.getElementById('err-chevron-' + i);
+    if (!trace) return;
+    var open = trace.style.display === 'none' || trace.style.display === '';
+    if (trace.style.display === 'none') {
+        trace.style.display = 'block';
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+    } else {
+        trace.style.display = 'none';
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
+    }
+}
+
+// ── Audit modal ───────────────────────────────────────────────────
 function openAuditModal(el) {
-    const d = el.dataset;
+    const d    = el.dataset;
     const meta = JSON.parse(d.meta || '{}');
 
-    // Header
     document.getElementById('modal-icon-wrap').style.background = d.bg;
     const iconEl = document.getElementById('modal-icon');
     iconEl.className = 'fa ' + d.icon;
     iconEl.style.color = d.fg;
 
     const labelEl = document.getElementById('modal-label');
-    labelEl.textContent = d.label;
+    labelEl.textContent  = d.label;
     labelEl.style.background = d.bg;
-    labelEl.style.color = d.fg;
+    labelEl.style.color  = d.fg;
 
-    document.getElementById('modal-action').textContent = d.action;
+    document.getElementById('modal-action').textContent      = d.action;
     document.getElementById('modal-description').textContent = d.description;
-
-    // Info grid
-    document.getElementById('modal-actor').textContent = d.actor;
-    document.getElementById('modal-date').textContent  = d.date + ' · ' + d.time;
-    document.getElementById('modal-relative').textContent = d.relative;
+    document.getElementById('modal-actor').textContent       = d.actor;
+    document.getElementById('modal-date').textContent        = d.date + ' · ' + d.time;
+    document.getElementById('modal-relative').textContent    = d.relative;
 
     const ipWrap = document.getElementById('modal-ip-wrap');
-    if (d.ip) {
-        document.getElementById('modal-ip').textContent = d.ip;
-        ipWrap.style.display = '';
-    } else {
-        ipWrap.style.display = 'none';
-    }
+    if (d.ip) { document.getElementById('modal-ip').textContent = d.ip; ipWrap.style.display = ''; }
+    else { ipWrap.style.display = 'none'; }
 
     const subjWrap = document.getElementById('modal-subject-wrap');
     if (d.subjectType) {
         document.getElementById('modal-subject').textContent = d.subjectType + (d.subjectId ? ' #' + d.subjectId : '');
         subjWrap.style.display = '';
-    } else {
-        subjWrap.style.display = 'none';
-    }
+    } else { subjWrap.style.display = 'none'; }
 
-    // Metadata rows
     const metaSection = document.getElementById('modal-meta-section');
     const metaBody    = document.getElementById('modal-meta-body');
     const rows = buildMetaRows(meta);
@@ -359,9 +533,7 @@ function openAuditModal(el) {
         metaSection.style.display = 'none';
     }
 
-    const modal = document.getElementById('auditModal');
-    modal.style.display = 'flex';
-    requestAnimationFrame(() => modal.style.opacity = '1');
+    document.getElementById('auditModal').style.display = 'flex';
 }
 
 function buildMetaRows(meta) {
@@ -371,22 +543,15 @@ function buildMetaRows(meta) {
         if (key === 'changes' && typeof value === 'object' && value !== null) {
             for (const [field, change] of Object.entries(value)) {
                 if (change && change.from !== undefined && change.to !== undefined) {
-                    const fieldLabel = field.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                    const from = change.from ?? '—';
-                    const to   = change.to   ?? '—';
-                    rows.push({
-                        key: fieldLabel,
-                        val: `<span style="text-decoration:line-through;opacity:.6;">${esc(from)}</span> → <strong>${esc(to)}</strong>`
-                    });
+                    const fl = field.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                    rows.push({ key: fl, val: `<span style="text-decoration:line-through;opacity:.6;">${esc(change.from ?? '—')}</span> → <strong>${esc(change.to)}</strong>` });
                 }
             }
         } else if (key === 'task_ids' && Array.isArray(value)) {
             rows.push({ key: 'Task IDs', val: esc(value.join(', ')) });
         } else if (Array.isArray(value)) {
             rows.push({ key: label, val: esc(value.join(', ')) });
-        } else if (typeof value === 'object' && value !== null) {
-            // skip nested objects that were already handled
-        } else if (value !== null && value !== undefined && value !== '') {
+        } else if (typeof value !== 'object' && value !== null && value !== undefined && value !== '') {
             rows.push({ key: label, val: esc(String(value)) });
         }
     }

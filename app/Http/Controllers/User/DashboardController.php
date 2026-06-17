@@ -82,13 +82,13 @@ class DashboardController extends Controller
         $receivedTotal    = $receivedTasks->count();
         $receivedCompleted = $receivedTasks->whereIn('status', $doneStatuses)->count();
 
-        // Active tasks sorted: overdue → in_progress → submitted → upcoming
+        // Active tasks sorted: overdue → in_progress → upcoming → submitted (under review last)
         $tasks = $allTasks->filter(fn($t) => !in_array($t->status, $doneStatuses))
             ->sortBy(function ($t) {
-                if ($t->status === 'submitted')              return '3_' . ($t->deadline?->format('Y-m-d') ?? '9999');
-                if ($t->deadline && $t->deadline->isPast()) return '1_' . $t->deadline->format('Y-m-d');
+                if ($t->deadline && $t->deadline->isPast() && $t->status !== 'submitted') return '1_' . $t->deadline->format('Y-m-d');
                 if ($t->status === 'in_progress')            return '2_' . ($t->deadline?->format('Y-m-d') ?? '9999');
-                return '4_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+                if ($t->status !== 'submitted')              return '3_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+                return '9_' . ($t->deadline?->format('Y-m-d') ?? '9999');
             })->values();
 
         // Tag each task — mark received tasks and attach who it came from

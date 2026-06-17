@@ -213,10 +213,24 @@ class DashboardController extends Controller
         // Social media stats
         $socialPostsTotal    = TaskSocialPost::count();
         $socialPostsMonth    = TaskSocialPost::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count();
-        $socialPending       = Task::where('social_required', true)->whereNull('social_posted_at')->count();
+        $socialPending       = Task::whereNotNull('social_assigned_to')->whereNull('social_posted_at')->count();
         $socialRequired      = Task::where('social_required', true)->count();
         $socialPlatformStats = TaskSocialPost::selectRaw('platform, count(*) as total')
             ->groupBy('platform')->orderByDesc('total')->get();
+
+        // Social Media section: pending queue + recent completed
+        $smPendingTasks = Task::whereNotNull('social_assigned_to')
+                            ->whereNull('social_posted_at')
+                            ->with(['socialAssignee:id,name', 'customer:id,name'])
+                            ->latest()
+                            ->get();
+
+        $smRecentCompleted = Task::whereNotNull('social_assigned_to')
+                            ->whereNotNull('social_posted_at')
+                            ->with(['socialAssignee:id,name', 'customer:id,name'])
+                            ->latest('social_posted_at')
+                            ->take(10)
+                            ->get();
 
         // Extra charts
         $priorityCounts = Task::selectRaw("priority, count(*) as total")
@@ -274,6 +288,7 @@ class DashboardController extends Controller
             'taskOverview', 'completionRate', 'onTimeRate', 'reviewCycles',
             'priorityData', 'teamPerfData', 'projectProgressData',
             'socialPostsTotal', 'socialPostsMonth', 'socialPending', 'socialRequired', 'socialPlatformStats',
+            'smPendingTasks', 'smRecentCompleted',
             'dashRefreshUrl', 'dashHomeUrl', 'dashProjectsUrl', 'dashProjectStoreUrl', 'dashQuickTaskUrl'
         ));
     }

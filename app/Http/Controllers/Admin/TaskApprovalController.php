@@ -156,31 +156,165 @@ class TaskApprovalController extends Controller
     }
 
     /**
-     * Record social media phase time for the assignee.
-     * started_at = when social was assigned.
+     * Close the open social timer segment for this task when the post is submitted.
+     * Falls back to creating a minimal segment if none is open (e.g. timer was never started).
      */
     private function recordSocialSegment(Task $task): void
     {
         if (!$task->social_assigned_to) return;
 
-        $assignedLog = TaskLog::where('task_id', $task->id)
-            ->where('action', 'social_assigned')
-            ->orderByDesc('created_at')
+        $open = TaskTimerSegment::where('task_id', $task->id)
+            ->where('user_id', $task->social_assigned_to)
+            ->where('phase', 'social')
+            ->whereNull('ended_at')
             ->first();
 
-        $startedAt = $assignedLog?->created_at ?? $task->created_at;
-        $endedAt   = now();
-        $seconds   = (int) $startedAt->diffInSeconds($endedAt);
+        if ($open) {
+            $seconds = $this->businessSeconds($open->started_at, now());
+            $open->update([
+                'ended_at'         => now(),
+                'duration_seconds' => $seconds,
+                'pause_reason'     => 'submitted',
+            ]);
+        } else {
+            // Timer was never opened — create a minimal 1-minute segment as a fallback
+            TaskTimerSegment::create([
+                'task_id'          => $task->id,
+                'user_id'          => $task->social_assigned_to,
+                'phase'            => 'social',
+                'started_at'       => now()->subMinute(),
+                'ended_at'         => now(),
+                'duration_seconds' => 60,
+                'pause_reason'     => 'submitted',
+            ]);
+        }
+    }
 
-        TaskTimerSegment::create([
-            'task_id'          => $task->id,
-            'user_id'          => $task->social_assigned_to,
-            'phase'            => 'social',
-            'started_at'       => $startedAt,
-            'ended_at'         => $endedAt,
-            'duration_seconds' => $seconds,
-            'pause_reason'     => 'system',
-        ]);
+    /**
+     * Calculate seconds between two timestamps counting only business hours.
+     */
+    private function businessSeconds(\Carbon\Carbon $start, \Carbon\Carbon $end): int
+    {
+        $tz       = \App\Models\Setting::get('timezone', 'UTC');
+        $startH   = \App\Models\Setting::get('work_start_time', '09:00');
+        $endH     = \App\Models\Setting::get('work_end_time', '18:00');
+        $workDays = json_decode(\App\Models\Setting::get('work_days', '[1,2,3,4,5]'), true) ?? [1,2,3,4,5];
+
+        $cursor = $start->copy()->setTimezone($tz);
+        $finish = $end->copy()->setTimezone($tz);
+        $total  = 0;
+
+        while ($cursor < $finish) {
+            $dow = (int) $cursor->dayOfWeek === 0 ? 7 : (int) $cursor->dayOfWeek;
+            if (!in_array($dow, $workDays)) {
+                $cursor->addDay()->setTimeFromTimeString($startH);
+                continue;
+            }
+            $dayStart = $cursor->copy()->setTimeFromTimeString($startH);
+            $dayEnd   = $cursor->copy()->setTimeFromTimeString($endH);
+            $from = max($cursor->timestamp, $dayStart->timestamp);
+            $to   = min($finish->timestamp, $dayEnd->timestamp);
+            if ($to > $from) $total += $to - $from;
+            $cursor->addDay()->setTimeFromTimeString($startH);
+        }
+        return $total;
+    }
+
+    /**
+     * Pause all open social timer segments for this user (excluding the given task).
+     */
+    private function pauseOtherSocialTimers(int $userId, int $currentTaskId): void
+    {
+        TaskTimerSegment::where('user_id', $userId)
+            ->where('task_id', '!=', $currentTaskId)
+            ->where('phase', 'social')
+            ->whereNull('ended_at')
+            ->each(function (TaskTimerSegment $seg) {
+                $seg->update([
+                    'ended_at'         => now(),
+                    'duration_seconds' => $seg->duration_seconds + $this->businessSeconds($seg->started_at, now()),
+                    'pause_reason'     => 'task_switch',
+                ]);
+            });
+    }
+
+    /** POST /social/{task}/timer/start */
+    public function startSocialTimer(Request $request, Task $task)
+    {
+        if ($task->social_assigned_to !== auth()->id()) abort(403);
+        if ($task->social_posted_at) return back()->with('error', 'This post has already been submitted.');
+
+        $tz       = \App\Models\Setting::get('timezone', 'UTC');
+        $startH   = \App\Models\Setting::get('work_start_time', '09:00');
+        $endH     = \App\Models\Setting::get('work_end_time', '18:00');
+        $workDays = json_decode(\App\Models\Setting::get('work_days', '[1,2,3,4,5]'), true) ?? [1,2,3,4,5];
+        $now      = now()->setTimezone($tz);
+        $dow      = (int)$now->dayOfWeek === 0 ? 7 : (int)$now->dayOfWeek;
+
+        if (!in_array($dow, $workDays)) {
+            return back()->with('timer_warning', 'Today is not a work day. Timer not started.');
+        }
+        if ($now >= $now->copy()->setTimeFromTimeString($endH)) {
+            return back()->with('timer_warning', 'Work hours are over (' . $endH . '). Timer not started.');
+        }
+
+        // Pause any other open social timer for this user
+        $this->pauseOtherSocialTimers(auth()->id(), $task->id);
+
+        // Don't double-start
+        $already = TaskTimerSegment::where('task_id', $task->id)
+            ->where('user_id', auth()->id())
+            ->where('phase', 'social')
+            ->whereNull('ended_at')
+            ->exists();
+
+        if (!$already) {
+            TaskTimerSegment::create([
+                'task_id'    => $task->id,
+                'user_id'    => auth()->id(),
+                'phase'      => 'social',
+                'started_at' => now(),
+            ]);
+
+            $warning = $now < $now->copy()->setTimeFromTimeString($startH)
+                ? 'Timer started before work hours (' . $startH . ').' : null;
+
+            return back()->with('success', 'Timer started.')->with('timer_warning', $warning);
+        }
+
+        return back()->with('success', 'Timer already running.');
+    }
+
+    /** POST /social/{task}/timer/pause */
+    public function pauseSocialTimer(Request $request, Task $task)
+    {
+        if ($task->social_assigned_to !== auth()->id()) {
+            // Allow sendBeacon (no auth check needed for the beacon — already behind auth middleware)
+            if ($request->wantsJson() || !$request->hasSession()) {
+                return response()->json(['ok' => false], 403);
+            }
+            abort(403);
+        }
+
+        $closed = 0;
+        TaskTimerSegment::where('task_id', $task->id)
+            ->where('user_id', auth()->id())
+            ->where('phase', 'social')
+            ->whereNull('ended_at')
+            ->each(function (TaskTimerSegment $seg) use (&$closed) {
+                $secs = $this->businessSeconds($seg->started_at, now());
+                $seg->update([
+                    'ended_at'         => now(),
+                    'duration_seconds' => $seg->duration_seconds + $secs,
+                    'pause_reason'     => 'manual',
+                ]);
+                $closed++;
+            });
+
+        if ($request->wantsJson() || !$request->hasSession()) {
+            return response()->json(['ok' => true]);
+        }
+        return back()->with('success', $closed ? 'Timer paused.' : 'No running timer.');
     }
 
     public function pendingCustomer(Request $request, Task $task)
@@ -402,6 +536,7 @@ class TaskApprovalController extends Controller
                     $platforms = array_values(array_filter((array) $request->input('social_platforms', [])));
                     $task->update([
                         'social_assigned_to' => $socialUser->id,
+                        'social_posted_at'   => null,
                         'social_description' => $request->social_description ?: null,
                         'social_caption'     => $request->social_caption     ?: null,
                         'social_budget'      => $request->social_budget       ?: null,
@@ -908,7 +1043,28 @@ class TaskApprovalController extends Controller
         $projectCompletedCount = $realProject?->tasks()->whereIn('status', ['approved','delivered','archived'])->count() ?? 0;
         $projectProgress       = $projectTaskCount > 0 ? round($projectCompletedCount / $projectTaskCount * 100) : 0;
 
-        return view('social.show', compact('task', 'projectTaskCount', 'projectCompletedCount', 'projectProgress'));
+        // Social timer data (for the assignee only)
+        $socialActiveSegment    = null;
+        $socialCompletedSeconds = 0;
+        if ($task->social_assigned_to && $user->id === (int) $task->social_assigned_to) {
+            $socialActiveSegment = TaskTimerSegment::where('task_id', $task->id)
+                ->where('user_id', $user->id)
+                ->where('phase', 'social')
+                ->whereNull('ended_at')
+                ->latest()
+                ->first();
+
+            $socialCompletedSeconds = (int) TaskTimerSegment::where('task_id', $task->id)
+                ->where('user_id', $user->id)
+                ->where('phase', 'social')
+                ->whereNotNull('ended_at')
+                ->sum('duration_seconds');
+        }
+
+        return view('social.show', compact(
+            'task', 'projectTaskCount', 'projectCompletedCount', 'projectProgress',
+            'socialActiveSegment', 'socialCompletedSeconds'
+        ));
     }
 
     public function bulkDecideLater(Request $request)
@@ -942,6 +1098,7 @@ class TaskApprovalController extends Controller
             $task->update([
                 'social_required'    => true,
                 'social_assigned_to' => $user->id,
+                'social_posted_at'   => null,
             ]);
             $user->notify(new \App\Notifications\SocialMediaAssigned($task));
         }

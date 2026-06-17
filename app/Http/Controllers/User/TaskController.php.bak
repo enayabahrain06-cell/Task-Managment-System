@@ -118,6 +118,15 @@ class TaskController extends Controller
         }
     }
 
+    /** Return true if the current user is assigned to this task (any assignment type). */
+    private function isAssigned(Task $task): bool
+    {
+        $uid = auth()->id();
+        return $task->assigned_to == $uid
+            || $task->social_assigned_to == $uid
+            || $task->assignees()->where('user_id', $uid)->exists();
+    }
+
     // ── Timer endpoints ──────────────────────────────────────────────────────
 
     /** Check work hours; returns a warning string if outside, null if inside. */
@@ -146,7 +155,7 @@ class TaskController extends Controller
 
     public function startTimer(Request $request, Task $task)
     {
-        if ($task->assigned_to != auth()->id()) {
+        if (!$this->isAssigned($task)) {
             abort(403);
         }
 
@@ -207,7 +216,7 @@ class TaskController extends Controller
 
     public function pauseTimer(Request $request, Task $task)
     {
-        if ($task->assigned_to != auth()->id()) {
+        if (!$this->isAssigned($task)) {
             abort(403);
         }
 
@@ -232,7 +241,7 @@ class TaskController extends Controller
 
     public function acknowledgeRevision(Request $request, Task $task)
     {
-        if ($task->assigned_to != auth()->id()) {
+        if (!$this->isAssigned($task)) {
             abort(403);
         }
 
@@ -290,13 +299,15 @@ class TaskController extends Controller
     public function show(Task $task)
     {
         $uid = auth()->id();
-        $isSocialAssignee = $task->social_assigned_to == $uid;
-        if ($task->assigned_to != $uid && !$isSocialAssignee) {
+        $isSocialAssignee  = $task->social_assigned_to == $uid;
+        $isPivotAssignee   = $task->assignees()->where('user_id', $uid)->exists();
+        if ($task->assigned_to != $uid && !$isSocialAssignee && !$isPivotAssignee) {
             abort(403);
         }
 
         // Social-only viewers (social_assigned_to) don't trigger first_viewed or modify task state
-        if ($isSocialAssignee && $task->assigned_to != $uid) {
+        // Pivot assignees always get the full view even if not the primary assigned_to
+        if ($isSocialAssignee && $task->assigned_to != $uid && !$isPivotAssignee) {
             $task->load([
                 'project.attachments' => fn($q) => $q->whereNull('task_id')->whereHas('project', fn($p) => $p->where('is_quick', false)),
                 'project.customer', 'assignee', 'assignees', 'reviewer', 'creator', 'customer',
@@ -339,7 +350,7 @@ class TaskController extends Controller
         }
 
         $task->load([
-            'project.attachments' => fn($q) => $q->whereNull('task_id'),
+            'project.attachments' => fn($q) => $q->whereNull('task_id')->whereHas('project', fn($p) => $p->where('is_quick', false)),
             'project.customer', 'assignee', 'assignees', 'reviewer', 'creator', 'customer',
             'socialAssignee', 'socialPosts', 'logs.user',
             'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor',
@@ -371,7 +382,7 @@ class TaskController extends Controller
 
     public function updateStatus(Request $request, Task $task)
     {
-        if ($task->assigned_to != auth()->id()) {
+        if (!$this->isAssigned($task)) {
             abort(403);
         }
 
@@ -409,7 +420,7 @@ class TaskController extends Controller
 
     public function submitVersion(Request $request, Task $task)
     {
-        if ($task->assigned_to != auth()->id()) {
+        if (!$this->isAssigned($task)) {
             abort(403);
         }
 
@@ -513,7 +524,7 @@ class TaskController extends Controller
 
     public function addComment(Request $request, Task $task)
     {
-        if ($task->assigned_to != auth()->id()) {
+        if (!$this->isAssigned($task)) {
             abort(403);
         }
 

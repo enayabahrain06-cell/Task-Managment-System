@@ -357,22 +357,30 @@ class TaskController extends Controller
             return back()->with('error', 'This task is already closed or archived.');
         }
 
-        $oldStatus = $task->status;
-        $task->update(['status' => 'delivered']);
+        $closeDate = $request->filled('close_date')
+            ? \Carbon\Carbon::parse($request->close_date)->endOfDay()
+            : now();
 
-        TaskLog::create([
+        $oldStatus = $task->status;
+        $task->update(['status' => 'delivered', 'delivered_at' => $closeDate]);
+
+        $log = TaskLog::make([
             'task_id'  => $task->id,
             'user_id'  => auth()->id(),
             'action'   => 'status_updated_delivered',
-            'note'     => 'Task force-closed by ' . auth()->user()->name . ($request->note ? ': ' . $request->note : ''),
+            'note'     => 'Task force-closed by ' . auth()->user()->name . ($request->note ? ': ' . $request->note : '') . ($request->filled('close_date') ? ' (backdated to ' . $closeDate->format('d M Y') . ')' : ''),
             'metadata' => [
                 'old_status'        => $oldStatus,
                 'new_status'        => 'delivered',
                 'delivered_by_id'   => auth()->id(),
                 'delivered_by_name' => auth()->user()->name,
                 'force_closed'      => true,
+                'backdated'         => $request->filled('close_date'),
             ],
         ]);
+        $log->created_at = $closeDate;
+        $log->updated_at = $closeDate;
+        $log->save();
 
         AuditLogger::log(
             'task.delivered',
