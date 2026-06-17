@@ -284,6 +284,13 @@
             </select>
         </form>
 
+        {{-- Summarize button --}}
+        <button onclick="document.getElementById('rpt-summarize-modal').style.display='flex'"
+                style="display:inline-flex;align-items:center;gap:7px;padding:7px 14px;background:#fff;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;"
+                onmouseover="this.style.background='#EEF2FF'" onmouseout="this.style.background='#fff'">
+            <i class="fas fa-chart-pie" style="font-size:11px;"></i> Summarize
+        </button>
+
         {{-- Export dropdown --}}
         <div x-data="{ exportOpen: false }" style="position:relative;" @click.outside="exportOpen=false">
             <button @click="exportOpen=!exportOpen"
@@ -329,6 +336,133 @@
                     User Performance
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
+{{-- ══ Summarize Modal ══ --}}
+<div id="rpt-summarize-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.45);"
+     onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#fff;border-radius:18px;width:100%;max-width:720px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.22);overflow:hidden;">
+
+        {{-- Header --}}
+        <div style="padding:18px 22px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:34px;height:34px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-chart-pie" style="color:#4F46E5;font-size:14px;"></i>
+                </div>
+                <div>
+                    <p style="font-size:15px;font-weight:700;color:#111827;margin:0;">Reports Summary</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;">
+                        {{ $from ? 'From '.$from->format(config('app.date_format','M d, Y')).' to '.now()->format(config('app.date_format','M d, Y')) : 'All time' }}
+                        @if($selectedUser) · {{ $selectedUser->name }}@endif
+                    </p>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <button onclick="printSummarize()"
+                        style="height:30px;padding:0 12px;border-radius:8px;background:#F3F4F6;border:1px solid #E5E7EB;cursor:pointer;font-size:11px;font-weight:600;color:#374151;display:flex;align-items:center;gap:5px;"
+                        onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                    <i class="fas fa-print" style="font-size:10px;"></i> Print
+                </button>
+                <button onclick="exportSummarizePDF()"
+                        style="height:30px;padding:0 12px;border-radius:8px;background:#FEF2F2;border:1px solid #FECACA;cursor:pointer;font-size:11px;font-weight:600;color:#DC2626;display:flex;align-items:center;gap:5px;"
+                        onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
+                    <i class="fas fa-file-pdf" style="font-size:10px;"></i> Export PDF
+                </button>
+                <button onclick="document.getElementById('rpt-summarize-modal').style.display='none'"
+                        style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;font-size:16px;color:#6B7280;display:flex;align-items:center;justify-content:center;">×</button>
+            </div>
+        </div>
+
+        {{-- Scrollable body --}}
+        <div style="overflow-y:auto;flex:1;padding:20px 22px;">
+
+            {{-- Stat cards row --}}
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;">
+                <div style="background:#EEF2FF;border-radius:12px;padding:14px;">
+                    <p style="font-size:10px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Total Tasks</p>
+                    <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $totalTasks }}</p>
+                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">In selected period</p>
+                </div>
+                <div style="background:#D1FAE5;border-radius:12px;padding:14px;">
+                    <p style="font-size:10px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Completed</p>
+                    <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $completedTasks }}</p>
+                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Approved + Delivered</p>
+                </div>
+                <div style="background:#FEF3C7;border-radius:12px;padding:14px;">
+                    <p style="font-size:10px;font-weight:700;color:#D97706;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Completion Rate</p>
+                    <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $completionRate }}%</p>
+                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Of all tasks</p>
+                </div>
+                <div style="background:#FEE2E2;border-radius:12px;padding:14px;">
+                    <p style="font-size:10px;font-weight:700;color:#DC2626;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Overdue</p>
+                    <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $overdueTasks }}</p>
+                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Need attention</p>
+                </div>
+                <div style="background:#DBEAFE;border-radius:12px;padding:14px;">
+                    <p style="font-size:10px;font-weight:700;color:#1D4ED8;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Active Projects</p>
+                    <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $activeProjects }}</p>
+                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Currently running</p>
+                </div>
+                <div style="background:#ECFDF5;border-radius:12px;padding:14px;">
+                    <p style="font-size:10px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">On-Time Rate</p>
+                    <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $onTimeRate }}%</p>
+                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Before deadline</p>
+                </div>
+            </div>
+
+            {{-- Team Performance --}}
+            @if($teamMembers->isNotEmpty())
+            <div style="margin-bottom:18px;">
+                <p style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;display:flex;align-items:center;gap:7px;">
+                    <span style="width:20px;height:20px;border-radius:5px;background:#EDE9FE;display:inline-flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-users" style="color:#7C3AED;font-size:9px;"></i>
+                    </span>
+                    Team Performance (Top {{ min(8, $teamMembers->count()) }})
+                </p>
+                <div style="display:flex;flex-direction:column;gap:7px;">
+                    @foreach($teamMembers->sortByDesc('rate')->take(8) as $m)
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="font-size:12px;font-weight:600;color:#111827;min-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{ $m['name'] }}">{{ $m['name'] }}</span>
+                        <span style="font-size:10px;color:#9CA3AF;min-width:50px;">{{ $m['total'] }} tasks</span>
+                        <div style="flex:1;height:6px;background:#F3F4F6;border-radius:99px;overflow:hidden;">
+                            <div style="height:6px;width:{{ $m['rate'] }}%;background:{{ $m['rate'] >= 80 ? '#10B981' : ($m['rate'] >= 40 ? '#F59E0B' : '#EF4444') }};border-radius:99px;"></div>
+                        </div>
+                        <span style="font-size:12px;font-weight:700;min-width:34px;text-align:right;color:{{ $m['rate'] >= 80 ? '#059669' : ($m['rate'] >= 40 ? '#D97706' : '#DC2626') }};">{{ $m['rate'] }}%</span>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
+            {{-- Customer Performance --}}
+            @if($customerStats->isNotEmpty() && !$selectedUser)
+            <div>
+                <p style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;display:flex;align-items:center;gap:7px;">
+                    <span style="width:20px;height:20px;border-radius:5px;background:#EEF2FF;display:inline-flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-building" style="color:#4F46E5;font-size:9px;"></i>
+                    </span>
+                    Top Customers (by task volume)
+                </p>
+                <div style="display:flex;flex-direction:column;gap:7px;">
+                    @foreach($customerStats->sortByDesc('total')->take(8) as $c)
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <a href="{{ route('admin.customers.show', $c['id']) }}"
+                           style="font-size:12px;font-weight:600;color:#4F46E5;text-decoration:none;min-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
+                           title="{{ $c['name'] }}"
+                           onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ $c['name'] }}</a>
+                        <span style="font-size:10px;color:#9CA3AF;min-width:50px;">{{ $c['total'] }} tasks</span>
+                        <div style="flex:1;height:6px;background:#F3F4F6;border-radius:99px;overflow:hidden;">
+                            <div style="height:6px;width:{{ $c['rate'] }}%;background:{{ $c['rate'] >= 80 ? '#10B981' : ($c['rate'] >= 40 ? '#F59E0B' : '#EF4444') }};border-radius:99px;"></div>
+                        </div>
+                        <span style="font-size:12px;font-weight:700;min-width:34px;text-align:right;color:{{ $c['rate'] >= 80 ? '#059669' : ($c['rate'] >= 40 ? '#D97706' : '#DC2626') }};">{{ $c['rate'] }}%</span>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
         </div>
     </div>
 </div>
@@ -1915,10 +2049,22 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
 
 @endsection
 
+@php
+$summarizeLogo = '';
+if (!empty($appSettings['logo_path'])) {
+    $lp = Storage::disk('public')->path($appSettings['logo_path']);
+    if (file_exists($lp)) {
+        $mime = mime_content_type($lp) ?: 'image/jpeg';
+        $summarizeLogo = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($lp));
+    }
+}
+@endphp
+
 @push('scripts')
 {{-- ── Export libraries ── --}}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <script>
@@ -2960,6 +3106,321 @@ function _spRender() {
     wrap.appendChild(btns);
 }
 
+/* ══════════════════════════════════════════════════════════
+   SUMMARIZE MODAL — Print & Export PDF  (branded layout)
+══════════════════════════════════════════════════════════ */
+function buildSummarizeHTML(immediate) {
+    var company  = '{{ addslashes($appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name')) }}';
+    var dept     = '{{ addslashes($appSettings['department_name'] ?? 'Operations') }}';
+    var period   = '{{ $from ? $from->format(config('app.date_format','M d, Y')).' – '.now()->format(config('app.date_format','M d, Y')) : 'All Time' }}';
+    var dateStr  = '{{ now()->format(config('app.date_format','M d, Y')) }}';
+    var timeStr  = '{{ now()->format('H:i') }}';
+    var user     = '{{ auth()->user()->name }}';
+    var logoSrc  = '{{ $summarizeLogo ?? '' }}';
+    var mono     = company.charAt(0).toUpperCase();
+
+    @if($selectedUser)
+    var filteredBy = '{{ addslashes($selectedUser->name) }}';
+    @else
+    var filteredBy = '';
+    @endif
+
+    // KPI data
+    var kpis = [
+        { label:'Total Tasks',     value:'{{ $totalTasks }}',        color:'#4F46E5', bg:'#EEF2FF', sub:'In selected period' },
+        { label:'Completed',       value:'{{ $completedTasks }}',    color:'#059669', bg:'#D1FAE5', sub:'Approved + Delivered' },
+        { label:'Completion Rate', value:'{{ $completionRate }}%',   color:'#EA580C', bg:'#FFF7ED', sub:'Of all tasks' },
+        { label:'Overdue',         value:'{{ $overdueTasks }}',      color:'#DC2626', bg:'#FEF2F2', sub:'Need attention' },
+        { label:'Active Projects', value:'{{ $activeProjects }}',    color:'#2563EB', bg:'#EFF6FF', sub:'Currently running' },
+        { label:'On-Time Rate',    value:'{{ $onTimeRate }}%',       color:'#10B981', bg:'#F0FDF4', sub:'Before deadline' },
+    ];
+
+    // Team rows
+    var teamRows = [
+        @foreach($teamMembers->sortByDesc('rate')->take(8) as $m)
+        { name:'{{ addslashes($m['name']) }}', role:'{{ addslashes($m['role']) }}', total:{{ $m['total'] }}, done:{{ $m['completed'] }}, rate:{{ $m['rate'] }} },
+        @endforeach
+    ];
+
+    // Customer rows
+    @if($customerStats->isNotEmpty() && !$selectedUser)
+    var custRows = [
+        @foreach($customerStats->sortByDesc('total')->take(8) as $c)
+        { name:'{{ addslashes($c['name']) }}', total:{{ $c['total'] }}, done:{{ $c['completed'] }}, rate:{{ $c['rate'] }} },
+        @endforeach
+    ];
+    @else
+    var custRows = [];
+    @endif
+
+    // ── CSS ───────────────────────────────────────────────
+    var css =
+      '* { box-sizing:border-box; margin:0; padding:0; }'
+    + 'body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; font-size:12px; color:#111827; background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+
+    /* Preview bar */
+    + '.pbar { position:sticky; top:0; z-index:100; background:linear-gradient(135deg,#4338CA,#7C3AED); padding:11px 28px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 3px 14px rgba(79,70,229,.35); }'
+    + '.pbar-l h2 { font-size:14px; font-weight:700; color:#fff; margin:0; }'
+    + '.pbar-l p  { font-size:10.5px; color:rgba(255,255,255,.72); margin:3px 0 0; }'
+    + '.pbar-btn  { display:flex; align-items:center; gap:7px; padding:9px 22px; background:#fff; color:#4F46E5; border:none; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.14); letter-spacing:.01em; }'
+    + '.pbar-btn:hover { background:#EEF2FF; }'
+    + '.pbar-btn svg { flex-shrink:0; }'
+
+    /* Document shell */
+    + '.doc { max-width:860px; margin:0 auto; background:#fff; }'
+
+    /* Gradient top bar */
+    + '.accent { height:6px; background:linear-gradient(90deg,#4F46E5 0%,#7C3AED 45%,#06B6D4 100%); -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+
+    /* Document header */
+    + '.dh { padding:20px 32px 16px; display:flex; justify-content:space-between; align-items:center; gap:16px; }'
+    + '.logo-area { display:flex; align-items:center; gap:14px; }'
+    + '.logo-img  { height:48px; width:auto; max-width:160px; object-fit:contain; }'
+    + '.logo-mono { width:48px; height:48px; background:linear-gradient(135deg,#4F46E5,#7C3AED); border-radius:12px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:25px; font-weight:900; flex-shrink:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.co-name { font-size:17px; font-weight:800; color:#111827; line-height:1.2; }'
+    + '.co-sub  { font-size:10px; color:#9CA3AF; margin-top:3px; }'
+    + '.rt { text-align:right; }'
+    + '.rt-name { font-size:20px; font-weight:900; color:#4F46E5; letter-spacing:-.4px; line-height:1.15; }'
+    + '.rt-badge { display:inline-flex; align-items:center; gap:5px; margin-top:6px; padding:3px 12px; background:#EEF2FF; border-radius:20px; font-size:10px; font-weight:600; color:#6366F1; border:1px solid #C7D2FE; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+
+    /* Divider */
+    + '.hr { height:1px; background:#E5E7EB; }'
+
+    /* Meta strip */
+    + '.meta { display:flex; background:#F8FAFC; padding:12px 32px; border-bottom:1px solid #E5E7EB; gap:0; }'
+    + '.mi { flex:1; min-width:0; padding-right:20px; border-right:1px solid #E5E7EB; margin-right:20px; }'
+    + '.mi:last-child { border-right:none; padding-right:0; margin-right:0; }'
+    + '.mi-lbl { font-size:8px; font-weight:700; color:#9CA3AF; text-transform:uppercase; letter-spacing:.09em; }'
+    + '.mi-val { font-size:11.5px; font-weight:600; color:#374151; margin-top:3px; }'
+
+    /* Content */
+    + '.content { padding:22px 32px 26px; }'
+
+    /* Section heading */
+    + '.sh { display:flex; align-items:center; gap:10px; margin:22px 0 13px; padding-bottom:9px; border-bottom:1.5px solid #F3F4F6; }'
+    + '.sh:first-child { margin-top:0; }'
+    + '.sh-bar  { width:4px; height:18px; border-radius:4px; flex-shrink:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.sh-text { font-size:10px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.08em; }'
+    + '.sh-pill { margin-left:auto; font-size:9.5px; font-weight:600; color:#6B7280; background:#F3F4F6; padding:2px 9px; border-radius:20px; }'
+
+    /* KPI grid */
+    + '.kgrid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:4px; }'
+    + '.kcard  { border-radius:10px; padding:14px 14px 14px 18px; border:1px solid rgba(0,0,0,.06); position:relative; overflow:hidden; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.kacc   { position:absolute; top:0; left:0; width:4px; height:100%; border-radius:10px 0 0 10px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.k-lbl  { font-size:8.5px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; margin-bottom:7px; }'
+    + '.k-val  { font-size:30px; font-weight:900; color:#111827; line-height:1; letter-spacing:-1px; }'
+    + '.k-sub  { font-size:9.5px; color:#9CA3AF; margin-top:5px; }'
+
+    /* Tables */
+    + '.twrap { border-radius:10px; border:1px solid #E5E7EB; overflow:hidden; margin-bottom:4px; }'
+    + 'table   { width:100%; border-collapse:collapse; }'
+    + 'thead tr { background:linear-gradient(90deg,#4F46E5,#6366F1); -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + 'th { font-size:9.5px; font-weight:700; color:#fff; text-align:left; padding:9px 12px; text-transform:uppercase; letter-spacing:.05em; white-space:nowrap; }'
+    + 'td { padding:9px 12px; border-bottom:1px solid #F3F4F6; font-size:12px; color:#374151; vertical-align:middle; }'
+    + 'tbody tr:last-child td { border-bottom:none; }'
+    + 'tbody tr:nth-child(even) td { background:#FAFAFA; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.td-n  { font-weight:600; color:#111827; }'
+    + '.td-sm { font-size:10px; color:#9CA3AF; margin-top:1px; }'
+    + '.td-c  { text-align:center; font-weight:700; }'
+    + '.bt    { height:7px; background:#F3F4F6; border-radius:99px; overflow:hidden; min-width:80px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.bf    { height:7px; border-radius:99px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.rb    { display:inline-block; padding:3px 10px; border-radius:20px; font-size:10px; font-weight:700; white-space:nowrap; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+
+    /* Footer */
+    + '.foot { margin:4px 32px 0; padding:13px 0; border-top:2px solid #4F46E5; display:flex; justify-content:space-between; align-items:center; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.foot-brand { font-size:10px; font-weight:700; color:#4F46E5; }'
+    + '.foot-mid   { font-size:10px; color:#9CA3AF; }'
+    + '.foot-conf  { font-size:10px; color:#9CA3AF; font-style:italic; }'
+
+    /* Print */
+    + '@@media print { .pbar{display:none !important;} body{background:#fff !important;} .doc{max-width:none;} *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;} tr{page-break-inside:avoid;} @@page{size:A4 portrait;margin:0;} }'
+    ;
+
+    // ── Logo element ─────────────────────────────────────
+    var logoEl = logoSrc
+        ? '<img class="logo-img" src="' + logoSrc + '" alt="' + company + '">'
+        : '<div class="logo-mono">' + mono + '</div>';
+
+    // ── Print SVG icon ────────────────────────────────────
+    var printIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>';
+
+    // ── KPI grid ─────────────────────────────────────────
+    var kHtml = '<div class="kgrid">';
+    kpis.forEach(function(k) {
+        kHtml += '<div class="kcard" style="background:' + k.bg + ';">'
+              + '<div class="kacc" style="background:' + k.color + ';"></div>'
+              + '<div class="k-lbl" style="color:' + k.color + ';">' + k.label + '</div>'
+              + '<div class="k-val">' + k.value + '</div>'
+              + '<div class="k-sub">' + k.sub + '</div>'
+              + '</div>';
+    });
+    kHtml += '</div>';
+
+    // ── Team table ───────────────────────────────────────
+    var tHtml = '';
+    if (teamRows.length) {
+        tHtml += '<div class="sh"><div class="sh-bar" style="background:#7C3AED;"></div><div class="sh-text">Team Productivity</div><span class="sh-pill">' + teamRows.length + ' members</span></div>';
+        tHtml += '<div class="twrap"><table><thead><tr>'
+              + '<th>Member</th><th>Role</th>'
+              + '<th style="text-align:center;">Total</th>'
+              + '<th style="text-align:center;">Done</th>'
+              + '<th style="min-width:110px;">Progress</th>'
+              + '<th style="text-align:right;">Rate</th>'
+              + '</tr></thead><tbody>';
+        teamRows.forEach(function(m) {
+            var c   = m.rate >= 80 ? '#10B981' : (m.rate >= 40 ? '#F59E0B' : '#EF4444');
+            var rbg = m.rate >= 80 ? '#D1FAE5' : (m.rate >= 40 ? '#FEF3C7' : '#FEE2E2');
+            tHtml += '<tr>'
+                  + '<td class="td-n">' + m.name + '</td>'
+                  + '<td style="font-size:10px;color:#9CA3AF;">' + m.role + '</td>'
+                  + '<td class="td-c">' + m.total + '</td>'
+                  + '<td class="td-c" style="color:#10B981;">' + m.done + '</td>'
+                  + '<td><div class="bt"><div class="bf" style="width:' + m.rate + '%;background:' + c + ';"></div></div></td>'
+                  + '<td style="text-align:right;"><span class="rb" style="background:' + rbg + ';color:' + c + ';">' + m.rate + '%</span></td>'
+                  + '</tr>';
+        });
+        tHtml += '</tbody></table></div>';
+    }
+
+    // ── Customer table ───────────────────────────────────
+    var cHtml = '';
+    if (custRows.length) {
+        cHtml += '<div class="sh"><div class="sh-bar" style="background:#2563EB;"></div><div class="sh-text">Customer Performance</div><span class="sh-pill">' + custRows.length + ' customers</span></div>';
+        cHtml += '<div class="twrap"><table><thead><tr>'
+              + '<th>Customer</th>'
+              + '<th style="text-align:center;">Total Tasks</th>'
+              + '<th style="text-align:center;">Completed</th>'
+              + '<th style="min-width:110px;">Progress</th>'
+              + '<th style="text-align:right;">Delivery Rate</th>'
+              + '</tr></thead><tbody>';
+        custRows.forEach(function(c) {
+            var col = c.rate >= 80 ? '#10B981' : (c.rate >= 40 ? '#F59E0B' : '#EF4444');
+            var rbg = c.rate >= 80 ? '#D1FAE5' : (c.rate >= 40 ? '#FEF3C7' : '#FEE2E2');
+            cHtml += '<tr>'
+                  + '<td class="td-n">' + c.name + '</td>'
+                  + '<td class="td-c">' + c.total + '</td>'
+                  + '<td class="td-c" style="color:#10B981;">' + c.done + '</td>'
+                  + '<td><div class="bt"><div class="bf" style="width:' + c.rate + '%;background:' + col + ';"></div></div></td>'
+                  + '<td style="text-align:right;"><span class="rb" style="background:' + rbg + ';color:' + col + ';">' + c.rate + '%</span></td>'
+                  + '</tr>';
+        });
+        cHtml += '</tbody></table></div>';
+    }
+
+    // ── Preview toolbar ──────────────────────────────────
+    var pbar = immediate ? '' :
+        '<div class="pbar">'
+      + '<div class="pbar-l"><h2>Reports Summary — ' + company + '</h2>'
+      + '<p>' + period + (filteredBy ? ' · Employee: ' + filteredBy : '') + '</p></div>'
+      + '<button class="pbar-btn" onclick="window.print()">' + printIcon + ' Print / Save as PDF</button>'
+      + '</div>';
+
+    // ── Assemble HTML ────────────────────────────────────
+    var printOnLoad = immediate ? '<sc'+'ript>window.onload=function(){window.print();}<\/'+'script>' : '';
+
+    return '<!DOCTYPE html><html lang="en"><head>'
+         + '<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+         + '<title>Reports Summary — ' + company + '</title>'
+         + '<style>' + css + '</style>'
+         + printOnLoad
+         + '</head><body>'
+         + pbar
+         + '<div class="doc">'
+
+         /* ── Accent bar ── */
+         + '<div class="accent"></div>'
+
+         /* ── Header ── */
+         + '<div class="dh">'
+         +   '<div class="logo-area">' + logoEl
+         +     '<div><div class="co-name">' + company + '</div>'
+         +     '<div class="co-sub">' + dept + '</div></div>'
+         +   '</div>'
+         +   '<div class="rt">'
+         +     '<div class="rt-name">Reports &amp; Analytics</div>'
+         +     '<div class="rt-badge">&#128274;&ensp;Confidential &mdash; Internal Use</div>'
+         +   '</div>'
+         + '</div>'
+
+         /* ── Divider ── */
+         + '<div class="hr"></div>'
+
+         /* ── Meta strip ── */
+         + '<div class="meta">'
+         +   '<div class="mi"><div class="mi-lbl">Generated</div><div class="mi-val">' + dateStr + ' at ' + timeStr + '</div></div>'
+         +   '<div class="mi"><div class="mi-lbl">Period</div><div class="mi-val">' + period + '</div></div>'
+         +   '<div class="mi"><div class="mi-lbl">Prepared By</div><div class="mi-val">' + user + '</div></div>'
+         +   '<div class="mi"><div class="mi-lbl">Department</div><div class="mi-val">' + dept + '</div></div>'
+         + '</div>'
+
+         /* ── Content ── */
+         + '<div class="content">'
+         +   '<div class="sh"><div class="sh-bar" style="background:#4F46E5;"></div><div class="sh-text">Performance Overview</div></div>'
+         +   kHtml
+         +   tHtml
+         +   cHtml
+         + '</div>'
+
+         /* ── Footer ── */
+         + '<div class="foot">'
+         +   '<div class="foot-brand">' + company + ' &mdash; Reports &amp; Analytics</div>'
+         +   '<div class="foot-mid">Generated ' + dateStr + ' &bull; ' + user + '</div>'
+         +   '<div class="foot-conf">Confidential</div>'
+         + '</div>'
+
+         + '</div>'  /* .doc */
+         + '</body></html>';
+}
+
+function printSummarize() {
+    var win = window.open('', '_blank');
+    if (win) { win.document.write(buildSummarizeHTML(true)); win.document.close(); }
+    else { alert('Pop-up blocked — please allow pop-ups for this site and try again.'); }
+}
+
+function exportSummarizePDF() {
+    _pdfDownload(buildSummarizeHTML, 'reports-summary.pdf');
+}
+
+function _pdfDownload(buildFn, filename) {
+    if (typeof html2pdf === 'undefined') { alert('PDF library not loaded yet — please try again in a moment.'); return; }
+    /* Loading overlay — keeps wrapper invisible to user while html2canvas renders it */
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(17,24,39,.55);z-index:99999;display:flex;align-items:center;justify-content:center;';
+    overlay.innerHTML = '<div style="background:#fff;border-radius:14px;padding:22px 32px;font-size:14px;font-weight:600;color:#374151;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);"><div style="width:20px;height:20px;border:3px solid #4F46E5;border-top-color:transparent;border-radius:50%;animation:_pdf_spin .7s linear infinite;flex-shrink:0;"></div>Generating PDF…</div><style>@@keyframes _pdf_spin{to{transform:rotate(360deg)}}</style>';
+    document.body.appendChild(overlay);
+    var htmlStr = buildFn(false);
+    var parser  = new DOMParser();
+    var parsed  = parser.parseFromString(htmlStr, 'text/html');
+    var cssText = Array.from(parsed.querySelectorAll('style')).map(function(s){ return s.textContent; }).join('\n');
+    var docNode = parsed.querySelector('.doc');
+    if (!docNode) { document.body.removeChild(overlay); return; }
+    /* Wrapper sits at top:0/left:0 so html2canvas can render it; z-index keeps it behind overlay */
+    var wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:fixed;top:0;left:0;width:1100px;background:#fff;z-index:99997;overflow:visible;';
+    var st = document.createElement('style');
+    st.textContent = cssText;
+    wrapper.appendChild(st);
+    wrapper.appendChild(docNode);
+    document.body.appendChild(wrapper);
+    setTimeout(function() {
+        html2pdf().set({
+            margin: 0,
+            filename: filename,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        }).from(wrapper).save().then(function() {
+            document.body.removeChild(wrapper);
+            document.body.removeChild(overlay);
+        }).catch(function(e) {
+            document.body.removeChild(wrapper);
+            document.body.removeChild(overlay);
+            alert('PDF generation failed — ' + (e && e.message ? e.message : 'please try again.'));
+        });
+    }, 150);
+}
+
 function exportSocialPostsPDF() {
     var rows = _spFiltered.length ? _spFiltered : _spAllRows;
 
@@ -2977,14 +3438,14 @@ function exportSocialPostsPDF() {
         'td{padding:7px 10px;border-bottom:1px solid #F3F4F6;font-size:10px;color:#374151;vertical-align:middle;}',
         'tbody tr:nth-child(even) td{background:#FAFAFA;}',
         'a{color:#4F46E5;text-decoration:none;}',
-        '@media print{',
+        '@@media print{',
         '  .preview-bar{display:none !important;}',
         '  body{background:#fff;}',
         '  .table-wrap{padding:0;}',
         '  table{box-shadow:none;border-radius:0;}',
         '  thead{display:table-header-group;}',
         '  tr{page-break-inside:avoid;}',
-        '  @page{margin:12mm;size:A4 landscape;}',
+        '  @@page{margin:12mm;size:A4 landscape;}',
         '}'
     ].join('');
 
