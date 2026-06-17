@@ -45,7 +45,12 @@ Route::get('/', function () {
 require __DIR__.'/auth.php';
 
 // Agent — available to all authenticated users
-Route::middleware(['auth'])->post('/agent/chat', [AgentController::class, 'chat'])->name('agent.chat');
+Route::middleware(['auth'])->group(function () {
+    Route::post('/agent/chat',    [AgentController::class, 'chat'])->name('agent.chat');
+    Route::post('/agent/support', [AgentController::class, 'support'])->name('agent.support');
+    Route::get('/agent/badge',      [AgentController::class, 'badge'])->name('agent.badge');
+    Route::get('/agent/report-pdf', [AgentController::class, 'reportPdf'])->name('agent.report-pdf');
+});
 
 // Shared authenticated routes (accessible by all roles)
 Route::middleware(['auth'])->group(function () {
@@ -176,6 +181,8 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('settings/team',                  [AdminSettingsController::class, 'updateTeam'])->name('settings.team');
     Route::post('settings/notifications',         [AdminSettingsController::class, 'updateNotifications'])->name('settings.notifications');
     Route::post('settings/security',              [AdminSettingsController::class, 'updateSecurity'])->name('settings.security');
+    Route::post('settings/agent',                 [AdminSettingsController::class, 'updateAgent'])->name('settings.agent');
+    Route::post('settings/hide-agent',            [AdminSettingsController::class, 'toggleHideAgent'])->name('settings.hide-agent');
     Route::post('settings/mail',                  [AdminSettingsController::class, 'updateMail'])->name('settings.mail');
     Route::post('settings/mail/test',             [AdminSettingsController::class, 'testMail'])->name('settings.mail.test');
     Route::post('settings/dev-mode',              [AdminSettingsController::class, 'toggleDevMode'])->name('settings.dev-mode');
@@ -184,6 +191,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('settings/manager-roles-access',  [AdminSettingsController::class, 'toggleManagerRolesAccess'])->name('settings.manager-roles-access');
     Route::post('settings/approval-customer-notify', [AdminSettingsController::class, 'toggleApprovalCustomerNotify'])->name('settings.approval-customer-notify');
     Route::post('settings/hourly-rate',              [AdminSettingsController::class, 'toggleHourlyRate'])->name('settings.hourly-rate');
+    Route::post('settings/hide-wa-web',              [AdminSettingsController::class, 'toggleHideWaWeb'])->name('settings.hide-wa-web');
     Route::post('settings/clear-cache',              [AdminSettingsController::class, 'clearCache'])->name('settings.clear-cache');
     Route::get('social-budget',                      [AdminSocialBudgetController::class, 'index'])->name('social-budget.index');
     Route::post('settings/elements/toggle',       [AdminSettingsController::class, 'toggleElement'])->name('settings.elements.toggle');

@@ -33,7 +33,8 @@
       "Bash(php -r \"opcache_reset\\(\\);\")",
       "Bash(sudo service apache2 restart)",
       "Bash(service apache2 *)",
-      "Bash(awk -F: '$2 ~ /^<div/ || $2 ~ /x-data/')"
+      "Bash(awk -F: '$2 ~ /^<div/ || $2 ~ /x-data/')",
+      "Bash(xargs -I{} grep -l \"pushAgent\" storage/framework/views/{})"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory",
