@@ -16,7 +16,7 @@
     $tasksRoute        = $role === 'admin' ? 'admin.dashboard' : ($role === 'manager' ? 'manager.dashboard' : 'user.dashboard');
     $approvalCount     = (in_array($role, ['admin', 'manager']) && auth()->check()) ? \App\Models\Task::where('status','submitted')->count() : 0;
     $userProjectCount  = ($role === 'user'  && auth()->check()) ? auth()->user()->projects()->count() : 0;
-    $unreadMsgCount    = auth()->check() ? \App\Models\Message::where('receiver_id', auth()->id())->whereNull('read_at')->whereNull('group_id')->count() : 0;
+    $unreadMsgCount    = auth()->check() ? \App\Models\Message::where('receiver_id', auth()->id())->whereNull('read_at')->whereNull('group_id')->whereColumn('sender_id', '!=', 'receiver_id')->count() : 0;
 @endphp
 
 <div style="display:flex;flex-direction:column;height:100%;">

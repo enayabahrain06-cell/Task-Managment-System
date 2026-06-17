@@ -1030,13 +1030,18 @@ class AgentController extends Controller
         $sender = auth()->user();
         $prefix = "📨 *Support request from {$sender->name} via Assistant:*\n\n";
 
+        $isSelf = $sender->id === $admin->id;
+
         $textMessage = Message::create([
             'sender_id'   => $sender->id,
             'receiver_id' => $admin->id,
             'body'        => $prefix . $request->body,
+            'read_at'     => $isSelf ? now() : null,
         ]);
 
-        $admin->notify(new NewMessageNotification($textMessage));
+        if (!$isSelf) {
+            $admin->notify(new NewMessageNotification($textMessage));
+        }
 
         foreach ($request->file('attachments', []) as $file) {
             $path = $file->store('messages', 'public');
@@ -1047,6 +1052,7 @@ class AgentController extends Controller
                 'file_path'   => $path,
                 'file_name'   => $file->getClientOriginalName(),
                 'file_type'   => $file->getMimeType(),
+                'read_at'     => $isSelf ? now() : null,
             ]);
         }
 
