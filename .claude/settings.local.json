@@ -27,10 +27,17 @@
       "Bash(php -l /var/www/Task-Managment-System/resources/views/admin/dashboard.blade.php)",
       "Read(//tmp/**)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost/admin/dashboard/analytics-tasks?filter=pending -H \"Cookie: $\\(grep -o 'laravel_session=[^;]*' /tmp/sess.txt 2>/dev/null || echo ''\\)\")",
-      "Bash(php -l /var/www/Task-Managment-System/resources/views/admin/approvals/index.blade.php)"
+      "Bash(php -l /var/www/Task-Managment-System/resources/views/admin/approvals/index.blade.php)",
+      "Bash(cp /var/www/Task-Managment-System/resources/views/admin/customers/report.blade.php /var/www/Task-Managment-System/resources/views/admin/customers/report.blade.php.bak)",
+      "Bash(grep -n \"public function report\\\\|compact\\\\|\\\\$\" /var/www/Task-Managment-System/app/Http/Controllers/Admin/CustomerController.php)",
+      "Bash(php -r \"opcache_reset\\(\\);\")",
+      "Bash(sudo service apache2 restart)",
+      "Bash(service apache2 *)",
+      "Bash(awk -F: '$2 ~ /^<div/ || $2 ~ /x-data/')"
     ],
     "additionalDirectories": [
-      "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory"
+      "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory",
+      "/var/www/Task-Managment-System/resources/views/admin/customers"
     ]
   }
 }

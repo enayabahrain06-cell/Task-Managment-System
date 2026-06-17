@@ -139,11 +139,14 @@ class SettingsController extends Controller
             ]
         );
 
+        $dbBytes = file_exists(database_path('database.sqlite')) ? filesize(database_path('database.sqlite')) : 0;
         $stats = [
-            'users'    => User::count(),
-            'projects' => Project::count(),
-            'tasks'    => Task::count(),
-            'db_size'  => $this->dbSizeKb(),
+            'users'      => User::count(),
+            'projects'   => Project::count(),
+            'tasks'      => Task::count(),
+            'db_size'    => $dbBytes >= 1048576
+                                ? round($dbBytes / 1048576, 1) . ' MB'
+                                : round($dbBytes / 1024) . ' KB',
         ];
 
         return view('admin.settings', compact('settings', 'stats'));
@@ -1207,46 +1210,161 @@ class SettingsController extends Controller
 
     public function downloadBackup()
     {
-        $dbPath   = database_path('database.sqlite');
-        $stamp    = now()->format('Ymd_His');
-        $zipPath  = sys_get_temp_dir() . '/backup_' . $stamp . '.zip';
-
-        $zip = new \ZipArchive();
-        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-            return back()->with('error', 'Could not create backup archive.');
-        }
-
-        // Database
-        $zip->addFile($dbPath, 'database/database.sqlite');
-
-        // All uploaded files
+        $stamp       = now()->format('Ymd_His');
+        $filename    = 'backup_' . $stamp . '.zip';
+        $dbPath      = database_path('database.sqlite');
         $storageBase = storage_path('app/public');
-        $iterator    = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($storageBase, \RecursiveDirectoryIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::LEAVES_ONLY
-        );
-        foreach ($iterator as $file) {
-            if ($file->isFile()) {
-                $relativePath = 'storage/public/' . ltrim(str_replace($storageBase, '', $file->getRealPath()), '/\\');
-                $zip->addFile($file->getRealPath(), $relativePath);
+
+        // Stream the ZIP directly to the browser using the system zip command.
+        // -0 = store only (no compression) so it starts instantly even for large files.
+        // We pipe: database file + all storage files, with path prefixes via -j/-r tricks.
+        // Strategy: create a tmp dir with symlinks so paths inside the ZIP are clean.
+        $tmpDir = sys_get_temp_dir() . '/bk_' . $stamp;
+        mkdir($tmpDir);
+        mkdir($tmpDir . '/database');
+        symlink($dbPath, $tmpDir . '/database/database.sqlite');
+        symlink($storageBase, $tmpDir . '/storage');
+
+        // Run zip from inside tmpDir so archive paths are relative (database/... storage/...)
+        $zipCmd = 'cd ' . escapeshellarg($tmpDir) . ' && zip -0 -r - database storage 2>/dev/null';
+
+        return response()->stream(function () use ($zipCmd, $tmpDir) {
+            $proc = popen($zipCmd, 'r');
+            while (!feof($proc)) {
+                echo fread($proc, 65536);
+                flush();
             }
+            pclose($proc);
+            // Cleanup symlinks and tmp dir
+            @unlink($tmpDir . '/database/database.sqlite');
+            @unlink($tmpDir . '/storage');
+            @rmdir($tmpDir . '/database');
+            @rmdir($tmpDir);
+        }, 200, [
+            'Content-Type'        => 'application/zip',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'X-Accel-Buffering'   => 'no',
+        ]);
+    }
+
+    public function downloadBackupSqlite()
+    {
+        $dbPath = database_path('database.sqlite');
+        $stamp  = now()->format('Ymd_His');
+        return response()->download($dbPath, 'backup_' . $stamp . '.sqlite', [
+            'Content-Type' => 'application/octet-stream',
+        ]);
+    }
+
+    public function restoreFromNas(Request $request)
+    {
+        $request->validate(['nas_path' => 'required|string|max:500']);
+
+        $nas     = app(\App\Services\NasService::class);
+        $nasPath = $request->input('nas_path');
+        $tmpPath = sys_get_temp_dir() . '/restore_nas_' . now()->format('YmdHis') . '_' . basename($nasPath);
+
+        if (!$nas->pullFromNas($nasPath, $tmpPath)) {
+            return redirect()->route('admin.settings.index')
+                ->with('error', 'Failed to download backup from NAS. Check NAS connection.')
+                ->with('_fragment', 'backup');
         }
 
-        $zip->close();
+        $result = $this->performRestore($tmpPath);
+        @unlink($tmpPath);
+        return $result;
+    }
 
-        return response()->download($zipPath, 'backup_' . $stamp . '.zip', [
-            'Content-Type' => 'application/zip',
-        ])->deleteFileAfterSend(true);
+    public function saveBackupToNas()
+    {
+        $nas = app(\App\Services\NasService::class);
+        if (!$nas->isEnabled()) {
+            return response()->json(['ok' => false, 'msg' => 'NAS is not enabled.']);
+        }
+
+        $stamp       = now()->format('Ymd_His');
+        $filename    = 'backup_' . $stamp . '.zip';
+        $zipPath     = sys_get_temp_dir() . '/' . $filename;
+        $dbPath      = database_path('database.sqlite');
+        $storageBase = storage_path('app/public');
+
+        // Build temp dir with symlinks for clean ZIP paths
+        $tmpDir = sys_get_temp_dir() . '/bk_' . $stamp;
+        mkdir($tmpDir);
+        mkdir($tmpDir . '/database');
+        symlink($dbPath, $tmpDir . '/database/database.sqlite');
+        symlink($storageBase, $tmpDir . '/storage');
+
+        exec('cd ' . escapeshellarg($tmpDir) . ' && zip -0 -r ' . escapeshellarg($zipPath) . ' database storage 2>/dev/null', $out, $code);
+
+        @unlink($tmpDir . '/database/database.sqlite');
+        @unlink($tmpDir . '/storage');
+        @rmdir($tmpDir . '/database');
+        @rmdir($tmpDir);
+
+        if ($code !== 0 || !file_exists($zipPath)) {
+            return response()->json(['ok' => false, 'msg' => 'Failed to create ZIP archive.']);
+        }
+
+        $ok = $nas->saveBackupToNas($zipPath, $filename);
+        @unlink($zipPath);
+
+        if (!$ok) {
+            return response()->json(['ok' => false, 'msg' => 'ZIP created but upload to NAS failed. Check NAS connection.']);
+        }
+
+        AuditLogger::log('system.backup', null, 'Full backup saved to NAS: ' . $filename, []);
+
+        return response()->json(['ok' => true, 'msg' => 'Backup saved to NAS: Backups/' . now()->format('Y/Y-m') . '/' . $filename]);
+    }
+
+    public function listNasBackups()
+    {
+        $nas = app(\App\Services\NasService::class);
+        if (!$nas->isEnabled()) {
+            return response()->json(['files' => [], 'error' => 'NAS not enabled']);
+        }
+        return response()->json(['files' => $nas->listNasBackups()]);
+    }
+
+    public function listServerBackups()
+    {
+        $dir   = storage_path('app/backups');
+        $files = [];
+        foreach (glob($dir . '/*.{zip,sqlite}', GLOB_BRACE) as $path) {
+            $files[] = [
+                'name'     => basename($path),
+                'size'     => round(filesize($path) / 1048576, 1),
+                'modified' => date('Y-m-d H:i', filemtime($path)),
+            ];
+        }
+        usort($files, fn($a, $b) => strcmp($b['modified'], $a['modified']));
+        return response()->json(['files' => $files, 'path' => $dir]);
+    }
+
+    public function restoreFromServer(Request $request)
+    {
+        $request->validate(['filename' => 'required|string|max:255']);
+
+        $filename = basename($request->input('filename'));
+        $path     = storage_path('app/backups/' . $filename);
+
+        if (!file_exists($path)) {
+            return back()->with('error', 'File not found on server: ' . $filename);
+        }
+
+        return $this->performRestore($path);
     }
 
     public function restoreBackup(Request $request)
     {
         $request->validate(['backup_file' => 'required|file']);
+        return $this->performRestore($request->file('backup_file')->getRealPath());
+    }
 
-        $file    = $request->file('backup_file');
-        $tmpPath = $file->getRealPath();
-
-        $handle = fopen($tmpPath, 'rb');
+    private function performRestore(string $filePath)
+    {
+        $handle = fopen($filePath, 'rb');
         $magic  = fread($handle, 16);
         fclose($handle);
 
@@ -1255,7 +1373,7 @@ class SettingsController extends Controller
 
         if (!$isZip && !$isSqlite) {
             return redirect()->route('admin.settings.index')
-                ->withErrors(['backup_file' => 'Invalid file — upload a .zip or .sqlite backup created by this system.'])
+                ->with('error', 'Invalid file — must be a .zip or .sqlite backup created by this system.')
                 ->with('_fragment', 'backup');
         }
 
@@ -1266,15 +1384,14 @@ class SettingsController extends Controller
         try {
             if ($isSqlite) {
                 DB::disconnect();
-                copy($tmpPath, $dbPath);
+                copy($filePath, $dbPath);
 
             } else {
                 $zip = new \ZipArchive();
-                if ($zip->open($tmpPath) !== true) {
+                if ($zip->open($filePath) !== true) {
                     throw new \RuntimeException('Could not open ZIP archive.');
                 }
 
-                // Restore database
                 $dbEntry = $zip->getFromName('database/database.sqlite');
                 if ($dbEntry === false) {
                     $zip->close();
@@ -1283,13 +1400,20 @@ class SettingsController extends Controller
                 DB::disconnect();
                 file_put_contents($dbPath, $dbEntry);
 
-                // Restore files
+                // Restore files — supports both path formats:
+                //   new: storage/branding/file.jpg  → storage/app/public/branding/file.jpg
+                //   old: storage/public/branding/file.jpg → storage/app/public/branding/file.jpg
                 $storageBase = storage_path('app/public');
                 for ($i = 0; $i < $zip->numFiles; $i++) {
                     $name = $zip->getNameIndex($i);
-                    if (!str_starts_with($name, 'storage/public/')) continue;
-                    $relative = substr($name, strlen('storage/public/'));
-                    if ($relative === '' || str_ends_with($name, '/')) continue;
+                    if (str_starts_with($name, 'storage/public/')) {
+                        $relative = substr($name, strlen('storage/public/'));
+                    } elseif (str_starts_with($name, 'storage/') && !str_ends_with($name, '/')) {
+                        $relative = substr($name, strlen('storage/'));
+                    } else {
+                        continue;
+                    }
+                    if ($relative === '') continue;
                     $dest = $storageBase . '/' . $relative;
                     @mkdir(dirname($dest), 0755, true);
                     file_put_contents($dest, $zip->getFromIndex($i));
@@ -1307,7 +1431,7 @@ class SettingsController extends Controller
                 ->with('_fragment', 'backup');
         }
 
-        AuditLogger::log('system.restored', null, 'Full system backup restored from uploaded file', []);
+        AuditLogger::log('system.restored', null, 'Full system backup restored', []);
 
         return redirect()->route('admin.settings.index')
             ->with('success', 'Full system restore completed. Database and all files have been restored.')

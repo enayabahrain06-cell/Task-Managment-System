@@ -119,28 +119,26 @@
     #rpt-main-content { margin:0 !important; padding:0 !important; }
     #rpt-print-header { display:block !important; margin-bottom:24px !important; }
 
-    /* ── Cards & grids preserve layout ── */
+    /* ── Cards: border only, NO break-inside avoid (avoidance causes the page gaps) ── */
     .rpt-card {
         border:1px solid #D1D5DB !important;
         box-shadow:none !important;
-        break-inside:avoid;
-        -webkit-column-break-inside:avoid;
-        page-break-inside:avoid;
     }
     .rpt-grid-4 { grid-template-columns:repeat(4,1fr) !important; }
     .rpt-grid-5 { grid-template-columns:repeat(5,1fr) !important; }
     .rpt-grid-2 { grid-template-columns:1fr 1fr !important; }
     .rpt-grid-3 { grid-template-columns:repeat(3,1fr) !important; }
 
+    /* ── Avoid splitting individual table rows across pages ── */
+    .rpt-table tr { break-inside:avoid; page-break-inside:avoid; }
+
     /* ── Progress bars, badges & gradients print in color ── */
     .rpt-bar-fill  { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     .rpt-badge     { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
     * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
 
-    @page { size: A4 portrait; margin: 0; }
-
-    /* Allow natural multi-page flow; only avoid breaks inside cards */
-    .rpt-card { page-break-inside: avoid; break-inside: avoid; }
+    /* Proper margins so content doesn't touch the paper edge */
+    @page { size: A4 portrait; margin: 12mm 8mm; }
 
     /* Hide pagination controls — all rows are expanded during print */
     [id$="-pg"] { display:none !important; }

@@ -40,6 +40,14 @@ class AppServiceProvider extends ServiceProvider
                 'smb_share'  => Setting::get('storage_omv_share', ''),
                 'smb_domain' => '',
             ]]);
+            // Load custom NAS schema from DB if admin has saved one
+            $savedSchema = Setting::get('storage_nas_schema', '');
+            if ($savedSchema) {
+                $decoded = json_decode($savedSchema, true);
+                if (is_array($decoded)) {
+                    config(['nas-file-manager.schema' => $decoded]);
+                }
+            }
         } catch (\Throwable) {
             // settings table may not exist yet
         }

@@ -18,10 +18,10 @@ class NasService
             && Setting::get('storage_omv_share', '') !== '';
     }
 
-    /** True when files should live ONLY on the NAS (no local retention). */
+    /** When NAS is enabled, files live ONLY on the NAS — no local retention. */
     public function isNetworkOnly(): bool
     {
-        return $this->isEnabled() && Setting::get('storage_omv_only', '0') === '1';
+        return $this->isEnabled();
     }
 
     /**
@@ -68,14 +68,17 @@ class NasService
         $month    = $task->created_at->format('Y-m');
         $customer = $task->customer ?? $task->project?->customer;
 
-        if (!$customer) return null;
-
-        $company = $this->slug($customer->name);
-        $nasDir  = "{$root}/Customers/{$company}/References/{$year}/{$month}";
+        if ($customer) {
+            $company = $this->slug($customer->name);
+            $nasDir  = "{$root}/Customers/{$company}/References/{$year}/{$month}";
+        } else {
+            $title  = $this->slug($task->title);
+            $nasDir = "{$root}/Quick_Tasks/{$year}/{$month}/{$title}/References";
+        }
 
         $this->ensureFolders($cfg, $nasDir);
 
-        $remote  = preg_replace('/[\\\\\/\'"<>|*?]/', '_', $originalFilename);
+        $remote  = $this->uniqueRemoteName($cfg, $nasDir, preg_replace('/[\\\\\/\'"<>|*?()\s]/', '_', $originalFilename));
         $nasPath = $nasDir . '/' . $remote;
         $ok      = $this->smbPut($cfg, $localFull, $nasDir, $remote);
 
@@ -103,14 +106,17 @@ class NasService
         $month    = $task->created_at->format('Y-m');
         $customer = $task->customer ?? $task->project?->customer;
 
-        if (!$customer) return null;
-
-        $company = $this->slug($customer->name);
-        $nasDir  = "{$root}/Customers/{$company}/Deliverables/{$year}/{$month}";
+        if ($customer) {
+            $company = $this->slug($customer->name);
+            $nasDir  = "{$root}/Customers/{$company}/Deliverables/{$year}/{$month}";
+        } else {
+            $title  = $this->slug($task->title);
+            $nasDir = "{$root}/Quick_Tasks/{$year}/{$month}/{$title}/Deliverables";
+        }
 
         $this->ensureFolders($cfg, $nasDir);
 
-        $remote  = preg_replace('/[\\\\\/\'"<>|*?]/', '_', $originalFilename);
+        $remote  = $this->uniqueRemoteName($cfg, $nasDir, preg_replace('/[\\\\\/\'"<>|*?()\s]/', '_', $originalFilename));
         $nasPath = $nasDir . '/' . $remote;
         $ok      = $this->smbPut($cfg, $localFull, $nasDir, $remote);
 
@@ -144,7 +150,7 @@ class NasService
         $ext       = pathinfo($localFull, PATHINFO_EXTENSION);
         $tmpDesign = 'nas_' . uniqid() . ($ext ? ".{$ext}" : '');
         copy($localFull, $tmpDir . '/' . $tmpDesign);
-        $remote = preg_replace('/[\\\\\/\'"<>|*?]/', '_', $originalFilename);
+        $remote = $this->uniqueRemoteName($cfg, $nasDir, preg_replace('/[\\\\\/\'"<>|*?()\s]/', '_', $originalFilename));
 
         exec("smbclient {$target} -U {$cred} -c " .
             escapeshellarg("lcd \"{$tmpDir}\"; cd \"{$nasDir}\"; put \"{$tmpDesign}\" \"{$remote}\"") .
@@ -210,7 +216,7 @@ class NasService
 
         $this->ensureFolders($cfg, $nasDir);
 
-        $remote  = preg_replace('/[\\\\\/\'"<>|*?]/', '_', $originalFilename);
+        $remote  = $this->uniqueRemoteName($cfg, $nasDir, preg_replace('/[\\\\\/\'"<>|*?()\s]/', '_', $originalFilename));
         $nasPath = $nasDir . '/' . $remote;
         $ok      = $this->smbPut($cfg, $localFull, $nasDir, $remote);
 
@@ -219,6 +225,63 @@ class NasService
         }
 
         return $ok ? $nasPath : null;
+    }
+
+    /**
+     * Scan the expected NAS location for a task file and return its path if found.
+     * Checks the base sanitized name and up to 10 renamed variants (_1, _2 …).
+     */
+    public function findNasPath(Task $task, string $originalFilename, string $stage = '03_Working', int $version = 0): ?string
+    {
+        if (!$this->isEnabled()) return null;
+        $cfg    = $this->cfg();
+        $nasDir = $this->nasDir($task, $stage);
+        if ($version > 0) $nasDir .= '/V' . $version;
+        return $this->findInDir($cfg, $nasDir, $originalFilename);
+    }
+
+    /**
+     * Scan the expected NAS reference location for a comment/attachment file.
+     */
+    public function findNasPathReference(Task $task, string $originalFilename): ?string
+    {
+        if (!$this->isEnabled()) return null;
+        $cfg      = $this->cfg();
+        $root     = $cfg['root'];
+        $year     = $task->created_at->format('Y');
+        $month    = $task->created_at->format('Y-m');
+        $customer = $task->customer ?? $task->project?->customer;
+        if ($customer) {
+            $nasDir = "{$root}/Customers/{$this->slug($customer->name)}/References/{$year}/{$month}";
+        } else {
+            $nasDir = "{$root}/Quick_Tasks/{$year}/{$month}/{$this->slug($task->title)}/References";
+        }
+        return $this->findInDir($cfg, $nasDir, $originalFilename);
+    }
+
+    /** Check a directory for a sanitized filename or its _1/_2/… variants. */
+    private function findInDir(array $cfg, string $nasDir, string $originalFilename): ?string
+    {
+        $sanitized = preg_replace('/[\\\\\/\'"<>|*?()\s]/', '_', $originalFilename);
+        $ext       = pathinfo($sanitized, PATHINFO_EXTENSION);
+        $base      = $ext ? substr($sanitized, 0, -(strlen($ext) + 1)) : $sanitized;
+
+        // Check original filename first (files restored from recycle bin keep original names)
+        if ($originalFilename !== $sanitized && $this->nasFileExists($cfg, $nasDir, $originalFilename)) {
+            return $nasDir . '/' . $originalFilename;
+        }
+        // Check sanitized name
+        if ($this->nasFileExists($cfg, $nasDir, $sanitized)) {
+            return $nasDir . '/' . $sanitized;
+        }
+        // Check _N conflict variants
+        for ($i = 1; $i <= 20; $i++) {
+            $candidate = $ext ? "{$base}_{$i}.{$ext}" : "{$base}_{$i}";
+            if ($this->nasFileExists($cfg, $nasDir, $candidate)) {
+                return $nasDir . '/' . $candidate;
+            }
+        }
+        return null;
     }
 
     /**
@@ -252,6 +315,34 @@ class NasService
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
+
+    private function nasFileExists(array $cfg, string $nasDir, string $filename): bool
+    {
+        $target = escapeshellarg("//{$cfg['host']}/{$cfg['share']}");
+        $cred   = escapeshellarg("{$cfg['user']}%{$cfg['pass']}");
+        exec("smbclient {$target} -U {$cred} -c " .
+            escapeshellarg("cd \"{$nasDir}\"; ls \"{$filename}\"") .
+            ' 2>&1', $out, $code);
+        foreach ($out as $line) {
+            if (str_contains($line, $filename)) return true;
+        }
+        return false;
+    }
+
+    private function uniqueRemoteName(array $cfg, string $nasDir, string $remote): string
+    {
+        if (!$this->nasFileExists($cfg, $nasDir, $remote)) return $remote;
+
+        $ext     = pathinfo($remote, PATHINFO_EXTENSION);
+        $base    = $ext ? substr($remote, 0, -(strlen($ext) + 1)) : $remote;
+        $counter = 1;
+        do {
+            $candidate = $ext ? "{$base}_{$counter}.{$ext}" : "{$base}_{$counter}";
+            $counter++;
+        } while ($this->nasFileExists($cfg, $nasDir, $candidate) && $counter < 100);
+
+        return $candidate;
+    }
 
     private function smbPut(array $cfg, string $localFull, string $nasDir, string $remote): bool
     {
@@ -340,6 +431,73 @@ class NasService
             $current = $current ? "{$current}/{$part}" : $part;
             exec("smbclient {$target} -U {$cred} -c " . escapeshellarg("mkdir \"{$current}\"") . ' 2>&1');
         }
+    }
+
+    public function pullFromNas(string $nasPath, string $localDest): bool
+    {
+        $cfg     = $this->cfg();
+        $target  = escapeshellarg("//{$cfg['host']}/{$cfg['share']}");
+        $cred    = escapeshellarg("{$cfg['user']}%{$cfg['pass']}");
+        $dir     = dirname($nasPath);
+        $file    = basename($nasPath);
+        $tmpDir  = dirname($localDest);
+        $tmpName = basename($localDest);
+
+        exec("smbclient {$target} -U {$cred} -c " .
+            escapeshellarg("lcd \"{$tmpDir}\"; cd \"{$dir}\"; get \"{$file}\" \"{$tmpName}\"") .
+            ' 2>&1', $out, $code);
+
+        return $code === 0 && file_exists($localDest);
+    }
+
+    public function saveBackupToNas(string $localZipPath, string $filename): bool
+    {
+        $cfg    = $this->cfg();
+        $root   = $cfg['root'];
+        $year   = now()->format('Y');
+        $month  = now()->format('Y-m');
+        $nasDir = "{$root}/Backups/{$year}/{$month}";
+
+        $this->ensureFolders($cfg, $nasDir);
+        return $this->smbPut($cfg, $localZipPath, $nasDir, $filename);
+    }
+
+    public function listNasBackups(): array
+    {
+        $cfg    = $this->cfg();
+        $root   = $cfg['root'];
+        $target = escapeshellarg("//{$cfg['host']}/{$cfg['share']}");
+        $cred   = escapeshellarg("{$cfg['user']}%{$cfg['pass']}");
+
+        $smbls = fn(string $dir) => tap([], function (&$out) use ($target, $cred, $dir) {
+            exec("smbclient {$target} -U {$cred} -c " . escapeshellarg("cd \"{$dir}\"; ls") . ' 2>&1', $out);
+        });
+
+        $years = [];
+        foreach ($smbls("{$root}/Backups") as $line) {
+            if (preg_match('/^\s+(\d{4})\s+D/', $line, $m)) $years[] = $m[1];
+        }
+
+        $files = [];
+        foreach ($years as $year) {
+            foreach ($smbls("{$root}/Backups/{$year}") as $line) {
+                if (!preg_match('/^\s+(\d{4}-\d{2})\s+D/', $line, $m)) continue;
+                $monthDir = "{$root}/Backups/{$year}/{$m[1]}";
+                foreach ($smbls($monthDir) as $entry) {
+                    if (preg_match('/^\s+(backup_\S+\.(zip|sqlite))\s+[AN]\s+(\d+)/', $entry, $f)) {
+                        $files[] = [
+                            'name'  => $f[1],
+                            'size'  => round((int)$f[3] / 1048576, 1),
+                            'path'  => "{$monthDir}/{$f[1]}",
+                            'month' => $m[1],
+                        ];
+                    }
+                }
+            }
+        }
+
+        usort($files, fn($a, $b) => strcmp($b['name'], $a['name']));
+        return $files;
     }
 
     private function slug(string $value): string

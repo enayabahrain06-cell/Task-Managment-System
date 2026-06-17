@@ -32,8 +32,9 @@
         submitDelete() {
             if (!this.deleteConfirmed) return;
             this.$refs.deleteForm.submit();
-        }
-     }" style="max-width:1100px;">
+        },
+        summarizeModal: false,
+     }">
 
     {{-- Header --}}
     <div class="cust-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
@@ -41,10 +42,17 @@
             <h1 style="font-size:22px;font-weight:700;color:#111827;margin:0;">Customers</h1>
             <p style="font-size:13px;color:#9CA3AF;margin:4px 0 0;">Manage your clients and link them to projects & tasks</p>
         </div>
-        <button @click="modal = true"
-                style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
-            <i class="fas fa-plus" style="font-size:11px;"></i> New Customer
-        </button>
+        <div style="display:flex;gap:8px;align-items:center;">
+            <button @click="summarizeModal = true"
+                    style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;background:#fff;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;"
+                    onmouseover="this.style.background='#EEF2FF'" onmouseout="this.style.background='#fff'">
+                <i class="fas fa-chart-pie" style="font-size:11px;"></i> Summarize
+            </button>
+            <button @click="modal = true"
+                    style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
+                <i class="fas fa-plus" style="font-size:11px;"></i> New Customer
+            </button>
+        </div>
     </div>
 
     {{-- View toggle --}}
@@ -96,7 +104,8 @@
     {{-- ── TABLE VIEW ── --}}
     <div x-show="view === 'table'">
         <div class="cust-tbl-scroll" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
-            <table style="width:100%;border-collapse:collapse;">
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+            <table style="width:100%;min-width:600px;border-collapse:collapse;">
                 <thead>
                     <tr style="border-bottom:1.5px solid #F3F4F6;">
                         <th style="padding:12px 20px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Customer</th>
@@ -168,16 +177,20 @@
                         <td style="padding:14px 16px;text-align:right;">
                             <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;">
                                 <a href="{{ route('admin.customers.show', $customer) }}"
-                                   style="padding:5px 10px;border-radius:7px;background:#F3F4F6;color:#374151;font-size:12px;font-weight:600;text-decoration:none;">
+                                   style="padding:5px 10px;border-radius:7px;background:#F3F4F6;color:#374151;font-size:12px;font-weight:600;text-decoration:none;" title="View">
                                     <i class="fas fa-eye" style="font-size:11px;"></i>
                                 </a>
+                                <a href="{{ route('admin.customers.report', $customer) }}"
+                                   style="padding:5px 10px;border-radius:7px;background:#EEF2FF;color:#4F46E5;font-size:12px;font-weight:600;text-decoration:none;" title="Report">
+                                    <i class="fas fa-chart-line" style="font-size:11px;"></i>
+                                </a>
                                 <a href="{{ route('admin.customers.edit', $customer) }}"
-                                   style="padding:5px 10px;border-radius:7px;background:#EEF2FF;color:#4F46E5;font-size:12px;font-weight:600;text-decoration:none;">
+                                   style="padding:5px 10px;border-radius:7px;background:#F3F4F6;color:#374151;font-size:12px;font-weight:600;text-decoration:none;" title="Edit">
                                     <i class="fas fa-pencil" style="font-size:11px;"></i>
                                 </a>
                                 <button type="button"
                                         @click="openDeleteModal(@js($customer->name), '{{ route('admin.customers.destroy', $customer) }}')"
-                                        style="padding:5px 10px;border-radius:7px;background:#FEF2F2;color:#DC2626;border:none;font-size:12px;font-weight:600;cursor:pointer;">
+                                        style="padding:5px 10px;border-radius:7px;background:#FEF2F2;color:#DC2626;border:none;font-size:12px;font-weight:600;cursor:pointer;" title="Delete">
                                     <i class="fas fa-trash" style="font-size:11px;"></i>
                                 </button>
                             </div>
@@ -186,6 +199,7 @@
                     @endforeach
                 </tbody>
             </table>
+        </div>{{-- end overflow-x scroll --}}
 
             <x-pagination :paginator="$customers" mt="14px" />
         </div>
@@ -226,8 +240,14 @@
                             <i class="fab fa-whatsapp"></i>
                         </a>
                         @endif
-                        <a href="{{ route('admin.customers.edit', $customer) }}"
+                        <a href="{{ route('admin.customers.report', $customer) }}"
+                           title="Report"
                            style="width:28px;height:28px;border-radius:7px;background:#EEF2FF;color:#4F46E5;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:11px;">
+                            <i class="fas fa-chart-line"></i>
+                        </a>
+                        <a href="{{ route('admin.customers.edit', $customer) }}"
+                           title="Edit"
+                           style="width:28px;height:28px;border-radius:7px;background:#F3F4F6;color:#374151;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:11px;">
                             <i class="fas fa-pencil"></i>
                         </a>
                         <button type="button"
@@ -279,13 +299,20 @@
                     </div>
                 </div>
 
-                {{-- View button --}}
-                <a href="{{ route('admin.customers.show', $customer) }}"
-                   style="display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:#F9FAFB;border:1px solid #F0F0F0;border-radius:9px;font-size:12px;font-weight:600;color:#374151;text-decoration:none;transition:background .15s;"
-                   onmouseover="this.style.background='#EEF2FF';this.style.color='#4F46E5';this.style.borderColor='#C7D2FE'"
-                   onmouseout="this.style.background='#F9FAFB';this.style.color='#374151';this.style.borderColor='#F0F0F0'">
-                    <i class="fas fa-arrow-right" style="font-size:10px;"></i> View Details
-                </a>
+                {{-- Bottom buttons --}}
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    <a href="{{ route('admin.customers.show', $customer) }}"
+                       style="display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:#F9FAFB;border:1px solid #F0F0F0;border-radius:9px;font-size:12px;font-weight:600;color:#374151;text-decoration:none;transition:background .15s;"
+                       onmouseover="this.style.background='#EEF2FF';this.style.color='#4F46E5';this.style.borderColor='#C7D2FE'"
+                       onmouseout="this.style.background='#F9FAFB';this.style.color='#374151';this.style.borderColor='#F0F0F0'">
+                        <i class="fas fa-eye" style="font-size:10px;"></i> View
+                    </a>
+                    <a href="{{ route('admin.customers.report', $customer) }}"
+                       style="display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:9px;font-size:12px;font-weight:600;color:#4F46E5;text-decoration:none;transition:background .15s;"
+                       onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'">
+                        <i class="fas fa-chart-line" style="font-size:10px;"></i> Report
+                    </a>
+                </div>
             </div>
             @endforeach
         </div>
@@ -415,6 +442,138 @@
         </div>
         </div>{{-- /centering wrapper --}}
     </div>{{-- /modal --}}
+
+    {{-- Summarize Modal --}}
+    <div x-show="summarizeModal" x-cloak
+         style="position:fixed;inset:0;z-index:2000;"
+         @keydown.escape.window="summarizeModal=false">
+        <div @click="summarizeModal=false"
+             style="position:absolute;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(3px);"></div>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;pointer-events:none;">
+        <div x-show="summarizeModal"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95"
+             style="background:#fff;border-radius:20px;width:100%;max-width:680px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(0,0,0,.22);overflow:hidden;pointer-events:auto;">
+
+            {{-- Header --}}
+            <div style="padding:20px 24px 18px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-chart-pie" style="font-size:14px;color:#fff;"></i>
+                    </div>
+                    <div>
+                        <h2 style="font-size:16px;font-weight:700;color:#111827;margin:0;">Customers Summary</h2>
+                        <p style="font-size:12px;color:#9CA3AF;margin:1px 0 0;">Overview of all {{ $summaryTotals['customers'] }} customers</p>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                    <a href="{{ route('admin.customers.summary') }}" target="_blank"
+                       style="display:inline-flex;align-items:center;gap:6px;padding:7px 13px;background:#EEF2FF;color:#4F46E5;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;border:1px solid #C7D2FE;"
+                       title="Open full-page summary">
+                        <i class="fas fa-expand" style="font-size:10px;"></i> View All
+                    </a>
+                    <button type="button"
+                            onclick="var w=window.open('{{ route('admin.customers.summary') }}','_blank');w.addEventListener('load',function(){w.print();});"
+                            style="display:inline-flex;align-items:center;gap:6px;padding:7px 13px;background:#F0FDF4;color:#059669;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid #BBF7D0;"
+                            title="Export summary as PDF">
+                        <i class="fas fa-file-pdf" style="font-size:10px;"></i> Export PDF
+                    </button>
+                    <button @click="summarizeModal=false" type="button"
+                            style="width:30px;height:30px;border-radius:8px;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:13px;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            {{-- Totals row --}}
+            @php
+                $overallRate = $summaryTotals['tasks'] > 0
+                    ? round($summaryTotals['delivered'] / $summaryTotals['tasks'] * 100)
+                    : 0;
+            @endphp
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:18px 24px;border-bottom:1px solid #F3F4F6;flex-shrink:0;">
+                <div style="text-align:center;background:#F9FAFB;border-radius:12px;padding:14px 10px;">
+                    <div style="font-size:1.6rem;font-weight:800;color:#4F46E5;line-height:1;">{{ $summaryTotals['customers'] }}</div>
+                    <div style="font-size:11px;color:#9CA3AF;margin-top:4px;font-weight:600;">Customers</div>
+                </div>
+                <div style="text-align:center;background:#F9FAFB;border-radius:12px;padding:14px 10px;">
+                    <div style="font-size:1.6rem;font-weight:800;color:#0EA5E9;line-height:1;">{{ $summaryTotals['projects'] }}</div>
+                    <div style="font-size:11px;color:#9CA3AF;margin-top:4px;font-weight:600;">Projects</div>
+                </div>
+                <div style="text-align:center;background:#F9FAFB;border-radius:12px;padding:14px 10px;">
+                    <div style="font-size:1.6rem;font-weight:800;color:#6B7280;line-height:1;">{{ $summaryTotals['tasks'] }}</div>
+                    <div style="font-size:11px;color:#9CA3AF;margin-top:4px;font-weight:600;">Total Tasks</div>
+                </div>
+                <div style="text-align:center;background:#F9FAFB;border-radius:12px;padding:14px 10px;">
+                    <div style="font-size:1.6rem;font-weight:800;color:#10B981;line-height:1;">{{ $overallRate }}<span style="font-size:1rem;">%</span></div>
+                    <div style="font-size:11px;color:#9CA3AF;margin-top:4px;font-weight:600;">Delivered</div>
+                </div>
+            </div>
+
+            {{-- Customer list --}}
+            <div style="overflow-y:auto;flex:1;padding:16px 24px 20px;">
+                @foreach($summaryList as $sc)
+                @php
+                    $rate = $sc->tasks_count > 0 ? round($sc->delivered_count / $sc->tasks_count * 100) : 0;
+                    $barW = $summaryTotals['tasks'] > 0 ? round($sc->tasks_count / $summaryTotals['tasks'] * 100) : 0;
+                @endphp
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #F9FAFB;">
+                    {{-- Avatar --}}
+                    @if($sc->logo)
+                    <img src="{{ Storage::url($sc->logo) }}" alt="{{ $sc->name }}"
+                         style="width:36px;height:36px;border-radius:9px;object-fit:cover;border:1px solid #E5E7EB;flex-shrink:0;">
+                    @else
+                    <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">
+                        {{ strtoupper(substr($sc->name, 0, 1)) }}
+                    </div>
+                    @endif
+
+                    {{-- Name + bar --}}
+                    <div style="flex:1;min-width:0;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                            <a href="{{ route('admin.customers.show', $sc) }}"
+                               style="font-size:13px;font-weight:600;color:#111827;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">
+                                {{ $sc->name }}
+                                @if($sc->company)
+                                <span style="font-weight:400;color:#9CA3AF;font-size:12px;">· {{ $sc->company }}</span>
+                                @endif
+                            </a>
+                            <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;margin-left:8px;">
+                                <span style="font-size:11px;color:#6B7280;">
+                                    <span style="font-weight:700;color:#111827;">{{ $sc->tasks_count }}</span> tasks
+                                </span>
+                                @if($sc->tasks_count > 0)
+                                <span style="font-size:11px;font-weight:600;color:#10B981;">{{ $rate }}%</span>
+                                @endif
+                                <a href="{{ route('admin.customers.report', $sc) }}" target="_blank"
+                                   style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#EEF2FF;color:#4F46E5;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;"
+                                   title="Smart Report">
+                                    <i class="fas fa-chart-line" style="font-size:9px;"></i> Report
+                                </a>
+                            </div>
+                        </div>
+                        {{-- Task share bar --}}
+                        <div style="background:#F3F4F6;border-radius:999px;height:5px;overflow:hidden;">
+                            <div style="height:5px;border-radius:999px;background:linear-gradient(90deg,#6366F1,#8B5CF6);width:{{ $barW }}%;transition:width .6s ease;"></div>
+                        </div>
+                    </div>
+
+                    {{-- Projects badge --}}
+                    <div style="flex-shrink:0;text-align:center;min-width:44px;">
+                        <span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;background:#EEF2FF;color:#4F46E5;font-size:12px;font-weight:700;">{{ $sc->projects_count }}</span>
+                        <div style="font-size:10px;color:#9CA3AF;margin-top:2px;">proj</div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+
+        </div>
+        </div>
+    </div>{{-- /summarize modal --}}
 
     {{-- Delete Confirmation Modal --}}
     <div x-show="deleteModal" x-cloak

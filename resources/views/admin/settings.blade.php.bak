@@ -92,6 +92,35 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 .scard.collapsed .acc-chevron { transform:translateY(-50%) rotate(-90deg); }
 .scard.collapsed .scard-body,
 .scard.collapsed .scard-footer { display:none; }
+
+/* ── Mobile: collapse inline-grid panels that have no responsive class ── */
+@media(max-width:768px){
+    /* Login BG type selector: 3-col → 1-col */
+    [style*="grid-template-columns:repeat(3,1fr)"] { grid-template-columns:1fr !important; }
+    /* SMTP connection row: host + port + encryption → stack */
+    [style*="grid-template-columns:1fr 120px 160px"] { grid-template-columns:1fr !important; }
+    /* Data/backup inline-stats strip: 4-col → 2-col */
+    [style*="grid-template-columns:repeat(4,1fr)"][style*="padding:14px 20px"] { grid-template-columns:repeat(2,1fr) !important; }
+    /* CSV export rows: auto 1fr auto auto → stack label+buttons */
+    [style*="grid-template-columns:auto 1fr auto auto"] { grid-template-columns:1fr 1fr !important; }
+    /* Nav controls grid */
+    #nav-controls-grid { grid-template-columns:1fr !important; }
+    /* Generic 2-col inline grids inside scard-body */
+    .scard-body [style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr !important; }
+    /* 3-col inline grids inside scard panels */
+    .scard-body [style*="grid-template-columns:repeat(3,1fr)"] { grid-template-columns:1fr !important; }
+    /* NAS/storage section layout */
+    [style*="grid-template-columns:1fr 340px"] { grid-template-columns:1fr !important; }
+}
+@media(max-width:480px){
+    /* Stat strip in backup section → 1-col */
+    [style*="grid-template-columns:repeat(4,1fr)"] { grid-template-columns:repeat(2,1fr) !important; }
+    /* Any remaining 2-col grids */
+    [style*="grid-template-columns:1fr 120px"] { grid-template-columns:1fr !important; }
+    /* CSV rows full stack */
+    [style*="grid-template-columns:auto 1fr auto auto"] { grid-template-columns:1fr !important; }
+    .scard-body [style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr !important; }
+}
 </style>
 
 {{-- Page Header --}}
@@ -102,7 +131,15 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
     </div>
 </div>
 
-<div class="settings-wrap" x-data="{ tab: '{{ session('_fragment') ?? 'general' }}', confirm: null, phrase: '', openClear(type){ this.confirm = type; this.phrase = ''; }, closeClear(){ this.confirm = null; } }">
+<div class="settings-wrap"
+     x-data="{
+         tab: (window.location.hash.slice(1) || '{{ session('_fragment') ?? 'general' }}'),
+         confirm: null, phrase: '',
+         setTab(t) { this.tab = t; window.location.hash = t; },
+         openClear(type){ this.confirm = type; this.phrase = ''; },
+         closeClear(){ this.confirm = null; }
+     }"
+     x-init="window.addEventListener('hashchange', () => { tab = window.location.hash.slice(1) || 'general'; })">
 
     {{-- ── Sidebar Nav ── --}}
     <nav class="settings-nav">
@@ -126,12 +163,12 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
         <button class="snav-item"
                 :class="tab === 'danger' ? 'active' : ''"
                 :style="tab === 'danger' ? 'background:#FEF2F2;color:#DC2626;' : 'color:#EF4444;'"
-                @click="tab = 'danger'">
+                @click="setTab('danger')">
             <i class="fas fa-trash-can"></i> Clear Data
         </button>
         @else
         <button class="snav-item" :class="tab === '{{ $nav['id'] }}' ? 'active' : ''"
-                @click="tab = '{{ $nav['id'] }}'">
+                @click="setTab('{{ $nav['id'] }}')">
             <i class="fas {{ $nav['icon'] }}"></i>
             {{ $nav['label'] }}
         </button>
@@ -1153,6 +1190,99 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                 </div>
             </div>
 
+            {{-- How it works hint --}}
+            <div x-data="{ open: false }" style="margin-bottom:20px;">
+                <button @click="open = !open" type="button"
+                    style="width:100%;display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;border:1px dashed #C7D2FE;background:#EEF2FF;cursor:pointer;text-align:left;">
+                    <i class="fas fa-circle-info" style="color:#6366F1;font-size:14px;flex-shrink:0;"></i>
+                    <span style="font-size:13px;font-weight:600;color:#4338CA;flex:1;">How does storage work?</span>
+                    <i class="fas fa-chevron-down" style="color:#6366F1;font-size:11px;transition:transform .2s;" :style="open ? 'transform:rotate(180deg)' : ''"></i>
+                </button>
+                <div x-show="open" x-collapse style="margin-top:8px;border:1px solid #E0E7FF;border-radius:10px;overflow:hidden;">
+
+                    {{-- Local Mode --}}
+                    <div style="padding:16px;border-bottom:1px solid #E0E7FF;background:#fff;">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                            <div style="width:28px;height:28px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-hdd" style="color:#4F46E5;font-size:12px;"></i>
+                            </div>
+                            <p style="font-size:13px;font-weight:700;color:#1E40AF;margin:0;">Local Mode</p>
+                        </div>
+                        <div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+                            <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;background:#F3F4F6;font-size:11px;color:#374151;">
+                                <i class="fas fa-upload" style="color:#6B7280;font-size:10px;"></i> File uploaded
+                            </div>
+                            <i class="fas fa-arrow-right" style="color:#9CA3AF;font-size:10px;margin-top:9px;"></i>
+                            <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;background:#EEF2FF;font-size:11px;color:#4338CA;">
+                                <i class="fas fa-server" style="font-size:10px;"></i> Saved to server disk
+                            </div>
+                            <i class="fas fa-arrow-right" style="color:#9CA3AF;font-size:10px;margin-top:9px;"></i>
+                            <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;background:#D1FAE5;font-size:11px;color:#065F46;">
+                                <i class="fas fa-check" style="font-size:10px;"></i> Done — stays on server
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- NAS Mode --}}
+                    <div style="padding:16px;border-bottom:1px solid #E0E7FF;background:#fff;">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                            <div style="width:28px;height:28px;border-radius:8px;background:#F0FDF4;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-network-wired" style="color:#16A34A;font-size:12px;"></i>
+                            </div>
+                            <p style="font-size:13px;font-weight:700;color:#14532D;margin:0;">NAS Mode — upload flow</p>
+                        </div>
+                        <div style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+                            <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;background:#F3F4F6;font-size:11px;color:#374151;">
+                                <i class="fas fa-upload" style="color:#6B7280;font-size:10px;"></i> File uploaded
+                            </div>
+                            <i class="fas fa-arrow-right" style="color:#9CA3AF;font-size:10px;margin-top:9px;"></i>
+                            <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;background:#FEF9C3;font-size:11px;color:#854D0E;">
+                                <i class="fas fa-clock" style="font-size:10px;"></i> Saved temporarily to server
+                            </div>
+                            <i class="fas fa-arrow-right" style="color:#9CA3AF;font-size:10px;margin-top:9px;"></i>
+                            <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;background:#EEF2FF;font-size:11px;color:#4338CA;">
+                                <i class="fas fa-share-nodes" style="font-size:10px;"></i> Copied to NAS via SMB
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                            <div style="flex:1;min-width:200px;padding:10px 12px;border-radius:8px;background:#F0FDF4;border:1px solid #BBF7D0;">
+                                <p style="font-size:11px;font-weight:700;color:#15803D;margin:0 0 4px;">Copy succeeded</p>
+                                <p style="font-size:11px;color:#166534;margin:0;line-height:1.5;">Local temp file is <strong>deleted</strong>. NAS is the only copy. Path saved in database.</p>
+                            </div>
+                            <div style="flex:1;min-width:200px;padding:10px 12px;border-radius:8px;background:#FFF7ED;border:1px solid #FED7AA;">
+                                <p style="font-size:11px;font-weight:700;color:#C2410C;margin:0 0 4px;">Copy failed (NAS unreachable)</p>
+                                <p style="font-size:11px;color:#9A3412;margin:0;line-height:1.5;">Local file is <strong>kept</strong> as safety fallback. NAS path is not saved.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Download flow --}}
+                    <div style="padding:16px;background:#FAFAFA;">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                            <div style="width:28px;height:28px;border-radius:8px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-download" style="color:#6B7280;font-size:12px;"></i>
+                            </div>
+                            <p style="font-size:13px;font-weight:700;color:#374151;margin:0;">When someone opens or downloads a file</p>
+                        </div>
+                        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                            <div style="flex:1;min-width:180px;padding:10px 12px;border-radius:8px;background:#EEF2FF;border:1px solid #C7D2FE;">
+                                <p style="font-size:11px;font-weight:700;color:#4338CA;margin:0 0 3px;"><i class="fas fa-database" style="font-size:10px;margin-right:4px;"></i>NAS path in database</p>
+                                <p style="font-size:11px;color:#4338CA;margin:0;">File is fetched from NAS via SMB and served.</p>
+                            </div>
+                            <div style="flex:1;min-width:180px;padding:10px 12px;border-radius:8px;background:#F3F4F6;border:1px solid #E5E7EB;">
+                                <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 3px;"><i class="fas fa-hdd" style="font-size:10px;margin-right:4px;"></i>No NAS path</p>
+                                <p style="font-size:11px;color:#6B7280;margin:0;">File is served directly from the server disk.</p>
+                            </div>
+                        </div>
+                        <div style="margin-top:10px;padding:8px 12px;border-radius:7px;background:#FEF2F2;border:1px solid #FECACA;display:flex;gap:8px;align-items:flex-start;">
+                            <i class="fas fa-triangle-exclamation" style="color:#DC2626;font-size:11px;margin-top:2px;flex-shrink:0;"></i>
+                            <p style="font-size:11px;color:#991B1B;margin:0;line-height:1.5;"><strong>Important:</strong> If you switch from NAS to Local after files were uploaded in NAS mode, those files will return a 404 error because the local copy was deleted. Always keep the NAS reachable when using NAS mode.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
             {{-- Google Drive --}}
             <div class="scard" style="margin-bottom:20px;">
                 <div class="scard-header">
@@ -1494,23 +1624,55 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             <p class="sf-hint">Sub-path inside the share (SMB) or mount point for NFS / base URL for WebDAV</p>
                         </div>
                     </div>
-                    <div class="scard-footer" x-data="{ testing:false, ok:null, msg:'' }">
+                    <div class="scard-footer" x-data="{ testing:false, migrating:false, recovering:false, ok:null, msg:'', results:null }">
                         <div x-show="msg" style="flex:1;font-size:12px;font-weight:600;padding:6px 10px;border-radius:8px;display:flex;align-items:center;gap:6px;"
                              :style="ok ? 'background:#D1FAE5;color:#065F46;' : 'background:#FEE2E2;color:#991B1B;'">
                             <i :class="ok ? 'fas fa-circle-check' : 'fas fa-circle-xmark'" style="font-size:12px;"></i>
                             <span x-text="msg"></span>
+                            <template x-if="results">
+                                <span style="margin-left:6px;font-weight:400;opacity:.8;">
+                                    (<span x-text="results.success"></span> moved,
+                                    <span x-text="results.failed"></span> failed,
+                                    <span x-text="results.skipped"></span> skipped)
+                                </span>
+                            </template>
                         </div>
                         <button type="button" @click="
-                            testing=true; ok=null; msg='';
+                            testing=true; ok=null; msg=''; results=null;
                             fetch('{{ route('admin.settings.storage.test.omv') }}', {method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}})
                             .then(r=>r.json()).then(d=>{ok=d.ok;msg=d.message;}).catch(e=>{ok=false;msg='Request failed.'})
                             .finally(()=>testing=false)"
-                            :disabled="testing"
+                            :disabled="testing || migrating"
                             style="padding:8px 16px;border:1.5px solid #E5E7EB;border-radius:9px;background:#fff;color:#374151;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:border-color .15s;"
                             onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                             <i class="fas fa-plug" x-show="!testing" style="font-size:11px;color:#6366F1;"></i>
                             <i class="fas fa-spinner fa-spin" x-show="testing" style="font-size:11px;"></i>
                             <span x-text="testing ? 'Testing…' : 'Test Connection'">Test Connection</span>
+                        </button>
+                        <button type="button" @click="
+                            if(!window.confirm('This will copy all local-only files to NAS and remove the local copies. Continue?')) return;
+                            migrating=true; ok=null; msg=''; results=null;
+                            fetch('{{ route('admin.settings.storage.migrate.nas') }}', {method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}})
+                            .then(r=>r.json()).then(d=>{ok=d.ok;msg=d.message;results=d.results;}).catch(e=>{ok=false;msg='Request failed.'})
+                            .finally(()=>migrating=false)"
+                            :disabled="testing || migrating"
+                            style="padding:8px 16px;border:1.5px solid #FDE68A;border-radius:9px;background:#FFFBEB;color:#92400E;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .15s;"
+                            onmouseover="this.style.borderColor='#F59E0B';this.style.background='#FEF3C7'" onmouseout="this.style.borderColor='#FDE68A';this.style.background='#FFFBEB'">
+                            <i class="fas fa-arrow-right-to-bracket" x-show="!migrating" style="font-size:11px;color:#D97706;"></i>
+                            <i class="fas fa-spinner fa-spin" x-show="migrating" style="font-size:11px;"></i>
+                            <span x-text="migrating ? 'Migrating…' : 'Migrate Local Files to NAS'">Migrate Local Files to NAS</span>
+                        </button>
+                        <button type="button" @click="
+                            recovering=true; ok=null; msg=''; results=null;
+                            fetch('{{ route('admin.settings.storage.recover.nas') }}', {method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}})
+                            .then(r=>r.json()).then(d=>{ok=d.ok;msg=d.message;results={success:d.recovered,failed:d.notFound,skipped:0};}).catch(e=>{ok=false;msg='Request failed.'})
+                            .finally(()=>recovering=false)"
+                            :disabled="testing || migrating || recovering"
+                            style="padding:8px 16px;border:1.5px solid #BFDBFE;border-radius:9px;background:#EFF6FF;color:#1D4ED8;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .15s;"
+                            onmouseover="this.style.borderColor='#3B82F6';this.style.background='#DBEAFE'" onmouseout="this.style.borderColor='#BFDBFE';this.style.background='#EFF6FF'">
+                            <i class="fas fa-rotate" x-show="!recovering" style="font-size:11px;color:#3B82F6;"></i>
+                            <i class="fas fa-spinner fa-spin" x-show="recovering" style="font-size:11px;"></i>
+                            <span x-text="recovering ? 'Scanning NAS…' : 'Recover NAS Paths'">Recover NAS Paths</span>
                         </button>
                         <button type="submit" class="sf-btn-primary"><i class="fas fa-save" style="margin-right:6px;"></i>Save NAS Settings</button>
                     </div>
@@ -1582,7 +1744,46 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
         {{-- ════ BACKUP & EXPORT ════ --}}
         <div x-show="tab === 'backup'" x-cloak>
 
-            <div class="scard" x-data="{ showRestore: false }" style="margin-bottom:16px;">
+            <div class="scard" x-data="{ showRestore: false, showBackupPicker: false }" style="margin-bottom:16px;">
+
+                {{-- Backup format picker modal --}}
+                <div x-show="showBackupPicker" x-cloak
+                     style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);"
+                     @click.self="showBackupPicker=false">
+                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;padding:28px 28px 24px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+                        <p style="font-size:15px;font-weight:700;color:#111827;margin:0 0 4px;">Choose backup format</p>
+                        <p style="font-size:12px;color:#6B7280;margin:0 0 20px;line-height:1.5;">Select what you want to include in the backup file.</p>
+
+                        <a href="{{ route('admin.settings.backup.download') }}" @click="showBackupPicker=false"
+                           style="display:flex;align-items:flex-start;gap:12px;padding:14px;border:2px solid #E0E7FF;border-radius:10px;margin-bottom:10px;text-decoration:none;transition:border-color .15s;"
+                           onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E0E7FF'">
+                            <div style="width:34px;height:34px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-file-zipper" style="color:#6366F1;font-size:14px;"></i>
+                            </div>
+                            <div>
+                                <p style="font-size:13px;font-weight:700;color:#111827;margin:0 0 2px;">Full Backup <span style="font-size:10px;font-weight:600;padding:1px 6px;background:#EEF2FF;color:#6366F1;border-radius:5px;margin-left:4px;">ZIP</span></p>
+                                <p style="font-size:11px;color:#6B7280;margin:0;line-height:1.4;">Database + all uploaded files (images, videos, documents). Larger file, complete restore.</p>
+                            </div>
+                        </a>
+
+                        <a href="{{ route('admin.settings.backup.download.sqlite') }}" @click="showBackupPicker=false"
+                           style="display:flex;align-items:flex-start;gap:12px;padding:14px;border:2px solid #F3F4F6;border-radius:10px;text-decoration:none;transition:border-color .15s;"
+                           onmouseover="this.style.borderColor='#9CA3AF'" onmouseout="this.style.borderColor='#F3F4F6'">
+                            <div style="width:34px;height:34px;border-radius:8px;background:#F9FAFB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-database" style="color:#6B7280;font-size:14px;"></i>
+                            </div>
+                            <div>
+                                <p style="font-size:13px;font-weight:700;color:#111827;margin:0 0 2px;">Database Only <span style="font-size:10px;font-weight:600;padding:1px 6px;background:#F3F4F6;color:#6B7280;border-radius:5px;margin-left:4px;">SQLite</span></p>
+                                <p style="font-size:11px;color:#6B7280;margin:0;line-height:1.4;">Settings, users, tasks & projects only. Small file, fast download. Uploaded files not included.</p>
+                            </div>
+                        </a>
+
+                        <button type="button" @click="showBackupPicker=false"
+                                style="width:100%;margin-top:16px;padding:8px;border:none;background:#F3F4F6;color:#6B7280;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
 
                 {{-- Backup banner --}}
                 <div style="background:linear-gradient(135deg,#1E1B4B 0%,#312E81 100%);border-radius:12px;padding:14px 18px;margin:20px 20px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;">
@@ -1592,14 +1793,14 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         </div>
                         <div>
                             <p style="font-size:13px;font-weight:700;color:#fff;margin:0 0 2px;">Full System Backup</p>
-                            <p style="font-size:11px;color:rgba(255,255,255,.55);margin:0;">All users, projects, tasks, settings &amp; notifications</p>
+                            <p style="font-size:11px;color:rgba(255,255,255,.55);margin:0;">Database + all uploaded files (images, videos, documents) as a ZIP</p>
                         </div>
                     </div>
-                    <a href="{{ route('admin.settings.backup.download') }}"
-                       style="display:flex;align-items:center;gap:7px;padding:8px 16px;background:#fff;color:#4F46E5;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;flex-shrink:0;transition:opacity .15s;"
-                       onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+                    <button type="button" @click="showBackupPicker=true"
+                            style="display:flex;align-items:center;gap:7px;padding:8px 16px;background:#fff;color:#4F46E5;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;transition:opacity .15s;"
+                            onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
                         <i class="fas fa-download" style="font-size:10px;"></i> Download Backup
-                    </a>
+                    </button>
                 </div>
 
                 {{-- Stats strip (horizontal) --}}
@@ -1611,10 +1812,96 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                     </div>
                     @endforeach
                     <div style="background:#F9FAFB;border:1.5px solid #F0F0F0;border-radius:10px;padding:10px 14px;text-align:center;">
-                        <p style="font-size:18px;font-weight:700;color:#6366F1;margin:0;line-height:1.1;">{{ $stats['db_size'] }}<span style="font-size:10px;font-weight:500;">KB</span></p>
+                        <p style="font-size:18px;font-weight:700;color:#6366F1;margin:0;line-height:1.1;">{{ $stats['db_size'] }}</p>
                         <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;text-transform:uppercase;letter-spacing:.04em;">DB Size</p>
                     </div>
                 </div>
+
+                {{-- Save to NAS (only shown when NAS is enabled) --}}
+                @php $nasEnabled = app(\App\Services\NasService::class)->isEnabled(); @endphp
+                @if($nasEnabled)
+                <div style="border-top:1px solid #F3F4F6;padding:14px 20px 16px;"
+                     x-data="{ saving: false, ok: null, msg: '', showFiles: false, loadingFiles: false, files: [], filesLoaded: false,
+                        save() {
+                            if (!window.confirm('Save a full backup ZIP to NAS now?')) return;
+                            this.saving=true; this.ok=null; this.msg='';
+                            fetch('{{ route('admin.settings.backup.save.nas') }}', {method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}})
+                                .then(r=>r.json()).then(d=>{ this.ok=d.ok; this.msg=d.msg; this.saving=false; })
+                                .catch(()=>{ this.ok=false; this.msg='Request failed.'; this.saving=false; });
+                        },
+                        loadFiles() {
+                            this.loadingFiles=true;
+                            fetch('{{ route('admin.settings.backup.nas.list') }}', {headers:{'Accept':'application/json'}})
+                                .then(r=>r.json()).then(d=>{ this.files=d.files||[]; this.filesLoaded=true; this.loadingFiles=false; });
+                        },
+                        toggle() { this.showFiles=!this.showFiles; if(this.showFiles && !this.filesLoaded) this.loadFiles(); }
+                     }">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:32px;height:32px;border-radius:8px;background:#ECFDF5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-network-wired" style="color:#059669;font-size:13px;"></i>
+                            </div>
+                            <div>
+                                <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">Save Backup to NAS</p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Saves to <code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">Backups/YYYY/YYYY-MM/</code> on the NAS share</p>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-shrink:0;">
+                            <button type="button" @click="toggle()"
+                                    style="display:flex;align-items:center;gap:6px;padding:7px 12px;background:#F3F4F6;color:#374151;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
+                                <i class="fas fa-folder-open" style="font-size:10px;"></i>
+                                <span x-text="showFiles ? 'Hide Files' : 'View NAS Backups'"></span>
+                            </button>
+                            <button type="button" @click="save()" :disabled="saving"
+                                    style="display:flex;align-items:center;gap:6px;padding:7px 14px;background:#059669;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;"
+                                    onmouseover="this.style.background='#047857'" onmouseout="this.style.background='#059669'">
+                                <i class="fas" :class="saving ? 'fa-circle-notch fa-spin' : 'fa-cloud-arrow-up'" style="font-size:10px;"></i>
+                                <span x-text="saving ? 'Saving…' : 'Save to NAS'"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- Result message --}}
+                    <div x-show="msg !== ''" x-cloak style="margin-top:10px;">
+                        <p :style="ok ? 'color:#065F46;background:#ECFDF5;border:1px solid #6EE7B7;' : 'color:#7F1D1D;background:#FEF2F2;border:1px solid #FECACA;'"
+                           style="font-size:11px;border-radius:7px;padding:8px 12px;margin:0;" x-text="msg"></p>
+                    </div>
+
+                    {{-- NAS files list --}}
+                    <div x-show="showFiles" x-cloak style="margin-top:12px;padding-top:12px;border-top:1px solid #D1FAE5;">
+                        <div x-show="loadingFiles" style="text-align:center;padding:12px;color:#9CA3AF;font-size:12px;">
+                            <i class="fas fa-circle-notch fa-spin"></i> Loading…
+                        </div>
+                        <div x-show="!loadingFiles && filesLoaded && files.length === 0" style="font-size:12px;color:#9CA3AF;padding:8px 0;">
+                            No backups found on NAS yet.
+                        </div>
+                        <template x-if="!loadingFiles && filesLoaded && files.length > 0">
+                            <div style="display:flex;flex-direction:column;gap:6px;">
+                                <template x-for="f in files" :key="f.name">
+                                    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;">
+                                        <i class="fas" :class="f.name.endsWith('.zip') ? 'fa-file-zipper' : 'fa-database'"
+                                           :style="f.name.endsWith('.zip') ? 'color:#6366F1;' : 'color:#6B7280;'" style="font-size:13px;flex-shrink:0;"></i>
+                                        <div style="flex:1;min-width:0;">
+                                            <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="f.name"></p>
+                                            <p style="font-size:11px;color:#9CA3AF;margin:0;" x-text="f.size + ' MB · ' + f.month"></p>
+                                        </div>
+                                        <form method="POST" action="{{ route('admin.settings.backup.restore.nas') }}"
+                                              @submit.prevent="if(window.confirm('Restore from NAS file: ' + f.name + '?\n\nThis replaces ALL current data and cannot be undone.')) $el.submit()">
+                                            @csrf
+                                            <input type="hidden" name="nas_path" :value="f.path">
+                                            <button type="submit"
+                                                    style="display:flex;align-items:center;gap:5px;padding:5px 10px;background:#DC2626;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap;"
+                                                    onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
+                                                <i class="fas fa-rotate-left" style="font-size:9px;"></i> Restore
+                                            </button>
+                                        </form>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+                @endif
 
                 {{-- Full System Restore (collapsible row) --}}
                 <div style="border-top:1px solid #F3F4F6;padding:14px 20px 16px;">
@@ -1625,7 +1912,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </div>
                             <div>
                                 <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">Full System Restore</p>
-                                <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Replace entire database with a <code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">.sqlite</code> backup</p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Upload a <code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">.zip</code> backup (DB + files) or a legacy <code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">.sqlite</code> file</p>
                             </div>
                         </div>
                         <button type="button" @click="showRestore = !showRestore"
@@ -1637,7 +1924,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                     </div>
                     <div x-show="showRestore" x-cloak style="margin-top:12px;padding-top:12px;border-top:1px solid #FECACA;">
                         <p style="font-size:11px;color:#7F1D1D;background:#FEF2F2;border:1px solid #FECACA;border-radius:7px;padding:8px 12px;margin:0 0 10px;line-height:1.5;">
-                            <i class="fas fa-triangle-exclamation" style="margin-right:5px;"></i><strong>Warning:</strong> This permanently replaces ALL current data. Download a backup first.
+                            <i class="fas fa-triangle-exclamation" style="margin-right:5px;"></i><strong>Warning:</strong> This permanently replaces ALL current data (database + uploaded files). Download a fresh backup first. Supports both <strong>.zip</strong> (full backup) and <strong>.sqlite</strong> (DB-only legacy).
                         </p>
                         <form method="POST" action="{{ route('admin.settings.backup.restore') }}" enctype="multipart/form-data"
                               onsubmit="return confirm('Are you sure? This will replace ALL system data with the uploaded backup. This cannot be undone.')">
@@ -1646,9 +1933,9 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 <label style="flex:1;min-width:180px;display:flex;align-items:center;gap:8px;padding:8px 12px;border:2px dashed #FECACA;border-radius:8px;cursor:pointer;background:#fff;"
                                        onmouseover="this.style.borderColor='#DC2626'" onmouseout="this.style.borderColor='#FECACA'">
                                     <i class="fas fa-file" style="color:#DC2626;font-size:13px;flex-shrink:0;"></i>
-                                    <span style="font-size:12px;color:#9CA3AF;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="backup-file-name">Choose .sqlite file…</span>
-                                    <input type="file" name="backup_file" accept=".sqlite" required style="display:none;"
-                                           onchange="document.getElementById('backup-file-name').textContent = this.files[0]?.name || 'Choose .sqlite file…'">
+                                    <span style="font-size:12px;color:#9CA3AF;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="backup-file-name">Choose .zip or .sqlite backup…</span>
+                                    <input type="file" name="backup_file" accept=".zip,.sqlite" required style="display:none;"
+                                           onchange="document.getElementById('backup-file-name').textContent = this.files[0]?.name || 'Choose .zip or .sqlite backup…'">
                                 </label>
                                 <button type="submit"
                                         style="padding:8px 18px;background:#DC2626;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0;"

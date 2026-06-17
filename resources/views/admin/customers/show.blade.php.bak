@@ -1,6 +1,30 @@
 @extends('layouts.app')
 @section('title', $customer->name)
 
+@push('styles')
+<style>
+@media print {
+    .app-sidebar,
+    .sidebar-overlay,
+    header.app-topbar,
+    [x-data*="exportOpen"],
+    .no-print { display:none !important; }
+
+    /* Break out of app-shell viewport constraints */
+    .app-shell   { display:block !important; height:auto !important; overflow:visible !important; }
+    .app-main    { display:block !important; height:auto !important; overflow:visible !important; margin-left:0 !important; padding:0 !important; }
+    main.app-content { overflow:visible !important; height:auto !important; flex:none !important; padding:0 !important; margin:0 !important; animation:none !important; }
+
+    /* Suppress browser link-URL annotations (e.g. Firefox/Chrome default print behaviour) */
+    a::after, a[href]::after { content:none !important; display:none !important; }
+
+    body { background:#fff !important; }
+    * { box-shadow:none !important; }
+    @page { margin:15mm; }
+}
+</style>
+@endpush
+
 @section('content')
 @php
     $_tsBg    = ['draft'=>'#F3F4F6','assigned'=>'#EEF2FF','viewed'=>'#E0F2FE','in_progress'=>'#FFF7ED','submitted'=>'#F5F3FF','revision_requested'=>'#FEE2E2','approved'=>'#ECFDF5','delivered'=>'#ECFDF5','archived'=>'#F3F4F6'];
@@ -69,7 +93,7 @@
 @endphp
 <style>
 .cust-show-stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
-.cust-show-split { display:grid; grid-template-columns:1fr 2fr; gap:20px; align-items:start; }
+.cust-show-split { display:grid; grid-template-columns:1fr 2fr; gap:20px; align-items:stretch; }
 @media (max-width: 900px) {
     .cust-show-stats-grid { grid-template-columns: repeat(2,1fr); }
     .cust-show-split { grid-template-columns: 1fr; }
@@ -191,7 +215,7 @@
     openApproval(d) { this.approvalModal = d; this.approveNote = ''; this.approving = false; document.body.style.overflow='hidden'; },
 
     close() { this.task = null; this.project = null; this.statsModal = null; this.approvalModal = null; this.approveNote = ''; this.approving = false; this.sendModal = false; this.sendResult = null; this.sending = false; this.sendMode = 'text'; this.selectedFile = null; this.fileCaption = ''; document.body.style.overflow=''; }
-}" x-init="editableMsg = sendMsg; $watch('sendMode', () => { editableMsg = sendMsg; }); $watch('selectedFile', () => { editableMsg = sendMsg; }); $watch('sendProject', () => { editableMsg = sendMsg; });" @keydown.escape.window="close()" style="max-width:900px;">
+}" x-init="editableMsg = sendMsg; $watch('sendMode', () => { editableMsg = sendMsg; }); $watch('selectedFile', () => { editableMsg = sendMsg; }); $watch('sendProject', () => { editableMsg = sendMsg; });" @keydown.escape.window="close()" @open-customer-task.window="openTask($event.detail)" style="width:100%;min-width:0;">
 
 {{-- Project Preview Modal --}}
 <template x-if="project">
@@ -735,6 +759,12 @@
             <i class="fas fa-pencil" style="font-size:11px;"></i> Edit
         </a>
 
+        {{-- Smart Report button --}}
+        <a href="{{ route('admin.customers.report', $customer) }}" class="no-print" target="_blank"
+           style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;box-shadow:0 2px 8px rgba(99,102,241,.35);">
+            <i class="fas fa-chart-line" style="font-size:11px;"></i> Smart Report
+        </a>
+
         {{-- Export / Print dropdown --}}
         <div x-data="{ exportOpen: false }" style="position:relative;">
             <button @click="exportOpen = !exportOpen" @click.outside="exportOpen = false"
@@ -756,10 +786,16 @@
                     <i class="fas fa-file-excel" style="font-size:13px;color:#16A34A;width:16px;text-align:center;"></i> Export Excel
                 </button>
                 <div style="height:1px;background:#F3F4F6;"></div>
-                <button @click="exportOpen=false; window.printCustomerPage()"
+                <button @click="exportOpen=false; window.printCustomerShow()"
                         style="width:100%;padding:10px 16px;background:none;border:none;text-align:left;font-size:13px;font-weight:500;color:#374151;cursor:pointer;display:flex;align-items:center;gap:9px;"
                         onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
-                    <i class="fas fa-print" style="font-size:13px;color:#6366F1;width:16px;text-align:center;"></i> Print / PDF
+                    <i class="fas fa-print" style="font-size:13px;color:#6366F1;width:16px;text-align:center;"></i> Print
+                </button>
+                <div style="height:1px;background:#F3F4F6;"></div>
+                <button @click="exportOpen=false; window.exportCustomerShowPDF()"
+                        style="width:100%;padding:10px 16px;background:none;border:none;text-align:left;font-size:13px;font-weight:500;color:#374151;cursor:pointer;display:flex;align-items:center;gap:9px;"
+                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                    <i class="fas fa-file-pdf" style="font-size:13px;color:#DC2626;width:16px;text-align:center;"></i> Export PDF
                 </button>
             </div>
         </div>
@@ -840,10 +876,10 @@
         </button>
     </div>
 
-    <div class="cust-show-split" style="gap:20px;align-items:start;">
+    <div class="cust-show-split" style="gap:20px;align-items:stretch;">
 
         {{-- Contact card --}}
-        <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;">
+        <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;display:flex;flex-direction:column;align-self:stretch;height:100%;box-sizing:border-box;">
             <h2 style="font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:0 0 16px;">Contact Info</h2>
 
             {{-- Email --}}
@@ -917,7 +953,7 @@
             </div>
             @endif
 
-            <div style="padding-top:16px;border-top:1px solid #F3F4F6;">
+            <div style="padding-top:16px;border-top:1px solid #F3F4F6;margin-top:auto;">
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center;">
                     <div style="background:#F9FAFB;border-radius:10px;padding:12px;">
                         <p style="font-size:20px;font-weight:700;color:#4F46E5;margin:0;">{{ $customer->projects->count() }}</p>
@@ -932,9 +968,21 @@
         </div>
 
         {{-- Projects + Tasks --}}
-        <div style="display:flex;flex-direction:column;gap:20px;">
+        <div style="display:flex;flex-direction:column;gap:10px;">
 
             {{-- Projects --}}
+            @if($customer->projects->isEmpty())
+            <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;">
+                <h2 style="font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:0;">
+                    Projects <span style="font-weight:500;color:#9CA3AF;">(0)</span>
+                    <span style="font-size:11px;font-weight:400;color:#D1D5DB;text-transform:none;letter-spacing:0;margin-left:6px;">— none linked yet</span>
+                </h2>
+                <a href="{{ route('admin.projects.create') }}"
+                   style="font-size:11px;font-weight:600;color:#4F46E5;background:#EEF2FF;padding:4px 10px;border-radius:6px;text-decoration:none;flex-shrink:0;">
+                    + New Project
+                </a>
+            </div>
+            @else
             <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
                     <h2 style="font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:0;">
@@ -950,7 +998,7 @@
                     $psColor = ['active'=>'#4F46E5','completed'=>'#16A34A','on_hold'=>'#D97706','cancelled'=>'#DC2626'];
                     $psLabel = ['active'=>'Active','completed'=>'Completed','on_hold'=>'On Hold','cancelled'=>'Cancelled'];
                 @endphp
-                @forelse($customer->projects as $project)
+                @foreach($customer->projects as $project)
                 @php
                     $projectData = json_encode([
                         'name'        => $project->name,
@@ -981,10 +1029,9 @@
                         <i class="fa fa-chevron-right" style="font-size:10px;color:#D1D5DB;"></i>
                     </div>
                 </button>
-                @empty
-                <p style="font-size:13px;color:#9CA3AF;text-align:center;padding:16px 0 4px;">No projects linked yet.</p>
-                @endforelse
+                @endforeach
             </div>
+            @endif
 
             {{-- Tasks (direct only — tasks in customer projects are shown via the Projects section) --}}
             @php
@@ -994,62 +1041,90 @@
                 $tsLabel = ['draft'=>'Draft','assigned'=>'Assigned','viewed'=>'Viewed','in_progress'=>'In Progress','submitted'=>'In Review','revision_requested'=>'Revision','approved'=>'Approved','delivered'=>'Delivered','archived'=>'Archived'];
                 $prBg    = ['high'=>'#FEE2E2','medium'=>'#FEF3C7','low'=>'#DCFCE7'];
                 $prColor = ['high'=>'#DC2626','medium'=>'#D97706','low'=>'#16A34A'];
+                $directTasksJson = $directTasks->map(fn($task) => [
+                    'title'         => $task->title,
+                    'project'       => $task->project->name ?? '—',
+                    'assignee'      => $task->assignee->name ?? null,
+                    'status'        => $task->status,
+                    'statusLabel'   => $tsLabel[$task->status] ?? ucfirst(str_replace('_',' ',$task->status)),
+                    'statusBg'      => $tsBg[$task->status]    ?? '#F3F4F6',
+                    'statusColor'   => $tsColor[$task->status]  ?? '#374151',
+                    'priorityLabel' => $task->priority ? ucfirst($task->priority) : null,
+                    'priorityBg'    => $prBg[$task->priority]   ?? '#F3F4F6',
+                    'priorityColor' => $prColor[$task->priority] ?? '#374151',
+                    'deadline'      => $task->deadline ? $task->deadline->format(config('app.date_format', 'M d, Y')) : null,
+                    'overdue'       => $task->deadline && $task->deadline->isPast() && !in_array($task->status, ['approved','delivered','archived']),
+                    'description'   => $task->description ? \Illuminate\Support\Str::limit($task->description, 200) : null,
+                    'url'           => route('admin.tasks.show', $task->id),
+                ])->values();
             @endphp
-            <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;">
+            <div x-data="{
+                allTasks: {{ $directTasksJson }},
+                page: 1,
+                perPage: 10,
+                get total() { return this.allTasks.length; },
+                get totalPages() { return Math.ceil(this.total / this.perPage); },
+                get start() { return (this.page - 1) * this.perPage; },
+                get end() { return Math.min(this.start + this.perPage, this.total); },
+                get pageTasks() { return this.allTasks.slice(this.start, this.end); },
+                prevPage() { if (this.page > 1) this.page--; },
+                nextPage() { if (this.page < this.totalPages) this.page++; },
+                goPage(n) { this.page = n; },
+                openTask(t) { window.dispatchEvent(new CustomEvent('open-customer-task', { detail: t })); }
+            }" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
                     <h2 style="font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:0;">
                         Tasks <span style="font-weight:500;color:#9CA3AF;">({{ $directTasks->count() }})</span>
                     </h2>
                 </div>
 
-                @forelse($directTasks as $task)
-                @php
-                    $isOverdue = $task->deadline && $task->deadline->isPast() && !in_array($task->status, ['approved','delivered','archived']);
-                    $tGroup    = in_array($task->status, ['draft','assigned','viewed']) ? 'pending'
-                               : (in_array($task->status, ['in_progress','submitted','revision_requested']) ? 'active' : 'done');
-                    $taskData  = json_encode([
-                        'title'         => $task->title,
-                        'project'       => $task->project->name ?? '—',
-                        'assignee'      => $task->assignee->name ?? null,
-                        'status'        => $task->status,
-                        'statusLabel'   => $tsLabel[$task->status] ?? ucfirst(str_replace('_',' ',$task->status)),
-                        'statusBg'      => $tsBg[$task->status]    ?? '#F3F4F6',
-                        'statusColor'   => $tsColor[$task->status]  ?? '#374151',
-                        'priorityLabel' => $task->priority ? ucfirst($task->priority) : null,
-                        'priorityBg'    => $prBg[$task->priority]   ?? '#F3F4F6',
-                        'priorityColor' => $prColor[$task->priority] ?? '#374151',
-                        'deadline'      => $task->deadline ? $task->deadline->format(config('app.date_format', 'M d, Y')) : null,
-                        'overdue'       => $isOverdue,
-                        'description'   => $task->description ? \Illuminate\Support\Str::limit($task->description, 200) : null,
-                        'url'           => route('admin.tasks.show', $task->id),
-                    ]);
-                @endphp
-                <button @click="openTask({{ $taskData }})"
-                        style="display:flex;align-items:center;justify-content:space-between;padding:10px 8px;border-bottom:1px solid #F9FAFB;width:100%;background:none;border-left:none;border-right:none;border-top:none;cursor:pointer;text-align:left;transition:background .12s;border-radius:6px;"
-                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
-                    <div style="min-width:0;flex:1;padding-right:12px;">
-                        <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                            {{ $task->title }}
-                            @if($isOverdue)
-                            <span style="font-size:10px;font-weight:600;color:#DC2626;margin-left:6px;">⚠ Overdue</span>
-                            @endif
-                        </p>
-                        <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">
-                            {{ $task->project->name ?? '—' }}
-                            @if($task->assignee) · {{ $task->assignee->name }} @endif
-                            @if($task->deadline) · {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }} @endif
-                        </p>
-                    </div>
-                    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-                        <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:{{ $tsBg[$task->status] ?? '#F3F4F6' }};color:{{ $tsColor[$task->status] ?? '#374151' }};">
-                            {{ $tsLabel[$task->status] ?? ucfirst(str_replace('_', ' ', $task->status)) }}
+                <template x-if="total === 0">
+                    <p style="font-size:13px;color:#9CA3AF;text-align:center;padding:16px 0 4px;">No tasks linked yet.</p>
+                </template>
+
+                <template x-for="task in pageTasks" :key="task.url">
+                    <button @click="openTask(task)"
+                            style="display:flex;align-items:center;justify-content:space-between;padding:10px 8px;border-bottom:1px solid #F9FAFB;width:100%;background:none;border-left:none;border-right:none;border-top:none;cursor:pointer;text-align:left;transition:background .12s;border-radius:6px;"
+                            onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                        <div style="min-width:0;flex:1;padding-right:12px;">
+                            <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                                <span x-text="task.title"></span>
+                                <span x-show="task.overdue" style="font-size:10px;font-weight:600;color:#DC2626;margin-left:6px;">⚠ Overdue</span>
+                            </p>
+                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">
+                                <span x-text="task.project"></span>
+                                <template x-if="task.assignee"><span x-text="' · ' + task.assignee"></span></template>
+                                <template x-if="task.deadline"><span x-text="' · ' + task.deadline"></span></template>
+                            </p>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                            <span x-text="task.statusLabel"
+                                  :style="'font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+task.statusBg+';color:'+task.statusColor+';'"></span>
+                            <i class="fa fa-chevron-right" style="font-size:10px;color:#D1D5DB;"></i>
+                        </div>
+                    </button>
+                </template>
+
+                <template x-if="totalPages > 1">
+                    <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                        <span style="font-size:12px;color:#6B7280;">
+                            Showing <span x-text="start + 1"></span>–<span x-text="end"></span> of <span x-text="total"></span> tasks
                         </span>
-                        <i class="fa fa-chevron-right" style="font-size:10px;color:#D1D5DB;"></i>
+                        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
+                            <button @click="prevPage()"
+                                    :disabled="page === 1"
+                                    :style="page === 1 ? 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:default;min-width:32px;text-align:center;background:#F3F4F6;color:#D1D5DB;' : 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;min-width:32px;text-align:center;background:#F3F4F6;color:#374151;'">‹ Prev</button>
+                            <template x-for="n in totalPages" :key="n">
+                                <button @click="goPage(n)"
+                                        :style="n === page ? 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:700;border:none;cursor:pointer;min-width:32px;text-align:center;background:#4F46E5;color:#fff;' : 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;min-width:32px;text-align:center;background:#F3F4F6;color:#374151;'"
+                                        x-text="n"></button>
+                            </template>
+                            <button @click="nextPage()"
+                                    :disabled="page === totalPages"
+                                    :style="page === totalPages ? 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:default;min-width:32px;text-align:center;background:#F3F4F6;color:#D1D5DB;' : 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;min-width:32px;text-align:center;background:#F3F4F6;color:#374151;'">Next ›</button>
+                        </div>
                     </div>
-                </button>
-                @empty
-                <p style="font-size:13px;color:#9CA3AF;text-align:center;padding:16px 0 4px;">No tasks linked yet.</p>
-                @endforelse
+                </template>
 
             </div>
 
@@ -1374,28 +1449,7 @@
 
 @push('scripts')
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<style>
-@media print {
-    .app-sidebar,
-    .sidebar-overlay,
-    header.app-topbar,
-    [x-data*="exportOpen"],
-    .no-print { display:none !important; }
-
-    .app-shell,
-    .app-main  { display:block !important; }
-
-    .app-main  { margin-left:0 !important; padding:0 !important; }
-
-    main.app-content { padding:0 !important; margin:0 !important; }
-
-    body { background:#fff !important; }
-
-    * { box-shadow:none !important; }
-
-    @page { margin:15mm; }
-}
-</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 @php
     $exportCustomerMeta = ['name'=>$customer->name,'company'=>$customer->company,'email'=>$customer->email,'phone'=>$customer->phone];
     $exportCustomerSlug = Str::slug($customer->name);
@@ -1488,9 +1542,318 @@ window.exportCustomerExcel = function () {
     XLSX.writeFile(wb, '{{ $exportCustomerSlug }}_report_{{ $exportToday }}.xlsx');
 };
 
-window.printCustomerPage = function () {
-    window.print();
+/* ══════════════════════════════════════════════════════════
+   CUSTOMER SHOW — Branded Print & Export PDF
+══════════════════════════════════════════════════════════ */
+@php
+$showLogo = '';
+if (!empty($appSettings['logo_path'])) {
+    $lp = Storage::disk('public')->path($appSettings['logo_path']);
+    if (file_exists($lp)) {
+        $mime = mime_content_type($lp) ?: 'image/jpeg';
+        $showLogo = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($lp));
+    }
+}
+@endphp
+function buildCustomerShowHTML(immediate) {
+    var company  = '{{ addslashes($appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name')) }}';
+    var dept     = '{{ addslashes($appSettings['department_name'] ?? 'Operations') }}';
+    var logoSrc  = '{{ $showLogo ?? '' }}';
+    var mono     = company.charAt(0).toUpperCase();
+    var dateStr  = '{{ now()->format(config('app.date_format','M d, Y')) }}';
+    var timeStr  = '{{ now()->format('H:i') }}';
+    var user     = '{{ auth()->user()->name }}';
+
+    var custName = '{{ addslashes($customer->name) }}';
+    var custCo   = '{{ addslashes($customer->company ?? '') }}';
+    var custEmail= '{{ addslashes($customer->email ?? '') }}';
+    var custPhone= '{{ addslashes($customer->phone ?? '') }}';
+    var custInit = custName.charAt(0).toUpperCase();
+
+    @php
+        $showCustLogoSrc = '';
+        if ($customer->logo) {
+            $clp = Storage::disk('public')->path($customer->logo);
+            if (file_exists($clp)) {
+                $cmime = mime_content_type($clp) ?: 'image/jpeg';
+                $showCustLogoSrc = 'data:' . $cmime . ';base64,' . base64_encode(file_get_contents($clp));
+            }
+        }
+    @endphp
+    var custLogoSrc = '{{ $showCustLogoSrc }}';
+
+    var allTasks  = @json($csvRows);
+    var projects  = @json($exportProjects);
+    var statPending   = {{ $statPending }};
+    var statActive    = {{ $statActive }};
+    var statDone      = {{ $statDone }};
+    var statOverdue   = {{ $statOverdue }};
+    var totalTasks    = allTasks.length;
+    var completionRate = totalTasks > 0 ? Math.round(statDone / totalTasks * 100) : 0;
+
+    // ── CSS ───────────────────────────────────────────────
+    var css =
+      '* { box-sizing:border-box; margin:0; padding:0; }'
+    + 'body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; font-size:12px; color:#111827; background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.pbar { position:sticky; top:0; z-index:100; background:linear-gradient(135deg,#4338CA,#7C3AED); padding:11px 28px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 3px 14px rgba(79,70,229,.35); }'
+    + '.pbar-l h2 { font-size:14px; font-weight:700; color:#fff; margin:0; }'
+    + '.pbar-l p  { font-size:10.5px; color:rgba(255,255,255,.72); margin:3px 0 0; }'
+    + '.pbar-btn  { display:flex; align-items:center; gap:7px; padding:9px 22px; background:#fff; color:#4F46E5; border:none; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.14); }'
+    + '.doc  { max-width:980px; margin:0 auto; background:#fff; }'
+    + '.accent { height:6px; background:linear-gradient(90deg,#4F46E5 0%,#7C3AED 45%,#06B6D4 100%); -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.dh { padding:20px 32px 16px; display:flex; justify-content:space-between; align-items:center; gap:16px; }'
+    + '.logo-area { display:flex; align-items:center; gap:14px; }'
+    + '.logo-img  { height:48px; width:auto; max-width:160px; object-fit:contain; }'
+    + '.logo-mono { width:48px; height:48px; background:linear-gradient(135deg,#4F46E5,#7C3AED); border-radius:12px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:25px; font-weight:900; flex-shrink:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.co-name { font-size:17px; font-weight:800; color:#111827; line-height:1.2; }'
+    + '.co-sub  { font-size:10px; color:#9CA3AF; margin-top:3px; }'
+    + '.rt { text-align:right; }'
+    + '.rt-name { font-size:20px; font-weight:900; color:#4F46E5; letter-spacing:-.4px; line-height:1.15; }'
+    + '.rt-badge { display:inline-flex; align-items:center; gap:5px; margin-top:5px; padding:3px 12px; background:#EEF2FF; border-radius:20px; font-size:10px; font-weight:600; color:#6366F1; border:1px solid #C7D2FE; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.hr { height:1px; background:#E5E7EB; }'
+    + '.cust-strip { display:flex; align-items:center; gap:14px; padding:14px 32px; background:#F8FAFC; border-bottom:1px solid #E5E7EB; }'
+    + '.cav { width:42px; height:42px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:17px; font-weight:700; color:#fff; flex-shrink:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.cav-img { width:42px; height:42px; border-radius:11px; object-fit:cover; flex-shrink:0; }'
+    + '.cinfo-name { font-size:15px; font-weight:800; color:#111827; }'
+    + '.cinfo-co   { font-size:11px; color:#6B7280; margin-top:2px; }'
+    + '.cquick { display:flex; gap:16px; margin-left:auto; }'
+    + '.cq-item { text-align:center; }'
+    + '.cq-val { font-size:18px; font-weight:800; color:#4F46E5; line-height:1; }'
+    + '.cq-lbl { font-size:9px; color:#9CA3AF; margin-top:2px; }'
+    + '.meta { display:flex; background:#F8FAFC; padding:10px 32px; border-bottom:1px solid #E5E7EB; }'
+    + '.mi { flex:1; min-width:0; padding-right:20px; border-right:1px solid #E5E7EB; margin-right:20px; }'
+    + '.mi:last-child { border-right:none; padding-right:0; margin-right:0; }'
+    + '.mi-lbl { font-size:8px; font-weight:700; color:#9CA3AF; text-transform:uppercase; letter-spacing:.09em; }'
+    + '.mi-val { font-size:11px; font-weight:600; color:#374151; margin-top:2px; }'
+    + '.content { padding:20px 32px 26px; }'
+    + '.sh { display:flex; align-items:center; gap:10px; margin:20px 0 12px; padding-bottom:8px; border-bottom:1.5px solid #F3F4F6; }'
+    + '.sh:first-child { margin-top:0; }'
+    + '.sh-bar  { width:4px; height:18px; border-radius:4px; flex-shrink:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.sh-text { font-size:10px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.08em; }'
+    + '.sh-pill { margin-left:auto; font-size:9.5px; font-weight:600; color:#6B7280; background:#F3F4F6; padding:2px 9px; border-radius:20px; }'
+    + '.kgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:4px; }'
+    + '.kcard { border-radius:10px; padding:14px 14px 14px 18px; border:1px solid rgba(0,0,0,.06); position:relative; overflow:hidden; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.kacc  { position:absolute; top:0; left:0; width:4px; height:100%; border-radius:10px 0 0 10px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.k-lbl { font-size:8.5px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; margin-bottom:7px; }'
+    + '.k-val { font-size:26px; font-weight:900; color:#111827; line-height:1; letter-spacing:-1px; }'
+    + '.k-sub { font-size:9.5px; color:#9CA3AF; margin-top:5px; }'
+    + '.twrap { border-radius:10px; border:1px solid #E5E7EB; overflow:hidden; margin-bottom:4px; }'
+    + 'table  { width:100%; border-collapse:collapse; }'
+    + 'thead tr { background:linear-gradient(90deg,#4F46E5,#6366F1); -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + 'th { font-size:9.5px; font-weight:700; color:#fff; text-align:left; padding:9px 12px; text-transform:uppercase; letter-spacing:.05em; white-space:nowrap; }'
+    + 'td { padding:8px 12px; border-bottom:1px solid #F3F4F6; font-size:11.5px; color:#374151; vertical-align:middle; }'
+    + 'tbody tr:last-child td { border-bottom:none; }'
+    + 'tbody tr:nth-child(even) td { background:#FAFAFA; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.td-n  { font-weight:600; color:#111827; }'
+    + '.td-sm { font-size:10px; color:#9CA3AF; margin-top:1px; }'
+    + '.rb    { display:inline-block; padding:3px 10px; border-radius:20px; font-size:10px; font-weight:700; white-space:nowrap; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.foot  { margin:4px 32px 0; padding:12px 0; border-top:2px solid #4F46E5; display:flex; justify-content:space-between; align-items:center; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.foot-brand { font-size:10px; font-weight:700; color:#4F46E5; }'
+    + '.foot-mid   { font-size:10px; color:#9CA3AF; }'
+    + '.foot-conf  { font-size:10px; color:#9CA3AF; font-style:italic; }'
+    + '@@media print { .pbar{display:none !important;} body{background:#fff !important;} .doc{max-width:none;} *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;} tr{page-break-inside:avoid;} @@page{size:A4 landscape;margin:0;} }'
+    ;
+
+    // ── Status badge map ─────────────────────────────────
+    var statusBg    = { draft:'#F3F4F6', assigned:'#EEF2FF', viewed:'#E0F2FE', in_progress:'#FFF7ED', submitted:'#F5F3FF', revision_requested:'#FEE2E2', approved:'#ECFDF5', delivered:'#ECFDF5', archived:'#F3F4F6' };
+    var statusColor = { draft:'#6B7280', assigned:'#4F46E5', viewed:'#0369A1', in_progress:'#EA580C', submitted:'#7C3AED', revision_requested:'#DC2626', approved:'#16A34A', delivered:'#16A34A', archived:'#9CA3AF' };
+    var statusLabel = { draft:'Draft', assigned:'Assigned', viewed:'Viewed', in_progress:'In Progress', submitted:'In Review', revision_requested:'Revision', approved:'Approved', delivered:'Delivered', archived:'Archived' };
+    var projBg    = { active:'#EEF2FF', completed:'#ECFDF5', on_hold:'#FEF3C7', cancelled:'#FEE2E2' };
+    var projColor = { active:'#4F46E5', completed:'#16A34A', on_hold:'#D97706', cancelled:'#DC2626' };
+
+    // ── Logo ─────────────────────────────────────────────
+    var logoEl = logoSrc
+        ? '<img class="logo-img" src="' + logoSrc + '" alt="' + company + '">'
+        : '<div class="logo-mono">' + mono + '</div>';
+
+    // ── Customer avatar / logo ────────────────────────────
+    var custAvatarEl = custLogoSrc
+        ? '<img class="cav-img" src="' + custLogoSrc + '">'
+        : '<div class="cav" style="background:linear-gradient(135deg,#6366F1,#8B5CF6);">' + custInit + '</div>';
+
+    // ── Print icon SVG ────────────────────────────────────
+    var printIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>';
+
+    // ── KPI cards ─────────────────────────────────────────
+    var kpis = [
+        { label:'Pending',    value:statPending,    color:'#6366F1', bg:'#EEF2FF', sub:'Draft / Assigned / Viewed' },
+        { label:'In Progress',value:statActive,     color:'#EA580C', bg:'#FFF7ED', sub:'Active tasks' },
+        { label:'Completed',  value:statDone,       color:'#16A34A', bg:'#ECFDF5', sub:completionRate + '% rate' },
+        { label:'Overdue',    value:statOverdue,    color:'#DC2626', bg:'#FEF2F2', sub:'Past deadline' },
+    ];
+    var kHtml = '<div class="kgrid">';
+    kpis.forEach(function(k) {
+        kHtml += '<div class="kcard" style="background:' + k.bg + ';">'
+              + '<div class="kacc" style="background:' + k.color + ';"></div>'
+              + '<div class="k-lbl" style="color:' + k.color + ';">' + k.label + '</div>'
+              + '<div class="k-val">' + k.value + '</div>'
+              + '<div class="k-sub">' + k.sub + '</div>'
+              + '</div>';
+    });
+    kHtml += '</div>';
+
+    // ── Projects table ────────────────────────────────────
+    var projHtml = '';
+    if (projects.length > 0) {
+        projHtml += '<div class="sh"><div class="sh-bar" style="background:#0EA5E9;"></div><div class="sh-text">Projects</div><span class="sh-pill">' + projects.length + '</span></div>';
+        projHtml += '<div class="twrap"><table><thead><tr>'
+                 + '<th style="width:28px;">#</th><th>Project</th><th style="text-align:center;">Tasks</th><th>Deadline</th><th>Status</th>'
+                 + '</tr></thead><tbody>';
+        projects.forEach(function(p, i) {
+            var pb = projBg[p.status.toLowerCase().replace(' ','_')] || '#F3F4F6';
+            var pc = projColor[p.status.toLowerCase().replace(' ','_')] || '#374151';
+            projHtml += '<tr>'
+                     + '<td style="color:#9CA3AF;font-size:10px;">' + (i+1) + '</td>'
+                     + '<td class="td-n">' + p.name + '</td>'
+                     + '<td style="text-align:center;">' + p.tasks_count + '</td>'
+                     + '<td>' + (p.deadline || '—') + (p.overdue ? ' <span style="color:#DC2626;font-weight:700;">⚠</span>' : '') + '</td>'
+                     + '<td><span class="rb" style="background:' + pb + ';color:' + pc + ';">' + p.status + '</span></td>'
+                     + '</tr>';
+        });
+        projHtml += '</tbody></table></div>';
+    }
+
+    // ── Tasks table ───────────────────────────────────────
+    var tHtml = '<div class="sh"><div class="sh-bar" style="background:#4F46E5;"></div><div class="sh-text">All Tasks</div><span class="sh-pill">' + allTasks.length + ' tasks &mdash; ' + completionRate + '% done</span></div>';
+    tHtml += '<div class="twrap"><table><thead><tr>'
+          + '<th style="width:28px;">#</th>'
+          + '<th>Task</th><th>Project</th><th>Assignee</th><th>Deadline</th><th>Status</th>'
+          + '</tr></thead><tbody>';
+    allTasks.forEach(function(t, i) {
+        var sKey = t.status ? t.status.toLowerCase() : '';
+        var sb   = statusBg[sKey]    || '#F3F4F6';
+        var sc   = statusColor[sKey] || '#374151';
+        var sl   = statusLabel[sKey] || t.status || '';
+        var od   = t.deadline && !['approved','delivered','archived'].includes(sKey) && new Date(t.deadline) < new Date();
+        tHtml += '<tr>'
+              + '<td style="color:#9CA3AF;font-size:10px;">' + (i+1) + '</td>'
+              + '<td class="td-n">' + t.title + '</td>'
+              + '<td style="color:#6B7280;">' + (t.project || '—') + '</td>'
+              + '<td>' + (t.assignee || '—') + '</td>'
+              + '<td>' + (t.deadline ? t.deadline + (od ? ' <span style="color:#DC2626;font-weight:700;">⚠</span>' : '') : '—') + '</td>'
+              + '<td><span class="rb" style="background:' + sb + ';color:' + sc + ';">' + sl + '</span></td>'
+              + '</tr>';
+    });
+    tHtml += '</tbody></table></div>';
+
+    // ── Preview bar ───────────────────────────────────────
+    var pbar = immediate ? '' :
+        '<div class="pbar">'
+      + '<div class="pbar-l"><h2>' + custName + (custCo ? ' &mdash; ' + custCo : '') + '</h2>'
+      + '<p>' + allTasks.length + ' tasks &bull; Generated ' + dateStr + '</p></div>'
+      + '<button class="pbar-btn" onclick="window.print()">' + printIcon + ' Print / Save as PDF</button>'
+      + '</div>';
+
+    var printOnLoad = immediate ? '<sc'+'ript>window.onload=function(){window.print();}<\/'+'script>' : '';
+
+    return '<!DOCTYPE html><html lang="en"><head>'
+         + '<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+         + '<title>' + custName + ' — Customer Report</title>'
+         + '<style>' + css + '</style>'
+         + printOnLoad
+         + '</head><body>'
+         + pbar
+         + '<div class="doc">'
+
+         /* Accent bar */
+         + '<div class="accent"></div>'
+
+         /* Header */
+         + '<div class="dh">'
+         +   '<div class="logo-area">' + logoEl
+         +     '<div><div class="co-name">' + company + '</div><div class="co-sub">' + dept + '</div></div>'
+         +   '</div>'
+         +   '<div class="rt">'
+         +     '<div class="rt-name">Customer Report</div>'
+         +     '<div class="rt-badge">&#128274;&ensp;Confidential &mdash; Internal Use</div>'
+         +   '</div>'
+         + '</div>'
+         + '<div class="hr"></div>'
+
+         /* Customer strip */
+         + '<div class="cust-strip">'
+         +   custAvatarEl
+         +   '<div><div class="cinfo-name">' + custName + '</div>'
+         +     (custCo ? '<div class="cinfo-co">' + custCo + '</div>' : '') + '</div>'
+         +   '<div class="cquick">'
+         +     '<div class="cq-item"><div class="cq-val">' + totalTasks + '</div><div class="cq-lbl">Tasks</div></div>'
+         +     '<div class="cq-item"><div class="cq-val" style="color:#16A34A;">' + completionRate + '%</div><div class="cq-lbl">Done</div></div>'
+         +     '<div class="cq-item"><div class="cq-val" style="color:#DC2626;">' + statOverdue + '</div><div class="cq-lbl">Overdue</div></div>'
+         +   '</div>'
+         + '</div>'
+
+         /* Meta strip */
+         + '<div class="meta">'
+         +   '<div class="mi"><div class="mi-lbl">Generated</div><div class="mi-val">' + dateStr + ' at ' + timeStr + '</div></div>'
+         +   (custEmail ? '<div class="mi"><div class="mi-lbl">Email</div><div class="mi-val">' + custEmail + '</div></div>' : '')
+         +   (custPhone ? '<div class="mi"><div class="mi-lbl">Phone</div><div class="mi-val">' + custPhone + '</div></div>' : '')
+         +   '<div class="mi"><div class="mi-lbl">Prepared By</div><div class="mi-val">' + user + '</div></div>'
+         + '</div>'
+
+         /* Content */
+         + '<div class="content">'
+         +   '<div class="sh"><div class="sh-bar" style="background:#4F46E5;"></div><div class="sh-text">Overview</div></div>'
+         +   kHtml
+         +   projHtml
+         +   tHtml
+         + '</div>'
+
+         /* Footer */
+         + '<div class="foot">'
+         +   '<div class="foot-brand">' + company + ' &mdash; ' + custName + '</div>'
+         +   '<div class="foot-mid">Generated ' + dateStr + ' &bull; ' + user + '</div>'
+         +   '<div class="foot-conf">Confidential</div>'
+         + '</div>'
+
+         + '</div></body></html>';
+}
+
+window.printCustomerShow = function () {
+    var win = window.open('', '_blank');
+    if (win) { win.document.write(buildCustomerShowHTML(true)); win.document.close(); }
+    else { alert('Pop-up blocked — please allow pop-ups for this site.'); }
 };
+
+window.exportCustomerShowPDF = function () {
+    _pdfDownload(buildCustomerShowHTML, '{{ Str::slug($customer->name) }}-customer.pdf');
+};
+
+function _pdfDownload(buildFn, filename) {
+    if (typeof html2pdf === 'undefined') { alert('PDF library not loaded yet — please try again in a moment.'); return; }
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(17,24,39,.55);z-index:99999;display:flex;align-items:center;justify-content:center;';
+    overlay.innerHTML = '<div style="background:#fff;border-radius:14px;padding:22px 32px;font-size:14px;font-weight:600;color:#374151;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);"><div style="width:20px;height:20px;border:3px solid #4F46E5;border-top-color:transparent;border-radius:50%;animation:_pdf_spin .7s linear infinite;flex-shrink:0;"></div>Generating PDF…</div><style>@@keyframes _pdf_spin{to{transform:rotate(360deg)}}</style>';
+    document.body.appendChild(overlay);
+    var htmlStr = buildFn(false);
+    var parser  = new DOMParser();
+    var parsed  = parser.parseFromString(htmlStr, 'text/html');
+    var cssText = Array.from(parsed.querySelectorAll('style')).map(function(s){ return s.textContent; }).join('\n');
+    var docNode = parsed.querySelector('.doc');
+    if (!docNode) { document.body.removeChild(overlay); return; }
+    var wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:fixed;top:0;left:0;width:1100px;background:#fff;z-index:99997;overflow:visible;';
+    var st = document.createElement('style');
+    st.textContent = cssText;
+    wrapper.appendChild(st);
+    wrapper.appendChild(docNode);
+    document.body.appendChild(wrapper);
+    setTimeout(function() {
+        html2pdf().set({
+            margin: 0,
+            filename: filename,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        }).from(wrapper).save().then(function() {
+            document.body.removeChild(wrapper);
+            document.body.removeChild(overlay);
+        }).catch(function(e) {
+            document.body.removeChild(wrapper);
+            document.body.removeChild(overlay);
+            alert('PDF generation failed — ' + (e && e.message ? e.message : 'please try again.'));
+        });
+    }, 150);
+}
 </script>
 @endpush
 
