@@ -410,6 +410,13 @@
                     <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $onTimeRate }}%</p>
                     <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Before deadline</p>
                 </div>
+                @if($adBudgetNumericTotal > 0)
+                <div style="background:#EFF6FF;border-radius:12px;padding:14px;">
+                    <p style="font-size:10px;font-weight:700;color:#2563EB;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Ad Budget</p>
+                    <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ number_format($adBudgetNumericTotal) }}</p>
+                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Total BHD · {{ $adBudgetTasks->count() }} campaigns</p>
+                </div>
+                @endif
             </div>
 
             {{-- Team Performance --}}
@@ -587,6 +594,12 @@ $kpisRow2 = [
      'sub'       => $socialPendingCount > 0 ? $socialPendingCount.' pending' : 'All posted',
      'sub_color' => $socialPendingCount > 0 ? '#D97706' : '#10B981',
      'platforms' => $socialByPlatform],
+    ['label'     => 'Ad Budget',
+     'value'     => $adBudgetNumericTotal > 0 ? number_format($adBudgetNumericTotal).' BHD' : '—',
+     'icon'      => 'fa-coins',
+     'color'     => '#2563EB','bg'=>'#DBEAFE',
+     'sub'       => $adBudgetTasks->count().' campaigns',
+     'sub_color' => '#6B7280'],
 ];
 
 $row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? 'rpt-grid-3' : 'rpt-grid-4');
@@ -1919,6 +1932,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
     $budgetPosted  = $adBudgetTasks->where('posted', true)->count();
     $budgetPending = $adBudgetTasks->where('posted', false)->count();
     $budgetTotal   = $adBudgetTasks->count();
+    $budgetBhdLabel = $adBudgetNumericTotal > 0 ? number_format($adBudgetNumericTotal).' BHD' : null;
 @endphp
 <div class="rpt-card" style="margin-bottom:10px;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
@@ -1942,6 +1956,11 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
                 <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#D1FAE5;color:#059669;">
                     <i class="fas fa-circle-check" style="font-size:10px;"></i> {{ $budgetPosted }} posted
                 </span>
+                @if($budgetBhdLabel)
+                <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#DBEAFE;color:#1D4ED8;">
+                    <i class="fas fa-coins" style="font-size:10px;"></i> {{ $budgetBhdLabel }}
+                </span>
+                @endif
                 <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#FEE2E2;color:#DC2626;">
                     <i class="fas fa-clock" style="font-size:10px;"></i> {{ $budgetPending }} pending
                 </span>

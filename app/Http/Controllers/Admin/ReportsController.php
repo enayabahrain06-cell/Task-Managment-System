@@ -547,8 +547,13 @@ class ReportsController extends Controller
             ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
             ->when($userId, fn($q) => $q->where('social_assigned_to', $userId))
             ->orderByDesc('tasks.created_at')
-            ->get()
-            ->map(fn($t) => [
+            ->get();
+
+        $adBudgetNumericTotal = $adBudgetTasks
+            ->filter(fn($t) => !empty($t->social_budget) && is_numeric(trim($t->social_budget)))
+            ->sum(fn($t) => (float) trim($t->social_budget));
+
+        $adBudgetTasks = $adBudgetTasks->map(fn($t) => [
                 'id'          => $t->id,
                 'title'       => $t->title,
                 'project'     => $t->project->name ?? '—',
@@ -837,7 +842,7 @@ class ReportsController extends Controller
             'overdueList', 'reassignedList', 'reopenedList',
             'allProjects', 'allCustomers', 'allUsers', 'customerStats',
             'billingUsers', 'billingCustomers', 'phaseLabels', 'from',
-            'adBudgetTasks',
+            'adBudgetTasks', 'adBudgetNumericTotal',
             'approvalSpeedTasks', 'approvedCount', 'avgHours', 'pendingApproval', 'deferredApproval',
             'socialPendingTasks', 'decideLaterReportTasks', 'socialPostsList',
             'totalTasksList', 'completedTasksList', 'onTimeTasksList'
