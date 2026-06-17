@@ -842,6 +842,92 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             @endif
                         </div>
 
+                        {{-- ── Bell Sound ── --}}
+                        <div style="margin-top:20px;padding-top:20px;border-top:1px solid #F3F4F6;"
+                             x-data="{
+                                soundType:   '{{ $settings['notif_sound_type']   ?? 'chime' }}',
+                                soundVolume: {{ (float)($settings['notif_sound_volume'] ?? 0.3) }},
+                                playing: false,
+                                sounds: {
+                                    chime:  { label: 'Chime',      icon: 'fa-music',         notes: [[784,0],[988,0.18]] },
+                                    ding:   { label: 'Ding',       icon: 'fa-bell',           notes: [[880,0]] },
+                                    double: { label: 'Double tap', icon: 'fa-repeat',         notes: [[1047,0],[1047,0.22]] },
+                                    pop:    { label: 'Soft pop',   icon: 'fa-circle-dot',     notes: [[440,0],[554,0.12]] },
+                                    alert:  { label: 'Alert',      icon: 'fa-triangle-exclamation', notes: [[987,0],[1175,0.1],[1397,0.22]] },
+                                    none:   { label: 'Silent',     icon: 'fa-volume-xmark',   notes: [] },
+                                },
+                                preview() {
+                                    if (this.soundType === 'none') return;
+                                    const notes = this.sounds[this.soundType]?.notes || [];
+                                    if (!notes.length) return;
+                                    this.playing = true;
+                                    try {
+                                        const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+                                        const vol  = this.soundVolume;
+                                        notes.forEach(([freq, delay]) => {
+                                            const osc  = ctx.createOscillator();
+                                            const gain = ctx.createGain();
+                                            osc.connect(gain); gain.connect(ctx.destination);
+                                            osc.type = 'sine';
+                                            osc.frequency.value = freq;
+                                            const t = ctx.currentTime + delay;
+                                            gain.gain.setValueAtTime(0, t);
+                                            gain.gain.linearRampToValueAtTime(vol, t + 0.015);
+                                            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+                                            osc.start(t); osc.stop(t + 0.6);
+                                        });
+                                    } catch(e) {}
+                                    setTimeout(() => this.playing = false, 700);
+                                }
+                             }">
+                            <p style="font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px;">
+                                <i class="fas fa-volume-high" style="margin-right:5px;"></i>Bell Sound
+                            </p>
+
+                            {{-- Sound type picker --}}
+                            <input type="hidden" name="notif_sound_type" :value="soundType">
+                            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
+                                <template x-for="(cfg, key) in sounds" :key="key">
+                                    <button type="button"
+                                        @click="soundType = key"
+                                        :style="soundType === key
+                                            ? 'border:2px solid #4F46E5;background:#EEF2FF;color:#4F46E5;'
+                                            : 'border:2px solid #E5E7EB;background:#fff;color:#6B7280;'"
+                                        style="padding:10px 6px;border-radius:10px;cursor:pointer;text-align:center;transition:all .15s;font-size:12px;font-weight:600;">
+                                        <i :class="'fas ' + cfg.icon" style="display:block;font-size:16px;margin-bottom:4px;"></i>
+                                        <span x-text="cfg.label"></span>
+                                    </button>
+                                </template>
+                            </div>
+
+                            {{-- Volume slider (hidden when silent) --}}
+                            <div x-show="soundType !== 'none'" style="margin-bottom:14px;">
+                                <input type="hidden" name="notif_sound_volume" :value="soundVolume">
+                                <label style="font-size:12px;font-weight:600;color:#374151;display:flex;justify-content:space-between;margin-bottom:6px;">
+                                    <span>Volume</span>
+                                    <span x-text="Math.round(soundVolume * 100) + '%'" style="color:#4F46E5;"></span>
+                                </label>
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    <i class="fas fa-volume-low" style="color:#9CA3AF;font-size:12px;"></i>
+                                    <input type="range" x-model.number="soundVolume"
+                                           min="0.05" max="1" step="0.05"
+                                           style="flex:1;accent-color:#4F46E5;">
+                                    <i class="fas fa-volume-high" style="color:#4F46E5;font-size:12px;"></i>
+                                </div>
+                            </div>
+
+                            {{-- Preview button --}}
+                            <button type="button" @click="preview()"
+                                    x-show="soundType !== 'none'"
+                                    :disabled="playing"
+                                    style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;border:1px solid #E5E7EB;background:#F9FAFB;font-size:12px;font-weight:600;color:#374151;cursor:pointer;transition:all .15s;"
+                                    :style="playing ? 'opacity:.6;cursor:not-allowed;' : ''">
+                                <i class="fas" :class="playing ? 'fa-spinner fa-spin' : 'fa-play'" style="font-size:10px;"></i>
+                                <span x-text="playing ? 'Playing…' : 'Preview sound'"></span>
+                            </button>
+                            <p style="font-size:11px;color:#9CA3AF;margin:8px 0 0;">This is the default. Each user can still override it from the notification bell menu.</p>
+                        </div>
+
                     </div>
                     <div class="scard-footer">
                         <button type="submit" class="btn-save"><i class="fas fa-check" style="font-size:11px;margin-right:5px;"></i>Save Preferences</button>

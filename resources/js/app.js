@@ -1,5 +1,7 @@
 import './bootstrap';
 import './calendar';
+import { initMqtt, onTopic } from './mqtt-client';
 
-console.log('Task Management System loaded!');
+// Expose MQTT helpers globally for Alpine.js components in Blade templates
+window._mqtt = { initMqtt, onTopic };
 

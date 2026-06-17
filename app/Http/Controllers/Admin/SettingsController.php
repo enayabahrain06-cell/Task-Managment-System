@@ -62,6 +62,8 @@ class SettingsController extends Controller
         'notify_on_viewed'      => '0',
         'email_on_assign'       => '0',
         'wa_on_assign'          => '0',
+        'notif_sound_type'      => 'chime',
+        'notif_sound_volume'    => '0.3',
         // Security
         'min_password_length'      => '8',
         'session_timeout'          => '120',
@@ -385,7 +387,15 @@ class SettingsController extends Controller
             'email_on_assign', 'wa_on_assign',
         ];
 
-        $data = ['task_reminder_days' => $request->input('task_reminder_days', 2)];
+        $volume = (float) $request->input('notif_sound_volume', 0.3);
+        $volume = max(0.05, min(1.0, $volume));
+
+        $data = [
+            'task_reminder_days'  => $request->input('task_reminder_days', 2),
+            'notif_sound_type'    => in_array($request->input('notif_sound_type'), ['chime','ding','double','pop','alert','none'])
+                                        ? $request->input('notif_sound_type') : 'chime',
+            'notif_sound_volume'  => (string) round($volume, 2),
+        ];
         foreach ($boolKeys as $key) {
             $data[$key] = $request->boolean($key) ? '1' : '0';
         }

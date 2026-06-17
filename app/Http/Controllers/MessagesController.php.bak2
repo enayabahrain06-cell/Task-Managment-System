@@ -4,13 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Message;
 use App\Models\MessageGroup;
-use App\Models\MessageReaction;
 use App\Models\Setting;
 use App\Models\User;
-use App\Notifications\NewMessageNotification;
 use App\Services\MqttService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class MessagesController extends Controller
@@ -25,30 +22,6 @@ class MessagesController extends Controller
 
         $teamMembers = User::where('id', '!=', $me)->orderBy('name')->get();
 
-        // Last message preview per direct conversation
-        $lastMsgs = Message::where(function ($q) use ($me) {
-                $q->where('sender_id', $me)->orWhere('receiver_id', $me);
-            })
-            ->whereNull('group_id')
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->groupBy(fn($m) => $m->sender_id === $me ? $m->receiver_id : $m->sender_id)
-            ->map(fn($msgs) => [
-                'body' => $msgs->first()->deleted_at
-                            ? '🚫 Message deleted'
-                            : ($msgs->first()->body ?: ($msgs->first()->file_name ? '📎 '.$msgs->first()->file_name : '📎 File')),
-                'time' => $msgs->first()->created_at->diffForHumans(null, true, true, 1),
-                'mine' => $msgs->first()->sender_id === $me,
-            ])
-            ->toArray();
-
-        // Online status map: userId → true/false (active within 3 minutes)
-        $onlineMap = $teamMembers->mapWithKeys(fn($u) => [
-            $u->id => $u->presence_status === 'online'
-                      && $u->last_seen_at
-                      && $u->last_seen_at->gt(now()->subMinutes(3)),
-        ])->toArray();
-
         $groups = MessageGroup::whereHas('members', fn($q) => $q->where('user_id', $me))
             ->with(['members:users.id,users.name', 'creator:id,name'])
             ->get()
@@ -62,7 +35,7 @@ class MessagesController extends Controller
                 ];
             });
 
-        return view('messages.index', compact('teamMembers', 'groups', 'lastMsgs', 'onlineMap'));
+        return view('messages.index', compact('teamMembers', 'groups'));
     }
 
     /** GET /messages/conversation/{user} */
@@ -70,27 +43,13 @@ class MessagesController extends Controller
     {
         $me = auth()->id();
 
-        $clearedAt = DB::table('direct_chat_clears')
-            ->where('user_id', $me)->where('other_user_id', $user->id)
-            ->value('cleared_at');
-        $clearedAt = $clearedAt ? \Carbon\Carbon::parse($clearedAt) : null;
-
         Message::where('sender_id', $user->id)
             ->where('receiver_id', $me)
             ->whereNull('read_at')
-            ->when($clearedAt, fn($q) => $q->where('created_at', '>', $clearedAt))
             ->update(['read_at' => now()]);
 
-        // Mark bell notifications from this sender as read
-        auth()->user()->notifications()
-            ->whereNull('read_at')
-            ->where('data->notif_type', 'new_message')
-            ->where('data->sender_id', $user->id)
-            ->whereNull('data->group_id')
-            ->update(['read_at' => now()]);
-
-        $messages = Message::conversation($me, $user->id, $clearedAt)
-            ->with(['sender:id,name', 'replyTo.sender:id,name', 'reactions'])
+        $messages = Message::conversation($me, $user->id)
+            ->with(['sender:id,name', 'replyTo.sender:id,name'])
             ->get()
             ->map(fn($m) => $this->formatMessage($m, $me));
 
@@ -124,7 +83,7 @@ class MessagesController extends Controller
             'reply_to_id' => $request->reply_to_id,
         ]);
 
-        $message->load(['sender:id,name', 'replyTo.sender:id,name', 'reactions']);
+        $message->load(['sender:id,name', 'replyTo.sender:id,name']);
 
         $formatted = $this->formatMessage($message, auth()->id());
 
@@ -134,12 +93,6 @@ class MessagesController extends Controller
             'sender_id' => auth()->id(),
             'message'   => $formatted,
         ]);
-
-        // Bell notification — one entry per message so the badge count reflects reality.
-        $receiver = User::find($request->receiver_id);
-        if ($receiver) {
-            $receiver->notify(new NewMessageNotification($message));
-        }
 
         return response()->json($formatted, 201);
     }
@@ -199,23 +152,14 @@ class MessagesController extends Controller
     {
         $me = auth()->id();
 
-        $pivot = $group->members()->where('user_id', $me)->first();
-        if (!$pivot) abort(403);
-
-        $clearedAt = $pivot->pivot->cleared_at ? \Carbon\Carbon::parse($pivot->pivot->cleared_at) : null;
+        if (!$group->members()->where('user_id', $me)->exists()) {
+            abort(403);
+        }
 
         $group->members()->updateExistingPivot($me, ['last_read_at' => now()]);
 
-        // Mark bell notifications for this group as read
-        auth()->user()->notifications()
-            ->whereNull('read_at')
-            ->where('data->notif_type', 'new_message')
-            ->where('data->group_id', $group->id)
-            ->update(['read_at' => now()]);
-
         $messages = $group->messages()
-            ->when($clearedAt, fn($q) => $q->where('created_at', '>', $clearedAt))
-            ->with(['sender:id,name', 'replyTo.sender:id,name', 'reactions'])
+            ->with(['sender:id,name', 'replyTo.sender:id,name'])
             ->get()
             ->map(fn($m) => $this->formatMessage($m, $me));
 
@@ -260,21 +204,20 @@ class MessagesController extends Controller
             'reply_to_id' => $request->reply_to_id,
         ]);
 
-        $message->load(['sender:id,name', 'replyTo.sender:id,name', 'reactions']);
+        $message->load(['sender:id,name', 'replyTo.sender:id,name']);
 
         $formatted = $this->formatMessage($message, $me);
 
-        // Push to every group member except sender via MQTT + bell notification
+        // Push to every group member except sender via MQTT
         $group->members()
             ->where('user_id', '!=', $me)
-            ->get()
-            ->each(function ($member) use ($formatted, $group, $message) {
-                MqttService::publish("tm/user/{$member->id}/messages/new", [
+            ->pluck('user_id')
+            ->each(function ($memberId) use ($formatted, $group) {
+                MqttService::publish("tm/user/{$memberId}/messages/new", [
                     'type'     => 'group',
                     'group_id' => $group->id,
                     'message'  => $formatted,
                 ]);
-                $member->notify(new NewMessageNotification($message));
             });
 
         return response()->json($formatted, 201);
@@ -333,134 +276,6 @@ class MessagesController extends Controller
         return [$filePath, $fileName, $fileType];
     }
 
-    /** POST /messages/{message}/react */
-    public function react(Message $message, Request $request)
-    {
-        $me = auth()->id();
-        $request->validate(['emoji' => 'required|string|max:10']);
-
-        $key = ['message_id' => $message->id, 'user_id' => $me, 'emoji' => $request->emoji];
-        $exists = DB::table('message_reactions')->where($key)->exists();
-        if ($exists) {
-            DB::table('message_reactions')->where($key)->delete();
-        } else {
-            DB::table('message_reactions')->insert(array_merge($key, ['created_at' => now()]));
-        }
-
-        $message->load(['sender:id,name', 'replyTo.sender:id,name', 'reactions']);
-        $formatted = $this->formatMessage($message, $me);
-
-        // Push updated message to the other party
-        if ($message->group_id) {
-            $group = MessageGroup::find($message->group_id);
-            $group?->members()->where('user_id', '!=', $me)->pluck('user_id')
-                ->each(function ($uid) use ($formatted, $message) {
-                    $msg = $formatted;
-                    $msg['reactions'] = $this->getReactionsFor($message->id, $uid);
-                    MqttService::publish("tm/user/{$uid}/messages/updated", ['type' => 'message_reacted', 'message' => $msg]);
-                });
-        } elseif ($message->receiver_id || $message->sender_id) {
-            $other = $message->sender_id === $me ? $message->receiver_id : $message->sender_id;
-            if ($other) {
-                $msg = $formatted;
-                $msg['reactions'] = $this->getReactionsFor($message->id, $other);
-                MqttService::publish("tm/user/{$other}/messages/updated", ['type' => 'message_reacted', 'message' => $msg]);
-            }
-        }
-
-        return response()->json($formatted);
-    }
-
-    private function getReactionsFor(int $messageId, int $userId): array
-    {
-        return DB::table('message_reactions')
-            ->where('message_id', $messageId)
-            ->selectRaw("emoji, COUNT(*) as cnt, SUM(CASE WHEN user_id = ? THEN 1 ELSE 0 END) as me", [$userId])
-            ->groupBy('emoji')
-            ->get()
-            ->map(fn($r) => ['emoji' => $r->emoji, 'count' => (int)$r->cnt, 'mine' => (bool)$r->me])
-            ->values()->toArray();
-    }
-
-    /** DELETE /messages/{message} — soft-deletes; receiver sees a "deleted" tombstone */
-    public function deleteMessage(Message $message)
-    {
-        if ($message->sender_id !== auth()->id()) abort(403);
-
-        $message->update(['deleted_at' => now()]);
-        $message->load(['sender:id,name', 'replyTo.sender:id,name', 'reactions']);
-
-        $formatted = $this->formatMessage($message, auth()->id());
-
-        // Notify receiver so their UI updates in real-time
-        if ($message->group_id) {
-            $group = \App\Models\MessageGroup::find($message->group_id);
-            $group?->members()->where('user_id', '!=', auth()->id())->pluck('user_id')
-                ->each(fn($uid) => MqttService::publish("tm/user/{$uid}/messages/updated", [
-                    'type'    => 'message_deleted',
-                    'message' => $formatted,
-                ]));
-        } elseif ($message->receiver_id) {
-            MqttService::publish("tm/user/{$message->receiver_id}/messages/updated", [
-                'type'    => 'message_deleted',
-                'message' => $formatted,
-            ]);
-        }
-
-        return response()->json($formatted);
-    }
-
-    /** PATCH /messages/{message} */
-    public function editMessage(Message $message, Request $request)
-    {
-        if ($message->sender_id !== auth()->id()) abort(403);
-        $request->validate(['body' => 'required|string|max:2000']);
-        $message->update(['body' => $request->body]);
-
-        $message->load(['sender:id,name', 'replyTo.sender:id,name', 'reactions']);
-        $formatted = $this->formatMessage($message->fresh()->load(['sender:id,name', 'replyTo.sender:id,name', 'reactions']), auth()->id());
-
-        // Notify receiver of the edit
-        if ($message->group_id) {
-            $group = \App\Models\MessageGroup::find($message->group_id);
-            $group?->members()->where('user_id', '!=', auth()->id())->pluck('user_id')
-                ->each(fn($uid) => MqttService::publish("tm/user/{$uid}/messages/updated", [
-                    'type'    => 'message_edited',
-                    'message' => $formatted,
-                ]));
-        } elseif ($message->receiver_id) {
-            MqttService::publish("tm/user/{$message->receiver_id}/messages/updated", [
-                'type'    => 'message_edited',
-                'message' => $formatted,
-            ]);
-        }
-
-        return response()->json($formatted);
-    }
-
-    /** DELETE /messages/clear/direct/{userId} — clears only from the requesting user's side */
-    public function clearDirectChat(int $userId)
-    {
-        $me = auth()->id();
-        DB::table('direct_chat_clears')->upsert(
-            [['user_id' => $me, 'other_user_id' => $userId, 'cleared_at' => now()]],
-            ['user_id', 'other_user_id'],
-            ['cleared_at']
-        );
-        return response()->json(['ok' => true]);
-    }
-
-    /** DELETE /messages/clear/group/{group} — clears only from the requesting user's side */
-    public function clearGroupChat(MessageGroup $group)
-    {
-        $me = auth()->id();
-        if (!$group->members()->where('user_id', $me)->exists()) {
-            abort(403);
-        }
-        $group->members()->updateExistingPivot($me, ['cleared_at' => now()]);
-        return response()->json(['ok' => true]);
-    }
-
     /**
      * GET /messages/poll/direct/{userId}?after_id={id}
      * GET /messages/poll/group/{groupId}?after_id={id}
@@ -471,19 +286,13 @@ class MessagesController extends Controller
         $me      = auth()->id();
         $afterId = request()->integer('after_id', 0);
 
-        $clearedAt = DB::table('direct_chat_clears')
-            ->where('user_id', $me)->where('other_user_id', $userId)
-            ->value('cleared_at');
-        $clearedAt = $clearedAt ? \Carbon\Carbon::parse($clearedAt) : null;
-
         $messages = Message::where(function ($q) use ($me, $userId) {
                 $q->where('sender_id', $me)->where('receiver_id', $userId)
                   ->orWhere('sender_id', $userId)->where('receiver_id', $me);
             })
             ->whereNull('group_id')
             ->when($afterId, fn($q) => $q->where('id', '>', $afterId))
-            ->when($clearedAt, fn($q) => $q->where('created_at', '>', $clearedAt))
-            ->with(['sender:id,name', 'replyTo.sender:id,name', 'reactions'])
+            ->with(['sender:id,name', 'replyTo.sender:id,name'])
             ->orderBy('id')
             ->get()
             ->map(fn($m) => $this->formatMessage($m, $me));
@@ -496,15 +305,13 @@ class MessagesController extends Controller
         $me      = auth()->id();
         $afterId = request()->integer('after_id', 0);
 
-        $pivot = $group->members()->where('user_id', $me)->first();
-        if (!$pivot) abort(403);
-
-        $clearedAt = $pivot->pivot->cleared_at ? \Carbon\Carbon::parse($pivot->pivot->cleared_at) : null;
+        if (!$group->members()->where('user_id', $me)->exists()) {
+            abort(403);
+        }
 
         $messages = $group->messages()
             ->when($afterId, fn($q) => $q->where('id', '>', $afterId))
-            ->when($clearedAt, fn($q) => $q->where('created_at', '>', $clearedAt))
-            ->with(['sender:id,name', 'replyTo.sender:id,name', 'reactions'])
+            ->with(['sender:id,name', 'replyTo.sender:id,name'])
             ->orderBy('id')
             ->get()
             ->map(fn($m) => $this->formatMessage($m, $me));
@@ -514,33 +321,19 @@ class MessagesController extends Controller
 
     private function formatMessage(Message $m, int $me): array
     {
-        $isDeleted = $m->deleted_at !== null;
-
-        $reactions = $m->relationLoaded('reactions')
-            ? $m->reactions->groupBy('emoji')->map(fn($g) => [
-                'emoji' => $g->first()->emoji,
-                'count' => $g->count(),
-                'mine'  => $g->where('user_id', $me)->isNotEmpty(),
-            ])->values()->toArray()
-            : [];
-
         $data = [
             'id'         => $m->id,
-            'body'       => $isDeleted ? '' : $m->body,
+            'body'       => $m->body,
             'mine'       => $m->sender_id === $me,
             'sender'     => $m->sender->name,
             'sender_id'  => $m->sender_id,
             'created_at' => $m->created_at->format('H:i'),
             'date'       => $m->created_at->format('Y-m-d'),
-            'is_edited'  => !$isDeleted && $m->updated_at->diffInSeconds($m->created_at) > 2,
-            'is_deleted' => $isDeleted,
-            'is_read'    => $m->read_at !== null,
             'file'       => null,
             'reply_to'   => null,
-            'reactions'  => $reactions,
         ];
 
-        if (!$isDeleted && $m->file_path) {
+        if ($m->file_path) {
             $data['file'] = [
                 'url'   => Storage::url($m->file_path),
                 'name'  => $m->file_name,
@@ -553,12 +346,9 @@ class MessagesController extends Controller
 
         if ($m->replyTo) {
             $data['reply_to'] = [
-                'id'         => $m->replyTo->id,
-                'sender'     => $m->replyTo->sender->name ?? 'Unknown',
-                'body'       => $m->replyTo->deleted_at
-                                    ? '🚫 This message was deleted'
-                                    : ($m->replyTo->body ?: ($m->replyTo->file_name ?? '📎 File')),
-                'is_deleted' => $m->replyTo->deleted_at !== null,
+                'id'     => $m->replyTo->id,
+                'sender' => $m->replyTo->sender->name ?? 'Unknown',
+                'body'   => $m->replyTo->body ?: ($m->replyTo->file_name ?? '📎 File'),
             ];
         }
 

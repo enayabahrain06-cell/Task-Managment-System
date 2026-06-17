@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Models\Project;
 use App\Models\Setting;
+use App\Observers\DatabaseNotificationObserver;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -16,6 +18,9 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Publish MQTT push when any DB notification is created
+        DatabaseNotification::observe(DatabaseNotificationObserver::class);
+
         // Apply saved timezone and date format globally
         try {
             $timezone   = Setting::get('timezone', config('app.timezone', 'UTC'));
@@ -81,7 +86,7 @@ class AppServiceProvider extends ServiceProvider
         // Share global app settings with all views
         View::composer('*', function ($view) {
             try {
-                $appSettings = Setting::getMany(['app_name','app_tagline','company_name','primary_color','department_name','logo_path','favicon_path','login_bg_type','login_bg_color','login_bg_image','copyright','developer_mode','hidden_elements','shown_extras','nav_hidden','maintenance_mode','hide_approval_customer_notify','hide_hourly_rate']);
+                $appSettings = Setting::getMany(['app_name','app_tagline','company_name','primary_color','department_name','logo_path','favicon_path','login_bg_type','login_bg_color','login_bg_image','copyright','developer_mode','hidden_elements','shown_extras','nav_hidden','maintenance_mode','hide_approval_customer_notify','hide_hourly_rate','notif_sound_type','notif_sound_volume']);
                 $view->with('appSettings', array_merge([
                     'app_name'        => 'Dash',
                     'app_tagline'     => '',
@@ -100,6 +105,8 @@ class AppServiceProvider extends ServiceProvider
                     'maintenance_mode'              => '0',
                     'hide_approval_customer_notify' => '0',
                     'hide_hourly_rate'              => '0',
+                    'notif_sound_type'              => 'chime',
+                    'notif_sound_volume'            => '0.3',
                 ], $appSettings));
             } catch (\Throwable) {
                 $view->with('appSettings', [
@@ -120,6 +127,8 @@ class AppServiceProvider extends ServiceProvider
                     'maintenance_mode'              => '0',
                     'hide_approval_customer_notify' => '0',
                     'hide_hourly_rate'              => '0',
+                    'notif_sound_type'              => 'chime',
+                    'notif_sound_volume'            => '0.3',
                 ]);
             }
         });
