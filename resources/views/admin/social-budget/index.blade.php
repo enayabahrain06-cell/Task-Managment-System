@@ -53,7 +53,7 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right 10px center;
 }
-.sb-stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+.sb-stats-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:20px; }
 .sb-filter-bar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:20px; }
 .sb-filter-form { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 @media (max-width: 900px) {
@@ -112,6 +112,15 @@
         <div>
             <p style="font-size:22px;font-weight:800;color:#111827;margin:0;">{{ $withBudget }}</p>
             <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">With Budget Set</p>
+        </div>
+    </div>
+    <div class="sb-stat">
+        <div class="sb-stat-icon" style="background:#EFF6FF;">
+            <i class="fas fa-coins" style="color:#2563EB;"></i>
+        </div>
+        <div>
+            <p style="font-size:22px;font-weight:800;color:#2563EB;margin:0;">{{ $totalBudgetBhd > 0 ? number_format($totalBudgetBhd) : '—' }}</p>
+            <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Total Budget (BHD)</p>
         </div>
     </div>
 </div>

@@ -53,14 +53,21 @@ class SocialBudgetController extends Controller
         $totalCount   = (clone $baseCount)->count();
         $postedCount  = (clone $baseCount)->whereNotNull('social_posted_at')->count();
         $pendingCount = (clone $baseCount)->whereNull('social_posted_at')->count();
-        $withBudget   = (clone $baseCount)->whereNotNull('social_budget')->count();
+        $withBudget   = (clone $baseCount)->whereNotNull('social_budget')->where('social_budget', '!=', '')->count();
+
+        $totalBudgetBhd = (clone $baseCount)
+            ->whereNotNull('social_budget')
+            ->where('social_budget', '!=', '')
+            ->pluck('social_budget')
+            ->filter(fn($v) => is_numeric(trim($v)))
+            ->sum(fn($v) => (float) trim($v));
 
         $allProjects  = Project::where('is_quick', false)->orderBy('name')->get(['id', 'name']);
         $allCustomers = Customer::orderBy('name')->get(['id', 'name', 'company']);
 
         return view('admin.social-budget.index', compact(
             'tasks', 'projectId', 'customerId', 'status',
-            'totalCount', 'postedCount', 'pendingCount', 'withBudget',
+            'totalCount', 'postedCount', 'pendingCount', 'withBudget', 'totalBudgetBhd',
             'allProjects', 'allCustomers'
         ));
     }
