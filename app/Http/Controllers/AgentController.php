@@ -646,7 +646,7 @@ class AgentController extends Controller
     {
         $base = [
             'messages'       => ['label' => 'Messages',       'url' => route('messages.index'),       'desc' => 'Direct & group messaging'],
-            'calendar'       => ['label' => 'Calendar',       'url' => route('calendar'),              'desc' => 'Tasks by deadline + meetings'],
+            'calendar'       => ['label' => 'Calendar',       'url' => route('calendar.index'),        'desc' => 'Tasks by deadline + meetings'],
             'activities'     => ['label' => 'Activity Feed',  'url' => route('activities.index'),     'desc' => 'Recent team activity & comments'],
             'team'           => ['label' => 'Team Directory', 'url' => route('team.index'),            'desc' => 'View all team members'],
         ];
