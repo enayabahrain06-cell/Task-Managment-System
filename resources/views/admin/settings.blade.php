@@ -2683,9 +2683,9 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">WhatsApp API Configuration</p>
                                 <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Connect your WhatsApp Business account to send messages</p>
                             </div>
-                            <label class="toggle" style="flex-shrink:0;">
-                                <input type="checkbox" name="wa_enabled" value="1" x-model="waEnabled"
-                                       {{ ($settings['wa_enabled'] ?? '0') === '1' ? 'checked' : '' }}>
+                            <label class="toggle" style="flex-shrink:0;" onclick="event.stopPropagation()">
+                                <input type="hidden" name="wa_enabled" value="0">
+                                <input type="checkbox" name="wa_enabled" value="1" x-model="waEnabled">
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>

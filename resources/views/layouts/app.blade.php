@@ -1254,9 +1254,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="text-xs" style="color:rgba(255,255,255,.75);">{{ $appSettings['agent_subtitle'] ?? 'Ask me anything about your tasks' }}</div>
             </div>
             <div class="flex items-center gap-2 ml-auto flex-shrink-0">
-                <button @click="clearChat()" title="Clear chat" class="text-white/60 hover:text-white transition-colors" style="background:none;border:none;cursor:pointer;padding:2px 4px;">
-                    <i class="fas fa-broom text-xs"></i>
-                </button>
                 <button @click="supportMode = !supportMode; supportSent = false; supportBody = ''; supportFiles = []; supportSending = false" title="Message Support"
                         class="transition-colors" style="background:none;border:none;cursor:pointer;padding:2px 4px;"
                         :style="supportMode ? 'color:#fff;' : 'color:rgba(255,255,255,.6);'">
@@ -1600,6 +1597,13 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
         </div>
 
+        {{-- Clear conversation link --}}
+        <div x-show="!supportMode && messages.length > 1" class="flex justify-center py-1 border-t border-gray-50 bg-white">
+            <button @click="clearChat()" class="text-xs text-gray-400 hover:text-red-400 transition-colors px-3 py-0.5 rounded-full hover:bg-red-50">
+                Clear conversation
+            </button>
+        </div>
+
         {{-- Input --}}
         <div class="border-t border-gray-100 bg-white px-3 py-2.5 flex items-center gap-2" x-show="!supportMode">
             <input x-ref="inputBox" x-model="input" type="text"
@@ -1624,17 +1628,8 @@ document.addEventListener('DOMContentLoaded', function () {
         {{-- Icon --}}
         <i class="fas agent-fab__icon" :class="open ? 'fa-times' : 'fa-{{ $agentIcon }}'"></i>
 
-        {{-- Urgent badge --}}
-        <span x-show="!open && badgeCount > 0"
-              x-transition:enter="agent-badge-enter" x-transition:enter-start="agent-badge-from" x-transition:enter-end="agent-badge-to"
-              x-transition:leave="agent-badge-leave" x-transition:leave-start="agent-badge-to" x-transition:leave-end="agent-badge-from"
-              class="agent-fab__badge">
-            <span class="agent-fab__badge-ring"></span>
-            <span class="agent-fab__badge-count" x-text="badgeCount > 9 ? '9+' : badgeCount"></span>
-        </span>
-
         {{-- Online dot --}}
-        <span x-show="!open && badgeCount === 0" class="agent-fab__online"></span>
+        <span x-show="!open" class="agent-fab__online"></span>
     </button>
 
     <style>
@@ -1670,29 +1665,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     .agent-fab--open .agent-fab__icon { transform: rotate(90deg); }
 
-    /* ── Badge ──────────────────────────────────────── */
-    .agent-fab__badge {
-        position: absolute; top: -6px; right: -6px;
-        display: flex; align-items: center; justify-content: center;
-        pointer-events: none;
-    }
-    .agent-fab__badge-ring {
-        position: absolute;
-        width: 26px; height: 26px; border-radius: 50%;
-        background: #EF4444; opacity: 0;
-        animation: fab-ring 2s ease-out infinite;
-    }
-    .agent-fab__badge-count {
-        position: relative; z-index: 1;
-        min-width: 22px; height: 22px;
-        display: flex; align-items: center; justify-content: center;
-        background: linear-gradient(135deg, #EF4444, #DC2626);
-        color: #fff; font-size: 10px; font-weight: 800; letter-spacing: .03em;
-        border-radius: 999px; padding: 0 5px;
-        border: 2.5px solid #fff;
-        box-shadow: 0 3px 10px rgba(220,38,38,.55), inset 0 1px 0 rgba(255,255,255,.25);
-    }
-
     /* ── Online dot ─────────────────────────────────── */
     .agent-fab__online {
         position: absolute; top: 1px; right: 1px;
@@ -1702,12 +1674,6 @@ document.addEventListener('DOMContentLoaded', function () {
         box-shadow: 0 0 0 2px rgba(34,197,94,.25);
     }
 
-    /* ── Animations ─────────────────────────────────── */
-    @keyframes fab-ring {
-        0%   { transform: scale(.7); opacity: .6; }
-        60%  { transform: scale(1.8); opacity: 0;  }
-        100% { transform: scale(1.8); opacity: 0;  }
-    }
     </style>
 </div>
 
@@ -1748,22 +1714,11 @@ function taskAgent() {
         toggleOpen() {
             this.open = !this.open;
             if (this.open && this.messages.length === 0) {
-                if (this.badgeCount > 0) {
-                    // Auto-show urgent brief when there are items needing attention
-                    this.pushAgent({
-                        reply: @json($agentWelcome),
-                        type:  'text',
-                        quick_replies: ['my tasks', 'stats', 'overdue', 'help'],
-                    });
-                    this.input = 'today';
-                    this.$nextTick(() => this.send());
-                } else {
-                    this.pushAgent({
-                        reply: @json($agentWelcome),
-                        type:  'text',
-                        quick_replies: ['my tasks', 'stats', 'overdue', 'help'],
-                    });
-                }
+                this.pushAgent({
+                    reply: @json($agentWelcome),
+                    type:  'text',
+                    quick_replies: ['today', 'my tasks', 'stats', 'overdue'],
+                });
             }
             if (this.open) {
                 this.badgeCount = 0;
@@ -1777,17 +1732,20 @@ function taskAgent() {
             this.messages = [];
             this.input    = '';
             this.thinking = false;
-            this.pushAgent({
-                reply: @json($agentWelcome),
-                type:  'text',
-                quick_replies: ['my tasks', 'stats', 'overdue', 'help'],
-            });
+            // Re-add just the welcome greeting so that re-opening the chat
+            // doesn't trigger the auto "today" brief again (which fires when messages === [])
+            this.pushAgent({ reply: @json($agentWelcome), type: 'text', quick_replies: ['my tasks', 'stats', 'overdue', 'help'] });
             this.$nextTick(() => this.scrollBottom());
         },
 
         async send() {
             const text = this.input.trim();
             if (!text || this.thinking) return;
+            if (/^clear( chat)?$/i.test(text)) {
+                this.input = '';
+                this.clearChat();
+                return;
+            }
             this.input = '';
             this.messages.push({ from: 'user', text });
             this.thinking = true;
