@@ -219,6 +219,19 @@ class CustomerController extends Controller
         $peakCount      = $monthlyCreated->max();
         $peakLabel      = $peakMonth ? Carbon::createFromFormat('Y-m', $peakMonth)->format('F Y') : null;
 
+        // ── Ad Budget ────────────────────────────────────────────────────────
+        $adBudgetTasks = $allTasks
+            ->filter(fn($t) => !empty($t->social_budget))
+            ->values();
+
+        $adBudgetPosted  = $adBudgetTasks->filter(fn($t) => !empty($t->social_posted_at))->values();
+        $adBudgetPending = $adBudgetTasks->filter(fn($t) => empty($t->social_posted_at))->values();
+
+        $adBudgetNumericTotal = $adBudgetTasks
+            ->filter(fn($t) => is_numeric(trim($t->social_budget)))
+            ->sum(fn($t) => (float) trim($t->social_budget));
+        $adBudgetHasNumeric = $adBudgetTasks->contains(fn($t) => is_numeric(trim($t->social_budget)));
+
         // ── On-time deliveries ───────────────────────────────────────────────
         $deliveredOnTime = $deliveryLogs->filter(function ($l) use ($allTasks) {
             $task = $allTasks->find($l->task_id);
@@ -236,7 +249,9 @@ class CustomerController extends Controller
             'workload',
             'firstTaskAt', 'lastTaskAt', 'workDays',
             'peakLabel', 'peakCount',
-            'deliveredOnTime'
+            'deliveredOnTime',
+            'adBudgetTasks', 'adBudgetPosted', 'adBudgetPending',
+            'adBudgetNumericTotal', 'adBudgetHasNumeric'
         ));
     }
 

@@ -568,6 +568,93 @@ canvas { max-width:100% !important; }
     </div>
     @endif
 
+    {{-- ── Ad Budget ────────────────────────────────────────────────────────── --}}
+    @if($adBudgetTasks->count() > 0)
+    <div class="report-card" style="margin-bottom:24px;">
+        <div style="font-weight:700;font-size:15px;color:#111827;margin-bottom:4px;">
+            <i class="fas fa-wallet" style="color:#d97706;margin-right:6px;"></i>Ad Budget
+        </div>
+        <div style="color:#9ca3af;font-size:12px;margin-bottom:20px;">Social media advertising budget across tasks for this customer</div>
+
+        {{-- Stats row --}}
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px;">
+            <div style="background:#fffbeb;border-radius:10px;padding:14px;text-align:center;">
+                <div style="font-size:1.8rem;font-weight:700;color:#d97706;line-height:1;">{{ $adBudgetTasks->count() }}</div>
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px;">Total Campaigns</div>
+            </div>
+            <div style="background:#f0fdf4;border-radius:10px;padding:14px;text-align:center;">
+                <div style="font-size:1.8rem;font-weight:700;color:#16a34a;line-height:1;">{{ $adBudgetPosted->count() }}</div>
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px;">Posted</div>
+            </div>
+            <div style="background:#fff7ed;border-radius:10px;padding:14px;text-align:center;">
+                <div style="font-size:1.8rem;font-weight:700;color:#ea580c;line-height:1;">{{ $adBudgetPending->count() }}</div>
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px;">Pending</div>
+            </div>
+            @if($adBudgetHasNumeric)
+            <div style="background:#eff6ff;border-radius:10px;padding:14px;text-align:center;">
+                <div style="font-size:1.8rem;font-weight:700;color:#2563eb;line-height:1;">{{ number_format($adBudgetNumericTotal) }}</div>
+                <div style="font-size:11px;color:#9ca3af;margin-top:4px;">Total Budget (BHD)</div>
+            </div>
+            @endif
+        </div>
+
+        {{-- Task table --}}
+        <div style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead>
+                    <tr style="background:#f9fafb;">
+                        <th style="text-align:left;padding:8px 10px;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #f3f4f6;">Task</th>
+                        <th style="text-align:left;padding:8px 10px;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #f3f4f6;">Platforms</th>
+                        <th style="text-align:left;padding:8px 10px;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #f3f4f6;">Budget</th>
+                        <th style="text-align:left;padding:8px 10px;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #f3f4f6;">Status</th>
+                        <th style="text-align:left;padding:8px 10px;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #f3f4f6;">Posted</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($adBudgetTasks as $bt)
+                    @php
+                        $platforms = is_array($bt->social_platforms) ? $bt->social_platforms : (json_decode($bt->social_platforms, true) ?? []);
+                        $isPosted  = !empty($bt->social_posted_at);
+                    @endphp
+                    <tr style="border-bottom:1px solid #f9fafb;">
+                        <td style="padding:9px 10px;color:#111827;font-weight:500;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                            <a href="{{ route('admin.tasks.show', $bt->id) }}" style="color:#4f46e5;text-decoration:none;" target="_blank">{{ $bt->title }}</a>
+                        </td>
+                        <td style="padding:9px 10px;">
+                            @forelse($platforms as $p)
+                            <span style="display:inline-block;background:#f3f4f6;color:#374151;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:500;margin-right:3px;">{{ ucfirst($p) }}</span>
+                            @empty
+                            <span style="color:#d1d5db;">—</span>
+                            @endforelse
+                        </td>
+                        <td style="padding:9px 10px;font-weight:600;color:#d97706;">
+                            @if(is_numeric(trim($bt->social_budget)))
+                                {{ number_format((float)$bt->social_budget) }} BHD
+                            @else
+                                <span title="{{ $bt->social_budget }}" style="color:#6b7280;font-size:11px;font-weight:400;max-width:140px;display:inline-block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $bt->social_budget }}</span>
+                            @endif
+                        </td>
+                        <td style="padding:9px 10px;">
+                            @php $sc = match($bt->status) { 'delivered','approved'=>['bg'=>'#dcfce7','color'=>'#15803d','label'=>'Delivered'], 'in_progress'=>['bg'=>'#ede9fe','color'=>'#6d28d9','label'=>'In Progress'], 'submitted'=>['bg'=>'#fff3cd','color'=>'#92400e','label'=>'Submitted'], default=>['bg'=>'#f3f4f6','color'=>'#6b7280','label'=>ucfirst(str_replace('_',' ',$bt->status))] }; @endphp
+                            <span style="background:{{ $sc['bg'] }};color:{{ $sc['color'] }};border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600;">{{ $sc['label'] }}</span>
+                        </td>
+                        <td style="padding:9px 10px;">
+                            @if($isPosted)
+                                <span style="color:#16a34a;font-size:11px;font-weight:600;">
+                                    <i class="fas fa-circle-check" style="margin-right:3px;"></i>{{ \Carbon\Carbon::parse($bt->social_posted_at)->format(config('app.date_format','M d, Y')) }}
+                                </span>
+                            @else
+                                <span style="color:#9ca3af;font-size:11px;"><i class="fas fa-clock" style="margin-right:3px;"></i>Pending</span>
+                            @endif
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
+
     {{-- ── Smart Insights ────────────────────────────────────────────────────── --}}
     <div class="report-card" style="margin-bottom:24px;background:linear-gradient(135deg,#faf5ff,#eff6ff);">
         <div style="font-weight:700;font-size:15px;color:#111827;margin-bottom:16px;">
