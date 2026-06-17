@@ -747,6 +747,29 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </div>
                         </div>
 
+                        {{-- Support Team --}}
+                        <div style="padding-top:18px;border-top:1px solid #F3F4F6;margin-top:6px;">
+                            <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">
+                                <div style="width:28px;height:28px;border-radius:8px;background:#FFF7ED;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
+                                    <i class="fas fa-headset" style="font-size:11px;color:#F97316;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Support Team Recipient</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Who receives support messages sent from the chat agent widget</p>
+                                </div>
+                            </div>
+                            <select name="support_user_id"
+                                    style="width:100%;padding:8px 12px;border:1px solid #E5E7EB;border-radius:8px;font-size:13px;color:#374151;background:#fff;outline:none;">
+                                <option value="">— Automatically pick first admin/manager —</option>
+                                @foreach($supportUsers as $su)
+                                    <option value="{{ $su->id }}"
+                                        {{ ($settings['support_user_id'] ?? '') == $su->id ? 'selected' : '' }}>
+                                        {{ $su->name }} ({{ ucfirst($su->role) }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
                     </div>
                     <div class="scard-footer">
                         <button type="submit" class="btn-save">

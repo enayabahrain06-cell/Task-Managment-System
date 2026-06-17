@@ -1254,9 +1254,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="text-xs" style="color:rgba(255,255,255,.75);">{{ $appSettings['agent_subtitle'] ?? 'Ask me anything about your tasks' }}</div>
             </div>
             <div class="flex items-center gap-2 ml-auto flex-shrink-0">
-                <button @click="clearChat()" title="Clear chat" class="text-white/60 hover:text-white transition-colors" style="background:none;border:none;cursor:pointer;padding:2px 4px;">
-                    <i class="fas fa-broom text-xs"></i>
-                </button>
                 <button @click="supportMode = !supportMode; supportSent = false; supportBody = ''; supportFiles = []; supportSending = false" title="Message Support"
                         class="transition-colors" style="background:none;border:none;cursor:pointer;padding:2px 4px;"
                         :style="supportMode ? 'color:#fff;' : 'color:rgba(255,255,255,.6);'">
@@ -1600,6 +1597,13 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
         </div>
 
+        {{-- Clear conversation link --}}
+        <div x-show="!supportMode && messages.length > 0" class="flex justify-center py-1 border-t border-gray-50 bg-white">
+            <button @click="clearChat()" class="text-xs text-gray-400 hover:text-red-400 transition-colors px-3 py-0.5 rounded-full hover:bg-red-50">
+                Clear conversation
+            </button>
+        </div>
+
         {{-- Input --}}
         <div class="border-t border-gray-100 bg-white px-3 py-2.5 flex items-center gap-2" x-show="!supportMode">
             <input x-ref="inputBox" x-model="input" type="text"
@@ -1616,19 +1620,61 @@ document.addEventListener('DOMContentLoaded', function () {
     </div>
 
     {{-- FAB toggle button --}}
-    <button @click="toggleOpen()"
-            class="w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 relative"
-            style="background:{{ $agentColor }};">
-        <i class="fas text-xl transition-transform duration-200" :class="open ? 'fa-times' : 'fa-{{ $agentIcon }}'"></i>
-        {{-- Urgent badge (red with count + tooltip) --}}
-        <span x-show="!open && badgeCount > 0"
-              class="absolute -top-1.5 -right-1.5 min-w-5 h-5 bg-red-500 rounded-full border-2 border-white text-white text-xs font-bold flex items-center justify-center px-1 cursor-pointer"
-              :title="badgeTooltip"
-              x-text="badgeCount > 9 ? '9+' : badgeCount"></span>
-        {{-- Online dot when no urgent items --}}
-        <span x-show="!open && badgeCount === 0"
-              class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white"></span>
+    <button @click="toggleOpen()" class="agent-fab" :class="open ? 'agent-fab--open' : ''" :title="!open && badgeTooltip ? badgeTooltip : ''">
+
+        {{-- Glossy shine layer --}}
+        <span class="agent-fab__shine"></span>
+
+        {{-- Icon --}}
+        <i class="fas agent-fab__icon" :class="open ? 'fa-times' : 'fa-{{ $agentIcon }}'"></i>
+
+        {{-- Online dot --}}
+        <span x-show="!open" class="agent-fab__online"></span>
     </button>
+
+    <style>
+    /* ── FAB base ───────────────────────────────────── */
+    .agent-fab {
+        position: relative;
+        width: 58px; height: 58px;
+        border-radius: 50%;
+        border: none; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        background: linear-gradient(145deg, {{ $agentColor }}, color-mix(in srgb, {{ $agentColor }} 80%, #000));
+        box-shadow: 0 4px 15px {{ $agentColor }}55, 0 1px 3px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.15);
+        transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease;
+        outline: none;
+    }
+    .agent-fab:hover {
+        transform: scale(1.1) translateY(-2px);
+        box-shadow: 0 8px 28px {{ $agentColor }}66, 0 2px 6px rgba(0,0,0,.15), inset 0 1px 0 rgba(255,255,255,.2);
+    }
+    .agent-fab:active { transform: scale(.95); }
+    .agent-fab--open  { transform: scale(1.05); }
+
+    /* Shine */
+    .agent-fab__shine {
+        position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+        background: linear-gradient(145deg, rgba(255,255,255,.22) 0%, transparent 55%);
+    }
+
+    /* Icon */
+    .agent-fab__icon {
+        font-size: 1.3rem; color: #fff; position: relative; z-index: 1;
+        transition: transform .35s cubic-bezier(.34,1.56,.64,1), opacity .2s;
+    }
+    .agent-fab--open .agent-fab__icon { transform: rotate(90deg); }
+
+    /* ── Online dot ─────────────────────────────────── */
+    .agent-fab__online {
+        position: absolute; top: 1px; right: 1px;
+        width: 13px; height: 13px; border-radius: 50%;
+        background: #22C55E;
+        border: 2.5px solid #fff;
+        box-shadow: 0 0 0 2px rgba(34,197,94,.25);
+    }
+
+    </style>
 </div>
 
 <script>
@@ -1697,17 +1743,17 @@ function taskAgent() {
             this.messages = [];
             this.input    = '';
             this.thinking = false;
-            this.pushAgent({
-                reply: @json($agentWelcome),
-                type:  'text',
-                quick_replies: ['my tasks', 'stats', 'overdue', 'help'],
-            });
             this.$nextTick(() => this.scrollBottom());
         },
 
         async send() {
             const text = this.input.trim();
             if (!text || this.thinking) return;
+            if (/^clear( chat)?$/i.test(text)) {
+                this.input = '';
+                this.clearChat();
+                return;
+            }
             this.input = '';
             this.messages.push({ from: 'user', text });
             this.thinking = true;
