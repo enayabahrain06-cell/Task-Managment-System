@@ -17,8 +17,6 @@
 .mention-item:hover { background:#EEF2FF; }
 .msg-actions { opacity:0; transition:opacity 0.15s; pointer-events:none; }
 .msg-row:hover .msg-actions { opacity:1; pointer-events:auto; }
-.msg-edit-area { background:transparent; border:none; outline:none; resize:none; width:100%; font-size:.875rem; line-height:1.5; padding:0; }
-.msg-edit-area:focus { outline:2px solid rgba(255,255,255,0.5); border-radius:6px; padding:2px 4px; }
 .modal-backdrop { position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px; }
 
 @keyframes rec-pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
@@ -26,40 +24,6 @@
 
 .vp-bar { width:3px; border-radius:3px; transition:background 0.1s; cursor:pointer; }
 .vp-wrap { display:flex; align-items:center; gap:8px; min-width:220px; max-width:280px; }
-
-/* ── Online indicator ── */
-.online-dot  { position:absolute; bottom:0; right:0; width:10px; height:10px; border-radius:50%; border:2px solid #fff; }
-.online-dot.online  { background:#10B981; }
-.online-dot.away    { background:#F59E0B; }
-.online-dot.busy    { background:#EF4444; }
-.online-dot.offline { background:#9CA3AF; }
-
-/* ── Read receipts ── */
-.read-ticks { font-size:10px; opacity:0.7; letter-spacing:-1px; }
-.read-ticks.read { color:#93C5FD; opacity:1; }
-
-/* ── Reaction pills ── */
-.reaction-pill { display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:20px; font-size:12px; border:1.5px solid #E5E7EB; background:#fff; cursor:pointer; transition:all .12s; user-select:none; }
-.reaction-pill:hover, .reaction-pill.mine { border-color:#A5B4FC; background:#EEF2FF; }
-.reaction-picker-popup { position:absolute; bottom:calc(100% + 6px); background:#fff; border:1px solid #E5E7EB; border-radius:14px; padding:6px 8px; box-shadow:0 8px 24px rgba(0,0,0,.12); display:flex; gap:4px; z-index:50; white-space:nowrap; }
-.reaction-picker-popup button { width:30px; height:30px; border-radius:8px; border:none; background:transparent; cursor:pointer; font-size:16px; display:flex;align-items:center;justify-content:center;transition:background .1s; }
-.reaction-picker-popup button:hover { background:#F3F4F6; transform:scale(1.25); }
-
-/* ── Lightbox ── */
-.lightbox-overlay { position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:300; display:flex; align-items:center; justify-content:center; padding:16px; cursor:zoom-out; }
-.lightbox-overlay img { max-width:100%; max-height:90vh; object-fit:contain; border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,.5); cursor:default; }
-
-/* ── Scroll-to-bottom ── */
-.scroll-to-bottom-btn { position:absolute; bottom:80px; right:16px; z-index:40; width:36px; height:36px; border-radius:50%; background:#4F46E5; color:#fff; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(79,70,229,.4); transition:all .2s; }
-.scroll-to-bottom-btn:hover { background:#4338CA; transform:translateY(-2px); }
-.scroll-to-bottom-btn .new-badge { position:absolute; top:-6px; right:-4px; background:#EF4444; color:#fff; font-size:9px; font-weight:700; border-radius:10px; padding:1px 5px; border:2px solid #fff; }
-
-/* ── Message search ── */
-.msg-search-bar { border-top:1px solid #F3F4F6; }
-
-/* ── Contact last message ── */
-.contact-last-msg { font-size:11px; color:#9CA3AF; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:140px; }
-.contact-time { font-size:10px; color:#D1D5DB; flex-shrink:0; }
 
 /* ── Mobile responsiveness ── */
 @media (max-width: 768px) {
@@ -99,8 +63,6 @@
 $teamMembersJson = $teamMembers->map(fn($m) => ['id'=>$m->id,'name'=>$m->name,'role'=>ucfirst($m->role)])->values()->toJson();
 $groupsJson      = $groups->toJson();
 $colors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
-$lastMsgsJson = json_encode($lastMsgs);
-$onlineMapJson = json_encode($onlineMap);
 @endphp
 
 {{-- ══ New Direct Message Modal ══ --}}
@@ -246,37 +208,19 @@ $onlineMapJson = json_encode($onlineMap);
             </div>
             <div class="px-2 space-y-0.5">
                 @forelse($teamMembers as $member)
-                @php
-                    $memberColor  = $colors[$loop->index % count($colors)];
-                    $memberOnline = $onlineMap[$member->id] ?? false;
-                    $memberLast   = $lastMsgs[$member->id] ?? null;
-                    $dotClass     = $memberOnline ? 'online' : 'offline';
-                @endphp
                 <button data-user-id="{{ $member->id }}"
-                        @click="selectUser({{ $member->id }},'{{ addslashes($member->name) }}','{{ $memberColor }}',{{ $memberOnline ? 'true' : 'false' }})"
+                        @click="selectUser({{ $member->id }},'{{ addslashes($member->name) }}','{{ $colors[$loop->index % count($colors)] }}')"
                         :class="activeUserId==={{ $member->id }} && !isGroup ? 'contact-active' : 'contact-item'"
                         class="w-full flex items-center gap-2.5 p-2 rounded-lg text-left transition"
                         x-show="search===''||'{{ strtolower($member->name) }}'.includes(search.toLowerCase())">
-                    <div class="relative flex-shrink-0">
-                        <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                             style="background:{{ $memberColor }}">{{ strtoupper(substr($member->name,0,1)) }}</div>
-                        <span class="online-dot {{ $dotClass }}"></span>
-                    </div>
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                         style="background:{{ $colors[$loop->index % count($colors)] }}">{{ strtoupper(substr($member->name,0,1)) }}</div>
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-center justify-between gap-1">
-                            <p class="text-sm font-medium text-gray-900 truncate">{{ $member->name }}</p>
-                            @if($memberLast)
-                            <span class="contact-time">{{ $memberLast['time'] }}</span>
-                            @endif
-                        </div>
-                        @if($memberLast)
-                        <p class="contact-last-msg">{{ $memberLast['mine'] ? 'You: ' : '' }}{{ $memberLast['body'] }}</p>
-                        @else
-                        <p class="text-xs text-gray-400">{{ ucfirst($member->role) }}</p>
-                        @endif
+                        <p class="text-sm font-medium text-gray-900 truncate">{{ $member->name }}</p>
+                        <p class="text-xs text-gray-400 truncate">{{ ucfirst($member->role) }}</p>
                     </div>
                     <template x-if="unreadCounts.direct && unreadCounts.direct[{{ $member->id }}]>0">
-                        <span class="text-xs font-bold bg-indigo-600 text-white rounded-full px-1.5 py-0.5 flex-shrink-0 ml-1"
+                        <span class="text-xs font-bold bg-indigo-600 text-white rounded-full px-1.5 py-0.5 flex-shrink-0"
                               x-text="unreadCounts.direct[{{ $member->id }}]"></span>
                     </template>
                 </button>
@@ -328,18 +272,9 @@ $onlineMapJson = json_encode($onlineMap);
     <div class="msg-chat-window lg:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col overflow-hidden">
 
         <template x-if="activeUserId===null && !isGroup">
-            <div class="flex flex-col items-center justify-center h-full gap-4 px-6 text-center">
-                <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center shadow-inner">
-                    <i class="fa fa-comments text-3xl text-indigo-400"></i>
-                </div>
-                <div>
-                    <p class="text-base font-semibold text-gray-700">Your messages</p>
-                    <p class="text-sm text-gray-400 mt-1">Pick a conversation from the left, or start a new one.</p>
-                </div>
-                <button @click="$dispatch('open-new-msg')"
-                        class="mt-1 flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition shadow-sm">
-                    <i class="fa fa-edit text-xs"></i> New Message
-                </button>
+            <div class="flex flex-col items-center justify-center h-full text-gray-400 gap-3">
+                <i class="fa fa-comments text-5xl text-gray-200"></i>
+                <p class="text-sm">Select a conversation to start messaging</p>
             </div>
         </template>
 
@@ -364,73 +299,30 @@ $onlineMapJson = json_encode($onlineMap);
                 </div>
 
                 {{-- Header --}}
-                <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="relative flex-shrink-0">
-                            <template x-if="!isGroup">
-                                <div class="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm" :style="'background:'+activeUserColor">
-                                    <span x-text="activeUserName.charAt(0).toUpperCase()"></span>
-                                </div>
-                            </template>
-                            <template x-if="isGroup">
-                                <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm" :style="'background:'+activeUserColor">
-                                    <i class="fa fa-users text-xs"></i>
-                                </div>
-                            </template>
-                            <template x-if="!isGroup">
-                                <span class="online-dot" :class="activeUserOnline ? 'online' : 'offline'"></span>
-                            </template>
-                        </div>
-                        <div class="min-w-0">
-                            <p class="text-sm font-semibold text-gray-900 truncate" x-text="isGroup ? activeGroupName : activeUserName"></p>
-                            <p class="text-xs mt-0.5"
-                               :class="isGroup ? 'text-gray-400' : (activeUserOnline ? 'text-emerald-500' : 'text-gray-400')"
-                               x-text="isGroup ? (groupMembers.length + ' members') : (activeUserOnline ? 'Online' : 'Offline')"></p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-1 flex-shrink-0">
-                        <button @click="msgSearch=msgSearch===null?'':null; $nextTick(()=>$refs.msgSearchInput?.focus())"
-                                :class="msgSearch!==null?'bg-indigo-50 text-indigo-500':'text-gray-400 hover:text-indigo-500'"
-                                class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition" title="Search messages">
-                            <i class="fa fa-search text-xs"></i>
-                        </button>
-                        <button @click="showClearConfirm=true"
-                                class="w-8 h-8 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 flex items-center justify-center transition" title="Clear chat">
-                            <i class="fa fa-trash-can text-xs"></i>
-                        </button>
-                        <template x-if="isGroup">
-                            <button @click="showLeaveConfirm=true"
-                                    class="w-8 h-8 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 flex items-center justify-center transition" title="Leave group">
-                                <i class="fa fa-sign-out-alt text-xs"></i>
-                            </button>
+                <div class="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+                    <div class="flex items-center gap-3">
+                        <template x-if="!isGroup">
+                            <div class="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm" :style="'background:'+activeUserColor">
+                                <span x-text="activeUserName.charAt(0).toUpperCase()"></span>
+                            </div>
                         </template>
+                        <template x-if="isGroup">
+                            <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm" :style="'background:'+activeUserColor">
+                                <i class="fa fa-users text-xs"></i>
+                            </div>
+                        </template>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900" x-text="isGroup ? activeGroupName : activeUserName"></p>
+                            <p class="text-xs text-gray-400" x-text="isGroup ? (groupMembers.length + ' members') : '● Online'" :class="isGroup ? '' : 'text-emerald-500'"></p>
+                        </div>
                     </div>
-                </div>
-
-                {{-- Message search bar --}}
-                <template x-if="msgSearch !== null">
-                    <div class="msg-search-bar px-4 py-2 flex items-center gap-2 bg-gray-50 flex-shrink-0">
-                        <i class="fa fa-search text-gray-400 text-xs flex-shrink-0"></i>
-                        <input type="text" x-model="msgSearch" x-ref="msgSearchInput"
-                               placeholder="Search messages…"
-                               class="flex-1 bg-transparent text-sm text-gray-700 focus:outline-none placeholder-gray-400">
-                        <span class="text-xs text-gray-400" x-text="msgSearchResults + ' result' + (msgSearchResults!==1?'s':'')"></span>
-                        <button @click="msgSearch=null" class="text-gray-400 hover:text-gray-600 ml-1"><i class="fa fa-times text-xs"></i></button>
-                    </div>
-                </template>
-
-                {{-- Clear chat confirmation --}}
-                <template x-if="showClearConfirm">
-                    <div class="px-4 py-2.5 bg-red-50 border-b border-red-100 flex items-center gap-3 flex-shrink-0">
-                        <i class="fa fa-triangle-exclamation text-red-400 flex-shrink-0"></i>
-                        <p class="text-xs text-red-700 flex-1">Clear this chat from your side only? The other party keeps their history.</p>
-                        <button @click="clearChat()" :disabled="clearingChat"
-                                class="text-xs font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 px-3 py-1 rounded-lg transition">
-                            <span x-text="clearingChat ? 'Clearing…' : 'Yes, clear'"></span>
+                    <template x-if="isGroup">
+                        <button @click="showLeaveConfirm=true"
+                                class="text-xs text-red-400 hover:text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition flex items-center gap-1.5">
+                            <i class="fa fa-sign-out-alt"></i> Leave
                         </button>
-                        <button @click="showClearConfirm=false" class="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
-                    </div>
-                </template>
+                    </template>
+                </div>
 
                 {{-- Leave confirmation --}}
                 <template x-if="showLeaveConfirm">
@@ -444,35 +336,20 @@ $onlineMapJson = json_encode($onlineMap);
                 </template>
 
                 {{-- Messages list --}}
-                <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-1" @scroll="onChatScroll()">
+                <div id="chat-messages" class="flex-1 overflow-y-auto p-5 space-y-1">
                     <template x-if="loading">
                         <div class="flex justify-center py-8"><i class="fa fa-spinner fa-spin text-indigo-400 text-xl"></i></div>
                     </template>
-                    <template x-if="!loading && filteredMessages.length===0 && messages.length===0">
+                    <template x-if="!loading && messages.length===0">
                         <div class="flex flex-col items-center justify-center h-32 text-gray-400 gap-2">
                             <i class="fa fa-comment-dots text-4xl text-gray-200"></i>
-                            <p class="text-sm" x-text="isGroup ? 'No messages yet. Start the conversation!' : 'No messages yet. Say hello! 👋'"></p>
-                        </div>
-                    </template>
-                    <template x-if="!loading && msgSearch && filteredMessages.length===0 && messages.length>0">
-                        <div class="flex flex-col items-center justify-center h-20 text-gray-400 gap-1">
-                            <p class="text-sm">No messages match "<span x-text="msgSearch" class="font-medium"></span>"</p>
+                            <p class="text-sm" x-text="isGroup ? 'No messages yet. Start the conversation!' : 'No messages yet. Say hello!'"></p>
                         </div>
                     </template>
 
-                {{-- Scroll-to-bottom button --}}
-                <button x-show="showScrollBtn" x-transition.opacity
-                        @click="scrollToBottom()"
-                        class="scroll-to-bottom-btn">
-                    <i class="fa fa-chevron-down text-xs"></i>
-                    <template x-if="unreadNewCount > 0">
-                        <span class="new-badge" x-text="unreadNewCount"></span>
-                    </template>
-                </button>
-
-                    <template x-for="(msg,i) in filteredMessages" :key="msg.id">
+                    <template x-for="(msg,i) in messages" :key="msg.id">
                         <div>
-                            <template x-if="i===0||filteredMessages[i-1].date!==msg.date">
+                            <template x-if="i===0||messages[i-1].date!==msg.date">
                                 <p class="text-center text-xs text-gray-400 font-medium py-3" x-text="formatDate(msg.date)"></p>
                             </template>
 
@@ -483,41 +360,11 @@ $onlineMapJson = json_encode($onlineMap);
                                 </div>
 
                                 <div class="flex items-end gap-1" :class="msg.mine?'flex-row-reverse':''">
-                                    <div class="msg-actions flex flex-col gap-1 mb-1" style="position:relative;">
-                                        <template x-if="!msg.is_deleted">
-                                            <button @click.stop="reactionPickerMsgId = reactionPickerMsgId===msg.id ? null : msg.id" title="React"
-                                                    class="w-6 h-6 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center hover:bg-yellow-50">
-                                                <span style="font-size:10px;">😊</span>
-                                            </button>
-                                        </template>
-                                        <template x-if="!msg.is_deleted">
-                                            <button @click="setReply(msg)" title="Reply"
-                                                    class="w-6 h-6 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center hover:bg-indigo-50">
-                                                <i class="fa fa-reply text-gray-400 hover:text-indigo-500" style="font-size:9px;"></i>
-                                            </button>
-                                        </template>
-                                        <template x-if="!msg.is_deleted && msg.mine && msg.body && !msg.file">
-                                            <button @click="startEdit(msg)" title="Edit"
-                                                    class="w-6 h-6 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center hover:bg-indigo-50">
-                                                <i class="fa fa-pen text-gray-400 hover:text-indigo-500" style="font-size:9px;"></i>
-                                            </button>
-                                        </template>
-                                        <template x-if="!msg.is_deleted && msg.mine">
-                                            <button @click="deleteMsg(msg.id)" title="Delete"
-                                                    class="w-6 h-6 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center hover:bg-red-50">
-                                                <i class="fa fa-trash text-gray-400 hover:text-red-500" style="font-size:9px;"></i>
-                                            </button>
-                                        </template>
-                                        {{-- Reaction picker popup --}}
-                                        <template x-if="reactionPickerMsgId===msg.id">
-                                            <div class="reaction-picker-popup" :style="msg.mine ? 'right:100%;left:auto;' : 'left:100%;'"
-                                                 @click.outside="reactionPickerMsgId=null">
-                                                <template x-for="em in ['❤️','👍','😂','😮','😢','🔥']" :key="em">
-                                                    <button @click.stop="reactTo(msg.id, em)" x-text="em"
-                                                            :style="msg.reactions&&msg.reactions.find(r=>r.emoji===em&&r.mine)?'background:#EEF2FF;':''"></button>
-                                                </template>
-                                            </div>
-                                        </template>
+                                    <div class="msg-actions flex flex-col gap-1 mb-1">
+                                        <button @click="setReply(msg)" title="Reply"
+                                                class="w-6 h-6 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center hover:bg-indigo-50">
+                                            <i class="fa fa-reply text-gray-400 hover:text-indigo-500" style="font-size:9px;"></i>
+                                        </button>
                                     </div>
 
                                     <div class="flex flex-col max-w-xs" :class="msg.mine?'items-end':'items-start'">
@@ -533,48 +380,11 @@ $onlineMapJson = json_encode($onlineMap);
                                             </div>
                                         </template>
 
-                                        {{-- Deleted tombstone bubble --}}
-                                        <template x-if="msg.is_deleted">
-                                            <div class="px-3 py-2 text-sm rounded-2xl border flex items-center gap-2"
-                                                 :class="msg.mine
-                                                    ? 'bg-indigo-50 border-indigo-200 text-indigo-300'
-                                                    : 'bg-gray-100 border-gray-200 text-gray-400'"
-                                                 :id="'msg-'+msg.id">
-                                                <i class="fa fa-ban text-xs flex-shrink-0"></i>
-                                                <span class="italic text-xs"
-                                                      x-text="msg.mine ? 'You deleted this message' : 'This message was deleted'"></span>
-                                            </div>
-                                        </template>
-
-                                        {{-- Normal bubble --}}
-                                        <template x-if="!msg.is_deleted">
                                         <div :class="msg.mine?'msg-bubble-mine':'msg-bubble-their'"
                                              class="px-4 py-2.5 text-sm" :id="'msg-'+msg.id">
 
-                                            <template x-if="msg.body && editingMsgId !== msg.id">
-                                                <div>
-                                                    <p x-html="highlightMentions(msg.body, msg.mine)" style="white-space:pre-wrap;word-break:break-word;"></p>
-                                                    <template x-if="msg.is_edited">
-                                                        <span class="text-xs opacity-50 italic" style="font-size:10px;"> · edited</span>
-                                                    </template>
-                                                </div>
-                                            </template>
-                                            <template x-if="msg.body && editingMsgId === msg.id">
-                                                <div>
-                                                    <textarea :id="'edit-'+msg.id"
-                                                              x-model="editingBody"
-                                                              @input="_autoResize($event.target)"
-                                                              @keydown.enter.prevent="!$event.shiftKey ? saveEdit(msg.id) : editingBody += '\n'; $nextTick(()=>_autoResize($event.target))"
-                                                              @keydown.escape="cancelEdit()"
-                                                              class="msg-edit-area text-white"
-                                                              rows="1"></textarea>
-                                                    <div class="flex gap-2 mt-1.5">
-                                                        <button @click="saveEdit(msg.id)"
-                                                                class="text-xs bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded-md font-medium">Save</button>
-                                                        <button @click="cancelEdit()"
-                                                                class="text-xs opacity-60 hover:opacity-100 px-2 py-0.5 rounded-md">Cancel</button>
-                                                    </div>
-                                                </div>
+                                            <template x-if="msg.body">
+                                                <p x-html="highlightMentions(msg.body, msg.mine)"></p>
                                             </template>
 
                                             <template x-if="msg.file && msg.file.audio">
@@ -604,10 +414,9 @@ $onlineMapJson = json_encode($onlineMap);
 
                                             <template x-if="msg.file && msg.file.image">
                                                 <div class="mt-1">
-                                                    <img :src="msg.file.url"
-                                                         @click.stop="lightboxUrl=msg.file.url"
-                                                         class="max-w-full rounded-lg cursor-zoom-in"
-                                                         style="max-height:200px;object-fit:cover;">
+                                                    <a :href="msg.file.url" target="_blank">
+                                                        <img :src="msg.file.url" class="max-w-full rounded-lg" style="max-height:200px;object-fit:cover;">
+                                                    </a>
                                                     <a :href="msg.file.url" :download="msg.file.name" class="mt-1 flex items-center gap-1 text-xs opacity-70 hover:opacity-100" :class="msg.mine?'text-indigo-200':'text-gray-500'" @click.stop>
                                                         <i class="fa fa-download"></i><span>Download</span>
                                                     </a>
@@ -625,29 +434,8 @@ $onlineMapJson = json_encode($onlineMap);
                                                 </a>
                                             </template>
                                         </div>
-                                        </template>
 
-                                        <div class="flex items-center gap-1 mt-1 px-1" :class="msg.mine ? 'justify-end' : 'justify-start'">
-                                            <span class="text-xs text-gray-400" x-text="msg.created_at"></span>
-                                            {{-- Read receipts (direct messages only) --}}
-                                            <template x-if="msg.mine && !isGroup && !msg.is_deleted">
-                                                <span class="read-ticks" :class="msg.is_read ? 'read' : ''">
-                                                    <span x-text="msg.is_read ? '✓✓' : '✓'"></span>
-                                                </span>
-                                            </template>
-                                        </div>
-                                        {{-- Reaction pills --}}
-                                        <template x-if="msg.reactions && msg.reactions.length > 0">
-                                            <div class="flex flex-wrap gap-1 mt-1 px-1" :class="msg.mine ? 'justify-end' : 'justify-start'">
-                                                <template x-for="r in msg.reactions" :key="r.emoji">
-                                                    <button @click="reactTo(msg.id, r.emoji)"
-                                                            class="reaction-pill" :class="r.mine ? 'mine' : ''">
-                                                        <span x-text="r.emoji"></span>
-                                                        <span class="text-xs font-medium text-gray-600" x-text="r.count"></span>
-                                                    </button>
-                                                </template>
-                                            </div>
-                                        </template>
+                                        <p class="text-xs text-gray-400 mt-1 px-1" x-text="msg.created_at"></p>
                                     </div>
                                 </div>
                             </div>
@@ -716,32 +504,7 @@ $onlineMapJson = json_encode($onlineMap);
                 </template>
 
                 {{-- Input --}}
-                <div class="px-4 py-3 border-t border-gray-100 flex-shrink-0" @click.outside="showEmoji=false">
-                    {{-- Emoji picker popup --}}
-                    <template x-if="showEmoji">
-                        <div class="mb-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden" style="max-height:260px;">
-                            {{-- Category tabs --}}
-                            <div class="flex border-b border-gray-100 px-2 pt-1.5 gap-0.5">
-                                <template x-for="cat in [{k:'people',icon:'😀'},{k:'nature',icon:'🌿'},{k:'food',icon:'🍕'},{k:'activity',icon:'⚽'},{k:'travel',icon:'✈️'},{k:'objects',icon:'💡'},{k:'symbols',icon:'❤️'}]" :key="cat.k">
-                                    <button @click="emojiCategory=cat.k"
-                                            :class="emojiCategory===cat.k?'border-b-2 border-indigo-500 text-indigo-600':'text-gray-400 hover:text-gray-700'"
-                                            class="px-2 pb-1 text-base transition flex-shrink-0"
-                                            x-text="cat.icon"></button>
-                                </template>
-                            </div>
-                            {{-- Emoji grid --}}
-                            <div class="p-2 overflow-y-auto" style="max-height:200px;">
-                                <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(32px,1fr));gap:2px;">
-                                    <template x-for="em in emojiList[emojiCategory]" :key="em">
-                                        <button @click="insertEmoji(em)"
-                                                class="w-8 h-8 flex items-center justify-center text-lg rounded hover:bg-gray-100 transition"
-                                                x-text="em"></button>
-                                    </template>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-
+                <div class="px-4 py-3 border-t border-gray-100 flex-shrink-0">
                     <template x-if="recording">
                         <div class="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
                             <span class="rec-dot w-3 h-3 rounded-full bg-red-500 flex-shrink-0"></span>
@@ -766,24 +529,17 @@ $onlineMapJson = json_encode($onlineMap);
                                     class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 transition text-gray-400 hover:text-red-500 flex-shrink-0">
                                 <i class="fa fa-microphone text-sm"></i>
                             </button>
-                            <textarea
+                            <input type="text"
                                    x-model="newMessage"
                                    x-ref="msgInput"
                                    placeholder="Type something… Use @ to mention"
-                                   @keydown.enter.prevent="if($event.shiftKey){newMessage+='\n';$nextTick(()=>_autoResize($event.target))}else{sendMessage();$nextTick(()=>{$event.target.style.height='auto'})}"
-                                   @keydown.escape="replyingTo=null;mentionSearch=null;showEmoji=false;"
-                                   @input="onInput($event);_autoResize($event.target)"
+                                   @keydown.enter.prevent="sendMessage()"
+                                   @keydown.escape="replyingTo=null;mentionSearch=null;"
+                                   @input="onInput($event)"
                                    @keydown.arrow-up.prevent="mentionSearch!==null?moveMention(-1):null"
                                    @keydown.arrow-down.prevent="mentionSearch!==null?moveMention(1):null"
                                    @keydown.tab.prevent="mentionSearch!==null&&mentionResults.length?insertMention(mentionResults[mentionIndex]):null"
-                                   rows="1"
-                                   style="resize:none;overflow:hidden;max-height:96px;line-height:1.5;"
-                                   class="flex-1 bg-transparent text-sm text-gray-700 focus:outline-none placeholder-gray-400 min-w-0 self-center"></textarea>
-                            <button type="button" @click.stop="showEmoji=!showEmoji" title="Emoji"
-                                    :class="showEmoji?'text-indigo-500 bg-indigo-50':'text-gray-400 hover:text-yellow-500'"
-                                    class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 transition flex-shrink-0">
-                                <span class="text-base leading-none">😊</span>
-                            </button>
+                                   class="flex-1 bg-transparent text-sm text-gray-700 focus:outline-none placeholder-gray-400 min-w-0">
                             <button type="button"
                                     :disabled="sending||(newMessage.trim()===''&&pendingFiles.length===0)"
                                     @click="sendMessage()"
@@ -797,16 +553,6 @@ $onlineMapJson = json_encode($onlineMap);
             </div>
         </template>
     </div>
-
-    {{-- ── Image Lightbox ── --}}
-    <template x-if="lightboxUrl">
-        <div class="lightbox-overlay" @click="lightboxUrl=null" @keydown.escape.window="lightboxUrl=null">
-            <button @click="lightboxUrl=null" style="position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">
-                <i class="fa fa-times"></i>
-            </button>
-            <img :src="lightboxUrl" @click.stop>
-        </div>
-    </template>
 
     {{-- ── Details Panel ── --}}
     <div class="msg-details-panel bg-white rounded-xl border border-gray-100 shadow-sm p-5 overflow-y-auto">
@@ -972,7 +718,6 @@ function voicePlayer(url, msgId) {
 }
 
 const TEAM_MEMBERS = {!! $teamMembersJson !!};
-const LAST_MSGS    = {!! $lastMsgsJson !!};
 const COLORS = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
 function colorFor(id){ return COLORS[Math.abs(id) % COLORS.length]; }
 
@@ -1047,12 +792,6 @@ function messageApp() {
         messages: [], newMessage: '', loading: false, sending: false,
         search: '', unreadCounts: {}, pollTimer: null, replyingTo: null,
         _lastMsgId: 0,
-        // Online status
-        activeUserOnline: false,
-        onlineMap: {!! $onlineMapJson !!},
-        // Edit / delete / clear
-        editingMsgId: null, editingBody: '',
-        showClearConfirm: false, clearingChat: false,
         groups: {!! $groupsJson !!},
         // File
         pendingFiles: [], dragOver: false, dragCount: 0,
@@ -1060,24 +799,8 @@ function messageApp() {
         recording: false, recorder: null, audioChunks: [], recordingTime: 0, recordingTimer: null, mediaStream: null,
         // @mention
         mentionSearch: null, mentionResults: [], mentionIndex: 0, mentionStart: -1,
-        // Emoji picker
-        showEmoji: false, emojiCategory: 'people',
-        // Reactions
-        reactionPickerMsgId: null,
-        // Lightbox
-        lightboxUrl: null,
-        // Scroll-to-bottom
-        showScrollBtn: false, unreadNewCount: 0,
-        // Message search
-        msgSearch: null,
 
         get sharedFiles() { return this.messages.filter(m => m.file).map(m => m.file).slice(-10); },
-        get filteredMessages() {
-            if (!this.msgSearch) return this.messages;
-            const q = this.msgSearch.toLowerCase();
-            return this.messages.filter(m => m.body && m.body.toLowerCase().includes(q));
-        },
-        get msgSearchResults() { return this.msgSearch ? this.filteredMessages.length : 0; },
 
         init() {
             this.fetchUnread();
@@ -1122,41 +845,8 @@ function messageApp() {
             if (window._mqtt) { attachMqtt(); }
             else { document.addEventListener('mqtt:ready', attachMqtt, { once: true }); }
 
-            // MQTT: listen for message edits / deletions pushed by the server
-            const attachMqttUpdates = () => {
-                if (!window._mqtt) return;
-                window._mqtt.onTopic('tm/user/{{ auth()->id() }}/messages/updated', (payload) => {
-                    if (!payload.message) return;
-                    const idx = this.messages.findIndex(m => m.id === payload.message.id);
-                    if (idx !== -1) this.messages[idx] = { ...this.messages[idx], ...payload.message };
-                });
-            };
-            if (window._mqtt) { attachMqttUpdates(); }
-            else { document.addEventListener('mqtt:ready', attachMqttUpdates, { once: true }); }
-
-            // MQTT: update online status when presence changes
-            const attachPresence = () => {
-                if (!window._mqtt) return;
-                window._mqtt.onTopic('tm/presence/+', (payload) => {
-                    if (!payload.user_id) return;
-                    const isOnline = payload.status === 'online';
-                    this.onlineMap = { ...this.onlineMap, [payload.user_id]: isOnline };
-                    if (!this.isGroup && this.activeUserId === payload.user_id) {
-                        this.activeUserOnline = isOnline;
-                    }
-                });
-            };
-            if (window._mqtt) { attachPresence(); }
-            else { document.addEventListener('mqtt:ready', attachPresence, { once: true }); }
-
-            const params = new URLSearchParams(window.location.search);
-            const uid = parseInt(params.get('user'));
+            const uid = parseInt(new URLSearchParams(window.location.search).get('user'));
             if (uid) this.$nextTick(() => { const btn = document.querySelector(`[data-user-id="${uid}"]`); if (btn) btn.click(); });
-            const gid = parseInt(params.get('group'));
-            if (gid) this.$nextTick(() => {
-                const grp = this.groups.find(g => g.id === gid);
-                if (grp) this.selectGroup(grp);
-            });
         },
 
         onGroupCreated(group) {
@@ -1165,17 +855,13 @@ function messageApp() {
         },
 
         /* ── Direct conversation ── */
-        async selectUser(id, name, color, isOnline) {
+        async selectUser(id, name, color) {
             this.isGroup = false; this.activeGroupId = null; this.showLeaveConfirm = false;
             this.activeUserId = id; this.activeUserName = name; this.activeUserColor = color;
-            this.activeUserOnline = isOnline ?? (this.onlineMap[id] ?? false);
-            const hadUnread = (this.unreadCounts?.direct?.[id] || 0) > 0;
             this.messages = []; this._lastMsgId = 0; this.replyingTo = null;
-            this.msgSearch = null; this.reactionPickerMsgId = null;
             this.clearFile(); this.cancelRecording();
             clearInterval(this.pollTimer);
             await this.loadConversation();
-            if (hadUnread && window.playNotifSound) window.playNotifSound();
             // 1-second incremental poll — only fetches new messages since last seen
             this.pollTimer = setInterval(() => this._pollNewDirect(), 1000);
             this.$nextTick(() => this.$refs.msgInput?.focus());
@@ -1214,12 +900,7 @@ function messageApp() {
                 this._lastMsgId = Math.max(this._lastMsgId, ...newMsgs.map(m => m.id));
                 if (this.unreadCounts.direct) { delete this.unreadCounts.direct[this.activeUserId]; this.unreadCounts = { ...this.unreadCounts }; }
                 if (hasIncoming && window.playNotifSound) window.playNotifSound();
-                if (wasAtBottom) {
-                    this.$nextTick(() => this.scrollToBottom());
-                } else if (hasIncoming) {
-                    this.showScrollBtn = true;
-                    this.unreadNewCount += newMsgs.filter(m => !m.mine).length;
-                }
+                if (wasAtBottom) this.$nextTick(() => this.scrollToBottom());
             } catch {}
         },
 
@@ -1228,12 +909,10 @@ function messageApp() {
             this.isGroup = true; this.activeUserId = null; this.showLeaveConfirm = false;
             this.activeGroupId = grp.id; this.activeGroupName = grp.name;
             this.activeUserColor = colorFor(grp.id * 3);
-            const hadUnread = (grp.unread || 0) > 0;
             this.groupMembers = []; this.messages = []; this._lastMsgId = 0; this.replyingTo = null;
             this.clearFile(); this.cancelRecording();
             clearInterval(this.pollTimer);
             await this.loadGroupConversation();
-            if (hadUnread && window.playNotifSound) window.playNotifSound();
             // 1-second incremental poll
             this.pollTimer = setInterval(() => this._pollNewGroup(), 1000);
             this.$nextTick(() => this.$refs.msgInput?.focus());
@@ -1276,12 +955,7 @@ function messageApp() {
                 const grp = this.groups.find(g => g.id === this.activeGroupId);
                 if (grp) grp.unread = 0;
                 if (hasIncoming && window.playNotifSound) window.playNotifSound();
-                if (wasAtBottom) {
-                    this.$nextTick(() => this.scrollToBottom());
-                } else if (hasIncoming) {
-                    this.showScrollBtn = true;
-                    this.unreadNewCount += newMsgs.filter(m => !m.mine).length;
-                }
+                if (wasAtBottom) this.$nextTick(() => this.scrollToBottom());
             } catch {}
         },
 
@@ -1320,10 +994,7 @@ function messageApp() {
 
                 this.newMessage = ''; this.replyingTo = null;
                 this.clearFile(); this.mentionSearch = null;
-                this.$nextTick(() => {
-                    this.scrollToBottom();
-                    if (this.$refs.msgInput) this.$refs.msgInput.style.height = 'auto';
-                });
+                this.$nextTick(() => this.scrollToBottom());
             } finally { this.sending = false; }
         },
 
@@ -1437,132 +1108,11 @@ function messageApp() {
             return escaped.replace(/@(\S+)/g, `<span class="${mine ? 'font-semibold text-yellow-300' : 'font-semibold text-indigo-600'}">@$1</span>`);
         },
 
-        /* ── Emoji picker ── */
-        emojiList: {
-            people:   ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','🥸','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','👋','🤚','🖐','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶','👐','🤲','🤝','🙏','💪','🦵','🦶','👂','🦻','👃','🫀','🫁','🧠','🦷','🦴','👀','👁','👅','👄','🫦','💋','💄','👶','🧒','👦','👧','🧑','👱','👩','🧔','👩‍🦱','👩‍🦰','👩‍🦳','👩‍🦲','👴','👵','🧓','🙍','🙎','🙅','🙆','💁','🙋','🧏','🙇','🤦','🤷','👮','🕵️','💂','🥷','👷','🫅','🤴','👸','🤵','👰','🤰','🫃','🤱','👼','🎅','🤶','🦸','🦹','🧙','🧚','🧛','🧜','🧝','🧞','🧟','🧌','💆','💇','🚶','🧍','🧎','🏃','💃','🕺','🕴','👯','🧖','🧗','🤺','🏇','⛷️','🏂','🏌️','🏄','🚣','🧘','🏊','🤽','🚴','🏋️','🤸','🤼','🤾','🤹','🧑‍🤝‍🧑','👫','👬','👭','💑','💏','👨‍👩‍👦','👪'],
-            nature:   ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐻‍❄️','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐒','🐔','🐧','🐦','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🪱','🐛','🦋','🐌','🐞','🐜','🪲','🦟','🦗','🕷','🦂','🐢','🦎','🐍','🦕','🦖','🦎','🦈','🐳','🐋','🦭','🐬','🫧','🐟','🐠','🐡','🦐','🦞','🦀','🦑','🐙','🦠','🐚','🪸','🐌','🦋','🌸','🌼','🌻','🌺','🌹','🥀','🌷','🌱','🪴','🌿','☘️','🍀','🎋','🎍','🍃','🍂','🍁','🍄','🪨','🪵','🌾','💐','🌵','🎄','🌲','🌳','🌴','🪵','🌊','🌫','🌬','🌀','🌈','⛅','☁️','⛈','🌧','🌩','🌨','🌪','🌫','🌡','☀️','🌤','⛅','🌦','🌙','🌛','🌜','🌚','🌕','🌖','🌗','🌘','🌑','🌒','🌓','🌔','🌙','🪐','⭐','🌟','💫','✨','☄️','🔥','💧','🌊'],
-            food:     ['🍏','🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🫒','🥑','🍆','🥔','🥕','🌽','🌶','🫑','🥒','🥬','🥦','🧄','🧅','🥜','🫘','🌰','🍞','🥐','🥖','🫓','🥨','🥯','🧀','🥚','🍳','🧈','🥞','🧇','🥓','🥩','🍗','🍖','🌭','🍔','🍟','🍕','🫔','🌮','🌯','🥙','🧆','🥚','🍲','🫕','🥘','🍛','🍜','🍝','🍠','🍢','🍣','🍤','🍙','🍚','🍱','🥟','🦪','🍤','🍙','🍘','🍥','🥮','🍡','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🌰','🥜','🍯','🧃','🥤','🧋','☕','🍵','🫖','🍺','🍻','🥂','🍷','🥃','🍸','🍹','🧉','🍾','🧊','🫙','🍴','🥄','🔪','🫙'],
-            activity: ['⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🏓','🏸','🏒','🥍','🏑','🎿','⛷️','🛷','🛹','🛼','🏋️','⛹️','🤺','🏇','🏊','🏄','🤽','🚴','🤸','🤼','🤾','🤹','🧗','🏌️','🏹','🥊','🥋','🎽','🛡','🎣','🤿','🎯','🎱','🎳','🪀','🎰','🪁','🎲','♟️','🎭','🎨','🖼','🎪','🎢','🎡','🎠','🎬','🎤','🎧','🎼','🎵','🎶','🥁','🪘','🎷','🎺','🎸','🪕','🎻','🪗','🎮','🕹','🎯','🎲','🎰','🧩','🪆','🪅','🎁','🎀','🎊','🎉','🎈','🎍','🎎','🎏','🎐','🧧','🎑','🎃','🎄','🎆','🎇','🧨'],
-            travel:   ['🚗','🚕','🚙','🚌','🚎','🏎','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🏍','🛵','🦽','🦼','🛺','🚲','🛴','🛹','🚏','🛣','🛤','⛽','🛞','🚨','🚥','🚦','🛑','🚧','⚓','🛟','⛵','🚤','🛥','🛳','⛴','🚢','✈️','🛩','🛫','🛬','🪂','💺','🚁','🚟','🚠','🚡','🛰','🚀','🛸','🎆','🌃','🌉','🌁','🌄','🌅','🏙','🌆','🌇','🌉','🗺','🧭','🏔','⛰','🌋','🗻','🏕','🏖','🏜','🏝','🏞','🏟','🏛','🏗','🧱','🏘','🏚','🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏬','🏭','🏯','🏰','💒','🗼','🗽','⛪','🕌','🛕','🕍','⛩','🕋','⛲','⛺','🌐','🗾','🧳','🌍','🌎','🌏'],
-            objects:  ['⌚','📱','📲','💻','⌨️','🖥','🖨','🖱','🖲','🕹','🗜','💽','💾','💿','📀','📼','📷','📸','📹','🎥','📽','🎞','📞','☎️','📟','📠','📺','📻','🧭','⏱','⏲','⏰','🕰','⌛','⏳','📡','🔋','🔌','💡','🔦','🕯','🪔','🧯','💰','💴','💵','💶','💷','💸','💳','🪙','💹','📈','📉','📊','📋','🗒','🗓','📆','📅','🗑','📁','📂','🗂','🗃','🗳','🗄','🗑','📃','📄','📑','🧾','📊','📈','📉','📜','📰','🗞','📓','📔','📒','📕','📗','📘','📙','📚','📖','🔖','🏷','💰','🔑','🗝','🔨','🪓','⛏','⚒','🛠','🗡','⚔️','🛡','🪚','🔧','🪛','🔩','⚙️','🗜','⚖️','🪝','🔗','⛓','🪤','🧰','🪜','🧲','🔑','🗝','🔐','🔏','🔒','🔓','🪞','🛋','🪑','🚿','🛁','🪠','🧴','🧷','🧹','🧺','🧻','🧼','🫧','🪣','🧽','🧯','🛒','🚪','🪟','🛏','🛋','🖼','🛕','🧺','🪤','🛍'],
-            symbols:  ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','☮️','✝️','☯️','✡️','🕎','☦️','🛐','⛎','♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓','🆔','⚛️','🉑','☢️','☣️','📴','📳','🈶','🈚','🈸','🈺','🈷️','✴️','🆚','💮','🉐','㊙️','㊗️','🈴','🈵','🈹','🈲','🅰️','🅱️','🆎','🆑','🅾️','🆘','❌','⭕','🛑','⛔','📛','🚫','💯','💢','♨️','🚷','🚯','🚳','🚱','🔞','📵','🚭','❗','❕','❓','❔','‼️','⁉️','🔅','🔆','〽️','⚠️','🚸','🔱','⚜️','🔰','♻️','✅','🈯','💹','❎','🌐','💠','Ⓜ️','🌀','💤','🏧','🚾','♿','🅿️','🛗','🈳','🈂️','🛂','🛃','🛄','🛅','🚹','🚺','🚼','⚧','🚻','🚮','🎦','📶','🈁','🔣','ℹ️','🔤','🔡','🔠','🆖','🆗','🆙','🆒','🆕','🆓','0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟','🔢','▶️','⏸','⏹','⏺','⏭','⏮','⏩','⏪','⏫','⏬','◀️','🔼','🔽','➡️','⬅️','⬆️','⬇️','↗️','↘️','↙️','↖️','↕️','↔️','↩️','↪️','⤴️','⤵️','🔀','🔁','🔂','🔄','🔃','🎵','🎶','➕','➖','➗','✖️','♾️','💲','💱','™️','©️','®️','〰️','➰','➿','🔚','🔛','🔜','🔝','🔙','✔️','☑️','🔘','🔵','🟣','⚫','🟤','🔴','🟠','🟡','🟢','🔷','🔶','🔹','🔸','🔺','🔻','💠','🔲','🔳','▪️','▫️','◾','◽','◼️','◻️','🟥','🟧','🟨','🟩','🟦','🟪','⬛','⬜','🟫','🔈','🔇','🔉','🔊','📣','📢','🔔','🔕','🎵','🎶','📻','🎷'],
-        },
-        insertEmoji(emoji) {
-            const el = this.$refs.msgInput;
-            if (!el) { this.newMessage += emoji; return; }
-            const start = el.selectionStart ?? this.newMessage.length;
-            const end   = el.selectionEnd   ?? start;
-            this.newMessage = this.newMessage.slice(0, start) + emoji + this.newMessage.slice(end);
-            this.$nextTick(() => {
-                const pos = start + [...emoji].length;
-                el.setSelectionRange(pos, pos);
-                el.focus();
-                this._autoResize(el);
-            });
-        },
-
-        /* ── Reactions ── */
-        async reactTo(msgId, emoji) {
-            this.reactionPickerMsgId = null;
-            const csrf = document.querySelector('meta[name="csrf-token"]').content;
-            try {
-                const res = await fetch(`/messages/${msgId}/react`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
-                    body: JSON.stringify({ emoji }),
-                });
-                if (res.ok) {
-                    const updated = await res.json();
-                    const idx = this.messages.findIndex(m => m.id === msgId);
-                    if (idx !== -1) this.messages[idx] = { ...this.messages[idx], ...updated };
-                }
-            } catch {}
-        },
-
-        /* ── Edit message ── */
-        startEdit(msg) {
-            this.editingMsgId = msg.id;
-            this.editingBody  = msg.body;
-            this.$nextTick(() => {
-                const el = document.getElementById('edit-' + msg.id);
-                if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); this._autoResize(el); }
-            });
-        },
-        cancelEdit() { this.editingMsgId = null; this.editingBody = ''; },
-        async saveEdit(msgId) {
-            const body = this.editingBody.trim();
-            if (!body) return;
-            const csrf = document.querySelector('meta[name="csrf-token"]').content;
-            try {
-                const res = await fetch(`/messages/${msgId}`, {
-                    method: 'PATCH',
-                    headers: { 'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                    body: JSON.stringify({ body }),
-                });
-                if (res.ok) {
-                    const updated = await res.json();
-                    const idx = this.messages.findIndex(m => m.id === msgId);
-                    if (idx !== -1) this.messages[idx] = updated;
-                }
-            } catch {}
-            this.cancelEdit();
-        },
-
-        /* ── Delete message ── */
-        async deleteMsg(msgId) {
-            const csrf = document.querySelector('meta[name="csrf-token"]').content;
-            try {
-                const res = await fetch(`/messages/${msgId}`, {
-                    method: 'DELETE',
-                    headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
-                });
-                if (res.ok) {
-                    const updated = await res.json();
-                    const idx = this.messages.findIndex(m => m.id === msgId);
-                    if (idx !== -1) this.messages[idx] = { ...this.messages[idx], ...updated };
-                }
-            } catch {}
-        },
-
-        /* ── Clear chat ── */
-        async clearChat() {
-            this.clearingChat = true;
-            const csrf = document.querySelector('meta[name="csrf-token"]').content;
-            const url  = this.isGroup
-                ? `/messages/clear/group/${this.activeGroupId}`
-                : `/messages/clear/direct/${this.activeUserId}`;
-            try {
-                const res = await fetch(url, {
-                    method: 'DELETE',
-                    headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
-                });
-                if (res.ok) { this.messages = []; this._lastMsgId = 0; }
-            } catch {}
-            this.clearingChat = false;
-            this.showClearConfirm = false;
-        },
-
-        _autoResize(el) {
-            el.style.height = 'auto';
-            el.style.height = Math.min(el.scrollHeight, 96) + 'px';
-        },
-
         async fetchUnread() {
             try { const res = await fetch('/messages/unread', { headers: { 'X-Requested-With': 'XMLHttpRequest' } }); if (res.ok) { const data = await res.json(); this.unreadCounts = data; if (data.groups) { Object.entries(data.groups).forEach(([key, count]) => { const id = parseInt(key.replace('g_','')); const grp = this.groups.find(g => g.id === id); if (grp && id !== this.activeGroupId) grp.unread = count; }); } } } catch {}
         },
-        scrollToBottom() {
-            const el = document.getElementById('chat-messages');
-            if (el) { el.scrollTop = el.scrollHeight; this.showScrollBtn = false; this.unreadNewCount = 0; }
-        },
-        isAtBottom() {
-            const el = document.getElementById('chat-messages');
-            if (!el) return true;
-            return el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-        },
-        onChatScroll() {
-            this.showScrollBtn = !this.isAtBottom();
-            if (this.isAtBottom()) this.unreadNewCount = 0;
-        },
+        scrollToBottom() { const el = document.getElementById('chat-messages'); if (el) el.scrollTop = el.scrollHeight; },
+        isAtBottom() { const el = document.getElementById('chat-messages'); if (!el) return true; return el.scrollHeight - el.scrollTop - el.clientHeight < 60; },
         formatDate(d) { const t = new Date().toISOString().slice(0,10); const y = new Date(Date.now()-86400000).toISOString().slice(0,10); if (d===t) return 'TODAY'; if (d===y) return 'YESTERDAY'; return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); },
         colorFor,
     };
