@@ -5,15 +5,38 @@ namespace App\Http\Controllers;
 use App\Models\Meeting;
 use App\Models\Message;
 use App\Models\Project;
+use App\Models\Setting;
 use App\Models\Task;
 use App\Models\TaskLog;
 use App\Models\User;
+use App\Notifications\NewMessageNotification;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class AgentController extends Controller
 {
+    public function badge(): JsonResponse
+    {
+        $user    = auth()->user();
+        $sc      = $this->scope($user->id);
+        $isAdmin = in_array($user->role, ['admin', 'manager']);
+
+        $overdue   = Task::where($sc)->whereNotIn('status', ['delivered', 'approved', 'archived'])->where('deadline', '<', now())->count();
+        $revisions = Task::where($sc)->where('status', 'revision_requested')->count();
+        $approvals = $isAdmin ? Task::where('status', 'submitted')->count() : 0;
+
+        $total  = $overdue + $revisions + $approvals;
+        $parts  = [];
+        if ($overdue   > 0) $parts[] = "{$overdue} overdue task" . ($overdue > 1 ? 's' : '');
+        if ($revisions > 0) $parts[] = "{$revisions} revision" . ($revisions > 1 ? 's' : '') . " requested";
+        if ($approvals > 0) $parts[] = "{$approvals} pending approval" . ($approvals > 1 ? 's' : '');
+
+        $tooltip = $total > 0 ? implode(' · ', $parts) : '';
+
+        return response()->json(['count' => $total, 'tooltip' => $tooltip]);
+    }
+
     public function chat(Request $request): JsonResponse
     {
         $raw     = trim($request->input('message', ''));
@@ -26,6 +49,11 @@ class AgentController extends Controller
         // ── highest priority: task #N lookup ─────────────────────────────────
         if (preg_match('/(?:task\s*#?|#)(\d+)/i', $raw, $m)) {
             return $this->taskDetail((int) $m[1], $user, $isAdmin);
+        }
+
+        // ── keyword search ────────────────────────────────────────────────────
+        if (preg_match('/^(?:find|search|look for|find task|search task|search for|locate)\s+(.+)/i', $raw, $m)) {
+            return $this->searchTasks(trim($m[1]), $user, $isAdmin);
         }
 
         return match (true) {
@@ -85,6 +113,9 @@ class AgentController extends Controller
             $this->has($msg, ['hello', 'hi', 'hey', 'good morning', 'good evening', 'good afternoon', 'howdy'])
                 => $this->greeting($user),
 
+            $this->has($msg, ['export', 'download report', 'export report', 'download tasks', 'export tasks', 'csv', 'export my'])
+                => $this->exportReport($user, $isAdmin),
+
             $this->has($msg, ['help', 'commands', 'what can you do', 'guide', '?'])
                 => $this->help($isAdmin),
 
@@ -117,6 +148,9 @@ class AgentController extends Controller
 
             $isAdmin && $this->has($msg, ['all task', 'system task', 'every task', 'total task'])
                 => $this->allTasks(),
+
+            $isAdmin && $this->has($msg, ['workload', 'who is busy', 'who has the most', 'team capacity', 'overloaded'])
+                => $this->teamWorkload(),
 
             $isAdmin && $this->has($msg, ['team', 'all user', 'member', 'staff'])
                 => $this->teamList(),
@@ -174,7 +208,7 @@ class AgentController extends Controller
 
         // Pending social (admin)
         if ($pendingSocial > 0) {
-            $sections[] = ['icon' => '📱', 'color' => 'indigo', 'title' => $pendingSocial.' Pending Social Posts', 'items' => [], 'action' => ['label' => 'View Social Queue →', 'url' => route('admin.approvals')]];
+            $sections[] = ['icon' => '📱', 'color' => 'indigo', 'title' => $pendingSocial.' Pending Social Posts', 'items' => [], 'action' => ['label' => 'View Social Queue →', 'url' => route('admin.approvals.index')]];
         }
 
         // In progress
@@ -227,10 +261,10 @@ class AgentController extends Controller
 
         if ($overdue->count()) $sections[] = ['icon' => '🔴', 'color' => 'red', 'title' => 'Fix First — '.$overdue->count().' Overdue', 'items' => $overdue->map(fn($t) => $this->fmtTask($t, $isAdmin))->values(), 'action' => null];
         if ($revisions->count()) $sections[] = ['icon' => '↩️', 'color' => 'red', 'title' => 'Needs Rework — '.$revisions->count().' Revision Requested', 'items' => $revisions->map(fn($t) => ['title' => $t->title, 'url' => $isAdmin ? route('admin.tasks.show', $t->id) : route('user.tasks.show', $t->id), 'badge' => 'Revision', 'badge_color' => 'red', 'meta' => null, 'overdue' => false])->values(), 'action' => null];
-        if ($pendingApprovals > 0) $sections[] = ['icon' => '✅', 'color' => 'purple', 'title' => 'Review Queue — '.$pendingApprovals.' Waiting', 'items' => [], 'action' => ['label' => 'Open Approvals →', 'url' => route('admin.approvals')]];
+        if ($pendingApprovals > 0) $sections[] = ['icon' => '✅', 'color' => 'purple', 'title' => 'Review Queue — '.$pendingApprovals.' Waiting', 'items' => [], 'action' => ['label' => 'Open Approvals →', 'url' => route('admin.approvals.index')]];
         if ($dueToday->count()) $sections[] = ['icon' => '📅', 'color' => 'orange', 'title' => 'Due Today — '.$dueToday->count().' Tasks', 'items' => $dueToday->map(fn($t) => $this->fmtTask($t, $isAdmin))->values(), 'action' => null];
-        if ($pendingSocial > 0) $sections[] = ['icon' => '📱', 'color' => 'indigo', 'title' => 'Social Queue — '.$pendingSocial.' Posts Pending', 'items' => [], 'action' => ['label' => 'View Social →', 'url' => route('admin.approvals')]];
-        if ($awaitingCustomer > 0) $sections[] = ['icon' => '⏳', 'color' => 'yellow', 'title' => 'Awaiting Customer — '.$awaitingCustomer.' Tasks', 'items' => [], 'action' => ['label' => 'View Pending Customer →', 'url' => route('admin.approvals')]];
+        if ($pendingSocial > 0) $sections[] = ['icon' => '📱', 'color' => 'indigo', 'title' => 'Social Queue — '.$pendingSocial.' Posts Pending', 'items' => [], 'action' => ['label' => 'View Social →', 'url' => route('admin.approvals.index')]];
+        if ($awaitingCustomer > 0) $sections[] = ['icon' => '⏳', 'color' => 'yellow', 'title' => 'Awaiting Customer — '.$awaitingCustomer.' Tasks', 'items' => [], 'action' => ['label' => 'View Pending Customer →', 'url' => route('admin.approvals.index')]];
         if ($inProgress->count()) $sections[] = ['icon' => '🔵', 'color' => 'blue', 'title' => 'In Progress — '.$inProgress->count().' Tasks', 'items' => $inProgress->map(fn($t) => $this->fmtTask($t, $isAdmin))->values(), 'action' => null];
 
         if (empty($sections)) {
@@ -285,7 +319,7 @@ class AgentController extends Controller
             'reply'         => $reply,
             'type'          => 'task_list',
             'items'         => $items,
-            'action'        => ['label' => '📋 Open Approvals Page →', 'url' => route('admin.approvals')],
+            'action'        => ['label' => '📋 Open Approvals Page →', 'url' => route('admin.approvals.index')],
             'quick_replies' => ['social media', 'stats', 'action plan'],
         ]);
     }
@@ -587,7 +621,7 @@ class AgentController extends Controller
         if ($isAdmin) {
             $base = array_merge([
                 'dashboard'    => ['label' => 'Dashboard',      'url' => route('admin.dashboard'),         'desc' => 'Admin overview & stats'],
-                'approvals'    => ['label' => 'Task Approvals', 'url' => route('admin.approvals'),         'desc' => 'Review & approve submitted tasks'],
+                'approvals'    => ['label' => 'Task Approvals', 'url' => route('admin.approvals.index'),         'desc' => 'Review & approve submitted tasks'],
                 'tasks'        => ['label' => 'All Tasks',      'url' => route('admin.tasks.index'),       'desc' => 'Manage all tasks'],
                 'projects'     => ['label' => 'Projects',       'url' => route('admin.projects.index'),    'desc' => 'Manage all projects'],
                 'customers'    => ['label' => 'Customers',      'url' => route('admin.customers.index'),   'desc' => 'Customer management'],
@@ -633,7 +667,7 @@ class AgentController extends Controller
             'notification'       => "**Notifications** appear in the bell 🔔 in the top bar.\n\nYou get notified when:\n• A task is assigned to you\n• Admin approves or requests revision\n• A task is transferred to you\n• Someone messages you",
             'permission'         => "**Permissions** control what each user can access.\n\nAdmins can manage permissions per user at:\n*Admin → Users → [User] → Permissions*\n\nPermissions can also be set via Roles (Admin → Settings → Team → Roles).",
             'archive'            => "To **archive a task**: open the task → click **Archive**.\nArchived tasks are hidden from active lists but accessible in Reports.",
-            'export'             => "To **export data**:\n• Task list: Reports page → **Export CSV**\n• Full backup: Admin → Settings → Storage → Download Backup",
+            'export'             => "To **export a PDF report**:\n1. Go to **Reports** page\n2. Click the **Export PDF** button in the top toolbar\n3. A PDF will be generated and downloaded automatically\n\nFor a full data backup: Admin → Settings → Storage → Download Backup",
         ];
 
         foreach ($qa as $keyword => $answer) {
@@ -651,6 +685,34 @@ class AgentController extends Controller
             'reply'         => "I can answer questions about: **submit, approve, reject, revision, timer, create task, create project, reassign, deadline, pending customer, social media, statuses, reports, calendar, messages, permissions, archive, export**.\n\nJust type one of those topics!",
             'type'          => 'text',
             'quick_replies' => ['help', 'today', 'stats'],
+        ]);
+    }
+
+    // ── EXPORT REPORT ────────────────────────────────────────────────────────
+
+    private function exportReport(User $user, bool $isAdmin): JsonResponse
+    {
+        $sc      = $this->scope($user->id);
+        $total   = Task::where($sc)->count();
+        $done    = Task::where($sc)->whereIn('status', ['delivered', 'approved'])->count();
+        $overdue = Task::where($sc)->whereNotIn('status', ['delivered', 'approved', 'archived'])->where('deadline', '<', now())->count();
+        $rate    = $total > 0 ? round($done / $total * 100) : 0;
+
+        $items = [
+            ['label' => 'Total Tasks',  'value' => $total,     'color' => 'gray'],
+            ['label' => 'Completed',    'value' => $done,      'color' => 'green'],
+            ['label' => 'Overdue',      'value' => $overdue,   'color' => 'red'],
+            ['label' => 'Completion %', 'value' => "{$rate}%", 'color' => $rate >= 70 ? 'green' : 'yellow'],
+        ];
+
+        $reportUrl = $isAdmin ? route('admin.reports.index') : route('user.reports.index');
+
+        return response()->json([
+            'reply'         => "📊 Here's your report snapshot. Open the Reports page and click **Export PDF** to download a full PDF report:",
+            'type'          => 'stats',
+            'items'         => $items,
+            'action'        => ['label' => '📄 Open Reports & Export PDF', 'url' => $reportUrl],
+            'quick_replies' => ['stats', 'my tasks', 'overdue'],
         ]);
     }
 
@@ -691,6 +753,8 @@ class AgentController extends Controller
             ['cmd' => 'activity',      'desc' => 'Recent task activity feed'],
             ['cmd' => 'timer',         'desc' => 'Check your active work timer'],
             ['cmd' => 'task #N',       'desc' => 'Look up a specific task by ID'],
+            ['cmd' => 'find [word]',   'desc' => 'Search your tasks by keyword'],
+            ['cmd' => 'export report', 'desc' => 'Open reports page to export a PDF report'],
             ['cmd' => 'go to X',       'desc' => 'Navigate to any page (go to approvals, reports…)'],
             ['cmd' => 'how do I…',     'desc' => 'Step-by-step help for any action'],
         ];
@@ -702,6 +766,7 @@ class AgentController extends Controller
                 ['cmd' => 'customers',    'desc' => 'Customer list by task volume'],
                 ['cmd' => 'all tasks',    'desc' => 'System-wide task breakdown'],
                 ['cmd' => 'team',         'desc' => 'All team members with status'],
+                ['cmd' => 'workload',     'desc' => 'Team workload — active & overdue tasks per member'],
             ]);
         }
 
@@ -816,9 +881,146 @@ class AgentController extends Controller
         return response()->json(['reply' => "**{$users->count()} team members:**", 'type' => 'list', 'items' => $items, 'quick_replies' => ['all tasks', 'stats']]);
     }
 
+    // ── TASK SEARCH ───────────────────────────────────────────────────────────
+
+    private function searchTasks(string $query, User $user, bool $isAdmin): JsonResponse
+    {
+        $clean = trim(preg_replace('/[%_]/', '', $query));
+        if (strlen($clean) < 2) {
+            return $this->ok("Please type at least 2 characters to search.", 'text', [], ['my tasks', 'help']);
+        }
+
+        $tasks = Task::where($this->scope($user->id))
+            ->where('title', 'like', '%' . $clean . '%')
+            ->with('project:id,name')
+            ->orderByRaw("CASE status WHEN 'in_progress' THEN 1 WHEN 'assigned' THEN 2 WHEN 'submitted' THEN 3 ELSE 4 END")
+            ->limit(10)
+            ->get(['id', 'title', 'status', 'deadline', 'project_id']);
+
+        if ($tasks->isEmpty()) {
+            return $this->ok(
+                "No tasks found matching **\"{$query}\"**. Try a shorter keyword.",
+                'text', [], ['my tasks', 'stats']
+            );
+        }
+
+        return response()->json([
+            'reply'         => "Found **{$tasks->count()} task" . ($tasks->count() > 1 ? 's' : '') . "** matching \"*{$query}*\":",
+            'type'          => 'task_list',
+            'items'         => $tasks->map(fn($t) => $this->fmtTask($t, $isAdmin))->values(),
+            'quick_replies' => ['my tasks', 'overdue', 'stats'],
+        ]);
+    }
+
+    // ── TEAM WORKLOAD ─────────────────────────────────────────────────────────
+
+    private function teamWorkload(): JsonResponse
+    {
+        $userIds = User::whereIn('role', ['admin', 'manager', 'user'])->pluck('id');
+
+        $active  = Task::selectRaw('assigned_to as uid, COUNT(*) as cnt')
+            ->whereNotIn('status', ['delivered', 'approved', 'archived'])
+            ->whereNotNull('assigned_to')
+            ->groupBy('assigned_to')
+            ->pluck('cnt', 'uid');
+
+        $overdue = Task::selectRaw('assigned_to as uid, COUNT(*) as cnt')
+            ->whereNotIn('status', ['delivered', 'approved', 'archived'])
+            ->where('deadline', '<', now())
+            ->whereNotNull('assigned_to')
+            ->groupBy('assigned_to')
+            ->pluck('cnt', 'uid');
+
+        $users = User::whereIn('role', ['admin', 'manager', 'user'])
+            ->orderBy('name')
+            ->get(['id', 'name', 'role', 'presence_status', 'last_seen_at'])
+            ->map(fn($u) => [
+                'id'      => $u->id,
+                'name'    => $u->name,
+                'active'  => $active->get($u->id, 0),
+                'overdue' => $overdue->get($u->id, 0),
+                'online'  => $u->presence_status === 'online' && $u->last_seen_at?->gt(now()->subMinutes(3)),
+            ])
+            ->sortByDesc('active')
+            ->values();
+
+        $totalActive  = $users->sum('active');
+        $totalOverdue = $users->sum('overdue');
+
+        $items = $users->map(fn($u) => [
+            'title'       => $u['name'],
+            'badge'       => $u['active'] . ' active',
+            'badge_color' => $u['active'] >= 8 ? 'red' : ($u['active'] >= 4 ? 'yellow' : 'green'),
+            'url'         => route('admin.users.show', $u['id']),
+            'meta'        => $u['overdue'] > 0
+                                ? "⚠️ {$u['overdue']} overdue"
+                                : ($u['online'] ? '🟢 Online' : null),
+        ])->values();
+
+        return response()->json([
+            'reply'         => "**Team workload** — {$totalActive} active tasks across {$users->count()} members" . ($totalOverdue > 0 ? ", ⚠️ {$totalOverdue} overdue" : '') . ":",
+            'type'          => 'list',
+            'items'         => $items,
+            'action'        => ['label' => '👥 Open Users Page →', 'url' => route('admin.users.index')],
+            'quick_replies' => ['approvals', 'all tasks', 'stats'],
+        ]);
+    }
+
     private function unknown(): JsonResponse
     {
-        return $this->ok("I'm not sure about that. Try typing **help** to see everything I can do, or **today** for your daily brief.", 'text', [], ['today', 'help', 'my tasks', 'stats']);
+        return response()->json([
+            'reply'         => "I'm not sure about that. Try typing **help** to see everything I can do — or message support directly if you need human help.",
+            'type'          => 'text',
+            'quick_replies' => ['today', 'help', 'my tasks'],
+            'support_prompt'=> true,
+        ]);
+    }
+
+    public function support(Request $request): JsonResponse
+    {
+        $request->validate([
+            'body'           => 'required|string|max:2000',
+            'attachments'    => 'nullable|array|max:10',
+            'attachments.*'  => 'file|max:20480',
+        ]);
+
+        $supportUserId = Setting::get('support_user_id', '');
+        $admin = $supportUserId
+            ? User::find($supportUserId)
+            : User::whereIn('role', ['admin', 'manager'])->orderBy('id')->first();
+
+        if (!$admin) {
+            return response()->json(['ok' => false, 'error' => 'No support user found.']);
+        }
+
+        $sender = auth()->user();
+        $prefix = "📨 *Support request from {$sender->name} via Assistant:*\n\n";
+
+        $textMessage = Message::create([
+            'sender_id'   => $sender->id,
+            'receiver_id' => $admin->id,
+            'body'        => $prefix . $request->body,
+        ]);
+
+        $admin->notify(new NewMessageNotification($textMessage));
+
+        foreach ($request->file('attachments', []) as $file) {
+            $path = $file->store('messages', 'public');
+            Message::create([
+                'sender_id'   => $sender->id,
+                'receiver_id' => $admin->id,
+                'body'        => '',
+                'file_path'   => $path,
+                'file_name'   => $file->getClientOriginalName(),
+                'file_type'   => $file->getMimeType(),
+            ]);
+        }
+
+        return response()->json([
+            'ok'    => true,
+            'admin' => $admin->name,
+            'url'   => route('messages.index') . '?user=' . $admin->id,
+        ]);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

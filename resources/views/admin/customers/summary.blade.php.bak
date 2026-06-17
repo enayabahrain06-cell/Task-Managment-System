@@ -357,7 +357,7 @@ function buildSummaryHTML(immediate) {
     + '.foot-brand { font-size:10px; font-weight:700; color:#4F46E5; }'
     + '.foot-mid   { font-size:10px; color:#9CA3AF; }'
     + '.foot-conf  { font-size:10px; color:#9CA3AF; font-style:italic; }'
-    + '@media print { .pbar{display:none !important;} body{background:#fff !important;} .doc{max-width:none;} *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;} tr{page-break-inside:avoid;} @page{size:A4 landscape;margin:0;} }'
+    + '@@media print { .pbar{display:none !important;} body{background:#fff !important;} .doc{max-width:none;} *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;} tr{page-break-inside:avoid;} @@page{size:A4 landscape;margin:0;} }'
     ;
 
     // ── Palette for customer avatars ─────────────────────
@@ -517,14 +517,23 @@ function _pdfDownload(buildFn, filename) {
         }).from(wrapper).save().then(function() {
             document.body.removeChild(wrapper);
             document.body.removeChild(overlay);
+        }).catch(function(e) {
+            document.body.removeChild(wrapper);
+            document.body.removeChild(overlay);
+            alert('PDF generation failed — ' + (e && e.message ? e.message : 'please try again.'));
         });
     }, 150);
 }
 
-// Auto-trigger print when opened with ?export=1 from the modal button
+// Auto-trigger when opened with ?export=1: replace page with clean standalone HTML then print
 if (new URLSearchParams(window.location.search).get('export') === '1') {
     window.addEventListener('load', function() {
-        setTimeout(window.print, 600);
+        setTimeout(function() {
+            var html = buildSummaryHTML(true);
+            document.open();
+            document.write(html);
+            document.close();
+        }, 400);
     });
 }
 </script>

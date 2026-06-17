@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\ProjectController as AdminProjectController;
 use App\Http\Controllers\Manager\DashboardController as ManagerDashboard;
 use App\Http\Controllers\User\DashboardController as UserDashboard;
 use App\Http\Controllers\User\TaskController as UserTaskController;
+use App\Http\Controllers\AgentController;
 use App\Http\Controllers\MessagesController;
 use App\Http\Controllers\ActivitiesController;
 use App\Http\Controllers\CalendarController;
@@ -43,6 +44,12 @@ Route::get('/', function () {
 // Auth routes
 require __DIR__.'/auth.php';
 
+// Agent — available to all authenticated users
+Route::middleware(['auth'])->group(function () {
+    Route::post('/agent/chat',    [AgentController::class, 'chat'])->name('agent.chat');
+    Route::post('/agent/support', [AgentController::class, 'support'])->name('agent.support');
+});
+
 // Shared authenticated routes (accessible by all roles)
 Route::middleware(['auth'])->group(function () {
     // Profile update (all roles)
@@ -58,6 +65,7 @@ Route::middleware(['auth'])->group(function () {
         $user->presence_status = $status;
         $user->last_seen_at    = now();
         $user->save();
+        \App\Services\MqttService::presenceUpdate($user->id, $status);
         return response()->json(['ok' => true]);
     })->name('user.presence');
 
@@ -84,8 +92,15 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/messages',                               [MessagesController::class, 'index'])->name('messages.index');
     Route::get('/messages/unread',                        [MessagesController::class, 'unread'])->name('messages.unread');
+    Route::get('/messages/poll/direct/{userId}',          [MessagesController::class, 'pollDirect'])->name('messages.poll.direct');
+    Route::get('/messages/poll/group/{group}',            [MessagesController::class, 'pollGroup'])->name('messages.poll.group');
     Route::get('/messages/conversation/{user}',           [MessagesController::class, 'conversation'])->name('messages.conversation');
     Route::post('/messages/send',                         [MessagesController::class, 'send'])->name('messages.send');
+    Route::post('/messages/{message}/react',               [MessagesController::class, 'react'])->name('messages.react');
+    Route::patch('/messages/{message}',                   [MessagesController::class, 'editMessage'])->name('messages.edit');
+    Route::delete('/messages/{message}',                  [MessagesController::class, 'deleteMessage'])->name('messages.delete');
+    Route::delete('/messages/clear/direct/{userId}',      [MessagesController::class, 'clearDirectChat'])->name('messages.clear.direct');
+    Route::delete('/messages/clear/group/{group}',        [MessagesController::class, 'clearGroupChat'])->name('messages.clear.group');
     Route::post('/messages/groups',                       [MessagesController::class, 'createGroup'])->name('messages.groups.create');
     Route::get('/messages/groups/{group}',                [MessagesController::class, 'groupConversation'])->name('messages.groups.conversation');
     Route::post('/messages/groups/{group}/send',          [MessagesController::class, 'sendToGroup'])->name('messages.groups.send');
@@ -154,6 +169,8 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('tasks/quick', [AdminProjectController::class, 'quickTaskStore'])->name('tasks.quick');
     Route::post('tasks/quick-sm', [AdminProjectController::class, 'quickSMPostStore'])->name('tasks.quick-sm');
     Route::resource('customers', AdminCustomerController::class);
+    Route::get('customers/{customer}/report', [AdminCustomerController::class, 'report'])->name('customers.report');
+    Route::get('customers-summary', [AdminCustomerController::class, 'summary'])->name('customers.summary');
 
     // Settings
     Route::get('settings',                        [AdminSettingsController::class, 'index'])->name('settings.index');
@@ -162,6 +179,8 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('settings/team',                  [AdminSettingsController::class, 'updateTeam'])->name('settings.team');
     Route::post('settings/notifications',         [AdminSettingsController::class, 'updateNotifications'])->name('settings.notifications');
     Route::post('settings/security',              [AdminSettingsController::class, 'updateSecurity'])->name('settings.security');
+    Route::post('settings/agent',                 [AdminSettingsController::class, 'updateAgent'])->name('settings.agent');
+    Route::post('settings/hide-agent',            [AdminSettingsController::class, 'toggleHideAgent'])->name('settings.hide-agent');
     Route::post('settings/mail',                  [AdminSettingsController::class, 'updateMail'])->name('settings.mail');
     Route::post('settings/mail/test',             [AdminSettingsController::class, 'testMail'])->name('settings.mail.test');
     Route::post('settings/dev-mode',              [AdminSettingsController::class, 'toggleDevMode'])->name('settings.dev-mode');
@@ -170,6 +189,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('settings/manager-roles-access',  [AdminSettingsController::class, 'toggleManagerRolesAccess'])->name('settings.manager-roles-access');
     Route::post('settings/approval-customer-notify', [AdminSettingsController::class, 'toggleApprovalCustomerNotify'])->name('settings.approval-customer-notify');
     Route::post('settings/hourly-rate',              [AdminSettingsController::class, 'toggleHourlyRate'])->name('settings.hourly-rate');
+    Route::post('settings/hide-wa-web',              [AdminSettingsController::class, 'toggleHideWaWeb'])->name('settings.hide-wa-web');
     Route::post('settings/clear-cache',              [AdminSettingsController::class, 'clearCache'])->name('settings.clear-cache');
     Route::get('social-budget',                      [AdminSocialBudgetController::class, 'index'])->name('social-budget.index');
     Route::post('settings/elements/toggle',       [AdminSettingsController::class, 'toggleElement'])->name('settings.elements.toggle');
@@ -261,6 +281,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
 
     // Audit log
     Route::get('audit',                            [AdminAuditLogController::class, 'index'])->name('audit.index');
+    Route::post('audit/clear-logs',               [AdminAuditLogController::class, 'clearLogs'])->name('audit.clear-logs');
 
     // Project attachment download (add ?inline=1 to serve inline for browser preview)
     Route::get('attachments/{attachment}/download', function (\App\Models\ProjectAttachment $attachment) {
