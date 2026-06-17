@@ -3395,30 +3395,19 @@ function _pdfDownload(buildFn, filename) {
     var cssText = Array.from(parsed.querySelectorAll('style')).map(function(s){ return s.textContent; }).join('\n');
     var docNode = parsed.querySelector('.doc');
     if (!docNode) { document.body.removeChild(overlay); return; }
-    /* Wrapper sits at top:0/left:0 so html2canvas can render it; z-index keeps it behind overlay */
-    var wrapper = document.createElement('div');
-    wrapper.style.cssText = 'position:fixed;top:0;left:0;width:1100px;background:#fff;z-index:99997;overflow:visible;';
-    var st = document.createElement('style');
-    st.textContent = cssText;
-    wrapper.appendChild(st);
-    wrapper.appendChild(docNode);
-    document.body.appendChild(wrapper);
-    setTimeout(function() {
-        html2pdf().set({
-            margin: 0,
-            filename: filename,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-        }).from(wrapper).save().then(function() {
-            document.body.removeChild(wrapper);
-            document.body.removeChild(overlay);
-        }).catch(function(e) {
-            document.body.removeChild(wrapper);
-            document.body.removeChild(overlay);
-            alert('PDF generation failed — ' + (e && e.message ? e.message : 'please try again.'));
-        });
-    }, 150);
+    var content = '<style>' + cssText + '</style>' + docNode.outerHTML;
+    html2pdf().set({
+        margin: 0,
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false, windowWidth: 1100 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    }).from(content, 'string').save().then(function() {
+        document.body.removeChild(overlay);
+    }).catch(function(e) {
+        document.body.removeChild(overlay);
+        alert('PDF generation failed — ' + (e && e.message ? e.message : 'please try again.'));
+    });
 }
 
 function exportSocialPostsPDF() {

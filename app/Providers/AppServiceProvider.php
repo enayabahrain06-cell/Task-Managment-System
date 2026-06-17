@@ -86,7 +86,7 @@ class AppServiceProvider extends ServiceProvider
         // Share global app settings with all views
         View::composer('*', function ($view) {
             try {
-                $appSettings = Setting::getMany(['app_name','app_tagline','company_name','primary_color','department_name','logo_path','favicon_path','login_bg_type','login_bg_color','login_bg_image','copyright','developer_mode','hidden_elements','shown_extras','nav_hidden','maintenance_mode','hide_approval_customer_notify','hide_hourly_rate','notif_sound_type','notif_sound_volume']);
+                $appSettings = Setting::getMany(['app_name','app_tagline','company_name','primary_color','department_name','logo_path','favicon_path','login_bg_type','login_bg_color','login_bg_image','copyright','developer_mode','hidden_elements','shown_extras','nav_hidden','maintenance_mode','hide_approval_customer_notify','hide_hourly_rate','hide_wa_web_button','notif_sound_type','notif_sound_volume','agent_name','agent_subtitle','agent_welcome','agent_color','agent_icon','hide_agent','support_user_id']);
                 $view->with('appSettings', array_merge([
                     'app_name'        => 'Dash',
                     'app_tagline'     => '',
@@ -105,8 +105,16 @@ class AppServiceProvider extends ServiceProvider
                     'maintenance_mode'              => '0',
                     'hide_approval_customer_notify' => '0',
                     'hide_hourly_rate'              => '0',
+                    'hide_wa_web_button'            => '0',
                     'notif_sound_type'              => 'chime',
                     'notif_sound_volume'            => '0.3',
+                    'agent_name'      => 'Task Assistant',
+                    'agent_subtitle'  => 'Ask me anything about your tasks',
+                    'agent_welcome'   => "👋 Hi! I'm your **Task Assistant**. I can show your tasks, stats, overdue items, projects, and more.",
+                    'agent_color'     => '#4F46E5',
+                    'agent_icon'      => 'robot',
+                    'hide_agent'      => '0',
+                    'support_user_id' => '',
                 ], $appSettings));
             } catch (\Throwable) {
                 $view->with('appSettings', [
@@ -127,8 +135,16 @@ class AppServiceProvider extends ServiceProvider
                     'maintenance_mode'              => '0',
                     'hide_approval_customer_notify' => '0',
                     'hide_hourly_rate'              => '0',
+                    'hide_wa_web_button'            => '0',
                     'notif_sound_type'              => 'chime',
                     'notif_sound_volume'            => '0.3',
+                    'agent_name'      => 'Task Assistant',
+                    'agent_subtitle'  => 'Ask me anything about your tasks',
+                    'agent_welcome'   => "👋 Hi! I'm your **Task Assistant**. I can show your tasks, stats, overdue items, projects, and more.",
+                    'agent_color'     => '#4F46E5',
+                    'agent_icon'      => 'robot',
+                    'hide_agent'      => '0',
+                    'support_user_id' => '',
                 ]);
             }
         });

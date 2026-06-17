@@ -85,6 +85,7 @@ class SettingsController extends Controller
         'wa_tpl_overdue'           => "Hi {user_name},\n\n⚠️ Your task is overdue:\n📋 {task_title}\n⏰ Was due: {deadline}\n\nPlease submit as soon as possible.\n{company}",
         'wa_tpl_social'            => "Hi {user_name},\n\nA task has been assigned to you for social media posting:\n📋 {task_title}\n📁 {project_name}\n👤 Customer: {customer_name}\n\n{company}",
         'wa_tpl_customer_design'   => "Hello {customer_name},\n\nYour design for \"{task_title}\" has been approved and is ready for your review. 🎨\n\n{admin_note}{design_link}\n\n{company}",
+        'wa_tpl_customer_preview'  => "Hello {customer_name},\n\nYour design for \"{task_title}\" is ready for your review. We'd love your feedback before we finalize approval. 👀\n\n{design_link}\n\n{company}",
         // Storage / NAS
         'storage_gdrive_enabled'          => '0',
         'storage_gdrive_client_id'        => '',
@@ -111,6 +112,13 @@ class SettingsController extends Controller
         'storage_auto_move_files'      => '1',
         'storage_create_brand_assets'  => '1',
         'storage_file_naming_pattern'  => '{company}_{project}_{type}_{desc}_{date}_v{ver}',
+        // Chat Agent
+        'agent_name'       => 'Task Assistant',
+        'agent_subtitle'   => 'Ask me anything about your tasks',
+        'agent_welcome'    => "👋 Hi! I'm your **Task Assistant**. I can show your tasks, stats, overdue items, projects, and more.",
+        'agent_color'      => '#4F46E5',
+        'agent_icon'       => 'robot',
+        'support_user_id'  => '',
     ];
 
     public function index()
@@ -151,7 +159,11 @@ class SettingsController extends Controller
                                 : round($dbBytes / 1024) . ' KB',
         ];
 
-        return view('admin.settings', compact('settings', 'stats'));
+        $supportUsers = User::whereIn('role', ['admin', 'manager'])
+            ->orderBy('name')
+            ->get(['id', 'name', 'role']);
+
+        return view('admin.settings', compact('settings', 'stats', 'supportUsers'));
     }
 
     public function toggleDevMode()
@@ -195,6 +207,14 @@ class SettingsController extends Controller
         $new     = $current === '1' ? '0' : '1';
         Setting::set('hide_approval_customer_notify', $new);
         return response()->json(['hide_approval_customer_notify' => $new === '1']);
+    }
+
+    public function toggleHideWaWeb()
+    {
+        $current = Setting::get('hide_wa_web_button', '0');
+        $new     = $current === '1' ? '0' : '1';
+        Setting::set('hide_wa_web_button', $new);
+        return response()->json(['hide_wa_web_button' => $new === '1']);
     }
 
     public function toggleManagerRolesAccess()
@@ -507,6 +527,35 @@ class SettingsController extends Controller
         return back()->with('success', 'Security settings saved.')->withFragment('security');
     }
 
+    // ── Chat Agent ────────────────────────────────────────────────────────
+
+    public function toggleHideAgent()
+    {
+        $current = Setting::get('hide_agent', '0');
+        $new     = $current === '1' ? '0' : '1';
+        Setting::set('hide_agent', $new);
+        return response()->json(['hide_agent' => $new === '1']);
+    }
+
+    public function updateAgent(Request $request)
+    {
+        $request->validate([
+            'agent_name'      => 'required|string|max:60',
+            'agent_subtitle'  => 'nullable|string|max:120',
+            'agent_welcome'   => 'nullable|string|max:400',
+            'agent_color'     => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'agent_icon'      => 'required|in:robot,brain,comments,headset,bolt,star',
+            'support_user_id' => 'nullable|exists:users,id',
+        ]);
+
+        Setting::setMany($request->only('agent_name', 'agent_subtitle', 'agent_welcome', 'agent_color', 'agent_icon'));
+        Setting::set('support_user_id', $request->input('support_user_id', ''));
+
+        AuditLogger::log('settings.updated', null, 'Chat agent settings updated', ['section' => 'agent']);
+
+        return back()->with('success', 'Chat agent settings saved.')->withFragment('agent');
+    }
+
     // ── WhatsApp ──────────────────────────────────────────────────────────
 
     public function updateWhatsapp(Request $request)
@@ -524,6 +573,7 @@ class SettingsController extends Controller
             'wa_tpl_overdue'           => 'nullable|string|max:2000',
             'wa_tpl_social'            => 'nullable|string|max:2000',
             'wa_tpl_customer_design'   => 'nullable|string|max:2000',
+            'wa_tpl_customer_preview'  => 'nullable|string|max:2000',
         ]);
 
         $data = [
@@ -540,6 +590,7 @@ class SettingsController extends Controller
             'wa_tpl_overdue'           => $request->input('wa_tpl_overdue', ''),
             'wa_tpl_social'            => $request->input('wa_tpl_social', ''),
             'wa_tpl_customer_design'   => $request->input('wa_tpl_customer_design', ''),
+            'wa_tpl_customer_preview'  => $request->input('wa_tpl_customer_preview', ''),
         ];
 
         if ($request->filled('wa_token')) {

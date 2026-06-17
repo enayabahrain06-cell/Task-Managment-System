@@ -1226,6 +1226,7 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <!-- ── Task Agent Widget ─────────────────────────────────────────────────── -->
+@unless(($appSettings['hide_agent'] ?? '0') === '1')
 <div x-data="taskAgent()" x-init="init()" class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
 
     {{-- Chat window --}}
@@ -1239,28 +1240,43 @@ document.addEventListener('DOMContentLoaded', function () {
          style="width:360px;height:540px;">
 
         {{-- Header --}}
-        <div class="bg-gradient-to-r from-indigo-600 to-indigo-500 px-4 py-3 flex items-center gap-3">
-            <div class="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-                <i class="fas fa-robot text-white text-sm"></i>
+        @php
+            $agentColor   = $appSettings['agent_color']   ?? '#4F46E5';
+            $agentIcon    = $appSettings['agent_icon']    ?? 'robot';
+            $agentWelcome = $appSettings['agent_welcome'] ?? "Hi! I'm your Task Assistant. I can show your tasks, stats, overdue items, projects, and more.";
+        @endphp
+        <div style="background:linear-gradient(135deg,{{ $agentColor }},{{ $agentColor }}cc);" class="px-4 py-3 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style="background:rgba(255,255,255,.2);">
+                <i class="fas fa-{{ $agentIcon }} text-white text-sm"></i>
             </div>
             <div class="flex-1 min-w-0">
-                <div class="font-semibold text-white text-sm">Task Assistant</div>
-                <div class="text-xs text-indigo-200">Ask me anything about your tasks</div>
+                <div class="font-semibold text-white text-sm">{{ $appSettings['agent_name'] ?? 'Task Assistant' }}</div>
+                <div class="text-xs" style="color:rgba(255,255,255,.75);">{{ $appSettings['agent_subtitle'] ?? 'Ask me anything about your tasks' }}</div>
             </div>
-            <button @click="open = false" class="text-white/70 hover:text-white transition-colors ml-auto">
-                <i class="fas fa-times"></i>
-            </button>
+            <div class="flex items-center gap-2 ml-auto flex-shrink-0">
+                <button @click="clearChat()" title="Clear chat" class="text-white/60 hover:text-white transition-colors" style="background:none;border:none;cursor:pointer;padding:2px 4px;">
+                    <i class="fas fa-broom text-xs"></i>
+                </button>
+                <button @click="supportMode = !supportMode; supportSent = false; supportBody = ''; supportFiles = []; supportSending = false" title="Message Support"
+                        class="transition-colors" style="background:none;border:none;cursor:pointer;padding:2px 4px;"
+                        :style="supportMode ? 'color:#fff;' : 'color:rgba(255,255,255,.6);'">
+                    <i class="fas fa-headset text-xs"></i>
+                </button>
+                <button @click="open = false" class="text-white/70 hover:text-white transition-colors" style="background:none;border:none;cursor:pointer;padding:2px 4px;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
         </div>
 
         {{-- Messages --}}
-        <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50" x-ref="msgArea">
+        <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50" x-ref="msgArea" x-show="!supportMode">
             <template x-for="(msg, idx) in messages" :key="idx">
                 <div>
                     {{-- Agent message --}}
                     <template x-if="msg.from === 'agent'">
                         <div class="flex items-start gap-2">
-                            <div class="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <i class="fas fa-robot text-indigo-600 text-xs"></i>
+                            <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style="background:{{ $agentColor }}22;">
+                                <i class="fas fa-{{ $agentIcon }} text-xs" style="color:{{ $agentColor }};"></i>
                             </div>
                             <div class="flex-1 space-y-2">
                                 {{-- Text/action reply --}}
@@ -1458,12 +1474,23 @@ document.addEventListener('DOMContentLoaded', function () {
                                     </a>
                                 </template>
 
+                                {{-- Extra action button (secondary link, e.g. open full report) --}}
+                                <template x-if="msg.extra_action">
+                                    <a :href="msg.extra_action.url" target="_blank"
+                                       class="inline-flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+                                       style="background:#F3F4F6;color:#374151;">
+                                        <span x-text="msg.extra_action.label"></span>
+                                    </a>
+                                </template>
+
                                 {{-- Quick replies --}}
                                 <template x-if="idx === messages.length - 1 && msg.quick_replies?.length">
                                     <div class="flex flex-wrap gap-1.5 pt-1">
                                         <template x-for="qr in msg.quick_replies" :key="qr">
                                             <button @click="sendQuick(qr)"
-                                                    class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-full transition-colors"
+                                                    :class="qr === '📨 Message Support'
+                                                        ? 'text-xs bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 px-2.5 py-1 rounded-full transition-colors'
+                                                        : 'text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-full transition-colors'"
                                                     x-text="qr"></button>
                                         </template>
                                     </div>
@@ -1485,64 +1512,277 @@ document.addEventListener('DOMContentLoaded', function () {
             {{-- Typing indicator --}}
             <template x-if="thinking">
                 <div class="flex items-center gap-2">
-                    <div class="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                        <i class="fas fa-robot text-indigo-600 text-xs"></i>
+                    <div class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style="background:{{ $agentColor }}22;">
+                        <i class="fas fa-{{ $agentIcon }} text-xs" style="color:{{ $agentColor }};"></i>
                     </div>
                     <div class="bg-white rounded-xl rounded-tl-none px-3 py-2 shadow-sm flex gap-1 items-center">
-                        <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style="animation-delay:0ms"></span>
-                        <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style="animation-delay:150ms"></span>
-                        <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style="animation-delay:300ms"></span>
+                        <span class="w-1.5 h-1.5 rounded-full animate-bounce" style="background:{{ $agentColor }}99;animation-delay:0ms"></span>
+                        <span class="w-1.5 h-1.5 rounded-full animate-bounce" style="background:{{ $agentColor }}99;animation-delay:150ms"></span>
+                        <span class="w-1.5 h-1.5 rounded-full animate-bounce" style="background:{{ $agentColor }}99;animation-delay:300ms"></span>
                     </div>
                 </div>
             </template>
         </div>
 
+        {{-- Support Panel --}}
+        <div x-show="supportMode" class="flex-1 flex flex-col bg-gray-50 overflow-y-auto">
+            <div class="flex flex-col p-4 gap-3 min-h-full">
+                <template x-if="!supportSent">
+                    <div class="flex flex-col gap-3">
+                        <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-sm text-indigo-700 flex items-start gap-2">
+                            <i class="fas fa-headset mt-0.5 flex-shrink-0"></i>
+                            <span>Describe your issue and our support team will receive your message directly.</span>
+                        </div>
+                        <textarea x-model="supportBody" placeholder="Describe your issue…"
+                            class="text-sm bg-white border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
+                            rows="4"></textarea>
+
+                        {{-- Drop zone --}}
+                        <div class="rounded-xl border-2 border-dashed border-gray-300 bg-white px-3 py-3 text-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-colors"
+                             :class="supportDragging ? 'border-indigo-500 bg-indigo-50' : ''"
+                             @click="$refs.supportFileInput.click()"
+                             @dragover.prevent="supportDragging = true"
+                             @dragleave.prevent="supportDragging = false"
+                             @drop.prevent="supportDragging = false; supportHandleFiles($event.dataTransfer.files)">
+                            <i class="fas fa-paperclip text-gray-400 text-sm mb-1"></i>
+                            <p class="text-xs text-gray-400">Attach files or drag &amp; drop</p>
+                        </div>
+                        <input type="file" multiple x-ref="supportFileInput" class="hidden"
+                               @change="supportHandleFiles($event.target.files); $event.target.value = ''">
+
+                        {{-- File chips --}}
+                        <template x-if="supportFiles.length > 0">
+                            <div class="flex flex-col gap-1.5">
+                                <template x-for="(f, i) in supportFiles" :key="i">
+                                    <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs">
+                                        <i class="fas fa-file text-gray-400 flex-shrink-0"></i>
+                                        <span class="flex-1 truncate text-gray-700" x-text="f.name"></span>
+                                        <span class="text-gray-400 flex-shrink-0" x-text="(f.size / 1024).toFixed(0) + ' KB'"></span>
+                                        <button @click.stop="supportRemoveFile(i)" class="text-gray-400 hover:text-red-500 flex-shrink-0 ml-1" style="background:none;border:none;cursor:pointer;padding:0;">
+                                            <i class="fas fa-times text-xs"></i>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                        <button @click="sendSupport()" :disabled="supportSending || !supportBody.trim()"
+                                class="w-full py-2 rounded-xl text-white text-sm font-medium disabled:opacity-40 transition-colors"
+                                style="background:{{ $agentColor }};">
+                            <template x-if="!supportSending">
+                                <span><i class="fas fa-paper-plane mr-2"></i> Send to Support</span>
+                            </template>
+                            <template x-if="supportSending">
+                                <span><i class="fas fa-spinner fa-spin mr-2"></i> Sending…</span>
+                            </template>
+                        </button>
+                        <button @click="supportMode = false" class="text-xs text-gray-400 hover:text-gray-600 text-center">
+                            ← Back to assistant
+                        </button>
+                    </div>
+                </template>
+                <template x-if="supportSent">
+                    <div class="flex-1 flex flex-col items-center justify-center gap-3 text-center py-8">
+                        <div class="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
+                            <i class="fas fa-check text-green-600 text-xl"></i>
+                        </div>
+                        <div class="text-sm font-medium text-gray-800">Message sent!</div>
+                        <div class="text-xs text-gray-500" x-text="supportAdminName ? 'Your message was sent to ' + supportAdminName + '.' : 'Your message has been sent to support.'"></div>
+                        <a :href="supportUrl" class="mt-1 text-xs text-indigo-600 hover:text-indigo-800 underline font-medium" x-show="supportUrl">
+                            Open in Messages →
+                        </a>
+                        <button @click="supportMode = false; supportSent = false; supportBody = ''; supportFiles = []"
+                                class="mt-2 text-xs text-gray-400 hover:text-gray-600 underline">
+                            Back to assistant
+                        </button>
+                    </div>
+                </template>
+            </div>
+        </div>
+
         {{-- Input --}}
-        <div class="border-t border-gray-100 bg-white px-3 py-2.5 flex items-center gap-2">
+        <div class="border-t border-gray-100 bg-white px-3 py-2.5 flex items-center gap-2" x-show="!supportMode">
             <input x-ref="inputBox" x-model="input" type="text"
                    @keydown.enter="send()"
                    placeholder="Ask me anything…"
                    class="flex-1 text-sm bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
                    :disabled="thinking" />
             <button @click="send()" :disabled="thinking || !input.trim()"
-                    class="w-9 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 flex items-center justify-center text-white transition-colors flex-shrink-0">
+                    class="w-9 h-9 rounded-xl disabled:opacity-40 flex items-center justify-center text-white transition-colors flex-shrink-0"
+                    style="background:{{ $agentColor }};">
                 <i class="fas fa-paper-plane text-xs"></i>
             </button>
         </div>
     </div>
 
     {{-- FAB toggle button --}}
-    <button @click="toggleOpen()"
-            class="w-14 h-14 rounded-full bg-indigo-600 hover:bg-indigo-700 shadow-lg flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 relative">
-        <i class="fas text-xl transition-transform duration-200" :class="open ? 'fa-times' : 'fa-robot'"></i>
-        {{-- Pulse ring when closed --}}
-        <span x-show="!open" class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white"></span>
+    <button @click="toggleOpen()" class="agent-fab" :class="open ? 'agent-fab--open' : ''" :title="!open && badgeTooltip ? badgeTooltip : ''">
+
+        {{-- Glossy shine layer --}}
+        <span class="agent-fab__shine"></span>
+
+        {{-- Icon --}}
+        <i class="fas agent-fab__icon" :class="open ? 'fa-times' : 'fa-{{ $agentIcon }}'"></i>
+
+        {{-- Urgent badge --}}
+        <span x-show="!open && badgeCount > 0"
+              x-transition:enter="agent-badge-enter" x-transition:enter-start="agent-badge-from" x-transition:enter-end="agent-badge-to"
+              x-transition:leave="agent-badge-leave" x-transition:leave-start="agent-badge-to" x-transition:leave-end="agent-badge-from"
+              class="agent-fab__badge">
+            <span class="agent-fab__badge-ring"></span>
+            <span class="agent-fab__badge-count" x-text="badgeCount > 9 ? '9+' : badgeCount"></span>
+        </span>
+
+        {{-- Online dot --}}
+        <span x-show="!open && badgeCount === 0" class="agent-fab__online"></span>
     </button>
+
+    <style>
+    /* ── FAB base ───────────────────────────────────── */
+    .agent-fab {
+        position: relative;
+        width: 58px; height: 58px;
+        border-radius: 50%;
+        border: none; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        background: linear-gradient(145deg, {{ $agentColor }}, color-mix(in srgb, {{ $agentColor }} 80%, #000));
+        box-shadow: 0 4px 15px {{ $agentColor }}55, 0 1px 3px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.15);
+        transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease;
+        outline: none;
+    }
+    .agent-fab:hover {
+        transform: scale(1.1) translateY(-2px);
+        box-shadow: 0 8px 28px {{ $agentColor }}66, 0 2px 6px rgba(0,0,0,.15), inset 0 1px 0 rgba(255,255,255,.2);
+    }
+    .agent-fab:active { transform: scale(.95); }
+    .agent-fab--open  { transform: scale(1.05); }
+
+    /* Shine */
+    .agent-fab__shine {
+        position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+        background: linear-gradient(145deg, rgba(255,255,255,.22) 0%, transparent 55%);
+    }
+
+    /* Icon */
+    .agent-fab__icon {
+        font-size: 1.3rem; color: #fff; position: relative; z-index: 1;
+        transition: transform .35s cubic-bezier(.34,1.56,.64,1), opacity .2s;
+    }
+    .agent-fab--open .agent-fab__icon { transform: rotate(90deg); }
+
+    /* ── Badge ──────────────────────────────────────── */
+    .agent-fab__badge {
+        position: absolute; top: -6px; right: -6px;
+        display: flex; align-items: center; justify-content: center;
+        pointer-events: none;
+    }
+    .agent-fab__badge-ring {
+        position: absolute;
+        width: 26px; height: 26px; border-radius: 50%;
+        background: #EF4444; opacity: 0;
+        animation: fab-ring 2s ease-out infinite;
+    }
+    .agent-fab__badge-count {
+        position: relative; z-index: 1;
+        min-width: 22px; height: 22px;
+        display: flex; align-items: center; justify-content: center;
+        background: linear-gradient(135deg, #EF4444, #DC2626);
+        color: #fff; font-size: 10px; font-weight: 800; letter-spacing: .03em;
+        border-radius: 999px; padding: 0 5px;
+        border: 2.5px solid #fff;
+        box-shadow: 0 3px 10px rgba(220,38,38,.55), inset 0 1px 0 rgba(255,255,255,.25);
+    }
+
+    /* ── Online dot ─────────────────────────────────── */
+    .agent-fab__online {
+        position: absolute; top: 1px; right: 1px;
+        width: 13px; height: 13px; border-radius: 50%;
+        background: #22C55E;
+        border: 2.5px solid #fff;
+        box-shadow: 0 0 0 2px rgba(34,197,94,.25);
+    }
+
+    /* ── Animations ─────────────────────────────────── */
+    @keyframes fab-ring {
+        0%   { transform: scale(.7); opacity: .6; }
+        60%  { transform: scale(1.8); opacity: 0;  }
+        100% { transform: scale(1.8); opacity: 0;  }
+    }
+    </style>
 </div>
 
 <script>
 function taskAgent() {
     return {
-        open:     false,
-        thinking: false,
-        input:    '',
-        messages: [],
+        open:            false,
+        thinking:        false,
+        input:           '',
+        messages:        [],
+        badgeCount:      0,
+        badgeTooltip:    '',
+        supportMode:      false,
+        supportBody:      '',
+        supportSent:      false,
+        supportSending:   false,
+        supportDragging:  false,
+        supportFiles:     [],
+        supportAdminName: '',
+        supportUrl:       '',
         _csrf:    document.querySelector('meta[name="csrf-token"]')?.content || '',
 
         init() {
-            // Welcome message on first open
+            this.fetchBadge();
+        },
+
+        async fetchBadge() {
+            try {
+                const res = await fetch('{{ route("agent.badge") }}', {
+                    headers: { 'X-CSRF-TOKEN': this._csrf, 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const data = await res.json();
+                this.badgeCount    = data.count || 0;
+                this.badgeTooltip  = data.tooltip || '';
+            } catch (e) {}
         },
 
         toggleOpen() {
             this.open = !this.open;
             if (this.open && this.messages.length === 0) {
-                this.pushAgent({
-                    reply: "👋 Hi! I'm your **Task Assistant**. I can show your tasks, stats, overdue items, projects, and more.",
-                    type:  'text',
-                    quick_replies: ['my tasks', 'stats', 'overdue', 'help'],
-                });
+                if (this.badgeCount > 0) {
+                    // Auto-show urgent brief when there are items needing attention
+                    this.pushAgent({
+                        reply: @json($agentWelcome),
+                        type:  'text',
+                        quick_replies: ['my tasks', 'stats', 'overdue', 'help'],
+                    });
+                    this.input = 'today';
+                    this.$nextTick(() => this.send());
+                } else {
+                    this.pushAgent({
+                        reply: @json($agentWelcome),
+                        type:  'text',
+                        quick_replies: ['my tasks', 'stats', 'overdue', 'help'],
+                    });
+                }
             }
-            if (this.open) this.$nextTick(() => { this.$refs.inputBox?.focus(); this.scrollBottom(); });
+            if (this.open) {
+                this.badgeCount = 0;
+                this.$nextTick(() => { this.$refs.inputBox?.focus(); this.scrollBottom(); });
+            } else {
+                this.fetchBadge();
+            }
+        },
+
+        clearChat() {
+            this.messages = [];
+            this.input    = '';
+            this.thinking = false;
+            this.pushAgent({
+                reply: @json($agentWelcome),
+                type:  'text',
+                quick_replies: ['my tasks', 'stats', 'overdue', 'help'],
+            });
+            this.$nextTick(() => this.scrollBottom());
         },
 
         async send() {
@@ -1568,10 +1808,65 @@ function taskAgent() {
             }
         },
 
-        sendQuick(text) { this.input = text; this.send(); },
+        sendQuick(text) {
+            if (text === '📨 Message Support') {
+                this.supportMode = true;
+                this.supportSent = false;
+                this.supportBody = '';
+                return;
+            }
+            this.input = text;
+            this.send();
+        },
 
         pushAgent(data) {
+            if (data.support_prompt) {
+                const qr = data.quick_replies ? [...data.quick_replies] : [];
+                if (!qr.includes('📨 Message Support')) qr.push('📨 Message Support');
+                data = { ...data, quick_replies: qr };
+            }
             this.messages.push({ from: 'agent', ...data });
+        },
+
+        supportHandleFiles(fileList) {
+            Array.from(fileList).forEach(f => {
+                if (!this.supportFiles.find(x => x.name === f.name && x.size === f.size)) {
+                    this.supportFiles.push(f);
+                }
+            });
+        },
+
+        supportRemoveFile(index) {
+            this.supportFiles.splice(index, 1);
+        },
+
+        async sendSupport() {
+            if (!this.supportBody.trim() || this.supportSending) return;
+            this.supportSending = true;
+            try {
+                const fd = new FormData();
+                fd.append('body', this.supportBody.trim());
+                fd.append('_token', this._csrf);
+                this.supportFiles.forEach(f => fd.append('attachments[]', f));
+                const res = await fetch('{{ route("agent.support") }}', {
+                    method:  'POST',
+                    headers: { 'X-CSRF-TOKEN': this._csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    body:    fd,
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    this.supportSent      = true;
+                    this.supportAdminName = data.admin || '';
+                    this.supportUrl       = data.url   || '';
+                    this.supportFiles     = [];
+                } else {
+                    alert('Failed to send: ' + (data.error || 'please try again.'));
+                }
+            } catch (e) {
+                alert('Something went wrong. Please try again.');
+            } finally {
+                this.supportSending = false;
+            }
         },
 
         scrollBottom() {
@@ -1589,5 +1884,6 @@ function taskAgent() {
     };
 }
 </script>
+@endunless
 </body>
 </html>

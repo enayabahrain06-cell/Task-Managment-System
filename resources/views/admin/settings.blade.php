@@ -147,6 +147,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
         $navItems = [
             ['id'=>'general',       'icon'=>'fa-sliders',        'label'=>'General'],
             ['id'=>'branding',      'icon'=>'fa-palette',        'label'=>'Branding'],
+            ['id'=>'agent',         'icon'=>'fa-robot',          'label'=>'Chat Agent'],
             ['id'=>'team',          'icon'=>'fa-users',          'label'=>'Team'],
             ['id'=>'notifications', 'icon'=>'fa-bell',           'label'=>'Notifications'],
             ['id'=>'mail',          'icon'=>'fa-envelope',       'label'=>'Mail / SMTP'],
@@ -608,6 +609,171 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                     <div class="scard-footer">
                         <button type="submit" class="btn-save">
                             <i class="fas fa-check" style="font-size:11px;margin-right:5px;"></i>Save Branding
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {{-- ════ CHAT AGENT ════ --}}
+        <div x-show="tab === 'agent'" x-cloak>
+            <div class="scard">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#EEF2FF;color:#4F46E5;"><i class="fas fa-robot"></i></div>
+                    <div>
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Chat Agent</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Rename, restyle and customise the assistant widget</p>
+                    </div>
+                </div>
+
+                {{-- Hide Agent toggle --}}
+                <div style="padding:14px 24px;border-bottom:1px solid #F3F4F6;"
+                     x-data="{ hideAgent: {{ ($appSettings['hide_agent'] ?? '0') === '1' ? 'true' : 'false' }} }">
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:28px;height:28px;border-radius:8px;background:#FEF2F2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-eye-slash" style="font-size:11px;color:#EF4444;"></i>
+                            </div>
+                            <div>
+                                <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Hide Chat Agent</p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Remove the chat widget from all pages sitewide</p>
+                            </div>
+                        </div>
+                        <button type="button"
+                                @click="fetch('{{ route('admin.settings.hide-agent') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ hideAgent = d.hide_agent })"
+                                style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                :style="hideAgent ? 'background:#EF4444;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                            <i class="fas" :class="hideAgent ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                            <span x-text="hideAgent ? 'Hidden' : 'Visible'"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ route('admin.settings.agent') }}">
+                    @csrf
+                    <div class="scard-body">
+
+                        {{-- Live preview --}}
+                        @php
+                            $agentColor   = $settings['agent_color'] ?? '#4F46E5';
+                            $agentIcon    = $settings['agent_icon']  ?? 'robot';
+                            $agentName    = $settings['agent_name']  ?? 'Task Assistant';
+                            $agentSub     = $settings['agent_subtitle'] ?? 'Ask me anything about your tasks';
+                            $agentWelcome = $settings['agent_welcome']  ?? '';
+                        @endphp
+                        <div x-data="{
+                            agentName:    '{{ addslashes($agentName) }}',
+                            agentSub:     '{{ addslashes($agentSub) }}',
+                            agentColor:   '{{ $agentColor }}',
+                            agentIcon:    '{{ $agentIcon }}',
+                            agentWelcome: '{{ addslashes($agentWelcome) }}',
+                        }">
+                            {{-- Preview bubble --}}
+                            <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;margin-bottom:24px;">
+                                <div style="flex:0 0 260px;">
+                                    <p style="font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.07em;margin:0 0 8px;">Live Preview</p>
+                                    <div style="border-radius:14px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.12);width:260px;">
+                                        <div :style="'background:linear-gradient(135deg,'+agentColor+','+agentColor+'cc);padding:12px 14px;display:flex;align-items:center;gap:10px;'">
+                                            <div style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                                <i :class="'fas fa-'+agentIcon" style="color:#fff;font-size:13px;"></i>
+                                            </div>
+                                            <div style="flex:1;min-width:0;">
+                                                <div x-text="agentName" style="font-weight:700;color:#fff;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+                                                <div x-text="agentSub" style="font-size:10px;color:rgba(255,255,255,.75);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+                                            </div>
+                                        </div>
+                                        <div style="background:#F8FAFC;padding:10px 12px;">
+                                            <div style="display:flex;align-items:flex-start;gap:7px;">
+                                                <div :style="'width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:'+agentColor+'22;'">
+                                                    <i :class="'fas fa-'+agentIcon" :style="'font-size:10px;color:'+agentColor+';'"></i>
+                                                </div>
+                                                <div style="background:#fff;border-radius:10px;border-top-left-radius:2px;padding:8px 10px;font-size:11px;color:#374151;box-shadow:0 1px 3px rgba(0,0,0,.08);max-width:180px;">
+                                                    <span x-text="agentWelcome || 'Hello! How can I help?'"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {{-- FAB preview --}}
+                                    <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
+                                        <div :style="'width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.2);background:'+agentColor+';'">
+                                            <i :class="'fas fa-'+agentIcon" style="color:#fff;font-size:17px;"></i>
+                                        </div>
+                                        <span style="font-size:11px;color:#9CA3AF;">FAB button</span>
+                                    </div>
+                                </div>
+
+                                {{-- Fields --}}
+                                <div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:16px;">
+                                    <div>
+                                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Agent Name</label>
+                                        <input type="text" name="agent_name" x-model="agentName" maxlength="60" required
+                                               style="width:100%;border:1px solid #E5E7EB;border-radius:8px;padding:8px 12px;font-size:13px;outline:none;" />
+                                    </div>
+                                    <div>
+                                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Subtitle</label>
+                                        <input type="text" name="agent_subtitle" x-model="agentSub" maxlength="120"
+                                               style="width:100%;border:1px solid #E5E7EB;border-radius:8px;padding:8px 12px;font-size:13px;outline:none;" />
+                                    </div>
+                                    <div>
+                                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Welcome Message</label>
+                                        <textarea name="agent_welcome" x-model="agentWelcome" maxlength="400" rows="3"
+                                                  style="width:100%;border:1px solid #E5E7EB;border-radius:8px;padding:8px 12px;font-size:13px;outline:none;resize:vertical;"></textarea>
+                                        <p style="font-size:11px;color:#9CA3AF;margin:4px 0 0;">Shown when the user first opens the chat. Supports **bold** text.</p>
+                                    </div>
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                        <div>
+                                            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Accent Colour</label>
+                                            <div style="display:flex;align-items:center;gap:8px;">
+                                                <input type="color" name="agent_color" x-model="agentColor"
+                                                       style="width:42px;height:36px;border:1px solid #E5E7EB;border-radius:8px;padding:2px;cursor:pointer;" />
+                                                <input type="text" x-model="agentColor" @input="agentColor=$event.target.value"
+                                                       maxlength="7" style="flex:1;border:1px solid #E5E7EB;border-radius:8px;padding:8px 10px;font-size:13px;font-family:monospace;outline:none;" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Icon</label>
+                                            <select name="agent_icon" x-model="agentIcon"
+                                                    style="width:100%;border:1px solid #E5E7EB;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;">
+                                                <option value="robot">🤖 Robot</option>
+                                                <option value="brain">🧠 Brain</option>
+                                                <option value="comments">💬 Comments</option>
+                                                <option value="headset">🎧 Headset</option>
+                                                <option value="bolt">⚡ Bolt</option>
+                                                <option value="star">⭐ Star</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Support Team --}}
+                        <div style="padding-top:18px;border-top:1px solid #F3F4F6;margin-top:6px;">
+                            <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">
+                                <div style="width:28px;height:28px;border-radius:8px;background:#FFF7ED;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
+                                    <i class="fas fa-headset" style="font-size:11px;color:#F97316;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Support Team Recipient</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Who receives support messages sent from the chat agent widget</p>
+                                </div>
+                            </div>
+                            <select name="support_user_id"
+                                    style="width:100%;padding:8px 12px;border:1px solid #E5E7EB;border-radius:8px;font-size:13px;color:#374151;background:#fff;outline:none;">
+                                <option value="">— Automatically pick first admin/manager —</option>
+                                @foreach($supportUsers as $su)
+                                    <option value="{{ $su->id }}"
+                                        {{ ($settings['support_user_id'] ?? '') == $su->id ? 'selected' : '' }}>
+                                        {{ $su->name }} ({{ ucfirst($su->role) }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                    </div>
+                    <div class="scard-footer">
+                        <button type="submit" class="btn-save">
+                            <i class="fas fa-check" style="font-size:11px;margin-right:5px;"></i>Save Agent Settings
                         </button>
                     </div>
                 </form>
@@ -2176,6 +2342,26 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 <span x-text="hideNotify ? 'On' : 'Off'"></span>
                             </button>
                         </div>
+                        {{-- Hide WhatsApp Web Button --}}
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
+                             x-data="{ hideWaWeb: {{ ($appSettings['hide_wa_web_button'] ?? '0') === '1' ? 'true' : 'false' }} }">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="width:28px;height:28px;border-radius:8px;background:#DCFCE7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fab fa-whatsapp" style="font-size:12px;color:#25D366;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Hide "Send via WhatsApp Web"</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Remove the WhatsApp Web button from the approvals page (keeps API button only)</p>
+                                </div>
+                            </div>
+                            <button type="button"
+                                    @click="fetch('{{ route('admin.settings.hide-wa-web') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ hideWaWeb = d.hide_wa_web_button })"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                    :style="hideWaWeb ? 'background:#25D366;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                                <i class="fas" :class="hideWaWeb ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                                <span x-text="hideWaWeb ? 'On' : 'Off'"></span>
+                            </button>
+                        </div>
                         {{-- Hide Hourly Rate --}}
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
                              x-data="{ hideHourly: {{ ($appSettings['hide_hourly_rate'] ?? '0') === '1' ? 'true' : 'false' }} }">
@@ -2676,15 +2862,15 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </div>
                         </div>
 
+                        {{-- Internal staff templates (3-col grid) --}}
                         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
                             @php
                             $templates = [
-                                ['key'=>'wa_tpl_assigned',         'icon'=>'fa-user-plus',          'color'=>'#4F46E5', 'label'=>'Task Assigned',          'hint'=>'Sent to user when a task is assigned to them'],
-                                ['key'=>'wa_tpl_approved',         'icon'=>'fa-circle-check',        'color'=>'#16a34a', 'label'=>'Task Approved',           'hint'=>'Sent when admin approves a submitted task'],
-                                ['key'=>'wa_tpl_reminder',         'icon'=>'fa-clock',               'color'=>'#D97706', 'label'=>'Deadline Reminder',       'hint'=>'Sent X days before the task deadline'],
-                                ['key'=>'wa_tpl_overdue',          'icon'=>'fa-triangle-exclamation','color'=>'#DC2626', 'label'=>'Overdue Alert',           'hint'=>'Automated daily alert for overdue tasks'],
-                                ['key'=>'wa_tpl_social',           'icon'=>'fa-share-alt',         'color'=>'#7C3AED', 'label'=>'Social Media Assigned',   'hint'=>'Sent when a task is assigned for social posting'],
-                                ['key'=>'wa_tpl_customer_design',  'icon'=>'fa-image',               'color'=>'#0891B2', 'label'=>'Customer Design Ready',   'hint'=>'Sent to customer when their design is approved and ready for review. Variables: {customer_name}, {task_title}, {design_link}, {admin_note}, {company}'],
+                                ['key'=>'wa_tpl_assigned',         'icon'=>'fa-user-plus',           'color'=>'#4F46E5', 'label'=>'Task Assigned',         'hint'=>'Sent to user when a task is assigned to them'],
+                                ['key'=>'wa_tpl_approved',         'icon'=>'fa-circle-check',         'color'=>'#16a34a', 'label'=>'Task Approved',          'hint'=>'Sent when admin approves a submitted task'],
+                                ['key'=>'wa_tpl_reminder',         'icon'=>'fa-clock',                'color'=>'#D97706', 'label'=>'Deadline Reminder',      'hint'=>'Sent X days before the task deadline'],
+                                ['key'=>'wa_tpl_overdue',          'icon'=>'fa-triangle-exclamation', 'color'=>'#DC2626', 'label'=>'Overdue Alert',          'hint'=>'Automated daily alert for overdue tasks'],
+                                ['key'=>'wa_tpl_social',           'icon'=>'fa-share-alt',            'color'=>'#7C3AED', 'label'=>'Social Media Assigned',  'hint'=>'Sent when a task is assigned for social posting'],
                             ];
                             @endphp
                             @foreach($templates as $tpl)
@@ -2700,6 +2886,42 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </div>
                             @endforeach
                         </div>
+
+                        {{-- Customer-facing templates (full-width, highlighted) --}}
+                        <div style="margin-top:24px;padding-top:20px;border-top:1px solid #E5E7EB;">
+                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                                <div style="width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#D1FAE5,#A7F3D0);display:flex;align-items:center;justify-content:center;">
+                                    <i class="fas fa-users" style="font-size:11px;color:#059669;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">Customer Messages</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:0;">Messages sent directly to your customers. Variables: <code style="background:#f0fdf4;color:#059669;border:1px solid #bbf7d0;border-radius:4px;padding:1px 6px;font-size:10px;">{customer_name}</code> <code style="background:#f0fdf4;color:#059669;border:1px solid #bbf7d0;border-radius:4px;padding:1px 6px;font-size:10px;">{task_title}</code> <code style="background:#f0fdf4;color:#059669;border:1px solid #bbf7d0;border-radius:4px;padding:1px 6px;font-size:10px;">{design_link}</code> <code style="background:#f0fdf4;color:#059669;border:1px solid #bbf7d0;border-radius:4px;padding:1px 6px;font-size:10px;">{admin_note}</code> <code style="background:#f0fdf4;color:#059669;border:1px solid #bbf7d0;border-radius:4px;padding:1px 6px;font-size:10px;">{company}</code></p>
+                                </div>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                                <div style="background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:12px;padding:16px;">
+                                    <label class="sf-label" style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                                        <i class="fas fa-eye" style="color:#25D366;font-size:11px;"></i>
+                                        Send Preview (Approvals page)
+                                    </label>
+                                    <p style="font-size:11px;color:#6B7280;margin:0 0 8px;">Sent when admin clicks <strong>"Send via WhatsApp API"</strong> on the Approvals page — asking the customer to review the design before final approval.</p>
+                                    <textarea name="wa_tpl_customer_preview" rows="8"
+                                              style="width:100%;padding:9px 12px;font-size:12px;font-family:monospace;border:1.5px solid #BBF7D0;border-radius:9px;color:#111827;resize:vertical;outline:none;background:#fff;box-sizing:border-box;"
+                                              onfocus="this.style.borderColor='#25D366';this.style.boxShadow='0 0 0 3px rgba(37,211,102,.1)'" onblur="this.style.borderColor='#BBF7D0';this.style.boxShadow='none'">{{ $settings['wa_tpl_customer_preview'] ?? '' }}</textarea>
+                                </div>
+                                <div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:12px;padding:16px;">
+                                    <label class="sf-label" style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                                        <i class="fas fa-image" style="color:#0891B2;font-size:11px;"></i>
+                                        Design Ready (after approval)
+                                    </label>
+                                    <p style="font-size:11px;color:#6B7280;margin:0 0 8px;">Sent when the design is <strong>fully approved</strong> and delivered to the customer. Supports <code style="font-size:10px;">{admin_note}</code> too.</p>
+                                    <textarea name="wa_tpl_customer_design" rows="8"
+                                              style="width:100%;padding:9px 12px;font-size:12px;font-family:monospace;border:1.5px solid #BFDBFE;border-radius:9px;color:#111827;resize:vertical;outline:none;background:#fff;box-sizing:border-box;"
+                                              onfocus="this.style.borderColor='#0891B2';this.style.boxShadow='0 0 0 3px rgba(8,145,178,.1)'" onblur="this.style.borderColor='#BFDBFE';this.style.boxShadow='none'">{{ $settings['wa_tpl_customer_design'] ?? '' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                     <div class="scard-footer">
                         <button type="submit" class="btn-save"><i class="fas fa-check" style="margin-right:6px;font-size:11px;"></i>Save Templates</button>
