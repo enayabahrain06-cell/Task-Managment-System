@@ -202,6 +202,11 @@
             } finally {
                 this.sending = false;
             }
+        } else if (this.sendChannel === 'whatsapp_web') {
+            if (!this.cPhone) { this.sendResult = { ok: false, message: 'No phone number on file for this customer.' }; return; }
+            const waUrl = 'https://web.whatsapp.com/send?phone=' + this.cPhone + '&text=' + encodeURIComponent(this.editableMsg);
+            window.open(waUrl, '_blank');
+            this.close();
         } else {
             if (!this.cEmail) { this.sendResult = { ok: false, message: 'No email address on file for this customer.' }; return; }
             const subj = this.sendProject ? `Project Update – ${this.sendProject.name}` : `Message for ${this.cName}`;
@@ -510,19 +515,26 @@
             <div style="overflow-y:auto;flex:1;padding:20px 24px;">
 
                 {{-- Channel selector --}}
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;">
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px;">
                     <button type="button" @click="sendChannel='whatsapp'"
                             :style="sendChannel==='whatsapp'
-                                ? 'display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:12px;border:2px solid #25D366;background:#F0FDF4;color:#16A34A;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;'
-                                : 'display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:12px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;'">
-                        <i class="fab fa-whatsapp" :style="sendChannel==='whatsapp' ? 'font-size:17px;color:#25D366;' : 'font-size:17px;color:#9CA3AF;'"></i>
-                        WhatsApp
+                                ? 'display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 6px;border-radius:12px;border:2px solid #25D366;background:#F0FDF4;color:#16A34A;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;'
+                                : 'display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 6px;border-radius:12px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;'">
+                        <i class="fab fa-whatsapp" :style="sendChannel==='whatsapp' ? 'font-size:16px;color:#25D366;' : 'font-size:16px;color:#9CA3AF;'"></i>
+                        WA API
+                    </button>
+                    <button type="button" @click="sendChannel='whatsapp_web'"
+                            :style="sendChannel==='whatsapp_web'
+                                ? 'display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 6px;border-radius:12px;border:2px solid #128C7E;background:#F0FDFA;color:#0D9488;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;'
+                                : 'display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 6px;border-radius:12px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;'">
+                        <i class="fab fa-whatsapp" :style="sendChannel==='whatsapp_web' ? 'font-size:16px;color:#128C7E;' : 'font-size:16px;color:#9CA3AF;'"></i>
+                        WA Web
                     </button>
                     <button type="button" @click="sendChannel='email'"
                             :style="sendChannel==='email'
-                                ? 'display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:12px;border:2px solid #6366F1;background:#EEF2FF;color:#4F46E5;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;'
-                                : 'display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:12px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;'">
-                        <i class="fas fa-envelope" :style="sendChannel==='email' ? 'font-size:14px;color:#6366F1;' : 'font-size:14px;color:#9CA3AF;'"></i>
+                                ? 'display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 6px;border-radius:12px;border:2px solid #6366F1;background:#EEF2FF;color:#4F46E5;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;'
+                                : 'display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 6px;border-radius:12px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;'">
+                        <i class="fas fa-envelope" :style="sendChannel==='email' ? 'font-size:13px;color:#6366F1;' : 'font-size:13px;color:#9CA3AF;'"></i>
                         Email
                     </button>
                 </div>
@@ -533,6 +545,18 @@
                         <div style="display:flex;align-items:center;gap:8px;width:100%;">
                             <i class="fab fa-whatsapp" style="color:#25D366;font-size:16px;flex-shrink:0;"></i>
                             <span style="font-size:13px;color:#374151;font-weight:600;">{{ $customer->phone ?? '—' }}</span>
+                            @if(!$customer->phone)
+                            <span style="font-size:11px;color:#DC2626;margin-left:4px;">No phone on file —
+                                <a href="{{ route('admin.customers.edit', $customer) }}" style="color:#4F46E5;text-decoration:underline;">add one</a>
+                            </span>
+                            @endif
+                        </div>
+                    </template>
+                    <template x-if="sendChannel==='whatsapp_web'">
+                        <div style="display:flex;align-items:center;gap:8px;width:100%;">
+                            <i class="fab fa-whatsapp" style="color:#128C7E;font-size:16px;flex-shrink:0;"></i>
+                            <span style="font-size:13px;color:#374151;font-weight:600;">{{ $customer->phone ?? '—' }}</span>
+                            <span style="font-size:11px;color:#6B7280;margin-left:2px;">— opens WhatsApp Web</span>
                             @if(!$customer->phone)
                             <span style="font-size:11px;color:#DC2626;margin-left:4px;">No phone on file —
                                 <a href="{{ route('admin.customers.edit', $customer) }}" style="color:#4F46E5;text-decoration:underline;">add one</a>
@@ -554,7 +578,7 @@
                 </div>
 
                 {{-- Mode toggle: Text Update vs Send File (WhatsApp only, only if files exist) --}}
-                <div x-show="sendChannel==='whatsapp' && customerFiles.length > 0" style="margin-bottom:18px;">
+                <div x-show="(sendChannel==='whatsapp' || sendChannel==='whatsapp_web') && customerFiles.length > 0" style="margin-bottom:18px;">
                     <label style="display:block;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;">
                         <i class="fas fa-paper-plane" style="color:#A78BFA;font-size:10px;margin-right:3px;"></i> What to send
                     </label>
@@ -713,16 +737,18 @@
                 <button type="button" @click="doSend()" :disabled="sending || (sendMode==='file' && !selectedFile)"
                         :style="sendChannel==='whatsapp'
                             ? 'display:inline-flex;align-items:center;gap:7px;padding:9px 22px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(37,211,102,.3);transition:opacity .15s;'
-                            : 'display:inline-flex;align-items:center;gap:7px;padding:9px 22px;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(99,102,241,.3);transition:opacity .15s;'"
+                            : sendChannel==='whatsapp_web'
+                                ? 'display:inline-flex;align-items:center;gap:7px;padding:9px 22px;background:linear-gradient(135deg,#128C7E,#0D7570);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(18,140,126,.3);transition:opacity .15s;'
+                                : 'display:inline-flex;align-items:center;gap:7px;padding:9px 22px;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(99,102,241,.3);transition:opacity .15s;'"
                         onmouseover="if(!sending)this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
                     <template x-if="sending">
                         <i class="fas fa-spinner fa-spin" style="font-size:14px;"></i>
                     </template>
                     <template x-if="!sending">
-                        <i :class="sendChannel==='whatsapp' ? (sendMode==='file' ? 'fas fa-paperclip' : 'fab fa-whatsapp') : 'fas fa-paper-plane'"
-                           :style="sendChannel==='whatsapp' ? 'font-size:15px;' : 'font-size:13px;'"></i>
+                        <i :class="(sendChannel==='whatsapp'||sendChannel==='whatsapp_web') ? (sendMode==='file' ? 'fas fa-paperclip' : 'fab fa-whatsapp') : 'fas fa-paper-plane'"
+                           :style="(sendChannel==='whatsapp'||sendChannel==='whatsapp_web') ? 'font-size:15px;' : 'font-size:13px;'"></i>
                     </template>
-                    <span x-text="sending ? 'Sending…' : (sendChannel==='whatsapp' ? (sendMode==='file' ? 'Send File via WhatsApp' : 'Send via WhatsApp') : 'Open Email Client ↗')"></span>
+                    <span x-text="sending ? 'Sending…' : (sendChannel==='whatsapp' ? (sendMode==='file' ? 'Send File via WhatsApp' : 'Send via WhatsApp') : sendChannel==='whatsapp_web' ? 'Open WhatsApp Web ↗' : 'Open Email Client ↗')"></span>
                 </button>
             </div>
 
