@@ -732,28 +732,7 @@
 
         {{-- Task & Project Attachments --}}
         @php $allAttachments = $task->attachments->merge($task->project && !$task->project->is_quick ? $task->project->attachments->whereNull('task_id') : collect()); @endphp
-        <div x-data="{
-                open: false, att: null,
-                uploading: false,
-                files: [], dragging: false,
-                show(item) { this.att = item; this.open = true; },
-                close() { this.open = false; this.att = null; },
-                addFiles(e) {
-                    const inc = e.dataTransfer ? e.dataTransfer.files : e.target.files;
-                    const dt = new DataTransfer();
-                    this.files.forEach(f => dt.items.add(f));
-                    Array.from(inc).forEach(f => dt.items.add(f));
-                    this.files = Array.from(dt.files);
-                    this.$refs.attInput.files = dt.files;
-                },
-                removeFile(i) {
-                    const dt = new DataTransfer();
-                    this.files.splice(i,1);
-                    this.files.forEach(f => dt.items.add(f));
-                    this.$refs.attInput.files = dt.files;
-                },
-                fmt(b) { if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
-             }"
+        <div x-data="taskAttachmentViewer()"
              @keydown.escape.window="close()">
 
             <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
@@ -1075,39 +1054,7 @@
             .rte-color-swatch:hover { transform:scale(1.2);box-shadow:0 3px 10px rgba(0,0,0,.3); }
             .rte-color-swatch.selected { border-color:#fff;box-shadow:0 0 0 2px rgba(0,0,0,.5); }
         </style>
-        <div x-data="{
-                commentFile: '',
-                editorFocused: false,
-                dragging: false, dragCount: 0,
-                handleDrop(e) {
-                    this.dragCount = 0; this.dragging = false;
-                    const file = e.dataTransfer.files[0];
-                    if (!file) return;
-                    this.commentFile = file.name;
-                    const input = this.$refs.commentFileInput;
-                    const dt = new DataTransfer();
-                    dt.items.add(file);
-                    input.files = dt.files;
-                },
-                colorOpen: false, selectedColor: '#EF4444', savedRange: null,
-                saveRange() { const s=window.getSelection(); if(s.rangeCount) this.savedRange=s.getRangeAt(0).cloneRange(); },
-                restoreRange() { if(!this.savedRange) return; const s=window.getSelection(); s.removeAllRanges(); s.addRange(this.savedRange); },
-                cmd(c, v = null) { this.restoreRange(); this.$refs.editor.focus(); document.execCommand(c, false, v); },
-                setSize(v) { this.restoreRange(); this.$refs.editor.focus(); document.execCommand('fontSize', false, v); },
-                setColor(c) { this.colorOpen=false; this.selectedColor=c; this.$refs.editor.focus(); document.execCommand('foreColor', false, c); },
-                addLink() {
-                    const url = prompt('Enter URL:');
-                    if (!url) return;
-                    this.$refs.editor.focus();
-                    document.execCommand('createLink', false, url.startsWith('http') ? url : 'https://' + url);
-                },
-                submitComment(form) {
-                    const html = this.$refs.editor.innerHTML.trim();
-                    if (!html || html === '<br>') { this.$refs.editor.focus(); return; }
-                    this.$refs.bodyInput.value = html;
-                    form.submit();
-                }
-             }" style="background:#fff;border-radius:14px;border:1.5px solid #6366F1;box-shadow:0 4px 16px rgba(99,102,241,.08);padding:24px;">
+        <div x-data="taskCommentEditor()" style="background:#fff;border-radius:14px;border:1.5px solid #6366F1;box-shadow:0 4px 16px rgba(99,102,241,.08);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 4px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-comment" style="color:#6366F1;"></i> Add a Comment
             </h2>
@@ -1399,175 +1346,132 @@
                                 $spUrl      = $meta['post_url'] ?? null;
                                 $spIsEdit   = $log->action === 'social_post_edited';
                                 $spNl       = chr(10);
-                                $spWaMsg    = 'Social media post for “' . $task->title . '”' . ($spUrl ? ($spNl . $spNl . $spUrl) : '');
-                                $spMailBody = $spUrl ? urlencode('Social media post for “' . $task->title . '”' . $spNl . $spNl . $spUrl) : '';
+                                $spWaMsg    = 'Social media post for "' . $task->title . '"' . ($spUrl ? ($spNl . $spNl . $spUrl) : '');
+                                $spMailBody = $spUrl ? urlencode('Social media post for "' . $task->title . '"' . $spNl . $spNl . $spUrl) : '';
                             @endphp
-                            <div style=”display:inline-flex;align-items:center;gap:8px;vertical-align:middle;”
-                                 data-wa-message=”{{ $spWaMsg }}”
-                                 data-wa-fetch-url=”{{ route('admin.approvals.whatsapp-customer') }}”
-                                 data-wa-csrf-token=”{{ csrf_token() }}”
-                                 x-data=”{
-                                    open: false,
-                                    dropX: 0,
-                                    dropY: 0,
-                                    waPanel: false,
-                                    waPhone: '',
-                                    waSending: false,
-                                    waResult: null,
-                                    copied: false,
-                                    waFetchUrl: '',
-                                    waCsrfToken: '',
-                                    waMessage: '',
-                                    init() {
-                                        this.waMessage  = this.$el.dataset.waMessage;
-                                        this.waFetchUrl = this.$el.dataset.waFetchUrl;
-                                        this.waCsrfToken = this.$el.dataset.waCsrfToken;
-                                    },
-                                    openDrop(btn) {
-                                        const r = btn.getBoundingClientRect();
-                                        this.dropX = r.left;
-                                        this.dropY = r.bottom + 8;
-                                        this.waPanel = false;
-                                        this.waResult = null;
-                                        this.open = true;
-                                    },
-                                    async doWaSend() {
-                                        const digits = this.waPhone.replace(/\D/g,'');
-                                        if (!digits) return;
-                                        this.waSending = true;
-                                        this.waResult  = null;
-                                        try {
-                                            const res = await fetch(this.waFetchUrl, {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.waCsrfToken },
-                                                body: JSON.stringify({ phone: digits, message: this.waMessage })
-                                            });
-                                            this.waResult = await res.json();
-                                        } catch(e) {
-                                            this.waResult = { ok: false, message: 'Network error. Please try again.' };
-                                        } finally {
-                                            this.waSending = false;
-                                        }
-                                    }
-                                 }”
-                                 @scroll.window=”open=false”
-                                 @keydown.escape.window=”open=false; waPanel=false;”>
+                            <div style="display:inline-flex;align-items:center;gap:8px;vertical-align:middle;"
+                                 data-wa-message="{{ $spWaMsg }}"
+                                 data-wa-fetch-url="{{ route('admin.approvals.whatsapp-customer') }}"
+                                 data-wa-csrf-token="{{ csrf_token() }}"
+                                 x-data="waShareButton()"
+                                 @scroll.window="open=false"
+                                 @keydown.escape.window="open=false; waPanel=false;">
 
                                 {{-- Square brand icon button --}}
-                                <button @click=”@if($spIsEdit || !$spUrl) null @else open ? (open=false) : openDrop($el) @endif”
-                                        style=”width:38px;height:38px;border-radius:10px;background:{{ $spBg }};color:{{ $spIconClr }};border:none;{{ ($spIsEdit || !$spUrl) ? 'cursor:default;opacity:.65;' : 'cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.22);transition:transform .12s,box-shadow .12s;' }}display:flex;align-items:center;justify-content:center;flex-shrink:0;”
-                                        title=”{{ $spIsEdit ? 'Edited' : $spLabel }}”
+                                <button @click="@if($spIsEdit || !$spUrl) null @else open ? (open=false) : openDrop($el) @endif"
+                                        style="width:38px;height:38px;border-radius:10px;background:{{ $spBg }};color:{{ $spIconClr }};border:none;{{ ($spIsEdit || !$spUrl) ? 'cursor:default;opacity:.65;' : 'cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.22);transition:transform .12s,box-shadow .12s;' }}display:flex;align-items:center;justify-content:center;flex-shrink:0;"
+                                        title="{{ $spIsEdit ? 'Edited' : $spLabel }}"
                                         @if(!$spIsEdit && $spUrl)
-                                            onmouseover=”this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 16px rgba(0,0,0,.28)'”
-                                            onmouseout=”this.style.transform='';this.style.boxShadow='0 3px 10px rgba(0,0,0,.22)'”
+                                            onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 16px rgba(0,0,0,.28)'"
+                                            onmouseout="this.style.transform='';this.style.boxShadow='0 3px 10px rgba(0,0,0,.22)'"
                                         @endif>
-                                    <i class=”{{ $spIcon }}” style=”font-size:16px;”></i>
+                                    <i class="{{ $spIcon }}" style="font-size:16px;"></i>
                                 </button>
 
                                 @if(!$spIsEdit && $spUrl)
                                 {{-- Dropdown — teleported to <body> so it escapes overflow:hidden parents --}}
-                                <template x-teleport=”body”>
-                                <div x-show=”open”
-                                     @click.outside=”open=false; waPanel=false; waResult=null;”
-                                     x-transition:enter=”transition ease-out duration-150”
-                                     x-transition:enter-start=”opacity-0 scale-95”
-                                     x-transition:enter-end=”opacity-100 scale-100”
-                                     x-transition:leave=”transition ease-in duration-100”
-                                     x-transition:leave-start=”opacity-100 scale-100”
-                                     x-transition:leave-end=”opacity-0 scale-95”
-                                     :style=”`position:fixed;top:${dropY}px;left:${dropX}px;z-index:99999;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);min-width:220px;overflow:hidden;`”>
+                                <template x-teleport="body">
+                                <div x-show="open"
+                                     @click.outside="open=false; waPanel=false; waResult=null;"
+                                     x-transition:enter="transition ease-out duration-150"
+                                     x-transition:enter-start="opacity-0 scale-95"
+                                     x-transition:enter-end="opacity-100 scale-100"
+                                     x-transition:leave="transition ease-in duration-100"
+                                     x-transition:leave-start="opacity-100 scale-100"
+                                     x-transition:leave-end="opacity-0 scale-95"
+                                     :style="`position:fixed;top:${dropY}px;left:${dropX}px;z-index:99999;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);min-width:220px;overflow:hidden;`">
 
                                     {{-- Dropdown header --}}
-                                    <div style=”padding:10px 14px;background:{{ $spBg }};display:flex;align-items:center;gap:9px;”>
-                                        <i class=”{{ $spIcon }}” style=”color:{{ $spIconClr }};font-size:15px;flex-shrink:0;”></i>
+                                    <div style="padding:10px 14px;background:{{ $spBg }};display:flex;align-items:center;gap:9px;">
+                                        <i class="{{ $spIcon }}" style="color:{{ $spIconClr }};font-size:15px;flex-shrink:0;"></i>
                                         <div>
-                                            <p style=”font-size:12px;font-weight:700;color:{{ $spIconClr }};margin:0;”>{{ $spLabel }}</p>
-                                            <p style=”font-size:10px;color:{{ $spIconClr }};opacity:.75;margin:1px 0 0;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;”>{{ Str::limit($spUrl, 34) }}</p>
+                                            <p style="font-size:12px;font-weight:700;color:{{ $spIconClr }};margin:0;">{{ $spLabel }}</p>
+                                            <p style="font-size:10px;color:{{ $spIconClr }};opacity:.75;margin:1px 0 0;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ Str::limit($spUrl, 34) }}</p>
                                         </div>
                                     </div>
 
                                     {{-- Main menu --}}
-                                    <template x-if=”!waPanel”>
-                                        <div style=”padding:4px 0;”>
+                                    <template x-if="!waPanel">
+                                        <div style="padding:4px 0;">
                                             {{-- Copy Link --}}
-                                            <button @click=”navigator.clipboard.writeText('{{ $spUrl }}').then(()=>{ copied=true; setTimeout(()=>copied=false,1800); })”
-                                                    style=”width:100%;padding:9px 16px;background:none;border:none;text-align:left;font-size:13px;color:#374151;cursor:pointer;display:flex;align-items:center;gap:10px;”
-                                                    onmouseover=”this.style.background='#F5F3FF'” onmouseout=”this.style.background='none'”>
-                                                <span style=”width:26px;height:26px;border-radius:7px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;”>
-                                                    <i class=”fa fa-copy” style=”color:#6366F1;font-size:11px;” x-show=”!copied”></i>
-                                                    <i class=”fa fa-check” style=”color:#059669;font-size:11px;” x-show=”copied”></i>
+                                            <button @click="navigator.clipboard.writeText('{{ $spUrl }}').then(()=>{ copied=true; setTimeout(()=>copied=false,1800); })"
+                                                    style="width:100%;padding:9px 16px;background:none;border:none;text-align:left;font-size:13px;color:#374151;cursor:pointer;display:flex;align-items:center;gap:10px;"
+                                                    onmouseover="this.style.background='#F5F3FF'" onmouseout="this.style.background='none'">
+                                                <span style="width:26px;height:26px;border-radius:7px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                                    <i class="fa fa-copy" style="color:#6366F1;font-size:11px;" x-show="!copied"></i>
+                                                    <i class="fa fa-check" style="color:#059669;font-size:11px;" x-show="copied"></i>
                                                 </span>
-                                                <span x-text=”copied ? 'Copied!' : 'Copy Link'” style=”font-weight:600;”>Copy Link</span>
+                                                <span x-text="copied ? 'Copied!' : 'Copy Link'" style="font-weight:600;">Copy Link</span>
                                             </button>
                                             {{-- Send via WhatsApp --}}
-                                            <button @click=”waPanel=true; waPhone=''; waResult=null; $nextTick(()=>$refs.waInput?.focus())”
-                                                    style=”width:100%;padding:9px 16px;background:none;border:none;text-align:left;font-size:13px;color:#374151;cursor:pointer;display:flex;align-items:center;gap:10px;”
-                                                    onmouseover=”this.style.background='#F0FDF4'” onmouseout=”this.style.background='none'”>
-                                                <span style=”width:26px;height:26px;border-radius:7px;background:#DCFCE7;display:flex;align-items:center;justify-content:center;flex-shrink:0;”>
-                                                    <i class=”fab fa-whatsapp” style=”color:#25D366;font-size:13px;”></i>
+                                            <button @click="waPanel=true; waPhone=''; waResult=null; $nextTick(()=>$refs.waInput?.focus())"
+                                                    style="width:100%;padding:9px 16px;background:none;border:none;text-align:left;font-size:13px;color:#374151;cursor:pointer;display:flex;align-items:center;gap:10px;"
+                                                    onmouseover="this.style.background='#F0FDF4'" onmouseout="this.style.background='none'">
+                                                <span style="width:26px;height:26px;border-radius:7px;background:#DCFCE7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                                    <i class="fab fa-whatsapp" style="color:#25D366;font-size:13px;"></i>
                                                 </span>
-                                                <span style=”font-weight:600;”>Send via WhatsApp</span>
+                                                <span style="font-weight:600;">Send via WhatsApp</span>
                                             </button>
                                             {{-- Send via Email --}}
-                                            <a href=”mailto:?subject={{ urlencode($task->title) }}&body={{ $spMailBody }}”
-                                               style=”display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:13px;color:#374151;text-decoration:none;”
-                                               onmouseover=”this.style.background='#EFF6FF'” onmouseout=”this.style.background='none'”>
-                                                <span style=”width:26px;height:26px;border-radius:7px;background:#DBEAFE;display:flex;align-items:center;justify-content:center;flex-shrink:0;”>
-                                                    <i class=”fa fa-envelope” style=”color:#3B82F6;font-size:11px;”></i>
+                                            <a href="mailto:?subject={{ urlencode($task->title) }}&body={{ $spMailBody }}"
+                                               style="display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:13px;color:#374151;text-decoration:none;"
+                                               onmouseover="this.style.background='#EFF6FF'" onmouseout="this.style.background='none'">
+                                                <span style="width:26px;height:26px;border-radius:7px;background:#DBEAFE;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                                    <i class="fa fa-envelope" style="color:#3B82F6;font-size:11px;"></i>
                                                 </span>
-                                                <span style=”font-weight:600;”>Send via Email</span>
+                                                <span style="font-weight:600;">Send via Email</span>
                                             </a>
                                             {{-- Divider --}}
-                                            <div style=”height:1px;background:#F3F4F6;margin:4px 0;”></div>
+                                            <div style="height:1px;background:#F3F4F6;margin:4px 0;"></div>
                                             {{-- Open in New Window --}}
-                                            <a href=”{{ $spUrl }}” target=”_blank” rel=”noopener”
-                                               style=”display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:13px;color:#374151;text-decoration:none;”
-                                               onmouseover=”this.style.background='#F9FAFB'” onmouseout=”this.style.background='none'”>
-                                                <span style=”width:26px;height:26px;border-radius:7px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;”>
-                                                    <i class=”fa fa-arrow-up-right-from-square” style=”color:#6B7280;font-size:11px;”></i>
+                                            <a href="{{ $spUrl }}" target="_blank" rel="noopener"
+                                               style="display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:13px;color:#374151;text-decoration:none;"
+                                               onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='none'">
+                                                <span style="width:26px;height:26px;border-radius:7px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                                    <i class="fa fa-arrow-up-right-from-square" style="color:#6B7280;font-size:11px;"></i>
                                                 </span>
-                                                <span style=”font-weight:600;”>Open in New Window</span>
+                                                <span style="font-weight:600;">Open in New Window</span>
                                             </a>
                                         </div>
                                     </template>
 
                                     {{-- WhatsApp panel --}}
-                                    <template x-if=”waPanel”>
+                                    <template x-if="waPanel">
                                         <div>
-                                            <div style=”background:linear-gradient(135deg,#25D366,#128C7E);padding:12px 14px;display:flex;align-items:center;gap:10px;”>
-                                                <i class=”fab fa-whatsapp” style=”color:#fff;font-size:18px;flex-shrink:0;”></i>
+                                            <div style="background:linear-gradient(135deg,#25D366,#128C7E);padding:12px 14px;display:flex;align-items:center;gap:10px;">
+                                                <i class="fab fa-whatsapp" style="color:#fff;font-size:18px;flex-shrink:0;"></i>
                                                 <div>
-                                                    <p style=”font-size:13px;font-weight:700;color:#fff;margin:0;”>Share Social Post</p>
-                                                    <p style=”font-size:10px;color:rgba(255,255,255,.75);margin:2px 0 0;”>Sends link via WhatsApp API</p>
+                                                    <p style="font-size:13px;font-weight:700;color:#fff;margin:0;">Share Social Post</p>
+                                                    <p style="font-size:10px;color:rgba(255,255,255,.75);margin:2px 0 0;">Sends link via WhatsApp API</p>
                                                 </div>
                                             </div>
-                                            <div style=”padding:12px 14px;”>
-                                                <p style=”font-size:11px;color:#6B7280;margin:0 0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;”>
-                                                    <i class=”{{ $spIcon }}” style=”font-size:10px;color:{{ $spBg }};margin-right:3px;”></i>{{ $spLabel }} &mdash; {{ Str::limit($spUrl, 32) }}
+                                            <div style="padding:12px 14px;">
+                                                <p style="font-size:11px;color:#6B7280;margin:0 0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                                    <i class="{{ $spIcon }}" style="font-size:10px;color:{{ $spBg }};margin-right:3px;"></i>{{ $spLabel }} &mdash; {{ Str::limit($spUrl, 32) }}
                                                 </p>
-                                                <label style=”display:block;font-size:10px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;”>WhatsApp Number</label>
-                                                <input type=”tel” x-model=”waPhone” x-ref=”waInput”
-                                                       placeholder=”+971501234567”
-                                                       @keydown.enter=”doWaSend()”
-                                                       style=”width:100%;padding:8px 10px;border:1.5px solid #D1FAE5;background:#F0FDF4;border-radius:9px;font-size:12px;color:#111827;outline:none;box-sizing:border-box;margin-bottom:10px;”
-                                                       onfocus=”this.style.borderColor='#25D366'” onblur=”this.style.borderColor='#D1FAE5'”>
-                                                <button @click=”doWaSend()” :disabled=”waSending”
-                                                        :style=”waSending ? 'width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;background:#9CA3AF;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:not-allowed;' : 'width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(37,211,102,.35);'”
-                                                        onmouseover=”if(this.style.cursor!=='not-allowed')this.style.opacity='.85'” onmouseout=”this.style.opacity='1'”>
-                                                    <i class=”fab fa-whatsapp” style=”font-size:13px;” x-show=”!waSending”></i>
-                                                    <i class=”fas fa-spinner fa-spin” style=”font-size:12px;” x-show=”waSending”></i>
-                                                    <span x-text=”waSending ? 'Sending…' : 'Send via WhatsApp'”>Send via WhatsApp</span>
+                                                <label style="display:block;font-size:10px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">WhatsApp Number</label>
+                                                <input type="tel" x-model="waPhone" x-ref="waInput"
+                                                       placeholder="+971501234567"
+                                                       @keydown.enter="doWaSend()"
+                                                       style="width:100%;padding:8px 10px;border:1.5px solid #D1FAE5;background:#F0FDF4;border-radius:9px;font-size:12px;color:#111827;outline:none;box-sizing:border-box;margin-bottom:10px;"
+                                                       onfocus="this.style.borderColor='#25D366'" onblur="this.style.borderColor='#D1FAE5'">
+                                                <button @click="doWaSend()" :disabled="waSending"
+                                                        :style="waSending ? 'width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;background:#9CA3AF;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:not-allowed;' : 'width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(37,211,102,.35);'"
+                                                        onmouseover="if(this.style.cursor!=='not-allowed')this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                                                    <i class="fab fa-whatsapp" style="font-size:13px;" x-show="!waSending"></i>
+                                                    <i class="fas fa-spinner fa-spin" style="font-size:12px;" x-show="waSending"></i>
+                                                    <span x-text="waSending ? 'Sending…' : 'Send via WhatsApp'">Send via WhatsApp</span>
                                                 </button>
-                                                <template x-if=”waResult”>
-                                                    <div :style=”waResult.ok ? 'margin-top:8px;font-size:11px;color:#16A34A;display:flex;align-items:center;gap:4px;' : 'margin-top:8px;font-size:11px;color:#DC2626;display:flex;align-items:center;gap:4px;'”>
-                                                        <i :class=”waResult.ok ? 'fas fa-circle-check' : 'fas fa-circle-xmark'” style=”font-size:11px;”></i>
-                                                        <span x-text=”waResult.message ?? ''”></span>
+                                                <template x-if="waResult">
+                                                    <div :style="waResult.ok ? 'margin-top:8px;font-size:11px;color:#16A34A;display:flex;align-items:center;gap:4px;' : 'margin-top:8px;font-size:11px;color:#DC2626;display:flex;align-items:center;gap:4px;'">
+                                                        <i :class="waResult.ok ? 'fas fa-circle-check' : 'fas fa-circle-xmark'" style="font-size:11px;"></i>
+                                                        <span x-text="waResult.message ?? ''"></span>
                                                     </div>
                                                 </template>
-                                                <button @click=”waPanel=false; waResult=null;”
-                                                        style=”width:100%;margin-top:8px;padding:6px;background:none;border:1px solid #E5E7EB;border-radius:8px;font-size:11px;color:#6B7280;cursor:pointer;”
-                                                        onmouseover=”this.style.background='#F9FAFB'” onmouseout=”this.style.background='none'”>
-                                                    <i class=”fa fa-arrow-left” style=”font-size:9px;margin-right:4px;”></i> Back
+                                                <button @click="waPanel=false; waResult=null;"
+                                                        style="width:100%;margin-top:8px;padding:6px;background:none;border:1px solid #E5E7EB;border-radius:8px;font-size:11px;color:#6B7280;cursor:pointer;"
+                                                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='none'">
+                                                    <i class="fa fa-arrow-left" style="font-size:9px;margin-right:4px;"></i> Back
                                                 </button>
                                             </div>
                                         </div>
@@ -2381,6 +2285,126 @@
 </div>{{-- /x-data taskApprovalPage --}}
 
 <script>
+function taskAttachmentViewer() {
+    return {
+        open: false, att: null,
+        uploading: false,
+        files: [], dragging: false,
+        show(item) { this.att = item; this.open = true; },
+        close() { this.open = false; this.att = null; },
+        addFiles(e) {
+            const inc = e.dataTransfer ? e.dataTransfer.files : e.target.files;
+            const dt = new DataTransfer();
+            this.files.forEach(f => dt.items.add(f));
+            Array.from(inc).forEach(f => dt.items.add(f));
+            this.files = Array.from(dt.files);
+            this.$refs.attInput.files = dt.files;
+        },
+        removeFile(i) {
+            const dt = new DataTransfer();
+            this.files.splice(i, 1);
+            this.files.forEach(f => dt.items.add(f));
+            this.$refs.attInput.files = dt.files;
+        },
+        fmt(b) {
+            if (b < 1024) return b + ' B';
+            if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+            return (b / 1048576).toFixed(1) + ' MB';
+        },
+    };
+}
+
+function taskCommentEditor() {
+    return {
+        commentFile: '',
+        editorFocused: false,
+        dragging: false, dragCount: 0,
+        handleDrop(e) {
+            this.dragCount = 0; this.dragging = false;
+            const file = e.dataTransfer.files[0];
+            if (!file) return;
+            this.commentFile = file.name;
+            const input = this.$refs.commentFileInput;
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            input.files = dt.files;
+        },
+        colorOpen: false, selectedColor: '#EF4444', savedRange: null,
+        saveRange() {
+            const s = window.getSelection();
+            if (s.rangeCount) this.savedRange = s.getRangeAt(0).cloneRange();
+        },
+        restoreRange() {
+            if (!this.savedRange) return;
+            const s = window.getSelection();
+            s.removeAllRanges();
+            s.addRange(this.savedRange);
+        },
+        cmd(c, v = null) { this.restoreRange(); this.$refs.editor.focus(); document.execCommand(c, false, v); },
+        setSize(v) { this.restoreRange(); this.$refs.editor.focus(); document.execCommand('fontSize', false, v); },
+        setColor(c) { this.colorOpen = false; this.selectedColor = c; this.$refs.editor.focus(); document.execCommand('foreColor', false, c); },
+        addLink() {
+            const url = prompt('Enter URL:');
+            if (!url) return;
+            this.$refs.editor.focus();
+            document.execCommand('createLink', false, url.startsWith('http') ? url : 'https://' + url);
+        },
+        submitComment(form) {
+            const html = this.$refs.editor.innerHTML.trim();
+            if (!html || html === '<br>') { this.$refs.editor.focus(); return; }
+            this.$refs.bodyInput.value = html;
+            form.submit();
+        },
+    };
+}
+
+function waShareButton() {
+    return {
+        open: false,
+        dropX: 0,
+        dropY: 0,
+        waPanel: false,
+        waPhone: '',
+        waSending: false,
+        waResult: null,
+        copied: false,
+        waFetchUrl: '',
+        waCsrfToken: '',
+        waMessage: '',
+        init() {
+            this.waMessage   = this.$el.dataset.waMessage;
+            this.waFetchUrl  = this.$el.dataset.waFetchUrl;
+            this.waCsrfToken = this.$el.dataset.waCsrfToken;
+        },
+        openDrop(btn) {
+            const r = btn.getBoundingClientRect();
+            this.dropX   = r.left;
+            this.dropY   = r.bottom + 8;
+            this.waPanel = false;
+            this.waResult = null;
+            this.open    = true;
+        },
+        async doWaSend() {
+            const digits = this.waPhone.replace(/\D/g, '');
+            if (!digits) return;
+            this.waSending = true;
+            this.waResult  = null;
+            try {
+                const res = await fetch(this.waFetchUrl, {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.waCsrfToken },
+                    body:    JSON.stringify({ phone: digits, message: this.waMessage }),
+                });
+                this.waResult = await res.json();
+            } catch (e) {
+                this.waResult = { ok: false, message: 'Network error. Please try again.' };
+            } finally {
+                this.waSending = false;
+            }
+        },
+    };
+}
+
 function taskApprovalPage() {
     return {
         approvalModal:          false,

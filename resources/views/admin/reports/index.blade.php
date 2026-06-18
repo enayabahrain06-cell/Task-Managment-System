@@ -378,8 +378,8 @@
         {{-- Scrollable body --}}
         <div style="overflow-y:auto;flex:1;padding:20px 22px;">
 
-            {{-- Stat cards row --}}
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;">
+            {{-- Row 1: Core performance (4 cols) --}}
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;">
                 <div style="background:#EEF2FF;border-radius:12px;padding:14px;">
                     <p style="font-size:10px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Total Tasks</p>
                     <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $totalTasks }}</p>
@@ -395,6 +395,15 @@
                     <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $completionRate }}%</p>
                     <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Of all tasks</p>
                 </div>
+                <div style="background:#EDE9FE;border-radius:12px;padding:14px;">
+                    <p style="font-size:10px;font-weight:700;color:#7C3AED;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">On-Time Rate</p>
+                    <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $onTimeRate }}%</p>
+                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Before deadline</p>
+                </div>
+            </div>
+
+            {{-- Row 2: Context metrics (3 cols — expands to 4 if Ad Budget present) --}}
+            <div style="display:grid;grid-template-columns:repeat({{ $adBudgetNumericTotal > 0 ? 4 : 3 }},1fr);gap:10px;margin-bottom:18px;">
                 <div style="background:#FEE2E2;border-radius:12px;padding:14px;">
                     <p style="font-size:10px;font-weight:700;color:#DC2626;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Overdue</p>
                     <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $overdueTasks }}</p>
@@ -405,10 +414,10 @@
                     <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $activeProjects }}</p>
                     <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Currently running</p>
                 </div>
-                <div style="background:#ECFDF5;border-radius:12px;padding:14px;">
-                    <p style="font-size:10px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">On-Time Rate</p>
-                    <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $onTimeRate }}%</p>
-                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Before deadline</p>
+                <div style="background:#EDE9FE;border-radius:12px;padding:14px;">
+                    <p style="font-size:10px;font-weight:700;color:#7C3AED;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Pending Review</p>
+                    <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $pendingReview }}</p>
+                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Awaiting approval</p>
                 </div>
                 @if($adBudgetNumericTotal > 0)
                 <div style="background:#EFF6FF;border-radius:12px;padding:14px;">
@@ -560,7 +569,7 @@
 $empName       = $selectedUser ? $selectedUser->name : null;
 $platformIcons = ['facebook'=>['fab fa-facebook','#1877F2'],'instagram'=>['fab fa-instagram','#E1306C'],'twitter'=>['fab fa-x-twitter','#000'],'tiktok'=>['fab fa-tiktok','#010101'],'youtube'=>['fab fa-youtube','#FF0000'],'snapchat'=>['fab fa-snapchat-ghost','#F7CA00'],'linkedin'=>['fab fa-linkedin','#0A66C2'],'other'=>['fas fa-share-nodes','#6366F1']];
 
-// Row 1 — always 4 core metrics
+// Row 1 — core performance: scope → output → efficiency → quality → risk
 $kpisRow1 = [
     ['label' => $empName ? 'Assigned Tasks' : 'Total Tasks',
      'value' => $totalTasks,         'icon'=>'fa-list-check',   'color'=>'#6366F1','bg'=>'#EEF2FF',
@@ -572,11 +581,11 @@ $kpisRow1 = [
      'modal' => 'completed-tasks-modal'],
     ['label'=>'On-time Rate',     'value'=>$onTimeRate.'%',    'icon'=>'fa-clock',         'color'=>'#8B5CF6','bg'=>'#EDE9FE', 'sub'=>'Before deadline',
      'modal' => 'ontime-tasks-modal'],
+    ['label'=>'Overdue',          'value'=>$overdueTasks,      'icon'=>'fa-triangle-exclamation','color'=>'#EF4444','bg'=>'#FEE2E2', 'sub'=>'Need attention'],
 ];
 
-// Row 2 — context metrics (count varies by filter)
+// Row 2 — context & resources (count varies by filter)
 $kpisRow2 = [
-    ['label'=>'Overdue',   'value'=>$overdueTasks, 'icon'=>'fa-triangle-exclamation','color'=>'#EF4444','bg'=>'#FEE2E2', 'sub'=>'Need attention'],
     ...($empName ? [] : [
         ['label'=>'Active Projects','value'=>$activeProjects,'icon'=>'fa-diagram-project','color'=>'#3B82F6','bg'=>'#DBEAFE','sub'=>'Currently running'],
     ]),
@@ -602,11 +611,12 @@ $kpisRow2 = [
      'sub_color' => '#6B7280'],
 ];
 
-$row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? 'rpt-grid-3' : 'rpt-grid-4');
+$row2Count = count($kpisRow2);
+$row2Class = $row2Count === 5 ? 'rpt-grid-5' : ($row2Count === 3 ? 'rpt-grid-3' : ($row2Count === 2 ? 'rpt-grid-2' : 'rpt-grid-4'));
 @endphp
 
-{{-- Row 1: Core metrics (always 4) --}}
-<div class="rpt-grid-4">
+{{-- Row 1: Core performance (always 5) --}}
+<div class="rpt-grid-5">
     @foreach($kpisRow1 as $kpi)
     @php $modal1 = $kpi['modal'] ?? null; @endphp
     <div class="rpt-card" style="padding:10px 12px;{{ $modal1 ? 'cursor:pointer;transition:box-shadow .15s;' : '' }}"
@@ -3144,14 +3154,14 @@ function buildSummarizeHTML(immediate) {
     var filteredBy = '';
     @endif
 
-    // KPI data
+    // KPI data — order: scope → output → efficiency → quality → risk → context
     var kpis = [
         { label:'Total Tasks',     value:'{{ $totalTasks }}',        color:'#4F46E5', bg:'#EEF2FF', sub:'In selected period' },
         { label:'Completed',       value:'{{ $completedTasks }}',    color:'#059669', bg:'#D1FAE5', sub:'Approved + Delivered' },
         { label:'Completion Rate', value:'{{ $completionRate }}%',   color:'#EA580C', bg:'#FFF7ED', sub:'Of all tasks' },
+        { label:'On-Time Rate',    value:'{{ $onTimeRate }}%',       color:'#10B981', bg:'#F0FDF4', sub:'Before deadline' },
         { label:'Overdue',         value:'{{ $overdueTasks }}',      color:'#DC2626', bg:'#FEF2F2', sub:'Need attention' },
         { label:'Active Projects', value:'{{ $activeProjects }}',    color:'#2563EB', bg:'#EFF6FF', sub:'Currently running' },
-        { label:'On-Time Rate',    value:'{{ $onTimeRate }}%',       color:'#10B981', bg:'#F0FDF4', sub:'Before deadline' },
     ];
 
     // Team rows
