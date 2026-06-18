@@ -9,6 +9,12 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+// Send subscription renewal reminders (daily at 9 AM system time).
+Schedule::command('subscriptions:check-renewals')
+    ->dailyAt('09:00')
+    ->withoutOverlapping()
+    ->runInBackground();
+
 // Auto-pause all running timers at end of work day.
 // Runs every minute; the when() guard fires only when the current
 // HH:MM matches the configured work_end_time setting.

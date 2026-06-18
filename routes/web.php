@@ -23,6 +23,8 @@ use App\Http\Controllers\Admin\RoleController as AdminRoleController;
 use App\Http\Controllers\Admin\ReportsController as AdminReportsController;
 use App\Http\Controllers\Admin\SocialBudgetController as AdminSocialBudgetController;
 use App\Http\Controllers\Admin\CustomerController as AdminCustomerController;
+use App\Http\Controllers\Admin\SubscriptionController as AdminSubscriptionController;
+use App\Http\Controllers\User\LicensesController as UserLicensesController;
 use App\Http\Controllers\User\ProjectController as UserProjectController;
 use App\Http\Controllers\User\ReportsController as UserReportsController;
 use App\Http\Middleware\AdminMiddleware;
@@ -285,6 +287,14 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::get('audit',                            [AdminAuditLogController::class, 'index'])->name('audit.index');
     Route::post('audit/clear-logs',               [AdminAuditLogController::class, 'clearLogs'])->name('audit.clear-logs');
 
+    // Subscriptions & Licenses
+    Route::get('subscriptions/export/pdf', [AdminSubscriptionController::class, 'exportPdf'])->name('subscriptions.export.pdf');
+    Route::resource('subscriptions', AdminSubscriptionController::class);
+    Route::post('subscriptions/{subscription}/assign-user',                  [AdminSubscriptionController::class, 'assignUser'])->name('subscriptions.assign-user');
+    Route::delete('subscriptions/{subscription}/remove-user/{user}',         [AdminSubscriptionController::class, 'removeUser'])->name('subscriptions.remove-user');
+    Route::post('subscriptions/{subscription}/attachments',                  [AdminSubscriptionController::class, 'uploadAttachment'])->name('subscriptions.attachments.upload');
+    Route::delete('subscriptions/{subscription}/attachments/{attachment}',   [AdminSubscriptionController::class, 'deleteAttachment'])->name('subscriptions.attachments.delete');
+
     // Project attachment download (add ?inline=1 to serve inline for browser preview)
     Route::get('attachments/{attachment}/download', function (\App\Models\ProjectAttachment $attachment) {
         abort_unless($attachment->isFile(), 404);
@@ -354,6 +364,7 @@ Route::middleware([ManagerMiddleware::class])->prefix('manager')->name('manager.
 // User routes
 Route::middleware([UserMiddleware::class])->prefix('user')->name('user.')->group(function () {
     Route::get('/dashboard', [UserDashboard::class, 'index'])->name('dashboard');
+    Route::get('/licenses',  [UserLicensesController::class, 'index'])->name('licenses.index');
     Route::post('/report',   [UserDashboard::class, 'submitReport'])->name('report');
     Route::get('/tasks-modal', [UserDashboard::class, 'taskModal'])->name('tasks.modal');
     Route::get('/tasks', [UserTaskController::class, 'index'])->name('tasks.index');

@@ -162,6 +162,21 @@
         </a>
         @endif
 
+        {{-- User-only: My Licenses --}}
+        @if($role === 'user' && !in_array('nav_licenses', $navHidden))
+        @php $myLicenseCount = \App\Models\Subscription::whereHas('users', fn($q) => $q->where('user_id', auth()->id()))->count(); @endphp
+        @if($myLicenseCount > 0)
+        <a href="{{ route('user.licenses.index') }}"
+           class="nav-item {{ request()->routeIs('user.licenses.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-layer-group nav-icon"></i>
+                My Licenses
+            </div>
+            <span class="nav-badge nav-badge-blue">{{ $myLicenseCount }}</span>
+        </a>
+        @endif
+        @endif
+
         {{-- User-only: My Reports --}}
         @if($role === 'user' && auth()->user()->hasPermission('view_reports') && !in_array('nav_user_reports', $navHidden))
         <a href="{{ route('user.reports.index') }}"
@@ -252,6 +267,20 @@
                 <i class="fas fa-chart-bar nav-icon"></i>
                 Reports
             </div>
+        </a>
+        @endif
+
+        @if(in_array($role, ['admin', 'manager']) && !in_array('nav_subscriptions', $navHidden))
+        @php $expiringNavCount = \App\Models\Subscription::whereNotNull('renewal_date')->get()->filter(fn($s) => $s->days_until_renewal !== null && $s->days_until_renewal >= 0 && $s->days_until_renewal <= 7)->count(); @endphp
+        <a href="{{ route('admin.subscriptions.index') }}"
+           class="nav-item {{ request()->routeIs('admin.subscriptions.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-layer-group nav-icon"></i>
+                Subscriptions
+            </div>
+            @if($expiringNavCount > 0)
+            <span class="nav-badge nav-badge-red">{{ $expiringNavCount }}</span>
+            @endif
         </a>
         @endif
         @endif
