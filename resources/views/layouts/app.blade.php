@@ -28,7 +28,7 @@
 
         /* Layout */
         .app-shell   { display: flex; height: 100vh; overflow: hidden; }
-        .app-sidebar { width: 240px; min-width: 240px; background: #fff; border-right: 1px solid #E5E7EB; display: flex; flex-direction: column; overflow-y: auto; transition: transform 0.25s ease; z-index: 50; }
+        .app-sidebar { width: 240px; min-width: 240px; background: #fff; border-right: 1px solid #E5E7EB; display: flex; flex-direction: column; overflow: hidden; transition: transform 0.25s ease; z-index: 50; }
         .app-main    { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
         .app-topbar  { height: 56px; background: #fff; border-bottom: 1px solid #E5E7EB; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; flex-shrink: 0; }
         .app-content { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px; }
@@ -60,7 +60,11 @@
         .sidebar-company   { display: flex; align-items: center; justify-content: space-between; width: 100%; font-size: 13px; font-weight: 500; color: #374151; cursor: pointer; background: none; border: none; padding: 0; }
 
         /* Sidebar nav */
-        .sidebar-nav { flex: 1; padding: 12px; }
+        .sidebar-nav { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; }
+        .sidebar-nav::-webkit-scrollbar { width: 3px; }
+        .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-nav::-webkit-scrollbar-thumb { background: #E5E7EB; border-radius: 99px; }
+        .sidebar-nav::-webkit-scrollbar-thumb:hover { background: #C7D2FE; }
         .sidebar-section { font-size: 10px; font-weight: 600; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.08em; padding: 16px 8px 4px; }
         .nav-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #6B7280; text-decoration: none; transition: background 0.15s, color 0.15s; margin-bottom: 2px; }
         .nav-item:hover { background: #F9FAFB; color: #111827; }
@@ -309,39 +313,34 @@
                                         :style="soundEnabled ? 'border-color:#6366F1;color:#6366F1;background:#EEF2FF;' : 'border-color:#E5E7EB;color:#9CA3AF;'">
                                     <i :class="soundEnabled ? 'fas fa-volume-high' : 'fas fa-volume-xmark'"></i>
                                 </button>
-                                {{-- Mark all read --}}
-                                @if($notificationCount > 0)
-                                <form method="POST" action="{{ route('notifications.mark-all-read') }}">
+                                {{-- Mark all read — Alpine-reactive so it shows even for MQTT-pushed notifications --}}
+                                <form method="POST" action="{{ route('notifications.mark-all-read') }}" x-show="count > 0">
                                     @csrf
                                     <button type="submit" style="font-size:11px;color:#6366F1;font-weight:600;background:none;border:none;cursor:pointer;padding:0;">Mark all read</button>
                                 </form>
-                                @endif
                             </div>
                         </div>
 
                         {{-- List --}}
-                        <div style="max-height:360px;overflow-y:auto;">
+                        <div style="max-height:calc(100vh - 160px);overflow-y:auto;">
                             @forelse($notifications as $n)
                             @php
                                 $nData  = $n->data;
-                                $isRead = !is_null($n->read_at);
                                 $palettes = ['indigo'=>['#EEF2FF','#4F46E5'],'green'=>['#F0FDF4','#16A34A'],'red'=>['#FEF2F2','#DC2626'],'amber'=>['#FFFBEB','#D97706']];
                                 [$cbg,$cico] = $palettes[$nData['color'] ?? 'indigo'] ?? $palettes['indigo'];
                             @endphp
                             <a href="{{ route('notifications.read', $n->id) }}"
-                               style="display:flex;align-items:flex-start;gap:11px;padding:11px 16px;border-bottom:1px solid #F9FAFB;text-decoration:none;background:{{ $isRead ? '#fff' : '#F8F8FF' }};"
-                               onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='{{ $isRead ? '#fff' : '#F8F8FF' }}'">
+                               style="display:flex;align-items:flex-start;gap:11px;padding:11px 16px;border-bottom:1px solid #F9FAFB;text-decoration:none;background:#F8F8FF;"
+                               onmouseover="this.style.background='#F0F0FF'" onmouseout="this.style.background='#F8F8FF'">
                                 <div style="width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:{{ $cbg }};">
                                     <i class="fas {{ $nData['icon'] ?? 'fa-bell' }}" style="font-size:13px;color:{{ $cico }};"></i>
                                 </div>
                                 <div style="flex:1;min-width:0;">
-                                    <p style="font-size:12px;font-weight:{{ $isRead ? '500' : '700' }};color:#111827;margin:0 0 2px;">{{ $nData['title'] ?? '' }}</p>
+                                    <p style="font-size:12px;font-weight:700;color:#111827;margin:0 0 2px;">{{ $nData['title'] ?? '' }}</p>
                                     <p style="font-size:11px;color:#6B7280;margin:0 0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $nData['message'] ?? '' }}</p>
                                     <p style="font-size:10px;color:#9CA3AF;margin:0;">{{ $n->created_at->diffForHumans() }}</p>
                                 </div>
-                                @unless($isRead)
                                 <div style="width:7px;height:7px;border-radius:50%;background:#6366F1;flex-shrink:0;margin-top:5px;"></div>
-                                @endunless
                             </a>
                             @empty
                             <div style="text-align:center;padding:32px 16px;">
@@ -355,18 +354,8 @@
 
                         {{-- Footer --}}
                         <div style="padding:8px 16px;border-top:1px solid #F3F4F6;display:flex;align-items:center;gap:6px;">
-                            <i :class="soundEnabled ? 'fas fa-volume-high' : 'fas fa-volume-xmark'"
-                               :style="soundEnabled ? 'color:#6366F1;' : 'color:#9CA3AF;'"
-                               style="font-size:11px;"></i>
-                            <span style="font-size:11px;color:#9CA3AF;" x-text="soundEnabled ? 'Sound alerts on' : 'Sound alerts off'"></span>
-                            <button @click.stop="toggleSound()"
-                                    style="margin-left:auto;font-size:11px;font-weight:600;background:none;border:none;cursor:pointer;padding:0;"
-                                    :style="soundEnabled ? 'color:#DC2626;' : 'color:#6366F1;'"
-                                    x-text="soundEnabled ? 'Mute' : 'Unmute'">
-                            </button>
-                            @php $hasAnyNotifications = auth()->user()->notifications()->exists(); @endphp
-                            @if($hasAnyNotifications)
-                            <form method="POST" action="{{ route('notifications.clear-all') }}" style="margin-left:8px;">
+                            @if($notifications->isNotEmpty())
+                            <form method="POST" action="{{ route('notifications.clear-all') }}" style="margin-left:auto;">
                                 @csrf
                                 <button type="submit" style="font-size:11px;color:#EF4444;font-weight:600;background:none;border:none;cursor:pointer;padding:0;"
                                         onclick="return confirm('Clear all notifications?')">Clear all</button>
@@ -1230,7 +1219,7 @@ document.addEventListener('DOMContentLoaded', function () {
 <div x-data="taskAgent()" x-init="init()" class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
 
     {{-- Chat window --}}
-    <div x-show="open" x-transition:enter="transition ease-out duration-200"
+    <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0 translate-y-4 scale-95"
          x-transition:enter-end="opacity-100 translate-y-0 scale-100"
          x-transition:leave="transition ease-in duration-150"

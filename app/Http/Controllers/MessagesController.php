@@ -75,10 +75,11 @@ class MessagesController extends Controller
             ->value('cleared_at');
         $clearedAt = $clearedAt ? \Carbon\Carbon::parse($clearedAt) : null;
 
+        // Mark ALL unread messages from this sender as read — no clearedAt filter here,
+        // so a prior chat clear doesn't leave phantom unread badges.
         Message::where('sender_id', $user->id)
             ->where('receiver_id', $me)
             ->whereNull('read_at')
-            ->when($clearedAt, fn($q) => $q->where('created_at', '>', $clearedAt))
             ->update(['read_at' => now()]);
 
         // Mark bell notifications from this sender as read
@@ -149,12 +150,20 @@ class MessagesController extends Controller
     {
         $me = auth()->id();
 
+        $clears = DB::table('direct_chat_clears')
+            ->where('user_id', $me)
+            ->pluck('cleared_at', 'other_user_id');
+
         $direct = Message::where('receiver_id', $me)
             ->whereNull('read_at')
             ->whereNull('group_id')
-            ->selectRaw('sender_id, count(*) as count')
+            ->get(['id', 'sender_id', 'created_at'])
+            ->filter(function ($m) use ($clears) {
+                $clearedAt = $clears[$m->sender_id] ?? null;
+                return !$clearedAt || $m->created_at > \Carbon\Carbon::parse($clearedAt);
+            })
             ->groupBy('sender_id')
-            ->pluck('count', 'sender_id');
+            ->map->count();
 
         $groups = MessageGroup::whereHas('members', fn($q) => $q->where('user_id', $me))
             ->get()

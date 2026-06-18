@@ -16,9 +16,9 @@ export function initMqtt({ userId, wsUrl, username, password }) {
         username,
         password,
         clientId: 'tm_browser_' + userId + '_' + Math.random().toString(16).slice(2, 8),
-        reconnectPeriod: 5000,
+        reconnectPeriod: 1000,
         connectTimeout: 10000,
-        keepalive: 30,
+        keepalive: 60,
     });
 
     _client.on('connect', () => {

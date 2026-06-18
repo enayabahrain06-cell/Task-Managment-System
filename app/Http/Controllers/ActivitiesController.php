@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityReaction;
 use App\Models\ActivityReply;
+use App\Models\Setting;
 use App\Models\Task;
 use App\Models\TaskLog;
 use App\Models\User;
+use App\Notifications\TaskTimelineReply;
 use Illuminate\Http\Request;
 
 class ActivitiesController extends Controller
@@ -41,6 +43,15 @@ class ActivitiesController extends Controller
             $query->where('action', $request->action);
         }
 
+        // Search by note or task title
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->where(function ($q) use ($s) {
+                $q->where('note', 'like', "%{$s}%")
+                  ->orWhereHas('task', fn($tq) => $tq->where('title', 'like', "%{$s}%"));
+            });
+        }
+
         // Date range filter
         switch ($request->input('date_range')) {
             case 'today':     $query->whereDate('created_at', today()); break;
@@ -53,7 +64,7 @@ class ActivitiesController extends Controller
         $sort = $request->input('sort', 'newest');
         $sort === 'oldest' ? $query->oldest() : $query->latest();
 
-        $activities = $query->get();
+        $activities = $query->paginate(20)->withQueryString();
 
         // Distinct action types for filter dropdown
         $actionTypes = TaskLog::select('action')->distinct()->orderBy('action')->pluck('action');
@@ -125,6 +136,30 @@ class ActivitiesController extends Controller
         ]);
 
         $reply->load('user');
+
+        // Notify admins, managers, and the task assignee (skip the poster)
+        if (Setting::get('notify_on_comment', '1') === '1') {
+            $task     = $log->task()->with('assignee')->first();
+            $posterId = auth()->id();
+
+            if ($task) {
+                $notified = collect();
+
+                // Admins + managers
+                User::whereIn('role', ['admin', 'manager'])->get()
+                    ->each(function ($u) use ($reply, $task, $posterId, &$notified) {
+                        if ($u->id !== $posterId && !$notified->contains($u->id)) {
+                            $u->notify(new TaskTimelineReply($task, $reply));
+                            $notified->push($u->id);
+                        }
+                    });
+
+                // Task assignee (if not admin/manager and not the poster)
+                if ($task->assignee && $task->assignee->id !== $posterId && !$notified->contains($task->assignee->id)) {
+                    $task->assignee->notify(new TaskTimelineReply($task, $reply));
+                }
+            }
+        }
 
         return response()->json([
             'id'         => $reply->id,

@@ -472,7 +472,7 @@ $onlineMapJson = json_encode($onlineMap);
 
                     <template x-for="(msg,i) in filteredMessages" :key="msg.id">
                         <div>
-                            <template x-if="i===0||filteredMessages[i-1].date!==msg.date">
+                            <template x-if="i===0||filteredMessages[i-1]?.date!==msg.date">
                                 <p class="text-center text-xs text-gray-400 font-medium py-3" x-text="formatDate(msg.date)"></p>
                             </template>
 
@@ -1527,6 +1527,9 @@ function messageApp() {
         /* ── Clear chat ── */
         async clearChat() {
             this.clearingChat = true;
+            // Stop the poll immediately so no in-flight response can re-fill messages
+            clearInterval(this.pollTimer);
+            this.pollTimer = null;
             const csrf = document.querySelector('meta[name="csrf-token"]').content;
             const url  = this.isGroup
                 ? `/messages/clear/group/${this.activeGroupId}`
@@ -1536,10 +1539,19 @@ function messageApp() {
                     method: 'DELETE',
                     headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
                 });
-                if (res.ok) { this.messages = []; this._lastMsgId = 0; }
+                if (res.ok) {
+                    this.messages = [];
+                    this._lastMsgId = 0;
+                }
             } catch {}
             this.clearingChat = false;
             this.showClearConfirm = false;
+            // Restart poll — cleared_at is now committed so old messages are filtered out
+            if (!this.isGroup && this.activeUserId) {
+                this.pollTimer = setInterval(() => this._pollNewDirect(), 1000);
+            } else if (this.isGroup && this.activeGroupId) {
+                this.pollTimer = setInterval(() => this._pollNewGroup(), 1000);
+            }
         },
 
         _autoResize(el) {

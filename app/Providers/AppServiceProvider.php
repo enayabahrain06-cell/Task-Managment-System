@@ -69,8 +69,15 @@ class AppServiceProvider extends ServiceProvider
         View::composer('layouts.app', function ($view) {
             if (auth()->check()) {
                 try {
-                    $notifications    = auth()->user()->notifications()->latest()->take(15)->get();
-                    $notificationCount = auth()->user()->unreadNotifications()->count();
+                    $user = auth()->user();
+
+                    // Auto-delete notifications older than 30 days
+                    $user->notifications()->where('created_at', '<', now()->subDays(30))->delete();
+
+                    // Only show unread notifications — read ones are dismissed from the list
+                    $notifications     = $user->unreadNotifications()->latest()->get();
+                    $notificationCount = $notifications->count();
+
                     $view->with('notifications', $notifications);
                     $view->with('notificationCount', $notificationCount);
                 } catch (\Throwable) {
