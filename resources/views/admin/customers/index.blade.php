@@ -2,6 +2,25 @@
 @section('title', 'Customers')
 
 @section('content')
+{{-- Init data for the summary modal (must be before x-data div so Alpine can read it) --}}
+@php
+    $summaryInitList = $summaryList->map(fn($c) => [
+        'id'              => $c->id,
+        'name'            => $c->name,
+        'company'         => $c->company,
+        'logo'            => $c->logo ? Storage::url($c->logo) : null,
+        'initial'         => strtoupper(substr($c->name, 0, 1)),
+        'tasks_count'     => $c->tasks_count,
+        'delivered_count' => $c->delivered_count,
+        'projects_count'  => $c->projects_count,
+        'rate'            => $c->tasks_count > 0 ? round($c->delivered_count / $c->tasks_count * 100) : 0,
+        'bar_width'       => $summaryTotals['tasks'] > 0 ? round($c->tasks_count / $summaryTotals['tasks'] * 100) : 0,
+    ])->values()->all();
+@endphp
+<script>
+window._custSummaryInit = @json(['list' => $summaryInitList, 'totals' => $summaryTotals]);
+window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $summaryDefaultToStr }}' };
+</script>
 <style>
 @media (max-width: 768px) {
     .cust-header { flex-direction: column; align-items: flex-start !important; }
@@ -13,6 +32,8 @@
     .cust-view-toggle { flex-wrap: wrap; }
     .cust-cards-grid { grid-template-columns: 1fr !important; }
 }
+@keyframes cust-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.cust-skeleton { animation: cust-pulse 1.4s ease-in-out infinite; }
 </style>
 <div x-data="{
         modal: {{ $errors->any() ? 'true' : 'false' }},
@@ -34,6 +55,66 @@
             this.$refs.deleteForm.submit();
         },
         summarizeModal: false,
+        summaryDateFrom: window._custSummaryDefaults ? window._custSummaryDefaults.from : '',
+        summaryDateTo: window._custSummaryDefaults ? window._custSummaryDefaults.to : '',
+        summaryPreset: 'custom',
+        summaryLoading: false,
+        summaryList: window._custSummaryInit ? window._custSummaryInit.list : [],
+        summaryTotals: window._custSummaryInit ? window._custSummaryInit.totals : {customers:0,projects:0,tasks:0,delivered:0},
+        get summaryOverallRate() {
+            return this.summaryTotals.tasks > 0
+                ? Math.round(this.summaryTotals.delivered / this.summaryTotals.tasks * 100)
+                : 0;
+        },
+        async fetchSummary() {
+            this.summaryLoading = true;
+            const p = new URLSearchParams();
+            if (this.summaryDateFrom) p.set('date_from', this.summaryDateFrom);
+            if (this.summaryDateTo)   p.set('date_to',   this.summaryDateTo);
+            try {
+                const res = await fetch('/admin/customers/summary-data?' + p.toString(), {headers:{'X-Requested-With':'XMLHttpRequest'}});
+                const data = await res.json();
+                this.summaryList   = data.list;
+                this.summaryTotals = data.totals;
+            } catch(e) {}
+            this.summaryLoading = false;
+        },
+        get summaryViewAllUrl() {
+            const url = new URL('{{ route('admin.customers.summary') }}', window.location.origin);
+            if (this.summaryDateFrom) url.searchParams.set('date_from', this.summaryDateFrom);
+            if (this.summaryDateTo)   url.searchParams.set('date_to',   this.summaryDateTo);
+            return url.toString();
+        },
+        get summaryExportUrl() {
+            const url = new URL('{{ route('admin.customers.summary') }}', window.location.origin);
+            url.searchParams.set('export', '1');
+            if (this.summaryDateFrom) url.searchParams.set('date_from', this.summaryDateFrom);
+            if (this.summaryDateTo)   url.searchParams.set('date_to',   this.summaryDateTo);
+            return url.toString();
+        },
+        setPreset(preset) {
+            this.summaryPreset = preset;
+            const now = new Date();
+            const pad = n => String(n).padStart(2,'0');
+            const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+            if (preset === 'month') {
+                this.summaryDateFrom = `${now.getFullYear()}-${pad(now.getMonth()+1)}-01`;
+                this.summaryDateTo   = ymd(new Date(now.getFullYear(), now.getMonth()+1, 0));
+            } else if (preset === 'last_month') {
+                const lm = new Date(now.getFullYear(), now.getMonth()-1, 1);
+                this.summaryDateFrom = ymd(lm);
+                this.summaryDateTo   = ymd(new Date(now.getFullYear(), now.getMonth(), 0));
+            } else if (preset === '3months') {
+                const from = new Date(now);
+                from.setMonth(from.getMonth()-3);
+                this.summaryDateFrom = ymd(from);
+                this.summaryDateTo   = ymd(now);
+            } else {
+                this.summaryDateFrom = '';
+                this.summaryDateTo   = '';
+            }
+            this.fetchSummary();
+        },
      }">
 
     {{-- Header --}}
@@ -456,7 +537,7 @@
              x-transition:leave="transition ease-in duration-150"
              x-transition:leave-start="opacity-100 scale-100"
              x-transition:leave-end="opacity-0 scale-95"
-             style="background:#fff;border-radius:20px;width:100%;max-width:680px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(0,0,0,.22);overflow:hidden;pointer-events:auto;">
+             style="background:#fff;border-radius:20px;width:100%;max-width:700px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(0,0,0,.22);overflow:hidden;pointer-events:auto;">
 
             {{-- Header --}}
             <div style="padding:20px 24px 18px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px;flex-wrap:wrap;">
@@ -466,17 +547,23 @@
                     </div>
                     <div>
                         <h2 style="font-size:16px;font-weight:700;color:#111827;margin:0;">Customers Summary</h2>
-                        <p style="font-size:12px;color:#9CA3AF;margin:1px 0 0;">Overview of all {{ $summaryTotals['customers'] }} customers</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:1px 0 0;">
+                            Overview of <span x-text="summaryTotals.customers"></span> customers
+                            <span x-show="summaryDateFrom || summaryDateTo" style="color:#6366F1;font-weight:600;">
+                                · <span x-text="summaryDateFrom || '...'"></span>
+                                <span x-show="summaryDateTo"> → <span x-text="summaryDateTo"></span></span>
+                            </span>
+                        </p>
                     </div>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-                    <a href="{{ route('admin.customers.summary') }}" target="_blank"
+                    <a :href="summaryViewAllUrl" target="_blank"
                        style="display:inline-flex;align-items:center;gap:6px;padding:7px 13px;background:#EEF2FF;color:#4F46E5;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;border:1px solid #C7D2FE;"
                        title="Open full-page summary">
                         <i class="fas fa-expand" style="font-size:10px;"></i> View All
                     </a>
                     <button type="button"
-                            onclick="window.open('{{ route('admin.customers.summary') }}?export=1','_blank');"
+                            @click="window.open(summaryExportUrl, '_blank')"
                             style="display:inline-flex;align-items:center;gap:6px;padding:7px 13px;background:#F0FDF4;color:#059669;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid #BBF7D0;"
                             title="Export summary as PDF">
                         <i class="fas fa-file-pdf" style="font-size:10px;"></i> Export PDF
@@ -488,86 +575,143 @@
                 </div>
             </div>
 
+            {{-- Filter bar --}}
+            <div style="padding:10px 24px;border-bottom:1px solid #F3F4F6;flex-shrink:0;background:#FAFAFA;">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                    {{-- Preset chips --}}
+                    <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                        <button type="button" @click="setPreset('all')"
+                                :style="summaryPreset==='all' ? 'background:#4F46E5;color:#fff;border-color:#4F46E5;' : 'background:#fff;color:#6B7280;border-color:#E5E7EB;'"
+                                style="padding:5px 10px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid;transition:all .15s;">
+                            All Time
+                        </button>
+                        <button type="button" @click="setPreset('month')"
+                                :style="summaryPreset==='month' ? 'background:#4F46E5;color:#fff;border-color:#4F46E5;' : 'background:#fff;color:#6B7280;border-color:#E5E7EB;'"
+                                style="padding:5px 10px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid;transition:all .15s;">
+                            This Month
+                        </button>
+                        <button type="button" @click="setPreset('last_month')"
+                                :style="summaryPreset==='last_month' ? 'background:#4F46E5;color:#fff;border-color:#4F46E5;' : 'background:#fff;color:#6B7280;border-color:#E5E7EB;'"
+                                style="padding:5px 10px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid;transition:all .15s;">
+                            Last Month
+                        </button>
+                        <button type="button" @click="setPreset('3months')"
+                                :style="summaryPreset==='3months' ? 'background:#4F46E5;color:#fff;border-color:#4F46E5;' : 'background:#fff;color:#6B7280;border-color:#E5E7EB;'"
+                                style="padding:5px 10px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid;transition:all .15s;">
+                            Last 3 Months
+                        </button>
+                    </div>
+                    <div style="width:1px;height:22px;background:#E5E7EB;flex-shrink:0;"></div>
+                    {{-- Custom date pickers --}}
+                    <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                        <input type="date" x-model="summaryDateFrom"
+                               @change="summaryPreset='custom'"
+                               style="padding:5px 8px;border:1px solid #E5E7EB;border-radius:7px;font-size:11px;color:#374151;background:#fff;outline:none;cursor:pointer;"
+                               title="From date">
+                        <span style="font-size:11px;color:#9CA3AF;font-weight:600;">→</span>
+                        <input type="date" x-model="summaryDateTo"
+                               @change="summaryPreset='custom'"
+                               style="padding:5px 8px;border:1px solid #E5E7EB;border-radius:7px;font-size:11px;color:#374151;background:#fff;outline:none;cursor:pointer;"
+                               title="To date">
+                        <button type="button" @click="fetchSummary(); summaryPreset='custom';"
+                                style="padding:5px 12px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;">
+                            Apply
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             {{-- Totals row --}}
-            @php
-                $overallRate = $summaryTotals['tasks'] > 0
-                    ? round($summaryTotals['delivered'] / $summaryTotals['tasks'] * 100)
-                    : 0;
-            @endphp
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:18px 24px;border-bottom:1px solid #F3F4F6;flex-shrink:0;">
                 <div style="text-align:center;background:#F9FAFB;border-radius:12px;padding:14px 10px;">
-                    <div style="font-size:1.6rem;font-weight:800;color:#4F46E5;line-height:1;">{{ $summaryTotals['customers'] }}</div>
+                    <div style="font-size:1.6rem;font-weight:800;color:#4F46E5;line-height:1;" x-text="summaryTotals.customers"></div>
                     <div style="font-size:11px;color:#9CA3AF;margin-top:4px;font-weight:600;">Customers</div>
                 </div>
                 <div style="text-align:center;background:#F9FAFB;border-radius:12px;padding:14px 10px;">
-                    <div style="font-size:1.6rem;font-weight:800;color:#0EA5E9;line-height:1;">{{ $summaryTotals['projects'] }}</div>
+                    <div style="font-size:1.6rem;font-weight:800;color:#0EA5E9;line-height:1;" x-text="summaryTotals.projects"></div>
                     <div style="font-size:11px;color:#9CA3AF;margin-top:4px;font-weight:600;">Projects</div>
                 </div>
                 <div style="text-align:center;background:#F9FAFB;border-radius:12px;padding:14px 10px;">
-                    <div style="font-size:1.6rem;font-weight:800;color:#6B7280;line-height:1;">{{ $summaryTotals['tasks'] }}</div>
+                    <div style="font-size:1.6rem;font-weight:800;color:#6B7280;line-height:1;" x-text="summaryTotals.tasks"></div>
                     <div style="font-size:11px;color:#9CA3AF;margin-top:4px;font-weight:600;">Total Tasks</div>
                 </div>
                 <div style="text-align:center;background:#F9FAFB;border-radius:12px;padding:14px 10px;">
-                    <div style="font-size:1.6rem;font-weight:800;color:#10B981;line-height:1;">{{ $overallRate }}<span style="font-size:1rem;">%</span></div>
+                    <div style="font-size:1.6rem;font-weight:800;color:#10B981;line-height:1;">
+                        <span x-text="summaryOverallRate"></span><span style="font-size:1rem;">%</span>
+                    </div>
                     <div style="font-size:11px;color:#9CA3AF;margin-top:4px;font-weight:600;">Delivered</div>
                 </div>
             </div>
 
             {{-- Customer list --}}
             <div style="overflow-y:auto;flex:1;padding:16px 24px 20px;">
-                @foreach($summaryList as $sc)
-                @php
-                    $rate = $sc->tasks_count > 0 ? round($sc->delivered_count / $sc->tasks_count * 100) : 0;
-                    $barW = $summaryTotals['tasks'] > 0 ? round($sc->tasks_count / $summaryTotals['tasks'] * 100) : 0;
-                @endphp
-                <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #F9FAFB;">
-                    {{-- Avatar --}}
-                    @if($sc->logo)
-                    <img src="{{ Storage::url($sc->logo) }}" alt="{{ $sc->name }}"
-                         style="width:36px;height:36px;border-radius:9px;object-fit:cover;border:1px solid #E5E7EB;flex-shrink:0;">
-                    @else
-                    <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;">
-                        {{ strtoupper(substr($sc->name, 0, 1)) }}
-                    </div>
-                    @endif
-
-                    {{-- Name + bar --}}
-                    <div style="flex:1;min-width:0;">
-                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-                            <a href="{{ route('admin.customers.show', $sc) }}"
-                               style="font-size:13px;font-weight:600;color:#111827;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">
-                                {{ $sc->name }}
-                                @if($sc->company)
-                                <span style="font-weight:400;color:#9CA3AF;font-size:12px;">· {{ $sc->company }}</span>
-                                @endif
-                            </a>
-                            <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;margin-left:8px;">
-                                <span style="font-size:11px;color:#6B7280;">
-                                    <span style="font-weight:700;color:#111827;">{{ $sc->tasks_count }}</span> tasks
-                                </span>
-                                @if($sc->tasks_count > 0)
-                                <span style="font-size:11px;font-weight:600;color:#10B981;">{{ $rate }}%</span>
-                                @endif
-                                <a href="{{ route('admin.customers.report', $sc) }}" target="_blank"
-                                   style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#EEF2FF;color:#4F46E5;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;"
-                                   title="Smart Report">
-                                    <i class="fas fa-chart-line" style="font-size:9px;"></i> Report
-                                </a>
-                            </div>
-                        </div>
-                        {{-- Task share bar --}}
-                        <div style="background:#F3F4F6;border-radius:999px;height:5px;overflow:hidden;">
-                            <div style="height:5px;border-radius:999px;background:linear-gradient(90deg,#6366F1,#8B5CF6);width:{{ $barW }}%;transition:width .6s ease;"></div>
-                        </div>
-                    </div>
-
-                    {{-- Projects badge --}}
-                    <div style="flex-shrink:0;text-align:center;min-width:44px;">
-                        <span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;background:#EEF2FF;color:#4F46E5;font-size:12px;font-weight:700;">{{ $sc->projects_count }}</span>
-                        <div style="font-size:10px;color:#9CA3AF;margin-top:2px;">proj</div>
-                    </div>
+                {{-- Loading skeletons --}}
+                <div x-show="summaryLoading">
+                    <template x-for="i in 6" :key="i">
+                        <div class="cust-skeleton" style="height:46px;background:#F3F4F6;border-radius:8px;margin-bottom:10px;"></div>
+                    </template>
                 </div>
-                @endforeach
+                {{-- Empty state --}}
+                <div x-show="!summaryLoading && summaryList.length === 0"
+                     style="text-align:center;padding:48px 0;color:#9CA3AF;">
+                    <i class="fas fa-calendar-times" style="font-size:28px;margin-bottom:10px;display:block;color:#D1D5DB;"></i>
+                    <div style="font-size:13px;font-weight:600;">No tasks found for the selected period</div>
+                    <div style="font-size:12px;margin-top:4px;">Try expanding the date range or selecting "All Time"</div>
+                </div>
+                {{-- List --}}
+                <template x-if="!summaryLoading && summaryList.length > 0">
+                    <div>
+                        <template x-for="sc in summaryList" :key="sc.id">
+                            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #F9FAFB;">
+                                {{-- Avatar --}}
+                                <template x-if="sc.logo">
+                                    <img :src="sc.logo" :alt="sc.name"
+                                         style="width:36px;height:36px;border-radius:9px;object-fit:cover;border:1px solid #E5E7EB;flex-shrink:0;">
+                                </template>
+                                <template x-if="!sc.logo">
+                                    <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;"
+                                         x-text="sc.initial"></div>
+                                </template>
+                                {{-- Name + bar --}}
+                                <div style="flex:1;min-width:0;">
+                                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                                        <a :href="'/admin/customers/' + sc.id"
+                                           style="font-size:13px;font-weight:600;color:#111827;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">
+                                            <span x-text="sc.name"></span>
+                                            <template x-if="sc.company">
+                                                <span style="font-weight:400;color:#9CA3AF;font-size:12px;">· <span x-text="sc.company"></span></span>
+                                            </template>
+                                        </a>
+                                        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;margin-left:8px;">
+                                            <span style="font-size:11px;color:#6B7280;">
+                                                <span style="font-weight:700;color:#111827;" x-text="sc.tasks_count"></span> tasks
+                                            </span>
+                                            <span x-show="sc.tasks_count > 0"
+                                                  style="font-size:11px;font-weight:600;color:#10B981;"
+                                                  x-text="sc.rate + '%'"></span>
+                                            <a :href="'/admin/customers/' + sc.id + '/report'" target="_blank"
+                                               style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#EEF2FF;color:#4F46E5;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none;"
+                                               title="Smart Report">
+                                                <i class="fas fa-chart-line" style="font-size:9px;"></i> Report
+                                            </a>
+                                        </div>
+                                    </div>
+                                    {{-- Task share bar --}}
+                                    <div style="background:#F3F4F6;border-radius:999px;height:5px;overflow:hidden;">
+                                        <div style="height:5px;border-radius:999px;background:linear-gradient(90deg,#6366F1,#8B5CF6);transition:width .6s ease;"
+                                             :style="{ width: sc.bar_width + '%' }"></div>
+                                    </div>
+                                </div>
+                                {{-- Projects badge --}}
+                                <div style="flex-shrink:0;text-align:center;min-width:44px;">
+                                    <span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;background:#EEF2FF;color:#4F46E5;font-size:12px;font-weight:700;"
+                                          x-text="sc.projects_count"></span>
+                                    <div style="font-size:10px;color:#9CA3AF;margin-top:2px;">proj</div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
             </div>
 
         </div>

@@ -42,4 +42,9 @@ class Customer extends Model
     {
         return $this->hasMany(Task::class);
     }
+
+    public function socialAccounts(): HasMany
+    {
+        return $this->hasMany(\App\Models\SocialAccount::class);
+    }
 }

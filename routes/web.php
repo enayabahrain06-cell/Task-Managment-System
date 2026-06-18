@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\OffboardingController as AdminOffboardingControll
 use App\Http\Controllers\Admin\RoleController as AdminRoleController;
 use App\Http\Controllers\Admin\ReportsController as AdminReportsController;
 use App\Http\Controllers\Admin\SocialBudgetController as AdminSocialBudgetController;
+use App\Http\Controllers\Admin\SocialAccountController as AdminSocialAccountController;
 use App\Http\Controllers\Admin\CustomerController as AdminCustomerController;
 use App\Http\Controllers\Admin\SubscriptionController as AdminSubscriptionController;
 use App\Http\Controllers\User\LicensesController as UserLicensesController;
@@ -157,6 +158,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::get('/dashboard/social-posts',    [AdminDashboard::class, 'socialPosts'])->name('dashboard.social-posts');
     Route::get('/dashboard/analytics-tasks',[AdminDashboard::class, 'analyticsTasks'])->name('dashboard.analytics-tasks');
     Route::get('/reports',                     [AdminReportsController::class, 'index'])->name('reports.index');
+    Route::get('/reports/summary-data',        [AdminReportsController::class, 'summaryData'])->name('reports.summary-data');
     Route::get('/reports/export-users',        [AdminReportsController::class, 'exportUsers'])->name('reports.export-users');
     Route::get('/reports/user-detail',         [AdminReportsController::class, 'userDetail'])->name('reports.user-detail');
     Route::post('/reports/defer-customer-approval', [AdminReportsController::class, 'deferCustomerApproval'])->name('reports.defer-customer-approval');
@@ -172,6 +174,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('projects/{project}/tasks', [AdminProjectController::class, 'tasksStore'])->name('projects.tasks.store');
     Route::post('tasks/quick', [AdminProjectController::class, 'quickTaskStore'])->name('tasks.quick');
     Route::post('tasks/quick-sm', [AdminProjectController::class, 'quickSMPostStore'])->name('tasks.quick-sm');
+    Route::get('customers/summary-data', [AdminCustomerController::class, 'summaryData'])->name('customers.summary-data');
     Route::resource('customers', AdminCustomerController::class);
     Route::get('customers/{customer}/report', [AdminCustomerController::class, 'report'])->name('customers.report');
     Route::get('customers-summary', [AdminCustomerController::class, 'summary'])->name('customers.summary');
@@ -196,6 +199,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('settings/hide-wa-web',              [AdminSettingsController::class, 'toggleHideWaWeb'])->name('settings.hide-wa-web');
     Route::post('settings/clear-cache',              [AdminSettingsController::class, 'clearCache'])->name('settings.clear-cache');
     Route::get('social-budget',                      [AdminSocialBudgetController::class, 'index'])->name('social-budget.index');
+    Route::resource('social-accounts', AdminSocialAccountController::class)->except(['create','edit','show']);
     Route::post('settings/elements/toggle',       [AdminSettingsController::class, 'toggleElement'])->name('settings.elements.toggle');
     Route::post('settings/nav/toggle',            [AdminSettingsController::class, 'toggleNavItem'])->name('settings.nav.toggle');
     Route::post('meetings',                        [AdminMeetingController::class, 'store'])->name('meetings.store');

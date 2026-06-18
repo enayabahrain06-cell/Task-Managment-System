@@ -53,7 +53,7 @@ $pMeta = [
     'linkedin'  => ['LinkedIn',   'fa-linkedin',   '#0A66C2','#EAF2FB'],
     'tiktok'    => ['TikTok',     'fa-tiktok',     '#010101','#F5F5F5'],
     'youtube'   => ['YouTube',    'fa-youtube',    '#FF0000','#FFF0F0'],
-    'snapchat'  => ['Snapchat',   'fa-snapchat',   '#F7CA00','#FFFDE7'],
+    'snapchat'  => ['Snapchat',   'fa-snapchat',   '#FFFC00','#3D3300'],
     'other'     => ['Other',      'fa-share-alt','#6366F1','#EEF2FF'],
 ];
 @endphp
@@ -171,7 +171,7 @@ $pMeta = [
             {{-- Target Platforms --}}
             @if($task->social_platforms && count($task->social_platforms))
             @php
-            $spMeta = ['facebook'=>['Facebook','fa-facebook','#1877F2','#EBF3FF'],'instagram'=>['Instagram','fa-instagram','#E1306C','#FFF0F5'],'twitter'=>['Twitter / X','fa-x-twitter','#000000','#F5F5F5'],'linkedin'=>['LinkedIn','fa-linkedin','#0A66C2','#EAF2FB'],'tiktok'=>['TikTok','fa-tiktok','#010101','#F5F5F5'],'youtube'=>['YouTube','fa-youtube','#FF0000','#FFF0F0'],'snapchat'=>['Snapchat','fa-snapchat','#F7CA00','#FFFDE7'],'other'=>['Other','fa-share-alt','#6366F1','#EEF2FF']];
+            $spMeta = ['facebook'=>['Facebook','fa-facebook','#1877F2','#EBF3FF'],'instagram'=>['Instagram','fa-instagram','#E1306C','#FFF0F5'],'twitter'=>['Twitter / X','fa-x-twitter','#000000','#F5F5F5'],'linkedin'=>['LinkedIn','fa-linkedin','#0A66C2','#EAF2FB'],'tiktok'=>['TikTok','fa-tiktok','#010101','#F5F5F5'],'youtube'=>['YouTube','fa-youtube','#FF0000','#FFF0F0'],'snapchat'=>['Snapchat','fa-snapchat','#FFFC00','#3D3300'],'other'=>['Other','fa-share-alt','#6366F1','#EEF2FF']];
             @endphp
             <div style="padding:14px 24px;border-bottom:1px solid #F3F4F6;">
                 <p style="font-size:10px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;display:flex;align-items:center;gap:5px;">
@@ -411,7 +411,7 @@ $pMeta = [
             {{-- Requested platforms banner --}}
             @if($task->social_platforms && count($task->social_platforms))
             @php
-            $rpMeta = ['facebook'=>['Facebook','fa-facebook','#1877F2','#EBF3FF'],'instagram'=>['Instagram','fa-instagram','#E1306C','#FFF0F5'],'twitter'=>['Twitter / X','fa-x-twitter','#000000','#F5F5F5'],'linkedin'=>['LinkedIn','fa-linkedin','#0A66C2','#EAF2FB'],'tiktok'=>['TikTok','fa-tiktok','#010101','#F5F5F5'],'youtube'=>['YouTube','fa-youtube','#FF0000','#FFF0F0'],'snapchat'=>['Snapchat','fa-snapchat','#F7CA00','#FFFDE7'],'other'=>['Other','fa-share-alt','#6366F1','#EEF2FF']];
+            $rpMeta = ['facebook'=>['Facebook','fa-facebook','#1877F2','#EBF3FF'],'instagram'=>['Instagram','fa-instagram','#E1306C','#FFF0F5'],'twitter'=>['Twitter / X','fa-x-twitter','#000000','#F5F5F5'],'linkedin'=>['LinkedIn','fa-linkedin','#0A66C2','#EAF2FB'],'tiktok'=>['TikTok','fa-tiktok','#010101','#F5F5F5'],'youtube'=>['YouTube','fa-youtube','#FF0000','#FFF0F0'],'snapchat'=>['Snapchat','fa-snapchat','#FFFC00','#3D3300'],'other'=>['Other','fa-share-alt','#6366F1','#EEF2FF']];
             @endphp
             <div style="padding:10px 24px;background:#F0FDF4;border-bottom:1px solid #BBF7D0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                 <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">
@@ -764,7 +764,7 @@ function socialForm() {
             linkedin:  { label: 'LinkedIn',    icon: 'fa-linkedin',    color: '#0A66C2', bg: '#EAF2FB' },
             tiktok:    { label: 'TikTok',      icon: 'fa-tiktok',      color: '#010101', bg: '#F5F5F5' },
             youtube:   { label: 'YouTube',     icon: 'fa-youtube',     color: '#FF0000', bg: '#FFF0F0' },
-            snapchat:  { label: 'Snapchat',    icon: 'fa-snapchat',    color: '#F7CA00', bg: '#FFFDE7' },
+            snapchat:  { label: 'Snapchat',    icon: 'fa-snapchat',    color: '#FFFC00', bg: '#3D3300' },
             other:     { label: 'Other',       icon: 'fa-share-alt', color: '#6366F1', bg: '#EEF2FF' },
         },
         add() { this.entries.push({ platform: '', url: '', note: '', showPicker: true }); },

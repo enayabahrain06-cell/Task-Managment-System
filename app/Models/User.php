@@ -173,5 +173,10 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Project::class, 'project_user');
     }
+
+    public function socialAccounts(): BelongsToMany
+    {
+        return $this->belongsToMany(SocialAccount::class, 'social_account_users')->withTimestamps();
+    }
 }
 
