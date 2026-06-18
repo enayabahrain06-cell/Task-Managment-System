@@ -357,17 +357,32 @@
                 </div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
-                <button onclick="printSummarize()"
-                        style="height:30px;padding:0 12px;border-radius:8px;background:#F3F4F6;border:1px solid #E5E7EB;cursor:pointer;font-size:11px;font-weight:600;color:#374151;display:flex;align-items:center;gap:5px;"
-                        onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
-                    <i class="fas fa-print" style="font-size:10px;"></i> Print
-                </button>
+                {{-- Print dropdown --}}
+                <div style="position:relative;" id="rpt-print-wrap">
+                    <button onclick="document.getElementById('rpt-print-menu').style.display=document.getElementById('rpt-print-menu').style.display==='block'?'none':'block'"
+                            style="height:30px;padding:0 12px;border-radius:8px;background:#F3F4F6;border:1px solid #E5E7EB;cursor:pointer;font-size:11px;font-weight:600;color:#374151;display:flex;align-items:center;gap:5px;"
+                            onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                        <i class="fas fa-print" style="font-size:10px;"></i> Print <i class="fas fa-chevron-down" style="font-size:8px;margin-left:2px;"></i>
+                    </button>
+                    <div id="rpt-print-menu" style="display:none;position:absolute;top:34px;right:0;background:#fff;border:1px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:180px;z-index:100;overflow:hidden;">
+                        <button onclick="printSummarize();document.getElementById('rpt-print-menu').style.display='none'"
+                                style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:600;color:#374151;display:flex;align-items:center;gap:8px;"
+                                onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='none'">
+                            <i class="fas fa-file-alt" style="color:#6366F1;width:14px;"></i> Full Report
+                        </button>
+                        <button onclick="printRptSummSelection();document.getElementById('rpt-print-menu').style.display='none'"
+                                style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:600;color:#374151;display:flex;align-items:center;gap:8px;"
+                                onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='none'">
+                            <i class="fas fa-crop-alt" style="color:#10B981;width:14px;"></i> Print Selection
+                        </button>
+                    </div>
+                </div>
                 <button onclick="exportSummarizePDF()"
                         style="height:30px;padding:0 12px;border-radius:8px;background:#FEF2F2;border:1px solid #FECACA;cursor:pointer;font-size:11px;font-weight:600;color:#DC2626;display:flex;align-items:center;gap:5px;"
                         onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
                     <i class="fas fa-file-pdf" style="font-size:10px;"></i> Export PDF
                 </button>
-                <button onclick="document.getElementById('rpt-summarize-modal').style.display='none'"
+                <button onclick="document.getElementById('rpt-summarize-modal').style.display='none';document.getElementById('rpt-print-menu').style.display='none'"
                         style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;font-size:16px;color:#6B7280;display:flex;align-items:center;justify-content:center;">×</button>
             </div>
         </div>
@@ -3501,8 +3516,51 @@ function printSummarize() {
 }
 
 function exportSummarizePDF() {
-    _pdfDownload(buildSummarizeHTML, 'reports-summary.pdf');
+    var win = window.open('', '_blank');
+    if (!win) { alert('Pop-up blocked — please allow pop-ups for this site and try again.'); return; }
+    var html = buildSummarizeHTML(false);
+    /* Inject a small script that auto-opens print dialog after fonts/images settle */
+    html = html.replace('</body>', '<sc'+'ript>setTimeout(function(){window.print();},600);<\/sc'+'ript></body>');
+    win.document.write(html);
+    win.document.close();
 }
+
+function printRptSummSelection() {
+    var bodyEl = document.getElementById('rpt-summ-body');
+    if (!bodyEl) return;
+    var period  = (document.getElementById('rpt-summ-subtitle') || {}).textContent || '';
+    var company = '{{ addslashes($appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name')) }}';
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+        + '<title>Reports Summary — ' + company + '</title>'
+        + '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">'
+        + '<style>'
+        + '*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+        + 'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;font-size:12px;color:#111827;background:#fff;padding:24px 28px;}'
+        + '.rpt-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid #4F46E5;}'
+        + '.rpt-hdr-title{font-size:16px;font-weight:800;color:#111827;}'
+        + '.rpt-hdr-period{font-size:11px;color:#6B7280;margin-top:3px;}'
+        + '.rpt-hdr-co{font-size:11px;font-weight:700;color:#4F46E5;}'
+        + '@media print{@page{size:A4 landscape;margin:10mm;}}'
+        + '</style>'
+        + '<script>window.onload=function(){window.print();}<\/script>'
+        + '</head><body>'
+        + '<div class="rpt-hdr">'
+        + '<div><div class="rpt-hdr-title">Reports Summary</div><div class="rpt-hdr-period">' + period + '</div></div>'
+        + '<div class="rpt-hdr-co">' + company + '</div>'
+        + '</div>'
+        + bodyEl.innerHTML
+        + '</body></html>';
+    var win = window.open('', '_blank');
+    if (win) { win.document.write(html); win.document.close(); }
+    else { alert('Pop-up blocked — please allow pop-ups for this site and try again.'); }
+}
+
+// Close print dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    var wrap = document.getElementById('rpt-print-wrap');
+    var menu = document.getElementById('rpt-print-menu');
+    if (wrap && menu && !wrap.contains(e.target)) menu.style.display = 'none';
+});
 
 function _pdfDownload(buildFn, filename) {
     if (typeof html2pdf === 'undefined') { alert('PDF library not loaded yet — please try again in a moment.'); return; }
