@@ -364,16 +364,17 @@
                             onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
                         <i class="fas fa-print" style="font-size:10px;"></i> Print <i class="fas fa-chevron-down" style="font-size:8px;margin-left:2px;"></i>
                     </button>
-                    <div id="rpt-print-menu" style="display:none;position:absolute;top:34px;right:0;background:#fff;border:1px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:180px;z-index:100;overflow:hidden;">
+                    <div id="rpt-print-menu" style="display:none;position:absolute;top:34px;right:0;background:#fff;border:1px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:190px;z-index:100;overflow:hidden;">
                         <button onclick="printSummarize();document.getElementById('rpt-print-menu').style.display='none'"
                                 style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:600;color:#374151;display:flex;align-items:center;gap:8px;"
                                 onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='none'">
                             <i class="fas fa-file-alt" style="color:#6366F1;width:14px;"></i> Full Report
                         </button>
-                        <button onclick="printRptSummSelection();document.getElementById('rpt-print-menu').style.display='none'"
+                        <div style="height:1px;background:#F3F4F6;margin:0 10px;"></div>
+                        <button onclick="openRptSectionPicker();document.getElementById('rpt-print-menu').style.display='none'"
                                 style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:600;color:#374151;display:flex;align-items:center;gap:8px;"
                                 onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='none'">
-                            <i class="fas fa-crop-alt" style="color:#10B981;width:14px;"></i> Print Selection
+                            <i class="fas fa-check-square" style="color:#10B981;width:14px;"></i> Print Selection…
                         </button>
                     </div>
                 </div>
@@ -400,6 +401,41 @@
                 <input id="rpt-summ-to" type="date" style="height:26px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:11px;padding:0 6px;color:#374151;background:#fff;cursor:pointer;">
                 <button onclick="applyRptSummFilter()"
                         style="height:26px;padding:0 12px;border-radius:8px;background:#4F46E5;border:none;font-size:11px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;">Apply</button>
+            </div>
+        </div>
+
+        {{-- Section picker panel (hidden by default) --}}
+        <div id="rpt-section-picker" style="display:none;padding:14px 22px;border-bottom:1px solid #E5E7EB;background:#F0FDF4;flex-shrink:0;">
+            <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 10px;display:flex;align-items:center;gap:6px;">
+                <i class="fas fa-check-square" style="color:#10B981;"></i> Select sections to print:
+            </p>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:600;color:#374151;background:#fff;border:1.5px solid #D1FAE5;border-radius:8px;padding:6px 12px;">
+                    <input type="checkbox" id="rpt-sec-kpi1" checked style="accent-color:#10B981;width:14px;height:14px;cursor:pointer;">
+                    <i class="fas fa-chart-bar" style="color:#6366F1;font-size:11px;"></i> KPI Stats
+                </label>
+                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:600;color:#374151;background:#fff;border:1.5px solid #D1FAE5;border-radius:8px;padding:6px 12px;">
+                    <input type="checkbox" id="rpt-sec-kpi2" checked style="accent-color:#10B981;width:14px;height:14px;cursor:pointer;">
+                    <i class="fas fa-layer-group" style="color:#DC2626;font-size:11px;"></i> Overdue / Projects / Review
+                </label>
+                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:600;color:#374151;background:#fff;border:1.5px solid #D1FAE5;border-radius:8px;padding:6px 12px;">
+                    <input type="checkbox" id="rpt-sec-team" checked style="accent-color:#10B981;width:14px;height:14px;cursor:pointer;">
+                    <i class="fas fa-users" style="color:#7C3AED;font-size:11px;"></i> Team Performance
+                </label>
+                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:600;color:#374151;background:#fff;border:1.5px solid #D1FAE5;border-radius:8px;padding:6px 12px;">
+                    <input type="checkbox" id="rpt-sec-customers" checked style="accent-color:#10B981;width:14px;height:14px;cursor:pointer;">
+                    <i class="fas fa-building" style="color:#4F46E5;font-size:11px;"></i> Top Customers
+                </label>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button onclick="doRptSummPrint()"
+                        style="height:30px;padding:0 18px;border-radius:8px;background:#10B981;border:none;font-size:12px;font-weight:700;color:#fff;cursor:pointer;display:flex;align-items:center;gap:6px;">
+                    <i class="fas fa-print" style="font-size:11px;"></i> Print Now
+                </button>
+                <button onclick="document.getElementById('rpt-section-picker').style.display='none'"
+                        style="height:30px;padding:0 14px;border-radius:8px;background:#fff;border:1.5px solid #E5E7EB;font-size:12px;font-weight:600;color:#6B7280;cursor:pointer;">
+                    Cancel
+                </button>
             </div>
         </div>
 
@@ -3525,14 +3561,100 @@ function exportSummarizePDF() {
     win.document.close();
 }
 
-function printRptSummSelection() {
-    var bodyEl = document.getElementById('rpt-summ-body');
-    if (!bodyEl) return;
+function openRptSectionPicker() {
+    var picker = document.getElementById('rpt-section-picker');
+    if (!picker) return;
+    picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+}
+
+function doRptSummPrint() {
+    var sections = {
+        kpi1:      document.getElementById('rpt-sec-kpi1')      ? document.getElementById('rpt-sec-kpi1').checked      : true,
+        kpi2:      document.getElementById('rpt-sec-kpi2')      ? document.getElementById('rpt-sec-kpi2').checked      : true,
+        team:      document.getElementById('rpt-sec-team')      ? document.getElementById('rpt-sec-team').checked      : true,
+        customers: document.getElementById('rpt-sec-customers') ? document.getElementById('rpt-sec-customers').checked : true,
+    };
+    document.getElementById('rpt-section-picker').style.display = 'none';
+    printRptSummSelection(sections);
+}
+
+function printRptSummSelection(sections) {
+    var d       = window._rptSummState && window._rptSummState.data;
     var period  = (document.getElementById('rpt-summ-subtitle') || {}).textContent || '';
     var company = '{{ addslashes($appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name')) }}';
+
+    function rateColor(r) { return r >= 80 ? '#10B981' : (r >= 40 ? '#F59E0B' : '#EF4444'); }
+    function rateBg(r)    { return r >= 80 ? '#D1FAE5' : (r >= 40 ? '#FEF3C7' : '#FEE2E2'); }
+
+    var bodyHtml = '';
+
+    // Row 1: KPI stats
+    if (!sections || sections.kpi1) {
+        var tt  = d ? d.totalTasks     : '—';
+        var ct  = d ? d.completedTasks : '—';
+        var cr  = d ? d.completionRate + '%' : '—';
+        var otr = d ? d.onTimeRate + '%'     : '—';
+        bodyHtml += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;">'
+            + '<div style="background:#EEF2FF;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Total Tasks</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + tt + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">In selected period</p></div>'
+            + '<div style="background:#D1FAE5;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Completed</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + ct + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Approved + Delivered</p></div>'
+            + '<div style="background:#FEF3C7;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#D97706;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Completion Rate</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + cr + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Of all tasks</p></div>'
+            + '<div style="background:#EDE9FE;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#7C3AED;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">On-Time Rate</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + otr + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Before deadline</p></div>'
+            + '</div>';
+    }
+
+    // Row 2: Overdue / Projects / Review / Ad Budget
+    if (!sections || sections.kpi2) {
+        var ov  = d ? d.overdueTasks   : '—';
+        var ap  = d ? d.activeProjects : '—';
+        var pr  = d ? d.pendingReview  : '—';
+        var cols2 = (d && d.adBudgetTotal > 0) ? 4 : 3;
+        var adBox = (d && d.adBudgetTotal > 0)
+            ? '<div style="background:#EFF6FF;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#2563EB;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Ad Budget</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + Math.round(d.adBudgetTotal).toLocaleString() + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Total BHD · ' + d.adBudgetCount + ' campaigns</p></div>'
+            : '';
+        bodyHtml += '<div style="display:grid;grid-template-columns:repeat(' + cols2 + ',1fr);gap:10px;margin-bottom:18px;">'
+            + '<div style="background:#FEE2E2;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#DC2626;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Overdue</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + ov + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Need attention</p></div>'
+            + '<div style="background:#DBEAFE;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#1D4ED8;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Active Projects</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + ap + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Currently running</p></div>'
+            + '<div style="background:#EDE9FE;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#7C3AED;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Pending Review</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + pr + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Awaiting approval</p></div>'
+            + adBox
+            + '</div>';
+    }
+
+    // Team Performance
+    if ((!sections || sections.team) && d && d.teamMembers && d.teamMembers.length) {
+        bodyHtml += '<div style="margin-bottom:18px;">'
+            + '<p style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;">Team Performance (Top ' + d.teamMembers.length + ')</p>'
+            + '<div style="display:flex;flex-direction:column;gap:7px;">';
+        d.teamMembers.forEach(function(m) {
+            bodyHtml += '<div style="display:flex;align-items:center;gap:10px;">'
+                + '<span style="font-size:12px;font-weight:600;color:#111827;min-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + m.name + '</span>'
+                + '<span style="font-size:10px;color:#9CA3AF;min-width:50px;">' + m.total + ' tasks</span>'
+                + '<div style="flex:1;height:6px;background:#F3F4F6;border-radius:99px;overflow:hidden;">'
+                + '<div style="height:6px;width:' + m.rate + '%;background:' + rateColor(m.rate) + ';border-radius:99px;"></div></div>'
+                + '<span style="font-size:12px;font-weight:700;min-width:34px;text-align:right;color:' + rateColor(m.rate) + ';">' + m.rate + '%</span>'
+                + '</div>';
+        });
+        bodyHtml += '</div></div>';
+    }
+
+    // Top Customers
+    if ((!sections || sections.customers) && d && !d.hasUser && d.customerStats && d.customerStats.length) {
+        bodyHtml += '<div>'
+            + '<p style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;">Top Customers (by task volume)</p>'
+            + '<div style="display:flex;flex-direction:column;gap:7px;">';
+        d.customerStats.forEach(function(c) {
+            bodyHtml += '<div style="display:flex;align-items:center;gap:10px;">'
+                + '<span style="font-size:12px;font-weight:600;color:#4F46E5;min-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + c.name + '</span>'
+                + '<span style="font-size:10px;color:#9CA3AF;min-width:50px;">' + c.total + ' tasks</span>'
+                + '<div style="flex:1;height:6px;background:#F3F4F6;border-radius:99px;overflow:hidden;">'
+                + '<div style="height:6px;width:' + c.rate + '%;background:' + rateColor(c.rate) + ';border-radius:99px;"></div></div>'
+                + '<span style="font-size:12px;font-weight:700;min-width:34px;text-align:right;color:' + rateColor(c.rate) + ';">' + c.rate + '%</span>'
+                + '</div>';
+        });
+        bodyHtml += '</div></div>';
+    }
+
     var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
         + '<title>Reports Summary — ' + company + '</title>'
-        + '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">'
         + '<style>'
         + '*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
         + 'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;font-size:12px;color:#111827;background:#fff;padding:24px 28px;}'
@@ -3548,7 +3670,7 @@ function printRptSummSelection() {
         + '<div><div class="rpt-hdr-title">Reports Summary</div><div class="rpt-hdr-period">' + period + '</div></div>'
         + '<div class="rpt-hdr-co">' + company + '</div>'
         + '</div>'
-        + bodyEl.innerHTML
+        + bodyHtml
         + '</body></html>';
     var win = window.open('', '_blank');
     if (win) { win.document.write(html); win.document.close(); }
