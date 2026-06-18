@@ -83,6 +83,8 @@ class TaskLog extends Model
             'social_reopened'                     => 'Social Post Reopened',
             'task_updated'                        => 'Task Details Updated',
             'release_published'                   => 'Release Published',
+            'status_updated_pending_customer'     => 'Sent to Customer',
+            'attachment_added'                    => 'Attachment Added',
             default => ucwords(str_replace(['status_updated_', '_'], ['', ' '], $this->action)),
         };
     }
@@ -124,6 +126,8 @@ class TaskLog extends Model
             'social_reopened'                     => ['fa-rotate-right',         '#6366F1', '#EEF2FF'],
             'task_updated'                        => ['fa-pen',                  '#6B7280', '#F3F4F6'],
             'release_published'                   => ['fa-rocket',               '#6366F1', '#EEF2FF'],
+            'status_updated_pending_customer'     => ['fa-user-clock',           '#0284C7', '#E0F2FE'],
+            'attachment_added'                    => ['fa-paperclip',            '#6B7280', '#F3F4F6'],
             default                               => ['fa-circle-dot',           '#6366F1', '#EEF2FF'],
         };
     }

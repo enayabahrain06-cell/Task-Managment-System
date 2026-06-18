@@ -34,16 +34,16 @@ class Message extends Model
     /** All messages in a conversation between two users, respecting per-user clear timestamps. */
     public static function conversation(int $userA, int $userB, ?\Carbon\Carbon $clearedAt = null)
     {
-        $q = static::where(function ($q) use ($userA, $userB) {
-            $q->where('sender_id', $userA)->where('receiver_id', $userB);
-        })->orWhere(function ($q) use ($userA, $userB) {
-            $q->where('sender_id', $userB)->where('receiver_id', $userA);
-        });
-
-        if ($clearedAt) {
-            $q->where('created_at', '>', $clearedAt);
-        }
-
-        return $q->orderBy('created_at');
+        return static::where(function ($q) use ($userA, $userB, $clearedAt) {
+            $q->where(function ($q) use ($userA, $userB) {
+                $q->where('sender_id', $userA)->where('receiver_id', $userB)
+                  ->orWhere(function ($q) use ($userA, $userB) {
+                      $q->where('sender_id', $userB)->where('receiver_id', $userA);
+                  });
+            });
+            if ($clearedAt) {
+                $q->where('created_at', '>', $clearedAt);
+            }
+        })->orderBy('created_at');
     }
 }
