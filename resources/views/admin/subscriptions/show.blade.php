@@ -13,6 +13,102 @@
     .show-grid   { grid-template-columns:1fr !important; }
     .stats-grid  { grid-template-columns:1fr 1fr !important; }
 }
+
+/* ── Drop zone animations ── */
+@keyframes dz-float {
+    0%, 100% { transform: translateY(0);    }
+    50%       { transform: translateY(-6px); }
+}
+@keyframes dz-pulse-ring {
+    0%   { transform: scale(.85); opacity:.6; }
+    70%  { transform: scale(1.25); opacity:0; }
+    100% { transform: scale(1.25); opacity:0; }
+}
+@keyframes dz-spin-in {
+    0%   { transform: rotate(-20deg) scale(.7); opacity:0; }
+    100% { transform: rotate(0deg)  scale(1);   opacity:1; }
+}
+@keyframes dz-dash {
+    to { stroke-dashoffset: -24; }
+}
+@keyframes dz-shake {
+    0%,100% { transform: translateX(0); }
+    20%     { transform: translateX(-5px) rotate(-3deg); }
+    40%     { transform: translateX( 5px) rotate( 3deg); }
+    60%     { transform: translateX(-3px) rotate(-2deg); }
+    80%     { transform: translateX( 3px) rotate( 2deg); }
+}
+@keyframes dz-glow-pulse {
+    0%, 100% { box-shadow: 0 0 0   0  rgba(99,102,241,.0); }
+    50%       { box-shadow: 0 0 22px 4px rgba(99,102,241,.25); }
+}
+
+.dz-zone {
+    border: 2px dashed #D1D5DB;
+    border-radius: 12px;
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    background: #FAFAFA;
+    transition: border-color .25s, background .25s, box-shadow .25s, transform .2s;
+    position: relative;
+    overflow: hidden;
+}
+.dz-zone:hover {
+    border-color: #A5B4FC;
+    background: #F5F3FF;
+    box-shadow: 0 0 0 4px rgba(99,102,241,.08);
+    transform: translateY(-1px);
+}
+.dz-zone.is-dragging {
+    border-color: #6366F1;
+    background: #EEF2FF;
+    animation: dz-glow-pulse .9s ease-in-out infinite;
+    transform: scale(1.015);
+}
+.dz-zone.is-dragging .dz-icon-wrap { animation: dz-shake .5s ease; }
+
+.dz-icon-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px; height: 56px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%);
+    margin: 0 auto 12px;
+    position: relative;
+}
+.dz-icon-wrap .dz-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    border: 2px solid #6366F1;
+    opacity: 0;
+    animation: dz-pulse-ring 2s ease-out infinite;
+}
+.dz-icon-wrap i {
+    font-size: 22px;
+    color: #6366F1;
+    animation: dz-float 3s ease-in-out infinite, dz-spin-in .4s ease both;
+}
+.dz-zone.is-dragging .dz-icon-wrap i { animation: dz-shake .5s ease; }
+
+.dz-particles span {
+    position: absolute;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: #818CF8;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s;
+}
+.dz-zone.is-dragging .dz-particles span {
+    animation: dz-pulse-ring .8s ease-out infinite;
+}
+.dz-zone.is-dragging .dz-particles span:nth-child(1) { top:15%; left:12%; animation-delay:.0s; background:#818CF8; }
+.dz-zone.is-dragging .dz-particles span:nth-child(2) { top:20%; right:14%; animation-delay:.2s; background:#A5B4FC; }
+.dz-zone.is-dragging .dz-particles span:nth-child(3) { bottom:18%; left:18%; animation-delay:.35s; background:#C7D2FE; }
+.dz-zone.is-dragging .dz-particles span:nth-child(4) { bottom:22%; right:10%; animation-delay:.1s; background:#818CF8; }
 </style>
 
 @php
@@ -389,15 +485,28 @@
                                style="display:none;" @change="addFiles($event.target.files); $event.target.value=''">
 
                         {{-- Drop zone --}}
-                        <div @dragover.prevent="dragging=true"
+                        <div class="dz-zone"
+                             :class="dragging ? 'is-dragging' : ''"
+                             @dragover.prevent="dragging=true"
                              @dragleave.prevent="dragging=false"
                              @drop.prevent="dragging=false; addFiles($event.dataTransfer.files)"
-                             @click="$refs.fileInput.click()"
-                             :style="dragging ? 'border-color:#6366F1;background:#EEF2FF;' : ''"
-                             style="border:2px dashed #D1D5DB;border-radius:10px;padding:22px 16px;text-align:center;cursor:pointer;transition:all .2s;background:#FAFAFA;">
-                            <div style="pointer-events:none;">
-                                <i class="fas fa-cloud-arrow-up" style="font-size:24px;color:#6366F1;opacity:.7;display:block;margin-bottom:8px;"></i>
-                                <p style="font-size:13px;font-weight:600;color:#374151;margin:0 0 3px;">Drop files here or click to browse</p>
+                             @click="$refs.fileInput.click()">
+
+                            {{-- floating particles (visible while dragging) --}}
+                            <div class="dz-particles" aria-hidden="true">
+                                <span></span><span></span><span></span><span></span>
+                            </div>
+
+                            <div style="pointer-events:none;position:relative;z-index:1;">
+                                <div class="dz-icon-wrap">
+                                    <div class="dz-ring"></div>
+                                    <i class="fas fa-cloud-arrow-up"></i>
+                                </div>
+                                <p style="font-size:13px;font-weight:600;color:#374151;margin:0 0 4px;transition:color .2s;"
+                                   :style="dragging ? 'color:#4F46E5;' : ''">
+                                    <span x-show="!dragging">Drop files here or click to browse</span>
+                                    <span x-show="dragging" x-cloak>Release to upload</span>
+                                </p>
                                 <p style="font-size:11.5px;color:#9CA3AF;margin:0;">PDF, images, Word, Excel, ZIP — no size limit</p>
                             </div>
                         </div>

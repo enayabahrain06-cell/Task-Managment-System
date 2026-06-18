@@ -63,6 +63,10 @@
         ? round($summaryTotals['delivered'] / $summaryTotals['tasks'] * 100) : 0;
     $maxTasks = $summaryList->max('tasks_count') ?: 1;
     $palette  = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6'];
+    $hasFilter   = !empty($dateFrom) || !empty($dateTo);
+    $periodLabel = $hasFilter
+        ? (($dateFrom ? $dateFrom->format('M j, Y') : '…') . ' → ' . ($dateTo ? $dateTo->format('M j, Y') : '…'))
+        : 'All Time';
 @endphp
 
 <div style="padding-bottom:40px;">
@@ -75,7 +79,9 @@
         <div style="flex:1;min-width:0;">
             <div style="color:#c7d2fe;font-size:12px;text-transform:uppercase;letter-spacing:.07em;font-weight:600;">All Customers</div>
             <div style="color:#fff;font-size:1.2rem;font-weight:700;margin-top:2px;">Customers Summary</div>
-            <div style="color:#a5b4fc;font-size:12px;margin-top:2px;">{{ $summaryTotals['customers'] }} customers · Generated {{ now()->format('M j, Y') }}</div>
+            <div style="color:#a5b4fc;font-size:12px;margin-top:2px;">
+                {{ $summaryTotals['customers'] }} customers · {{ $periodLabel }} · Generated {{ now()->format('M j, Y') }}
+            </div>
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0;">
             <button onclick="printSummaryReport()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;">
@@ -90,7 +96,7 @@
     {{-- Print header --}}
     <div class="print-only print-header-bar" style="align-items:center;justify-content:space-between;background:#4f46e5;color:#fff;border-radius:8px;padding:12px 16px;margin-bottom:16px;">
         <div>
-            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;opacity:.8;">Customers Summary</div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;opacity:.8;">Customers Summary · {{ $periodLabel }}</div>
             <div style="font-size:1rem;font-weight:700;">All Customers — {{ $summaryTotals['customers'] }} clients</div>
         </div>
         <div style="text-align:right;font-size:11px;opacity:.8;">Generated {{ now()->format('M j, Y') }}</div>
@@ -285,11 +291,18 @@ function buildSummaryHTML(immediate) {
     var user      = '{{ auth()->user()->name }}';
     var overallRate = {{ $overallRate }};
 
+    var periodFrom  = '{{ $dateFrom ? $dateFrom->format('M j, Y') : '' }}';
+    var periodTo    = '{{ $dateTo   ? $dateTo->format('M j, Y')   : '' }}';
+    var periodMonth = '{{ $dateFrom ? $dateFrom->format('F Y') . ($dateTo && $dateTo->format('F Y') !== $dateFrom->format('F Y') ? ' – ' . $dateTo->format('F Y') : '') : '' }}';
+    var periodLabel = (periodFrom && periodTo)
+        ? periodFrom + ' → ' + periodTo
+        : (periodFrom ? 'From ' + periodFrom : (periodTo ? 'Until ' + periodTo : 'All Time'));
+
     var kpis = [
         { label:'Customers',   value:{{ $summaryTotals['customers'] }}, color:'#4F46E5', bg:'#EEF2FF', sub:'Total clients' },
         { label:'Projects',    value:{{ $summaryTotals['projects'] }},  color:'#0EA5E9', bg:'#F0F9FF', sub:'Across all customers' },
-        { label:'Total Tasks', value:{{ $summaryTotals['tasks'] }},     color:'#6B7280', bg:'#F9FAFB', sub:'All time' },
-        { label:'Delivered',   value:{{ $summaryTotals['delivered'] }}, color:'#10B981', bg:'#ECFDF5', sub:overallRate + '% completion rate' },
+        { label:'Total Tasks', value:{{ $summaryTotals['tasks'] }},     color:'#6B7280', bg:'#F9FAFB', sub:periodLabel },
+        { label:'Delivered',   value:{{ $summaryTotals['delivered'] }}, color:'#10B981', bg:'#ECFDF5', sub:overallRate + '% — ' + periodLabel },
         { label:'Active',      value:{{ $summaryTotals['active'] }},    color:'#0284C7', bg:'#EFF6FF', sub:'In progress' },
         { label:'Overdue',     value:{{ $summaryTotals['overdue'] }},   color:'#DC2626', bg:'#FEF2F2', sub:'Need attention' },
     ];
@@ -384,7 +397,7 @@ function buildSummaryHTML(immediate) {
     kHtml += '</div>';
 
     // ── Customer table ────────────────────────────────────
-    var tHtml = '<div class="sh"><div class="sh-bar" style="background:#4F46E5;"></div><div class="sh-text">All Customers</div><span class="sh-pill">' + customers.length + ' clients — sorted by task volume</span></div>';
+    var tHtml = '<div class="sh"><div class="sh-bar" style="background:#4F46E5;"></div><div class="sh-text">All Customers</div><span class="sh-pill">' + customers.length + ' clients · ' + periodLabel + '</span></div>';
     tHtml += '<div class="twrap"><table><thead><tr>'
           + '<th style="width:28px;">#</th>'
           + '<th>Customer</th>'
@@ -423,7 +436,7 @@ function buildSummaryHTML(immediate) {
     var pbar = immediate ? '' :
         '<div class="pbar">'
       + '<div class="pbar-l"><h2>Customers Summary &mdash; ' + company + '</h2>'
-      + '<p>' + customers.length + ' customers &bull; Generated ' + dateStr + '</p></div>'
+      + '<p>' + customers.length + ' customers &bull; ' + periodLabel + ' &bull; Generated ' + dateStr + '</p></div>'
       + '<button class="pbar-btn" onclick="window.print()">' + printIcon + ' Print / Save as PDF</button>'
       + '</div>';
 
@@ -456,6 +469,7 @@ function buildSummaryHTML(immediate) {
          /* Meta strip */
          + '<div class="meta">'
          +   '<div class="mi"><div class="mi-lbl">Generated</div><div class="mi-val">' + dateStr + ' at ' + timeStr + '</div></div>'
+         +   '<div class="mi"><div class="mi-lbl">Period</div><div class="mi-val">' + periodLabel + (periodMonth ? '<div style="font-size:9px;color:#9CA3AF;margin-top:2px;">' + periodMonth + '</div>' : '') + '</div></div>'
          +   '<div class="mi"><div class="mi-lbl">Customers</div><div class="mi-val">' + customers.length + ' clients</div></div>'
          +   '<div class="mi"><div class="mi-lbl">Prepared By</div><div class="mi-val">' + user + '</div></div>'
          +   '<div class="mi"><div class="mi-lbl">Department</div><div class="mi-val">' + dept + '</div></div>'
@@ -471,7 +485,7 @@ function buildSummaryHTML(immediate) {
          /* Footer */
          + '<div class="foot">'
          +   '<div class="foot-brand">' + company + ' &mdash; Customers Summary</div>'
-         +   '<div class="foot-mid">Generated ' + dateStr + ' &bull; ' + user + '</div>'
+         +   '<div class="foot-mid">Period: ' + periodLabel + ' &bull; Generated ' + dateStr + ' &bull; ' + user + '</div>'
          +   ''
          + '</div>'
 

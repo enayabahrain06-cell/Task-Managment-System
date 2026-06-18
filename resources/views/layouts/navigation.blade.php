@@ -260,15 +260,17 @@
         </a>
         @endif
 
-        @if(auth()->user()->hasPermission('view_reports') && !in_array('nav_reports', $navHidden))
-        <a href="{{ route('admin.reports.index') }}"
-           class="nav-item {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">
+        <a href="{{ route('admin.social-accounts.index') }}"
+           class="nav-item {{ request()->routeIs('admin.social-accounts.*') ? 'active' : '' }}">
             <div class="nav-left">
-                <i class="fas fa-chart-bar nav-icon"></i>
-                Reports
+                <i class="fas fa-share-nodes nav-icon"></i>
+                Social Accounts
             </div>
+            @php $socialAccountsCount = \App\Models\SocialAccount::where('status','active')->count(); @endphp
+            @if($socialAccountsCount > 0)
+            <span class="nav-badge" style="background:#EEF2FF;color:#4F46E5;">{{ $socialAccountsCount }}</span>
+            @endif
         </a>
-        @endif
 
         @if(in_array($role, ['admin', 'manager']) && !in_array('nav_subscriptions', $navHidden))
         @php $expiringNavCount = \App\Models\Subscription::whereNotNull('renewal_date')->get()->filter(fn($s) => $s->days_until_renewal !== null && $s->days_until_renewal >= 0 && $s->days_until_renewal <= 7)->count(); @endphp
@@ -281,6 +283,16 @@
             @if($expiringNavCount > 0)
             <span class="nav-badge nav-badge-red">{{ $expiringNavCount }}</span>
             @endif
+        </a>
+        @endif
+
+        @if(auth()->user()->hasPermission('view_reports') && !in_array('nav_reports', $navHidden))
+        <a href="{{ route('admin.reports.index') }}"
+           class="nav-item {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-chart-bar nav-icon"></i>
+                Reports
+            </div>
         </a>
         @endif
         @endif

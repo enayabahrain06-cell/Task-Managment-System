@@ -849,6 +849,201 @@ class ReportsController extends Controller
         ));
     }
 
+    public function summaryData(Request $request)
+    {
+        if (!auth()->user()->hasPermission('view_reports')) abort(403);
+
+        $dateFrom   = $request->filled('date_from') ? Carbon::parse($request->date_from)->startOfDay() : null;
+        $dateTo     = $request->filled('date_to')   ? Carbon::parse($request->date_to)->endOfDay()     : null;
+        $projectId  = $request->input('project_id') ?: null;
+        $customerId = $request->input('customer_id') ?: null;
+        $userId     = $request->input('user_id') ?: null;
+
+        $doneStatuses    = ['approved', 'delivered'];
+        $nonDoneStatuses = ['draft', 'assigned', 'viewed', 'in_progress', 'paused', 'submitted', 'revision_requested'];
+
+        $selectedUserRole     = $userId ? User::where('id', $userId)->value('role') : null;
+        $isAdminManagerFilter = $userId && in_array($selectedUserRole, ['admin', 'manager']);
+        $isRegularUserFilter  = $userId && $selectedUserRole === 'user';
+
+        $scoped = function () use ($dateFrom, $dateTo, $projectId, $customerId, $userId, $isAdminManagerFilter) {
+            return Task::when($dateFrom, fn($q) => $q->where('tasks.created_at', '>=', $dateFrom))
+                       ->when($dateTo,   fn($q) => $q->where('tasks.created_at', '<=', $dateTo))
+                       ->when($projectId,  fn($q) => $q->where('tasks.project_id', $projectId))
+                       ->when($customerId, fn($q) => $q->where('tasks.customer_id', $customerId))
+                       ->when($userId && $isAdminManagerFilter, fn($q) => $q->where('tasks.created_by', $userId))
+                       ->when($userId && !$isAdminManagerFilter, fn($q) => $q->where(function ($uq) use ($userId) {
+                           $uq->where('tasks.assigned_to', $userId)
+                              ->orWhereExists(fn($sub) => $sub->selectRaw('1')
+                                  ->from('task_assignees')
+                                  ->whereColumn('task_assignees.task_id', 'tasks.id')
+                                  ->where('task_assignees.user_id', $userId));
+                       }));
+        };
+
+        $socialScopedBase = $isRegularUserFilter
+            ? Task::where('social_assigned_to', $userId)
+                ->where(function ($q) use ($userId) {
+                    $q->whereNull('assigned_to')->orWhere('assigned_to', '!=', $userId);
+                })
+                ->whereNotExists(fn($sub) => $sub->selectRaw('1')
+                    ->from('task_assignees')
+                    ->whereColumn('task_assignees.task_id', 'tasks.id')
+                    ->where('task_assignees.user_id', $userId))
+                ->when($dateFrom, fn($q) => $q->where('tasks.created_at', '>=', $dateFrom))
+                ->when($dateTo,   fn($q) => $q->where('tasks.created_at', '<=', $dateTo))
+                ->when($projectId,  fn($q) => $q->where('tasks.project_id', $projectId))
+                ->when($customerId, fn($q) => $q->where('tasks.customer_id', $customerId))
+            : null;
+
+        $socialTotal = $socialScopedBase ? (clone $socialScopedBase)->count() : 0;
+        $socialDone  = $socialScopedBase ? (clone $socialScopedBase)->whereNotNull('social_posted_at')->count() : 0;
+
+        $totalTasks     = $scoped()->count() + $socialTotal;
+        $completedTasks = $scoped()->whereIn('status', $doneStatuses)->count() + $socialDone;
+
+        $overdueTasks = Task::where('deadline', '<', now())
+            ->whereIn('status', $nonDoneStatuses)
+            ->when($projectId,  fn($q) => $q->where('project_id', $projectId))
+            ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
+            ->when($userId && $isAdminManagerFilter,  fn($q) => $q->where('created_by', $userId))
+            ->when($userId && !$isAdminManagerFilter, fn($q) => $q->where(function ($uq) use ($userId) {
+                $uq->where('assigned_to', $userId)
+                   ->orWhereExists(fn($sub) => $sub->selectRaw('1')->from('task_assignees')->whereColumn('task_assignees.task_id','tasks.id')->where('task_assignees.user_id',$userId));
+            }))
+            ->count();
+
+        $completionRate = $totalTasks > 0 ? round($completedTasks / $totalTasks * 100) : 0;
+
+        $onTimeCount = $scoped()
+            ->whereIn('status', $doneStatuses)
+            ->whereHas('logs', function ($q) {
+                $q->whereIn('action', ['status_updated_approved', 'status_updated_delivered', 'status_updated_completed'])
+                  ->whereColumn('task_logs.created_at', '<=', 'tasks.deadline');
+            })->count();
+        if ($socialScopedBase) {
+            $onTimeCount += (clone $socialScopedBase)->whereNotNull('social_posted_at')
+                ->whereNotNull('deadline')
+                ->whereColumn('social_posted_at', '<=', 'deadline')
+                ->count();
+        }
+        $onTimeRate = $completedTasks > 0 ? round($onTimeCount / $completedTasks * 100) : 0;
+
+        $activeProjects = Project::where('status', 'active')->where('is_quick', false)
+            ->when($projectId, fn($q) => $q->where('id', $projectId))
+            ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
+            ->count();
+
+        $pendingReview = Task::where('status', 'submitted')
+            ->when($projectId,  fn($q) => $q->where('project_id', $projectId))
+            ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
+            ->count();
+
+        // Ad Budget
+        $adBudgetQuery = Task::where('social_required', true)
+            ->when($dateFrom, fn($q) => $q->where('tasks.created_at', '>=', $dateFrom))
+            ->when($dateTo,   fn($q) => $q->where('tasks.created_at', '<=', $dateTo))
+            ->when($projectId,  fn($q) => $q->where('project_id', $projectId))
+            ->when($customerId, fn($q) => $q->where('customer_id', $customerId))
+            ->get(['social_budget']);
+
+        $adBudgetTotal = $adBudgetQuery
+            ->filter(fn($t) => !empty($t->social_budget) && is_numeric(trim($t->social_budget)))
+            ->sum(fn($t) => (float) trim($t->social_budget));
+        $adBudgetCount = $adBudgetQuery->count();
+
+        // Team Performance (all regular users)
+        $teamMembers = User::where('role', 'user')
+            ->where('status', 'active')
+            ->when($userId, fn($q) => $q->where('id', $userId))
+            ->orderBy('name')
+            ->get()
+            ->map(function ($user) use ($dateFrom, $dateTo, $doneStatuses, $nonDoneStatuses) {
+                $base = Task::where(function ($q) use ($user) {
+                    $q->where('assigned_to', $user->id)
+                      ->orWhereExists(fn($sub) => $sub->selectRaw('1')
+                          ->from('task_assignees')
+                          ->whereColumn('task_assignees.task_id', 'tasks.id')
+                          ->where('task_assignees.user_id', $user->id));
+                })
+                ->when($dateFrom, fn($q) => $q->where('tasks.updated_at', '>=', $dateFrom))
+                ->when($dateTo,   fn($q) => $q->where('tasks.updated_at', '<=', $dateTo));
+
+                $total = (clone $base)->count();
+                $done  = (clone $base)->whereIn('status', $doneStatuses)->count();
+
+                $socialBase = Task::where('social_assigned_to', $user->id)
+                    ->where(function ($q) use ($user) {
+                        $q->whereNull('assigned_to')->orWhere('assigned_to', '!=', $user->id);
+                    })
+                    ->whereNotExists(fn($sub) => $sub->selectRaw('1')
+                        ->from('task_assignees')
+                        ->whereColumn('task_assignees.task_id', 'tasks.id')
+                        ->where('task_assignees.user_id', $user->id))
+                    ->when($dateFrom, fn($q) => $q->where('tasks.updated_at', '>=', $dateFrom))
+                    ->when($dateTo,   fn($q) => $q->where('tasks.updated_at', '<=', $dateTo));
+
+                $socialTotal = (clone $socialBase)->count();
+                $socialDone  = (clone $socialBase)->whereNotNull('social_posted_at')->count();
+
+                $grandTotal = $total + $socialTotal;
+                $grandDone  = $done + $socialDone;
+
+                return [
+                    'name'  => $user->name,
+                    'total' => $grandTotal,
+                    'rate'  => $grandTotal > 0 ? round($grandDone / $grandTotal * 100) : 0,
+                ];
+            })
+            ->sortByDesc('rate')
+            ->take(8)
+            ->values();
+
+        // Customer Performance
+        $customerStats = $userId ? collect() : Customer::withCount([
+                'tasks',
+                'tasks as completed_tasks_count' => fn($q) => $q->whereIn('status', $doneStatuses),
+            ])
+            ->when($dateFrom, fn($q) => $q->whereHas('tasks', fn($tq) => $tq->where('tasks.created_at', '>=', $dateFrom)))
+            ->when($dateTo,   fn($q) => $q->whereHas('tasks', fn($tq) => $tq->where('tasks.created_at', '<=', $dateTo)))
+            ->when($customerId, fn($q) => $q->where('id', $customerId))
+            ->orderBy('name')
+            ->get()
+            ->map(fn($c) => [
+                'id'    => $c->id,
+                'name'  => $c->name,
+                'total' => $c->tasks_count,
+                'rate'  => $c->tasks_count > 0 ? round($c->completed_tasks_count / $c->tasks_count * 100) : 0,
+            ])
+            ->sortByDesc('total')
+            ->take(8)
+            ->values();
+
+        // Period label
+        if ($dateFrom && $dateTo) {
+            $fmt = config('app.date_format', 'M d, Y');
+            $periodLabel = $dateFrom->format($fmt) . ' → ' . $dateTo->format($fmt);
+        } else {
+            $periodLabel = 'All Time';
+        }
+
+        return response()->json([
+            'totalTasks'     => $totalTasks,
+            'completedTasks' => $completedTasks,
+            'completionRate' => $completionRate,
+            'onTimeRate'     => $onTimeRate,
+            'overdueTasks'   => $overdueTasks,
+            'activeProjects' => $activeProjects,
+            'pendingReview'  => $pendingReview,
+            'adBudgetTotal'  => $adBudgetTotal,
+            'adBudgetCount'  => $adBudgetCount,
+            'teamMembers'    => $teamMembers,
+            'customerStats'  => $customerStats,
+            'periodLabel'    => $periodLabel,
+            'hasUser'        => (bool) $userId,
+        ]);
+    }
+
     public function userDetail(Request $request)
     {
         if (!auth()->user()->hasPermission('view_reports')) abort(403);

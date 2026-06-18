@@ -211,7 +211,6 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
         </tbody>
     </table>
     <x-pagination :paginator="$users" mt="12px" />
-    @endif
 </div>
 @endif {{-- users tab --}}
 

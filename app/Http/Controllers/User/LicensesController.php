@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\SocialAccount;
 use App\Models\Subscription;
+use App\Models\User;
 
 class LicensesController extends Controller
 {
@@ -18,6 +20,21 @@ class LicensesController extends Controller
             ->orderBy('renewal_date')
             ->get();
 
-        return view('user.licenses.index', compact('licenses'));
+        $assignerIds = $licenses->flatMap(fn($l) => $l->users->pluck('pivot.assigned_by'))->filter()->unique();
+        $assigners   = User::whereIn('id', $assignerIds)->pluck('name', 'id');
+
+        $totalCount        = $licenses->count();
+        $activeCount       = $licenses->filter(fn($l) => $l->status === 'active')->count();
+        $expiringSoonCount = $licenses->filter(fn($l) => $l->status === 'expiring_soon')->count();
+        $expiredCount      = $licenses->filter(fn($l) => $l->status === 'expired')->count();
+
+        $socialAccounts = $user->socialAccounts()->with('customer')->orderBy('platform')->get();
+        $saPlatforms    = SocialAccount::platforms();
+
+        return view('user.licenses.index', compact(
+            'licenses', 'assigners',
+            'totalCount', 'activeCount', 'expiringSoonCount', 'expiredCount',
+            'socialAccounts', 'saPlatforms'
+        ));
     }
 }

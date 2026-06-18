@@ -915,7 +915,7 @@
                                     'linkedin'  => ['LinkedIn',   'fa-linkedin',   '#0A66C2','#EAF2FB','#B3D4EF'],
                                     'tiktok'    => ['TikTok',     'fa-tiktok',     '#010101','#F5F5F5','#D1D5DB'],
                                     'youtube'   => ['YouTube',    'fa-youtube',    '#FF0000','#FFF0F0','#FFBBBB'],
-                                    'snapchat'  => ['Snapchat',   'fa-snapchat',   '#F7CA00','#FFFDE7','#FDE68A'],
+                                    'snapchat'  => ['Snapchat',   'fa-snapchat',   '#FFFC00','#3D3300','#5A5000'],
                                     'other'     => ['Other',      'fa-share-alt','#6366F1','#EEF2FF','#C7D2FE'],
                                 ];
                                 @endphp

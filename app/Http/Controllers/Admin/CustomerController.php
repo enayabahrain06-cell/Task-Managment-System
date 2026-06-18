@@ -30,11 +30,17 @@ class CustomerController extends Controller
 
         $customers = $query->orderBy('name')->paginate(20)->withQueryString();
 
-        // Summary data — all customers sorted by task count for the Summarize modal
+        // Summary data — default range: 1 month back → today
+        $summaryDefaultFrom = now()->subMonth()->startOfDay();
+        $summaryDefaultTo   = now()->endOfDay();
+
         $summaryList = Customer::withCount([
             'projects',
-            'tasks',
-            'tasks as delivered_count' => fn($q) => $q->whereIn('status', ['delivered', 'approved']),
+            'tasks' => fn($q) => $q->where('tasks.created_at', '>=', $summaryDefaultFrom)
+                                   ->where('tasks.created_at', '<=', $summaryDefaultTo),
+            'tasks as delivered_count' => fn($q) => $q->whereIn('status', ['delivered', 'approved'])
+                                                       ->where('tasks.created_at', '>=', $summaryDefaultFrom)
+                                                       ->where('tasks.created_at', '<=', $summaryDefaultTo),
         ])->orderByDesc('tasks_count')->get();
 
         $summaryTotals = [
@@ -44,7 +50,13 @@ class CustomerController extends Controller
             'delivered' => $summaryList->sum('delivered_count'),
         ];
 
-        return view('admin.customers.index', compact('customers', 'summaryList', 'summaryTotals'));
+        $summaryDefaultFromStr = $summaryDefaultFrom->toDateString();
+        $summaryDefaultToStr   = $summaryDefaultTo->toDateString();
+
+        return view('admin.customers.index', compact(
+            'customers', 'summaryList', 'summaryTotals',
+            'summaryDefaultFromStr', 'summaryDefaultToStr'
+        ));
     }
 
     public function create()
@@ -94,6 +106,7 @@ class CustomerController extends Controller
     {
         $customer->load([
             'projects' => fn($q) => $q->where('is_quick', false)->withCount('tasks')->orderBy('created_at', 'desc'),
+            'socialAccounts' => fn($q) => $q->with('users:id,name,email,avatar,role')->orderBy('platform')->orderBy('name'),
         ]);
 
         // Load tasks from both direct customer_id and tasks inside the customer's projects
@@ -255,15 +268,80 @@ class CustomerController extends Controller
         ));
     }
 
-    public function summary()
+    public function summaryData(Request $request)
     {
+        $dateFrom = $request->filled('date_from') ? Carbon::parse($request->date_from)->startOfDay() : null;
+        $dateTo   = $request->filled('date_to')   ? Carbon::parse($request->date_to)->endOfDay()     : null;
+
         $summaryList = Customer::withCount([
             'projects',
-            'tasks',
-            'tasks as delivered_count' => fn($q) => $q->whereIn('status', ['delivered', 'approved']),
-            'tasks as active_count'    => fn($q) => $q->whereNotIn('status', ['delivered', 'approved', 'archived']),
-            'tasks as overdue_count'   => fn($q) => $q->whereNotIn('status', ['delivered', 'approved', 'archived'])
-                                                       ->whereNotNull('deadline')->where('deadline', '<', now()),
+            'tasks' => function ($q) use ($dateFrom, $dateTo) {
+                if ($dateFrom) $q->where('tasks.created_at', '>=', $dateFrom);
+                if ($dateTo)   $q->where('tasks.created_at', '<=', $dateTo);
+            },
+            'tasks as delivered_count' => function ($q) use ($dateFrom, $dateTo) {
+                $q->whereIn('status', ['delivered', 'approved']);
+                if ($dateFrom) $q->where('tasks.created_at', '>=', $dateFrom);
+                if ($dateTo)   $q->where('tasks.created_at', '<=', $dateTo);
+            },
+        ])->orderByDesc('tasks_count')->get(['id', 'name', 'company', 'logo']);
+
+        $totalTasks = $summaryList->sum('tasks_count');
+
+        $list = $summaryList->map(function ($c) use ($totalTasks) {
+            $rate = $c->tasks_count > 0 ? round($c->delivered_count / $c->tasks_count * 100) : 0;
+            $barW = $totalTasks > 0     ? round($c->tasks_count      / $totalTasks      * 100) : 0;
+            return [
+                'id'              => $c->id,
+                'name'            => $c->name,
+                'company'         => $c->company,
+                'logo'            => $c->logo ? Storage::url($c->logo) : null,
+                'initial'         => strtoupper(substr($c->name, 0, 1)),
+                'tasks_count'     => $c->tasks_count,
+                'delivered_count' => $c->delivered_count,
+                'projects_count'  => $c->projects_count,
+                'rate'            => $rate,
+                'bar_width'       => $barW,
+            ];
+        })->values();
+
+        $totals = [
+            'customers' => $summaryList->count(),
+            'projects'  => $summaryList->sum('projects_count'),
+            'tasks'     => $totalTasks,
+            'delivered' => $summaryList->sum('delivered_count'),
+        ];
+
+        return response()->json(['list' => $list, 'totals' => $totals]);
+    }
+
+    public function summary(Request $request)
+    {
+        $dateFrom = $request->filled('date_from') ? Carbon::parse($request->date_from)->startOfDay() : null;
+        $dateTo   = $request->filled('date_to')   ? Carbon::parse($request->date_to)->endOfDay()     : null;
+
+        $summaryList = Customer::withCount([
+            'projects',
+            'tasks' => function ($q) use ($dateFrom, $dateTo) {
+                if ($dateFrom) $q->where('tasks.created_at', '>=', $dateFrom);
+                if ($dateTo)   $q->where('tasks.created_at', '<=', $dateTo);
+            },
+            'tasks as delivered_count' => function ($q) use ($dateFrom, $dateTo) {
+                $q->whereIn('status', ['delivered', 'approved']);
+                if ($dateFrom) $q->where('tasks.created_at', '>=', $dateFrom);
+                if ($dateTo)   $q->where('tasks.created_at', '<=', $dateTo);
+            },
+            'tasks as active_count' => function ($q) use ($dateFrom, $dateTo) {
+                $q->whereNotIn('status', ['delivered', 'approved', 'archived']);
+                if ($dateFrom) $q->where('tasks.created_at', '>=', $dateFrom);
+                if ($dateTo)   $q->where('tasks.created_at', '<=', $dateTo);
+            },
+            'tasks as overdue_count' => function ($q) use ($dateFrom, $dateTo) {
+                $q->whereNotIn('status', ['delivered', 'approved', 'archived'])
+                  ->whereNotNull('deadline')->where('deadline', '<', now());
+                if ($dateFrom) $q->where('tasks.created_at', '>=', $dateFrom);
+                if ($dateTo)   $q->where('tasks.created_at', '<=', $dateTo);
+            },
         ])->orderByDesc('tasks_count')->get();
 
         $summaryTotals = [
@@ -275,7 +353,7 @@ class CustomerController extends Controller
             'overdue'   => $summaryList->sum('overdue_count'),
         ];
 
-        return view('admin.customers.summary', compact('summaryList', 'summaryTotals'));
+        return view('admin.customers.summary', compact('summaryList', 'summaryTotals', 'dateFrom', 'dateTo'));
     }
 
     public function edit(Customer $customer)
