@@ -122,7 +122,6 @@ class SubscriptionController extends Controller
         }
 
         AuditLogger::log(
-            auth()->user(),
             'reveal_password',
             $subscription,
             'Revealed password for subscription: ' . $subscription->name,
