@@ -29,7 +29,7 @@ class AdminMiddleware
                 'admin/customers'       => 'manage_customers',
                 'admin/approvals'       => 'view_approvals',
                 'admin/audit'           => 'view_audit_log',
-                'admin/reports'         => 'view_reports',
+                // admin/reports intentionally excluded — admin reports are admin/manager only
             ];
 
             $path    = ltrim($request->path(), '/');

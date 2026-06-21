@@ -192,6 +192,8 @@
         @php
             $hasAnyAdminPerm = in_array($role, ['admin', 'manager']);
             // Permissions that grant access to admin sections for regular users
+            // Only include permissions that are NOT in the default 'user' role.
+            // view_reports is a user-level permission ("My Reports"), not an admin section gate.
             $userAdminPerms = !$hasAnyAdminPerm ? [
                 'manage_projects'        => auth()->user()->hasPermission('manage_projects'),
                 'manage_tasks'           => auth()->user()->hasPermission('manage_tasks'),
@@ -202,7 +204,6 @@
                 'manage_social_accounts' => auth()->user()->hasPermission('manage_social_accounts'),
                 'manage_domains'         => auth()->user()->hasPermission('manage_domains'),
                 'manage_subscriptions'   => auth()->user()->hasPermission('manage_subscriptions'),
-                'view_reports'           => auth()->user()->hasPermission('view_reports'),
             ] : [];
             $hasGrantedAdminPerm = !$hasAnyAdminPerm && in_array(true, $userAdminPerms, true);
             $showAdminSection    = $hasAnyAdminPerm || $hasGrantedAdminPerm;
@@ -263,7 +264,7 @@
         </a>
         @endif
 
-        @if((auth()->user()->hasPermission('view_social_budget') || auth()->user()->hasPermission('view_reports')) && !in_array('nav_social_budget', $navHidden))
+        @if(auth()->user()->hasPermission('view_social_budget') && !in_array('nav_social_budget', $navHidden))
         @php $socialPendingNav = \App\Models\Task::where('social_required', true)->whereNull('social_posted_at')->count(); @endphp
         <a href="{{ route('admin.social-budget.index') }}"
            class="nav-item {{ request()->routeIs('admin.social-budget.*') ? 'active' : '' }}">
