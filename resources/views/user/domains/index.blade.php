@@ -3,10 +3,10 @@
 
 @section('content')
 <style>
-.dom-header { background:linear-gradient(135deg,#059669 0%,#10B981 50%,#34D399 100%); border-radius:20px; padding:28px 32px; margin-bottom:24px; display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; box-shadow:0 8px 32px rgba(5,150,105,.25); }
+.dom-header { background:linear-gradient(135deg,#4F46E5 0%,#6366F1 50%,#818CF8 100%); border-radius:20px; padding:28px 32px; margin-bottom:24px; display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; box-shadow:0 8px 32px rgba(79,70,229,.25); }
 .dom-stat-chip { display:flex; align-items:center; gap:10px; padding:11px 18px; background:#fff; border:1.5px solid #E5E7EB; border-radius:12px; flex:1; min-width:110px; }
 .dom-search { border:1.5px solid #E5E7EB; border-radius:10px; padding:8px 14px 8px 36px; font-size:13px; color:#111827; outline:none; width:220px; transition:border-color .15s; background:#fff; }
-.dom-search:focus { border-color:#10B981; }
+.dom-search:focus { border-color:#4F46E5; }
 .dom-table { width:100%; border-collapse:separate; border-spacing:0; }
 .dom-table th { background:#F9FAFB; font-size:11px; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:.05em; padding:10px 16px; border-bottom:1.5px solid #E5E7EB; text-align:left; white-space:nowrap; }
 .dom-table th:first-child { border-radius:10px 0 0 0; }
@@ -15,7 +15,7 @@
 .dom-table tr:last-child td { border-bottom:none; }
 .dom-table tr:last-child td:first-child { border-radius:0 0 0 10px; }
 .dom-table tr:last-child td:last-child  { border-radius:0 0 10px 0; }
-.dom-table tbody tr:hover td { background:#F0FDF4; }
+.dom-table tbody tr:hover td { background:#F5F3FF; }
 .dom-table tbody tr.row-expired td { background:#FFF8F8; }
 .dom-table tbody tr.row-expired:hover td { background:#FEF2F2; }
 .dom-table tbody tr.row-expiring td { background:#FFFDF0; }
@@ -34,7 +34,7 @@
     <div class="dom-header">
         <div>
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
-                <div style="width:44px;height:44px;background:rgba(255,255,255,.2);border-radius:12px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+                <div style="width:44px;height:44px;background:rgba(255,255,255,.18);border-radius:12px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);border:1.5px solid rgba(255,255,255,.3);">
                     <i class="fas fa-globe" style="font-size:20px;color:#fff;"></i>
                 </div>
                 <div>
@@ -85,8 +85,8 @@
 
     @if($domains->isEmpty())
     <div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:16px;padding:60px 20px;text-align:center;">
-        <div style="width:72px;height:72px;background:#D1FAE5;border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
-            <i class="fas fa-globe" style="font-size:28px;color:#10B981;"></i>
+        <div style="width:72px;height:72px;background:#EEF2FF;border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+            <i class="fas fa-globe" style="font-size:28px;color:#4F46E5;"></i>
         </div>
         <p style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">No domains assigned</p>
         <p style="font-size:13px;color:#9CA3AF;margin:0;">You have not been assigned as responsible person for any domain yet.</p>
@@ -138,8 +138,8 @@
                     data-status="{{ $domain->status }}">
                     <td>
                         <div style="display:flex;align-items:center;gap:10px;">
-                            <div style="width:34px;height:34px;border-radius:9px;background:#D1FAE5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                <i class="fas fa-globe" style="font-size:13px;color:#059669;"></i>
+                            <div style="width:34px;height:34px;border-radius:9px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-globe" style="font-size:13px;color:#4F46E5;"></i>
                             </div>
                             <div>
                                 <div style="font-weight:700;color:#111827;">{{ $domain->domain }}</div>
