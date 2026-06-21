@@ -83,13 +83,28 @@
                 {{ $summaryTotals['customers'] }} customers · {{ $periodLabel }} · Generated {{ now()->format('M j, Y') }}
             </div>
         </div>
-        <div style="display:flex;gap:8px;flex-shrink:0;">
-            <button onclick="printSummaryReport()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;">
-                <i class="fas fa-print"></i> Print
+        <div style="position:relative;flex-shrink:0;" x-data="{ open: false }" @keydown.escape.window="open=false" @click.outside="open=false">
+            <button @click="open=!open"
+                    style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;transition:background .15s;"
+                    :style="open ? 'background:rgba(255,255,255,.25)' : ''">
+                <i class="fas fa-arrow-up-from-bracket" style="font-size:12px;"></i>
+                Export
+                <i class="fas fa-chevron-down" style="font-size:10px;opacity:.8;transition:transform .2s;" :style="open ? 'transform:rotate(180deg)' : ''"></i>
             </button>
-            <button onclick="exportSummaryPDF()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;">
-                <i class="fas fa-file-pdf"></i> Export PDF
-            </button>
+            <div x-show="open" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                 style="position:absolute;right:0;top:calc(100% + 8px);background:#fff;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.14);border:1px solid #e5e7eb;min-width:170px;z-index:50;overflow:hidden;padding:4px 0;"
+                 @click="open=false">
+                <button onclick="printSummaryReport()"
+                        style="width:100%;text-align:left;padding:9px 14px;background:none;border:none;cursor:pointer;font-size:13px;color:#374151;display:flex;align-items:center;gap:10px;transition:background .1s;"
+                        onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
+                    <i class="fas fa-print" style="color:#6b7280;width:14px;text-align:center;"></i> Print
+                </button>
+                <button onclick="exportSummaryPDF()"
+                        style="width:100%;text-align:left;padding:9px 14px;background:none;border:none;cursor:pointer;font-size:13px;color:#374151;display:flex;align-items:center;gap:10px;transition:background .1s;"
+                        onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
+                    <i class="fas fa-file-pdf" style="color:#ef4444;width:14px;text-align:center;"></i> Export PDF
+                </button>
+            </div>
         </div>
     </div>
 
