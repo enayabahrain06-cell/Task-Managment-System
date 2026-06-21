@@ -156,6 +156,28 @@ canvas { max-width:100% !important; }
         @if($customer->phone)
         <div style="display:flex;align-items:center;gap:7px;color:#374151;font-size:13px;"><i class="fas fa-phone" style="color:#9ca3af;font-size:11px;"></i>{{ $customer->phone }}</div>
         @endif
+        @php $_saList = $customer->socialAccounts; @endphp
+        @if($_saList->isNotEmpty())
+        @php
+            $_saGroups = $_saList->groupBy('platform');
+            $_saPlatforms = \App\Models\SocialAccount::platforms();
+        @endphp
+        <div style="display:flex;align-items:center;gap:5px;">
+            <span style="font-size:9px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.08em;margin-right:1px;">Social</span>
+            @foreach($_saGroups as $_pKey => $_pAccounts)
+            @php $_pi = $_saPlatforms[$_pKey] ?? ['icon'=>'fa-globe','color'=>'#6B7280','label'=>ucfirst($_pKey)]; @endphp
+            <a href="{{ route('admin.social-accounts.index', ['customer' => $customer->id]) }}"
+               title="{{ $_pi['label'] }}{{ $_pAccounts->count() > 1 ? ' ('.$_pAccounts->count().')' : '' }}"
+               style="width:26px;height:26px;border-radius:7px;background:{{ $_pi['color'] }};display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;text-decoration:none;opacity:1;transition:opacity .15s;"
+               onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+                <i class="fab {{ $_pi['icon'] }}" style="font-size:12px;color:#fff;"></i>
+                @if($_pAccounts->count() > 1)
+                <span style="position:absolute;top:-4px;right:-5px;width:14px;height:14px;border-radius:50%;background:#fff;border:1.5px solid #e5e7eb;font-size:8px;font-weight:800;color:#374151;display:flex;align-items:center;justify-content:center;line-height:1;">{{ $_pAccounts->count() }}</span>
+                @endif
+            </a>
+            @endforeach
+        </div>
+        @endif
         <div style="width:1px;height:36px;background:#f3f4f6;flex-shrink:0;"></div>
         <div style="display:flex;gap:24px;">
             <div style="text-align:center;"><div style="font-size:1.15rem;font-weight:700;color:#111827;">{{ $total }}</div><div style="font-size:11px;color:#9ca3af;margin-top:1px;">Total Tasks</div></div>

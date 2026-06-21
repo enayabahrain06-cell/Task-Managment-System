@@ -975,6 +975,32 @@
                 </button>
             </div>
 
+            @if($customer->socialAccounts->isNotEmpty())
+            @php
+                $_saGroups    = $customer->socialAccounts->groupBy('platform');
+                $_saPlatforms = \App\Models\SocialAccount::platforms();
+            @endphp
+            <div style="margin-bottom:16px;padding:12px 14px;background:#FAFAFA;border-radius:10px;border:1px solid #F3F4F6;">
+                <p style="font-size:10px;color:#9CA3AF;margin:0 0 10px;text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:4px;">
+                    <i class="fas fa-share-nodes" style="font-size:9px;"></i> Social Accounts
+                </p>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                    @foreach($_saGroups as $_pKey => $_pAccounts)
+                    @php $_pi = $_saPlatforms[$_pKey] ?? ['icon'=>'fa-globe','color'=>'#6B7280','label'=>ucfirst($_pKey)]; @endphp
+                    <a href="{{ route('admin.social-accounts.index', ['customer' => $customer->id]) }}"
+                       title="{{ $_pi['label'] }}{{ $_pAccounts->count() > 1 ? ' ('.$_pAccounts->count().')' : '' }}"
+                       style="width:28px;height:28px;border-radius:7px;background:{{ $_pi['color'] }};display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;text-decoration:none;transition:opacity .15s;"
+                       onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+                        <i class="fab {{ $_pi['icon'] }}" style="font-size:13px;color:#fff;"></i>
+                        @if($_pAccounts->count() > 1)
+                        <span style="position:absolute;top:-4px;right:-5px;width:14px;height:14px;border-radius:50%;background:#fff;border:1.5px solid #e5e7eb;font-size:8px;font-weight:800;color:#374151;display:flex;align-items:center;justify-content:center;line-height:1;">{{ $_pAccounts->count() }}</span>
+                        @endif
+                    </a>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
             @if($customer->notes)
             <div style="margin-bottom:16px;padding:12px 14px;background:#FAFAFA;border-radius:10px;border:1px solid #F3F4F6;">
                 <p style="font-size:10px;color:#9CA3AF;margin:0 0 5px;text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:4px;">
