@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\SocialBudgetController as AdminSocialBudgetContro
 use App\Http\Controllers\Admin\SocialAccountController as AdminSocialAccountController;
 use App\Http\Controllers\Admin\CustomerController as AdminCustomerController;
 use App\Http\Controllers\Admin\SubscriptionController as AdminSubscriptionController;
+use App\Http\Controllers\Admin\DomainController as AdminDomainController;
 use App\Http\Controllers\User\LicensesController as UserLicensesController;
 use App\Http\Controllers\User\ProjectController as UserProjectController;
 use App\Http\Controllers\User\ReportsController as UserReportsController;
@@ -200,6 +201,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('settings/clear-cache',              [AdminSettingsController::class, 'clearCache'])->name('settings.clear-cache');
     Route::get('social-budget',                      [AdminSocialBudgetController::class, 'index'])->name('social-budget.index');
     Route::resource('social-accounts', AdminSocialAccountController::class)->except(['create','edit','show']);
+    Route::get('social-accounts/{socialAccount}/password', [AdminSocialAccountController::class, 'revealPassword'])->name('social-accounts.password');
     Route::post('settings/elements/toggle',       [AdminSettingsController::class, 'toggleElement'])->name('settings.elements.toggle');
     Route::post('settings/nav/toggle',            [AdminSettingsController::class, 'toggleNavItem'])->name('settings.nav.toggle');
     Route::post('meetings',                        [AdminMeetingController::class, 'store'])->name('meetings.store');
@@ -290,6 +292,13 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     // Audit log
     Route::get('audit',                            [AdminAuditLogController::class, 'index'])->name('audit.index');
     Route::post('audit/clear-logs',               [AdminAuditLogController::class, 'clearLogs'])->name('audit.clear-logs');
+
+    // Domains
+    Route::get('domains/export/pdf', [AdminDomainController::class, 'exportPdf'])->name('domains.export.pdf');
+    Route::resource('domains', AdminDomainController::class);
+    Route::post('domains/{domain}/attachments',                               [AdminDomainController::class, 'storeAttachment'])->name('domains.attachments.store');
+    Route::get('domains/{domain}/attachments/{attachment}/download',          [AdminDomainController::class, 'downloadAttachment'])->name('domains.attachments.download');
+    Route::delete('domains/{domain}/attachments/{attachment}',                [AdminDomainController::class, 'destroyAttachment'])->name('domains.attachments.destroy');
 
     // Subscriptions & Licenses
     Route::get('subscriptions/export/pdf', [AdminSubscriptionController::class, 'exportPdf'])->name('subscriptions.export.pdf');

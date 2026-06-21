@@ -213,7 +213,7 @@
         </a>
         @endif
 
-        @if(in_array($role, ['admin', 'manager']) && !in_array('nav_customers', $navHidden))
+        @if(auth()->user()->hasPermission('manage_customers') && !in_array('nav_customers', $navHidden))
         <a href="{{ route('admin.customers.index') }}"
            class="nav-item {{ request()->routeIs('admin.customers.*') ? 'active' : '' }}">
             <div class="nav-left">
@@ -246,7 +246,7 @@
         </a>
         @endif
 
-        @if(auth()->user()->hasPermission('view_reports') && !in_array('nav_social_budget', $navHidden))
+        @if((auth()->user()->hasPermission('view_social_budget') || auth()->user()->hasPermission('view_reports')) && !in_array('nav_social_budget', $navHidden))
         @php $socialPendingNav = \App\Models\Task::where('social_required', true)->whereNull('social_posted_at')->count(); @endphp
         <a href="{{ route('admin.social-budget.index') }}"
            class="nav-item {{ request()->routeIs('admin.social-budget.*') ? 'active' : '' }}">
@@ -260,6 +260,7 @@
         </a>
         @endif
 
+        @if(auth()->user()->hasPermission('manage_social_accounts') && !in_array('nav_social_accounts', $navHidden))
         <a href="{{ route('admin.social-accounts.index') }}"
            class="nav-item {{ request()->routeIs('admin.social-accounts.*') ? 'active' : '' }}">
             <div class="nav-left">
@@ -271,8 +272,23 @@
             <span class="nav-badge" style="background:#EEF2FF;color:#4F46E5;">{{ $socialAccountsCount }}</span>
             @endif
         </a>
+        @endif
 
-        @if(in_array($role, ['admin', 'manager']) && !in_array('nav_subscriptions', $navHidden))
+        @if(auth()->user()->hasPermission('manage_domains') && !in_array('nav_domains', $navHidden))
+        @php $expiringDomainsCount = \App\Models\Domain::whereNotNull('expires_at')->get()->filter(fn($d) => $d->days_until_expiry !== null && $d->days_until_expiry >= 0 && $d->days_until_expiry <= 7)->count(); @endphp
+        <a href="{{ route('admin.domains.index') }}"
+           class="nav-item {{ request()->routeIs('admin.domains.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-globe nav-icon"></i>
+                Domains
+            </div>
+            @if($expiringDomainsCount > 0)
+            <span class="nav-badge nav-badge-red">{{ $expiringDomainsCount }}</span>
+            @endif
+        </a>
+        @endif
+
+        @if(auth()->user()->hasPermission('manage_subscriptions') && !in_array('nav_subscriptions', $navHidden))
         @php $expiringNavCount = \App\Models\Subscription::whereNotNull('renewal_date')->get()->filter(fn($s) => $s->days_until_renewal !== null && $s->days_until_renewal >= 0 && $s->days_until_renewal <= 7)->count(); @endphp
         <a href="{{ route('admin.subscriptions.index') }}"
            class="nav-item {{ request()->routeIs('admin.subscriptions.*') ? 'active' : '' }}">

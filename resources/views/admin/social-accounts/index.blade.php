@@ -331,8 +331,7 @@ let formPreselectedUserIds = [];
             $pi            = $account->platform_info;
             $assignedUsers = $account->users;
             $customer      = $account->customer;
-            $decPw         = $account->decrypted_password;
-            $hasCreds      = $account->email || $account->username || $decPw || $account->account_id;
+            $hasCreds      = $account->email || $account->username || $account->password || $account->account_id;
             $stDot         = match($account->status) { 'active'=>'#22C55E','inactive'=>'#9CA3AF','suspended'=>'#EF4444', default=>'#9CA3AF' };
         @endphp
         <div class="sa-card" style="animation-delay:{{ $idx * 0.035 }}s;border-left:4px solid {{ $pi['color'] }};"
@@ -383,14 +382,15 @@ let formPreselectedUserIds = [];
                 </div>
                 @endif
                 @if($account->password)
-                <div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid #F7F8FA;">
+                <div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid #F7F8FA;" x-data="pwReveal({{ $account->id }})">
                     <span class="sa-cred-label">Password</span>
-                    <span style="font-size:12px;color:#111827;font-family:monospace;flex:1;letter-spacing:.12em;" x-text="showPw ? '{{ addslashes($decPw ?? '') }}' : '••••••••'"></span>
-                    <div style="display:flex;gap:4px;margin-left:6px;flex-shrink:0;">
-                        <button class="sa-cred-btn sa-reveal-btn" @click="showPw=!showPw" title="Show/hide"><i :class="showPw ? 'fas fa-eye-slash' : 'fas fa-eye'"></i></button>
-                        @if($decPw)
-                        <button class="sa-cred-btn sa-copy-btn" onclick="copyToClipboard('{{ addslashes($decPw) }}', this)" title="Copy"><i class="fas fa-copy"></i></button>
-                        @endif
+                    <span style="font-size:12px;color:#111827;font-family:monospace;flex:1;letter-spacing:.12em;" x-text="revealed ? pw : '••••••••'"></span>
+                    <div style="display:flex;align-items:center;gap:4px;margin-left:6px;flex-shrink:0;">
+                        <span x-show="revealed" x-text="seconds+'s'" style="font-size:9px;color:#9CA3AF;font-weight:700;min-width:18px;text-align:right;"></span>
+                        <button class="sa-cred-btn sa-reveal-btn" @click="toggle()" :title="revealed ? 'Hide' : 'Reveal'">
+                            <i :class="loading ? 'fas fa-spinner fa-spin' : (revealed ? 'fas fa-eye-slash' : 'fas fa-eye')"></i>
+                        </button>
+                        <button class="sa-cred-btn sa-copy-btn" x-show="revealed" @click="copyPw($el)" title="Copy"><i class="fas fa-copy"></i></button>
                     </div>
                 </div>
                 @endif
@@ -514,7 +514,6 @@ let formPreselectedUserIds = [];
                 $pi            = $account->platform_info;
                 $assignedUsers = $account->users;
                 $customer      = $account->customer;
-                $decPw         = $account->decrypted_password;
                 $stDot         = match($account->status) { 'active'=>'#22C55E','inactive'=>'#9CA3AF','suspended'=>'#EF4444', default=>'#9CA3AF' };
             @endphp
             <tr x-show="matchesCard('{{ addslashes($account->name) }}', '{{ $account->status }}')">
@@ -564,21 +563,20 @@ let formPreselectedUserIds = [];
                 </td>
 
                 {{-- Password --}}
-                <td x-data="{showPw{{ $account->id }}:false}">
+                <td x-data="pwReveal({{ $account->id }})">
                     @if($account->password)
                     <div style="display:flex;align-items:center;gap:4px;">
-                        <span x-show="!showPw{{ $account->id }}" style="font-size:12px;color:#374151;font-family:monospace;letter-spacing:.1em;">••••••</span>
-                        <span x-show="showPw{{ $account->id }}" style="font-size:12px;color:#374151;font-family:monospace;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;">{{ $account->decrypted_password }}</span>
-                        <button @click="showPw{{ $account->id }}=!showPw{{ $account->id }}"
+                        <span x-show="!revealed" style="font-size:12px;color:#374151;font-family:monospace;letter-spacing:.1em;">••••••</span>
+                        <span x-show="revealed" x-text="pw" style="font-size:12px;color:#374151;font-family:monospace;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                        <span x-show="revealed" x-text="seconds+'s'" style="font-size:9px;color:#9CA3AF;font-weight:700;"></span>
+                        <button @click="toggle()"
                                 style="width:20px;height:20px;border:none;border-radius:5px;background:#F3F4F6;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#9CA3AF;">
-                            <i :class="showPw{{ $account->id }} ? 'fas fa-eye-slash' : 'fas fa-eye'" style="font-size:8px;pointer-events:none;"></i>
+                            <i :class="loading ? 'fas fa-spinner fa-spin' : (revealed ? 'fas fa-eye-slash' : 'fas fa-eye')" style="font-size:8px;pointer-events:none;"></i>
                         </button>
-                        @if($decPw)
-                        <button onclick="copyToClipboard('{{ addslashes($decPw) }}', this)"
+                        <button x-show="revealed" @click="copyPw($el)"
                                 style="width:20px;height:20px;border:none;border-radius:5px;background:#EEF2FF;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#6366F1;">
                             <i class="fas fa-copy" style="font-size:8px;"></i>
                         </button>
-                        @endif
                     </div>
                     @else
                     <span style="color:#D1D5DB;font-size:12px;">—</span>
@@ -1041,6 +1039,69 @@ function copyToClipboard(text, btn) {
         icon.style.color = '#16A34A';
         setTimeout(() => { icon.className = 'fas fa-copy'; icon.style.color = ''; }, 1800);
     });
+}
+
+function pwReveal(accountId) {
+    return {
+        pw: '',
+        revealed: false,
+        loading: false,
+        seconds: 0,
+        _countdown: null,
+
+        async toggle() {
+            if (this.revealed) { this.hide(); return; }
+            // Password already fetched this session — just re-show
+            if (this.pw) { this._startCountdown(); this.revealed = true; return; }
+            this.loading = true;
+            try {
+                const res = await fetch(`/admin/social-accounts/${accountId}/password`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+                });
+                if (!res.ok) throw new Error('fetch failed');
+                const data = await res.json();
+                this.pw = data.password;
+                this._startCountdown();
+                this.revealed = true;
+            } catch (e) {
+                // silent — no toast needed, eye icon returns to normal
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        hide() {
+            this.revealed = false;
+            this.pw = '';          // wipe from memory on manual hide
+            this.seconds = 0;
+            clearInterval(this._countdown);
+        },
+
+        _startCountdown() {
+            clearInterval(this._countdown);
+            this.seconds = 15;
+            this._countdown = setInterval(() => {
+                this.seconds--;
+                if (this.seconds <= 0) {
+                    clearInterval(this._countdown);
+                    this.revealed = false;
+                    this.pw = '';  // wipe after auto-hide
+                }
+            }, 1000);
+        },
+
+        copyPw(btn) {
+            if (!this.pw) return;
+            navigator.clipboard.writeText(this.pw).then(() => {
+                const icon = btn.querySelector('i');
+                if (icon) {
+                    icon.className = 'fas fa-check';
+                    icon.style.color = '#16A34A';
+                    setTimeout(() => { icon.className = 'fas fa-copy'; icon.style.color = ''; }, 1800);
+                }
+            });
+        },
+    };
 }
 </script>
 @endpush

@@ -126,4 +126,17 @@ class SocialAccountController extends Controller
 
         return back()->with('success', "Account \"{$name}\" deleted.");
     }
+
+    public function revealPassword(SocialAccount $socialAccount): \Illuminate\Http\JsonResponse
+    {
+        if (! $socialAccount->password) {
+            return response()->json(['error' => 'No password set'], 404);
+        }
+
+        $password = $socialAccount->decrypted_password;
+
+        AuditLogger::log('viewed', $socialAccount, "Revealed password for: {$socialAccount->name}");
+
+        return response()->json(['password' => $password]);
+    }
 }

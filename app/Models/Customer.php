@@ -47,4 +47,9 @@ class Customer extends Model
     {
         return $this->hasMany(\App\Models\SocialAccount::class);
     }
+
+    public function domains(): HasMany
+    {
+        return $this->hasMany(\App\Models\Domain::class);
+    }
 }

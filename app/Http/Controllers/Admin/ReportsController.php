@@ -661,12 +661,18 @@ class ReportsController extends Controller
         // ── Customer Performance ──────────────────────────────────────────────
         $customerStats = Customer::withCount([
                 'projects',
-                'tasks',
-                'tasks as completed_tasks_count' => fn($q) => $q->whereIn('status', $doneStatuses),
-                'tasks as overdue_tasks_count'   => fn($q) => $q->where('deadline', '<', now())->whereIn('status', $nonDoneStatuses),
-                'tasks as active_tasks_count'    => fn($q) => $q->whereIn('status', ['assigned', 'viewed', 'in_progress']),
+                'tasks as tasks_count' => fn($q) => $q
+                    ->when($from, fn($tq) => $tq->where('tasks.created_at', '>=', $from)),
+                'tasks as completed_tasks_count' => fn($q) => $q
+                    ->whereIn('status', $doneStatuses)
+                    ->when($from, fn($tq) => $tq->where('tasks.created_at', '>=', $from)),
+                'tasks as overdue_tasks_count' => fn($q) => $q
+                    ->where('deadline', '<', now())->whereIn('status', $nonDoneStatuses)
+                    ->when($from, fn($tq) => $tq->where('tasks.created_at', '>=', $from)),
+                'tasks as active_tasks_count' => fn($q) => $q
+                    ->whereIn('status', ['assigned', 'viewed', 'in_progress'])
+                    ->when($from, fn($tq) => $tq->where('tasks.created_at', '>=', $from)),
             ])
-            ->when($from, fn($q) => $q->whereHas('tasks', fn($tq) => $tq->where('tasks.created_at', '>=', $from)))
             ->orderBy('name')
             ->get()
             ->map(fn($c) => [
@@ -679,7 +685,9 @@ class ReportsController extends Controller
                 'active'     => $c->active_tasks_count,
                 'overdue'    => $c->overdue_tasks_count,
                 'rate'       => $c->tasks_count > 0 ? round($c->completed_tasks_count / $c->tasks_count * 100) : 0,
-            ]);
+            ])
+            ->filter(fn($c) => $c['total'] > 0)
+            ->values();
 
         // ── Billing / Time Tracking ───────────────────────────────────────────
         $phaseLabels = ['work' => 'Work', 'revision' => 'Revision', 'review' => 'Admin Review', 'social' => 'Social Media'];
@@ -1001,20 +1009,25 @@ class ReportsController extends Controller
 
         // Customer Performance
         $customerStats = $userId ? collect() : Customer::withCount([
-                'tasks',
-                'tasks as completed_tasks_count' => fn($q) => $q->whereIn('status', $doneStatuses),
+                'tasks as tasks_count' => fn($q) => $q
+                    ->when($dateFrom, fn($tq) => $tq->where('tasks.created_at', '>=', $dateFrom))
+                    ->when($dateTo,   fn($tq) => $tq->where('tasks.created_at', '<=', $dateTo)),
+                'tasks as completed_tasks_count' => fn($q) => $q
+                    ->whereIn('status', $doneStatuses)
+                    ->when($dateFrom, fn($tq) => $tq->where('tasks.created_at', '>=', $dateFrom))
+                    ->when($dateTo,   fn($tq) => $tq->where('tasks.created_at', '<=', $dateTo)),
             ])
-            ->when($dateFrom, fn($q) => $q->whereHas('tasks', fn($tq) => $tq->where('tasks.created_at', '>=', $dateFrom)))
-            ->when($dateTo,   fn($q) => $q->whereHas('tasks', fn($tq) => $tq->where('tasks.created_at', '<=', $dateTo)))
             ->when($customerId, fn($q) => $q->where('id', $customerId))
             ->orderBy('name')
             ->get()
             ->map(fn($c) => [
-                'id'    => $c->id,
-                'name'  => $c->name,
-                'total' => $c->tasks_count,
-                'rate'  => $c->tasks_count > 0 ? round($c->completed_tasks_count / $c->tasks_count * 100) : 0,
+                'id'        => $c->id,
+                'name'      => $c->name,
+                'total'     => $c->tasks_count,
+                'completed' => $c->completed_tasks_count,
+                'rate'      => $c->tasks_count > 0 ? round($c->completed_tasks_count / $c->tasks_count * 100) : 0,
             ])
+            ->filter(fn($c) => $c['total'] > 0)
             ->sortByDesc('total')
             ->take(8)
             ->values();
