@@ -292,27 +292,36 @@
                         </span>
                     </td>
                     <td style="padding:14px 16px;text-align:right;">
-                        <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;">
-                            <a href="{{ route('admin.subscriptions.show', $sub->id) }}"
-                               style="width:32px;height:32px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;color:#4F46E5;text-decoration:none;transition:background .15s;"
-                               title="View" onmouseover="this.style.background='#C7D2FE'" onmouseout="this.style.background='#EEF2FF'">
-                                <i class="fas fa-eye" style="font-size:12px;"></i>
-                            </a>
-                            <button onclick="openAssignModal({{ $sub->id }}, '{{ addslashes($sub->name) }}', {{ json_encode($sub->users->map(fn($u)=>['id'=>$u->id,'name'=>$u->name,'email'=>$u->email])->values()) }})"
-                                    style="width:32px;height:32px;border-radius:8px;background:#ECFDF5;display:flex;align-items:center;justify-content:center;color:#16A34A;border:none;cursor:pointer;transition:background .15s;"
-                                    title="Assign Users" onmouseover="this.style.background='#BBF7D0'" onmouseout="this.style.background='#ECFDF5'">
-                                <i class="fas fa-user-plus" style="font-size:12px;"></i>
-                            </button>
-                            <button onclick="openEditModal({{ $sub->id }}, {{ json_encode(array_merge($sub->only(['name','vendor','category','type','billing_cycle','cost','currency','max_seats','website','notes','username']), ['logo_url' => $sub->logo_url, 'has_password' => !empty($sub->password), 'assigned_user_ids' => $sub->users->pluck('id')->toArray()])) }}, '{{ $sub->purchase_date?->format('Y-m-d') }}', '{{ $sub->renewal_date?->format('Y-m-d') }}', {{ json_encode($sub->notify_days) }})"
+                        <div style="position:relative;display:inline-block;" x-data="{open:false}" @click.outside="open=false">
+                            <button @click.stop="open=!open"
                                     style="width:32px;height:32px;border-radius:8px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;color:#374151;border:none;cursor:pointer;transition:background .15s;"
-                                    title="Edit" onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
-                                <i class="fas fa-pen" style="font-size:12px;"></i>
+                                    onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                                <i class="fas fa-ellipsis-v" style="font-size:13px;"></i>
                             </button>
-                            <button @click="openDelete({{ $sub->id }}, '{{ addslashes($sub->name) }}')"
-                                    style="width:32px;height:32px;border-radius:8px;background:#FEF2F2;display:flex;align-items:center;justify-content:center;color:#DC2626;border:none;cursor:pointer;transition:background .15s;"
-                                    title="Delete" onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
-                                <i class="fas fa-trash" style="font-size:12px;"></i>
-                            </button>
+                            <div x-show="open" x-cloak x-transition
+                                 style="position:absolute;right:0;top:36px;background:#fff;border:1px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:160px;z-index:100;padding:4px 0;">
+                                <a href="{{ route('admin.subscriptions.show', $sub->id) }}"
+                                   style="display:flex;align-items:center;gap:9px;padding:8px 14px;font-size:13px;color:#374151;text-decoration:none;transition:background .1s;"
+                                   onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                                    <i class="fas fa-eye" style="width:14px;color:#4F46E5;"></i> View
+                                </a>
+                                <button onclick="open=false; openAssignModal({{ $sub->id }}, '{{ addslashes($sub->name) }}', {{ json_encode($sub->users->map(fn($u)=>['id'=>$u->id,'name'=>$u->name,'email'=>$u->email])->values()) }})"
+                                        style="display:flex;align-items:center;gap:9px;padding:8px 14px;font-size:13px;color:#374151;background:none;border:none;cursor:pointer;width:100%;text-align:left;transition:background .1s;"
+                                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                                    <i class="fas fa-user-plus" style="width:14px;color:#16A34A;"></i> Assign Users
+                                </button>
+                                <button onclick="open=false; openEditModal({{ $sub->id }}, {{ json_encode(array_merge($sub->only(['name','vendor','category','type','billing_cycle','cost','currency','max_seats','website','notes','username']), ['logo_url' => $sub->logo_url, 'has_password' => !empty($sub->password), 'assigned_user_ids' => $sub->users->pluck('id')->toArray()])) }}, '{{ $sub->purchase_date?->format('Y-m-d') }}', '{{ $sub->renewal_date?->format('Y-m-d') }}', {{ json_encode($sub->notify_days) }})"
+                                        style="display:flex;align-items:center;gap:9px;padding:8px 14px;font-size:13px;color:#374151;background:none;border:none;cursor:pointer;width:100%;text-align:left;transition:background .1s;"
+                                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                                    <i class="fas fa-pen" style="width:14px;color:#6B7280;"></i> Edit
+                                </button>
+                                <div style="border-top:1px solid #F3F4F6;margin:3px 0;"></div>
+                                <button @click="open=false; openDelete({{ $sub->id }}, '{{ addslashes($sub->name) }}')"
+                                        style="display:flex;align-items:center;gap:9px;padding:8px 14px;font-size:13px;color:#DC2626;background:none;border:none;cursor:pointer;width:100%;text-align:left;transition:background .1s;"
+                                        onmouseover="this.style.background='#FEF2F2'" onmouseout="this.style.background=''">
+                                    <i class="fas fa-trash" style="width:14px;"></i> Delete
+                                </button>
+                            </div>
                         </div>
                     </td>
                 </tr>
