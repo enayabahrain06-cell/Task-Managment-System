@@ -85,11 +85,10 @@
         </div>
         <div style="position:relative;flex-shrink:0;" x-data="{ open: false }" @keydown.escape.window="open=false" @click.outside="open=false">
             <button @click="open=!open"
-                    style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;transition:background .15s;"
-                    :style="open ? 'background:rgba(255,255,255,.25)' : ''">
-                <i class="fas fa-arrow-up-from-bracket" style="font-size:12px;"></i>
-                Export
-                <i class="fas fa-chevron-down" style="font-size:10px;opacity:.8;transition:transform .2s;" :style="open ? 'transform:rotate(180deg)' : ''"></i>
+                    style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:7px;transition:background .15s;"
+                    onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">
+                <i class="fas fa-ellipsis" style="font-size:13px;"></i>
+                <i class="fas fa-chevron-down" :style="open ? 'transform:rotate(180deg)' : ''" style="transition:transform .2s;font-size:11px;"></i>
             </button>
             <div x-show="open" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
                  style="position:absolute;right:0;top:calc(100% + 8px);background:#fff;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.14);border:1px solid #e5e7eb;min-width:170px;z-index:50;overflow:hidden;padding:4px 0;"
