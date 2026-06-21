@@ -11,6 +11,7 @@ use App\Notifications\SubscriptionRemoved;
 use App\Services\AuditLogger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use App\Services\MqttService;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
 
@@ -179,7 +180,15 @@ class SubscriptionController extends Controller
             $subscription->users()->attach($pivot);
             foreach ($userIds as $uid) {
                 $user = User::find($uid);
-                if ($user) $user->notify(new SubscriptionAssigned($subscription, auth()->user()));
+                if ($user) {
+                    $user->notify(new SubscriptionAssigned($subscription, auth()->user()));
+                    MqttService::notifyUser($user->id, [
+                        'notif_type'   => 'subscription_assigned',
+                        'unread_count' => $user->unreadNotifications()->count(),
+                        'title'        => 'Subscription Access Granted',
+                        'message'      => 'You have been given access to: ' . $subscription->name,
+                    ]);
+                }
             }
         }
 
@@ -338,6 +347,12 @@ class SubscriptionController extends Controller
 
         $user = User::find($userId);
         $user->notify(new SubscriptionAssigned($subscription, auth()->user()));
+        MqttService::notifyUser($user->id, [
+            'notif_type'   => 'subscription_assigned',
+            'unread_count' => $user->unreadNotifications()->count(),
+            'title'        => 'Subscription Access Granted',
+            'message'      => 'You have been given access to: ' . $subscription->name,
+        ]);
 
         AuditLogger::log('assigned', $subscription, "Assigned {$user->name} to subscription: {$subscription->name}");
 
