@@ -1,13 +1,9 @@
 @extends('layouts.app')
-@section('title', 'My Licenses')
+@section('title', 'My Vault')
 
 @section('content')
 <style>
-.lic-card { background:#fff; border:1.5px solid #E5E7EB; border-radius:16px; overflow:hidden; display:flex; flex-direction:column; transition:box-shadow .2s, transform .2s; }
-.lic-card:hover { box-shadow:0 8px 28px rgba(0,0,0,.1); transform:translateY(-2px); }
-.lic-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
-@media(max-width:900px) { .lic-grid { grid-template-columns:repeat(2,1fr) !important; } }
-@media(max-width:560px) { .lic-grid { grid-template-columns:1fr !important; } }
+/* ── Preserved classes (referenced by JS) ── */
 .cred-val { font-size:13px; font-weight:600; color:#111827; font-family:monospace; background:#F3F4F6; border-radius:7px; padding:6px 10px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .cred-copy { border:none; background:#EEF2FF; color:#4F46E5; border-radius:7px; padding:6px 10px; cursor:pointer; font-size:11px; font-weight:700; flex-shrink:0; transition:background .15s; }
 .cred-copy:hover { background:#C7D2FE; }
@@ -15,14 +11,12 @@
 .cred-reveal:hover { background:#E5E7EB; }
 .attach-row { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:8px; background:#F9FAFB; text-decoration:none; transition:background .15s; }
 .attach-row:hover { background:#EEF2FF; }
-/* Stat cards */
 .lic-stat { background:#fff; border:1.5px solid #E5E7EB; border-radius:14px; padding:16px 20px; display:flex; align-items:center; gap:14px; cursor:pointer; transition:box-shadow .15s,border-color .15s; }
 .lic-stat:hover { box-shadow:0 4px 16px rgba(0,0,0,.07); }
 .lic-stat.active-filter { border-color:#4F46E5; box-shadow:0 0 0 3px rgba(99,102,241,.12); }
-/* Filter bar */
-.lic-search { border:1.5px solid #E5E7EB; border-radius:10px; padding:8px 14px 8px 36px; font-size:13px; color:#111827; outline:none; width:220px; transition:border-color .15s; }
+.lic-search { border:1.5px solid #E5E7EB; border-radius:10px; padding:8px 14px 8px 36px; font-size:13px; color:#111827; outline:none; width:200px; transition:border-color .15s; background:#fff; }
 .lic-search:focus { border-color:#4F46E5; }
-.lic-tab { border:none; background:transparent; padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; color:#6B7280; cursor:pointer; transition:all .15s; }
+.lic-tab { border:none; background:transparent; padding:6px 14px; border-radius:8px; font-size:13px; font-weight:600; color:#6B7280; cursor:pointer; transition:all .15s; white-space:nowrap; }
 .lic-tab:hover { background:#F3F4F6; color:#374151; }
 .lic-tab.active { background:#EEF2FF; color:#4F46E5; }
 .lic-cat-select { border:1.5px solid #E5E7EB; border-radius:10px; padding:7px 32px 7px 12px; font-size:13px; color:#374151; outline:none; appearance:none; background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%236B7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center; cursor:pointer; }
@@ -46,6 +40,31 @@
 .lic-table tbody tr.row-expired:hover td { background:#FEF2F2; }
 .lic-table tbody tr.row-expiring td { background:#FFFDF0; }
 .lic-table tbody tr.row-expiring:hover td { background:#FFFBEB; }
+/* ── New layout classes ── */
+.vault-header { background:linear-gradient(135deg,#4F46E5 0%,#6366F1 50%,#818CF8 100%); border-radius:20px; padding:28px 32px; margin-bottom:24px; display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; box-shadow:0 8px 32px rgba(79,70,229,.25); }
+.vault-seg { display:flex; gap:4px; background:rgba(255,255,255,.15); border-radius:14px; padding:5px; backdrop-filter:blur(8px); }
+.vault-seg-btn { display:inline-flex; align-items:center; gap:8px; padding:9px 20px; border-radius:10px; font-size:13px; font-weight:700; border:none; cursor:pointer; transition:all .2s; color:rgba(255,255,255,.7); background:transparent; white-space:nowrap; }
+.vault-seg-btn.active { background:#fff; color:#4F46E5; box-shadow:0 2px 8px rgba(0,0,0,.12); }
+.stat-strip { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+.stat-chip { display:flex; align-items:center; gap:10px; padding:12px 18px; background:#fff; border:1.5px solid #E5E7EB; border-radius:12px; cursor:pointer; transition:all .15s; flex:1; min-width:120px; }
+.stat-chip:hover { border-color:#A5B4FC; box-shadow:0 2px 8px rgba(99,102,241,.1); }
+.stat-chip.active-filter { border-color:#4F46E5; box-shadow:0 0 0 3px rgba(99,102,241,.12); background:#FAFBFF; }
+.toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:20px; background:#fff; border:1.5px solid #E5E7EB; border-radius:14px; padding:10px 14px; box-shadow:0 1px 6px rgba(0,0,0,.04); }
+/* Premium cards */
+.lic-card { background:#fff; border:1.5px solid #E5E7EB; border-radius:16px; overflow:hidden; display:flex; flex-direction:column; transition:box-shadow .2s,transform .2s; }
+.lic-card:hover { box-shadow:0 10px 32px rgba(0,0,0,.11); transform:translateY(-3px); }
+.lic-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+@media(max-width:900px) { .lic-grid { grid-template-columns:repeat(2,1fr) !important; } }
+@media(max-width:560px) { .lic-grid { grid-template-columns:1fr !important; } .vault-header { flex-direction:column; align-items:flex-start; } }
+.card-band { height:80px; display:flex; align-items:center; justify-content:space-between; padding:0 18px; position:relative; }
+.card-band-icon { width:52px; height:52px; border-radius:14px; background:rgba(255,255,255,.25); display:flex; align-items:center; justify-content:center; backdrop-filter:blur(4px); border:2px solid rgba(255,255,255,.3); }
+.view-toggle { display:flex; gap:2px; background:#F3F4F6; border-radius:10px; padding:3px; }
+.view-toggle-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:8px; font-size:12px; font-weight:600; border:none; cursor:pointer; transition:all .15s; background:transparent; color:#6B7280; }
+.view-toggle-btn.active { background:#fff; color:#4F46E5; box-shadow:0 1px 4px rgba(0,0,0,.08); }
+/* Social vault cards */
+.sa-vault-card { background:#fff; border:1.5px solid #E5E7EB; border-radius:16px; overflow:hidden; display:flex; flex-direction:column; transition:box-shadow .2s,transform .2s; }
+.sa-vault-card:hover { box-shadow:0 10px 32px rgba(0,0,0,.1); transform:translateY(-2px); }
+.sa-vault-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:18px; }
 [x-cloak] { display:none !important; }
 </style>
 
@@ -63,6 +82,8 @@
         'other'         => 'layer-group',
     ];
     $usedCategories = $licenses->pluck('category')->unique()->values();
+    $licSubtitle = $licenses->count().' '.Str::plural('tool', $licenses->count()).' assigned to you';
+    $saSubtitle  = $socialAccounts->count().' '.Str::plural('account', $socialAccounts->count()).' you have access to';
 @endphp
 
 {{-- LIC_DATA must be defined before Alpine initialises --}}
@@ -110,10 +131,12 @@ const LIC_DATA = @json($licData);
 </script>
 
 <div x-data="{
+    section: localStorage.getItem('lic_section') || 'licenses',
     view: localStorage.getItem('lic_view') || 'cards',
     search: '',
     statusFilter: 'all',
     categoryFilter: 'all',
+    setSection(s) { this.section = s; localStorage.setItem('lic_section', s); },
     setView(v) { this.view = v; localStorage.setItem('lic_view', v); },
     setStatus(s) { this.statusFilter = s; },
     matches(id) {
@@ -132,40 +155,51 @@ const LIC_DATA = @json($licData);
     }
 }">
 
-{{-- ── Header ── --}}
-<div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:24px;">
-    <div style="width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#6366F1,#4F46E5);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-        <i class="fas fa-layer-group" style="color:#fff;font-size:20px;"></i>
-    </div>
-    <div>
-        <h1 style="font-size:22px;font-weight:800;color:#111827;margin:0;">My Licenses</h1>
-        <p style="font-size:13px;color:#9CA3AF;margin:3px 0 8px;">
-            {{ $licenses->count() }} tool{{ $licenses->count() !== 1 ? 's' : '' }} assigned to you
-        </p>
-        @if($licenses->count())
-        <div style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;width:fit-content;">
-            <button @click="setView('table')"
-                :style="view==='table'
-                    ? 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);'
-                    : 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:transparent;color:#6B7280;'">
-                <i class="fa fa-table-list" style="font-size:11px;"></i> Table
-            </button>
-            <button @click="setView('cards')"
-                :style="view==='cards'
-                    ? 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);'
-                    : 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:transparent;color:#6B7280;'">
-                <i class="fa fa-grip" style="font-size:11px;"></i> Cards
-            </button>
+{{-- ══════════════════════════════════════════════ --}}
+{{-- VAULT HEADER BANNER                            --}}
+{{-- ══════════════════════════════════════════════ --}}
+<div class="vault-header">
+    {{-- Left: icon + title --}}
+    <div style="display:flex;align-items:center;gap:18px;">
+        <div style="width:60px;height:60px;border-radius:18px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.3);flex-shrink:0;">
+            <i :class="section==='licenses' ? 'fas fa-layer-group' : 'fas fa-share-nodes'" style="color:#fff;font-size:24px;"></i>
         </div>
-        @endif
+        <div>
+            <h1 style="font-size:24px;font-weight:800;color:#fff;margin:0;letter-spacing:-.3px;"
+                x-text="section==='licenses' ? 'My Licenses' : 'My Social Accounts'"></h1>
+            <p style="font-size:13px;color:rgba(255,255,255,.7);margin:4px 0 0;"
+               x-text="section==='licenses' ? '{{ $licSubtitle }}' : '{{ $saSubtitle }}'"></p>
+        </div>
+    </div>
+
+    {{-- Right: segmented tab control --}}
+    <div class="vault-seg">
+        <button class="vault-seg-btn" :class="section==='licenses' ? 'active' : ''" @click="setSection('licenses')">
+            <i class="fas fa-layer-group" style="font-size:12px;"></i>
+            Licenses
+            <span style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;"
+                  :style="section==='licenses' ? 'background:#EEF2FF;color:#4F46E5;' : 'background:rgba(255,255,255,.2);color:#fff;'">
+                {{ $licenses->count() }}
+            </span>
+        </button>
+        <button class="vault-seg-btn" :class="section==='social' ? 'active' : ''" @click="setSection('social')">
+            <i class="fas fa-share-nodes" style="font-size:12px;"></i>
+            Social Accounts
+            <span style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;"
+                  :style="section==='social' ? 'background:#F0FDF4;color:#16A34A;' : 'background:rgba(255,255,255,.2);color:#fff;'">
+                {{ $socialAccounts->count() }}
+            </span>
+        </button>
     </div>
 </div>
 
+{{-- ═══════════════ LICENSES SECTION ═══════════════ --}}
+<div x-show="section==='licenses'">
+
 @if($licenses->isEmpty())
-{{-- Empty state --}}
 <div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:16px;padding:72px 24px;text-align:center;">
-    <div style="width:72px;height:72px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
-        <i class="fas fa-layer-group" style="font-size:28px;color:#D1D5DB;"></i>
+    <div style="width:80px;height:80px;border-radius:24px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+        <i class="fas fa-layer-group" style="font-size:32px;color:#818CF8;"></i>
     </div>
     <h2 style="font-size:18px;font-weight:700;color:#111827;margin:0 0 8px;">No licenses assigned yet</h2>
     <p style="font-size:14px;color:#9CA3AF;margin:0;">Your administrator will assign software licenses to you here.</p>
@@ -173,87 +207,84 @@ const LIC_DATA = @json($licData);
 
 @else
 
-{{-- ── Stat Cards ── --}}
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
-    {{-- Total --}}
-    <div class="lic-stat" :class="statusFilter==='all' ? 'active-filter' : ''" @click="setStatus('all')">
-        <div style="width:38px;height:38px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <i class="fas fa-layer-group" style="color:#4F46E5;font-size:15px;"></i>
+{{-- ── Stat strip (clickable filters) ── --}}
+@php $expiring7 = $licenses->filter(fn($l) => $l->days_until_renewal !== null && $l->days_until_renewal >= 0 && $l->days_until_renewal <= 7); @endphp
+<div class="stat-strip">
+    <div class="stat-chip" :class="statusFilter==='all' ? 'active-filter' : ''" @click="setStatus('all')">
+        <div style="width:36px;height:36px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fas fa-layer-group" style="color:#4F46E5;font-size:14px;"></i>
         </div>
         <div>
-            <p style="font-size:22px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $totalCount }}</p>
-            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;font-weight:500;">Total</p>
+            <p style="font-size:20px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $totalCount }}</p>
+            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">All Tools</p>
         </div>
     </div>
-    {{-- Active --}}
-    <div class="lic-stat" :class="statusFilter==='active' ? 'active-filter' : ''" @click="setStatus('active')">
-        <div style="width:38px;height:38px;border-radius:10px;background:#ECFDF5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <i class="fas fa-circle-check" style="color:#16A34A;font-size:15px;"></i>
+    <div class="stat-chip" :class="statusFilter==='active' ? 'active-filter' : ''" @click="setStatus('active')">
+        <div style="width:36px;height:36px;border-radius:10px;background:#ECFDF5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fas fa-circle-check" style="color:#16A34A;font-size:14px;"></i>
         </div>
         <div>
-            <p style="font-size:22px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $activeCount }}</p>
-            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;font-weight:500;">Active</p>
+            <p style="font-size:20px;font-weight:800;color:#16A34A;margin:0;line-height:1;">{{ $activeCount }}</p>
+            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Active</p>
         </div>
     </div>
-    {{-- Expiring Soon --}}
-    <div class="lic-stat" :class="statusFilter==='expiring_soon' ? 'active-filter' : ''" @click="setStatus('expiring_soon')">
-        <div style="width:38px;height:38px;border-radius:10px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <i class="fas fa-clock" style="color:#D97706;font-size:15px;"></i>
+    <div class="stat-chip" :class="statusFilter==='expiring_soon' ? 'active-filter' : ''" @click="setStatus('expiring_soon')">
+        <div style="width:36px;height:36px;border-radius:10px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fas fa-clock" style="color:#D97706;font-size:14px;"></i>
         </div>
         <div>
-            <p style="font-size:22px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $expiringSoonCount }}</p>
-            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;font-weight:500;">Expiring Soon</p>
+            <p style="font-size:20px;font-weight:800;color:#D97706;margin:0;line-height:1;">{{ $expiringSoonCount }}</p>
+            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Expiring</p>
         </div>
     </div>
-    {{-- Expired --}}
-    <div class="lic-stat" :class="statusFilter==='expired' ? 'active-filter' : ''" @click="setStatus('expired')">
-        <div style="width:38px;height:38px;border-radius:10px;background:#FEE2E2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <i class="fas fa-triangle-exclamation" style="color:#DC2626;font-size:15px;"></i>
+    <div class="stat-chip" :class="statusFilter==='expired' ? 'active-filter' : ''" @click="setStatus('expired')">
+        <div style="width:36px;height:36px;border-radius:10px;background:#FEE2E2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fas fa-triangle-exclamation" style="color:#DC2626;font-size:14px;"></i>
         </div>
         <div>
-            <p style="font-size:22px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $expiredCount }}</p>
-            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;font-weight:500;">Expired</p>
+            <p style="font-size:20px;font-weight:800;color:#DC2626;margin:0;line-height:1;">{{ $expiredCount }}</p>
+            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Expired</p>
         </div>
     </div>
 </div>
 
 {{-- ── Expiring soon alert ── --}}
-@php $expiring7 = $licenses->filter(fn($l) => $l->days_until_renewal !== null && $l->days_until_renewal >= 0 && $l->days_until_renewal <= 7); @endphp
 @if($expiring7->count())
-<div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:12px;padding:14px 20px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px;">
+<div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:12px;padding:14px 20px;margin-bottom:18px;display:flex;align-items:flex-start;gap:12px;">
     <i class="fas fa-triangle-exclamation" style="color:#EA580C;margin-top:2px;flex-shrink:0;"></i>
     <div>
-        <div style="font-size:13px;font-weight:700;color:#C2410C;margin-bottom:4px;">
-            {{ $expiring7->count() }} license{{ $expiring7->count()>1?'s':'' }} expiring within 7 days
+        <div style="font-size:13px;font-weight:700;color:#C2410C;margin-bottom:3px;">
+            {{ $expiring7->count() }} {{ Str::plural('license', $expiring7->count()) }} expiring within 7 days
         </div>
-        <div style="font-size:12px;color:#9A3412;">
-            These subscriptions may be interrupted soon. Contact your administrator if needed.
-        </div>
+        <div style="font-size:12px;color:#9A3412;">These subscriptions may be interrupted soon. Contact your administrator if needed.</div>
     </div>
 </div>
 @endif
 
-{{-- ── Search + Filter bar ── --}}
-<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px;background:#fff;border:1.5px solid #E5E7EB;border-radius:14px;padding:12px 16px;">
-    {{-- Search --}}
-    <div style="position:relative;flex-shrink:0;">
-        <i class="fas fa-magnifying-glass" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;pointer-events:none;"></i>
-        <input x-model="search" type="text" placeholder="Search by name or vendor…" class="lic-search">
+{{-- ── Floating toolbar ── --}}
+<div class="toolbar">
+    {{-- View toggle (left) --}}
+    <div class="view-toggle" style="flex-shrink:0;">
+        <button class="view-toggle-btn" :class="view==='table' ? 'active' : ''" @click="setView('table')">
+            <i class="fas fa-table-list" style="font-size:11px;"></i> Table
+        </button>
+        <button class="view-toggle-btn" :class="view==='cards' ? 'active' : ''" @click="setView('cards')">
+            <i class="fas fa-grip" style="font-size:11px;"></i> Cards
+        </button>
     </div>
 
-    <div style="width:1px;height:28px;background:#E5E7EB;flex-shrink:0;"></div>
+    <div style="width:1px;height:26px;background:#E5E7EB;flex-shrink:0;"></div>
 
     {{-- Status tabs --}}
-    <div style="display:flex;gap:4px;flex-wrap:wrap;">
+    <div style="display:flex;gap:3px;flex-wrap:wrap;">
         <button class="lic-tab" :class="statusFilter==='all' ? 'active' : ''" @click="setStatus('all')">All</button>
         <button class="lic-tab" :class="statusFilter==='active' ? 'active' : ''" @click="setStatus('active')">Active</button>
-        <button class="lic-tab" :class="statusFilter==='expiring_soon' ? 'active' : ''" @click="setStatus('expiring_soon')">Expiring Soon</button>
+        <button class="lic-tab" :class="statusFilter==='expiring_soon' ? 'active' : ''" @click="setStatus('expiring_soon')">Expiring</button>
         <button class="lic-tab" :class="statusFilter==='expired' ? 'active' : ''" @click="setStatus('expired')">Expired</button>
     </div>
 
     @if($usedCategories->count() > 1)
-    <div style="width:1px;height:28px;background:#E5E7EB;flex-shrink:0;margin-left:auto;"></div>
-    {{-- Category filter --}}
+    <div style="width:1px;height:26px;background:#E5E7EB;flex-shrink:0;"></div>
     <select x-model="categoryFilter" class="lic-cat-select">
         <option value="all">All Categories</option>
         @foreach($usedCategories as $cat)
@@ -261,6 +292,12 @@ const LIC_DATA = @json($licData);
         @endforeach
     </select>
     @endif
+
+    {{-- Search (right) --}}
+    <div style="position:relative;flex-shrink:0;margin-left:auto;">
+        <i class="fas fa-magnifying-glass" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;pointer-events:none;"></i>
+        <input x-model="search" type="text" placeholder="Search tools or vendor…" class="lic-search">
+    </div>
 </div>
 
 {{-- ── CARDS VIEW ── --}}
@@ -281,128 +318,142 @@ const LIC_DATA = @json($licData);
         @endphp
         <div class="lic-card" x-show="matches({{ $lic->id }})">
 
-            {{-- Card Header --}}
-            <div style="padding:20px 20px 16px;display:flex;align-items:flex-start;gap:14px;">
-                <div style="width:48px;height:48px;border-radius:14px;background:{{ $cc['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
+            {{-- Colored band with icon ── --}}
+            <div class="card-band" style="background:linear-gradient(135deg,{{ $cc['color'] }}22,{{ $cc['color'] }}11);">
+                {{-- Logo / Icon --}}
+                <div class="card-band-icon" style="background:{{ $cc['bg'] }};border-color:{{ $cc['color'] }}33;">
                     @if($lic->logo_url)
-                        <img src="{{ $lic->logo_url }}" alt="{{ $lic->name }}" style="width:100%;height:100%;object-fit:contain;padding:6px;">
+                        <img src="{{ $lic->logo_url }}" alt="{{ $lic->name }}" style="width:36px;height:36px;object-fit:contain;">
                     @else
-                        <i class="fas fa-{{ $icon }}" style="font-size:20px;color:{{ $cc['color'] }};"></i>
+                        <i class="fas fa-{{ $icon }}" style="font-size:22px;color:{{ $cc['color'] }};"></i>
                     @endif
                 </div>
-                <div style="flex:1;min-width:0;">
-                    <h3 style="font-size:15px;font-weight:700;color:#111827;margin:0 0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $lic->name }}</h3>
-                    @if($lic->vendor)
-                    <p style="font-size:12px;color:#9CA3AF;margin:0;">{{ $lic->vendor }}</p>
-                    @endif
-                    <span style="display:inline-flex;align-items:center;gap:4px;margin-top:6px;background:{{ $cc['bg'] }};color:{{ $cc['color'] }};padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;">
-                        {{ $catLabels[$lic->category] ?? $lic->category }}
-                    </span>
-                </div>
-                <span style="display:inline-flex;align-items:center;gap:4px;background:{{ $statusBg }};color:{{ $statusColor }};padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;flex-shrink:0;">
-                    <i class="fas {{ $statusIcon }}" style="font-size:9px;"></i> {{ $statusLabel }}
+                {{-- Status badge floating top-right --}}
+                <span style="display:inline-flex;align-items:center;gap:4px;background:{{ $statusBg }};color:{{ $statusColor }};padding:4px 10px;border-radius:20px;font-size:10px;font-weight:700;">
+                    <i class="fas {{ $statusIcon }}" style="font-size:8px;"></i> {{ $statusLabel }}
                 </span>
             </div>
 
-            {{-- Renewal Countdown --}}
-            @if($lic->renewal_date)
-            <div style="margin:0 20px 16px;padding:12px 16px;border-radius:12px;background:{{ $status==='expired'?'#FFF5F5':($status==='expiring_soon'?'#FFFBEB':'#F0FDF4') }};border:1px solid {{ $status==='expired'?'#FCA5A5':($status==='expiring_soon'?'#FDE68A':'#A7F3D0') }};display:flex;align-items:center;justify-content:space-between;">
-                <div>
-                    <p style="font-size:10px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin:0 0 2px;">{{ $status === 'expired' ? 'Expired' : 'Renews' }}</p>
-                    <p style="font-size:13px;font-weight:700;color:#374151;margin:0;">{{ $lic->renewal_date->format('d M Y') }}</p>
-                </div>
-                <div style="text-align:right;">
-                    <p style="font-size:26px;font-weight:900;color:{{ $statusColor }};margin:0;line-height:1;">{{ $days !== null ? abs($days) : '—' }}</p>
-                    <p style="font-size:10px;color:#9CA3AF;margin:0;">{{ $status === 'expired' ? 'days ago' : 'days left' }}</p>
-                </div>
-            </div>
-            @endif
-
-            {{-- Details row --}}
-            <div style="padding:0 20px 16px;display:flex;gap:8px;">
-                <div style="flex:1;background:#F9FAFB;border-radius:10px;padding:10px 12px;text-align:center;">
-                    <p style="font-size:11px;color:#9CA3AF;margin:0 0 3px;font-weight:500;">Type</p>
-                    <p style="font-size:12px;font-weight:700;color:#374151;margin:0;">
-                        {{ $lic->type === 'per_seat' ? 'Per Seat' : ($lic->type === 'site_license' ? 'Site License' : 'Shared') }}
-                    </p>
-                </div>
-                @if($lic->purchase_date)
-                <div style="flex:1;background:#F9FAFB;border-radius:10px;padding:10px 12px;text-align:center;">
-                    <p style="font-size:11px;color:#9CA3AF;margin:0 0 3px;font-weight:500;">Since</p>
-                    <p style="font-size:12px;font-weight:700;color:#374151;margin:0;">{{ $lic->purchase_date->format('M Y') }}</p>
-                </div>
+            {{-- Card body ── --}}
+            <div style="padding:14px 18px 0;flex:1;display:flex;flex-direction:column;">
+                <h3 style="font-size:15px;font-weight:800;color:#111827;margin:0 0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $lic->name }}</h3>
+                @if($lic->vendor)
+                <p style="font-size:12px;color:#9CA3AF;margin:0 0 8px;">{{ $lic->vendor }}</p>
                 @endif
-                @if($lic->website)
-                <div style="flex:1;">
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;flex-wrap:wrap;">
+                    <span style="display:inline-flex;align-items:center;gap:4px;background:{{ $cc['bg'] }};color:{{ $cc['color'] }};padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;">
+                        <i class="fas fa-{{ $icon }}" style="font-size:9px;"></i>
+                        {{ $catLabels[$lic->category] ?? $lic->category }}
+                    </span>
+                    @if($lic->website)
                     <a href="{{ $lic->website }}" target="_blank"
-                       style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;background:#EEF2FF;border-radius:10px;padding:10px 12px;text-decoration:none;transition:background .15s;"
+                       style="display:inline-flex;align-items:center;gap:4px;background:#EEF2FF;color:#4F46E5;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;text-decoration:none;transition:background .15s;"
                        onmouseover="this.style.background='#C7D2FE'" onmouseout="this.style.background='#EEF2FF'">
-                        <i class="fas fa-arrow-up-right-from-square" style="font-size:14px;color:#4F46E5;margin-bottom:4px;"></i>
-                        <span style="font-size:11px;font-weight:700;color:#4F46E5;">Open Tool</span>
+                        <i class="fas fa-arrow-up-right-from-square" style="font-size:9px;"></i> Open
                     </a>
+                    @endif
                 </div>
-                @endif
-            </div>
 
-            {{-- Credentials --}}
-            @if($hasCredentials)
-            <div style="margin:0 20px 16px;padding:14px;background:#F8FAFF;border:1px solid #E0E7FF;border-radius:12px;">
-                <p style="font-size:11px;font-weight:700;color:#4F46E5;margin:0 0 10px;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:5px;">
-                    <i class="fas fa-key" style="font-size:10px;"></i> Login Credentials
-                </p>
-                @if($lic->username)
-                <div style="margin-bottom:8px;">
-                    <p style="font-size:10px;color:#9CA3AF;margin:0 0 4px;font-weight:500;">Username / Email</p>
-                    <div style="display:flex;gap:6px;align-items:center;">
-                        <span class="cred-val">{{ $lic->username }}</span>
-                        <button class="cred-copy" onclick="licCopy(this, '{{ addslashes($lic->username) }}')" title="Copy"><i class="fas fa-copy"></i></button>
+                {{-- Renewal Countdown ── --}}
+                @if($lic->renewal_date)
+                <div style="margin-bottom:14px;padding:10px 14px;border-radius:10px;background:{{ $status==='expired'?'#FFF5F5':($status==='expiring_soon'?'#FFFBEB':'#F0FDF4') }};border:1px solid {{ $status==='expired'?'#FCA5A5':($status==='expiring_soon'?'#FDE68A':'#A7F3D0') }};display:flex;align-items:center;justify-content:space-between;">
+                    <div>
+                        <p style="font-size:10px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin:0 0 2px;">{{ $status === 'expired' ? 'Expired' : 'Renews' }}</p>
+                        <p style="font-size:12px;font-weight:700;color:#374151;margin:0;">{{ $lic->renewal_date->format('d M Y') }}</p>
+                    </div>
+                    <div style="text-align:right;">
+                        <p style="font-size:24px;font-weight:900;color:{{ $statusColor }};margin:0;line-height:1;">{{ $days !== null ? abs($days) : '—' }}</p>
+                        <p style="font-size:10px;color:#9CA3AF;margin:0;">{{ $status === 'expired' ? 'days ago' : 'days left' }}</p>
                     </div>
                 </div>
                 @endif
-                @if($decryptedPw)
-                <div>
-                    <p style="font-size:10px;color:#9CA3AF;margin:0 0 4px;font-weight:500;">Password</p>
-                    <div style="display:flex;gap:6px;align-items:center;">
-                        <span class="cred-val" id="pw-c-{{ $lic->id }}" data-pw="{{ $decryptedPw }}" style="letter-spacing:.12em;">••••••••</span>
-                        <button class="cred-reveal" onclick="licReveal('pw-c-{{ $lic->id }}','reveal-icon-c-{{ $lic->id }}')" title="Show/hide"><i class="fas fa-eye" id="reveal-icon-c-{{ $lic->id }}"></i></button>
-                        <button class="cred-copy" onclick="licCopy(this, document.getElementById('pw-c-{{ $lic->id }}').dataset.pw)" title="Copy"><i class="fas fa-copy"></i></button>
+
+                {{-- Details mini row ── --}}
+                <div style="display:flex;gap:6px;margin-bottom:14px;">
+                    <div style="flex:1;background:#F9FAFB;border-radius:8px;padding:8px 10px;text-align:center;">
+                        <p style="font-size:10px;color:#9CA3AF;margin:0 0 2px;font-weight:500;">Type</p>
+                        <p style="font-size:11px;font-weight:700;color:#374151;margin:0;">
+                            {{ $lic->type === 'per_seat' ? 'Per Seat' : ($lic->type === 'site_license' ? 'Site' : 'Shared') }}
+                        </p>
                     </div>
+                    @if($lic->purchase_date)
+                    <div style="flex:1;background:#F9FAFB;border-radius:8px;padding:8px 10px;text-align:center;">
+                        <p style="font-size:10px;color:#9CA3AF;margin:0 0 2px;font-weight:500;">Since</p>
+                        <p style="font-size:11px;font-weight:700;color:#374151;margin:0;">{{ $lic->purchase_date->format('M Y') }}</p>
+                    </div>
+                    @endif
                 </div>
-                @endif
-            </div>
-            @endif
 
-            {{-- Notes --}}
-            @if($lic->notes)
-            <div style="margin:0 20px 16px;padding:12px 14px;background:#F8FAFC;border-radius:10px;border-left:3px solid {{ $cc['color'] }};">
-                <p style="font-size:11px;font-weight:600;color:#6B7280;margin:0 0 5px;text-transform:uppercase;letter-spacing:.04em;">
-                    <i class="fas fa-note-sticky" style="margin-right:4px;font-size:10px;"></i> Notes from Admin
-                </p>
-                <p style="font-size:12px;color:#374151;margin:0;line-height:1.6;white-space:pre-wrap;">{{ $lic->notes }}</p>
-            </div>
-            @endif
-
-            {{-- Attachments --}}
-            @if($lic->attachments->count())
-            <div style="margin:0 20px 20px;">
-                <p style="font-size:11px;font-weight:700;color:#6B7280;margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:5px;">
-                    <i class="fas fa-paperclip" style="font-size:10px;"></i> Files ({{ $lic->attachments->count() }})
-                </p>
-                <div style="display:flex;flex-direction:column;gap:6px;">
-                    @foreach($lic->attachments as $att)
-                    <a href="{{ $att->url }}" target="_blank" class="attach-row">
-                        <i class="fas {{ $att->icon_class }}" style="font-size:15px;color:#4F46E5;flex-shrink:0;width:18px;text-align:center;"></i>
-                        <div style="flex:1;min-width:0;">
-                            <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $att->filename }}</p>
-                            @if($att->comment)<p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $att->comment }}</p>@endif
+                {{-- Credentials ── --}}
+                @if($hasCredentials)
+                <div style="margin-bottom:14px;padding:12px;background:#F8FAFF;border:1px solid #E0E7FF;border-radius:10px;">
+                    <p style="font-size:10px;font-weight:700;color:#4F46E5;margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:5px;">
+                        <i class="fas fa-key" style="font-size:9px;"></i> Credentials
+                    </p>
+                    @if($lic->username)
+                    <div style="margin-bottom:6px;">
+                        <p style="font-size:10px;color:#9CA3AF;margin:0 0 3px;font-weight:500;">Username / Email</p>
+                        <div style="display:flex;gap:5px;align-items:center;">
+                            <span class="cred-val">{{ $lic->username }}</span>
+                            <button class="cred-copy" onclick="licCopy(this, '{{ addslashes($lic->username) }}')" title="Copy"><i class="fas fa-copy"></i></button>
                         </div>
-                        <span style="font-size:10px;color:#9CA3AF;flex-shrink:0;">{{ $att->formatted_size }}</span>
-                        <i class="fas fa-download" style="font-size:11px;color:#4F46E5;flex-shrink:0;"></i>
-                    </a>
-                    @endforeach
+                    </div>
+                    @endif
+                    @if($decryptedPw)
+                    <div>
+                        <p style="font-size:10px;color:#9CA3AF;margin:0 0 3px;font-weight:500;">Password</p>
+                        <div style="display:flex;gap:5px;align-items:center;">
+                            <span class="cred-val" id="pw-c-{{ $lic->id }}" data-pw="{{ $decryptedPw }}" style="letter-spacing:.12em;">••••••••</span>
+                            <button class="cred-reveal" onclick="licReveal('pw-c-{{ $lic->id }}','reveal-icon-c-{{ $lic->id }}')" title="Show/hide"><i class="fas fa-eye" id="reveal-icon-c-{{ $lic->id }}"></i></button>
+                            <button class="cred-copy" onclick="licCopy(this, document.getElementById('pw-c-{{ $lic->id }}').dataset.pw)" title="Copy"><i class="fas fa-copy"></i></button>
+                        </div>
+                    </div>
+                    @endif
                 </div>
+                @endif
+
+                {{-- Notes ── --}}
+                @if($lic->notes)
+                <div style="margin-bottom:14px;padding:10px 12px;background:#F8FAFC;border-radius:8px;border-left:3px solid {{ $cc['color'] }};">
+                    <p style="font-size:10px;font-weight:600;color:#6B7280;margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em;">
+                        <i class="fas fa-note-sticky" style="margin-right:3px;font-size:9px;"></i> Admin Notes
+                    </p>
+                    <p style="font-size:12px;color:#374151;margin:0;line-height:1.6;white-space:pre-wrap;">{{ $lic->notes }}</p>
+                </div>
+                @endif
+
+                {{-- Attachments ── --}}
+                @if($lic->attachments->count())
+                <div style="margin-bottom:14px;">
+                    <p style="font-size:10px;font-weight:700;color:#6B7280;margin:0 0 6px;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:4px;">
+                        <i class="fas fa-paperclip" style="font-size:9px;"></i> Files ({{ $lic->attachments->count() }})
+                    </p>
+                    <div style="display:flex;flex-direction:column;gap:5px;">
+                        @foreach($lic->attachments as $att)
+                        <a href="{{ $att->url }}" target="_blank" class="attach-row">
+                            <i class="fas {{ $att->icon_class }}" style="font-size:14px;color:#4F46E5;flex-shrink:0;width:16px;text-align:center;"></i>
+                            <div style="flex:1;min-width:0;">
+                                <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $att->filename }}</p>
+                                @if($att->comment)<p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $att->comment }}</p>@endif
+                            </div>
+                            <span style="font-size:10px;color:#9CA3AF;flex-shrink:0;">{{ $att->formatted_size }}</span>
+                            <i class="fas fa-download" style="font-size:10px;color:#4F46E5;flex-shrink:0;"></i>
+                        </a>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
             </div>
-            @endif
+
+            {{-- Card footer ── --}}
+            <div style="padding:10px 18px;border-top:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;background:#FAFAFA;">
+                <span style="font-size:11px;color:#9CA3AF;">Added {{ $lic->created_at ? $lic->created_at->diffForHumans() : '' }}</span>
+                <button onclick="openLicModal({{ $lic->id }})"
+                        style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#EEF2FF;color:#4F46E5;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s;"
+                        onmouseover="this.style.background='#C7D2FE'" onmouseout="this.style.background='#EEF2FF'">
+                    <i class="fas fa-expand" style="font-size:10px;"></i> Details
+                </button>
+            </div>
 
         </div>
         @endforeach
@@ -560,9 +611,180 @@ const LIC_DATA = @json($licData);
 
 @endif
 
+</div>{{-- /licenses section --}}
+
+{{-- ═══════════════ SOCIAL ACCOUNTS SECTION ═══════════════ --}}
+<div x-show="section==='social'" x-cloak>
+
+@if($socialAccounts->isEmpty())
+<div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:16px;padding:72px 24px;text-align:center;">
+    <div style="width:80px;height:80px;border-radius:24px;background:linear-gradient(135deg,#F0FDF4,#DCFCE7);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+        <i class="fas fa-share-nodes" style="font-size:32px;color:#86EFAC;"></i>
+    </div>
+    <h2 style="font-size:18px;font-weight:700;color:#111827;margin:0 0 8px;">No social accounts yet</h2>
+    <p style="font-size:14px;color:#9CA3AF;margin:0;">Your administrator will grant you access to social accounts here.</p>
+</div>
+@else
+
+{{-- Stats chips ── --}}
+@php
+    $saActive    = $socialAccounts->where('status','active')->count();
+    $saInactive  = $socialAccounts->where('status','inactive')->count();
+    $saSuspended = $socialAccounts->where('status','suspended')->count();
+    $saByPlat    = $socialAccounts->groupBy('platform')->count();
+@endphp
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 18px;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;flex:1;min-width:120px;">
+        <div style="width:34px;height:34px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fas fa-share-nodes" style="color:#4F46E5;font-size:13px;"></i>
+        </div>
+        <div>
+            <p style="font-size:20px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $socialAccounts->count() }}</p>
+            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Total</p>
+        </div>
+    </div>
+    @if($saActive)
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 18px;background:#fff;border:1.5px solid #A7F3D0;border-radius:12px;flex:1;min-width:120px;">
+        <div style="width:34px;height:34px;border-radius:10px;background:#ECFDF5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fas fa-circle-check" style="color:#16A34A;font-size:13px;"></i>
+        </div>
+        <div>
+            <p style="font-size:20px;font-weight:800;color:#16A34A;margin:0;line-height:1;">{{ $saActive }}</p>
+            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Active</p>
+        </div>
+    </div>
+    @endif
+    @if($saSuspended)
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 18px;background:#fff;border:1.5px solid #FECACA;border-radius:12px;flex:1;min-width:120px;">
+        <div style="width:34px;height:34px;border-radius:10px;background:#FEE2E2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fas fa-triangle-exclamation" style="color:#DC2626;font-size:13px;"></i>
+        </div>
+        <div>
+            <p style="font-size:20px;font-weight:800;color:#DC2626;margin:0;line-height:1;">{{ $saSuspended }}</p>
+            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Suspended</p>
+        </div>
+    </div>
+    @endif
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 18px;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;flex:1;min-width:120px;">
+        <div style="width:34px;height:34px;border-radius:10px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fas fa-layer-group" style="color:#6B7280;font-size:13px;"></i>
+        </div>
+        <div>
+            <p style="font-size:20px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $saByPlat }}</p>
+            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">{{ Str::plural('Platform', $saByPlat) }}</p>
+        </div>
+    </div>
+</div>
+
+{{-- Social Vault Cards ── --}}
+<div class="sa-vault-grid">
+    @foreach($socialAccounts as $sa)
+    @php
+        $pi      = $saPlatforms[$sa->platform] ?? ['label'=>ucfirst($sa->platform),'icon'=>'fa-globe','color'=>'#6B7280','bg'=>'#F3F4F6'];
+        $stBg    = match($sa->status) { 'active'=>'#DCFCE7','inactive'=>'#F3F4F6','suspended'=>'#FEE2E2', default=>'#F3F4F6' };
+        $stColor = match($sa->status) { 'active'=>'#16A34A','inactive'=>'#6B7280','suspended'=>'#DC2626', default=>'#6B7280' };
+        $stDot   = match($sa->status) { 'active'=>'#22C55E','inactive'=>'#9CA3AF','suspended'=>'#EF4444', default=>'#9CA3AF' };
+        $decPw   = $sa->decrypted_password;
+        $hasCreds = $sa->username || $sa->email || $decPw || $sa->account_id;
+    @endphp
+    <div x-data="{ showPw: false }" class="sa-vault-card">
+
+        {{-- Platform band ── --}}
+        <div style="background:linear-gradient(135deg,{{ $pi['color'] }}18,{{ $pi['color'] }}08);padding:18px 20px 14px;display:flex;align-items:flex-start;gap:14px;border-bottom:1.5px solid {{ $pi['color'] }}18;">
+            <div style="width:52px;height:52px;border-radius:14px;background:{{ $pi['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px {{ $pi['color'] }}22;">
+                <i class="fab {{ $pi['icon'] }}" style="font-size:24px;color:{{ $pi['color'] }};"></i>
+            </div>
+            <div style="flex:1;min-width:0;">
+                <h3 style="font-size:15px;font-weight:800;color:#111827;margin:0 0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $sa->name }}</h3>
+                <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                    <span style="width:7px;height:7px;border-radius:50%;background:{{ $stDot }};flex-shrink:0;"></span>
+                    <span style="font-size:12px;color:#6B7280;font-weight:500;">{{ $pi['label'] }}</span>
+                    @if($sa->customer)
+                    <span style="font-size:11px;color:#D1D5DB;">·</span>
+                    <i class="fas fa-building" style="font-size:9px;color:#6366F1;"></i>
+                    <span style="font-size:11px;color:#6366F1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px;">{{ $sa->customer->name }}</span>
+                    @endif
+                </div>
+            </div>
+            <span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:{{ $stBg }};color:{{ $stColor }};flex-shrink:0;text-transform:capitalize;">
+                {{ $sa->status }}
+            </span>
+        </div>
+
+        {{-- Vault credentials ── --}}
+        @if($hasCreds)
+        <div style="padding:14px 20px;display:flex;flex-direction:column;gap:7px;border-bottom:1.5px solid #F3F4F6;">
+            <p style="font-size:10px;font-weight:700;color:#4F46E5;text-transform:uppercase;letter-spacing:.05em;margin:0 0 3px;display:flex;align-items:center;gap:5px;">
+                <i class="fas fa-vault" style="font-size:9px;"></i> Credentials
+            </p>
+            @if($sa->username)
+            <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:20px;text-align:center;flex-shrink:0;"><i class="fas fa-at" style="font-size:10px;color:#C4B5FD;"></i></div>
+                <span style="font-size:10px;color:#9CA3AF;width:58px;flex-shrink:0;text-transform:uppercase;letter-spacing:.04em;">User</span>
+                <span class="cred-val" style="font-size:12px;">{{ $sa->username }}</span>
+                <button class="cred-copy" onclick="licCopy(this,'{{ addslashes($sa->username) }}')" title="Copy"><i class="fas fa-copy"></i></button>
+            </div>
+            @endif
+            @if($sa->email)
+            <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:20px;text-align:center;flex-shrink:0;"><i class="fas fa-envelope" style="font-size:10px;color:#93C5FD;"></i></div>
+                <span style="font-size:10px;color:#9CA3AF;width:58px;flex-shrink:0;text-transform:uppercase;letter-spacing:.04em;">Email</span>
+                <span class="cred-val" style="font-size:12px;">{{ $sa->email }}</span>
+                <button class="cred-copy" onclick="licCopy(this,'{{ addslashes($sa->email) }}')" title="Copy"><i class="fas fa-copy"></i></button>
+            </div>
+            @endif
+            @if($decPw)
+            <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:20px;text-align:center;flex-shrink:0;"><i class="fas fa-lock" style="font-size:10px;color:#FCA5A5;"></i></div>
+                <span style="font-size:10px;color:#9CA3AF;width:58px;flex-shrink:0;text-transform:uppercase;letter-spacing:.04em;">Password</span>
+                <span class="cred-val" style="font-size:12px;letter-spacing:.1em;"
+                      x-text="showPw ? '{{ addslashes($decPw) }}' : '••••••••'"></span>
+                <button class="cred-reveal" @click="showPw=!showPw" title="Show/hide">
+                    <i :class="showPw ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                </button>
+                <button class="cred-copy" onclick="licCopy(this,'{{ addslashes($decPw) }}')" title="Copy"><i class="fas fa-copy"></i></button>
+            </div>
+            @endif
+            @if($sa->account_id)
+            <div style="display:flex;align-items:center;gap:8px;">
+                <div style="width:20px;text-align:center;flex-shrink:0;"><i class="fas fa-fingerprint" style="font-size:10px;color:#6EE7B7;"></i></div>
+                <span style="font-size:10px;color:#9CA3AF;width:58px;flex-shrink:0;text-transform:uppercase;letter-spacing:.04em;">Acct ID</span>
+                <span class="cred-val" style="font-size:12px;">{{ $sa->account_id }}</span>
+                <button class="cred-copy" onclick="licCopy(this,'{{ addslashes($sa->account_id) }}')" title="Copy"><i class="fas fa-copy"></i></button>
+            </div>
+            @endif
+        </div>
+        @endif
+
+        {{-- Footer: URL + notes ── --}}
+        @if($sa->page_url || $sa->notes)
+        <div style="padding:12px 20px;background:#FAFAFA;flex:1;display:flex;flex-direction:column;gap:8px;">
+            @if($sa->page_url)
+            <a href="{{ $sa->page_url }}" target="_blank" rel="noopener"
+               style="display:inline-flex;align-items:center;gap:7px;padding:7px 14px;background:#EEF2FF;color:#4F46E5;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;width:fit-content;transition:background .15s;"
+               onmouseover="this.style.background='#C7D2FE'" onmouseout="this.style.background='#EEF2FF'">
+                <i class="fas fa-arrow-up-right-from-square" style="font-size:10px;"></i> Open Page
+            </a>
+            @endif
+            @if($sa->notes)
+            <p style="font-size:12px;color:#6B7280;margin:0;line-height:1.6;padding:8px 10px;background:#fff;border-radius:8px;border-left:3px solid {{ $pi['color'] }};">{{ $sa->notes }}</p>
+            @endif
+        </div>
+        @endif
+
+    </div>
+    @endforeach
+</div>
+
+@endif
+
+</div>{{-- /social section --}}
+
 </div>{{-- end x-data --}}
 
-{{-- ── Detail Modal ── --}}
+{{-- ══════════════════════════════════════════════ --}}
+{{-- DETAIL MODAL                                   --}}
+{{-- ══════════════════════════════════════════════ --}}
 <div id="lic-modal-overlay"
      onclick="if(event.target===this)closeLicModal()"
      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;padding:20px;">

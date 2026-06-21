@@ -379,6 +379,7 @@ Route::middleware([ManagerMiddleware::class])->prefix('manager')->name('manager.
 Route::middleware([UserMiddleware::class])->prefix('user')->name('user.')->group(function () {
     Route::get('/dashboard', [UserDashboard::class, 'index'])->name('dashboard');
     Route::get('/licenses',  [UserLicensesController::class, 'index'])->name('licenses.index');
+    Route::post('/licenses/{subscription}/reveal-password', [UserLicensesController::class, 'revealPassword'])->name('licenses.reveal-password');
     Route::post('/report',   [UserDashboard::class, 'submitReport'])->name('report');
     Route::get('/tasks-modal', [UserDashboard::class, 'taskModal'])->name('tasks.modal');
     Route::get('/tasks', [UserTaskController::class, 'index'])->name('tasks.index');
