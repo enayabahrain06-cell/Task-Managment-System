@@ -3720,6 +3720,17 @@ function printRptSummSelection(sections) {
         var grandTasks    = distRows.reduce(function(sum, c) { return sum + c.total; }, 0);
         var grandProjects = distRows.reduce(function(sum, c) { return sum + (c.projects||0); }, 0);
 
+        // Largest-remainder method: ensures rounded percentages sum to exactly 100%
+        var _exactPcts = distRows.map(function(c) {
+            return grandWorkload > 0 ? ((c.total + (c.projects||0)) / grandWorkload * 100) : 0;
+        });
+        var _floors   = _exactPcts.map(function(p) { return Math.floor(p); });
+        var _remain   = _exactPcts.map(function(p, i) { return p - _floors[i]; });
+        var _deficit  = 100 - _floors.reduce(function(s, v) { return s + v; }, 0);
+        var _order    = _floors.map(function(_, i) { return i; }).sort(function(a, b) { return _remain[b] - _remain[a]; });
+        var _rounded  = _floors.slice();
+        for (var _ri = 0; _ri < _deficit; _ri++) { _rounded[_order[_ri]] += 1; }
+
         var thStyle = 'text-align:center;padding:8px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #E5E7EB;';
         var thLeft  = 'text-align:left;padding:8px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #E5E7EB;';
         var thRight = 'text-align:right;padding:8px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #E5E7EB;';
@@ -3733,6 +3744,7 @@ function printRptSummSelection(sections) {
             + '<div style="text-align:right;">'
             + '<p style="font-size:11px;color:#9CA3AF;margin:0;">Total Work Units</p>'
             + '<p style="font-size:28px;font-weight:900;color:#4F46E5;margin:0;line-height:1.1;">' + grandWorkload + '</p>'
+            + '<p style="font-size:10px;color:#9CA3AF;margin:2px 0 0;">' + grandTasks + ' tasks &nbsp;+&nbsp; ' + grandProjects + ' project' + (grandProjects !== 1 ? 's' : '') + '</p>'
             + '</div>'
             + '</div>'
             + '<table style="width:100%;border-collapse:collapse;">'
@@ -3746,10 +3758,9 @@ function printRptSummSelection(sections) {
             + '</tr></thead><tbody>';
 
         distRows.forEach(function(c, i) {
-            var workload = c.total + (c.projects||0);
-            var pct      = grandWorkload > 0 ? (workload / grandWorkload * 100) : 0;
-            var pctStr   = Math.round(pct) + '%';
-            var barW     = Math.round(pct);
+            var pctInt   = _rounded[i];
+            var pctStr   = pctInt + '%';
+            var barW     = pctInt;
             var rowBg    = i % 2 === 0 ? '#fff' : '#FAFAFA';
             var td = 'padding:9px 10px;border-bottom:1px solid #F3F4F6;';
             bodyHtml += '<tr style="background:' + rowBg + ';">'
