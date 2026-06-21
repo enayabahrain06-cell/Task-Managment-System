@@ -13,10 +13,10 @@
 .status-expired       { background:#FEE2E2; color:#DC2626; }
 .dom-status-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:11.5px; font-weight:600; }
 .dom-row:hover { background:#FAFAFA; }
+.dom-tbl-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.dom-tbl-scroll table { min-width:900px; width:100%; }
 @media (max-width:768px) {
     .dom-stats-grid { grid-template-columns:repeat(2,1fr) !important; }
-    .dom-tbl-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
-    .dom-tbl-scroll table { min-width:900px; }
 }
 </style>
 
@@ -177,7 +177,7 @@
     </div>
 
     {{-- Table --}}
-    <div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:14px;overflow:hidden;">
+    <div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:14px;overflow:clip;">
         @if($domains->isEmpty())
         <div style="padding:60px 24px;text-align:center;">
             <div style="width:56px;height:56px;background:#F3F4F6;border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
