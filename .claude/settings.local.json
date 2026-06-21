@@ -59,7 +59,12 @@
       "Bash(curl -sI https://ms.p7h.me/)",
       "Bash(npm run *)",
       "WebFetch(domain:ms.p7h.me)",
-      "Bash(cp /var/www/Task-Managment-System/resources/views/admin/subscriptions/pdf.blade.php /var/www/Task-Managment-System/resources/views/admin/subscriptions/pdf.blade.php.bak)"
+      "Bash(cp /var/www/Task-Managment-System/resources/views/admin/subscriptions/pdf.blade.php /var/www/Task-Managment-System/resources/views/admin/subscriptions/pdf.blade.php.bak)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(php -r \"if \\(function_exists\\('opcache_reset'\\)\\) { opcache_reset\\(\\); echo 'OPcache reset'.PHP_EOL; } else { echo 'OPcache not active'.PHP_EOL; }\")",
+      "Bash(php -r \"echo 'Syntax OK';\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory",

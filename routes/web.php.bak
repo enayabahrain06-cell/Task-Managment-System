@@ -22,7 +22,11 @@ use App\Http\Controllers\Admin\OffboardingController as AdminOffboardingControll
 use App\Http\Controllers\Admin\RoleController as AdminRoleController;
 use App\Http\Controllers\Admin\ReportsController as AdminReportsController;
 use App\Http\Controllers\Admin\SocialBudgetController as AdminSocialBudgetController;
+use App\Http\Controllers\Admin\SocialAccountController as AdminSocialAccountController;
 use App\Http\Controllers\Admin\CustomerController as AdminCustomerController;
+use App\Http\Controllers\Admin\SubscriptionController as AdminSubscriptionController;
+use App\Http\Controllers\Admin\DomainController as AdminDomainController;
+use App\Http\Controllers\User\LicensesController as UserLicensesController;
 use App\Http\Controllers\User\ProjectController as UserProjectController;
 use App\Http\Controllers\User\ReportsController as UserReportsController;
 use App\Http\Middleware\AdminMiddleware;
@@ -155,6 +159,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::get('/dashboard/social-posts',    [AdminDashboard::class, 'socialPosts'])->name('dashboard.social-posts');
     Route::get('/dashboard/analytics-tasks',[AdminDashboard::class, 'analyticsTasks'])->name('dashboard.analytics-tasks');
     Route::get('/reports',                     [AdminReportsController::class, 'index'])->name('reports.index');
+    Route::get('/reports/summary-data',        [AdminReportsController::class, 'summaryData'])->name('reports.summary-data');
     Route::get('/reports/export-users',        [AdminReportsController::class, 'exportUsers'])->name('reports.export-users');
     Route::get('/reports/user-detail',         [AdminReportsController::class, 'userDetail'])->name('reports.user-detail');
     Route::post('/reports/defer-customer-approval', [AdminReportsController::class, 'deferCustomerApproval'])->name('reports.defer-customer-approval');
@@ -170,6 +175,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('projects/{project}/tasks', [AdminProjectController::class, 'tasksStore'])->name('projects.tasks.store');
     Route::post('tasks/quick', [AdminProjectController::class, 'quickTaskStore'])->name('tasks.quick');
     Route::post('tasks/quick-sm', [AdminProjectController::class, 'quickSMPostStore'])->name('tasks.quick-sm');
+    Route::get('customers/summary-data', [AdminCustomerController::class, 'summaryData'])->name('customers.summary-data');
     Route::resource('customers', AdminCustomerController::class);
     Route::get('customers/{customer}/report', [AdminCustomerController::class, 'report'])->name('customers.report');
     Route::get('customers-summary', [AdminCustomerController::class, 'summary'])->name('customers.summary');
@@ -194,6 +200,8 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('settings/hide-wa-web',              [AdminSettingsController::class, 'toggleHideWaWeb'])->name('settings.hide-wa-web');
     Route::post('settings/clear-cache',              [AdminSettingsController::class, 'clearCache'])->name('settings.clear-cache');
     Route::get('social-budget',                      [AdminSocialBudgetController::class, 'index'])->name('social-budget.index');
+    Route::resource('social-accounts', AdminSocialAccountController::class)->except(['create','edit','show']);
+    Route::get('social-accounts/{socialAccount}/password', [AdminSocialAccountController::class, 'revealPassword'])->name('social-accounts.password');
     Route::post('settings/elements/toggle',       [AdminSettingsController::class, 'toggleElement'])->name('settings.elements.toggle');
     Route::post('settings/nav/toggle',            [AdminSettingsController::class, 'toggleNavItem'])->name('settings.nav.toggle');
     Route::post('meetings',                        [AdminMeetingController::class, 'store'])->name('meetings.store');
@@ -285,6 +293,22 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::get('audit',                            [AdminAuditLogController::class, 'index'])->name('audit.index');
     Route::post('audit/clear-logs',               [AdminAuditLogController::class, 'clearLogs'])->name('audit.clear-logs');
 
+    // Domains
+    Route::get('domains/export/pdf', [AdminDomainController::class, 'exportPdf'])->name('domains.export.pdf');
+    Route::resource('domains', AdminDomainController::class);
+    Route::post('domains/{domain}/attachments',                               [AdminDomainController::class, 'storeAttachment'])->name('domains.attachments.store');
+    Route::get('domains/{domain}/attachments/{attachment}/download',          [AdminDomainController::class, 'downloadAttachment'])->name('domains.attachments.download');
+    Route::delete('domains/{domain}/attachments/{attachment}',                [AdminDomainController::class, 'destroyAttachment'])->name('domains.attachments.destroy');
+
+    // Subscriptions & Licenses
+    Route::get('subscriptions/export/pdf', [AdminSubscriptionController::class, 'exportPdf'])->name('subscriptions.export.pdf');
+    Route::resource('subscriptions', AdminSubscriptionController::class);
+    Route::post('subscriptions/{subscription}/reveal-password',              [AdminSubscriptionController::class, 'revealPassword'])->name('subscriptions.reveal-password');
+    Route::post('subscriptions/{subscription}/assign-user',                  [AdminSubscriptionController::class, 'assignUser'])->name('subscriptions.assign-user');
+    Route::delete('subscriptions/{subscription}/remove-user/{user}',         [AdminSubscriptionController::class, 'removeUser'])->name('subscriptions.remove-user');
+    Route::post('subscriptions/{subscription}/attachments',                  [AdminSubscriptionController::class, 'uploadAttachment'])->name('subscriptions.attachments.upload');
+    Route::delete('subscriptions/{subscription}/attachments/{attachment}',   [AdminSubscriptionController::class, 'deleteAttachment'])->name('subscriptions.attachments.delete');
+
     // Project attachment download (add ?inline=1 to serve inline for browser preview)
     Route::get('attachments/{attachment}/download', function (\App\Models\ProjectAttachment $attachment) {
         abort_unless($attachment->isFile(), 404);
@@ -354,6 +378,8 @@ Route::middleware([ManagerMiddleware::class])->prefix('manager')->name('manager.
 // User routes
 Route::middleware([UserMiddleware::class])->prefix('user')->name('user.')->group(function () {
     Route::get('/dashboard', [UserDashboard::class, 'index'])->name('dashboard');
+    Route::get('/licenses',  [UserLicensesController::class, 'index'])->name('licenses.index');
+    Route::post('/licenses/{subscription}/reveal-password', [UserLicensesController::class, 'revealPassword'])->name('licenses.reveal-password');
     Route::post('/report',   [UserDashboard::class, 'submitReport'])->name('report');
     Route::get('/tasks-modal', [UserDashboard::class, 'taskModal'])->name('tasks.modal');
     Route::get('/tasks', [UserTaskController::class, 'index'])->name('tasks.index');

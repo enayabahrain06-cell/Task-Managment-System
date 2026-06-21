@@ -13,14 +13,10 @@
 /* ── Platform filter tabs ── */
 .sa-plat-tab { display:inline-flex; align-items:center; gap:5px; padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; border:1.5px solid #E5E7EB; background:#fff; transition:all .15s; text-decoration:none; color:#374151; white-space:nowrap; }
 .sa-plat-tab.active, .sa-plat-tab:hover { border-color:#6366F1; background:#EEF2FF; color:#4F46E5; }
-/* ── Stat cards (matches social-budget page) ── */
-.sa-stat { background:#fff; border-radius:12px; border:1px solid #F0F0F0; box-shadow:0 1px 4px rgba(0,0,0,.04); padding:16px 20px; display:flex; align-items:center; gap:14px; cursor:pointer; transition:box-shadow .15s; }
-.sa-stat:hover { box-shadow:0 4px 16px rgba(0,0,0,.09); }
-.sa-stat.active-filter { box-shadow:0 0 0 3px rgba(99,102,241,.15); border-color:#C7D2FE; }
-.sa-stat-icon { width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:16px; }
-.sa-stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
-@media(max-width:900px) { .sa-stats-grid { grid-template-columns:repeat(2,1fr); } }
-@media(max-width:500px) { .sa-stats-grid { grid-template-columns:repeat(2,1fr); gap:8px; } }
+/* ── Status filter chips ── */
+.sa-stat-chip { display:flex; align-items:center; gap:10px; padding:12px 18px; background:#fff; border:1.5px solid #E5E7EB; border-radius:12px; cursor:pointer; transition:all .15s; flex:1; min-width:110px; }
+.sa-stat-chip:hover { border-color:#A5B4FC; box-shadow:0 2px 8px rgba(99,102,241,.1); }
+.sa-stat-chip.active-filter { border-color:#4F46E5; box-shadow:0 0 0 3px rgba(99,102,241,.12); background:#FAFBFF; }
 /* ── View toggle ── */
 .sa-view-toggle { display:flex; gap:2px; background:#F3F4F6; border-radius:10px; padding:3px; }
 .sa-view-btn { display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border-radius:8px; font-size:12px; font-weight:600; border:none; cursor:pointer; transition:all .15s; background:transparent; color:#6B7280; }
@@ -134,42 +130,42 @@ let formPreselectedUserIds = [];
     </button>
 </div>
 
-{{-- ══════════════════════ STAT CARDS ══════════════════════ --}}
-<div class="sa-stats-grid">
-    <div class="sa-stat" :class="statusFilter==='all' ? 'active-filter' : ''" @click="statusFilter='all'">
-        <div class="sa-stat-icon" style="background:#EEF2FF;">
-            <i class="fas fa-share-nodes" style="color:#4F46E5;"></i>
+{{-- ══════════════════════ STAT CHIPS ══════════════════════ --}}
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
+    <div class="sa-stat-chip" :class="statusFilter==='all' ? 'active-filter' : ''" @click="statusFilter='all'">
+        <div style="width:34px;height:34px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fas fa-share-nodes" style="color:#4F46E5;font-size:13px;"></i>
         </div>
         <div>
-            <p style="font-size:22px;font-weight:800;color:#111827;margin:0;">{{ $stats['total'] }}</p>
-            <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Total Accounts</p>
+            <p style="font-size:20px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $stats['total'] }}</p>
+            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Total</p>
         </div>
     </div>
-    <div class="sa-stat" :class="statusFilter==='active' ? 'active-filter' : ''" @click="statusFilter='active'">
-        <div class="sa-stat-icon" style="background:#D1FAE5;">
-            <i class="fas fa-circle-check" style="color:#059669;"></i>
+    <div class="sa-stat-chip" :class="statusFilter==='active' ? 'active-filter' : ''" @click="statusFilter='active'">
+        <div style="width:34px;height:34px;border-radius:10px;background:#ECFDF5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fas fa-circle-check" style="color:#16A34A;font-size:13px;"></i>
         </div>
         <div>
-            <p style="font-size:22px;font-weight:800;color:#059669;margin:0;">{{ $stats['active'] }}</p>
-            <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Active</p>
+            <p style="font-size:20px;font-weight:800;color:#16A34A;margin:0;line-height:1;">{{ $stats['active'] }}</p>
+            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Active</p>
         </div>
     </div>
-    <div class="sa-stat" :class="statusFilter==='inactive' ? 'active-filter' : ''" @click="statusFilter='inactive'">
-        <div class="sa-stat-icon" style="background:#F3F4F6;">
-            <i class="fas fa-moon" style="color:#6B7280;"></i>
+    <div class="sa-stat-chip" :class="statusFilter==='inactive' ? 'active-filter' : ''" @click="statusFilter='inactive'">
+        <div style="width:34px;height:34px;border-radius:10px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fas fa-moon" style="color:#6B7280;font-size:13px;"></i>
         </div>
         <div>
-            <p style="font-size:22px;font-weight:800;color:#6B7280;margin:0;">{{ $stats['inactive'] }}</p>
-            <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Inactive</p>
+            <p style="font-size:20px;font-weight:800;color:#6B7280;margin:0;line-height:1;">{{ $stats['inactive'] }}</p>
+            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Inactive</p>
         </div>
     </div>
-    <div class="sa-stat" :class="statusFilter==='suspended' ? 'active-filter' : ''" @click="statusFilter='suspended'">
-        <div class="sa-stat-icon" style="background:#FEE2E2;">
-            <i class="fas fa-triangle-exclamation" style="color:#DC2626;"></i>
+    <div class="sa-stat-chip" :class="statusFilter==='suspended' ? 'active-filter' : ''" @click="statusFilter='suspended'">
+        <div style="width:34px;height:34px;border-radius:10px;background:#FEE2E2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fas fa-triangle-exclamation" style="color:#DC2626;font-size:13px;"></i>
         </div>
         <div>
-            <p style="font-size:22px;font-weight:800;color:#DC2626;margin:0;">{{ $stats['suspended'] }}</p>
-            <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Suspended</p>
+            <p style="font-size:20px;font-weight:800;color:#DC2626;margin:0;line-height:1;">{{ $stats['suspended'] }}</p>
+            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Suspended</p>
         </div>
     </div>
 </div>
