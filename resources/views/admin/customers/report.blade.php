@@ -1809,45 +1809,53 @@ document.addEventListener('DOMContentLoaded', function () {
             ? '<img src="' + BRAND.logo + '" alt="logo" style="height:40px;max-width:160px;object-fit:contain;display:block;">'
             : '<div style="height:40px;display:flex;align-items:center;font-size:1.1rem;font-weight:800;color:#fff;letter-spacing:-.3px;">' + esc(BRAND.company) + '</div>';
 
-        var html = '<!DOCTYPE html><html><head><meta charset="utf-8">'
-            + '<title>Smart Brief — ' + esc(BRAND.customer) + '</title>'
-            + '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">'
-            + '<style>'
+        var docCss = ''
             + '*{box-sizing:border-box;margin:0;padding:0;}'
-            + 'html,body{font-family:Inter,sans-serif;background:#fff;color:#111827;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
-            + '.page{max-width:760px;margin:0 auto;padding:0;}'
-            /* Cover header */
-            + '.cover{background:linear-gradient(135deg,' + BRAND.color + ' 0%,' + shadeColor(BRAND.color, -20) + ' 100%);padding:28px 36px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;}'
+            + 'html,body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f3f4f6;color:#111827;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+            + '.pbar{position:sticky;top:0;z-index:100;background:linear-gradient(135deg,' + BRAND.color + ',' + shadeColor(BRAND.color,-20) + ');padding:11px 28px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 3px 14px rgba(0,0,0,.25);}'
+            + '.pbar-l h2{font-size:14px;font-weight:700;color:#fff;margin:0;}'
+            + '.pbar-l p{font-size:10.5px;color:rgba(255,255,255,.72);margin:3px 0 0;}'
+            + '.pbar-btn{display:flex;align-items:center;gap:7px;padding:9px 22px;background:#fff;color:' + BRAND.color + ';border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.14);}'
+            + '.pbar-btn:hover{background:#f5f5ff;}'
+            + '.wrap{padding:24px;}'
+            + '.page{max-width:760px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.1);}'
+            + '.cover{background:linear-gradient(135deg,' + BRAND.color + ' 0%,' + shadeColor(BRAND.color,-20) + ' 100%);padding:28px 36px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;}'
             + '.cover-right{text-align:right;}'
             + '.cover-right .label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.6);margin-bottom:2px;}'
             + '.cover-right .value{font-size:12px;font-weight:600;color:#fff;}'
-            /* Headline strip */
             + '.headline-strip{background:#f8fafc;border-bottom:3px solid ' + BRAND.color + ';padding:20px 36px;}'
             + '.headline-strip .badge{display:inline-block;padding:3px 10px;background:' + BRAND.color + '18;color:' + BRAND.color + ';font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border-radius:20px;margin-bottom:8px;}'
             + '.headline-strip h1{font-size:1.25rem;font-weight:800;color:#111827;line-height:1.35;}'
-            /* Body */
             + '.body{padding:24px 36px;display:flex;flex-direction:column;gap:20px;}'
             + '.section-label{font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;display:flex;align-items:center;gap:6px;}'
             + '.section-label::after{content:"";flex:1;height:1px;background:#e5e7eb;}'
             + '.overview-box{background:#f8fafc;border-left:4px solid ' + BRAND.color + ';border-radius:0 10px 10px 0;padding:14px 18px;font-size:13.5px;color:#374151;line-height:1.75;}'
             + '.highlights{display:flex;gap:12px;}'
             + '.sections{display:flex;flex-direction:column;gap:12px;}'
-            /* Footer */
             + '.footer{padding:16px 36px;border-top:1.5px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;background:#fafafa;}'
             + '.footer .left{display:flex;align-items:center;gap:10px;}'
-            + '.footer .logo-sm img{height:22px;max-width:80px;object-fit:contain;opacity:.7;}'
             + '.footer .divider{width:1px;height:20px;background:#e5e7eb;}'
             + '.footer p{font-size:10.5px;color:#9ca3af;}'
             + '.footer .right{font-size:10px;color:#9ca3af;text-align:right;}'
             + '@media print{'
-            + '@page{size:A4 portrait;margin:0;}'
-            + 'body{margin:0;}'
-            + '.cover,.headline-strip,.body,.footer{break-inside:avoid;}'
-            + '}'
-            + '</style>'
-            + '</head><body><div class="page">'
+            + '@page{size:A4 portrait;margin:12mm 14mm;}'
+            + '.pbar{display:none!important;}'
+            + 'body{background:#fff!important;}'
+            + '.wrap{padding:0!important;}'
+            + '.page{box-shadow:none!important;border-radius:0!important;margin:0!important;max-width:100%!important;}'
+            + '}';
 
-            /* ── Cover header ── */
+        var printIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>';
+
+        var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Smart Brief — ' + esc(BRAND.customer) + '</title>'
+            + '<style>' + docCss + '</style>'
+            + '</head><body>'
+            + '<div class="pbar">'
+            +   '<div class="pbar-l"><h2>Smart Brief</h2><p>' + esc(BRAND.customer) + (BRAND.custCo ? ' · ' + esc(BRAND.custCo) : '') + '</p></div>'
+            +   '<button class="pbar-btn" onclick="window.print()">' + printIcon + ' Print / Save as PDF</button>'
+            + '</div>'
+            + '<div class="wrap"><div class="page">'
+
             + '<div class="cover">'
             + '<div>' + logoHtml
             + (BRAND.tagline ? '<div style="margin-top:5px;font-size:10px;color:rgba(255,255,255,.65);font-weight:500;">' + esc(BRAND.tagline) + '</div>' : '')
@@ -1860,51 +1868,36 @@ document.addEventListener('DOMContentLoaded', function () {
             + '<div class="value">' + esc(BRAND.date) + '</div>'
             + '</div></div>'
 
-            /* ── Headline ── */
             + '<div class="headline-strip">'
             + '<div class="badge">Smart Brief</div>'
             + '<h1>' + esc(b.headline||'') + '</h1>'
             + '</div>'
 
-            /* ── Body ── */
             + '<div class="body">'
-
-            /* Overview */
-            + '<div>'
-            + '<div class="section-label">Executive Overview</div>'
-            + '<div class="overview-box">' + esc(b.overview||'') + '</div>'
+            + '<div><div class="section-label">Executive Overview</div>'
+            + '<div class="overview-box">' + esc(b.overview||'') + '</div></div>'
+            + '<div><div class="section-label">Key Metrics</div>'
+            + '<div class="highlights">' + hlHtml + '</div></div>'
+            + '<div><div class="section-label">Detailed Analysis</div>'
+            + '<div class="sections">' + sectHtml + '</div></div>'
             + '</div>'
 
-            /* Highlights */
-            + '<div>'
-            + '<div class="section-label">Key Metrics</div>'
-            + '<div class="highlights">' + hlHtml + '</div>'
-            + '</div>'
-
-            /* Sections */
-            + '<div>'
-            + '<div class="section-label">Detailed Analysis</div>'
-            + '<div class="sections">' + sectHtml + '</div>'
-            + '</div>'
-
-            + '</div>'
-
-            /* ── Footer ── */
             + '<div class="footer">'
             + '<div class="left">'
-            + '<div class="logo-sm">' + (BRAND.logo ? '<img src="' + BRAND.logo + '" alt="">' : '<span style="font-size:11px;font-weight:700;color:' + BRAND.color + ';">' + esc(BRAND.company) + '</span>') + '</div>'
+            + (BRAND.logo ? '<img src="' + BRAND.logo + '" alt="" style="height:22px;max-width:80px;object-fit:contain;opacity:.7;">' : '<span style="font-size:11px;font-weight:700;color:' + BRAND.color + ';">' + esc(BRAND.company) + '</span>')
             + '<div class="divider"></div>'
             + '<p>Smart Brief · Confidential</p>'
             + '</div>'
             + '<div class="right">' + esc(BRAND.total) + ' tasks · ' + esc(BRAND.rate) + '% completion rate</div>'
             + '</div>'
 
-            + '</div></body></html>';
+            + '</div></div></body></html>';
 
-        var w = window.open('', '_blank', 'width=820,height=1060');
+        var w = window.open('', '_blank', 'width=860,height=1060,left=100,top=60');
+        if (!w) { alert('Pop-up blocked — please allow pop-ups for this site.'); return; }
         w.document.write(html);
         w.document.close();
-        setTimeout(function () { w.focus(); w.print(); }, 800);
+        w.focus();
     };
 
     window.exportAiBriefPdf = function () {
