@@ -292,7 +292,7 @@
                         </span>
                     </td>
                     <td style="padding:14px 16px;text-align:right;">
-                        <button onclick="openRowMenu(this, {{ $sub->id }}, {{ json_encode($sub->name) }}, '{{ route('admin.subscriptions.show', $sub->id) }}', {{ json_encode($sub->users->map(fn($u)=>['id'=>$u->id,'name'=>$u->name,'email'=>$u->email])->values()) }}, {{ json_encode(array_merge($sub->only(['name','vendor','category','type','billing_cycle','cost','currency','max_seats','website','notes','username']), ['logo_url' => $sub->logo_url, 'has_password' => !empty($sub->password), 'assigned_user_ids' => $sub->users->pluck('id')->toArray()])) }}, '{{ $sub->purchase_date?->format('Y-m-d') }}', '{{ $sub->renewal_date?->format('Y-m-d') }}', {{ json_encode($sub->notify_days) }})"
+                        <button onclick="openRowMenu(event, this, {{ $sub->id }}, {{ json_encode($sub->name) }}, '{{ route('admin.subscriptions.show', $sub->id) }}', {{ json_encode($sub->users->map(fn($u)=>['id'=>$u->id,'name'=>$u->name,'email'=>$u->email])->values()) }}, {{ json_encode(array_merge($sub->only(['name','vendor','category','type','billing_cycle','cost','currency','max_seats','website','notes','username']), ['logo_url' => $sub->logo_url, 'has_password' => !empty($sub->password), 'assigned_user_ids' => $sub->users->pluck('id')->toArray()])) }}, '{{ $sub->purchase_date?->format('Y-m-d') }}', '{{ $sub->renewal_date?->format('Y-m-d') }}', {{ json_encode($sub->notify_days) }})"
                                 style="width:32px;height:32px;border-radius:8px;background:#F3F4F6;display:inline-flex;align-items:center;justify-content:center;color:#374151;border:none;cursor:pointer;transition:background .15s;"
                                 onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
                             <i class="fas fa-ellipsis-v" style="font-size:13px;pointer-events:none;"></i>
@@ -824,7 +824,8 @@ function closeEditModal() {
 
 // ── Row action dropdown (fixed-position, shared) ─────────────────────
 var _rowMenuSub = {};
-function openRowMenu(btn, subId, subName, viewUrl, assignedUsers, editData, purchaseDate, renewalDate, notifyDays) {
+function openRowMenu(evt, btn, subId, subName, viewUrl, assignedUsers, editData, purchaseDate, renewalDate, notifyDays) {
+    evt.stopPropagation();
     _rowMenuSub = { subId, subName, viewUrl, assignedUsers, editData, purchaseDate, renewalDate, notifyDays };
     const menu = document.getElementById('row-action-menu');
     const rect = btn.getBoundingClientRect();
@@ -833,13 +834,13 @@ function openRowMenu(btn, subId, subName, viewUrl, assignedUsers, editData, purc
     document.getElementById('ram-assign').onclick   = () => { closeRowMenu(); openAssignModal(subId, subName, assignedUsers); };
     document.getElementById('ram-edit').onclick     = () => { closeRowMenu(); openEditModal(subId, editData, purchaseDate, renewalDate, notifyDays); };
     document.getElementById('ram-delete').onclick   = () => { closeRowMenu(); window.dispatchEvent(new CustomEvent('open-delete', {detail:{id:subId,name:subName}})); };
-    // Position: below button, right-aligned, flip up if near bottom
+    // Position: below button, right-aligned, flip up if near bottom (fixed position — no scroll offset needed)
     menu.style.display = 'block';
     const menuH = menu.offsetHeight || 160;
     const spaceBelow = window.innerHeight - rect.bottom;
     const top = spaceBelow > menuH + 8 ? rect.bottom + 6 : rect.top - menuH - 6;
-    menu.style.top  = top + window.scrollY + 'px';
-    menu.style.left = (rect.right - menu.offsetWidth) + window.scrollX + 'px';
+    menu.style.top  = top + 'px';
+    menu.style.left = (rect.right - menu.offsetWidth) + 'px';
 }
 function closeRowMenu() { document.getElementById('row-action-menu').style.display = 'none'; }
 document.addEventListener('click', function(e) {
