@@ -257,7 +257,7 @@
                 </span>
                 @endif
             </div>
-            <span class="text-xs text-gray-400">{{ $activities->count() }} {{ $selectedUser ? 'activities' : 'total activities' }}</span>
+            <span class="text-xs text-gray-400">{{ $activities->total() }} {{ $selectedUser ? 'activities' : 'total activities' }}</span>
         </div>
 
         @php
@@ -265,7 +265,7 @@
             $colors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
         @endphp
 
-        <div class="divide-y divide-gray-50 max-h-[600px] overflow-y-auto">
+        <div class="divide-y divide-gray-50">
             @forelse($activities as $i => $log)
             @php
                 $dateStr     = $log->created_at->isToday() ? 'Today' : ($log->created_at->isYesterday() ? 'Yesterday' : $log->created_at->format(config('app.date_format', 'M d, Y')));
@@ -404,12 +404,14 @@
                         @if($log->task->project && !$log->task->project->is_quick)
                         <span class="text-gray-400">in</span> <span class="font-medium text-gray-700">{{ $log->task->project->name }}</span>
                         @endif
+                        @elseif($log->task_id)
+                        <span class="text-gray-400 italic text-xs">(deleted task)</span>
                         @endif
                     </p>
 
                     @if($showNote)
                     <div class="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-100 text-sm text-gray-600 whitespace-pre-line">
-                        {{ $log->note }}
+                        {{ strip_tags($log->note) }}
                     </div>
                     @endif
 
@@ -513,6 +515,12 @@
             </div>
             @endforelse
         </div>
+
+        @if($activities->hasPages())
+        <div class="px-5 py-4 border-t border-gray-100">
+            <x-pagination :paginator="$activities" mt="0" />
+        </div>
+        @endif
 
     </div>
 

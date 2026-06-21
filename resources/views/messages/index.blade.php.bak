@@ -1149,8 +1149,14 @@ function messageApp() {
             if (window._mqtt) { attachPresence(); }
             else { document.addEventListener('mqtt:ready', attachPresence, { once: true }); }
 
-            const uid = parseInt(new URLSearchParams(window.location.search).get('user'));
+            const params = new URLSearchParams(window.location.search);
+            const uid = parseInt(params.get('user'));
             if (uid) this.$nextTick(() => { const btn = document.querySelector(`[data-user-id="${uid}"]`); if (btn) btn.click(); });
+            const gid = parseInt(params.get('group'));
+            if (gid) this.$nextTick(() => {
+                const grp = this.groups.find(g => g.id === gid);
+                if (grp) this.selectGroup(grp);
+            });
         },
 
         onGroupCreated(group) {
@@ -1163,11 +1169,13 @@ function messageApp() {
             this.isGroup = false; this.activeGroupId = null; this.showLeaveConfirm = false;
             this.activeUserId = id; this.activeUserName = name; this.activeUserColor = color;
             this.activeUserOnline = isOnline ?? (this.onlineMap[id] ?? false);
+            const hadUnread = (this.unreadCounts?.direct?.[id] || 0) > 0;
             this.messages = []; this._lastMsgId = 0; this.replyingTo = null;
             this.msgSearch = null; this.reactionPickerMsgId = null;
             this.clearFile(); this.cancelRecording();
             clearInterval(this.pollTimer);
             await this.loadConversation();
+            if (hadUnread && window.playNotifSound) window.playNotifSound();
             // 1-second incremental poll — only fetches new messages since last seen
             this.pollTimer = setInterval(() => this._pollNewDirect(), 1000);
             this.$nextTick(() => this.$refs.msgInput?.focus());
@@ -1220,10 +1228,12 @@ function messageApp() {
             this.isGroup = true; this.activeUserId = null; this.showLeaveConfirm = false;
             this.activeGroupId = grp.id; this.activeGroupName = grp.name;
             this.activeUserColor = colorFor(grp.id * 3);
+            const hadUnread = (grp.unread || 0) > 0;
             this.groupMembers = []; this.messages = []; this._lastMsgId = 0; this.replyingTo = null;
             this.clearFile(); this.cancelRecording();
             clearInterval(this.pollTimer);
             await this.loadGroupConversation();
+            if (hadUnread && window.playNotifSound) window.playNotifSound();
             // 1-second incremental poll
             this.pollTimer = setInterval(() => this._pollNewGroup(), 1000);
             this.$nextTick(() => this.$refs.msgInput?.focus());

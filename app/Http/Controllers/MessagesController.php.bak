@@ -7,6 +7,7 @@ use App\Models\MessageGroup;
 use App\Models\MessageReaction;
 use App\Models\Setting;
 use App\Models\User;
+use App\Notifications\NewMessageNotification;
 use App\Services\MqttService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -80,6 +81,14 @@ class MessagesController extends Controller
             ->when($clearedAt, fn($q) => $q->where('created_at', '>', $clearedAt))
             ->update(['read_at' => now()]);
 
+        // Mark bell notifications from this sender as read
+        auth()->user()->notifications()
+            ->whereNull('read_at')
+            ->where('data->notif_type', 'new_message')
+            ->where('data->sender_id', $user->id)
+            ->whereNull('data->group_id')
+            ->update(['read_at' => now()]);
+
         $messages = Message::conversation($me, $user->id, $clearedAt)
             ->with(['sender:id,name', 'replyTo.sender:id,name', 'reactions'])
             ->get()
@@ -125,6 +134,12 @@ class MessagesController extends Controller
             'sender_id' => auth()->id(),
             'message'   => $formatted,
         ]);
+
+        // Bell notification — one entry per message so the badge count reflects reality.
+        $receiver = User::find($request->receiver_id);
+        if ($receiver) {
+            $receiver->notify(new NewMessageNotification($message));
+        }
 
         return response()->json($formatted, 201);
     }
@@ -191,6 +206,13 @@ class MessagesController extends Controller
 
         $group->members()->updateExistingPivot($me, ['last_read_at' => now()]);
 
+        // Mark bell notifications for this group as read
+        auth()->user()->notifications()
+            ->whereNull('read_at')
+            ->where('data->notif_type', 'new_message')
+            ->where('data->group_id', $group->id)
+            ->update(['read_at' => now()]);
+
         $messages = $group->messages()
             ->when($clearedAt, fn($q) => $q->where('created_at', '>', $clearedAt))
             ->with(['sender:id,name', 'replyTo.sender:id,name', 'reactions'])
@@ -242,16 +264,17 @@ class MessagesController extends Controller
 
         $formatted = $this->formatMessage($message, $me);
 
-        // Push to every group member except sender via MQTT
+        // Push to every group member except sender via MQTT + bell notification
         $group->members()
             ->where('user_id', '!=', $me)
-            ->pluck('user_id')
-            ->each(function ($memberId) use ($formatted, $group) {
-                MqttService::publish("tm/user/{$memberId}/messages/new", [
+            ->get()
+            ->each(function ($member) use ($formatted, $group, $message) {
+                MqttService::publish("tm/user/{$member->id}/messages/new", [
                     'type'     => 'group',
                     'group_id' => $group->id,
                     'message'  => $formatted,
                 ]);
+                $member->notify(new NewMessageNotification($message));
             });
 
         return response()->json($formatted, 201);
