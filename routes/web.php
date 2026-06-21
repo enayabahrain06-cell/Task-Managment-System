@@ -201,6 +201,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('settings/hide-wa-web',              [AdminSettingsController::class, 'toggleHideWaWeb'])->name('settings.hide-wa-web');
     Route::post('settings/clear-cache',              [AdminSettingsController::class, 'clearCache'])->name('settings.clear-cache');
     Route::get('social-budget',                      [AdminSocialBudgetController::class, 'index'])->name('social-budget.index');
+    Route::get('social-accounts/export/pdf', [AdminSocialAccountController::class, 'exportPdf'])->name('social-accounts.export.pdf');
     Route::resource('social-accounts', AdminSocialAccountController::class)->except(['create','edit','show']);
     Route::get('social-accounts/{socialAccount}/password', [AdminSocialAccountController::class, 'revealPassword'])->name('social-accounts.password');
     Route::post('settings/elements/toggle',       [AdminSettingsController::class, 'toggleElement'])->name('settings.elements.toggle');

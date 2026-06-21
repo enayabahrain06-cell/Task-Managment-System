@@ -3,19 +3,17 @@
 
 @section('content')
 <style>
-.sub-stat-card { background:#fff; border:1.5px solid #E5E7EB; border-radius:14px; padding:20px; display:flex; flex-direction:column; gap:4px; transition:box-shadow .15s; }
-.sub-stat-card:hover { box-shadow:0 4px 16px rgba(0,0,0,.07); }
-.sub-stat-label { font-size:12px; color:#9CA3AF; font-weight:500; text-transform:uppercase; letter-spacing:.05em; }
-.sub-stat-value { font-size:28px; font-weight:800; color:#111827; line-height:1.1; }
-.sub-stat-sub   { font-size:12px; color:#6B7280; }
+.sub-stat { background:#fff; border-radius:12px; border:1px solid #F0F0F0; box-shadow:0 1px 4px rgba(0,0,0,.04); padding:16px 20px; display:flex; align-items:center; gap:14px; }
+.sub-stat-icon { width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:16px; }
 .status-active        { background:#ECFDF5; color:#16A34A; }
 .status-expiring_soon { background:#FEF3C7; color:#D97706; }
 .status-expired       { background:#FEE2E2; color:#DC2626; }
 .status-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:11.5px; font-weight:600; }
 .cat-badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; }
 .sub-row:hover { background:#FAFAFA; }
+@media (max-width:900px) { .sub-stats-grid { grid-template-columns:repeat(2,1fr) !important; } }
+@media (max-width:500px)  { .sub-stats-grid { gap:8px !important; } }
 @media (max-width:768px) {
-    .sub-stats-grid { grid-template-columns:repeat(2,1fr) !important; }
     .sub-cost-grid  { grid-template-columns:1fr 1fr !important; }
     .sub-tbl-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
     .sub-tbl-scroll table { min-width:750px; }
@@ -87,26 +85,42 @@
     @endif
 
     {{-- Stats Row --}}
-    <div class="sub-stats-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px;">
-        <div class="sub-stat-card">
-            <div class="sub-stat-label">Total</div>
-            <div class="sub-stat-value">{{ $totalCount }}</div>
-            <div class="sub-stat-sub">All subscriptions</div>
+    <div class="sub-stats-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
+        <div class="sub-stat">
+            <div class="sub-stat-icon" style="background:#EEF2FF;">
+                <i class="fas fa-key" style="color:#4F46E5;"></i>
+            </div>
+            <div>
+                <p style="font-size:22px;font-weight:800;color:#111827;margin:0;">{{ $totalCount }}</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Total Subscriptions</p>
+            </div>
         </div>
-        <div class="sub-stat-card" style="border-color:#A7F3D0;">
-            <div class="sub-stat-label" style="color:#16A34A;">Active</div>
-            <div class="sub-stat-value" style="color:#16A34A;">{{ $activeCount }}</div>
-            <div class="sub-stat-sub">More than 30 days</div>
+        <div class="sub-stat">
+            <div class="sub-stat-icon" style="background:#D1FAE5;">
+                <i class="fas fa-circle-check" style="color:#059669;"></i>
+            </div>
+            <div>
+                <p style="font-size:22px;font-weight:800;color:#059669;margin:0;">{{ $activeCount }}</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Active</p>
+            </div>
         </div>
-        <div class="sub-stat-card" style="border-color:#FDE68A;">
-            <div class="sub-stat-label" style="color:#D97706;">Expiring Soon</div>
-            <div class="sub-stat-value" style="color:#D97706;">{{ $expiringSoonCount }}</div>
-            <div class="sub-stat-sub">Within 30 days — <strong style="color:#EA580C;">{{ $weekCount }}</strong> within 7</div>
+        <div class="sub-stat">
+            <div class="sub-stat-icon" style="background:#FEF3C7;">
+                <i class="fas fa-clock" style="color:#D97706;"></i>
+            </div>
+            <div>
+                <p style="font-size:22px;font-weight:800;color:#D97706;margin:0;">{{ $expiringSoonCount }}</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Expiring Soon <strong style="color:#EA580C;">· {{ $weekCount }} in 7d</strong></p>
+            </div>
         </div>
-        <div class="sub-stat-card" style="border-color:#FCA5A5;">
-            <div class="sub-stat-label" style="color:#DC2626;">Expired</div>
-            <div class="sub-stat-value" style="color:#DC2626;">{{ $expiredCount }}</div>
-            <div class="sub-stat-sub">Need renewal</div>
+        <div class="sub-stat">
+            <div class="sub-stat-icon" style="background:#FEE2E2;">
+                <i class="fas fa-circle-xmark" style="color:#DC2626;"></i>
+            </div>
+            <div>
+                <p style="font-size:22px;font-weight:800;color:#DC2626;margin:0;">{{ $expiredCount }}</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Expired</p>
+            </div>
         </div>
     </div>
 

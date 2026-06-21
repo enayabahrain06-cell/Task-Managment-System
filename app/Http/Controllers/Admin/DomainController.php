@@ -77,19 +77,28 @@ class DomainController extends Controller
             ->orderBy('expires_at')
             ->get();
 
+        $cycleAnnualMap = ['annual' => 1, 'biennial' => 2, 'triennial' => 3, 'one_time' => 0];
         $summary = [
-            'total'         => $all->count(),
-            'active'        => $all->filter(fn($d) => $d->status === 'active')->count(),
-            'expiring_soon' => $all->filter(fn($d) => $d->status === 'expiring_soon')->count(),
-            'expired'       => $all->filter(fn($d) => $d->status === 'expired')->count(),
-            'annual_total'  => $all->sum(fn($d) => $d->annual_cost),
-            'generated_at'  => now()->format('d M Y, H:i'),
-            'by_registrar'  => $all->groupBy('registrar')->map(fn($g, $k) => [
+            'total'            => $all->count(),
+            'active'           => $all->filter(fn($d) => $d->status === 'active')->count(),
+            'expiring_soon'    => $all->filter(fn($d) => $d->status === 'expiring_soon')->count(),
+            'expired'          => $all->filter(fn($d) => $d->status === 'expired')->count(),
+            'auto_renew_count' => $all->filter(fn($d) => $d->auto_renew)->count(),
+            'annual_total'     => $all->sum(fn($d) => $d->annual_cost),
+            'monthly_total'    => round($all->sum(fn($d) => $d->annual_cost) / 12, 3),
+            'generated_at'     => now()->format('d M Y, H:i'),
+            'by_billing_cycle' => $all->groupBy('billing_cycle')->map(fn($g, $k) => [
+                'label'  => ucfirst(str_replace('_', ' ', $k ?: 'unknown')),
+                'count'  => $g->count(),
+                'annual' => $g->sum(fn($d) => $d->annual_cost),
+            ])->sortByDesc('annual')->values(),
+            'by_registrar'     => $all->groupBy('registrar')->map(fn($g, $k) => [
                 'label' => $k ?: 'Unknown',
                 'count' => $g->count(),
+                'annual'=> $g->sum(fn($d) => $d->annual_cost),
             ])->sortByDesc('count')->values(),
-            'by_customer'   => $all->groupBy(fn($d) => $d->customer?->name ?? 'No Customer')
-                ->map(fn($g, $k) => ['label' => $k, 'count' => $g->count()])
+            'by_customer'      => $all->groupBy(fn($d) => $d->customer?->name ?? 'No Customer')
+                ->map(fn($g, $k) => ['label' => $k, 'count' => $g->count(), 'annual' => $g->sum(fn($d) => $d->annual_cost)])
                 ->sortByDesc('count')->values(),
         ];
 

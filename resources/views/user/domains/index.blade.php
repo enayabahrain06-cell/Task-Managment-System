@@ -7,14 +7,15 @@
 .dom-stat-chip { display:flex; align-items:center; gap:10px; padding:11px 18px; background:#fff; border:1.5px solid #E5E7EB; border-radius:12px; flex:1; min-width:110px; }
 .dom-search { border:1.5px solid #E5E7EB; border-radius:10px; padding:8px 14px 8px 36px; font-size:13px; color:#111827; outline:none; width:220px; transition:border-color .15s; background:#fff; }
 .dom-search:focus { border-color:#4F46E5; }
-.dom-table { width:100%; border-collapse:separate; border-spacing:0; }
+.dom-table { width:100%; border-collapse:separate; border-spacing:0; min-width:700px; }
 .dom-table th { background:#F9FAFB; font-size:11px; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:.05em; padding:10px 16px; border-bottom:1.5px solid #E5E7EB; text-align:left; white-space:nowrap; }
 .dom-table th:first-child { border-radius:10px 0 0 0; }
 .dom-table th:last-child  { border-radius:0 10px 0 0; }
-.dom-table td { padding:13px 16px; border-bottom:1px solid #F3F4F6; font-size:13px; color:#374151; vertical-align:middle; background:#fff; }
+.dom-table td { padding:13px 16px; border-bottom:1px solid #F3F4F6; font-size:13px; color:#374151; vertical-align:middle; background:#fff; transition:background .12s; }
 .dom-table tr:last-child td { border-bottom:none; }
 .dom-table tr:last-child td:first-child { border-radius:0 0 0 10px; }
 .dom-table tr:last-child td:last-child  { border-radius:0 0 10px 0; }
+.dom-table tbody tr { cursor:pointer; }
 .dom-table tbody tr:hover td { background:#F5F3FF; }
 .dom-table tbody tr.row-expired td { background:#FFF8F8; }
 .dom-table tbody tr.row-expired:hover td { background:#FEF2F2; }
@@ -25,7 +26,15 @@
 .badge-expiring { background:#FEF3C7; color:#92400E; }
 .badge-expired  { background:#FEE2E2; color:#991B1B; }
 .badge-none     { background:#F3F4F6; color:#6B7280; }
-.dom-empty { text-align:center; padding:60px 20px; }
+/* Detail modal */
+.dom-detail-overlay { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px; }
+.dom-detail-panel { background:#fff;border-radius:20px;width:560px;max-width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.18);display:flex;flex-direction:column; }
+.dom-detail-header { background:linear-gradient(135deg,#4F46E5 0%,#6366F1 100%);border-radius:20px 20px 0 0;padding:22px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0; }
+.dom-detail-body { padding:24px;overflow-y:auto; }
+.dom-detail-row { display:flex;gap:8px;padding:10px 0;border-bottom:1px solid #F3F4F6;align-items:flex-start; }
+.dom-detail-row:last-child { border-bottom:none; }
+.dom-detail-label { font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;width:130px;flex-shrink:0;padding-top:1px; }
+.dom-detail-val { font-size:13px;color:#111827;font-weight:500;flex:1;word-break:break-word; }
 </style>
 
 <div style="padding:0 0 32px;">
@@ -109,7 +118,7 @@
     </div>
 
     {{-- Table --}}
-    <div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:16px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.04);">
+    <div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:16px;overflow:clip;box-shadow:0 1px 6px rgba(0,0,0,.04);">
         <div style="overflow-x:auto;">
         <table class="dom-table" id="domains-table">
             <thead>
@@ -135,7 +144,24 @@
                 <tr class="{{ $rowClass }}"
                     data-domain="{{ strtolower($domain->domain) }}"
                     data-registrar="{{ strtolower($domain->registrar ?? '') }}"
-                    data-status="{{ $domain->status }}">
+                    data-status="{{ $domain->status }}"
+                    onclick="openDomDetail({{ json_encode([
+                        'domain'          => $domain->domain,
+                        'registrar'       => $domain->registrar,
+                        'customer'        => $domain->customer?->company ?: $domain->customer?->name,
+                        'billingTo'       => $domain->billing_to,
+                        'cost'            => $domain->cost ? number_format($domain->cost, 3) . ' ' . $domain->currency : null,
+                        'billingCycle'    => $domain->billing_cycle,
+                        'autoRenew'       => $domain->auto_renew,
+                        'registeredAt'    => $domain->registered_at?->format('d M Y'),
+                        'expiresAt'       => $domain->expires_at?->format('d M Y'),
+                        'daysLeft'        => $domain->days_until_expiry,
+                        'status'          => $domain->status,
+                        'hostingProvider' => $domain->hosting_provider,
+                        'loginUrl'        => $domain->login_url,
+                        'nameservers'     => $domain->nameservers,
+                        'notes'           => $domain->notes,
+                    ]) }})">
                     <td>
                         <div style="display:flex;align-items:center;gap:10px;">
                             <div style="width:34px;height:34px;border-radius:9px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -143,12 +169,8 @@
                             </div>
                             <div>
                                 <div style="font-weight:700;color:#111827;">{{ $domain->domain }}</div>
-                                @if($domain->login_url)
-                                <a href="{{ $domain->login_url }}" target="_blank" rel="noopener noreferrer"
-                                   style="font-size:11px;color:#6B7280;text-decoration:none;"
-                                   onclick="event.stopPropagation()">
-                                    <i class="fas fa-external-link-alt" style="font-size:9px;"></i> Registrar Panel
-                                </a>
+                                @if($domain->registrar)
+                                <div style="font-size:11px;color:#9CA3AF;">{{ $domain->registrar }}</div>
                                 @endif
                             </div>
                         </div>
@@ -210,7 +232,122 @@
 
 </div>
 
+{{-- Detail Modal --}}
+<div id="dom-detail-overlay" class="dom-detail-overlay" style="display:none;" onclick="if(event.target===this)closeDomDetail()">
+    <div class="dom-detail-panel">
+        <div class="dom-detail-header">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:42px;height:42px;background:rgba(255,255,255,.2);border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-globe" style="font-size:18px;color:#fff;"></i>
+                </div>
+                <div>
+                    <div id="dd-title" style="font-size:17px;font-weight:800;color:#fff;"></div>
+                    <div id="dd-subtitle" style="font-size:12px;color:rgba(255,255,255,.7);margin-top:2px;"></div>
+                </div>
+            </div>
+            <button onclick="closeDomDetail()" style="width:32px;height:32px;background:rgba(255,255,255,.15);border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;">
+                <i class="fas fa-times" style="font-size:13px;"></i>
+            </button>
+        </div>
+        <div class="dom-detail-body" id="dom-detail-body"></div>
+    </div>
+</div>
+
 <script>
+const _billingCycleLabels = { annual:'Annual', biennial:'Biennial (2 yr)', triennial:'Triennial (3 yr)', one_time:'One-time' };
+
+function openDomDetail(d) {
+    document.getElementById('dd-title').textContent = d.domain;
+
+    // Subtitle: status badge text
+    const statusMap = { active:'Active', expiring_soon:'Expiring Soon', expired:'Expired' };
+    document.getElementById('dd-subtitle').textContent = statusMap[d.status] || d.status;
+
+    const row = (label, val, opts = {}) => {
+        if (!val && val !== 0 && !opts.always) return '';
+        const display = val || '—';
+        const inner = opts.link
+            ? `<a href="${opts.link}" target="_blank" rel="noopener noreferrer" style="color:#4F46E5;text-decoration:none;font-weight:600;">${display} <i class="fas fa-external-link-alt" style="font-size:10px;"></i></a>`
+            : `<span class="dom-detail-val">${display}</span>`;
+        return `<div class="dom-detail-row">
+            <span class="dom-detail-label">${label}</span>
+            ${inner}
+        </div>`;
+    };
+
+    // Days left coloured
+    let daysHtml = '—';
+    if (d.daysLeft !== null && d.daysLeft !== undefined) {
+        if (d.daysLeft < 0)       daysHtml = `<span style="color:#DC2626;font-weight:700;">Expired ${Math.abs(d.daysLeft)} days ago</span>`;
+        else if (d.daysLeft === 0) daysHtml = `<span style="color:#DC2626;font-weight:700;">Today</span>`;
+        else if (d.daysLeft <= 30) daysHtml = `<span style="color:#D97706;font-weight:700;">${d.daysLeft} days</span>`;
+        else                       daysHtml = `<span style="font-weight:600;">${d.daysLeft} days</span>`;
+    }
+
+    // Nameservers
+    let nsHtml = '';
+    if (d.nameservers && d.nameservers.length) {
+        nsHtml = `<div class="dom-detail-row">
+            <span class="dom-detail-label">Nameservers</span>
+            <div style="font-size:13px;color:#111827;font-family:monospace;line-height:1.8;">
+                ${d.nameservers.map(ns => `<div>${ns}</div>`).join('')}
+            </div>
+        </div>`;
+    }
+
+    // Notes
+    let notesHtml = '';
+    if (d.notes) {
+        notesHtml = `<div class="dom-detail-row">
+            <span class="dom-detail-label">Notes</span>
+            <div style="font-size:13px;color:#374151;white-space:pre-wrap;line-height:1.6;">${d.notes}</div>
+        </div>`;
+    }
+
+    document.getElementById('dom-detail-body').innerHTML = `
+        ${row('Registrar',       d.registrar)}
+        ${row('Customer',        d.customer)}
+        ${row('Bill To',         d.billingTo)}
+        <div class="dom-detail-row">
+            <span class="dom-detail-label">Status</span>
+            <span class="status-badge ${d.status === 'active' ? 'badge-active' : d.status === 'expiring_soon' ? 'badge-expiring' : 'badge-expired'}">${statusMap[d.status] || d.status}</span>
+        </div>
+        ${row('Registered',      d.registeredAt)}
+        ${row('Expires',         d.expiresAt)}
+        <div class="dom-detail-row">
+            <span class="dom-detail-label">Days Left</span>
+            <span class="dom-detail-val">${daysHtml}</span>
+        </div>
+        ${row('Cost',            d.cost)}
+        ${row('Billing Cycle',   d.billingCycle ? (_billingCycleLabels[d.billingCycle] || d.billingCycle) : null)}
+        <div class="dom-detail-row">
+            <span class="dom-detail-label">Auto Renew</span>
+            <span class="dom-detail-val">${d.autoRenew
+                ? '<span style="color:#059669;font-weight:600;"><i class="fas fa-rotate" style="font-size:10px;margin-right:4px;"></i>Yes</span>'
+                : '<span style="color:#9CA3AF;">No</span>'}</span>
+        </div>
+        ${row('Hosting',         d.hostingProvider)}
+        ${d.loginUrl ? `<div class="dom-detail-row">
+            <span class="dom-detail-label">Registrar Panel</span>
+            <a href="${d.loginUrl}" target="_blank" rel="noopener noreferrer" style="color:#4F46E5;font-size:13px;font-weight:600;text-decoration:none;">
+                Open Panel <i class="fas fa-external-link-alt" style="font-size:10px;"></i>
+            </a>
+        </div>` : ''}
+        ${nsHtml}
+        ${notesHtml}
+    `;
+
+    document.getElementById('dom-detail-overlay').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeDomDetail() {
+    document.getElementById('dom-detail-overlay').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDomDetail(); });
+
 function filterDomains() {
     const search = document.getElementById('dom-search').value.toLowerCase().trim();
     const status = document.getElementById('dom-status-filter').value;

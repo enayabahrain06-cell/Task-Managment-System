@@ -3,11 +3,8 @@
 
 @section('content')
 <style>
-.dom-stat-card { background:#fff; border:1.5px solid #E5E7EB; border-radius:14px; padding:20px; display:flex; flex-direction:column; gap:4px; transition:box-shadow .15s; }
-.dom-stat-card:hover { box-shadow:0 4px 16px rgba(0,0,0,.07); }
-.dom-stat-label { font-size:12px; color:#9CA3AF; font-weight:500; text-transform:uppercase; letter-spacing:.05em; }
-.dom-stat-value { font-size:28px; font-weight:800; color:#111827; line-height:1.1; }
-.dom-stat-sub   { font-size:12px; color:#6B7280; }
+.dom-stat { background:#fff; border-radius:12px; border:1px solid #F0F0F0; box-shadow:0 1px 4px rgba(0,0,0,.04); padding:16px 20px; display:flex; align-items:center; gap:14px; }
+.dom-stat-icon { width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:16px; }
 .status-active        { background:#ECFDF5; color:#16A34A; }
 .status-expiring_soon { background:#FEF3C7; color:#D97706; }
 .status-expired       { background:#FEE2E2; color:#DC2626; }
@@ -15,9 +12,8 @@
 .dom-row:hover { background:#FAFAFA; }
 .dom-tbl-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
 .dom-tbl-scroll table { min-width:900px; width:100%; }
-@media (max-width:768px) {
-    .dom-stats-grid { grid-template-columns:repeat(2,1fr) !important; }
-}
+@media (max-width:900px) { .dom-stats-grid { grid-template-columns:repeat(2,1fr) !important; } }
+@media (max-width:500px)  { .dom-stats-grid { gap:8px !important; } }
 </style>
 
 <div x-data="{
@@ -88,31 +84,51 @@
     @endif
 
     {{-- Stats --}}
-    <div class="dom-stats-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:24px;">
-        <div class="dom-stat-card">
-            <div class="dom-stat-label">Total</div>
-            <div class="dom-stat-value">{{ $totalCount }}</div>
-            <div class="dom-stat-sub">All domains</div>
+    <div class="dom-stats-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px;">
+        <div class="dom-stat">
+            <div class="dom-stat-icon" style="background:#EEF2FF;">
+                <i class="fas fa-globe" style="color:#4F46E5;"></i>
+            </div>
+            <div>
+                <p style="font-size:22px;font-weight:800;color:#111827;margin:0;">{{ $totalCount }}</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Total Domains</p>
+            </div>
         </div>
-        <div class="dom-stat-card" style="border-color:#A7F3D0;">
-            <div class="dom-stat-label" style="color:#16A34A;">Active</div>
-            <div class="dom-stat-value" style="color:#16A34A;">{{ $activeCount }}</div>
-            <div class="dom-stat-sub">More than 30 days</div>
+        <div class="dom-stat">
+            <div class="dom-stat-icon" style="background:#D1FAE5;">
+                <i class="fas fa-circle-check" style="color:#059669;"></i>
+            </div>
+            <div>
+                <p style="font-size:22px;font-weight:800;color:#059669;margin:0;">{{ $activeCount }}</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Active</p>
+            </div>
         </div>
-        <div class="dom-stat-card" style="border-color:#FDE68A;">
-            <div class="dom-stat-label" style="color:#D97706;">Expiring Soon</div>
-            <div class="dom-stat-value" style="color:#D97706;">{{ $expiringSoonCount }}</div>
-            <div class="dom-stat-sub">Within 30 days — <strong style="color:#EA580C;">{{ $weekCount }}</strong> within 7</div>
+        <div class="dom-stat">
+            <div class="dom-stat-icon" style="background:#FEF3C7;">
+                <i class="fas fa-clock" style="color:#D97706;"></i>
+            </div>
+            <div>
+                <p style="font-size:22px;font-weight:800;color:#D97706;margin:0;">{{ $expiringSoonCount }}</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Expiring Soon <strong style="color:#EA580C;">· {{ $weekCount }} in 7d</strong></p>
+            </div>
         </div>
-        <div class="dom-stat-card" style="border-color:#FCA5A5;">
-            <div class="dom-stat-label" style="color:#DC2626;">Expired</div>
-            <div class="dom-stat-value" style="color:#DC2626;">{{ $expiredCount }}</div>
-            <div class="dom-stat-sub">Need renewal</div>
+        <div class="dom-stat">
+            <div class="dom-stat-icon" style="background:#FEE2E2;">
+                <i class="fas fa-circle-xmark" style="color:#DC2626;"></i>
+            </div>
+            <div>
+                <p style="font-size:22px;font-weight:800;color:#DC2626;margin:0;">{{ $expiredCount }}</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Expired</p>
+            </div>
         </div>
-        <div class="dom-stat-card" style="border-color:#C7D2FE;background:linear-gradient(135deg,#EEF2FF,#F5F3FF);">
-            <div class="dom-stat-label" style="color:#4F46E5;">Annual Spend</div>
-            <div class="dom-stat-value" style="color:#4F46E5;">{{ number_format($annualTotal, 3) }}</div>
-            <div class="dom-stat-sub">BHD / year (total)</div>
+        <div class="dom-stat">
+            <div class="dom-stat-icon" style="background:#EFF6FF;">
+                <i class="fas fa-coins" style="color:#2563EB;"></i>
+            </div>
+            <div>
+                <p style="font-size:22px;font-weight:800;color:#2563EB;margin:0;">{{ number_format($annualTotal, 3) }}</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Annual Spend (BHD)</p>
+            </div>
         </div>
     </div>
 
