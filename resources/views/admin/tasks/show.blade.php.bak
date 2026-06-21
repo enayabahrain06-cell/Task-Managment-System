@@ -732,28 +732,7 @@
 
         {{-- Task & Project Attachments --}}
         @php $allAttachments = $task->attachments->merge($task->project && !$task->project->is_quick ? $task->project->attachments->whereNull('task_id') : collect()); @endphp
-        <div x-data="{
-                open: false, att: null,
-                uploading: false,
-                files: [], dragging: false,
-                show(item) { this.att = item; this.open = true; },
-                close() { this.open = false; this.att = null; },
-                addFiles(e) {
-                    const inc = e.dataTransfer ? e.dataTransfer.files : e.target.files;
-                    const dt = new DataTransfer();
-                    this.files.forEach(f => dt.items.add(f));
-                    Array.from(inc).forEach(f => dt.items.add(f));
-                    this.files = Array.from(dt.files);
-                    this.$refs.attInput.files = dt.files;
-                },
-                removeFile(i) {
-                    const dt = new DataTransfer();
-                    this.files.splice(i,1);
-                    this.files.forEach(f => dt.items.add(f));
-                    this.$refs.attInput.files = dt.files;
-                },
-                fmt(b) { if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
-             }"
+        <div x-data="taskAttachmentViewer()"
              @keydown.escape.window="close()">
 
             <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
@@ -1075,39 +1054,7 @@
             .rte-color-swatch:hover { transform:scale(1.2);box-shadow:0 3px 10px rgba(0,0,0,.3); }
             .rte-color-swatch.selected { border-color:#fff;box-shadow:0 0 0 2px rgba(0,0,0,.5); }
         </style>
-        <div x-data="{
-                commentFile: '',
-                editorFocused: false,
-                dragging: false, dragCount: 0,
-                handleDrop(e) {
-                    this.dragCount = 0; this.dragging = false;
-                    const file = e.dataTransfer.files[0];
-                    if (!file) return;
-                    this.commentFile = file.name;
-                    const input = this.$refs.commentFileInput;
-                    const dt = new DataTransfer();
-                    dt.items.add(file);
-                    input.files = dt.files;
-                },
-                colorOpen: false, selectedColor: '#EF4444', savedRange: null,
-                saveRange() { const s=window.getSelection(); if(s.rangeCount) this.savedRange=s.getRangeAt(0).cloneRange(); },
-                restoreRange() { if(!this.savedRange) return; const s=window.getSelection(); s.removeAllRanges(); s.addRange(this.savedRange); },
-                cmd(c, v = null) { this.restoreRange(); this.$refs.editor.focus(); document.execCommand(c, false, v); },
-                setSize(v) { this.restoreRange(); this.$refs.editor.focus(); document.execCommand('fontSize', false, v); },
-                setColor(c) { this.colorOpen=false; this.selectedColor=c; this.$refs.editor.focus(); document.execCommand('foreColor', false, c); },
-                addLink() {
-                    const url = prompt('Enter URL:');
-                    if (!url) return;
-                    this.$refs.editor.focus();
-                    document.execCommand('createLink', false, url.startsWith('http') ? url : 'https://' + url);
-                },
-                submitComment(form) {
-                    const html = this.$refs.editor.innerHTML.trim();
-                    if (!html || html === '<br>') { this.$refs.editor.focus(); return; }
-                    this.$refs.bodyInput.value = html;
-                    form.submit();
-                }
-             }" style="background:#fff;border-radius:14px;border:1.5px solid #6366F1;box-shadow:0 4px 16px rgba(99,102,241,.08);padding:24px;">
+        <div x-data="taskCommentEditor()" style="background:#fff;border-radius:14px;border:1.5px solid #6366F1;box-shadow:0 4px 16px rgba(99,102,241,.08);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 4px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-comment" style="color:#6366F1;"></i> Add a Comment
             </h2>
@@ -1406,50 +1353,7 @@
                                  data-wa-message=”{{ $spWaMsg }}”
                                  data-wa-fetch-url=”{{ route('admin.approvals.whatsapp-customer') }}”
                                  data-wa-csrf-token=”{{ csrf_token() }}”
-                                 x-data=”{
-                                    open: false,
-                                    dropX: 0,
-                                    dropY: 0,
-                                    waPanel: false,
-                                    waPhone: '',
-                                    waSending: false,
-                                    waResult: null,
-                                    copied: false,
-                                    waFetchUrl: '',
-                                    waCsrfToken: '',
-                                    waMessage: '',
-                                    init() {
-                                        this.waMessage  = this.$el.dataset.waMessage;
-                                        this.waFetchUrl = this.$el.dataset.waFetchUrl;
-                                        this.waCsrfToken = this.$el.dataset.waCsrfToken;
-                                    },
-                                    openDrop(btn) {
-                                        const r = btn.getBoundingClientRect();
-                                        this.dropX = r.left;
-                                        this.dropY = r.bottom + 8;
-                                        this.waPanel = false;
-                                        this.waResult = null;
-                                        this.open = true;
-                                    },
-                                    async doWaSend() {
-                                        const digits = this.waPhone.replace(/\D/g,'');
-                                        if (!digits) return;
-                                        this.waSending = true;
-                                        this.waResult  = null;
-                                        try {
-                                            const res = await fetch(this.waFetchUrl, {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.waCsrfToken },
-                                                body: JSON.stringify({ phone: digits, message: this.waMessage })
-                                            });
-                                            this.waResult = await res.json();
-                                        } catch(e) {
-                                            this.waResult = { ok: false, message: 'Network error. Please try again.' };
-                                        } finally {
-                                            this.waSending = false;
-                                        }
-                                    }
-                                 }”
+                                 x-data=”waShareButton()”
                                  @scroll.window=”open=false”
                                  @keydown.escape.window=”open=false; waPanel=false;”>
 
@@ -1586,7 +1490,7 @@
                         </div>
                         @endif
                         @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','deadline_updated','auto_paused','social_posted','social_post_edited','attachment_added','attachment_deleted']))
-                        <p style="font-size:12px;color:#6B7280;background:#F9FAFB;padding:6px 10px;border-radius:8px;border-left:3px solid #E5E7EB;margin:6px 0 0;">"{{ $log->note }}"</p>
+                        <p style="font-size:12px;color:#6B7280;background:#F9FAFB;padding:6px 10px;border-radius:8px;border-left:3px solid #E5E7EB;margin:6px 0 0;">"{{ strip_tags($log->note) }}"</p>
                         @endif
                     </div>
                 </div>
@@ -2381,6 +2285,126 @@
 </div>{{-- /x-data taskApprovalPage --}}
 
 <script>
+function taskAttachmentViewer() {
+    return {
+        open: false, att: null,
+        uploading: false,
+        files: [], dragging: false,
+        show(item) { this.att = item; this.open = true; },
+        close() { this.open = false; this.att = null; },
+        addFiles(e) {
+            const inc = e.dataTransfer ? e.dataTransfer.files : e.target.files;
+            const dt = new DataTransfer();
+            this.files.forEach(f => dt.items.add(f));
+            Array.from(inc).forEach(f => dt.items.add(f));
+            this.files = Array.from(dt.files);
+            this.$refs.attInput.files = dt.files;
+        },
+        removeFile(i) {
+            const dt = new DataTransfer();
+            this.files.splice(i, 1);
+            this.files.forEach(f => dt.items.add(f));
+            this.$refs.attInput.files = dt.files;
+        },
+        fmt(b) {
+            if (b < 1024) return b + ' B';
+            if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+            return (b / 1048576).toFixed(1) + ' MB';
+        },
+    };
+}
+
+function taskCommentEditor() {
+    return {
+        commentFile: '',
+        editorFocused: false,
+        dragging: false, dragCount: 0,
+        handleDrop(e) {
+            this.dragCount = 0; this.dragging = false;
+            const file = e.dataTransfer.files[0];
+            if (!file) return;
+            this.commentFile = file.name;
+            const input = this.$refs.commentFileInput;
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            input.files = dt.files;
+        },
+        colorOpen: false, selectedColor: '#EF4444', savedRange: null,
+        saveRange() {
+            const s = window.getSelection();
+            if (s.rangeCount) this.savedRange = s.getRangeAt(0).cloneRange();
+        },
+        restoreRange() {
+            if (!this.savedRange) return;
+            const s = window.getSelection();
+            s.removeAllRanges();
+            s.addRange(this.savedRange);
+        },
+        cmd(c, v = null) { this.restoreRange(); this.$refs.editor.focus(); document.execCommand(c, false, v); },
+        setSize(v) { this.restoreRange(); this.$refs.editor.focus(); document.execCommand('fontSize', false, v); },
+        setColor(c) { this.colorOpen = false; this.selectedColor = c; this.$refs.editor.focus(); document.execCommand('foreColor', false, c); },
+        addLink() {
+            const url = prompt('Enter URL:');
+            if (!url) return;
+            this.$refs.editor.focus();
+            document.execCommand('createLink', false, url.startsWith('http') ? url : 'https://' + url);
+        },
+        submitComment(form) {
+            const html = this.$refs.editor.innerHTML.trim();
+            if (!html || html === '<br>') { this.$refs.editor.focus(); return; }
+            this.$refs.bodyInput.value = html;
+            form.submit();
+        },
+    };
+}
+
+function waShareButton() {
+    return {
+        open: false,
+        dropX: 0,
+        dropY: 0,
+        waPanel: false,
+        waPhone: '',
+        waSending: false,
+        waResult: null,
+        copied: false,
+        waFetchUrl: '',
+        waCsrfToken: '',
+        waMessage: '',
+        init() {
+            this.waMessage   = this.$el.dataset.waMessage;
+            this.waFetchUrl  = this.$el.dataset.waFetchUrl;
+            this.waCsrfToken = this.$el.dataset.waCsrfToken;
+        },
+        openDrop(btn) {
+            const r = btn.getBoundingClientRect();
+            this.dropX   = r.left;
+            this.dropY   = r.bottom + 8;
+            this.waPanel = false;
+            this.waResult = null;
+            this.open    = true;
+        },
+        async doWaSend() {
+            const digits = this.waPhone.replace(/\D/g, '');
+            if (!digits) return;
+            this.waSending = true;
+            this.waResult  = null;
+            try {
+                const res = await fetch(this.waFetchUrl, {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.waCsrfToken },
+                    body:    JSON.stringify({ phone: digits, message: this.waMessage }),
+                });
+                this.waResult = await res.json();
+            } catch (e) {
+                this.waResult = { ok: false, message: 'Network error. Please try again.' };
+            } finally {
+                this.waSending = false;
+            }
+        },
+    };
+}
+
 function taskApprovalPage() {
     return {
         approvalModal:          false,

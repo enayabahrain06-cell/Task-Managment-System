@@ -994,4 +994,51 @@ class UserController extends Controller
             ])->values(),
         ]);
     }
+
+    public function cloneUser(Request $request, User $user)
+    {
+        $request->validate([
+            'name'     => [
+                'required', 'string', 'max:255',
+                function ($attribute, $value, $fail) {
+                    if (User::whereRaw('LOWER(name) = ?', [strtolower($value)])->exists()) {
+                        $fail('A user with this name already exists.');
+                    }
+                },
+            ],
+            'email'    => [
+                'required', 'email', 'max:255',
+                function ($attribute, $value, $fail) {
+                    if (User::whereRaw('LOWER(email) = ?', [strtolower($value)])->exists()) {
+                        $fail('A user with this email address already exists.');
+                    }
+                },
+            ],
+            'username' => 'nullable|string|max:60|unique:users|alpha_dash',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $clone = User::create([
+            'name'        => $request->name,
+            'email'       => strtolower($request->email),
+            'username'    => $request->username ?: null,
+            'password'    => $request->password,
+            'role'        => $user->role,
+            'phone'       => $user->phone,
+            'job_title'   => $user->job_title,
+            'nationality' => $user->nationality,
+            'hourly_rate' => $user->hourly_rate,
+            'permissions' => $user->permissions,
+            'status'      => 'active',
+        ]);
+
+        AuditLogger::log(
+            'user.cloned',
+            $clone,
+            'Account cloned from ' . $user->name . ' → ' . $clone->name . ' (no tasks transferred)',
+            ['source_user_id' => $user->id, 'source_name' => $user->name, 'role' => $clone->role]
+        );
+
+        return redirect()->route('team.index')->with('success', '"' . $clone->name . '" created as a clone of ' . $user->name . ' (no tasks assigned).');
+    }
 }

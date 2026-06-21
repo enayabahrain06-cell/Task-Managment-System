@@ -45,6 +45,8 @@ class User extends Authenticatable
         'view_tasks'           => 'View Tasks',
         'submit_work'          => 'Submit Work',
         'manage_tasks'         => 'Create & Assign Tasks',
+        'delete_tasks'         => 'Delete Tasks',
+        'view_trash'           => 'Recycle Bin',
         'approve_tasks'        => 'Approve Submissions',
         'view_activity_log'    => 'Task Activity Log',
         'view_version_history' => 'Version History',
@@ -53,6 +55,7 @@ class User extends Authenticatable
         // Projects & Team
         'view_projects'        => 'View Projects',
         'manage_projects'      => 'Create & Manage Projects',
+        'delete_projects'      => 'Delete Projects',
         'view_team_tasks'      => 'View Team Tasks',
         'view_team'            => 'Team Directory',
 
@@ -169,6 +172,11 @@ class User extends Authenticatable
     public function projects(): BelongsToMany
     {
         return $this->belongsToMany(Project::class, 'project_user');
+    }
+
+    public function socialAccounts(): BelongsToMany
+    {
+        return $this->belongsToMany(SocialAccount::class, 'social_account_users')->withTimestamps();
     }
 }
 

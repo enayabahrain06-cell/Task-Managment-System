@@ -27,6 +27,7 @@
 
 @section('content')
 @php
+    $hideWaWeb = \App\Models\Setting::get('hide_wa_web_button', '0') === '1';
     $_tsBg    = ['draft'=>'#F3F4F6','assigned'=>'#EEF2FF','viewed'=>'#E0F2FE','in_progress'=>'#FFF7ED','submitted'=>'#F5F3FF','revision_requested'=>'#FEE2E2','approved'=>'#ECFDF5','delivered'=>'#ECFDF5','archived'=>'#F3F4F6'];
     $_tsColor = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1','in_progress'=>'#EA580C','submitted'=>'#7C3AED','revision_requested'=>'#DC2626','approved'=>'#16A34A','delivered'=>'#16A34A','archived'=>'#9CA3AF'];
     $_tsLabel = ['draft'=>'Draft','assigned'=>'Assigned','viewed'=>'Viewed','in_progress'=>'In Progress','submitted'=>'In Review','revision_requested'=>'Revision','approved'=>'Approved','delivered'=>'Delivered','archived'=>'Archived'];
@@ -515,7 +516,7 @@
             <div style="overflow-y:auto;flex:1;padding:20px 24px;">
 
                 {{-- Channel selector --}}
-                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px;">
+                <div style="display:grid;grid-template-columns:repeat({{ $hideWaWeb ? 2 : 3 }},1fr);gap:8px;margin-bottom:20px;">
                     <button type="button" @click="sendChannel='whatsapp'"
                             :style="sendChannel==='whatsapp'
                                 ? 'display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 6px;border-radius:12px;border:2px solid #25D366;background:#F0FDF4;color:#16A34A;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;'
@@ -523,6 +524,7 @@
                         <i class="fab fa-whatsapp" :style="sendChannel==='whatsapp' ? 'font-size:16px;color:#25D366;' : 'font-size:16px;color:#9CA3AF;'"></i>
                         WA API
                     </button>
+                    @unless($hideWaWeb)
                     <button type="button" @click="sendChannel='whatsapp_web'"
                             :style="sendChannel==='whatsapp_web'
                                 ? 'display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 6px;border-radius:12px;border:2px solid #128C7E;background:#F0FDFA;color:#0D9488;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;'
@@ -530,6 +532,7 @@
                         <i class="fab fa-whatsapp" :style="sendChannel==='whatsapp_web' ? 'font-size:16px;color:#128C7E;' : 'font-size:16px;color:#9CA3AF;'"></i>
                         WA Web
                     </button>
+                    @endunless
                     <button type="button" @click="sendChannel='email'"
                             :style="sendChannel==='email'
                                 ? 'display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 6px;border-radius:12px;border:2px solid #6366F1;background:#EEF2FF;color:#4F46E5;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;'
@@ -552,6 +555,7 @@
                             @endif
                         </div>
                     </template>
+                    @unless($hideWaWeb)
                     <template x-if="sendChannel==='whatsapp_web'">
                         <div style="display:flex;align-items:center;gap:8px;width:100%;">
                             <i class="fab fa-whatsapp" style="color:#128C7E;font-size:16px;flex-shrink:0;"></i>
@@ -564,6 +568,7 @@
                             @endif
                         </div>
                     </template>
+                    @endunless
                     <template x-if="sendChannel==='email'">
                         <div style="display:flex;align-items:center;gap:8px;width:100%;">
                             <i class="fas fa-envelope" style="color:#6366F1;font-size:14px;flex-shrink:0;"></i>
@@ -1856,29 +1861,19 @@ function _pdfDownload(buildFn, filename) {
     var cssText = Array.from(parsed.querySelectorAll('style')).map(function(s){ return s.textContent; }).join('\n');
     var docNode = parsed.querySelector('.doc');
     if (!docNode) { document.body.removeChild(overlay); return; }
-    var wrapper = document.createElement('div');
-    wrapper.style.cssText = 'position:fixed;top:0;left:0;width:1100px;background:#fff;z-index:99997;overflow:visible;';
-    var st = document.createElement('style');
-    st.textContent = cssText;
-    wrapper.appendChild(st);
-    wrapper.appendChild(docNode);
-    document.body.appendChild(wrapper);
-    setTimeout(function() {
-        html2pdf().set({
-            margin: 0,
-            filename: filename,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-        }).from(wrapper).save().then(function() {
-            document.body.removeChild(wrapper);
-            document.body.removeChild(overlay);
-        }).catch(function(e) {
-            document.body.removeChild(wrapper);
-            document.body.removeChild(overlay);
-            alert('PDF generation failed — ' + (e && e.message ? e.message : 'please try again.'));
-        });
-    }, 150);
+    var content = '<style>' + cssText + '</style>' + docNode.outerHTML;
+    html2pdf().set({
+        margin: 0,
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false, windowWidth: 1100 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    }).from(content, 'string').save().then(function() {
+        document.body.removeChild(overlay);
+    }).catch(function(e) {
+        document.body.removeChild(overlay);
+        alert('PDF generation failed — ' + (e && e.message ? e.message : 'please try again.'));
+    });
 }
 </script>
 @endpush

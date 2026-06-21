@@ -660,7 +660,9 @@ class ReportsController extends Controller
 
         // ── Customer Performance ──────────────────────────────────────────────
         $customerStats = Customer::withCount([
-                'projects',
+                'projects as projects_count' => fn($q) => $q
+                    ->where('is_quick', false)
+                    ->when($from, fn($tq) => $tq->where('projects.created_at', '>=', $from)),
                 'tasks as tasks_count' => fn($q) => $q
                     ->when($from, fn($tq) => $tq->where('tasks.created_at', '>=', $from)),
                 'tasks as completed_tasks_count' => fn($q) => $q
@@ -1009,6 +1011,10 @@ class ReportsController extends Controller
 
         // Customer Performance
         $customerStats = $userId ? collect() : Customer::withCount([
+                'projects as projects_count' => fn($q) => $q
+                    ->where('is_quick', false)
+                    ->when($dateFrom, fn($tq) => $tq->where('projects.created_at', '>=', $dateFrom))
+                    ->when($dateTo,   fn($tq) => $tq->where('projects.created_at', '<=', $dateTo)),
                 'tasks as tasks_count' => fn($q) => $q
                     ->when($dateFrom, fn($tq) => $tq->where('tasks.created_at', '>=', $dateFrom))
                     ->when($dateTo,   fn($tq) => $tq->where('tasks.created_at', '<=', $dateTo)),
@@ -1023,12 +1029,13 @@ class ReportsController extends Controller
             ->map(fn($c) => [
                 'id'        => $c->id,
                 'name'      => $c->name,
+                'projects'  => $c->projects_count,
                 'total'     => $c->tasks_count,
                 'completed' => $c->completed_tasks_count,
                 'rate'      => $c->tasks_count > 0 ? round($c->completed_tasks_count / $c->tasks_count * 100) : 0,
             ])
-            ->filter(fn($c) => $c['total'] > 0)
-            ->sortByDesc('total')
+            ->filter(fn($c) => $c['total'] > 0 || $c['projects'] > 0)
+            ->sortByDesc(fn($c) => $c['total'] + $c['projects'])
             ->take(8)
             ->values();
 

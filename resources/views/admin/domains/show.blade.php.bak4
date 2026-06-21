@@ -1,0 +1,537 @@
+@extends('layouts.app')
+@section('title', $domain->domain)
+
+@section('content')
+<style>
+.info-card  { background:#fff; border:1.5px solid #E5E7EB; border-radius:14px; padding:20px; }
+.info-label { font-size:11px; font-weight:600; color:#9CA3AF; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px; }
+.info-value { font-size:15px; font-weight:600; color:#111827; }
+.dom-status-active        { background:#ECFDF5; color:#16A34A; }
+.dom-status-expiring_soon { background:#FEF3C7; color:#D97706; }
+.dom-status-expired       { background:#FEE2E2; color:#DC2626; }
+@media (max-width:900px) { .show-grid { grid-template-columns:1fr !important; } }
+@keyframes dz-float {
+    0%,100% { transform:translateY(0); }
+    50%      { transform:translateY(-5px); }
+}
+@keyframes dz-bounce {
+    0%,100% { transform:translateY(0) scale(1); }
+    40%      { transform:translateY(-9px) scale(1.18); }
+    60%      { transform:translateY(-6px) scale(1.12); }
+}
+.dz-icon-idle   { font-size:28px; color:#A5B4FC; margin-bottom:8px; display:block; animation:dz-float 2s ease-in-out infinite; transition:color .2s; }
+.dz-icon-active { font-size:28px; color:#6366F1; margin-bottom:8px; display:block; animation:dz-bounce .55s ease-in-out infinite; filter:drop-shadow(0 4px 8px #818CF855); }
+</style>
+
+@php
+    $status = $domain->status;
+    $days   = $domain->days_until_expiry;
+    $billingCycles = \App\Models\Domain::billingCycleOptions();
+@endphp
+
+<div x-data="{ editModal: false, deleteModal: false, showPass: false }">
+
+    {{-- Back --}}
+    <a href="{{ route('admin.domains.index') }}"
+       style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#6B7280;text-decoration:none;margin-bottom:20px;"
+       onmouseover="this.style.color='#374151'" onmouseout="this.style.color='#6B7280'">
+        <i class="fas fa-arrow-left" style="font-size:11px;"></i> Back to Domains
+    </a>
+
+    {{-- Flash --}}
+    @if(session('success'))
+    <div style="background:#ECFDF5;border:1px solid #A7F3D0;color:#16A34A;padding:12px 16px;border-radius:10px;margin-bottom:20px;font-size:13px;display:flex;align-items:center;gap:8px;">
+        <i class="fas fa-circle-check"></i> {{ session('success') }}
+    </div>
+    @endif
+
+    {{-- Header --}}
+    <div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:16px;padding:24px;margin-bottom:20px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+            <div style="display:flex;align-items:center;gap:16px;">
+                <div style="width:56px;height:56px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);border-radius:16px;display:flex;align-items:center;justify-content:center;border:1.5px solid #C7D2FE;flex-shrink:0;">
+                    <i class="fas fa-globe" style="font-size:22px;color:#6366F1;"></i>
+                </div>
+                <div>
+                    <h1 style="font-size:22px;font-weight:800;color:#111827;margin:0 0 6px;">{{ $domain->domain }}</h1>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;"
+                              class="dom-status-{{ $status }}">
+                            @if($status==='active') <i class="fas fa-circle" style="font-size:7px;"></i> Active
+                            @elseif($status==='expiring_soon') <i class="fas fa-clock" style="font-size:9px;"></i> Expiring Soon
+                            @else <i class="fas fa-triangle-exclamation" style="font-size:9px;"></i> Expired
+                            @endif
+                        </span>
+                        @if($domain->customer)
+                        <a href="{{ route('admin.customers.show', $domain->customer_id) }}"
+                           style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#EEF2FF;color:#4F46E5;text-decoration:none;">
+                            <i class="fas fa-building" style="font-size:9px;"></i>
+                            {{ $domain->customer->name }}
+                        </a>
+                        @endif
+                        @if($domain->registrar)
+                        <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;">
+                            <i class="fas fa-server" style="font-size:9px;"></i>
+                            {{ $domain->registrar }}
+                        </span>
+                        @endif
+                        @if($domain->auto_renew)
+                        <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#ECFDF5;color:#16A34A;">
+                            <i class="fas fa-rotate" style="font-size:9px;"></i> Auto-renew ON
+                        </span>
+                        @else
+                        <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#FEF3C7;color:#D97706;">
+                            <i class="fas fa-hand" style="font-size:9px;"></i> Manual Renewal
+                        </span>
+                        @endif
+                    </div>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button @click="editModal = true"
+                        style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
+                    <i class="fas fa-pen" style="font-size:11px;"></i> Edit
+                </button>
+                <button @click="deleteModal = true"
+                        style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:#FEE2E2;color:#DC2626;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
+                    <i class="fas fa-trash" style="font-size:11px;"></i> Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Expiry Banner --}}
+    @if($domain->expires_at)
+    @php
+        $bannerBg    = $status==='expired'      ? '#FEE2E2' : ($status==='expiring_soon' ? '#FFF7ED' : '#F0FDF4');
+        $bannerBrd   = $status==='expired'      ? '#FCA5A5' : ($status==='expiring_soon' ? '#FED7AA' : '#BBF7D0');
+        $bannerColor = $status==='expired'      ? '#DC2626' : ($status==='expiring_soon' ? '#EA580C' : '#16A34A');
+        $bannerIcon  = $status==='expired'      ? 'fa-triangle-exclamation' : ($status==='expiring_soon' ? 'fa-clock' : 'fa-circle-check');
+        $bannerMsg   = $status==='expired'
+            ? 'This domain expired ' . abs($days) . ' day' . (abs($days)!==1?'s':'') . ' ago — renewal required'
+            : ($days === 0 ? 'This domain expires TODAY' : ($days === 1 ? 'This domain expires tomorrow' : 'This domain expires in ' . $days . ' day' . ($days!==1?'s':'')));
+    @endphp
+    <div style="background:{{ $bannerBg }};border:1.5px solid {{ $bannerBrd }};border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+        <i class="fas {{ $bannerIcon }}" style="color:{{ $bannerColor }};font-size:18px;flex-shrink:0;"></i>
+        <div>
+            <span style="font-size:14px;font-weight:700;color:{{ $bannerColor }};">{{ $bannerMsg }}</span>
+            <span style="font-size:13px;color:{{ $bannerColor }};opacity:.8;margin-left:8px;">{{ $domain->expires_at->format('d M Y') }}</span>
+        </div>
+    </div>
+    @endif
+
+    {{-- Stats Row --}}
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;">
+        <div class="info-card" style="text-align:center;">
+            <div style="font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;margin-bottom:4px;">Annual Cost</div>
+            @if($domain->cost > 0)
+            <div style="font-size:26px;font-weight:800;color:#4F46E5;">{{ number_format($domain->annual_cost, 3) }}</div>
+            <div style="font-size:12px;color:#9CA3AF;">{{ $domain->currency }} / year</div>
+            @if($domain->billing_cycle !== 'annual')
+            <div style="font-size:11px;color:#9CA3AF;margin-top:2px;">{{ number_format($domain->cost, 3) }} {{ $domain->currency }} / {{ $billingCycles[$domain->billing_cycle] ?? $domain->billing_cycle }}</div>
+            @endif
+            @else
+            <div style="font-size:18px;font-weight:700;color:#9CA3AF;">—</div>
+            @endif
+        </div>
+        <div class="info-card" style="text-align:center;">
+            <div style="font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;margin-bottom:4px;">Days Until Expiry</div>
+            @if($days !== null)
+            <div style="font-size:26px;font-weight:800;color:{{ $status==='expired' ? '#DC2626' : ($status==='expiring_soon' ? '#D97706' : '#16A34A') }};">
+                {{ $days < 0 ? abs($days) : $days }}
+            </div>
+            <div style="font-size:12px;color:#9CA3AF;">{{ $days < 0 ? 'days overdue' : 'days remaining' }}</div>
+            @else
+            <div style="font-size:18px;font-weight:700;color:#9CA3AF;">—</div>
+            <div style="font-size:12px;color:#9CA3AF;">No expiry date set</div>
+            @endif
+        </div>
+        <div class="info-card" style="text-align:center;">
+            <div style="font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;margin-bottom:4px;">Renewal Type</div>
+            @if($domain->auto_renew)
+            <div style="font-size:20px;font-weight:800;color:#16A34A;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;">
+                <i class="fas fa-rotate" style="font-size:18px;"></i> Auto
+            </div>
+            <div style="font-size:12px;color:#9CA3AF;">Renews automatically</div>
+            @else
+            <div style="font-size:20px;font-weight:800;color:#D97706;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;">
+                <i class="fas fa-hand" style="font-size:16px;"></i> Manual
+            </div>
+            <div style="font-size:12px;color:#9CA3AF;">Requires manual action</div>
+            @endif
+        </div>
+    </div>
+
+    {{-- Main Layout --}}
+    <div class="show-grid" style="display:grid;grid-template-columns:1.1fr .9fr;gap:20px;">
+
+        {{-- Left Column --}}
+        <div style="display:flex;flex-direction:column;gap:16px;">
+
+            {{-- Domain Details --}}
+            <div class="info-card">
+                <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+                    <i class="fas fa-circle-info" style="color:#6366F1;font-size:13px;"></i> Domain Details
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div>
+                        <div class="info-label">Customer</div>
+                        @if($domain->customer)
+                        <a href="{{ route('admin.customers.show', $domain->customer_id) }}"
+                           style="font-size:15px;font-weight:600;color:#4F46E5;text-decoration:none;">
+                            {{ $domain->customer->name }}
+                        </a>
+                        @if($domain->customer->company)
+                        <div style="font-size:12px;color:#9CA3AF;">{{ $domain->customer->company }}</div>
+                        @endif
+                        @else
+                        <div class="info-value" style="color:#9CA3AF;">Not assigned</div>
+                        @endif
+                    </div>
+                    <div>
+                        <div class="info-label">Registrar</div>
+                        <div class="info-value">{{ $domain->registrar ?: '—' }}</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Registered On</div>
+                        <div class="info-value">{{ $domain->registered_at ? $domain->registered_at->format('d M Y') : '—' }}</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Expires On</div>
+                        <div class="info-value" style="color:{{ $status==='expired' ? '#DC2626' : ($status==='expiring_soon' ? '#D97706' : '#111827') }};">
+                            {{ $domain->expires_at ? $domain->expires_at->format('d M Y') : '—' }}
+                        </div>
+                    </div>
+                    <div>
+                        <div class="info-label">Billing Cycle</div>
+                        <div class="info-value">{{ $billingCycles[$domain->billing_cycle] ?? $domain->billing_cycle }}</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Hosting Provider</div>
+                        <div class="info-value">{{ $domain->hosting_provider ?: '—' }}</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Responsible Person</div>
+                        @if($domain->responsibleUser)
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#4F46E5);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <span style="font-size:11px;font-weight:700;color:#fff;">{{ strtoupper(substr($domain->responsibleUser->name,0,1)) }}</span>
+                            </div>
+                            <span class="info-value">{{ $domain->responsibleUser->name }}</span>
+                        </div>
+                        @else
+                        <div class="info-value" style="color:#9CA3AF;">Not assigned</div>
+                        @endif
+                    </div>
+                    <div>
+                        <div class="info-label">Bill To</div>
+                        <div class="info-value">{{ $domain->billing_to ?: '—' }}</div>
+                    </div>
+                </div>
+                @if($domain->creator)
+                <div style="margin-top:16px;padding-top:16px;border-top:1px solid #F3F4F6;font-size:12px;color:#9CA3AF;">
+                    Added by <strong style="color:#6B7280;">{{ $domain->creator->name }}</strong> on {{ $domain->created_at->format('d M Y') }}
+                </div>
+                @endif
+            </div>
+
+            {{-- Nameservers --}}
+            @if($domain->nameservers && count($domain->nameservers))
+            <div class="info-card">
+                <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:14px;display:flex;align-items:center;gap:8px;">
+                    <i class="fas fa-network-wired" style="color:#6366F1;font-size:13px;"></i> Nameservers
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    @foreach($domain->nameservers as $ns)
+                    <div style="display:flex;align-items:center;gap:10px;padding:9px 14px;background:#F9FAFB;border-radius:8px;border:1px solid #E5E7EB;">
+                        <i class="fas fa-server" style="color:#9CA3AF;font-size:12px;flex-shrink:0;"></i>
+                        <code style="font-size:13px;font-weight:600;color:#374151;font-family:monospace;">{{ $ns }}</code>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
+            {{-- Notes --}}
+            @if($domain->notes)
+            <div class="info-card">
+                <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+                    <i class="fas fa-sticky-note" style="color:#6366F1;font-size:13px;"></i> Notes
+                </div>
+                <div style="font-size:14px;color:#374151;line-height:1.7;white-space:pre-line;">{{ $domain->notes }}</div>
+            </div>
+            @endif
+        </div>
+
+        {{-- Right Column --}}
+        <div style="display:flex;flex-direction:column;gap:16px;">
+
+            {{-- Cost Card --}}
+            <div class="info-card" style="background:linear-gradient(135deg,#EEF2FF,#F5F3FF);border-color:#C7D2FE;">
+                <div style="font-size:13px;font-weight:700;color:#4F46E5;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+                    <i class="fas fa-coins" style="font-size:13px;"></i> Billing Info
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div style="background:#fff;border-radius:10px;padding:12px;border:1px solid #E0E7FF;">
+                        <div style="font-size:11px;color:#6B7280;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Total Cost</div>
+                        <div style="font-size:20px;font-weight:800;color:#4F46E5;">{{ number_format($domain->cost, 3) }}</div>
+                        <div style="font-size:11px;color:#6B7280;">{{ $domain->currency }} / {{ $billingCycles[$domain->billing_cycle] ?? $domain->billing_cycle }}</div>
+                    </div>
+                    <div style="background:#fff;border-radius:10px;padding:12px;border:1px solid #E0E7FF;">
+                        <div style="font-size:11px;color:#6B7280;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Annual Equivalent</div>
+                        <div style="font-size:20px;font-weight:800;color:#4F46E5;">{{ number_format($domain->annual_cost, 3) }}</div>
+                        <div style="font-size:11px;color:#6B7280;">{{ $domain->currency }} / year</div>
+                    </div>
+                </div>
+                @if($domain->billing_to)
+                <div style="margin-top:12px;padding:10px 14px;background:#fff;border-radius:10px;border:1px solid #E0E7FF;">
+                    <div style="font-size:11px;color:#6B7280;font-weight:600;text-transform:uppercase;margin-bottom:3px;">Invoice / Bill To</div>
+                    <div style="font-size:14px;font-weight:700;color:#374151;">{{ $domain->billing_to }}</div>
+                </div>
+                @endif
+            </div>
+
+            {{-- Credentials --}}
+            @if($domain->login_url || $domain->username || $domain->password)
+            <div class="info-card">
+                <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:14px;display:flex;align-items:center;gap:8px;">
+                    <i class="fas fa-key" style="color:#6366F1;font-size:13px;"></i> Registrar Credentials
+                </div>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    @if($domain->login_url)
+                    <div>
+                        <div class="info-label">Login URL</div>
+                        <a href="{{ $domain->login_url }}" target="_blank" rel="noopener"
+                           style="font-size:13px;font-weight:600;color:#4F46E5;text-decoration:none;word-break:break-all;"
+                           onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+                            <i class="fas fa-external-link" style="font-size:10px;margin-right:4px;"></i>{{ $domain->login_url }}
+                        </a>
+                    </div>
+                    @endif
+                    @if($domain->username)
+                    <div>
+                        <div class="info-label">Username</div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <code style="font-size:13px;font-weight:600;color:#374151;font-family:monospace;background:#F9FAFB;padding:4px 10px;border-radius:6px;border:1px solid #E5E7EB;">{{ $domain->username }}</code>
+                            <button onclick="navigator.clipboard.writeText('{{ addslashes($domain->username) }}').then(() => this.innerHTML = '<i class=\'fas fa-check\' style=\'color:#16A34A;\'></i>')"
+                                    style="padding:5px 10px;background:#F3F4F6;border:none;border-radius:6px;cursor:pointer;font-size:11px;color:#6B7280;"
+                                    title="Copy">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    @endif
+                    @if($domain->password)
+                    <div>
+                        <div class="info-label">Password</div>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <code x-text="showPass ? '{{ addslashes($domain->decrypted_password) }}' : '••••••••••'"
+                                  style="font-size:13px;font-weight:600;color:#374151;font-family:monospace;background:#F9FAFB;padding:4px 10px;border-radius:6px;border:1px solid #E5E7EB;flex:1;word-break:break-all;"></code>
+                            <button @click="showPass = !showPass"
+                                    style="padding:5px 10px;background:#F3F4F6;border:none;border-radius:6px;cursor:pointer;font-size:11px;color:#6B7280;"
+                                    title="Toggle visibility">
+                                <i :class="showPass ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                            </button>
+                            <button onclick="navigator.clipboard.writeText('{{ addslashes($domain->decrypted_password) }}').then(() => this.innerHTML = '<i class=\'fas fa-check\' style=\'color:#16A34A;\'></i>')"
+                                    style="padding:5px 10px;background:#F3F4F6;border:none;border-radius:6px;cursor:pointer;font-size:11px;color:#6B7280;"
+                                    title="Copy">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    @endif
+                </div>
+            </div>
+            @endif
+
+            {{-- Quick Actions --}}
+            <div class="info-card">
+                <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:14px;display:flex;align-items:center;gap:8px;">
+                    <i class="fas fa-bolt" style="color:#6366F1;font-size:13px;"></i> Quick Actions
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    @if($domain->login_url)
+                    <a href="{{ $domain->login_url }}" target="_blank" rel="noopener"
+                       style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:10px;text-decoration:none;color:#374151;font-size:13px;font-weight:600;"
+                       onmouseover="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE';this.style.color='#4F46E5'" onmouseout="this.style.background='#F9FAFB';this.style.borderColor='#E5E7EB';this.style.color='#374151'">
+                        <i class="fas fa-arrow-up-right-from-square" style="font-size:12px;"></i>
+                        Open Registrar Panel
+                    </a>
+                    @endif
+                    @if($domain->customer)
+                    <a href="{{ route('admin.customers.show', $domain->customer_id) }}"
+                       style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:10px;text-decoration:none;color:#374151;font-size:13px;font-weight:600;"
+                       onmouseover="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE';this.style.color='#4F46E5'" onmouseout="this.style.background='#F9FAFB';this.style.borderColor='#E5E7EB';this.style.color='#374151'">
+                        <i class="fas fa-building" style="font-size:12px;"></i>
+                        View Customer: {{ $domain->customer->name }}
+                    </a>
+                    @endif
+                    <button @click="editModal = true"
+                            style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:10px;text-decoration:none;color:#374151;font-size:13px;font-weight:600;cursor:pointer;width:100%;text-align:left;"
+                            onmouseover="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE';this.style.color='#4F46E5'" onmouseout="this.style.background='#F9FAFB';this.style.borderColor='#E5E7EB';this.style.color='#374151'">
+                        <i class="fas fa-pen" style="font-size:12px;"></i>
+                        Edit Domain
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Attachments --}}
+    <div class="info-card" style="margin-top:20px;" x-data="domainAttach()">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <div style="font-size:13px;font-weight:700;color:#374151;display:flex;align-items:center;gap:8px;">
+                <i class="fas fa-paperclip" style="color:#6366F1;font-size:13px;"></i>
+                Billing Attachments
+                @if($domain->attachments->isNotEmpty())
+                <span style="background:#EEF2FF;color:#4F46E5;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;">{{ $domain->attachments->count() }}</span>
+                @endif
+            </div>
+        </div>
+
+        {{-- Existing files --}}
+        @if($domain->attachments->isNotEmpty())
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
+            @foreach($domain->attachments as $att)
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;">
+                <div style="width:36px;height:36px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas {{ $att->icon_class }}" style="color:#6366F1;font-size:15px;"></i>
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:13px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $att->original_name }}</div>
+                    <div style="font-size:11px;color:#9CA3AF;margin-top:1px;">
+                        {{ $att->formatted_size }} &bull; {{ $att->created_at->format('d M Y') }}
+                        @if($att->uploader) &bull; {{ $att->uploader->name }} @endif
+                    </div>
+                </div>
+                <a href="{{ route('admin.domains.attachments.download', [$domain, $att]) }}"
+                   style="padding:6px 12px;background:#EEF2FF;color:#4F46E5;border-radius:7px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;display:flex;align-items:center;gap:5px;"
+                   onmouseover="this.style.background='#C7D2FE'" onmouseout="this.style.background='#EEF2FF'">
+                    <i class="fas fa-download" style="font-size:10px;"></i> Download
+                </a>
+                <form method="POST" action="{{ route('admin.domains.attachments.destroy', [$domain, $att]) }}" onsubmit="return confirm('Delete this attachment?')">
+                    @csrf @method('DELETE')
+                    <button type="submit" style="padding:6px 10px;background:#FEE2E2;color:#DC2626;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;"
+                            onmouseover="this.style.background='#FECACA'" onmouseout="this.style.background='#FEE2E2'">
+                        <i class="fas fa-trash" style="font-size:10px;"></i>
+                    </button>
+                </form>
+            </div>
+            @endforeach
+        </div>
+        @endif
+
+        {{-- Upload form --}}
+        <form method="POST" action="{{ route('admin.domains.attachments.store', $domain) }}" enctype="multipart/form-data" id="attForm">
+            @csrf
+            <input type="file" id="attFileInput" name="files[]" multiple style="display:none;" @change="onFiles($event.target.files)">
+            <div :style="dragover
+                     ? 'border:2px dashed #6366F1;border-radius:12px;padding:24px;text-align:center;cursor:pointer;background:#EEF2FF;transition:border-color .2s,background .2s,box-shadow .2s;box-shadow:0 0 0 4px #E0E7FF;'
+                     : 'border:2px dashed #C7D2FE;border-radius:12px;padding:24px;text-align:center;cursor:pointer;background:#FAFBFF;transition:border-color .2s,background .2s,box-shadow .2s;box-shadow:none;'"
+                 @dragover.prevent="dragover=true"
+                 @dragleave.prevent="dragover=false"
+                 @drop.prevent="onDrop($event);dragover=false"
+                 @click="document.getElementById('attFileInput').click()">
+                <i class="fas fa-cloud-arrow-up" :class="dragover ? 'dz-icon-active' : 'dz-icon-idle'"></i>
+                <p style="font-size:13px;font-weight:600;margin:0 0 4px;transition:color .2s;" :style="dragover ? 'color:#4F46E5;' : 'color:#6366F1;'">Drop files here or click to browse</p>
+                <p style="font-size:11px;color:#9CA3AF;margin:0;">PDF, images, Word, Excel — max 20 MB each</p>
+            </div>
+
+            {{-- Staged chips --}}
+            <div x-show="staged.length" x-cloak style="margin-top:12px;flex-wrap:wrap;gap:8px;" :style="staged.length ? 'display:flex' : 'display:none'">
+                <template x-for="(f,i) in staged" :key="i">
+                    <div style="display:flex;align-items:center;gap:7px;padding:5px 10px 5px 8px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:20px;">
+                        <i class="fas fa-file" style="color:#6366F1;font-size:11px;"></i>
+                        <span style="font-size:12px;font-weight:600;color:#374151;" x-text="f.name"></span>
+                        <span style="font-size:10px;color:#9CA3AF;" x-text="fmtSize(f.size)"></span>
+                        <button type="button" @click="remove(i)" style="width:16px;height:16px;border-radius:50%;background:#C7D2FE;border:none;cursor:pointer;font-size:10px;color:#4F46E5;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;">×</button>
+                    </div>
+                </template>
+            </div>
+
+            <div x-show="staged.length" x-cloak style="margin-top:12px;justify-content:flex-end;" :style="staged.length ? 'display:flex' : 'display:none'">
+                <button type="submit" style="padding:9px 22px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;">
+                    <i class="fas fa-upload" style="font-size:12px;"></i>
+                    Upload <span x-text="staged.length + ' file' + (staged.length>1?'s':'')"></span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {{-- Edit Modal --}}
+    <div x-show="editModal" style="display:none;position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px 16px;overflow-y:auto;" x-cloak>
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,.4);" @click="editModal=false"></div>
+        <div style="position:relative;background:#fff;border-radius:16px;padding:28px;width:640px;max-width:100%;z-index:1;max-height:90vh;overflow-y:auto;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+                <h3 style="font-size:18px;font-weight:700;color:#111827;margin:0;">Edit Domain</h3>
+                <button @click="editModal=false" style="width:32px;height:32px;background:#F3F4F6;border:none;border-radius:8px;cursor:pointer;font-size:16px;color:#6B7280;">✕</button>
+            </div>
+            <form method="POST" action="{{ route('admin.domains.update', $domain) }}">
+                @csrf @method('PUT')
+                @php
+                    $customers  = \App\Models\Customer::orderBy('name')->get(['id','name','company']);
+                    $staffUsers = \App\Models\User::whereIn('role',['admin','manager','user'])->where('status','active')->orderBy('name')->get(['id','name','email','role']);
+                @endphp
+                @include('admin.domains._form', ['domain' => $domain])
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px;">
+                    <button type="button" @click="editModal=false" style="padding:10px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
+                    <button type="submit" style="padding:10px 24px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- Delete Modal --}}
+    <div x-show="deleteModal" style="display:none;position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;" x-cloak>
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,.4);" @click="deleteModal=false"></div>
+        <div style="position:relative;background:#fff;border-radius:16px;padding:28px;width:420px;max-width:90vw;z-index:1;">
+            <div style="width:48px;height:48px;background:#FEE2E2;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <i class="fas fa-trash" style="color:#DC2626;font-size:20px;"></i>
+            </div>
+            <h3 style="font-size:17px;font-weight:700;color:#111827;text-align:center;margin:0 0 8px;">Delete Domain</h3>
+            <p style="font-size:13px;color:#6B7280;text-align:center;margin:0 0 20px;">
+                This will permanently delete <strong>{{ $domain->domain }}</strong>. This cannot be undone.
+            </p>
+            <form method="POST" action="{{ route('admin.domains.destroy', $domain) }}">
+                @csrf @method('DELETE')
+                <div style="display:flex;gap:8px;justify-content:center;">
+                    <button type="button" @click="deleteModal=false" style="padding:10px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
+                    <button type="submit" style="padding:10px 20px;background:#DC2626;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+<script>
+function domainAttach() {
+    return {
+        staged: [],
+        dragover: false,
+        onFiles(files) {
+            Array.from(files).forEach(f => this.staged.push(f));
+            this.syncInput();
+        },
+        onDrop(e) {
+            this.onFiles(e.dataTransfer.files);
+        },
+        remove(i) {
+            this.staged.splice(i, 1);
+            this.syncInput();
+        },
+        syncInput() {
+            const dt = new DataTransfer();
+            this.staged.forEach(f => dt.items.add(f));
+            document.getElementById('attFileInput').files = dt.files;
+        },
+        fmtSize(b) {
+            if (b >= 1048576) return (b/1048576).toFixed(1)+' MB';
+            if (b >= 1024)    return (b/1024).toFixed(1)+' KB';
+            return b+' B';
+        }
+    };
+}
+</script>
+@endsection

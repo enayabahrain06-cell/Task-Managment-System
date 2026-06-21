@@ -34,11 +34,35 @@
       "Bash(sudo service apache2 restart)",
       "Bash(service apache2 *)",
       "Bash(awk -F: '$2 ~ /^<div/ || $2 ~ /x-data/')",
-      "Bash(xargs -I{} grep -l \"pushAgent\" storage/framework/views/{})"
+      "Bash(xargs -I{} grep -l \"pushAgent\" storage/framework/views/{})",
+      "Bash(cp /var/www/Task-Managment-System/resources/views/layouts/app.blade.php /var/www/Task-Managment-System/resources/views/layouts/app.blade.php.bak)",
+      "Bash(cp /var/www/Task-Managment-System/resources/views/admin/tasks/show.blade.php /var/www/Task-Managment-System/resources/views/admin/tasks/show.blade.php.bak)",
+      "Bash(cp /var/www/Task-Managment-System/app/Http/Controllers/Admin/SubscriptionController.php /var/www/Task-Managment-System/app/Http/Controllers/Admin/SubscriptionController.php.bak)",
+      "Bash(php -l /var/www/Task-Managment-System/app/Http/Controllers/Admin/SubscriptionController.php)",
+      "Bash(grep -n \"timeline\\\\|Timeline\\\\|notes\\\\|content\\\\|description\\\\|submission\\\\|{!!\\\\|{{ \\\\$\" /var/www/Task-Managment-System/resources/views/user/tasks/show.blade.php)",
+      "Bash(grep -n 'submission_note\\\\|metadata\\\\|log\\\\->metadata\\\\|$log' /var/www/Task-Managment-System/resources/views/user/tasks/show.blade.php)",
+      "Bash(grep -n 'submission_note\\\\|$meta\\\\[' /var/www/Task-Managment-System/resources/views/user/tasks/show.blade.php)",
+      "Bash(cp /var/www/Task-Managment-System/resources/views/social/show.blade.php /var/www/Task-Managment-System/resources/views/social/show.blade.php.bak)",
+      "Bash(cp /var/www/Task-Managment-System/resources/views/user/dashboard.blade.php /var/www/Task-Managment-System/resources/views/user/dashboard.blade.php.bak)",
+      "Bash(cp /var/www/Task-Managment-System/resources/views/admin/approvals/index.blade.php /var/www/Task-Managment-System/resources/views/admin/approvals/index.blade.php.bak)",
+      "Bash(cp /var/www/Task-Managment-System/resources/views/admin/tasks/show.blade.php /var/www/Task-Managment-System/resources/views/admin/tasks/show.blade.php.bak2)",
+      "Bash(cp /var/www/Task-Managment-System/resources/views/admin/reports/index.blade.php /var/www/Task-Managment-System/resources/views/admin/reports/index.blade.php.bak7 2>/dev/null; echo \"backed up\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost/admin/domains/1)",
+      "Bash(php -l /var/www/Task-Managment-System/app/Http/Controllers/Admin/ReportsController.php)",
+      "Bash(grep -n '^\\\\s*$from\\\\s*=\\\\|$dateFrom\\\\s*=' /var/www/Task-Managment-System/app/Http/Controllers/Admin/ReportsController.php)",
+      "Bash(grep \"= \\\\$\\\\|filled\\\\|carbon\\\\|parse\\\\|Carbon\")",
+      "Bash(grep -n '$from\\\\b' /var/www/Task-Managment-System/app/Http/Controllers/Admin/ReportsController.php)",
+      "Bash(grep '= $request\\\\|Carbon\\\\|parse')",
+      "Bash(grep -n '^\\\\s*$from\\\\b\\\\|= Carbon\\\\|startOfMonth\\\\|request.*from\\\\|request.*date' /var/www/Task-Managment-System/app/Http/Controllers/Admin/ReportsController.php)",
+      "Bash(grep -n 'function index\\\\|function summarize\\\\|$from\\\\s*=' /var/www/Task-Managment-System/app/Http/Controllers/Admin/ReportsController.php)"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory",
-      "/var/www/Task-Managment-System/resources/views/admin/customers"
+      "/var/www/Task-Managment-System/resources/views/admin/customers",
+      "/var/www/Task-Managment-System/resources/views/layouts",
+      "/var/www/Task-Managment-System/resources/views/admin/tasks",
+      "/var/www/Task-Managment-System/app/Http/Controllers/Admin",
+      "/var/www/Task-Managment-System/resources/views/admin/reports"
     ]
   }
 }

@@ -16,6 +16,39 @@ use Illuminate\Http\Request;
 
 class AgentController extends Controller
 {
+    public function reportPdf()
+    {
+        $user    = auth()->user();
+        $sc      = $this->scope($user->id);
+        $isAdmin = in_array($user->role, ['admin', 'manager']);
+        $done    = ['delivered', 'approved', 'archived'];
+        $active  = ['assigned', 'viewed', 'in_progress', 'paused', 'submitted', 'revision_requested'];
+
+        $total      = Task::where($sc)->count();
+        $completed  = Task::where($sc)->whereIn('status', ['delivered', 'approved'])->count();
+        $overdue    = Task::where($sc)->whereIn('status', $active)->where('deadline', '<', now())->count();
+        $inProgress = Task::where($sc)->whereIn('status', ['in_progress', 'paused'])->count();
+        $submitted  = Task::where($sc)->whereIn('status', ['submitted', 'revision_requested'])->count();
+        $rate       = $total > 0 ? round($completed / $total * 100) : 0;
+
+        $overdueTasks = Task::where($sc)->whereIn('status', $active)->where('deadline', '<', now())
+            ->with('project:id,name')->orderBy('deadline')->limit(20)
+            ->get(['id', 'title', 'status', 'deadline', 'project_id']);
+
+        $inProgressTasks = Task::where($sc)->whereIn('status', ['in_progress', 'paused'])
+            ->with('project:id,name')->orderBy('deadline')->limit(20)
+            ->get(['id', 'title', 'status', 'deadline', 'project_id']);
+
+        $upcomingTasks = Task::where($sc)->whereNotIn('status', $done)
+            ->whereBetween('deadline', [now(), now()->addDays(14)])
+            ->with('project:id,name')->orderBy('deadline')->limit(20)
+            ->get(['id', 'title', 'status', 'deadline', 'project_id']);
+
+        $stats = compact('total', 'completed', 'overdue', 'inProgress', 'submitted', 'rate');
+
+        return view('agent.report-pdf', compact('user', 'stats', 'overdueTasks', 'inProgressTasks', 'upcomingTasks'));
+    }
+
     public function badge(): JsonResponse
     {
         $user    = auth()->user();
@@ -708,10 +741,11 @@ class AgentController extends Controller
         $reportUrl = $isAdmin ? route('admin.reports.index') : route('user.reports.index');
 
         return response()->json([
-            'reply'         => "📊 Here's your report snapshot. Open the Reports page and click **Export PDF** to download a full PDF report:",
+            'reply'         => "📊 Here's your report snapshot. Click below to download it as a PDF:",
             'type'          => 'stats',
             'items'         => $items,
-            'action'        => ['label' => '📄 Open Reports & Export PDF', 'url' => $reportUrl],
+            'action'        => ['label' => '📄 Download PDF Report', 'url' => route('agent.report-pdf')],
+            'extra_action'  => ['label' => '📈 Open Full Reports →', 'url' => $reportUrl],
             'quick_replies' => ['stats', 'my tasks', 'overdue'],
         ]);
     }

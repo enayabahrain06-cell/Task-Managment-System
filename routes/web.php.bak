@@ -48,6 +48,8 @@ require __DIR__.'/auth.php';
 Route::middleware(['auth'])->group(function () {
     Route::post('/agent/chat',    [AgentController::class, 'chat'])->name('agent.chat');
     Route::post('/agent/support', [AgentController::class, 'support'])->name('agent.support');
+    Route::get('/agent/badge',      [AgentController::class, 'badge'])->name('agent.badge');
+    Route::get('/agent/report-pdf', [AgentController::class, 'reportPdf'])->name('agent.report-pdf');
 });
 
 // Shared authenticated routes (accessible by all roles)

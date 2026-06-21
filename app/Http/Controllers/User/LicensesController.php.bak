@@ -1,0 +1,35 @@
+<?php
+
+namespace App\Http\Controllers\User;
+
+use App\Http\Controllers\Controller;
+use App\Models\Subscription;
+use App\Models\User;
+
+class LicensesController extends Controller
+{
+    public function index()
+    {
+        $user    = auth()->user();
+        $licenses = Subscription::whereHas('users', fn($q) => $q->where('user_id', $user->id))
+            ->with([
+                'users'       => fn($q) => $q->where('user_id', $user->id),
+                'attachments' => fn($q) => $q->orderBy('created_at'),
+            ])
+            ->orderBy('renewal_date')
+            ->get();
+
+        $assignerIds = $licenses->flatMap(fn($l) => $l->users->pluck('pivot.assigned_by'))->filter()->unique();
+        $assigners   = User::whereIn('id', $assignerIds)->pluck('name', 'id');
+
+        $totalCount       = $licenses->count();
+        $activeCount      = $licenses->filter(fn($l) => $l->status === 'active')->count();
+        $expiringSoonCount = $licenses->filter(fn($l) => $l->status === 'expiring_soon')->count();
+        $expiredCount     = $licenses->filter(fn($l) => $l->status === 'expired')->count();
+
+        return view('user.licenses.index', compact(
+            'licenses', 'assigners',
+            'totalCount', 'activeCount', 'expiringSoonCount', 'expiredCount'
+        ));
+    }
+}

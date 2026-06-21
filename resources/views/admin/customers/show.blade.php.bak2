@@ -1162,6 +1162,180 @@
         </div>
     </div>
 
+    {{-- ══ Social Accounts ══ --}}
+    @php
+        $socialAccounts = $customer->socialAccounts;
+        $saPlatforms    = App\Models\SocialAccount::platforms();
+    @endphp
+    <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;margin-top:20px;">
+
+        {{-- Header --}}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:8px;">
+            <h2 style="font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:0;display:flex;align-items:center;gap:8px;">
+                <span style="width:22px;height:22px;border-radius:6px;background:#F0FDF4;display:inline-flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-share-nodes" style="font-size:10px;color:#16A34A;"></i>
+                </span>
+                Social Accounts
+                <span style="font-weight:500;color:#9CA3AF;">({{ $socialAccounts->count() }})</span>
+            </h2>
+            <a href="{{ route('admin.social-accounts.index', ['customer' => $customer->id]) }}"
+               style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#4F46E5;text-decoration:none;padding:6px 14px;border-radius:8px;background:#EEF2FF;border:1px solid #C7D2FE;transition:background .15s;"
+               onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'">
+                <i class="fas fa-arrow-up-right-from-square" style="font-size:10px;"></i>
+                Manage Accounts
+            </a>
+        </div>
+
+        @if($socialAccounts->isEmpty())
+            <div style="text-align:center;padding:28px 0 12px;">
+                <span style="width:48px;height:48px;border-radius:14px;background:#F3F4F6;display:inline-flex;align-items:center;justify-content:center;margin-bottom:10px;">
+                    <i class="fas fa-share-nodes" style="font-size:20px;color:#D1D5DB;"></i>
+                </span>
+                <p style="font-size:13px;color:#9CA3AF;margin:0;">No social accounts linked to this customer yet.</p>
+            </div>
+        @else
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">
+                @foreach($socialAccounts as $sa)
+                    @php
+                        $pi      = $saPlatforms[$sa->platform] ?? ['label'=>ucfirst($sa->platform),'icon'=>'fa-globe','color'=>'#6B7280','bg'=>'#F3F4F6'];
+                        $stBg    = match($sa->status) { 'active'=>'#DCFCE7','inactive'=>'#F3F4F6','suspended'=>'#FEE2E2', default=>'#F3F4F6' };
+                        $stColor = match($sa->status) { 'active'=>'#16A34A','inactive'=>'#6B7280','suspended'=>'#DC2626', default=>'#6B7280' };
+                        $decPw   = $sa->decrypted_password;
+                        $hasCreds = $sa->username || $sa->email || $decPw || $sa->account_id;
+                    @endphp
+                    <div x-data="{ showPw: false }"
+                         style="border:1px solid #E5E7EB;border-left:4px solid {{ $pi['color'] }};border-radius:12px;background:#fff;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+
+                        {{-- Card header --}}
+                        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;{{ $hasCreds || $sa->page_url || $sa->users->isNotEmpty() || $sa->notes ? 'border-bottom:1px solid #F3F4F6;' : '' }}">
+                            <span style="width:40px;height:40px;border-radius:10px;background:{{ $pi['bg'] }};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fab {{ $pi['icon'] }}" style="font-size:20px;color:{{ $pi['color'] }};"></i>
+                            </span>
+                            <div style="flex:1;min-width:0;">
+                                <p style="font-size:14px;font-weight:700;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $sa->name }}</p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;font-weight:500;">{{ $pi['label'] }}</p>
+                            </div>
+                            <span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:{{ $stBg }};color:{{ $stColor }};flex-shrink:0;text-transform:uppercase;letter-spacing:.04em;">
+                                {{ $sa->status }}
+                            </span>
+                        </div>
+
+                        {{-- Credentials list --}}
+                        @if($hasCreds)
+                            <div style="padding:10px 16px;display:flex;flex-direction:column;gap:2px;">
+                                @if($sa->username)
+                                    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #F9FAFB;">
+                                        <i class="fas fa-at" style="font-size:11px;color:#9CA3AF;width:14px;text-align:center;flex-shrink:0;"></i>
+                                        <span style="font-size:10px;color:#9CA3AF;width:68px;flex-shrink:0;text-transform:uppercase;letter-spacing:.04em;">Username</span>
+                                        <span style="font-size:12px;font-weight:600;color:#374151;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $sa->username }}</span>
+                                        <button onclick="navigator.clipboard.writeText('{{ addslashes($sa->username) }}')" title="Copy"
+                                                style="background:none;border:none;cursor:pointer;padding:3px 5px;color:#D1D5DB;border-radius:4px;transition:color .15s;flex-shrink:0;"
+                                                onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#D1D5DB'">
+                                            <i class="fas fa-copy" style="font-size:11px;"></i>
+                                        </button>
+                                    </div>
+                                @endif
+                                @if($sa->email)
+                                    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #F9FAFB;">
+                                        <i class="fas fa-envelope" style="font-size:11px;color:#9CA3AF;width:14px;text-align:center;flex-shrink:0;"></i>
+                                        <span style="font-size:10px;color:#9CA3AF;width:68px;flex-shrink:0;text-transform:uppercase;letter-spacing:.04em;">Email</span>
+                                        <span style="font-size:12px;font-weight:600;color:#374151;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $sa->email }}</span>
+                                        <button onclick="navigator.clipboard.writeText('{{ addslashes($sa->email) }}')" title="Copy"
+                                                style="background:none;border:none;cursor:pointer;padding:3px 5px;color:#D1D5DB;border-radius:4px;transition:color .15s;flex-shrink:0;"
+                                                onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#D1D5DB'">
+                                            <i class="fas fa-copy" style="font-size:11px;"></i>
+                                        </button>
+                                    </div>
+                                @endif
+                                @if($decPw)
+                                    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #F9FAFB;">
+                                        <i class="fas fa-lock" style="font-size:11px;color:#9CA3AF;width:14px;text-align:center;flex-shrink:0;"></i>
+                                        <span style="font-size:10px;color:#9CA3AF;width:68px;flex-shrink:0;text-transform:uppercase;letter-spacing:.04em;">Password</span>
+                                        <span x-text="showPw ? '{{ addslashes($decPw) }}' : '••••••••'"
+                                              style="font-size:12px;font-weight:600;color:#374151;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;"></span>
+                                        <button @click="showPw = !showPw" title="Show/hide"
+                                                style="background:none;border:none;cursor:pointer;padding:3px 5px;color:#D1D5DB;border-radius:4px;transition:color .15s;flex-shrink:0;"
+                                                onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#D1D5DB'">
+                                            <i :class="showPw ? 'fas fa-eye-slash' : 'fas fa-eye'" style="font-size:11px;"></i>
+                                        </button>
+                                        <button onclick="navigator.clipboard.writeText('{{ addslashes($decPw) }}')" title="Copy"
+                                                style="background:none;border:none;cursor:pointer;padding:3px 5px;color:#D1D5DB;border-radius:4px;transition:color .15s;flex-shrink:0;"
+                                                onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#D1D5DB'">
+                                            <i class="fas fa-copy" style="font-size:11px;"></i>
+                                        </button>
+                                    </div>
+                                @endif
+                                @if($sa->account_id)
+                                    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;">
+                                        <i class="fas fa-fingerprint" style="font-size:11px;color:#9CA3AF;width:14px;text-align:center;flex-shrink:0;"></i>
+                                        <span style="font-size:10px;color:#9CA3AF;width:68px;flex-shrink:0;text-transform:uppercase;letter-spacing:.04em;">Account ID</span>
+                                        <span style="font-size:12px;font-weight:600;color:#374151;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $sa->account_id }}</span>
+                                        <button onclick="navigator.clipboard.writeText('{{ addslashes($sa->account_id) }}')" title="Copy"
+                                                style="background:none;border:none;cursor:pointer;padding:3px 5px;color:#D1D5DB;border-radius:4px;transition:color .15s;flex-shrink:0;"
+                                                onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#D1D5DB'">
+                                            <i class="fas fa-copy" style="font-size:11px;"></i>
+                                        </button>
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
+
+                        {{-- Footer: notes + URL + who has access --}}
+                        @if($sa->notes || $sa->page_url || $sa->users->isNotEmpty())
+                            <div style="padding:10px 16px;background:#F9FAFB;border-top:1px solid #F3F4F6;display:flex;flex-direction:column;gap:8px;">
+
+                                @if($sa->notes)
+                                    <p style="font-size:11px;color:#6B7280;margin:0;line-height:1.5;">{{ $sa->notes }}</p>
+                                @endif
+
+                                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+                                    @if($sa->page_url)
+                                        <a href="{{ $sa->page_url }}" target="_blank" rel="noopener"
+                                           style="font-size:11px;color:#6366F1;text-decoration:none;display:inline-flex;align-items:center;gap:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;"
+                                           onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+                                            <i class="fas fa-link" style="font-size:10px;flex-shrink:0;"></i>
+                                            {{ $sa->page_url }}
+                                        </a>
+                                    @else
+                                        <span></span>
+                                    @endif
+
+                                    @if($sa->users->isNotEmpty())
+                                        <div style="display:flex;align-items:center;gap:6px;">
+                                            <div style="display:flex;align-items:center;">
+                                                @foreach($sa->users->take(5) as $usr)
+                                                    @php $ac = ['#4F46E5','#0EA5E9','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899'][$usr->id % 7]; @endphp
+                                                    @if($usr->avatar)
+                                                        <img src="{{ Storage::url($usr->avatar) }}" alt="{{ $usr->name }}" title="{{ $usr->name }}"
+                                                             style="width:24px;height:24px;border-radius:50%;border:2px solid #F9FAFB;object-fit:cover;{{ $loop->first ? '' : 'margin-left:-8px;' }}">
+                                                    @else
+                                                        <span title="{{ $usr->name }}"
+                                                              style="width:24px;height:24px;border-radius:50%;border:2px solid #F9FAFB;background:{{ $ac }};display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;{{ $loop->first ? '' : 'margin-left:-8px;' }}">
+                                                            {{ strtoupper(substr($usr->name, 0, 1)) }}
+                                                        </span>
+                                                    @endif
+                                                @endforeach
+                                                @if($sa->users->count() > 5)
+                                                    <span style="width:24px;height:24px;border-radius:50%;border:2px solid #F9FAFB;background:#E5E7EB;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#6B7280;margin-left:-8px;">
+                                                        +{{ $sa->users->count() - 5 }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                            <span style="font-size:11px;color:#6B7280;white-space:nowrap;">{{ $sa->users->pluck('name')->join(', ') }}</span>
+                                        </div>
+                                    @endif
+                                </div>
+
+                            </div>
+                        @endif
+
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
+    </div>
+
     {{-- ══ Design Approval Timeline ══ --}}
     @php
         $approvalTasks = $customer->tasks
@@ -1861,29 +2035,19 @@ function _pdfDownload(buildFn, filename) {
     var cssText = Array.from(parsed.querySelectorAll('style')).map(function(s){ return s.textContent; }).join('\n');
     var docNode = parsed.querySelector('.doc');
     if (!docNode) { document.body.removeChild(overlay); return; }
-    var wrapper = document.createElement('div');
-    wrapper.style.cssText = 'position:fixed;top:0;left:0;width:1100px;background:#fff;z-index:99997;overflow:visible;';
-    var st = document.createElement('style');
-    st.textContent = cssText;
-    wrapper.appendChild(st);
-    wrapper.appendChild(docNode);
-    document.body.appendChild(wrapper);
-    setTimeout(function() {
-        html2pdf().set({
-            margin: 0,
-            filename: filename,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-        }).from(wrapper).save().then(function() {
-            document.body.removeChild(wrapper);
-            document.body.removeChild(overlay);
-        }).catch(function(e) {
-            document.body.removeChild(wrapper);
-            document.body.removeChild(overlay);
-            alert('PDF generation failed — ' + (e && e.message ? e.message : 'please try again.'));
-        });
-    }, 150);
+    var content = '<style>' + cssText + '</style>' + docNode.outerHTML;
+    html2pdf().set({
+        margin: 0,
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false, windowWidth: 1100 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    }).from(content, 'string').save().then(function() {
+        document.body.removeChild(overlay);
+    }).catch(function(e) {
+        document.body.removeChild(overlay);
+        alert('PDF generation failed — ' + (e && e.message ? e.message : 'please try again.'));
+    });
 }
 </script>
 @endpush

@@ -285,7 +285,7 @@
         </form>
 
         {{-- Summarize button --}}
-        <button onclick="document.getElementById('rpt-summarize-modal').style.display='flex'"
+        <button onclick="openRptSummarize()"
                 style="display:inline-flex;align-items:center;gap:7px;padding:7px 14px;background:#fff;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap;"
                 onmouseover="this.style.background='#EEF2FF'" onmouseout="this.style.background='#fff'">
             <i class="fas fa-chart-pie" style="font-size:11px;"></i> Summarize
@@ -353,119 +353,104 @@
                 </div>
                 <div>
                     <p style="font-size:15px;font-weight:700;color:#111827;margin:0;">Reports Summary</p>
-                    <p style="font-size:11px;color:#9CA3AF;margin:0;">
-                        {{ $from ? 'From '.$from->format(config('app.date_format','M d, Y')).' to '.now()->format(config('app.date_format','M d, Y')) : 'All time' }}
-                        @if($selectedUser) · {{ $selectedUser->name }}@endif
-                    </p>
+                    <p id="rpt-summ-subtitle" style="font-size:11px;color:#9CA3AF;margin:0;">Loading…</p>
                 </div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
-                <button onclick="printSummarize()"
-                        style="height:30px;padding:0 12px;border-radius:8px;background:#F3F4F6;border:1px solid #E5E7EB;cursor:pointer;font-size:11px;font-weight:600;color:#374151;display:flex;align-items:center;gap:5px;"
-                        onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
-                    <i class="fas fa-print" style="font-size:10px;"></i> Print
-                </button>
+                {{-- Print dropdown --}}
+                <div style="position:relative;" id="rpt-print-wrap">
+                    <button onclick="document.getElementById('rpt-print-menu').style.display=document.getElementById('rpt-print-menu').style.display==='block'?'none':'block'"
+                            style="height:30px;padding:0 12px;border-radius:8px;background:#F3F4F6;border:1px solid #E5E7EB;cursor:pointer;font-size:11px;font-weight:600;color:#374151;display:flex;align-items:center;gap:5px;"
+                            onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                        <i class="fas fa-print" style="font-size:10px;"></i> Print <i class="fas fa-chevron-down" style="font-size:8px;margin-left:2px;"></i>
+                    </button>
+                    <div id="rpt-print-menu" style="display:none;position:absolute;top:34px;right:0;background:#fff;border:1px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:190px;z-index:100;overflow:hidden;">
+                        <button onclick="printSummarize();document.getElementById('rpt-print-menu').style.display='none'"
+                                style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:600;color:#374151;display:flex;align-items:center;gap:8px;"
+                                onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='none'">
+                            <i class="fas fa-file-alt" style="color:#6366F1;width:14px;"></i> Full Report
+                        </button>
+                        <div style="height:1px;background:#F3F4F6;margin:0 10px;"></div>
+                        <button onclick="openRptSectionPicker();document.getElementById('rpt-print-menu').style.display='none'"
+                                style="width:100%;text-align:left;padding:10px 14px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:600;color:#374151;display:flex;align-items:center;gap:8px;"
+                                onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='none'">
+                            <i class="fas fa-check-square" style="color:#10B981;width:14px;"></i> Print Selection…
+                        </button>
+                    </div>
+                </div>
                 <button onclick="exportSummarizePDF()"
                         style="height:30px;padding:0 12px;border-radius:8px;background:#FEF2F2;border:1px solid #FECACA;cursor:pointer;font-size:11px;font-weight:600;color:#DC2626;display:flex;align-items:center;gap:5px;"
                         onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
                     <i class="fas fa-file-pdf" style="font-size:10px;"></i> Export PDF
                 </button>
-                <button onclick="document.getElementById('rpt-summarize-modal').style.display='none'"
+                <button onclick="document.getElementById('rpt-summarize-modal').style.display='none';document.getElementById('rpt-print-menu').style.display='none'"
                         style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;font-size:16px;color:#6B7280;display:flex;align-items:center;justify-content:center;">×</button>
+            </div>
+        </div>
+
+        {{-- Filter bar --}}
+        <div style="padding:10px 22px;border-bottom:1px solid #F3F4F6;background:#FAFAFA;display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0;">
+            <span style="font-size:11px;font-weight:600;color:#6B7280;white-space:nowrap;">Period:</span>
+            <button id="rpt-chip-all"    onclick="setRptSummPreset('all')"     style="height:26px;padding:0 11px;border-radius:20px;border:1.5px solid #E5E7EB;background:#fff;font-size:11px;font-weight:600;cursor:pointer;color:#374151;">All Time</button>
+            <button id="rpt-chip-month"  onclick="setRptSummPreset('month')"   style="height:26px;padding:0 11px;border-radius:20px;border:1.5px solid #E5E7EB;background:#fff;font-size:11px;font-weight:600;cursor:pointer;color:#374151;">This Month</button>
+            <button id="rpt-chip-last"   onclick="setRptSummPreset('last')"    style="height:26px;padding:0 11px;border-radius:20px;border:1.5px solid #E5E7EB;background:#fff;font-size:11px;font-weight:600;cursor:pointer;color:#374151;">Last Month</button>
+            <button id="rpt-chip-3m"     onclick="setRptSummPreset('3m')"      style="height:26px;padding:0 11px;border-radius:20px;border:1.5px solid #E5E7EB;background:#fff;font-size:11px;font-weight:600;cursor:pointer;color:#374151;">Last 3 Months</button>
+            <div style="display:flex;align-items:center;gap:5px;margin-left:2px;">
+                <input id="rpt-summ-from" type="date" style="height:26px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:11px;padding:0 6px;color:#374151;background:#fff;cursor:pointer;">
+                <span style="font-size:11px;color:#9CA3AF;">→</span>
+                <input id="rpt-summ-to" type="date" style="height:26px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:11px;padding:0 6px;color:#374151;background:#fff;cursor:pointer;">
+                <button onclick="applyRptSummFilter()"
+                        style="height:26px;padding:0 12px;border-radius:8px;background:#4F46E5;border:none;font-size:11px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;">Apply</button>
+            </div>
+        </div>
+
+        {{-- Section picker panel (hidden by default) --}}
+        <div id="rpt-section-picker" style="display:none;padding:14px 22px;border-bottom:1px solid #E5E7EB;background:#F0FDF4;flex-shrink:0;">
+            <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 10px;display:flex;align-items:center;gap:6px;">
+                <i class="fas fa-check-square" style="color:#10B981;"></i> Select sections to print:
+            </p>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:600;color:#374151;background:#fff;border:1.5px solid #D1FAE5;border-radius:8px;padding:6px 12px;">
+                    <input type="checkbox" id="rpt-sec-kpi1" checked style="accent-color:#10B981;width:14px;height:14px;cursor:pointer;">
+                    <i class="fas fa-chart-bar" style="color:#6366F1;font-size:11px;"></i> KPI Stats
+                </label>
+                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:600;color:#374151;background:#fff;border:1.5px solid #D1FAE5;border-radius:8px;padding:6px 12px;">
+                    <input type="checkbox" id="rpt-sec-kpi2" checked style="accent-color:#10B981;width:14px;height:14px;cursor:pointer;">
+                    <i class="fas fa-layer-group" style="color:#DC2626;font-size:11px;"></i> Overdue / Projects / Review
+                </label>
+                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:600;color:#374151;background:#fff;border:1.5px solid #D1FAE5;border-radius:8px;padding:6px 12px;">
+                    <input type="checkbox" id="rpt-sec-team" checked style="accent-color:#10B981;width:14px;height:14px;cursor:pointer;">
+                    <i class="fas fa-users" style="color:#7C3AED;font-size:11px;"></i> Team Performance
+                </label>
+                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:600;color:#374151;background:#fff;border:1.5px solid #D1FAE5;border-radius:8px;padding:6px 12px;">
+                    <input type="checkbox" id="rpt-sec-customers" checked style="accent-color:#10B981;width:14px;height:14px;cursor:pointer;">
+                    <i class="fas fa-building" style="color:#4F46E5;font-size:11px;"></i> Top Customers
+                </label>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button onclick="doRptSummPrint()"
+                        style="height:30px;padding:0 18px;border-radius:8px;background:#10B981;border:none;font-size:12px;font-weight:700;color:#fff;cursor:pointer;display:flex;align-items:center;gap:6px;">
+                    <i class="fas fa-print" style="font-size:11px;"></i> Print Now
+                </button>
+                <button onclick="document.getElementById('rpt-section-picker').style.display='none'"
+                        style="height:30px;padding:0 14px;border-radius:8px;background:#fff;border:1.5px solid #E5E7EB;font-size:12px;font-weight:600;color:#6B7280;cursor:pointer;">
+                    Cancel
+                </button>
             </div>
         </div>
 
         {{-- Scrollable body --}}
         <div style="overflow-y:auto;flex:1;padding:20px 22px;">
-
-            {{-- Stat cards row --}}
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;">
-                <div style="background:#EEF2FF;border-radius:12px;padding:14px;">
-                    <p style="font-size:10px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Total Tasks</p>
-                    <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $totalTasks }}</p>
-                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">In selected period</p>
-                </div>
-                <div style="background:#D1FAE5;border-radius:12px;padding:14px;">
-                    <p style="font-size:10px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Completed</p>
-                    <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $completedTasks }}</p>
-                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Approved + Delivered</p>
-                </div>
-                <div style="background:#FEF3C7;border-radius:12px;padding:14px;">
-                    <p style="font-size:10px;font-weight:700;color:#D97706;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Completion Rate</p>
-                    <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $completionRate }}%</p>
-                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Of all tasks</p>
-                </div>
-                <div style="background:#FEE2E2;border-radius:12px;padding:14px;">
-                    <p style="font-size:10px;font-weight:700;color:#DC2626;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Overdue</p>
-                    <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $overdueTasks }}</p>
-                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Need attention</p>
-                </div>
-                <div style="background:#DBEAFE;border-radius:12px;padding:14px;">
-                    <p style="font-size:10px;font-weight:700;color:#1D4ED8;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Active Projects</p>
-                    <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $activeProjects }}</p>
-                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Currently running</p>
-                </div>
-                <div style="background:#ECFDF5;border-radius:12px;padding:14px;">
-                    <p style="font-size:10px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">On-Time Rate</p>
-                    <p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $onTimeRate }}%</p>
-                    <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Before deadline</p>
+            <div id="rpt-summ-body">
+                <div style="display:flex;align-items:center;justify-content:center;height:160px;color:#9CA3AF;font-size:13px;gap:10px;">
+                    <div style="width:18px;height:18px;border:2.5px solid #6366F1;border-top-color:transparent;border-radius:50%;animation:rptSummSpin .7s linear infinite;"></div>
+                    Loading…
                 </div>
             </div>
-
-            {{-- Team Performance --}}
-            @if($teamMembers->isNotEmpty())
-            <div style="margin-bottom:18px;">
-                <p style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;display:flex;align-items:center;gap:7px;">
-                    <span style="width:20px;height:20px;border-radius:5px;background:#EDE9FE;display:inline-flex;align-items:center;justify-content:center;">
-                        <i class="fas fa-users" style="color:#7C3AED;font-size:9px;"></i>
-                    </span>
-                    Team Performance (Top {{ min(8, $teamMembers->count()) }})
-                </p>
-                <div style="display:flex;flex-direction:column;gap:7px;">
-                    @foreach($teamMembers->sortByDesc('rate')->take(8) as $m)
-                    <div style="display:flex;align-items:center;gap:10px;">
-                        <span style="font-size:12px;font-weight:600;color:#111827;min-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{ $m['name'] }}">{{ $m['name'] }}</span>
-                        <span style="font-size:10px;color:#9CA3AF;min-width:50px;">{{ $m['total'] }} tasks</span>
-                        <div style="flex:1;height:6px;background:#F3F4F6;border-radius:99px;overflow:hidden;">
-                            <div style="height:6px;width:{{ $m['rate'] }}%;background:{{ $m['rate'] >= 80 ? '#10B981' : ($m['rate'] >= 40 ? '#F59E0B' : '#EF4444') }};border-radius:99px;"></div>
-                        </div>
-                        <span style="font-size:12px;font-weight:700;min-width:34px;text-align:right;color:{{ $m['rate'] >= 80 ? '#059669' : ($m['rate'] >= 40 ? '#D97706' : '#DC2626') }};">{{ $m['rate'] }}%</span>
-                    </div>
-                    @endforeach
-                </div>
-            </div>
-            @endif
-
-            {{-- Customer Performance --}}
-            @if($customerStats->isNotEmpty() && !$selectedUser)
-            <div>
-                <p style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;display:flex;align-items:center;gap:7px;">
-                    <span style="width:20px;height:20px;border-radius:5px;background:#EEF2FF;display:inline-flex;align-items:center;justify-content:center;">
-                        <i class="fas fa-building" style="color:#4F46E5;font-size:9px;"></i>
-                    </span>
-                    Top Customers (by task volume)
-                </p>
-                <div style="display:flex;flex-direction:column;gap:7px;">
-                    @foreach($customerStats->sortByDesc('total')->take(8) as $c)
-                    <div style="display:flex;align-items:center;gap:10px;">
-                        <a href="{{ route('admin.customers.show', $c['id']) }}"
-                           style="font-size:12px;font-weight:600;color:#4F46E5;text-decoration:none;min-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
-                           title="{{ $c['name'] }}"
-                           onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">{{ $c['name'] }}</a>
-                        <span style="font-size:10px;color:#9CA3AF;min-width:50px;">{{ $c['total'] }} tasks</span>
-                        <div style="flex:1;height:6px;background:#F3F4F6;border-radius:99px;overflow:hidden;">
-                            <div style="height:6px;width:{{ $c['rate'] }}%;background:{{ $c['rate'] >= 80 ? '#10B981' : ($c['rate'] >= 40 ? '#F59E0B' : '#EF4444') }};border-radius:99px;"></div>
-                        </div>
-                        <span style="font-size:12px;font-weight:700;min-width:34px;text-align:right;color:{{ $c['rate'] >= 80 ? '#059669' : ($c['rate'] >= 40 ? '#D97706' : '#DC2626') }};">{{ $c['rate'] }}%</span>
-                    </div>
-                    @endforeach
-                </div>
-            </div>
-            @endif
-
         </div>
     </div>
 </div>
+<style>@keyframes rptSummSpin{to{transform:rotate(360deg)}}</style>
 
 {{-- ══ User Performance Export Modal ══ --}}
 <div id="user-export-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center;">
@@ -553,7 +538,7 @@
 $empName       = $selectedUser ? $selectedUser->name : null;
 $platformIcons = ['facebook'=>['fab fa-facebook','#1877F2'],'instagram'=>['fab fa-instagram','#E1306C'],'twitter'=>['fab fa-x-twitter','#000'],'tiktok'=>['fab fa-tiktok','#010101'],'youtube'=>['fab fa-youtube','#FF0000'],'snapchat'=>['fab fa-snapchat-ghost','#F7CA00'],'linkedin'=>['fab fa-linkedin','#0A66C2'],'other'=>['fas fa-share-nodes','#6366F1']];
 
-// Row 1 — always 4 core metrics
+// Row 1 — core performance: scope → output → efficiency → quality → risk
 $kpisRow1 = [
     ['label' => $empName ? 'Assigned Tasks' : 'Total Tasks',
      'value' => $totalTasks,         'icon'=>'fa-list-check',   'color'=>'#6366F1','bg'=>'#EEF2FF',
@@ -565,11 +550,11 @@ $kpisRow1 = [
      'modal' => 'completed-tasks-modal'],
     ['label'=>'On-time Rate',     'value'=>$onTimeRate.'%',    'icon'=>'fa-clock',         'color'=>'#8B5CF6','bg'=>'#EDE9FE', 'sub'=>'Before deadline',
      'modal' => 'ontime-tasks-modal'],
+    ['label'=>'Overdue',          'value'=>$overdueTasks,      'icon'=>'fa-triangle-exclamation','color'=>'#EF4444','bg'=>'#FEE2E2', 'sub'=>'Need attention'],
 ];
 
-// Row 2 — context metrics (count varies by filter)
+// Row 2 — context & resources (count varies by filter)
 $kpisRow2 = [
-    ['label'=>'Overdue',   'value'=>$overdueTasks, 'icon'=>'fa-triangle-exclamation','color'=>'#EF4444','bg'=>'#FEE2E2', 'sub'=>'Need attention'],
     ...($empName ? [] : [
         ['label'=>'Active Projects','value'=>$activeProjects,'icon'=>'fa-diagram-project','color'=>'#3B82F6','bg'=>'#DBEAFE','sub'=>'Currently running'],
     ]),
@@ -587,13 +572,20 @@ $kpisRow2 = [
      'sub'       => $socialPendingCount > 0 ? $socialPendingCount.' pending' : 'All posted',
      'sub_color' => $socialPendingCount > 0 ? '#D97706' : '#10B981',
      'platforms' => $socialByPlatform],
+    ['label'     => 'Ad Budget',
+     'value'     => $adBudgetNumericTotal > 0 ? number_format($adBudgetNumericTotal).' BHD' : '—',
+     'icon'      => 'fa-coins',
+     'color'     => '#2563EB','bg'=>'#DBEAFE',
+     'sub'       => $adBudgetTasks->count().' campaigns',
+     'sub_color' => '#6B7280'],
 ];
 
-$row2Class = count($kpisRow2) === 5 ? 'rpt-grid-5' : (count($kpisRow2) === 3 ? 'rpt-grid-3' : 'rpt-grid-4');
+$row2Count = count($kpisRow2);
+$row2Class = $row2Count === 5 ? 'rpt-grid-5' : ($row2Count === 3 ? 'rpt-grid-3' : ($row2Count === 2 ? 'rpt-grid-2' : 'rpt-grid-4'));
 @endphp
 
-{{-- Row 1: Core metrics (always 4) --}}
-<div class="rpt-grid-4">
+{{-- Row 1: Core performance (always 5) --}}
+<div class="rpt-grid-5">
     @foreach($kpisRow1 as $kpi)
     @php $modal1 = $kpi['modal'] ?? null; @endphp
     <div class="rpt-card" style="padding:10px 12px;{{ $modal1 ? 'cursor:pointer;transition:box-shadow .15s;' : '' }}"
@@ -1919,6 +1911,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
     $budgetPosted  = $adBudgetTasks->where('posted', true)->count();
     $budgetPending = $adBudgetTasks->where('posted', false)->count();
     $budgetTotal   = $adBudgetTasks->count();
+    $budgetBhdLabel = $adBudgetNumericTotal > 0 ? number_format($adBudgetNumericTotal).' BHD' : null;
 @endphp
 <div class="rpt-card" style="margin-bottom:10px;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
@@ -1942,6 +1935,11 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
                 <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#D1FAE5;color:#059669;">
                     <i class="fas fa-circle-check" style="font-size:10px;"></i> {{ $budgetPosted }} posted
                 </span>
+                @if($budgetBhdLabel)
+                <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#DBEAFE;color:#1D4ED8;">
+                    <i class="fas fa-coins" style="font-size:10px;"></i> {{ $budgetBhdLabel }}
+                </span>
+                @endif
                 <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#FEE2E2;color:#DC2626;">
                     <i class="fas fa-clock" style="font-size:10px;"></i> {{ $budgetPending }} pending
                 </span>
@@ -3110,9 +3108,10 @@ function _spRender() {
    SUMMARIZE MODAL — Print & Export PDF  (branded layout)
 ══════════════════════════════════════════════════════════ */
 function buildSummarizeHTML(immediate) {
+    var d        = (window._rptSummState && window._rptSummState.data) ? window._rptSummState.data : null;
     var company  = '{{ addslashes($appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name')) }}';
     var dept     = '{{ addslashes($appSettings['department_name'] ?? 'Operations') }}';
-    var period   = '{{ $from ? $from->format(config('app.date_format','M d, Y')).' – '.now()->format(config('app.date_format','M d, Y')) : 'All Time' }}';
+    var period   = d ? d.periodLabel : '{{ $from ? $from->format(config('app.date_format','M d, Y')).' – '.now()->format(config('app.date_format','M d, Y')) : 'All Time' }}';
     var dateStr  = '{{ now()->format(config('app.date_format','M d, Y')) }}';
     var timeStr  = '{{ now()->format('H:i') }}';
     var user     = '{{ auth()->user()->name }}';
@@ -3125,33 +3124,42 @@ function buildSummarizeHTML(immediate) {
     var filteredBy = '';
     @endif
 
-    // KPI data
-    var kpis = [
+    // KPI data — use dynamic data if available, else fall back to PHP-rendered values
+    var kpis = d ? [
+        { label:'Total Tasks',     value: d.totalTasks,          color:'#4F46E5', bg:'#EEF2FF', sub:'In selected period' },
+        { label:'Completed',       value: d.completedTasks,      color:'#059669', bg:'#D1FAE5', sub:'Approved + Delivered' },
+        { label:'Completion Rate', value: d.completionRate + '%',color:'#EA580C', bg:'#FFF7ED', sub:'Of all tasks' },
+        { label:'On-Time Rate',    value: d.onTimeRate + '%',    color:'#10B981', bg:'#F0FDF4', sub:'Before deadline' },
+        { label:'Overdue',         value: d.overdueTasks,        color:'#DC2626', bg:'#FEF2F2', sub:'Need attention' },
+        { label:'Active Projects', value: d.activeProjects,      color:'#2563EB', bg:'#EFF6FF', sub:'Currently running' },
+    ] : [
         { label:'Total Tasks',     value:'{{ $totalTasks }}',        color:'#4F46E5', bg:'#EEF2FF', sub:'In selected period' },
         { label:'Completed',       value:'{{ $completedTasks }}',    color:'#059669', bg:'#D1FAE5', sub:'Approved + Delivered' },
         { label:'Completion Rate', value:'{{ $completionRate }}%',   color:'#EA580C', bg:'#FFF7ED', sub:'Of all tasks' },
+        { label:'On-Time Rate',    value:'{{ $onTimeRate }}%',       color:'#10B981', bg:'#F0FDF4', sub:'Before deadline' },
         { label:'Overdue',         value:'{{ $overdueTasks }}',      color:'#DC2626', bg:'#FEF2F2', sub:'Need attention' },
         { label:'Active Projects', value:'{{ $activeProjects }}',    color:'#2563EB', bg:'#EFF6FF', sub:'Currently running' },
-        { label:'On-Time Rate',    value:'{{ $onTimeRate }}%',       color:'#10B981', bg:'#F0FDF4', sub:'Before deadline' },
     ];
 
     // Team rows
-    var teamRows = [
+    var teamRows = d ? d.teamMembers.map(function(m){ return { name:m.name, role:'User', total:m.total, done:Math.round(m.total * m.rate / 100), rate:m.rate }; }) : [
         @foreach($teamMembers->sortByDesc('rate')->take(8) as $m)
         { name:'{{ addslashes($m['name']) }}', role:'{{ addslashes($m['role']) }}', total:{{ $m['total'] }}, done:{{ $m['completed'] }}, rate:{{ $m['rate'] }} },
         @endforeach
     ];
 
     // Customer rows
-    @if($customerStats->isNotEmpty() && !$selectedUser)
-    var custRows = [
-        @foreach($customerStats->sortByDesc('total')->take(8) as $c)
-        { name:'{{ addslashes($c['name']) }}', total:{{ $c['total'] }}, done:{{ $c['completed'] }}, rate:{{ $c['rate'] }} },
-        @endforeach
-    ];
-    @else
-    var custRows = [];
-    @endif
+    var custRows = d ? (d.hasUser ? [] : d.customerStats.map(function(c){ return { name:c.name, total:c.total, done:Math.round(c.total * c.rate / 100), rate:c.rate }; })) : (
+        @if($customerStats->isNotEmpty() && !$selectedUser)
+        [
+            @foreach($customerStats->sortByDesc('total')->take(8) as $c)
+            { name:'{{ addslashes($c['name']) }}', total:{{ $c['total'] }}, done:{{ $c['completed'] }}, rate:{{ $c['rate'] }} },
+            @endforeach
+        ]
+        @else
+        []
+        @endif
+    );
 
     // ── CSS ───────────────────────────────────────────────
     var css =
@@ -3372,6 +3380,171 @@ function buildSummarizeHTML(immediate) {
          + '</body></html>';
 }
 
+// ── Reports Summary Modal Filter State ────────────────────────────────────
+window._rptSummState = { data: null, loading: false };
+
+function _rptDateStr(d) {
+    var y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+    return y + '-' + m + '-' + day;
+}
+
+function openRptSummarize() {
+    document.getElementById('rpt-summarize-modal').style.display = 'flex';
+    // Initialize to 1 month back → today if not already set
+    var fromEl = document.getElementById('rpt-summ-from');
+    var toEl   = document.getElementById('rpt-summ-to');
+    if (!fromEl.value) {
+        var today  = new Date();
+        var oneAgo = new Date(today); oneAgo.setMonth(oneAgo.getMonth() - 1);
+        fromEl.value = _rptDateStr(oneAgo);
+        toEl.value   = _rptDateStr(today);
+    }
+    _highlightRptChip('custom');
+    fetchRptSummary();
+}
+
+function setRptSummPreset(preset) {
+    var today = new Date();
+    var from, to;
+    if (preset === 'all') {
+        from = ''; to = '';
+    } else if (preset === 'month') {
+        var s = new Date(today.getFullYear(), today.getMonth(), 1);
+        var e = new Date(today.getFullYear(), today.getMonth()+1, 0);
+        from = _rptDateStr(s); to = _rptDateStr(e);
+    } else if (preset === 'last') {
+        var s = new Date(today.getFullYear(), today.getMonth()-1, 1);
+        var e = new Date(today.getFullYear(), today.getMonth(), 0);
+        from = _rptDateStr(s); to = _rptDateStr(e);
+    } else if (preset === '3m') {
+        var s = new Date(today); s.setMonth(s.getMonth()-3); s.setDate(1);
+        var e = new Date(today.getFullYear(), today.getMonth()+1, 0);
+        from = _rptDateStr(s); to = _rptDateStr(e);
+    }
+    document.getElementById('rpt-summ-from').value = from || '';
+    document.getElementById('rpt-summ-to').value   = to   || '';
+    _highlightRptChip(preset);
+    fetchRptSummary();
+}
+
+function applyRptSummFilter() {
+    _highlightRptChip('custom');
+    fetchRptSummary();
+}
+
+function _highlightRptChip(active) {
+    var chips = { all:'rpt-chip-all', month:'rpt-chip-month', last:'rpt-chip-last', '3m':'rpt-chip-3m' };
+    Object.keys(chips).forEach(function(k) {
+        var el = document.getElementById(chips[k]);
+        if (!el) return;
+        if (k === active) {
+            el.style.background = '#4F46E5'; el.style.color = '#fff'; el.style.borderColor = '#4F46E5';
+        } else {
+            el.style.background = '#fff'; el.style.color = '#374151'; el.style.borderColor = '#E5E7EB';
+        }
+    });
+}
+
+function fetchRptSummary() {
+    var fromVal = document.getElementById('rpt-summ-from').value;
+    var toVal   = document.getElementById('rpt-summ-to').value;
+
+    var bodyEl = document.getElementById('rpt-summ-body');
+    bodyEl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:160px;color:#9CA3AF;font-size:13px;gap:10px;"><div style="width:18px;height:18px;border:2.5px solid #6366F1;border-top-color:transparent;border-radius:50%;animation:rptSummSpin .7s linear infinite;"></div>Loading…</div>';
+
+    var url = new URL('{{ route('admin.reports.summary-data') }}', window.location.origin);
+    if (fromVal) url.searchParams.set('date_from', fromVal);
+    if (toVal)   url.searchParams.set('date_to',   toVal);
+    // Pass current page filters
+    var pageParams = new URLSearchParams(window.location.search);
+    ['project_id','customer_id','user_id'].forEach(function(k) {
+        if (pageParams.get(k)) url.searchParams.set(k, pageParams.get(k));
+    });
+
+    fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            window._rptSummState.data = data;
+            // Update subtitle
+            var sub = document.getElementById('rpt-summ-subtitle');
+            if (sub) sub.textContent = data.periodLabel + (data.hasUser ? '' : '');
+            renderRptSummBody(data);
+        })
+        .catch(function() {
+            bodyEl.innerHTML = '<div style="text-align:center;padding:30px;color:#DC2626;font-size:13px;">Failed to load data. Please try again.</div>';
+        });
+}
+
+function renderRptSummBody(d) {
+    function rateColor(r) { return r >= 80 ? '#10B981' : (r >= 40 ? '#F59E0B' : '#EF4444'); }
+    function rateBg(r)    { return r >= 80 ? '#D1FAE5' : (r >= 40 ? '#FEF3C7' : '#FEE2E2'); }
+
+    var cols2 = d.adBudgetTotal > 0 ? 4 : 3;
+    var adBudgetBox = d.adBudgetTotal > 0
+        ? '<div style="background:#EFF6FF;border-radius:12px;padding:14px;">'
+          + '<p style="font-size:10px;font-weight:700;color:#2563EB;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Ad Budget</p>'
+          + '<p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + Math.round(d.adBudgetTotal).toLocaleString() + '</p>'
+          + '<p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Total BHD · ' + d.adBudgetCount + ' campaigns</p>'
+          + '</div>'
+        : '';
+
+    var teamHtml = '';
+    if (d.teamMembers && d.teamMembers.length) {
+        teamHtml = '<div style="margin-bottom:18px;">'
+            + '<p style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;display:flex;align-items:center;gap:7px;">'
+            + '<span style="width:20px;height:20px;border-radius:5px;background:#EDE9FE;display:inline-flex;align-items:center;justify-content:center;"><i class="fas fa-users" style="color:#7C3AED;font-size:9px;"></i></span>'
+            + 'Team Performance (Top ' + d.teamMembers.length + ')</p>'
+            + '<div style="display:flex;flex-direction:column;gap:7px;">';
+        d.teamMembers.forEach(function(m) {
+            teamHtml += '<div style="display:flex;align-items:center;gap:10px;">'
+                + '<span style="font-size:12px;font-weight:600;color:#111827;min-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + m.name + '">' + m.name + '</span>'
+                + '<span style="font-size:10px;color:#9CA3AF;min-width:50px;">' + m.total + ' tasks</span>'
+                + '<div style="flex:1;height:6px;background:#F3F4F6;border-radius:99px;overflow:hidden;">'
+                + '<div style="height:6px;width:' + m.rate + '%;background:' + rateColor(m.rate) + ';border-radius:99px;"></div></div>'
+                + '<span style="font-size:12px;font-weight:700;min-width:34px;text-align:right;color:' + rateColor(m.rate) + ';">' + m.rate + '%</span>'
+                + '</div>';
+        });
+        teamHtml += '</div></div>';
+    }
+
+    var custHtml = '';
+    if (!d.hasUser && d.customerStats && d.customerStats.length) {
+        custHtml = '<div>'
+            + '<p style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;display:flex;align-items:center;gap:7px;">'
+            + '<span style="width:20px;height:20px;border-radius:5px;background:#EEF2FF;display:inline-flex;align-items:center;justify-content:center;"><i class="fas fa-building" style="color:#4F46E5;font-size:9px;"></i></span>'
+            + 'Top Customers (by task volume)</p>'
+            + '<div style="display:flex;flex-direction:column;gap:7px;">';
+        d.customerStats.forEach(function(c) {
+            custHtml += '<div style="display:flex;align-items:center;gap:10px;">'
+                + '<span style="font-size:12px;font-weight:600;color:#4F46E5;min-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + c.name + '">' + c.name + '</span>'
+                + '<span style="font-size:10px;color:#9CA3AF;min-width:50px;">' + c.total + ' tasks</span>'
+                + '<div style="flex:1;height:6px;background:#F3F4F6;border-radius:99px;overflow:hidden;">'
+                + '<div style="height:6px;width:' + c.rate + '%;background:' + rateColor(c.rate) + ';border-radius:99px;"></div></div>'
+                + '<span style="font-size:12px;font-weight:700;min-width:34px;text-align:right;color:' + rateColor(c.rate) + ';">' + c.rate + '%</span>'
+                + '</div>';
+        });
+        custHtml += '</div></div>';
+    }
+
+    var html = ''
+        + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;">'
+        +   '<div style="background:#EEF2FF;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Total Tasks</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + d.totalTasks + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">In selected period</p></div>'
+        +   '<div style="background:#D1FAE5;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Completed</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + d.completedTasks + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Approved + Delivered</p></div>'
+        +   '<div style="background:#FEF3C7;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#D97706;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Completion Rate</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + d.completionRate + '%</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Of all tasks</p></div>'
+        +   '<div style="background:#EDE9FE;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#7C3AED;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">On-Time Rate</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + d.onTimeRate + '%</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Before deadline</p></div>'
+        + '</div>'
+        + '<div style="display:grid;grid-template-columns:repeat(' + cols2 + ',1fr);gap:10px;margin-bottom:18px;">'
+        +   '<div style="background:#FEE2E2;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#DC2626;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Overdue</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + d.overdueTasks + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Need attention</p></div>'
+        +   '<div style="background:#DBEAFE;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#1D4ED8;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Active Projects</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + d.activeProjects + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Currently running</p></div>'
+        +   '<div style="background:#EDE9FE;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#7C3AED;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Pending Review</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + d.pendingReview + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Awaiting approval</p></div>'
+        +   adBudgetBox
+        + '</div>'
+        + teamHtml
+        + custHtml;
+
+    document.getElementById('rpt-summ-body').innerHTML = html;
+}
+
 function printSummarize() {
     var win = window.open('', '_blank');
     if (win) { win.document.write(buildSummarizeHTML(true)); win.document.close(); }
@@ -3379,8 +3552,137 @@ function printSummarize() {
 }
 
 function exportSummarizePDF() {
-    _pdfDownload(buildSummarizeHTML, 'reports-summary.pdf');
+    var win = window.open('', '_blank');
+    if (!win) { alert('Pop-up blocked — please allow pop-ups for this site and try again.'); return; }
+    var html = buildSummarizeHTML(false);
+    /* Inject a small script that auto-opens print dialog after fonts/images settle */
+    html = html.replace('</body>', '<sc'+'ript>setTimeout(function(){window.print();},600);<\/sc'+'ript></body>');
+    win.document.write(html);
+    win.document.close();
 }
+
+function openRptSectionPicker() {
+    var picker = document.getElementById('rpt-section-picker');
+    if (!picker) return;
+    picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+}
+
+function doRptSummPrint() {
+    var sections = {
+        kpi1:      document.getElementById('rpt-sec-kpi1')      ? document.getElementById('rpt-sec-kpi1').checked      : true,
+        kpi2:      document.getElementById('rpt-sec-kpi2')      ? document.getElementById('rpt-sec-kpi2').checked      : true,
+        team:      document.getElementById('rpt-sec-team')      ? document.getElementById('rpt-sec-team').checked      : true,
+        customers: document.getElementById('rpt-sec-customers') ? document.getElementById('rpt-sec-customers').checked : true,
+    };
+    document.getElementById('rpt-section-picker').style.display = 'none';
+    printRptSummSelection(sections);
+}
+
+function printRptSummSelection(sections) {
+    var d       = window._rptSummState && window._rptSummState.data;
+    var period  = (document.getElementById('rpt-summ-subtitle') || {}).textContent || '';
+    var company = '{{ addslashes($appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name')) }}';
+
+    function rateColor(r) { return r >= 80 ? '#10B981' : (r >= 40 ? '#F59E0B' : '#EF4444'); }
+    function rateBg(r)    { return r >= 80 ? '#D1FAE5' : (r >= 40 ? '#FEF3C7' : '#FEE2E2'); }
+
+    var bodyHtml = '';
+
+    // Row 1: KPI stats
+    if (!sections || sections.kpi1) {
+        var tt  = d ? d.totalTasks     : '—';
+        var ct  = d ? d.completedTasks : '—';
+        var cr  = d ? d.completionRate + '%' : '—';
+        var otr = d ? d.onTimeRate + '%'     : '—';
+        bodyHtml += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;">'
+            + '<div style="background:#EEF2FF;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#6366F1;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Total Tasks</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + tt + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">In selected period</p></div>'
+            + '<div style="background:#D1FAE5;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Completed</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + ct + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Approved + Delivered</p></div>'
+            + '<div style="background:#FEF3C7;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#D97706;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Completion Rate</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + cr + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Of all tasks</p></div>'
+            + '<div style="background:#EDE9FE;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#7C3AED;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">On-Time Rate</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + otr + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Before deadline</p></div>'
+            + '</div>';
+    }
+
+    // Row 2: Overdue / Projects / Review / Ad Budget
+    if (!sections || sections.kpi2) {
+        var ov  = d ? d.overdueTasks   : '—';
+        var ap  = d ? d.activeProjects : '—';
+        var pr  = d ? d.pendingReview  : '—';
+        var cols2 = (d && d.adBudgetTotal > 0) ? 4 : 3;
+        var adBox = (d && d.adBudgetTotal > 0)
+            ? '<div style="background:#EFF6FF;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#2563EB;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Ad Budget</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + Math.round(d.adBudgetTotal).toLocaleString() + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Total BHD · ' + d.adBudgetCount + ' campaigns</p></div>'
+            : '';
+        bodyHtml += '<div style="display:grid;grid-template-columns:repeat(' + cols2 + ',1fr);gap:10px;margin-bottom:18px;">'
+            + '<div style="background:#FEE2E2;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#DC2626;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Overdue</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + ov + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Need attention</p></div>'
+            + '<div style="background:#DBEAFE;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#1D4ED8;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Active Projects</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + ap + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Currently running</p></div>'
+            + '<div style="background:#EDE9FE;border-radius:12px;padding:14px;"><p style="font-size:10px;font-weight:700;color:#7C3AED;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Pending Review</p><p style="font-size:28px;font-weight:800;color:#111827;margin:0;line-height:1;">' + pr + '</p><p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;">Awaiting approval</p></div>'
+            + adBox
+            + '</div>';
+    }
+
+    // Team Performance
+    if ((!sections || sections.team) && d && d.teamMembers && d.teamMembers.length) {
+        bodyHtml += '<div style="margin-bottom:18px;">'
+            + '<p style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;">Team Performance (Top ' + d.teamMembers.length + ')</p>'
+            + '<div style="display:flex;flex-direction:column;gap:7px;">';
+        d.teamMembers.forEach(function(m) {
+            bodyHtml += '<div style="display:flex;align-items:center;gap:10px;">'
+                + '<span style="font-size:12px;font-weight:600;color:#111827;min-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + m.name + '</span>'
+                + '<span style="font-size:10px;color:#9CA3AF;min-width:50px;">' + m.total + ' tasks</span>'
+                + '<div style="flex:1;height:6px;background:#F3F4F6;border-radius:99px;overflow:hidden;">'
+                + '<div style="height:6px;width:' + m.rate + '%;background:' + rateColor(m.rate) + ';border-radius:99px;"></div></div>'
+                + '<span style="font-size:12px;font-weight:700;min-width:34px;text-align:right;color:' + rateColor(m.rate) + ';">' + m.rate + '%</span>'
+                + '</div>';
+        });
+        bodyHtml += '</div></div>';
+    }
+
+    // Top Customers
+    if ((!sections || sections.customers) && d && !d.hasUser && d.customerStats && d.customerStats.length) {
+        bodyHtml += '<div>'
+            + '<p style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;">Top Customers (by task volume)</p>'
+            + '<div style="display:flex;flex-direction:column;gap:7px;">';
+        d.customerStats.forEach(function(c) {
+            bodyHtml += '<div style="display:flex;align-items:center;gap:10px;">'
+                + '<span style="font-size:12px;font-weight:600;color:#4F46E5;min-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + c.name + '</span>'
+                + '<span style="font-size:10px;color:#9CA3AF;min-width:50px;">' + c.total + ' tasks</span>'
+                + '<div style="flex:1;height:6px;background:#F3F4F6;border-radius:99px;overflow:hidden;">'
+                + '<div style="height:6px;width:' + c.rate + '%;background:' + rateColor(c.rate) + ';border-radius:99px;"></div></div>'
+                + '<span style="font-size:12px;font-weight:700;min-width:34px;text-align:right;color:' + rateColor(c.rate) + ';">' + c.rate + '%</span>'
+                + '</div>';
+        });
+        bodyHtml += '</div></div>';
+    }
+
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+        + '<title>Reports Summary — ' + company + '</title>'
+        + '<style>'
+        + '*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+        + 'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;font-size:12px;color:#111827;background:#fff;padding:24px 28px;}'
+        + '.rpt-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid #4F46E5;}'
+        + '.rpt-hdr-title{font-size:16px;font-weight:800;color:#111827;}'
+        + '.rpt-hdr-period{font-size:11px;color:#6B7280;margin-top:3px;}'
+        + '.rpt-hdr-co{font-size:11px;font-weight:700;color:#4F46E5;}'
+        + '@media print{@page{size:A4 landscape;margin:10mm;}}'
+        + '</style>'
+        + '<script>window.onload=function(){window.print();}<\/script>'
+        + '</head><body>'
+        + '<div class="rpt-hdr">'
+        + '<div><div class="rpt-hdr-title">Reports Summary</div><div class="rpt-hdr-period">' + period + '</div></div>'
+        + '<div class="rpt-hdr-co">' + company + '</div>'
+        + '</div>'
+        + bodyHtml
+        + '</body></html>';
+    var win = window.open('', '_blank');
+    if (win) { win.document.write(html); win.document.close(); }
+    else { alert('Pop-up blocked — please allow pop-ups for this site and try again.'); }
+}
+
+// Close print dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    var wrap = document.getElementById('rpt-print-wrap');
+    var menu = document.getElementById('rpt-print-menu');
+    if (wrap && menu && !wrap.contains(e.target)) menu.style.display = 'none';
+});
 
 function _pdfDownload(buildFn, filename) {
     if (typeof html2pdf === 'undefined') { alert('PDF library not loaded yet — please try again in a moment.'); return; }
@@ -3395,30 +3697,19 @@ function _pdfDownload(buildFn, filename) {
     var cssText = Array.from(parsed.querySelectorAll('style')).map(function(s){ return s.textContent; }).join('\n');
     var docNode = parsed.querySelector('.doc');
     if (!docNode) { document.body.removeChild(overlay); return; }
-    /* Wrapper sits at top:0/left:0 so html2canvas can render it; z-index keeps it behind overlay */
-    var wrapper = document.createElement('div');
-    wrapper.style.cssText = 'position:fixed;top:0;left:0;width:1100px;background:#fff;z-index:99997;overflow:visible;';
-    var st = document.createElement('style');
-    st.textContent = cssText;
-    wrapper.appendChild(st);
-    wrapper.appendChild(docNode);
-    document.body.appendChild(wrapper);
-    setTimeout(function() {
-        html2pdf().set({
-            margin: 0,
-            filename: filename,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-        }).from(wrapper).save().then(function() {
-            document.body.removeChild(wrapper);
-            document.body.removeChild(overlay);
-        }).catch(function(e) {
-            document.body.removeChild(wrapper);
-            document.body.removeChild(overlay);
-            alert('PDF generation failed — ' + (e && e.message ? e.message : 'please try again.'));
-        });
-    }, 150);
+    var content = '<style>' + cssText + '</style>' + docNode.outerHTML;
+    html2pdf().set({
+        margin: 0,
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false, windowWidth: 1100 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    }).from(content, 'string').save().then(function() {
+        document.body.removeChild(overlay);
+    }).catch(function(e) {
+        document.body.removeChild(overlay);
+        alert('PDF generation failed — ' + (e && e.message ? e.message : 'please try again.'));
+    });
 }
 
 function exportSocialPostsPDF() {
