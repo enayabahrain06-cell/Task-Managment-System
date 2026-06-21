@@ -298,6 +298,11 @@
                                title="View" onmouseover="this.style.background='#C7D2FE'" onmouseout="this.style.background='#EEF2FF'">
                                 <i class="fas fa-eye" style="font-size:12px;"></i>
                             </a>
+                            <button onclick="openAssignModal({{ $sub->id }}, '{{ addslashes($sub->name) }}', {{ json_encode($sub->users->map(fn($u)=>['id'=>$u->id,'name'=>$u->name,'email'=>$u->email])->values()) }})"
+                                    style="width:32px;height:32px;border-radius:8px;background:#ECFDF5;display:flex;align-items:center;justify-content:center;color:#16A34A;border:none;cursor:pointer;transition:background .15s;"
+                                    title="Assign Users" onmouseover="this.style.background='#BBF7D0'" onmouseout="this.style.background='#ECFDF5'">
+                                <i class="fas fa-user-plus" style="font-size:12px;"></i>
+                            </button>
                             <button onclick="openEditModal({{ $sub->id }}, {{ json_encode(array_merge($sub->only(['name','vendor','category','type','billing_cycle','cost','currency','max_seats','website','notes','username']), ['logo_url' => $sub->logo_url, 'has_password' => !empty($sub->password), 'assigned_user_ids' => $sub->users->pluck('id')->toArray()])) }}, '{{ $sub->purchase_date?->format('Y-m-d') }}', '{{ $sub->renewal_date?->format('Y-m-d') }}', {{ json_encode($sub->notify_days) }})"
                                     style="width:32px;height:32px;border-radius:8px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;color:#374151;border:none;cursor:pointer;transition:background .15s;"
                                     title="Edit" onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
@@ -316,6 +321,50 @@
         </table>
         </div>
         @endif
+    </div>
+
+    {{-- Quick Assign Modal --}}
+    <div id="assign-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)closeAssignModal()">
+        <div style="background:#fff;border-radius:16px;width:460px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.18);overflow:hidden;">
+            {{-- Header --}}
+            <div style="padding:20px 22px 16px;border-bottom:1px solid #F3F4F6;">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:36px;height:36px;border-radius:10px;background:#ECFDF5;display:flex;align-items:center;justify-content:center;">
+                            <i class="fas fa-user-plus" style="color:#16A34A;font-size:15px;"></i>
+                        </div>
+                        <div>
+                            <div style="font-size:14px;font-weight:700;color:#111827;">Assign Users</div>
+                            <div id="assign-modal-subname" style="font-size:11px;color:#9CA3AF;"></div>
+                        </div>
+                    </div>
+                    <button onclick="closeAssignModal()" style="width:28px;height:28px;border:none;background:#F3F4F6;border-radius:8px;cursor:pointer;color:#6B7280;font-size:13px;">✕</button>
+                </div>
+                {{-- Search --}}
+                <div style="margin-top:12px;position:relative;">
+                    <i class="fas fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;"></i>
+                    <input id="assign-search" type="text" placeholder="Search users by name or email…"
+                           oninput="filterAssignUsers()"
+                           style="width:100%;padding:8px 10px 8px 30px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;box-sizing:border-box;"
+                           onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                </div>
+            </div>
+
+            {{-- Assigned users --}}
+            <div id="assign-assigned-wrap" style="padding:10px 22px 6px;border-bottom:1px solid #F9FAFB;">
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9CA3AF;margin-bottom:6px;">Currently Assigned</div>
+                <div id="assign-assigned-list" style="display:flex;flex-wrap:wrap;gap:6px;min-height:24px;"></div>
+            </div>
+
+            {{-- Available users list --}}
+            <div id="assign-user-list" style="flex:1;overflow-y:auto;padding:8px 22px 16px;"></div>
+
+            {{-- Footer --}}
+            <div style="padding:12px 22px;border-top:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
+                <span id="assign-status" style="font-size:12px;color:#9CA3AF;"></span>
+                <button onclick="closeAssignModal()" style="padding:8px 20px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;font-size:13px;cursor:pointer;color:#374151;">Done</button>
+            </div>
+        </div>
     </div>
 
     {{-- Create Modal --}}
@@ -762,6 +811,113 @@ function openEditModal(id, data, purchaseDate, renewalDate, notifyDays) {
 
 function closeEditModal() {
     document.getElementById('editModal').style.display = 'none';
+}
+
+// ── Quick Assign Modal ──────────────────────────────────────────────
+var _assignSubId   = null;
+var _assignSubName = '';
+var _assignCurrent = []; // [{id,name,email}]
+
+function openAssignModal(subId, subName, currentUsers) {
+    _assignSubId   = subId;
+    _assignSubName = subName;
+    _assignCurrent = currentUsers ? [...currentUsers] : [];
+    document.getElementById('assign-modal-subname').textContent = subName;
+    document.getElementById('assign-search').value = '';
+    renderAssignedChips();
+    renderAssignUserList('');
+    document.getElementById('assign-modal').style.display = 'flex';
+    setTimeout(() => document.getElementById('assign-search').focus(), 80);
+}
+
+function closeAssignModal() {
+    document.getElementById('assign-modal').style.display = 'none';
+}
+
+function renderAssignedChips() {
+    const wrap = document.getElementById('assign-assigned-list');
+    if (!_assignCurrent.length) {
+        wrap.innerHTML = '<span style="font-size:12px;color:#D1D5DB;">No users assigned yet</span>';
+        return;
+    }
+    wrap.innerHTML = _assignCurrent.map(u =>
+        `<span style="display:inline-flex;align-items:center;gap:5px;background:#EEF2FF;color:#4338CA;padding:3px 8px 3px 10px;border-radius:20px;font-size:11px;font-weight:600;">
+            ${escHtml(u.name)}
+            <button onclick="quickRemoveUser(${u.id})" style="border:none;background:none;cursor:pointer;color:#6366F1;padding:0;font-size:11px;line-height:1;" title="Remove">✕</button>
+        </span>`
+    ).join('');
+}
+
+function renderAssignUserList(query) {
+    const list    = document.getElementById('assign-user-list');
+    const assignedIds = _assignCurrent.map(u => u.id);
+    const q       = query.toLowerCase();
+    const filtered = allUsers.filter(u =>
+        !assignedIds.includes(u.id) &&
+        (u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q))
+    );
+    if (!filtered.length) {
+        list.innerHTML = `<div style="padding:20px;text-align:center;font-size:13px;color:#9CA3AF;">${q ? 'No users match your search' : 'All users already assigned'}</div>`;
+        return;
+    }
+    list.innerHTML = filtered.map(u =>
+        `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F9FAFB;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:32px;height:32px;border-radius:50%;background:#EEF2FF;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#4338CA;flex-shrink:0;">${escHtml(u.name.charAt(0).toUpperCase())}</div>
+                <div>
+                    <div style="font-size:13px;font-weight:600;color:#111827;">${escHtml(u.name)}</div>
+                    <div style="font-size:11px;color:#9CA3AF;">${escHtml(u.email)}</div>
+                </div>
+            </div>
+            <button onclick="quickAssignUser(${u.id},'${escHtml(u.name)}','${escHtml(u.email)}')"
+                    style="padding:5px 12px;background:#4F46E5;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;">
+                <i class="fas fa-plus" style="font-size:10px;margin-right:3px;"></i> Assign
+            </button>
+        </div>`
+    ).join('');
+}
+
+function filterAssignUsers() {
+    renderAssignUserList(document.getElementById('assign-search').value);
+}
+
+function quickAssignUser(userId, userName, userEmail) {
+    const btn = event.target.closest('button');
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:10px;"></i>';
+    fetch(`/admin/subscriptions/${_assignSubId}/assign-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+        body: JSON.stringify({ user_id: userId })
+    }).then(r => r.json().then(d => ({ ok: r.ok, d }))).then(({ ok, d }) => {
+        if (!ok) { btn.disabled=false; btn.innerHTML='<i class="fas fa-plus" style="font-size:10px;margin-right:3px;"></i> Assign'; setAssignStatus(d.error||'Error', true); return; }
+        _assignCurrent.push({ id: userId, name: userName, email: userEmail });
+        renderAssignedChips();
+        renderAssignUserList(document.getElementById('assign-search').value);
+        setAssignStatus(`${userName} assigned ✓`);
+    }).catch(() => { btn.disabled=false; btn.innerHTML='<i class="fas fa-plus" style="font-size:10px;margin-right:3px;"></i> Assign'; setAssignStatus('Request failed', true); });
+}
+
+function quickRemoveUser(userId) {
+    const user = _assignCurrent.find(u => u.id === userId);
+    if (!user || !confirm(`Remove ${user.name} from this subscription?`)) return;
+    fetch(`/admin/subscriptions/${_assignSubId}/remove-user/${userId}`, {
+        method: 'DELETE',
+        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
+    }).then(r => {
+        if (r.ok || r.status === 302) {
+            _assignCurrent = _assignCurrent.filter(u => u.id !== userId);
+            renderAssignedChips();
+            renderAssignUserList(document.getElementById('assign-search').value);
+            setAssignStatus(`${user.name} removed`);
+        }
+    }).catch(() => setAssignStatus('Remove failed', true));
+}
+
+function setAssignStatus(msg, isError) {
+    const el = document.getElementById('assign-status');
+    el.textContent = msg;
+    el.style.color = isError ? '#DC2626' : '#16A34A';
+    setTimeout(() => { el.textContent = ''; }, 3000);
 }
 </script>
 

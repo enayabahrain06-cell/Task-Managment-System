@@ -337,6 +337,7 @@ class SubscriptionController extends Controller
         $userId = $request->user_id;
 
         if ($subscription->users()->where('user_id', $userId)->exists()) {
+            if ($request->expectsJson()) return response()->json(['error' => 'User is already assigned.'], 422);
             return back()->with('error', 'User is already assigned to this subscription.');
         }
 
@@ -356,10 +357,11 @@ class SubscriptionController extends Controller
 
         AuditLogger::log('assigned', $subscription, "Assigned {$user->name} to subscription: {$subscription->name}");
 
+        if ($request->expectsJson()) return response()->json(['success' => true, 'message' => "{$user->name} assigned."]);
         return back()->with('success', "{$user->name} added to {$subscription->name}.");
     }
 
-    public function removeUser(Subscription $subscription, User $user)
+    public function removeUser(Request $request, Subscription $subscription, User $user)
     {
         $subscription->users()->detach($user->id);
 
@@ -367,6 +369,7 @@ class SubscriptionController extends Controller
 
         AuditLogger::log('removed', $subscription, "Removed {$user->name} from subscription: {$subscription->name}");
 
+        if ($request->expectsJson()) return response()->json(['success' => true]);
         return back()->with('success', "{$user->name} removed from {$subscription->name}.");
     }
 }
