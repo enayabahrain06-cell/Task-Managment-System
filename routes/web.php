@@ -296,6 +296,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
 
     // Domains
     Route::get('domains/export/pdf', [AdminDomainController::class, 'exportPdf'])->name('domains.export.pdf');
+    Route::post('domains/{domain}/reveal-password', [AdminDomainController::class, 'revealPassword'])->name('domains.reveal-password');
     Route::resource('domains', AdminDomainController::class);
     Route::post('domains/{domain}/attachments',                               [AdminDomainController::class, 'storeAttachment'])->name('domains.attachments.store');
     Route::get('domains/{domain}/attachments/{attachment}/download',          [AdminDomainController::class, 'downloadAttachment'])->name('domains.attachments.download');

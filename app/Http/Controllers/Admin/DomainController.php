@@ -294,4 +294,26 @@ class DomainController extends Controller
         return redirect()->route('admin.domains.index')
             ->with('success', "Domain \"{$name}\" deleted.");
     }
+
+    public function revealPassword(Request $request, Domain $domain)
+    {
+        $request->validate(['password' => 'required|string']);
+
+        if (!\Illuminate\Support\Facades\Hash::check($request->password, auth()->user()->password)) {
+            return response()->json(['error' => 'Incorrect password.'], 403);
+        }
+
+        if (!$domain->password) {
+            return response()->json(['error' => 'No password stored.'], 404);
+        }
+
+        AuditLogger::log(
+            'reveal_password',
+            $domain,
+            'Revealed password for domain: ' . $domain->domain,
+            ['ip' => $request->ip()]
+        );
+
+        return response()->json(['secret' => $domain->decrypted_password]);
+    }
 }

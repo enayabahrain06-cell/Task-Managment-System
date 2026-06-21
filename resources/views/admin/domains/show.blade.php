@@ -106,7 +106,7 @@
     $billingCycles = \App\Models\Domain::billingCycleOptions();
 @endphp
 
-<div x-data="{ editModal: false, deleteModal: false, showPass: false }">
+<div x-data="{ editModal: false, deleteModal: false }">
 
     {{-- Back --}}
     <a href="{{ route('admin.domains.index') }}"
@@ -401,21 +401,106 @@
                     @if($domain->password)
                     <div>
                         <div class="info-label">Password</div>
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <code x-text="showPass ? '{{ addslashes($domain->decrypted_password) }}' : '••••••••••'"
-                                  style="font-size:13px;font-weight:600;color:#374151;font-family:monospace;background:#F9FAFB;padding:4px 10px;border-radius:6px;border:1px solid #E5E7EB;flex:1;word-break:break-all;"></code>
-                            <button @click="showPass = !showPass"
-                                    style="padding:5px 10px;background:#F3F4F6;border:none;border-radius:6px;cursor:pointer;font-size:11px;color:#6B7280;"
-                                    title="Toggle visibility">
-                                <i :class="showPass ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                        <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+                            <code id="dom-pwd-display" style="font-size:13px;font-weight:600;color:#374151;font-family:monospace;background:#F9FAFB;padding:4px 10px;border-radius:6px;border:1px solid #E5E7EB;flex:1;letter-spacing:.15em;word-break:break-all;">••••••••••</code>
+                            <button onclick="openDomRevealModal()" title="Reveal password"
+                                    style="width:28px;height:28px;background:#FEF3C7;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#D97706;flex-shrink:0;">
+                                <i class="fas fa-lock" style="font-size:11px;"></i>
                             </button>
-                            <button onclick="navigator.clipboard.writeText('{{ addslashes($domain->decrypted_password) }}').then(() => this.innerHTML = '<i class=\'fas fa-check\' style=\'color:#16A34A;\'></i>')"
-                                    style="padding:5px 10px;background:#F3F4F6;border:none;border-radius:6px;cursor:pointer;font-size:11px;color:#6B7280;"
-                                    title="Copy">
-                                <i class="fas fa-copy"></i>
+                            <button id="dom-pwd-copy" onclick="domCopyPwd(this)" title="Copy"
+                                    style="display:none;width:28px;height:28px;background:#F3F4F6;border:none;border-radius:6px;cursor:pointer;align-items:center;justify-content:center;color:#6B7280;flex-shrink:0;">
+                                <i class="fas fa-copy" style="font-size:11px;"></i>
                             </button>
                         </div>
+                        <div style="font-size:11px;color:#9CA3AF;margin-top:4px;display:flex;align-items:center;gap:4px;">
+                            <i class="fas fa-shield-halved" style="font-size:9px;color:#D97706;"></i>
+                            Account password required to reveal &middot; Access is logged
+                        </div>
                     </div>
+
+                    {{-- Reveal Password Modal --}}
+                    <div id="dom-reveal-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+                        <div style="background:#fff;border-radius:16px;padding:28px;width:380px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+                            <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+                                <div style="width:40px;height:40px;border-radius:10px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-lock" style="color:#D97706;font-size:16px;"></i>
+                                </div>
+                                <div>
+                                    <div style="font-size:15px;font-weight:700;color:#111827;">Reveal Password</div>
+                                    <div style="font-size:12px;color:#6B7280;">Enter your account password to continue</div>
+                                </div>
+                            </div>
+                            <input type="password" id="dom-reveal-input" placeholder="Your account password"
+                                   style="width:100%;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:6px;"
+                                   onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"
+                                   onkeydown="if(event.key==='Enter')domSubmitReveal()">
+                            <div id="dom-reveal-error" style="display:none;font-size:12px;color:#DC2626;margin-bottom:8px;"></div>
+                            <div style="display:flex;gap:8px;margin-top:14px;">
+                                <button onclick="closeDomRevealModal()" style="flex:1;padding:9px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;font-size:13px;cursor:pointer;color:#374151;">Cancel</button>
+                                <button onclick="domSubmitReveal()" id="dom-reveal-btn" style="flex:1;padding:9px;border:none;border-radius:8px;background:#4F46E5;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">
+                                    <i class="fas fa-unlock" style="font-size:11px;margin-right:4px;"></i> Reveal
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <script>
+                    (function(){
+                        var _domTimer = null;
+                        window.openDomRevealModal = function() {
+                            document.getElementById('dom-reveal-input').value = '';
+                            document.getElementById('dom-reveal-error').style.display = 'none';
+                            document.getElementById('dom-reveal-modal').style.display = 'flex';
+                            setTimeout(function(){ document.getElementById('dom-reveal-input').focus(); }, 50);
+                        };
+                        window.closeDomRevealModal = function() {
+                            document.getElementById('dom-reveal-modal').style.display = 'none';
+                        };
+                        window.domSubmitReveal = function() {
+                            var pwd = document.getElementById('dom-reveal-input').value;
+                            var btn = document.getElementById('dom-reveal-btn');
+                            var err = document.getElementById('dom-reveal-error');
+                            if (!pwd) { err.textContent = 'Please enter your password.'; err.style.display='block'; return; }
+                            btn.disabled = true;
+                            btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:11px;margin-right:4px;"></i> Checking...';
+                            fetch('{{ route('admin.domains.reveal-password', $domain) }}', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                                body: JSON.stringify({ password: pwd })
+                            }).then(function(r){ return r.json(); }).then(function(data){
+                                btn.disabled = false;
+                                btn.innerHTML = '<i class="fas fa-unlock" style="font-size:11px;margin-right:4px;"></i> Reveal';
+                                if (data.error) { err.textContent = data.error; err.style.display='block'; return; }
+                                closeDomRevealModal();
+                                var display = document.getElementById('dom-pwd-display');
+                                var copyBtn = document.getElementById('dom-pwd-copy');
+                                display.textContent = data.secret;
+                                display.style.letterSpacing = 'normal';
+                                copyBtn.style.display = 'flex';
+                                copyBtn._secret = data.secret;
+                                if (_domTimer) clearTimeout(_domTimer);
+                                _domTimer = setTimeout(function(){
+                                    display.textContent = '••••••••••';
+                                    display.style.letterSpacing = '.15em';
+                                    copyBtn.style.display = 'none';
+                                }, 30000);
+                            }).catch(function(){
+                                btn.disabled = false;
+                                btn.innerHTML = '<i class="fas fa-unlock" style="font-size:11px;margin-right:4px;"></i> Reveal';
+                                err.textContent = 'Request failed. Try again.'; err.style.display='block';
+                            });
+                        };
+                        window.domCopyPwd = function(btn) {
+                            navigator.clipboard.writeText(btn._secret).then(function(){
+                                var icon = btn.querySelector('i');
+                                icon.className = 'fas fa-check'; icon.style.color = '#16A34A';
+                                setTimeout(function(){ icon.className = 'fas fa-copy'; icon.style.color = ''; }, 1500);
+                            });
+                        };
+                        document.getElementById('dom-reveal-modal').addEventListener('click', function(e){
+                            if (e.target === this) closeDomRevealModal();
+                        });
+                    })();
+                    </script>
                     @endif
                 </div>
             </div>
@@ -549,9 +634,10 @@
     </div>
 
     {{-- Edit Modal --}}
-    <div x-show="editModal" style="display:none;position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px 16px;overflow-y:auto;" x-cloak>
+    <div x-show="editModal" x-cloak style="position:fixed;inset:0;z-index:9000;">
         <div style="position:absolute;inset:0;background:rgba(0,0,0,.4);" @click="editModal=false"></div>
-        <div style="position:relative;background:#fff;border-radius:16px;padding:28px;width:640px;max-width:100%;z-index:1;max-height:90vh;overflow-y:auto;">
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px 16px;overflow-y:auto;pointer-events:none;">
+        <div style="position:relative;background:#fff;border-radius:16px;padding:28px;width:640px;max-width:100%;z-index:1;max-height:90vh;overflow-y:auto;pointer-events:all;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
                 <h3 style="font-size:18px;font-weight:700;color:#111827;margin:0;">Edit Domain</h3>
                 <button @click="editModal=false" style="width:32px;height:32px;background:#F3F4F6;border:none;border-radius:8px;cursor:pointer;font-size:16px;color:#6B7280;">✕</button>
@@ -571,12 +657,14 @@
                 </div>
             </form>
         </div>
+        </div>
     </div>
 
     {{-- Delete Modal --}}
-    <div x-show="deleteModal" style="display:none;position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;" x-cloak>
+    <div x-show="deleteModal" x-cloak style="position:fixed;inset:0;z-index:9000;">
         <div style="position:absolute;inset:0;background:rgba(0,0,0,.4);" @click="deleteModal=false"></div>
-        <div style="position:relative;background:#fff;border-radius:16px;padding:28px;width:420px;max-width:90vw;z-index:1;">
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+        <div style="position:relative;background:#fff;border-radius:16px;padding:28px;width:420px;max-width:90vw;z-index:1;pointer-events:all;">
             <div style="width:48px;height:48px;background:#FEE2E2;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
                 <i class="fas fa-trash" style="color:#DC2626;font-size:20px;"></i>
             </div>
@@ -591,6 +679,7 @@
                     <button type="submit" style="padding:10px 20px;background:#DC2626;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Delete</button>
                 </div>
             </form>
+        </div>
         </div>
     </div>
 
