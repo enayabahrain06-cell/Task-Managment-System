@@ -127,11 +127,11 @@ canvas { max-width:100% !important; }
             @endif
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0;align-items:center;">
-            {{-- Smart Brief — standalone prominent button --}}
+            {{-- Smart Brief — same style as the dropdown trigger --}}
             <button id="ai-brief-btn" onclick="openAiBrief()"
-                    style="background:linear-gradient(135deg,rgba(255,255,255,.25),rgba(255,255,255,.1));color:#fff;border:1.5px solid rgba(255,255,255,.5);border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.15);"
-                    onmouseover="this.style.background='rgba(255,255,255,.3)';this.style.boxShadow='0 4px 16px rgba(0,0,0,.25)'"
-                    onmouseout="this.style.background='linear-gradient(135deg,rgba(255,255,255,.25),rgba(255,255,255,.1))';this.style.boxShadow='0 2px 8px rgba(0,0,0,.15)'">
+                    style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px;transition:background .15s;"
+                    onmouseover="this.style.background='rgba(255,255,255,.25)'"
+                    onmouseout="this.style.background='rgba(255,255,255,.15)'">
                 <i class="fas fa-wand-magic-sparkles" style="font-size:12px;"></i> Smart Brief
             </button>
 
@@ -142,7 +142,7 @@ canvas { max-width:100% !important; }
                         onmouseover="this.style.background='rgba(255,255,255,.25)'"
                         onmouseout="this.style.background='rgba(255,255,255,.15)'">
                     <i class="fas fa-ellipsis" style="font-size:13px;"></i>
-                    <i class="fas fa-chevron-down" style="font-size:9px;opacity:.7;" :style="open ? 'transform:rotate(180deg)' : ''" style="transition:transform .2s;"></i>
+                    <i class="fas fa-chevron-down" style="font-size:9px;opacity:.7;transition:transform .2s;" :style="open ? 'transform:rotate(180deg)' : 'transform:rotate(0deg)'"></i>
                 </button>
 
                 <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-100"
@@ -1648,6 +1648,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         onmouseover="this.style.borderColor='#6366f1';this.style.color='#4f46e5'" onmouseout="this.style.borderColor='#e5e7eb';this.style.color='#374151'">
                     <i class="fas fa-print" style="font-size:10px;"></i> Print
                 </button>
+                <button id="ai-pdf-btn" onclick="exportAiBriefPdf()"
+                        style="padding:7px 14px;border-radius:8px;border:1.5px solid #e5e7eb;background:#fff;color:#374151;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:5px;transition:all .15s;"
+                        onmouseover="this.style.borderColor='#ef4444';this.style.color='#dc2626'" onmouseout="this.style.borderColor='#e5e7eb';this.style.color='#374151'">
+                    <i class="fas fa-file-pdf" style="font-size:10px;"></i> Export PDF
+                </button>
                 <button onclick="closeAiBrief()"
                         style="padding:7px 14px;border-radius:8px;background:#4f46e5;color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:600;">
                     Close
@@ -1900,6 +1905,129 @@ document.addEventListener('DOMContentLoaded', function () {
         w.document.write(html);
         w.document.close();
         setTimeout(function () { w.focus(); w.print(); }, 800);
+    };
+
+    window.exportAiBriefPdf = function () {
+        if (!_briefData) return;
+        var btn = document.getElementById('ai-pdf-btn');
+        var origHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:10px;"></i> Generating…';
+        btn.disabled = true;
+
+        _loadHtml2Pdf(function () {
+            var b    = _briefData;
+            var BRAND = {
+                logo:     '{{ $reportLogo }}',
+                company:  '{{ addslashes($appSettings["company_name"] ?? $appSettings["app_name"] ?? config("app.name")) }}',
+                tagline:  '{{ addslashes($appSettings["app_tagline"] ?? "") }}',
+                color:    '{{ $appSettings["primary_color"] ?? "#4f46e5" }}',
+                customer: '{{ addslashes($customer->name) }}',
+                custCo:   '{{ addslashes($customer->company ?? "") }}',
+                date:     '{{ now()->format("F j, Y") }}',
+                period:   '{{ $firstTaskAt ? $firstTaskAt->format("M j, Y")." – ".($lastTaskAt?->format("M j, Y") ?? "present") : "" }}',
+                total:    '{{ $total }}',
+                rate:     '{{ $completionRate }}',
+            };
+
+            var sectionAccents = [BRAND.color, '#059669', '#d97706', '#7c3aed'];
+
+            var hlHtml = (b.highlights||[]).map(function(h) {
+                return '<div style="flex:1;min-width:0;background:#fff;border:1.5px solid #e5e7eb;border-radius:10px;padding:14px 16px;text-align:center;">'
+                    + '<div style="font-size:9px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">' + esc(h.label) + '</div>'
+                    + '<div style="font-size:1.5rem;font-weight:800;color:' + esc(h.color||BRAND.color) + ';line-height:1;">' + esc(h.value) + '</div>'
+                    + '</div>';
+            }).join('');
+
+            var sectHtml = (b.sections||[]).map(function(s,i) {
+                return '<div style="border-left:4px solid ' + sectionAccents[i%4] + ';padding:12px 16px;background:#fff;border-radius:0 8px 8px 0;border-top:1px solid #f3f4f6;border-right:1px solid #f3f4f6;border-bottom:1px solid #f3f4f6;margin-bottom:10px;">'
+                    + '<div style="font-size:11px;font-weight:700;color:#111827;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">' + esc(s.title) + '</div>'
+                    + '<div style="font-size:12px;color:#374151;line-height:1.7;">' + esc(s.body) + '</div>'
+                    + '</div>';
+            }).join('');
+
+            var logoHtml = BRAND.logo
+                ? '<img src="' + BRAND.logo + '" alt="logo" style="height:36px;max-width:140px;object-fit:contain;display:block;">'
+                : '<span style="font-size:1rem;font-weight:800;color:#fff;">' + esc(BRAND.company) + '</span>';
+
+            var content = '<div class="doc" style="width:210mm;font-family:Arial,Helvetica,sans-serif;color:#111827;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;">'
+
+                /* Cover */
+                + '<div style="background:linear-gradient(135deg,' + BRAND.color + ',' + shadeColor(BRAND.color,-20) + ');padding:24px 32px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;">'
+                + '<div>' + logoHtml
+                + (BRAND.tagline ? '<div style="margin-top:4px;font-size:9px;color:rgba(255,255,255,.65);font-weight:500;">' + esc(BRAND.tagline) + '</div>' : '')
+                + '</div>'
+                + '<div style="text-align:right;">'
+                + '<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.6);margin-bottom:2px;">Customer</div>'
+                + '<div style="font-size:12px;font-weight:600;color:#fff;">' + esc(BRAND.customer) + (BRAND.custCo ? ' · ' + esc(BRAND.custCo) : '') + '</div>'
+                + (BRAND.period ? '<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.6);margin-top:7px;margin-bottom:2px;">Period</div><div style="font-size:11px;font-weight:600;color:#fff;">' + esc(BRAND.period) + '</div>' : '')
+                + '<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.6);margin-top:7px;margin-bottom:2px;">Generated</div>'
+                + '<div style="font-size:11px;font-weight:600;color:#fff;">' + esc(BRAND.date) + '</div>'
+                + '</div></div>'
+
+                /* Headline */
+                + '<div style="background:#f8fafc;border-bottom:3px solid ' + BRAND.color + ';padding:18px 32px;">'
+                + '<div style="display:inline-block;padding:2px 10px;background:' + BRAND.color + '18;color:' + BRAND.color + ';font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border-radius:20px;margin-bottom:7px;">Smart Brief</div>'
+                + '<div style="font-size:1.1rem;font-weight:800;color:#111827;line-height:1.35;">' + esc(b.headline||'') + '</div>'
+                + '</div>'
+
+                /* Body */
+                + '<div style="padding:20px 32px;display:flex;flex-direction:column;gap:16px;">'
+
+                /* Overview */
+                + '<div>'
+                + '<div style="font-size:9px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.09em;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid #e5e7eb;">Executive Overview</div>'
+                + '<div style="background:#f8fafc;border-left:4px solid ' + BRAND.color + ';border-radius:0 8px 8px 0;padding:12px 16px;font-size:12px;color:#374151;line-height:1.75;">' + esc(b.overview||'') + '</div>'
+                + '</div>'
+
+                /* Highlights */
+                + '<div>'
+                + '<div style="font-size:9px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.09em;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid #e5e7eb;">Key Metrics</div>'
+                + '<div style="display:flex;gap:10px;">' + hlHtml + '</div>'
+                + '</div>'
+
+                /* Sections */
+                + '<div>'
+                + '<div style="font-size:9px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.09em;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid #e5e7eb;">Detailed Analysis</div>'
+                + sectHtml
+                + '</div>'
+
+                + '</div>'
+
+                /* Footer */
+                + '<div style="padding:12px 32px;border-top:1.5px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;background:#fafafa;margin-top:4px;">'
+                + '<div style="display:flex;align-items:center;gap:10px;">'
+                + (BRAND.logo ? '<img src="' + BRAND.logo + '" style="height:18px;max-width:70px;object-fit:contain;opacity:.6;">' : '<span style="font-size:10px;font-weight:700;color:' + BRAND.color + ';">' + esc(BRAND.company) + '</span>')
+                + '<span style="width:1px;height:16px;background:#e5e7eb;display:inline-block;"></span>'
+                + '<span style="font-size:9.5px;color:#9ca3af;">Smart Brief · Confidential</span>'
+                + '</div>'
+                + '<span style="font-size:9.5px;color:#9ca3af;">' + esc(BRAND.total) + ' tasks · ' + esc(BRAND.rate) + '% completion rate</span>'
+                + '</div>'
+
+                + '</div>';
+
+            var slug = '{{ Str::slug($customer->name) }}';
+            html2pdf().set({
+                margin:     0,
+                filename:   slug + '-smart-brief.pdf',
+                image:      { type: 'jpeg', quality: 0.98 },
+                html2canvas:{ scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false, windowWidth: 794 },
+                jsPDF:      { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak:  { mode: ['css','legacy'] },
+            }).from(content, 'string').save()
+              .then(function () {
+                  btn.innerHTML = '<i class="fas fa-check" style="font-size:10px;"></i> Saved!';
+                  btn.style.borderColor = '#059669'; btn.style.color = '#059669';
+                  setTimeout(function () {
+                      btn.innerHTML = origHtml;
+                      btn.style.borderColor = ''; btn.style.color = '';
+                      btn.disabled = false;
+                  }, 2200);
+              })
+              .catch(function () {
+                  btn.innerHTML = origHtml;
+                  btn.disabled = false;
+              });
+        });
     };
 
     function shadeColor(hex, pct) {

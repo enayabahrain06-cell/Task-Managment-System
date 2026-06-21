@@ -179,6 +179,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::get('customers/summary-data', [AdminCustomerController::class, 'summaryData'])->name('customers.summary-data');
     Route::resource('customers', AdminCustomerController::class);
     Route::get('customers/{customer}/report', [AdminCustomerController::class, 'report'])->name('customers.report');
+    Route::post('customers/{customer}/report/ai-brief', [AdminCustomerController::class, 'aiBrief'])->name('customers.report.ai-brief');
     Route::get('customers-summary', [AdminCustomerController::class, 'summary'])->name('customers.summary');
 
     // Settings
