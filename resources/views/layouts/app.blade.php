@@ -712,35 +712,49 @@ document.querySelectorAll('.app-sidebar .nav-item').forEach(function(link) {
 
 <script>
 // Global notification sound — callable from any Alpine component or plain JS
-window.playNotifSound = function () {
-    if (localStorage.getItem('notif_sound') === 'false') return;
-    const SOUNDS = {
-        chime:  [[784,0],[988,0.18]],
-        ding:   [[880,0]],
-        double: [[1047,0],[1047,0.22]],
-        pop:    [[440,0],[554,0.12]],
-        alert:  [[987,0],[1175,0.1],[1397,0.22]],
-        none:   [],
+(function () {
+    // One persistent AudioContext, resumed on first user interaction
+    let _ctx = null;
+    function getCtx() {
+        if (!_ctx) _ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (_ctx.state === 'suspended') _ctx.resume();
+        return _ctx;
+    }
+    // Unlock audio on first interaction so sounds work even before a click on the bell
+    ['click','keydown','touchstart'].forEach(evt =>
+        document.addEventListener(evt, () => { try { getCtx(); } catch(e){} }, { once: true, passive: true })
+    );
+
+    window.playNotifSound = function () {
+        if (localStorage.getItem('notif_sound') === 'false') return;
+        const SOUNDS = {
+            chime:  [[784,0],[988,0.18]],
+            ding:   [[880,0]],
+            double: [[1047,0],[1047,0.22]],
+            pop:    [[440,0],[554,0.12]],
+            alert:  [[987,0],[1175,0.1],[1397,0.22]],
+            none:   [],
+        };
+        const type   = localStorage.getItem('notif_sound_type')   || '{{ $appSettings["notif_sound_type"]   ?? "chime" }}';
+        const volume = parseFloat(localStorage.getItem('notif_sound_volume') || '{{ $appSettings["notif_sound_volume"] ?? "0.3" }}');
+        const notes  = SOUNDS[type] || SOUNDS.chime;
+        if (!notes.length) return;
+        try {
+            const ctx = getCtx();
+            notes.forEach(([freq, delay]) => {
+                const osc  = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.type = 'sine'; osc.frequency.value = freq;
+                const t = ctx.currentTime + delay;
+                gain.gain.setValueAtTime(0, t);
+                gain.gain.linearRampToValueAtTime(volume, t + 0.015);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+                osc.start(t); osc.stop(t + 0.6);
+            });
+        } catch (e) {}
     };
-    const type   = localStorage.getItem('notif_sound_type')   || '{{ $appSettings["notif_sound_type"]   ?? "chime" }}';
-    const volume = parseFloat(localStorage.getItem('notif_sound_volume') || '{{ $appSettings["notif_sound_volume"] ?? "0.3" }}');
-    const notes  = SOUNDS[type] || SOUNDS.chime;
-    if (!notes.length) return;
-    try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        notes.forEach(([freq, delay]) => {
-            const osc  = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain); gain.connect(ctx.destination);
-            osc.type = 'sine'; osc.frequency.value = freq;
-            const t = ctx.currentTime + delay;
-            gain.gain.setValueAtTime(0, t);
-            gain.gain.linearRampToValueAtTime(volume, t + 0.015);
-            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
-            osc.start(t); osc.stop(t + 0.6);
-        });
-    } catch (e) {}
-};
+})();
 
 function notifBell() {
     return {
