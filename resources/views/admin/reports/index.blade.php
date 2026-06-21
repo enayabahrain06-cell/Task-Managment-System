@@ -3266,9 +3266,10 @@ function buildSummarizeHTML(immediate) {
     + '.foot-brand { font-size:10px; font-weight:700; color:#4F46E5; }'
     + '.foot-mid   { font-size:10px; color:#9CA3AF; }'
     + '.foot-conf  { font-size:10px; color:#9CA3AF; font-style:italic; }'
+    + 'tr { page-break-inside: avoid; -webkit-column-break-inside: avoid; }'
 
     /* Print */
-    + '@@media print { .pbar{display:none !important;} body{background:#fff !important;} .doc{max-width:none;} *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;} tr{page-break-inside:avoid;} @@page{size:A4 portrait;margin:0;} }'
+    + '@@media print { .pbar{display:none !important;} body{background:#fff !important;} .doc{max-width:none;} *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;} @@page{size:A4 portrait;margin:0;} }'
     ;
 
     // ── Logo element ─────────────────────────────────────
@@ -3974,7 +3975,8 @@ function _pdfDownload(buildFn, filename) {
         filename: filename,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false, windowWidth: 1100 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', '.kcard'] }
     }).from(content, 'string').save().then(function() {
         document.body.removeChild(overlay);
     }).catch(function(e) {
