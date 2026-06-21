@@ -320,7 +320,7 @@
         </a>
         @endif
 
-        @if(auth()->user()->hasPermission('view_reports') && !in_array('nav_reports', $navHidden))
+        @if($hasAnyAdminPerm && auth()->user()->hasPermission('view_reports') && !in_array('nav_reports', $navHidden))
         <a href="{{ route('admin.reports.index') }}"
            class="nav-item {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">
             <div class="nav-left">
