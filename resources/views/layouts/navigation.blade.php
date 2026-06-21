@@ -189,8 +189,25 @@
         @endif
 
         {{-- Admin & Manager section --}}
-        @php $hasAnyAdminPerm = in_array($role, ['admin', 'manager']); @endphp
-        @if($hasAnyAdminPerm)
+        @php
+            $hasAnyAdminPerm = in_array($role, ['admin', 'manager']);
+            // Permissions that grant access to admin sections for regular users
+            $userAdminPerms = !$hasAnyAdminPerm ? [
+                'manage_projects'        => auth()->user()->hasPermission('manage_projects'),
+                'manage_tasks'           => auth()->user()->hasPermission('manage_tasks'),
+                'manage_customers'       => auth()->user()->hasPermission('manage_customers'),
+                'view_approvals'         => auth()->user()->hasPermission('view_approvals'),
+                'view_audit_log'         => auth()->user()->hasPermission('view_audit_log'),
+                'view_social_budget'     => auth()->user()->hasPermission('view_social_budget'),
+                'manage_social_accounts' => auth()->user()->hasPermission('manage_social_accounts'),
+                'manage_domains'         => auth()->user()->hasPermission('manage_domains'),
+                'manage_subscriptions'   => auth()->user()->hasPermission('manage_subscriptions'),
+                'view_reports'           => auth()->user()->hasPermission('view_reports'),
+            ] : [];
+            $hasGrantedAdminPerm = !$hasAnyAdminPerm && in_array(true, $userAdminPerms, true);
+            $showAdminSection    = $hasAnyAdminPerm || $hasGrantedAdminPerm;
+        @endphp
+        @if($showAdminSection)
         <div class="sidebar-section">Admin</div>
 
         @if(auth()->user()->hasPermission('manage_projects') && !in_array('nav_projects', $navHidden))
