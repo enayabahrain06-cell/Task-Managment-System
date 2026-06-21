@@ -44,7 +44,7 @@ class SocialAccount extends Model
             'tiktok'    => ['label' => 'TikTok',      'icon' => 'fa-tiktok',    'color' => '#010101', 'bg' => '#F3F4F6'],
             'linkedin'  => ['label' => 'LinkedIn',    'icon' => 'fa-linkedin',  'color' => '#0A66C2', 'bg' => '#E8F0FB'],
             'twitter'   => ['label' => 'X / Twitter', 'icon' => 'fa-x-twitter', 'color' => '#000000', 'bg' => '#F3F4F6'],
-            'snapchat'  => ['label' => 'Snapchat',    'icon' => 'fa-snapchat',  'color' => '#FFFC00', 'bg' => '#FFFDE7'],
+            'snapchat'  => ['label' => 'Snapchat',    'icon' => 'fa-snapchat',  'color' => '#F7B500', 'bg' => '#FEF3C7'],
             'youtube'   => ['label' => 'YouTube',     'icon' => 'fa-youtube',   'color' => '#FF0000', 'bg' => '#FFEBEE'],
         ];
     }
