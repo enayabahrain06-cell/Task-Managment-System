@@ -207,9 +207,13 @@
                 <tr class="sub-row" style="border-bottom:1px solid #F3F4F6;background:{{ $rowBg }};">
                     <td style="padding:14px 16px;">
                         <div style="display:flex;align-items:center;gap:12px;">
-                            <div style="width:38px;height:38px;border-radius:10px;background:{{ $cc['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                <i class="fas fa-{{ $sub->category === 'design' ? 'pen-nib' : ($sub->category === 'development' ? 'code' : ($sub->category === 'communication' ? 'comment-dots' : ($sub->category === 'marketing' ? 'bullhorn' : ($sub->category === 'security' ? 'shield-halved' : ($sub->category === 'finance' ? 'chart-line' : 'layer-group'))))) }}"
-                                   style="color:{{ $cc['color'] }};font-size:15px;"></i>
+                            <div style="width:38px;height:38px;border-radius:10px;background:{{ $cc['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
+                                @if($sub->logo_url)
+                                    <img src="{{ $sub->logo_url }}" alt="{{ $sub->name }}" style="width:100%;height:100%;object-fit:contain;padding:5px;box-sizing:border-box;background:#fff;">
+                                @else
+                                    <i class="fas fa-{{ $sub->category === 'design' ? 'pen-nib' : ($sub->category === 'development' ? 'code' : ($sub->category === 'communication' ? 'comment-dots' : ($sub->category === 'marketing' ? 'bullhorn' : ($sub->category === 'security' ? 'shield-halved' : ($sub->category === 'finance' ? 'chart-line' : 'layer-group'))))) }}"
+                                       style="color:{{ $cc['color'] }};font-size:15px;"></i>
+                                @endif
                             </div>
                             <div>
                                 <a href="{{ route('admin.subscriptions.show', $sub->id) }}"
