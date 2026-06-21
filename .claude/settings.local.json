@@ -57,7 +57,9 @@
       "Bash(# Check if it's a Mosquitto duplicate clientId issue *)",
       "Read(//var/log/mosquitto/**)",
       "Bash(curl -sI https://ms.p7h.me/)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "WebFetch(domain:ms.p7h.me)",
+      "Bash(cp /var/www/Task-Managment-System/resources/views/admin/subscriptions/pdf.blade.php /var/www/Task-Managment-System/resources/views/admin/subscriptions/pdf.blade.php.bak)"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory",
@@ -65,7 +67,8 @@
       "/etc/mosquitto/conf.d",
       "/etc/mosquitto",
       "/etc/apache2/sites-available",
-      "/etc/apache2/sites-enabled"
+      "/etc/apache2/sites-enabled",
+      "/var/www/Task-Managment-System/resources/views/admin/subscriptions"
     ]
   }
 }

@@ -303,6 +303,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     // Subscriptions & Licenses
     Route::get('subscriptions/export/pdf', [AdminSubscriptionController::class, 'exportPdf'])->name('subscriptions.export.pdf');
     Route::resource('subscriptions', AdminSubscriptionController::class);
+    Route::post('subscriptions/{subscription}/reveal-password',              [AdminSubscriptionController::class, 'revealPassword'])->name('subscriptions.reveal-password');
     Route::post('subscriptions/{subscription}/assign-user',                  [AdminSubscriptionController::class, 'assignUser'])->name('subscriptions.assign-user');
     Route::delete('subscriptions/{subscription}/remove-user/{user}',         [AdminSubscriptionController::class, 'removeUser'])->name('subscriptions.remove-user');
     Route::post('subscriptions/{subscription}/attachments',                  [AdminSubscriptionController::class, 'uploadAttachment'])->name('subscriptions.attachments.upload');

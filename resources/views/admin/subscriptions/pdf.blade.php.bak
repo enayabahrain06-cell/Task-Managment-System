@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+@page { size: A4 portrait; margin: 0; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: DejaVu Sans, Arial, sans-serif; font-size:9.5px; color:#1F2937; background:#fff; }
+
+/* ── Header ── */
+.header { background:#1E1B4B; color:#fff; padding:22px 28px 18px; display:table; width:100%; }
+.header-left  { display:table-cell; vertical-align:middle; }
+.header-right { display:table-cell; vertical-align:middle; text-align:right; }
+.logo-wrap { display:inline-block; }
+.logo-wrap img { height:42px; max-width:140px; object-fit:contain; }
+.logo-text { font-size:17px; font-weight:700; letter-spacing:-.3px; color:#fff; }
+.logo-sub  { font-size:9px; color:rgba(255,255,255,.6); margin-top:2px; }
+.header-title { font-size:20px; font-weight:800; letter-spacing:-.4px; margin-bottom:3px; }
+.header-sub   { font-size:9px; color:rgba(255,255,255,.7); }
+.header-meta  { font-size:8px; color:rgba(255,255,255,.5); margin-top:6px; }
+
+/* ── Accent bar ── */
+.accent-bar { height:4px; background:linear-gradient(90deg,#6366F1,#8B5CF6,#EC4899); }
+
+/* ── Body padding ── */
+.body-wrap { padding:18px 28px; }
+
+/* ── Stat cards ── */
+.cards { display:table; width:100%; border-collapse:separate; border-spacing:8px 0; margin-bottom:16px; }
+.card  { display:table-cell; border-radius:8px; padding:10px 12px; vertical-align:top; border-left:3px solid transparent; }
+.card.blue   { background:#EEF2FF; border-color:#4F46E5; }
+.card.green  { background:#ECFDF5; border-color:#16A34A; }
+.card.amber  { background:#FFFBEB; border-color:#D97706; }
+.card.red    { background:#FEF2F2; border-color:#DC2626; }
+.card.violet { background:#F5F3FF; border-color:#7C3AED; }
+.card-label { font-size:7.5px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#6B7280; margin-bottom:4px; }
+.card-value { font-size:19px; font-weight:800; line-height:1; }
+.card.blue   .card-value { color:#4F46E5; }
+.card.green  .card-value { color:#16A34A; }
+.card.amber  .card-value { color:#D97706; }
+.card.red    .card-value { color:#DC2626; }
+.card.violet .card-value { color:#7C3AED; }
+.card-sub { font-size:7.5px; color:#9CA3AF; margin-top:3px; }
+
+/* ── Two-col summary ── */
+.summary-row { display:table; width:100%; border-collapse:separate; border-spacing:12px 0; margin-bottom:16px; }
+.summary-col { display:table-cell; vertical-align:top; }
+
+/* ── Boxes ── */
+.box { border:1px solid #E5E7EB; border-radius:8px; padding:12px 14px; }
+.box-title { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#374151; margin-bottom:10px; padding-bottom:7px; border-bottom:1px solid #F3F4F6; }
+.cost-row { display:table; width:100%; margin-bottom:5px; }
+.cost-row td { display:table-cell; }
+.cost-lbl { font-size:8.5px; color:#6B7280; }
+.cost-val { font-size:12px; font-weight:700; color:#111827; text-align:right; }
+.cost-val span { font-size:8px; font-weight:400; color:#9CA3AF; }
+.cost-divider { border:none; border-top:1px dashed #E5E7EB; margin:7px 0; }
+.cost-total-lbl { font-size:9px; font-weight:700; color:#1E1B4B; }
+.cost-total-val { font-size:14px; font-weight:800; color:#4F46E5; text-align:right; }
+
+/* ── Category bars ── */
+.cat-bar-row   { margin-bottom:6px; }
+.cat-bar-label { font-size:8.5px; color:#374151; margin-bottom:2px; display:table; width:100%; }
+.cat-bar-name  { display:table-cell; }
+.cat-bar-amt   { display:table-cell; text-align:right; font-weight:700; color:#4F46E5; font-size:8px; }
+.cat-bar-track { background:#F3F4F6; border-radius:4px; height:4px; }
+.cat-bar-fill  { background:linear-gradient(90deg,#818CF8,#4F46E5); height:4px; border-radius:4px; }
+
+/* ── Table ── */
+.section-title { font-size:10.5px; font-weight:700; color:#1E1B4B; margin-bottom:7px; padding-bottom:5px; border-bottom:2px solid #4F46E5; display:table; width:100%; }
+.section-title .count { display:table-cell; text-align:right; font-size:8.5px; font-weight:400; color:#9CA3AF; }
+table.sub-table { width:100%; border-collapse:collapse; }
+table.sub-table thead tr { background:#1E1B4B; }
+table.sub-table thead th { color:rgba(255,255,255,.9); font-size:7.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; padding:6px 8px; text-align:left; }
+table.sub-table tbody tr { border-bottom:1px solid #F3F4F6; }
+table.sub-table tbody tr:nth-child(even) { background:#FAFAFA; }
+table.sub-table tbody td { padding:6px 8px; font-size:9px; color:#374151; vertical-align:middle; }
+.badge { display:inline-block; padding:2px 6px; border-radius:20px; font-size:7.5px; font-weight:700; }
+.badge-active        { background:#DCFCE7; color:#15803D; }
+.badge-expiring_soon { background:#FEF9C3; color:#A16207; }
+.badge-expired       { background:#FEE2E2; color:#B91C1C; }
+.badge-cat           { background:#EEF2FF; color:#4338CA; }
+.name-cell   { font-weight:600; color:#111827; }
+.vendor-cell { font-size:7.5px; color:#9CA3AF; }
+.cost-cell   { font-weight:700; color:#111827; }
+.cycle-tag   { font-size:7px; color:#9CA3AF; font-weight:400; }
+.num-cell    { color:#9CA3AF; font-size:8px; }
+
+/* ── Signature section ── */
+.sig-section { margin-top:22px; display:table; width:100%; border-collapse:separate; border-spacing:20px 0; }
+.sig-col     { display:table-cell; vertical-align:bottom; width:33%; }
+.sig-line    { border-bottom:1.5px solid #374151; margin-bottom:5px; height:28px; }
+.sig-label   { font-size:8px; color:#6B7280; }
+.sig-name    { font-size:8.5px; font-weight:700; color:#111827; margin-top:2px; }
+.sig-title   { font-size:7.5px; color:#9CA3AF; }
+
+/* ── Footer ── */
+.footer { margin-top:16px; padding-top:10px; border-top:1px solid #E5E7EB; display:table; width:100%; }
+.footer-left  { display:table-cell; font-size:7.5px; color:#9CA3AF; }
+.footer-right { display:table-cell; text-align:right; font-size:7.5px; color:#9CA3AF; }
+.footer-conf  { font-size:7px; color:#D1D5DB; margin-top:2px; }
+</style>
+</head>
+<body>
+
+{{-- ── Header ── --}}
+<div class="header">
+    <div class="header-left">
+        @if($logoPath)
+            <div class="logo-wrap">
+                <img src="{{ $logoPath }}" alt="{{ $appName }}">
+                <div class="logo-sub" style="margin-top:5px;">{{ $settings['company_name'] ?? $appName }}</div>
+            </div>
+        @else
+            <div class="logo-text">{{ $settings['company_name'] ?? $appName }}</div>
+            <div class="logo-sub">Management Portal</div>
+        @endif
+    </div>
+    <div class="header-right">
+        <div class="header-title">Subscriptions Report</div>
+        <div class="header-sub">Software &amp; Licenses Overview</div>
+        <div class="header-meta">Generated: {{ $summary['generated_at'] }}</div>
+    </div>
+</div>
+<div class="accent-bar"></div>
+
+<div class="body-wrap">
+
+{{-- ── Stat cards ── --}}
+<div class="cards">
+    <div class="card blue">
+        <div class="card-label">Total</div>
+        <div class="card-value">{{ $summary['total'] }}</div>
+        <div class="card-sub">Subscriptions</div>
+    </div>
+    <div class="card green">
+        <div class="card-label">Active</div>
+        <div class="card-value">{{ $summary['active'] }}</div>
+        <div class="card-sub">Running</div>
+    </div>
+    <div class="card amber">
+        <div class="card-label">Expiring</div>
+        <div class="card-value">{{ $summary['expiring_soon'] }}</div>
+        <div class="card-sub">Within 30 days</div>
+    </div>
+    <div class="card red">
+        <div class="card-label">Expired</div>
+        <div class="card-value">{{ $summary['expired'] }}</div>
+        <div class="card-sub">Action needed</div>
+    </div>
+    <div class="card blue">
+        <div class="card-label">Monthly Spend</div>
+        <div class="card-value" style="font-size:13px;">BHD {{ number_format($summary['monthly_total'], 3) }}</div>
+        <div class="card-sub">All cycles</div>
+    </div>
+    <div class="card violet">
+        <div class="card-label">Annual Spend</div>
+        <div class="card-value" style="font-size:13px;">BHD {{ number_format($summary['annual_total'], 3) }}</div>
+        <div class="card-sub">Projected yearly</div>
+    </div>
+</div>
+
+{{-- ── Cost + Category ── --}}
+<div class="summary-row">
+    <div class="summary-col" style="width:40%;">
+        <div class="box">
+            <div class="box-title">Cost Breakdown</div>
+            @php
+                $monthly   = $all->filter(fn($s) => $s->billing_cycle === 'monthly');
+                $annual    = $all->filter(fn($s) => $s->billing_cycle === 'annual');
+                $quarterly = $all->filter(fn($s) => $s->billing_cycle === 'quarterly');
+                $onetime   = $all->filter(fn($s) => $s->billing_cycle === 'one_time');
+            @endphp
+            @foreach([['Monthly',$monthly],['Annual',$annual],['Quarterly',$quarterly],['One-time',$onetime]] as [$lbl,$grp])
+            @if($grp->count())
+            <table class="cost-row"><tr>
+                <td class="cost-lbl">{{ $lbl }} ({{ $grp->count() }})</td>
+                <td class="cost-val">BHD {{ number_format($grp->sum(fn($s)=>$s->annual_cost), 3) }} <span>/yr</span></td>
+            </tr></table>
+            @endif
+            @endforeach
+            <hr class="cost-divider">
+            <table class="cost-row"><tr>
+                <td class="cost-total-lbl">Total Annual</td>
+                <td class="cost-total-val">BHD {{ number_format($summary['annual_total'], 3) }}</td>
+            </tr></table>
+            <table class="cost-row" style="margin-top:4px;"><tr>
+                <td class="cost-lbl" style="color:#374151;">Monthly Equivalent</td>
+                <td class="cost-val">BHD {{ number_format($summary['monthly_total'], 3) }}</td>
+            </tr></table>
+        </div>
+    </div>
+    <div class="summary-col">
+        <div class="box">
+            <div class="box-title">By Category</div>
+            @php $maxAnnual = $summary['by_category']->max('annual') ?: 1; @endphp
+            @foreach($summary['by_category'] as $cat)
+            <div class="cat-bar-row">
+                <div class="cat-bar-label">
+                    <span class="cat-bar-name">{{ $cat['label'] }} ({{ $cat['count'] }})</span>
+                    <span class="cat-bar-amt">BHD {{ number_format($cat['annual'], 3) }}/yr</span>
+                </div>
+                <div class="cat-bar-track">
+                    <div class="cat-bar-fill" style="width:{{ round($cat['annual'] / $maxAnnual * 100) }}%;"></div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
+</div>
+
+{{-- ── Subscriptions table ── --}}
+<div class="section-title">
+    All Subscriptions
+    <span class="count">{{ $summary['total'] }} record{{ $summary['total'] !== 1 ? 's' : '' }}</span>
+</div>
+<table class="sub-table">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Type</th>
+            <th>Cost</th>
+            <th>Annual (BHD)</th>
+            <th>Renewal</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach($all as $i => $sub)
+        @php
+            $renewalLabel = $sub->renewal_date ? $sub->renewal_date->format('d M Y') : '—';
+            $days = $sub->days_until_renewal;
+            $daysLabel = $sub->renewal_date
+                ? ($days < 0 ? abs($days).'d overdue' : ($days === 0 ? 'Today' : $days.'d left'))
+                : '';
+        @endphp
+        <tr>
+            <td class="num-cell">{{ $i + 1 }}</td>
+            <td>
+                <span class="name-cell">{{ $sub->name }}</span>
+                @if($sub->vendor)<br><span class="vendor-cell">{{ $sub->vendor }}</span>@endif
+            </td>
+            <td><span class="badge badge-cat">{{ $catNames[$sub->category] ?? $sub->category }}</span></td>
+            <td style="font-size:8px;color:#6B7280;">
+                @if($sub->type === 'per_seat') Per Seat
+                @elseif($sub->type === 'site_license') Site License
+                @else Shared @endif
+            </td>
+            <td class="cost-cell">
+                {{ $sub->currency }} {{ number_format($sub->cost, 3) }}<br>
+                <span class="cycle-tag">{{ ucfirst(str_replace('_',' ',$sub->billing_cycle)) }}</span>
+            </td>
+            <td class="cost-cell">{{ number_format($sub->annual_cost, 3) }}</td>
+            <td style="font-size:8.5px;">
+                {{ $renewalLabel }}
+                @if($daysLabel)<br><span style="font-size:7.5px;color:{{ $sub->status==='expired'?'#DC2626':($sub->status==='expiring_soon'?'#D97706':'#9CA3AF') }};">{{ $daysLabel }}</span>@endif
+            </td>
+            <td><span class="badge badge-{{ $sub->status }}">
+                @if($sub->status==='active') Active
+                @elseif($sub->status==='expiring_soon') Expiring
+                @else Expired @endif
+            </span></td>
+        </tr>
+        @endforeach
+    </tbody>
+</table>
+
+{{-- ── Signature Section ── --}}
+<div class="sig-section">
+    <div class="sig-col">
+        <div class="sig-line"></div>
+        <div class="sig-label">Prepared by</div>
+        <div class="sig-name">&nbsp;</div>
+        <div class="sig-title">&nbsp;</div>
+    </div>
+    <div class="sig-col">
+        <div class="sig-line"></div>
+        <div class="sig-label">Reviewed by</div>
+        <div class="sig-name">&nbsp;</div>
+        <div class="sig-title">&nbsp;</div>
+    </div>
+    <div class="sig-col">
+        <div class="sig-line"></div>
+        <div class="sig-label">Approved by</div>
+        <div class="sig-name">&nbsp;</div>
+        <div class="sig-title">&nbsp;</div>
+    </div>
+</div>
+
+{{-- ── Footer ── --}}
+<div class="footer">
+    <div class="footer-left">
+        {{ $appName }} — Subscriptions &amp; Licenses
+        <div class="footer-conf">Confidential — Internal Use Only</div>
+    </div>
+    <div class="footer-right">
+        Generated {{ $summary['generated_at'] }}
+        <div class="footer-conf">Total {{ $summary['total'] }} subscription{{ $summary['total'] !== 1 ? 's' : '' }}</div>
+    </div>
+</div>
+
+</div>{{-- /body-wrap --}}
+</body>
+</html>

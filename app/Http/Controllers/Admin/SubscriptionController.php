@@ -89,12 +89,47 @@ class SubscriptionController extends Controller
             ])->sortByDesc('annual')->values(),
         ];
 
-        $pdf = Pdf::loadView('admin.subscriptions.pdf', compact('all', 'summary', 'catColors', 'catNames'))
-            ->setPaper('a4', 'landscape')
+        $settings  = \App\Models\Setting::pluck('value', 'key');
+        $appName   = $settings['app_name'] ?? config('app.name');
+        $logoPath  = null;
+        if (!empty($settings['logo_path'])) {
+            $path = storage_path('app/public/' . ltrim($settings['logo_path'], '/'));
+            if (file_exists($path)) {
+                $ext      = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+                $mime     = $ext === 'jpg' ? 'jpeg' : $ext;
+                $logoPath = 'data:image/' . $mime . ';base64,' . base64_encode(file_get_contents($path));
+            }
+        }
+
+        $pdf = Pdf::loadView('admin.subscriptions.pdf', compact('all', 'summary', 'catColors', 'catNames', 'appName', 'logoPath', 'settings'))
+            ->setPaper('a4', 'portrait')
             ->setOptions(['defaultFont' => 'sans-serif', 'isRemoteEnabled' => false]);
 
         $filename = 'subscriptions-' . now()->format('Y-m-d') . '.pdf';
         return $pdf->download($filename);
+    }
+
+    public function revealPassword(Request $request, Subscription $subscription)
+    {
+        $request->validate(['password' => 'required|string']);
+
+        if (!\Illuminate\Support\Facades\Hash::check($request->password, auth()->user()->password)) {
+            return response()->json(['error' => 'Incorrect password.'], 403);
+        }
+
+        if (!$subscription->password) {
+            return response()->json(['error' => 'No password stored.'], 404);
+        }
+
+        AuditLogger::log(
+            auth()->user(),
+            'reveal_password',
+            $subscription,
+            'Revealed password for subscription: ' . $subscription->name,
+            ['ip' => $request->ip()]
+        );
+
+        return response()->json(['secret' => $subscription->decrypted_password]);
     }
 
     public function store(Request $request)

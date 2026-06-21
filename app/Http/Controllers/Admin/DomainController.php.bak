@@ -91,20 +91,8 @@ class DomainController extends Controller
                 ->sortByDesc('count')->values(),
         ];
 
-        $settings = \App\Models\Setting::pluck('value', 'key');
-        $appName  = $settings['app_name'] ?? config('app.name');
-        $logoPath = null;
-        if (!empty($settings['logo_path'])) {
-            $path = storage_path('app/public/' . ltrim($settings['logo_path'], '/'));
-            if (file_exists($path)) {
-                $ext      = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-                $mime     = $ext === 'jpg' ? 'jpeg' : $ext;
-                $logoPath = 'data:image/' . $mime . ';base64,' . base64_encode(file_get_contents($path));
-            }
-        }
-
-        $pdf = Pdf::loadView('admin.domains.pdf', compact('all', 'summary', 'settings', 'appName', 'logoPath'))
-            ->setPaper('a4', 'portrait')
+        $pdf = Pdf::loadView('admin.domains.pdf', compact('all', 'summary'))
+            ->setPaper('a4', 'landscape')
             ->setOptions(['defaultFont' => 'sans-serif', 'isRemoteEnabled' => false]);
 
         return $pdf->download('domains-' . now()->format('Y-m-d') . '.pdf');
