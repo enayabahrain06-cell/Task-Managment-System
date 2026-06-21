@@ -165,16 +165,16 @@
         {{-- User-only: My Licenses --}}
         @if($role === 'user' && !in_array('nav_licenses', $navHidden))
         @php $myLicenseCount = \App\Models\Subscription::whereHas('users', fn($q) => $q->where('user_id', auth()->id()))->count(); @endphp
-        @if($myLicenseCount > 0)
         <a href="{{ route('user.licenses.index') }}"
            class="nav-item {{ request()->routeIs('user.licenses.*') ? 'active' : '' }}">
             <div class="nav-left">
-                <i class="fas fa-layer-group nav-icon"></i>
+                <i class="fas fa-key nav-icon"></i>
                 My Licenses
             </div>
+            @if($myLicenseCount > 0)
             <span class="nav-badge nav-badge-blue">{{ $myLicenseCount }}</span>
+            @endif
         </a>
-        @endif
         @endif
 
         {{-- User-only: My Reports --}}
