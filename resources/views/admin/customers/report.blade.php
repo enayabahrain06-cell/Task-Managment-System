@@ -4,8 +4,7 @@
 
 @push('styles')
 <style>
-.report-card { background:#fff; border-radius:14px; box-shadow:0 1px 4px rgba(0,0,0,.07); padding:24px; opacity:0; transform:translateY(8px); transition:opacity .18s ease-out, transform .18s ease-out; }
-.report-card.rpt-visible { opacity:1; transform:none; }
+.report-card { background:#fff; border-radius:14px; box-shadow:0 1px 4px rgba(0,0,0,.07); padding:24px; }
 .kpi-value { font-size:2rem; font-weight:700; line-height:1; }
 .bar-track { background:#f3f4f6; border-radius:999px; height:8px; overflow:hidden; }
 .bar-fill  { height:8px; border-radius:999px; }
@@ -13,16 +12,6 @@
 canvas { max-width:100% !important; }
 .print-only { display:none; }
 [x-cloak] { display:none !important; }
-@keyframes rpt-num-pop {
-    0%   { opacity:0; transform:scale(.5) translateY(6px); }
-    60%  { transform:scale(1.08) translateY(-2px); }
-    100% { opacity:1; transform:scale(1) translateY(0); }
-}
-@keyframes rpt-pulse-dot {
-    0%,100% { opacity:1; transform:scale(1); }
-    50%      { opacity:.5; transform:scale(1.5); }
-}
-
 /* ── Sort controls ── */
 .sort-th { cursor:pointer; user-select:none; white-space:nowrap; }
 .sort-th:hover { color:#4f46e5 !important; }
@@ -78,8 +67,6 @@ canvas { max-width:100% !important; }
     table { page-break-inside: auto; font-size: 10px !important; }
     tr { page-break-inside: avoid; }
     thead { display: table-header-group; }
-    .report-card { opacity:1 !important; transform:none !important; transition:none !important; animation:none !important; }
-
     /* Gradient backgrounds */
     [style*="linear-gradient"] { background: #f8f4ff !important; }
 
@@ -1930,82 +1917,4 @@ document.addEventListener('DOMContentLoaded', function () {
 })();
 </script>
 
-<script>
-/* ── Report page animations ─────────────────────────────────────────────── */
-(function () {
-
-    /* 1. Card scroll-reveal with staggered entry */
-    var cards = Array.from(document.querySelectorAll('.report-card'));
-    var io = ('IntersectionObserver' in window)
-        ? new IntersectionObserver(function (entries) {
-            entries.forEach(function (e) {
-                if (!e.isIntersecting) return;
-                e.target.classList.add('rpt-visible');
-                io.unobserve(e.target);
-            });
-          }, { threshold: 0.06 })
-        : null;
-
-    var viewIdx = 0;
-    cards.forEach(function (c) {
-        var inView = c.getBoundingClientRect().top < window.innerHeight;
-        // max 4 staggered cards in viewport, 30ms apart — no perceived delay
-        c.style.transitionDelay = inView ? (Math.min(viewIdx++, 4) * 0.03) + 's' : '0s';
-        if (io) io.observe(c);
-        else    c.classList.add('rpt-visible');
-    });
-
-    /* 2. Bar fill — snap to width immediately, then animate */
-    document.querySelectorAll('.bar-fill').forEach(function (bar) {
-        var target = bar.style.width;
-        if (!target) return;
-        bar.style.transition = 'none';
-        bar.style.width = '0';
-        requestAnimationFrame(function () {
-            bar.style.transition = 'width .45s cubic-bezier(.4,0,.2,1)';
-            bar.style.width = target;
-        });
-    });
-
-    /* 3. Count-up for big KPI numbers — fast, snappy */
-    var numSels = [
-        '.report-card [style*="font-size:2.4rem"]',
-        '.report-card [style*="font-size:2rem"]',
-        '.report-card [style*="font-size:1.8rem"]',
-    ].join(',');
-
-    document.querySelectorAll(numSels).forEach(function (el) {
-        var node = el.childNodes[0];
-        if (!node || node.nodeType !== 3) return;
-        var raw = node.textContent.trim();
-        var m   = raw.match(/^(\d+(?:\.\d+)?)(.*)/);
-        if (!m) return;
-        var target  = parseFloat(m[1]);
-        var suffix  = m[2] || '';
-        if (!target) return;
-
-        var isFloat = !Number.isInteger(target);
-        var dur     = Math.min(550, Math.max(250, target * 6)); // max 550ms
-
-        el.style.animation      = 'rpt-num-pop .3s ease-out both';
-        el.style.animationDelay = '0s';
-        node.textContent = '0' + suffix;
-
-        var t0 = null;
-        requestAnimationFrame(function tick(ts) {
-            if (!t0) t0 = ts;
-            var p    = Math.min((ts - t0) / dur, 1);
-            var ease = 1 - Math.pow(1 - p, 3);
-            node.textContent = (isFloat ? (ease * target).toFixed(1) : Math.round(ease * target)) + suffix;
-            if (p < 1) requestAnimationFrame(tick);
-        });
-    });
-
-    /* 4. Pulse the active-status dots */
-    document.querySelectorAll('[style*="background:#3b82f6"][style*="border-radius:50%"], [style*="background:#22c55e"][style*="border-radius:50%"]').forEach(function (dot) {
-        dot.style.animation = 'rpt-pulse-dot 2s ease-in-out infinite';
-    });
-
-})();
-</script>
 @endsection
