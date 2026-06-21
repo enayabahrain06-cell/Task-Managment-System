@@ -83,10 +83,9 @@ class TaskController extends Controller
             }
         }
 
-        $tasks = $query->orderByRaw('CASE WHEN deadline IS NULL THEN 1 ELSE 0 END')
-            ->orderBy('deadline')
-            ->paginate($isDoneTab ? 10 : 24)
-            ->withQueryString();
+        $tasks = $isDoneTab
+            ? $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString()
+            : $query->orderByRaw('CASE WHEN deadline IS NULL THEN 1 ELSE 0 END')->orderBy('deadline')->paginate(24)->withQueryString();
 
         $projects  = \App\Models\Project::where('is_quick', false)->orderBy('name')->get(['id','name']);
         $customers = \App\Models\Customer::orderBy('name')->get(['id','name']);

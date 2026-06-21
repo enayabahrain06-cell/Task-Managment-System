@@ -270,7 +270,7 @@ $activeStatDefs = [
 @php $doneStatuses = ['approved','delivered','archived']; @endphp
 
 {{-- ── View toggle (Alpine) ── --}}
-<div x-data="taskViewToggle()" style="margin-bottom:22px;">
+<div x-data="taskViewToggle()" @task-edit-open.window="openEdit($event.detail)" style="margin-bottom:22px;">
 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
     <div style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;width:fit-content;">
         <button @click="setView('table')"
@@ -459,9 +459,17 @@ $activeStatDefs = [
                 @endif
             </div>
 
-            {{-- Deadline --}}
+            {{-- Deadline / Created date --}}
             <div class="flex items-center gap-1.5 pt-2.5 border-t border-gray-50">
-                @if($isOverdue)
+                @if($isDoneTab)
+                <i class="fas fa-circle-check text-green-400 text-xs"></i>
+                <span class="text-xs text-gray-400">Created {{ $task->created_at->format(config('app.date_format', 'M d, Y')) }}</span>
+                @if($task->deadline)
+                <span class="text-xs text-gray-300 mx-0.5">·</span>
+                <i class="fas fa-calendar-days text-gray-300 text-xs"></i>
+                <span class="text-xs text-gray-400">Due {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}</span>
+                @endif
+                @elseif($isOverdue)
                 <i class="fas fa-triangle-exclamation text-red-400 text-xs"></i>
                 <span class="text-xs font-semibold text-red-500">Overdue · {{ $task->deadline->format('M d') }}</span>
                 @elseif($task->deadline)
@@ -571,7 +579,7 @@ $activeStatDefs = [
             <th>Assignee</th>
             <th>Priority</th>
             <th>Status</th>
-            <th>Deadline</th>
+            <th>{{ $isDoneTab ? 'Created / Deadline' : 'Deadline' }}</th>
             <th style="text-align:right;">Actions</th>
         </tr>
     </thead>
@@ -692,9 +700,20 @@ $activeStatDefs = [
                 {{ $sm['label'] }}
             </span>
         </td>
-        {{-- Deadline --}}
+        {{-- Deadline / Created date --}}
         <td style="white-space:nowrap;">
-            @if($isOverdue)
+            @if($isDoneTab)
+                <div style="display:flex;flex-direction:column;gap:2px;">
+                    <span style="font-size:12px;color:#6B7280;">
+                        <i class="fas fa-circle-check" style="font-size:10px;margin-right:3px;color:#4ADE80;"></i>{{ $task->created_at->format(config('app.date_format', 'M d, Y')) }}
+                    </span>
+                    @if($task->deadline)
+                    <span style="font-size:11px;color:#9CA3AF;">
+                        <i class="fas fa-calendar-days" style="font-size:9px;margin-right:3px;"></i>Due {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
+                    </span>
+                    @endif
+                </div>
+            @elseif($isOverdue)
                 <span style="font-size:12px;font-weight:600;color:#EF4444;">
                     <i class="fas fa-triangle-exclamation" style="font-size:10px;margin-right:3px;"></i>{{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
                 </span>
@@ -706,56 +725,19 @@ $activeStatDefs = [
         </td>
         {{-- Actions --}}
         <td style="text-align:right;white-space:nowrap;">
-            <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;">
-                <a href="{{ route('admin.tasks.show', $task) }}"
-                   style="width:30px;height:30px;border-radius:8px;background:#EEF2FF;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6366F1;font-size:12px;text-decoration:none;transition:background .15s;"
-                   onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'"
-                   title="View task">
-                    <i class="fas fa-arrow-up-right-from-square"></i>
-                </a>
-                <button type="button"
-                        @click="openEdit(@js($rowEditData))"
-                        style="width:30px;height:30px;border-radius:8px;background:#F5F3FF;border:1px solid #DDD6FE;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#7C3AED;font-size:12px;transition:background .15s;"
-                        onmouseover="this.style.background='#EDE9FE'" onmouseout="this.style.background='#F5F3FF'"
-                        title="Edit task">
-                    <i class="fas fa-pen"></i>
-                </button>
-                @if(in_array($task->status, ['approved','delivered','archived']))
-                <form method="POST" action="{{ route('admin.tasks.reopen', $task) }}" style="margin:0;">
-                    @csrf
-                    <button type="submit"
-                            style="width:30px;height:30px;border-radius:8px;background:#FFFBEB;border:1px solid #FDE68A;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#D97706;font-size:12px;transition:background .15s;"
-                            onmouseover="this.style.background='#FEF3C7'" onmouseout="this.style.background='#FFFBEB'"
-                            title="Reopen task">
-                        <i class="fas fa-rotate-right"></i>
-                    </button>
-                </form>
-                @else
-                <form method="POST" action="{{ route('admin.tasks.archive', $task) }}" style="margin:0;"
-                      onsubmit="return confirm('Archive &quot;{{ addslashes($task->title) }}&quot;?')">
-                    @csrf
-                    <button type="submit"
-                            style="width:30px;height:30px;border-radius:8px;background:#F0FDF4;border:1px solid #BBF7D0;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#16A34A;font-size:12px;transition:background .15s;"
-                            onmouseover="this.style.background='#DCFCE7'" onmouseout="this.style.background='#F0FDF4'"
-                            title="Archive (close) task">
-                        <i class="fas fa-check"></i>
-                    </button>
-                </form>
-                @endif
-                @if(auth()->user()->hasPermission('delete_tasks'))
-                <form method="POST" action="{{ route('admin.tasks.destroy', $task) }}"
-                      onsubmit="return confirm('Move &quot;{{ addslashes($task->title) }}&quot; to the Recycle Bin?')"
-                      style="margin:0;">
-                    @csrf @method('DELETE')
-                    <button type="submit"
-                            style="width:30px;height:30px;border-radius:8px;background:#FEF2F2;border:1px solid #FECACA;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#EF4444;font-size:12px;transition:background .15s;"
-                            onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'"
-                            title="Move to Recycle Bin">
-                        <i class="fas fa-trash-can"></i>
-                    </button>
-                </form>
-                @endif
-            </div>
+            <button type="button"
+                    onclick="openTaskMenu(event, this)"
+                    data-view="{{ route('admin.tasks.show', $task) }}"
+                    data-edit='@json($rowEditData)'
+                    data-reopen-url="{{ in_array($task->status, $doneStatuses) ? route('admin.tasks.reopen', $task) : '' }}"
+                    data-archive-url="{{ !in_array($task->status, $doneStatuses) ? route('admin.tasks.archive', $task) : '' }}"
+                    data-delete-url="{{ auth()->user()->hasPermission('delete_tasks') ? route('admin.tasks.destroy', $task) : '' }}"
+                    data-title="{{ addslashes($task->title) }}"
+                    style="width:30px;height:30px;border-radius:8px;background:#F9FAFB;border:1px solid #E5E7EB;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:14px;transition:background .15s;letter-spacing:1px;"
+                    onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='#F9FAFB'"
+                    title="Actions">
+                <i class="fas fa-ellipsis-vertical"></i>
+            </button>
         </td>
     </tr>
     @endforeach
@@ -763,6 +745,48 @@ $activeStatDefs = [
 </table>
 </div>{{-- end overflow-x scroll --}}
 </div>
+{{-- Shared row action dropdown --}}
+<div id="task-row-menu"
+     style="display:none;position:fixed;background:#fff;border:1px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.12);min-width:160px;z-index:9998;padding:4px 0;">
+    <a id="trm-view" href="#"
+       style="display:flex;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#374151;text-decoration:none;"
+       onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+        <i class="fas fa-eye" style="width:14px;font-size:12px;color:#4F46E5;"></i> View
+    </a>
+    <button id="trm-edit"
+            style="display:flex;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#374151;background:none;border:none;cursor:pointer;width:100%;text-align:left;"
+            onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+        <i class="fas fa-pen" style="width:14px;font-size:12px;color:#7C3AED;"></i> Edit
+    </button>
+    <button id="trm-reopen"
+            style="display:flex;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#D97706;background:none;border:none;cursor:pointer;width:100%;text-align:left;"
+            onmouseover="this.style.background='#FFFBEB'" onmouseout="this.style.background=''">
+        <i class="fas fa-rotate-right" style="width:14px;font-size:12px;"></i> Reopen
+    </button>
+    <button id="trm-archive"
+            style="display:flex;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#16A34A;background:none;border:none;cursor:pointer;width:100%;text-align:left;"
+            onmouseover="this.style.background='#F0FDF4'" onmouseout="this.style.background=''">
+        <i class="fas fa-check" style="width:14px;font-size:12px;"></i> Archive
+    </button>
+    <div id="trm-sep" style="border-top:1px solid #F3F4F6;margin:3px 0;"></div>
+    <button id="trm-delete"
+            style="display:flex;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#DC2626;background:none;border:none;cursor:pointer;width:100%;text-align:left;"
+            onmouseover="this.style.background='#FEF2F2'" onmouseout="this.style.background=''">
+        <i class="fas fa-trash-can" style="width:14px;font-size:12px;"></i> Delete
+    </button>
+</div>
+
+{{-- Hidden shared forms for POST actions --}}
+<form id="task-row-reopen-form" method="POST" style="display:none;">
+    @csrf
+</form>
+<form id="task-row-archive-form" method="POST" style="display:none;"
+      onsubmit="return confirm('Archive this task?')">
+    @csrf
+</form>
+<form id="task-row-delete-form" method="POST" style="display:none;">
+    @csrf @method('DELETE')
+</form>
 </div>{{-- end table view --}}
 
 {{-- ── Edit Task Modal ── --}}
@@ -955,6 +979,85 @@ function taskViewToggle() {
         closeEdit() { this.editModal = false; this.editTask = null; },
     };
 }
+
+// ── Table row action dropdown ─────────────────────────────────────────
+function openTaskMenu(evt, btn) {
+    evt.stopPropagation();
+    const viewUrl    = btn.dataset.view;
+    const editData   = JSON.parse(btn.dataset.edit);
+    const reopenUrl  = btn.dataset.reopenUrl;
+    const archiveUrl = btn.dataset.archiveUrl;
+    const deleteUrl  = btn.dataset.deleteUrl;
+    const title      = btn.dataset.title;
+
+    const menu    = document.getElementById('task-row-menu');
+    const trmView = document.getElementById('trm-view');
+    const trmEdit = document.getElementById('trm-edit');
+    const trmReopen  = document.getElementById('trm-reopen');
+    const trmArchive = document.getElementById('trm-archive');
+    const trmSep     = document.getElementById('trm-sep');
+    const trmDelete  = document.getElementById('trm-delete');
+
+    trmView.href = viewUrl;
+
+    trmEdit.onclick = () => {
+        closeTaskMenu();
+        window.dispatchEvent(new CustomEvent('task-edit-open', { detail: editData }));
+    };
+
+    if (reopenUrl) {
+        trmReopen.style.display = 'flex';
+        trmArchive.style.display = 'none';
+        trmReopen.onclick = () => {
+            closeTaskMenu();
+            const f = document.getElementById('task-row-reopen-form');
+            f.action = reopenUrl;
+            f.submit();
+        };
+    } else if (archiveUrl) {
+        trmArchive.style.display = 'flex';
+        trmReopen.style.display = 'none';
+        trmArchive.onclick = () => {
+            closeTaskMenu();
+            if (!confirm('Archive "' + title + '"?')) return;
+            const f = document.getElementById('task-row-archive-form');
+            f.action = archiveUrl;
+            f.submit();
+        };
+    } else {
+        trmReopen.style.display = 'none';
+        trmArchive.style.display = 'none';
+    }
+
+    if (deleteUrl) {
+        trmDelete.style.display = 'flex';
+        trmSep.style.display = 'block';
+        trmDelete.onclick = () => {
+            closeTaskMenu();
+            if (!confirm('Move "' + title + '" to the Recycle Bin?')) return;
+            const f = document.getElementById('task-row-delete-form');
+            f.action = deleteUrl;
+            f.submit();
+        };
+    } else {
+        trmDelete.style.display = 'none';
+        trmSep.style.display = 'none';
+    }
+
+    menu.style.display = 'block';
+    const rect     = btn.getBoundingClientRect();
+    const menuH    = menu.offsetHeight || 180;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow > menuH + 8 ? rect.bottom + 6 : rect.top - menuH - 6;
+    menu.style.top  = top + 'px';
+    menu.style.left = (rect.right - menu.offsetWidth) + 'px';
+}
+function closeTaskMenu() { document.getElementById('task-row-menu').style.display = 'none'; }
+document.addEventListener('click', function(e) {
+    const menu = document.getElementById('task-row-menu');
+    if (menu && !menu.contains(e.target)) closeTaskMenu();
+});
+document.addEventListener('scroll', closeTaskMenu, true);
 </script>
 
 @endsection

@@ -936,7 +936,7 @@ function quickAssignUser(userId, userName, userEmail) {
     btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:10px;"></i>';
     fetch(`/admin/subscriptions/${_assignSubId}/assign-user`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
         body: JSON.stringify({ user_id: userId })
     }).then(r => r.json().then(d => ({ ok: r.ok, d }))).then(({ ok, d }) => {
         if (!ok) { btn.disabled=false; btn.innerHTML='<i class="fas fa-plus" style="font-size:10px;margin-right:3px;"></i> Assign'; setAssignStatus(d.error||'Error', true); return; }
@@ -952,9 +952,9 @@ function quickRemoveUser(userId) {
     if (!user || !confirm(`Remove ${user.name} from this subscription?`)) return;
     fetch(`/admin/subscriptions/${_assignSubId}/remove-user/${userId}`, {
         method: 'DELETE',
-        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
     }).then(r => {
-        if (r.ok || r.status === 302) {
+        if (r.ok) {
             _assignCurrent = _assignCurrent.filter(u => u.id !== userId);
             renderAssignedChips();
             renderAssignUserList(document.getElementById('assign-search').value);

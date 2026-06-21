@@ -347,31 +347,20 @@ $statDefs = [
                     {{ $project->deadline->format(config('app.date_format', 'M d, Y')) }}
                 </td>
                 <td class="px-5 py-3.5 text-sm text-gray-400">{{ $project->created_at->format('M d') }}</td>
-                <td class="px-5 py-3.5">
-                    <div class="flex items-center gap-2">
-                        <a href="{{ route('admin.projects.show', $project) }}" class="text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition">View</a>
-                        <a href="{{ route('admin.projects.edit', $project) }}" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition">Edit</a>
-                        @if($project->status === 'completed')
-                        <form action="{{ route('admin.projects.reopen', $project) }}" method="POST" class="inline"
-                              onsubmit="return confirm('Reopen {{ addslashes($project->name) }} and set it back to Active?')">
-                            @csrf
-                            <button type="submit" class="text-xs font-medium text-amber-600 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg transition">Reopen</button>
-                        </form>
-                        @else
-                        <form action="{{ route('admin.projects.close', $project) }}" method="POST" class="inline"
-                              onsubmit="return confirm('Close &quot;{{ addslashes($project->name) }}&quot; and mark it as Completed?')">
-                            @csrf
-                            <button type="submit" class="text-xs font-medium text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg transition">Close</button>
-                        </form>
-                        @endif
-                        @if(auth()->user()->hasPermission('delete_projects'))
-                        <form action="{{ route('admin.projects.destroy', $project) }}" method="POST" class="inline"
-                              onsubmit="return confirm('Delete {{ addslashes($project->name) }}?')">
-                            @csrf @method('DELETE')
-                            <button type="submit" class="text-xs font-medium text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition">Delete</button>
-                        </form>
-                        @endif
-                    </div>
+                <td class="px-5 py-3.5 text-right">
+                    <button type="button"
+                            onclick="openProjMenu(event, this)"
+                            data-view="{{ route('admin.projects.show', $project) }}"
+                            data-edit="{{ route('admin.projects.edit', $project) }}"
+                            data-reopen-url="{{ $project->status === 'completed' ? route('admin.projects.reopen', $project) : '' }}"
+                            data-close-url="{{ $project->status !== 'completed' ? route('admin.projects.close', $project) : '' }}"
+                            data-delete-url="{{ auth()->user()->hasPermission('delete_projects') ? route('admin.projects.destroy', $project) : '' }}"
+                            data-name="{{ addslashes($project->name) }}"
+                            style="width:30px;height:30px;border-radius:8px;background:#F9FAFB;border:1px solid #E5E7EB;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#6B7280;font-size:14px;transition:background .15s;"
+                            onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='#F9FAFB'"
+                            title="Actions">
+                        <i class="fas fa-ellipsis-vertical"></i>
+                    </button>
                 </td>
             </tr>
             @empty
@@ -508,44 +497,20 @@ $statDefs = [
                         <span class="text-xs text-gray-400">Due {{ $project->deadline->format(config('app.date_format', 'M d, Y')) }}</span>
                         @endif
                     </div>
-                    <div class="flex items-center gap-1" onclick="event.stopPropagation()">
-                        <a href="{{ route('admin.projects.edit', $project) }}"
-                           class="w-6 h-6 rounded-lg bg-gray-100 hover:bg-indigo-100 flex items-center justify-center text-gray-400 hover:text-indigo-600 transition"
-                           style="text-decoration:none;" title="Edit">
-                            <i class="fa fa-pen" style="font-size:10px;"></i>
-                        </a>
-                        @if($project->status === 'completed')
-                        <form action="{{ route('admin.projects.reopen', $project) }}" method="POST"
-                              onsubmit="return confirm('Reopen {{ addslashes($project->name) }} and set it back to Active?')" style="display:contents;">
-                            @csrf
-                            <button type="submit"
-                                    class="w-6 h-6 rounded-lg bg-amber-50 hover:bg-amber-100 flex items-center justify-center text-amber-400 hover:text-amber-600 transition"
-                                    title="Reopen Project" style="cursor:pointer;border:none;">
-                                <i class="fa fa-rotate-right" style="font-size:10px;"></i>
-                            </button>
-                        </form>
-                        @else
-                        <form action="{{ route('admin.projects.close', $project) }}" method="POST"
-                              onsubmit="return confirm('Close &quot;{{ addslashes($project->name) }}&quot; and mark it as Completed?')" style="display:contents;">
-                            @csrf
-                            <button type="submit"
-                                    class="w-6 h-6 rounded-lg bg-emerald-50 hover:bg-emerald-100 flex items-center justify-center text-emerald-400 hover:text-emerald-600 transition"
-                                    title="Close Project" style="cursor:pointer;border:none;">
-                                <i class="fa fa-check" style="font-size:10px;"></i>
-                            </button>
-                        </form>
-                        @endif
-                        @if(auth()->user()->hasPermission('delete_projects'))
-                        <form action="{{ route('admin.projects.destroy', $project) }}" method="POST"
-                              onsubmit="return confirm('Delete {{ addslashes($project->name) }}?')" style="display:contents;">
-                            @csrf @method('DELETE')
-                            <button type="submit"
-                                    class="w-6 h-6 rounded-lg bg-gray-100 hover:bg-red-100 flex items-center justify-center text-gray-400 hover:text-red-500 transition"
-                                    title="Delete" style="cursor:pointer;border:none;">
-                                <i class="fa fa-trash" style="font-size:10px;"></i>
-                            </button>
-                        </form>
-                        @endif
+                    <div onclick="event.stopPropagation()">
+                        <button type="button"
+                                onclick="openProjMenu(event, this)"
+                                data-view="{{ route('admin.projects.show', $project) }}"
+                                data-edit="{{ route('admin.projects.edit', $project) }}"
+                                data-reopen-url="{{ $project->status === 'completed' ? route('admin.projects.reopen', $project) : '' }}"
+                                data-close-url="{{ $project->status !== 'completed' ? route('admin.projects.close', $project) : '' }}"
+                                data-delete-url="{{ auth()->user()->hasPermission('delete_projects') ? route('admin.projects.destroy', $project) : '' }}"
+                                data-name="{{ addslashes($project->name) }}"
+                                class="w-6 h-6 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 transition"
+                                style="border:none;cursor:pointer;font-size:13px;"
+                                title="Actions">
+                            <i class="fas fa-ellipsis-vertical"></i>
+                        </button>
                     </div>
                 </div>
 
@@ -1085,4 +1050,106 @@ $statDefs = [
 </div>
 
 </div>
+
+{{-- Shared project row action dropdown --}}
+<div id="proj-row-menu"
+     style="display:none;position:fixed;background:#fff;border:1px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.12);min-width:160px;z-index:9998;padding:4px 0;">
+    <a id="prm-view" href="#"
+       style="display:flex;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#374151;text-decoration:none;"
+       onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+        <i class="fas fa-eye" style="width:14px;font-size:12px;color:#4F46E5;"></i> View
+    </a>
+    <a id="prm-edit" href="#"
+       style="display:flex;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#374151;text-decoration:none;"
+       onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+        <i class="fas fa-pencil" style="width:14px;font-size:12px;color:#6B7280;"></i> Edit
+    </a>
+    <button id="prm-reopen"
+            style="display:none;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#D97706;background:none;border:none;cursor:pointer;width:100%;text-align:left;"
+            onmouseover="this.style.background='#FFFBEB'" onmouseout="this.style.background=''">
+        <i class="fas fa-rotate-right" style="width:14px;font-size:12px;"></i> Reopen
+    </button>
+    <button id="prm-close"
+            style="display:none;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#16A34A;background:none;border:none;cursor:pointer;width:100%;text-align:left;"
+            onmouseover="this.style.background='#F0FDF4'" onmouseout="this.style.background=''">
+        <i class="fas fa-check" style="width:14px;font-size:12px;"></i> Close
+    </button>
+    <div id="prm-sep" style="display:none;border-top:1px solid #F3F4F6;margin:3px 0;"></div>
+    <button id="prm-delete"
+            style="display:none;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#DC2626;background:none;border:none;cursor:pointer;width:100%;text-align:left;"
+            onmouseover="this.style.background='#FEF2F2'" onmouseout="this.style.background=''">
+        <i class="fas fa-trash" style="width:14px;font-size:12px;"></i> Delete
+    </button>
+</div>
+
+<form id="proj-row-reopen-form" method="POST" style="display:none;">@csrf</form>
+<form id="proj-row-close-form"  method="POST" style="display:none;">@csrf</form>
+<form id="proj-row-delete-form" method="POST" style="display:none;">@csrf @method('DELETE')</form>
+
+<script>
+function openProjMenu(evt, btn) {
+    evt.stopPropagation();
+    const menu      = document.getElementById('proj-row-menu');
+    const reopenUrl = btn.dataset.reopenUrl;
+    const closeUrl  = btn.dataset.closeUrl;
+    const deleteUrl = btn.dataset.deleteUrl;
+    const name      = btn.dataset.name;
+
+    document.getElementById('prm-view').href = btn.dataset.view;
+    document.getElementById('prm-edit').href = btn.dataset.edit;
+
+    const prmReopen = document.getElementById('prm-reopen');
+    const prmClose  = document.getElementById('prm-close');
+    const prmSep    = document.getElementById('prm-sep');
+    const prmDelete = document.getElementById('prm-delete');
+
+    if (reopenUrl) {
+        prmReopen.style.display = 'flex';
+        prmClose.style.display  = 'none';
+        prmReopen.onclick = () => {
+            closeProjMenu();
+            if (!confirm('Reopen "' + name + '" and set it back to Active?')) return;
+            const f = document.getElementById('proj-row-reopen-form');
+            f.action = reopenUrl; f.submit();
+        };
+    } else {
+        prmReopen.style.display = 'none';
+        prmClose.style.display  = 'flex';
+        prmClose.onclick = () => {
+            closeProjMenu();
+            if (!confirm('Close "' + name + '" and mark it as Completed?')) return;
+            const f = document.getElementById('proj-row-close-form');
+            f.action = closeUrl; f.submit();
+        };
+    }
+
+    if (deleteUrl) {
+        prmSep.style.display    = 'block';
+        prmDelete.style.display = 'flex';
+        prmDelete.onclick = () => {
+            closeProjMenu();
+            if (!confirm('Delete "' + name + '"?')) return;
+            const f = document.getElementById('proj-row-delete-form');
+            f.action = deleteUrl; f.submit();
+        };
+    } else {
+        prmSep.style.display    = 'none';
+        prmDelete.style.display = 'none';
+    }
+
+    menu.style.display = 'block';
+    const rect       = btn.getBoundingClientRect();
+    const menuH      = menu.offsetHeight || 180;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow > menuH + 8 ? rect.bottom + 6 : rect.top - menuH - 6;
+    menu.style.top  = top + 'px';
+    menu.style.left = (rect.right - menu.offsetWidth) + 'px';
+}
+function closeProjMenu() { document.getElementById('proj-row-menu').style.display = 'none'; }
+document.addEventListener('click', function(e) {
+    const menu = document.getElementById('proj-row-menu');
+    if (menu && !menu.contains(e.target)) closeProjMenu();
+});
+document.addEventListener('scroll', closeProjMenu, true);
+</script>
 @endsection

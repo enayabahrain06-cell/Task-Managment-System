@@ -115,7 +115,8 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
             }
             this.fetchSummary();
         },
-     }">
+     }"
+     @open-cust-delete.window="openDeleteModal($event.detail.name, $event.detail.action)">
 
     {{-- Header --}}
     <div class="cust-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
@@ -256,25 +257,19 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
                             </span>
                         </td>
                         <td style="padding:14px 16px;text-align:right;">
-                            <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;">
-                                <a href="{{ route('admin.customers.show', $customer) }}"
-                                   style="padding:5px 10px;border-radius:7px;background:#F3F4F6;color:#374151;font-size:12px;font-weight:600;text-decoration:none;" title="View">
-                                    <i class="fas fa-eye" style="font-size:11px;"></i>
-                                </a>
-                                <a href="{{ route('admin.customers.report', $customer) }}"
-                                   style="padding:5px 10px;border-radius:7px;background:#EEF2FF;color:#4F46E5;font-size:12px;font-weight:600;text-decoration:none;" title="Report">
-                                    <i class="fas fa-chart-line" style="font-size:11px;"></i>
-                                </a>
-                                <a href="{{ route('admin.customers.edit', $customer) }}"
-                                   style="padding:5px 10px;border-radius:7px;background:#F3F4F6;color:#374151;font-size:12px;font-weight:600;text-decoration:none;" title="Edit">
-                                    <i class="fas fa-pencil" style="font-size:11px;"></i>
-                                </a>
-                                <button type="button"
-                                        @click="openDeleteModal(@js($customer->name), '{{ route('admin.customers.destroy', $customer) }}')"
-                                        style="padding:5px 10px;border-radius:7px;background:#FEF2F2;color:#DC2626;border:none;font-size:12px;font-weight:600;cursor:pointer;" title="Delete">
-                                    <i class="fas fa-trash" style="font-size:11px;"></i>
-                                </button>
-                            </div>
+                            <button type="button"
+                                    onclick="openCustMenu(event, this)"
+                                    data-view="{{ route('admin.customers.show', $customer) }}"
+                                    data-report="{{ route('admin.customers.report', $customer) }}"
+                                    data-edit="{{ route('admin.customers.edit', $customer) }}"
+                                    data-whatsapp="{{ $customer->whatsappUrl() ?? '' }}"
+                                    data-delete="{{ route('admin.customers.destroy', $customer) }}"
+                                    data-name="@js($customer->name)"
+                                    style="width:30px;height:30px;border-radius:8px;background:#F9FAFB;border:1px solid #E5E7EB;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#6B7280;font-size:14px;transition:background .15s;"
+                                    onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='#F9FAFB'"
+                                    title="Actions">
+                                <i class="fas fa-ellipsis-vertical"></i>
+                            </button>
                         </td>
                     </tr>
                     @endforeach
@@ -312,31 +307,20 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
                             @endif
                         </div>
                     </div>
-                    {{-- Action buttons --}}
-                    <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
-                        @if($customer->whatsappUrl())
-                        <a href="{{ $customer->whatsappUrl() }}" target="_blank" rel="noopener"
-                           title="WhatsApp" onclick="event.stopPropagation()"
-                           style="width:28px;height:28px;border-radius:7px;background:#25D366;color:#fff;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:13px;">
-                            <i class="fab fa-whatsapp"></i>
-                        </a>
-                        @endif
-                        <a href="{{ route('admin.customers.report', $customer) }}"
-                           title="Report"
-                           style="width:28px;height:28px;border-radius:7px;background:#EEF2FF;color:#4F46E5;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:11px;">
-                            <i class="fas fa-chart-line"></i>
-                        </a>
-                        <a href="{{ route('admin.customers.edit', $customer) }}"
-                           title="Edit"
-                           style="width:28px;height:28px;border-radius:7px;background:#F3F4F6;color:#374151;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:11px;">
-                            <i class="fas fa-pencil"></i>
-                        </a>
-                        <button type="button"
-                                @click="openDeleteModal(@js($customer->name), '{{ route('admin.customers.destroy', $customer) }}')"
-                                style="width:28px;height:28px;border-radius:7px;background:#FEF2F2;color:#DC2626;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
+                    {{-- Action button --}}
+                    <button type="button"
+                            onclick="openCustMenu(event, this)"
+                            data-view="{{ route('admin.customers.show', $customer) }}"
+                            data-report="{{ route('admin.customers.report', $customer) }}"
+                            data-edit="{{ route('admin.customers.edit', $customer) }}"
+                            data-whatsapp="{{ $customer->whatsappUrl() ?? '' }}"
+                            data-delete="{{ route('admin.customers.destroy', $customer) }}"
+                            data-name="@js($customer->name)"
+                            style="width:28px;height:28px;border-radius:8px;background:#F9FAFB;border:1px solid #E5E7EB;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:14px;flex-shrink:0;transition:background .15s;"
+                            onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='#F9FAFB'"
+                            title="Actions">
+                        <i class="fas fa-ellipsis-vertical"></i>
+                    </button>
                 </div>
 
                 {{-- Contact info --}}
@@ -809,6 +793,78 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
     </div>{{-- /delete modal --}}
 
 </div>
+
+{{-- Shared customer row action dropdown --}}
+<div id="cust-row-menu"
+     style="display:none;position:fixed;background:#fff;border:1px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.12);min-width:160px;z-index:9998;padding:4px 0;">
+    <a id="crm-view" href="#"
+       style="display:flex;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#374151;text-decoration:none;"
+       onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+        <i class="fas fa-eye" style="width:14px;font-size:12px;color:#4F46E5;"></i> View
+    </a>
+    <a id="crm-report" href="#"
+       style="display:flex;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#374151;text-decoration:none;"
+       onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+        <i class="fas fa-chart-line" style="width:14px;font-size:12px;color:#6366F1;"></i> Report
+    </a>
+    <a id="crm-edit" href="#"
+       style="display:flex;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#374151;text-decoration:none;"
+       onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+        <i class="fas fa-pencil" style="width:14px;font-size:12px;color:#6B7280;"></i> Edit
+    </a>
+    <a id="crm-whatsapp" href="#" target="_blank" rel="noopener"
+       style="display:none;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#374151;text-decoration:none;"
+       onmouseover="this.style.background='#F0FDF4'" onmouseout="this.style.background=''">
+        <i class="fab fa-whatsapp" style="width:14px;font-size:12px;color:#25D366;"></i> WhatsApp
+    </a>
+    <div style="border-top:1px solid #F3F4F6;margin:3px 0;"></div>
+    <button id="crm-delete"
+            style="display:flex;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#DC2626;background:none;border:none;cursor:pointer;width:100%;text-align:left;"
+            onmouseover="this.style.background='#FEF2F2'" onmouseout="this.style.background=''">
+        <i class="fas fa-trash" style="width:14px;font-size:12px;"></i> Delete
+    </button>
+</div>
+
+<script>
+function openCustMenu(evt, btn) {
+    evt.stopPropagation();
+    const menu      = document.getElementById('cust-row-menu');
+    const whatsapp  = btn.dataset.whatsapp;
+    const name      = btn.dataset.name;
+    const deleteUrl = btn.dataset.delete;
+
+    document.getElementById('crm-view').href   = btn.dataset.view;
+    document.getElementById('crm-report').href = btn.dataset.report;
+    document.getElementById('crm-edit').href   = btn.dataset.edit;
+
+    const crWa = document.getElementById('crm-whatsapp');
+    if (whatsapp) {
+        crWa.href = whatsapp;
+        crWa.style.display = 'flex';
+    } else {
+        crWa.style.display = 'none';
+    }
+
+    document.getElementById('crm-delete').onclick = () => {
+        closeCustMenu();
+        window.dispatchEvent(new CustomEvent('open-cust-delete', { detail: { name, action: deleteUrl } }));
+    };
+
+    menu.style.display = 'block';
+    const rect       = btn.getBoundingClientRect();
+    const menuH      = menu.offsetHeight || 180;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow > menuH + 8 ? rect.bottom + 6 : rect.top - menuH - 6;
+    menu.style.top  = top + 'px';
+    menu.style.left = (rect.right - menu.offsetWidth) + 'px';
+}
+function closeCustMenu() { document.getElementById('cust-row-menu').style.display = 'none'; }
+document.addEventListener('click', function(e) {
+    const menu = document.getElementById('cust-row-menu');
+    if (menu && !menu.contains(e.target)) closeCustMenu();
+});
+document.addEventListener('scroll', closeCustMenu, true);
+</script>
 @endsection
 
 @push('scripts')
