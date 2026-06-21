@@ -28,6 +28,7 @@ use App\Http\Controllers\Admin\SubscriptionController as AdminSubscriptionContro
 use App\Http\Controllers\Admin\DomainController as AdminDomainController;
 use App\Http\Controllers\User\LicensesController as UserLicensesController;
 use App\Http\Controllers\User\ProjectController as UserProjectController;
+use App\Http\Controllers\User\DomainsController as UserDomainsController;
 use App\Http\Controllers\User\ReportsController as UserReportsController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\ManagerMiddleware;
@@ -379,6 +380,7 @@ Route::middleware([ManagerMiddleware::class])->prefix('manager')->name('manager.
 Route::middleware([UserMiddleware::class])->prefix('user')->name('user.')->group(function () {
     Route::get('/dashboard', [UserDashboard::class, 'index'])->name('dashboard');
     Route::get('/licenses',  [UserLicensesController::class, 'index'])->name('licenses.index');
+    Route::get('/domains',   [UserDomainsController::class, 'index'])->name('domains.index');
     Route::post('/licenses/{subscription}/reveal-password', [UserLicensesController::class, 'revealPassword'])->name('licenses.reveal-password');
     Route::post('/report',   [UserDashboard::class, 'submitReport'])->name('report');
     Route::get('/tasks-modal', [UserDashboard::class, 'taskModal'])->name('tasks.modal');

@@ -7,7 +7,9 @@ use App\Models\Customer;
 use App\Models\Domain;
 use App\Models\DomainAttachment;
 use App\Models\User;
+use App\Notifications\DomainAssigned;
 use App\Services\AuditLogger;
+use App\Services\MqttService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
@@ -152,6 +154,20 @@ class DomainController extends Controller
 
         $domain = Domain::create($data);
 
+        // Notify responsible user
+        if (!empty($data['responsible_user_id'])) {
+            $responsible = User::find($data['responsible_user_id']);
+            if ($responsible) {
+                $responsible->notify(new DomainAssigned($domain, auth()->user()));
+                MqttService::notifyUser($responsible->id, [
+                    'notif_type'   => 'domain_assigned',
+                    'unread_count' => $responsible->unreadNotifications()->count(),
+                    'title'        => 'Domain Responsibility Assigned',
+                    'message'      => "You are now responsible for: {$domain->domain}",
+                ]);
+            }
+        }
+
         AuditLogger::log('created', $domain, "Created domain: {$domain->domain}");
 
         return redirect()->route('admin.domains.index')
@@ -244,7 +260,23 @@ class DomainController extends Controller
             $data['nameservers'] = null;
         }
 
+        $oldResponsibleId = $domain->responsible_user_id;
         $domain->update($data);
+
+        // Notify new responsible user if they changed
+        $newResponsibleId = $domain->fresh()->responsible_user_id;
+        if ($newResponsibleId && $newResponsibleId !== $oldResponsibleId) {
+            $responsible = User::find($newResponsibleId);
+            if ($responsible) {
+                $responsible->notify(new DomainAssigned($domain, auth()->user()));
+                MqttService::notifyUser($responsible->id, [
+                    'notif_type'   => 'domain_assigned',
+                    'unread_count' => $responsible->unreadNotifications()->count(),
+                    'title'        => 'Domain Responsibility Assigned',
+                    'message'      => "You are now responsible for: {$domain->domain}",
+                ]);
+            }
+        }
 
         AuditLogger::log('updated', $domain, "Updated domain: {$domain->domain}");
 
