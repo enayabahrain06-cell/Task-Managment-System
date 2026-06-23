@@ -34,6 +34,28 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
 }
 @keyframes cust-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 .cust-skeleton { animation: cust-pulse 1.4s ease-in-out infinite; }
+
+/* Row / card entrance */
+@keyframes cust-fadein { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+.cust-row  { animation: cust-fadein .35s ease both; }
+.cust-card { animation: cust-fadein .35s ease both; }
+.cust-row:nth-child(1),.cust-card:nth-child(1)  { animation-delay: .04s }
+.cust-row:nth-child(2),.cust-card:nth-child(2)  { animation-delay: .08s }
+.cust-row:nth-child(3),.cust-card:nth-child(3)  { animation-delay: .12s }
+.cust-row:nth-child(4),.cust-card:nth-child(4)  { animation-delay: .16s }
+.cust-row:nth-child(5),.cust-card:nth-child(5)  { animation-delay: .20s }
+.cust-row:nth-child(6),.cust-card:nth-child(6)  { animation-delay: .24s }
+.cust-row:nth-child(7),.cust-card:nth-child(7)  { animation-delay: .28s }
+.cust-row:nth-child(8),.cust-card:nth-child(8)  { animation-delay: .32s }
+.cust-row:nth-child(n+9),.cust-card:nth-child(n+9) { animation-delay: .36s }
+
+/* Card hover lift */
+.cust-card { transition: box-shadow .2s, transform .2s; }
+.cust-card:hover { box-shadow: 0 8px 24px rgba(99,102,241,.13) !important; transform: translateY(-2px); }
+
+/* Logo hover zoom */
+.cust-logo { transition: transform .2s ease, box-shadow .2s ease; }
+.cust-logo:hover { transform: scale(1.12); box-shadow: 0 4px 14px rgba(99,102,241,.25); }
 </style>
 <div x-data="{
         modal: {{ $errors->any() ? 'true' : 'false' }},
@@ -199,12 +221,17 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
                 </thead>
                 <tbody>
                     @foreach($customers as $customer)
-                    <tr style="border-bottom:1px solid #F9FAFB;transition:background .1s;" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background=''">
+                    <tr class="cust-row" style="border-bottom:1px solid #F9FAFB;transition:background .1s;" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background=''">
                         <td style="padding:14px 20px;">
                             <div style="display:flex;align-items:center;gap:12px;">
                                 @if($customer->logo)
                                 <img src="{{ Storage::url($customer->logo) }}" alt="{{ $customer->name }}"
-                                     style="width:38px;height:38px;border-radius:10px;object-fit:cover;border:1px solid #E5E7EB;flex-shrink:0;">
+                                     class="cust-logo"
+                                     style="width:38px;height:38px;border-radius:10px;object-fit:contain;background:#fff;border:1px solid #E5E7EB;flex-shrink:0;"
+                                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                                <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:none;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;">
+                                    {{ strtoupper(substr($customer->name, 0, 1)) }}
+                                </div>
                                 @else
                                 <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;">
                                     {{ strtoupper(substr($customer->name, 0, 1)) }}
@@ -285,15 +312,19 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
     <div x-show="view === 'cards'">
         <div class="cust-cards-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
             @foreach($customers as $customer)
-            <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;display:flex;flex-direction:column;gap:14px;transition:box-shadow .15s;"
-                 onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)'">
+            <div class="cust-card" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;display:flex;flex-direction:column;gap:14px;">
 
                 {{-- Card top: avatar + name + actions --}}
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
                     <div style="display:flex;align-items:center;gap:12px;min-width:0;">
                         @if($customer->logo)
                         <img src="{{ Storage::url($customer->logo) }}" alt="{{ $customer->name }}"
-                             style="width:46px;height:46px;border-radius:12px;object-fit:cover;border:1.5px solid #E5E7EB;flex-shrink:0;">
+                             class="cust-logo"
+                             style="width:46px;height:46px;border-radius:12px;object-fit:contain;background:#fff;border:1.5px solid #E5E7EB;flex-shrink:0;"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                        <div style="width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:none;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;">
+                            {{ strtoupper(substr($customer->name, 0, 1)) }}
+                        </div>
                         @else
                         <div style="width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;">
                             {{ strtoupper(substr($customer->name, 0, 1)) }}
@@ -443,7 +474,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
                                 <i class="fas fa-building" style="font-size:22px;color:#fff;opacity:.7;"></i>
                             </div>
                             <img x-show="logoPreview" :src="logoPreview" x-cloak
-                                 style="width:72px;height:72px;border-radius:14px;object-fit:cover;border:2px solid #E5E7EB;">
+                                 style="width:72px;height:72px;border-radius:14px;object-fit:contain;background:#fff;border:2px solid #E5E7EB;">
                             <div style="position:absolute;bottom:-4px;right:-4px;width:22px;height:22px;border-radius:50%;background:#6366F1;display:flex;align-items:center;justify-content:center;border:2px solid #fff;">
                                 <i class="fas fa-camera" style="font-size:9px;color:#fff;"></i>
                             </div>

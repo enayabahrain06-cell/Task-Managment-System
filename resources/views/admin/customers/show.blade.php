@@ -495,7 +495,11 @@
             <div style="padding:20px 24px 18px;border-bottom:1px solid #F0F2F8;display:flex;align-items:center;gap:12px;flex-shrink:0;background:linear-gradient(135deg,#F8F9FF,#fff);">
                 @if($customer->logo)
                 <img src="{{ Storage::url($customer->logo) }}" alt="{{ $customer->name }}"
-                     style="width:42px;height:42px;border-radius:11px;object-fit:cover;border:1.5px solid #E5E7EB;flex-shrink:0;">
+                     style="width:42px;height:42px;border-radius:11px;object-fit:contain;background:#fff;border:1.5px solid #E5E7EB;flex-shrink:0;"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                <div style="width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:none;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0;">
+                    {{ strtoupper(substr($customer->name, 0, 1)) }}
+                </div>
                 @else
                 <div style="width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0;">
                     {{ strtoupper(substr($customer->name, 0, 1)) }}
@@ -771,7 +775,11 @@
             <div style="display:flex;align-items:center;gap:10px;">
                 @if($customer->logo)
                 <img src="{{ Storage::url($customer->logo) }}" alt="{{ $customer->name }}"
-                     style="width:48px;height:48px;border-radius:12px;object-fit:cover;border:1.5px solid #E5E7EB;flex-shrink:0;">
+                     style="width:48px;height:48px;border-radius:12px;object-fit:contain;background:#fff;border:1.5px solid #E5E7EB;flex-shrink:0;"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:none;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;">
+                    {{ strtoupper(substr($customer->name, 0, 1)) }}
+                </div>
                 @else
                 <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;">
                     {{ strtoupper(substr($customer->name, 0, 1)) }}
