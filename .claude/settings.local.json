@@ -77,7 +77,8 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost/admin/customers/3/report\" -H \"Cookie: $\\(php artisan tinker --execute=\"echo 'laravel_session=fake';\" \\)\")",
       "Bash(cp /var/www/Task-Managment-System/resources/views/admin/tasks/show.blade.php /var/www/Task-Managment-System/resources/views/admin/tasks/show.blade.php.bak)",
       "Bash(cp /var/www/Task-Managment-System/resources/views/user/tasks/show.blade.php /var/www/Task-Managment-System/resources/views/user/tasks/show.blade.php.bak)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost/admin/tasks/65)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost/admin/tasks/65)",
+      "Bash(cp /var/www/Task-Managment-System/resources/views/messages/index.blade.php /var/www/Task-Managment-System/resources/views/messages/index.blade.php.bak4)"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory",
@@ -86,7 +87,8 @@
       "/etc/mosquitto",
       "/etc/apache2/sites-available",
       "/etc/apache2/sites-enabled",
-      "/var/www/Task-Managment-System/resources/views/admin/subscriptions"
+      "/var/www/Task-Managment-System/resources/views/admin/subscriptions",
+      "/var/www/Task-Managment-System/resources/views/messages"
     ]
   }
 }
