@@ -65,10 +65,10 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
         summaryDateFrom: window._custSummaryDefaults ? window._custSummaryDefaults.from : '',
         summaryDateTo: window._custSummaryDefaults ? window._custSummaryDefaults.to : '',
         summaryPreset: 'custom',
-        summaryLoading: true,
+        summaryLoading: false,
         summaryList: [],
         summaryTotals: {customers:0,projects:0,tasks:0,delivered:0},
-        init() { this.fetchSummary(); },
+        _summaryLoaded: false,
         get summaryOverallRate() {
             return this.summaryTotals.tasks > 0
                 ? Math.round(this.summaryTotals.delivered / this.summaryTotals.tasks * 100)
@@ -133,7 +133,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
             <p style="font-size:13px;color:#9CA3AF;margin:4px 0 0;">Manage your clients and link them to projects & tasks</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
-            <button @click="summarizeModal = true"
+            <button @click="summarizeModal = true; if (!_summaryLoaded) { _summaryLoaded = true; fetchSummary(); }"
                     style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;background:#fff;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;"
                     onmouseover="this.style.background='#EEF2FF'" onmouseout="this.style.background='#fff'">
                 <i class="fas fa-chart-pie" style="font-size:11px;"></i> Summarize

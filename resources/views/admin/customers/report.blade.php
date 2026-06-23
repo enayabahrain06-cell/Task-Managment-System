@@ -93,6 +93,9 @@ canvas { max-width:100% !important; }
 </style>
 @endpush
 
+@push('head_scripts')
+<script src="/js/chart.umd.min.js"></script>
+@endpush
 @section('content')
 <div style="padding-bottom:40px;">
 
@@ -1003,7 +1006,7 @@ function _loadHtml2Pdf(cb) {
     if (_html2pdfLoaded) { var t = setInterval(function(){ if(typeof html2pdf!=='undefined'){clearInterval(t);cb();} },50); return; }
     _html2pdfLoaded = true;
     var s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    s.src = '/js/html2pdf.bundle.min.js';
     s.onload = cb;
     document.head.appendChild(s);
 }

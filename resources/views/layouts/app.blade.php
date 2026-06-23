@@ -12,13 +12,13 @@
 
     <link rel="stylesheet" href="/css/inter.css">
     <link rel="stylesheet" href="/css/fa-all.min.css">
-    <script src="/js/chart.umd.min.js"></script>
     <script defer src="/js/alpine-collapse.min.js"></script>
     <script defer src="/js/alpine.min.js"></script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     @stack('styles')
+    @stack('head_scripts')
 
     <style>
         * { box-sizing: border-box; }
@@ -773,12 +773,15 @@ function notifBell() {
             // Notification count polling fallback (every 30s)
             this._timer = setInterval(() => this._poll(), 30000);
 
-            // Message unread polling — every 10s, plays sound when count rises
+            // Message unread polling — fallback only (30s); skipped entirely when MQTT is active
             this._pollMessages();
-            this._msgTimer = setInterval(() => this._pollMessages(), 10000);
+            this._msgTimer = setInterval(() => this._pollMessages(), 30000);
 
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden) { this._poll(); this._pollMessages(); }
+                if (!document.hidden) {
+                    this._poll();
+                    if (!this._mqttReady) this._pollMessages();
+                }
             });
         },
 
@@ -825,6 +828,8 @@ function notifBell() {
         },
 
         async _pollMessages() {
+            // MQTT handles message sounds in real-time — no need to poll when connected
+            if (this._mqttReady) return;
             const _now = Date.now();
             if (_now - (this._lastMsgPoll || 0) < 3000) return;
             this._lastMsgPoll = _now;

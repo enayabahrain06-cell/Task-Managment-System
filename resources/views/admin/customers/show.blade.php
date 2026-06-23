@@ -1702,8 +1702,8 @@
 </div>
 
 @push('scripts')
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="/js/xlsx.full.min.js"></script>
+<script src="/js/html2pdf.bundle.min.js"></script>
 @php
     $exportCustomerMeta = ['name'=>$customer->name,'company'=>$customer->company,'email'=>$customer->email,'phone'=>$customer->phone];
     $exportCustomerSlug = Str::slug($customer->name);

@@ -2,6 +2,9 @@
 
 @section('title', 'Overview')
 
+@push('head_scripts')
+<script src="/js/chart.umd.min.js"></script>
+@endpush
 @section('content')
 
 <style>

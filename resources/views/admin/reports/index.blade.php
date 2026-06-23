@@ -1,6 +1,9 @@
 @extends('layouts.app')
 @section('title', 'Reports & Analytics')
 
+@push('head_scripts')
+<script src="/js/chart.umd.min.js"></script>
+@endpush
 @section('content')
 
 {{-- ══ Print CSS ══ --}}
@@ -2087,10 +2090,10 @@ if (!empty($appSettings['logo_path'])) {
 
 @push('scripts')
 {{-- ── Export libraries ── --}}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="/js/html2canvas.min.js"></script>
+<script src="/js/jspdf.umd.min.js"></script>
+<script src="/js/html2pdf.bundle.min.js"></script>
+<script src="/js/xlsx.full.min.js"></script>
 
 <script>
 /* ══════════════════════════════════════════════════════════

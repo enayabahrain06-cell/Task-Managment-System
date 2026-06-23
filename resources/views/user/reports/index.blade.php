@@ -1,6 +1,9 @@
 @extends('layouts.app')
 @section('title', 'My Reports')
 
+@push('head_scripts')
+<script src="/js/chart.umd.min.js"></script>
+@endpush
 @section('content')
 
 <style>
@@ -555,7 +558,6 @@
 </div>
 @endif
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
 (function () {
     const ctx = document.getElementById('trendChart').getContext('2d');
@@ -713,8 +715,8 @@
         }
     @endphp
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+    <script src="/js/jspdf.umd.min.js"></script>
+    <script src="/js/jspdf.plugin.autotable.min.js"></script>
     <script>
     function filterAllTasks(q) {
         q = q.toLowerCase();

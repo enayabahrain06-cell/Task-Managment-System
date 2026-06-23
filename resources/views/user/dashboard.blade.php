@@ -1,6 +1,9 @@
 @extends('layouts.app')
 @section('title', isset($previewUser) ? $previewUser->name . ' — Dashboard Preview' : 'My Dashboard')
 
+@push('head_scripts')
+<script src="/js/chart.umd.min.js"></script>
+@endpush
 @section('content')
 <style>
 .usr-stats-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:14px; margin-bottom:20px; }

@@ -290,7 +290,7 @@ if (!empty($appSettings['logo_path'])) {
 @endphp
 
 @push('scripts')
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="/js/html2pdf.bundle.min.js"></script>
 <script>
 /* ══════════════════════════════════════════════════════════
    CUSTOMERS SUMMARY — Branded Print & Export PDF

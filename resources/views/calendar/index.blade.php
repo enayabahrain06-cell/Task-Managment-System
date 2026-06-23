@@ -685,7 +685,7 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+<script src="/js/fullcalendar.global.min.js"></script>
 <script>
 const csrfToken    = '{{ csrf_token() }}';
 const meetingsBase = '{{ $meetingsBaseUrl }}';
