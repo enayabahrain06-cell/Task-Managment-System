@@ -10,12 +10,11 @@
     <link rel="icon" type="image/png" href="{{ Storage::url($appSettings['favicon_path']) }}">
     @endif
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/inter.css">
     <link rel="stylesheet" href="/css/fa-all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.14.1/dist/cdn.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <script src="/js/chart.umd.min.js"></script>
+    <script defer src="/js/alpine-collapse.min.js"></script>
+    <script defer src="/js/alpine.min.js"></script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
@@ -826,6 +825,8 @@ function notifBell() {
         },
 
         async _pollMessages() {
+            if (this._pollMsgPending) return;
+            this._pollMsgPending = true;
             // Skip while the messages page is open — that page handles its own sound
             if (location.pathname.startsWith('/messages')) {
                 // Still sync the baseline so we don't double-ring when leaving the page
@@ -839,6 +840,7 @@ function notifBell() {
                                         + Object.values(d.groups ?? {}).reduce((a, b) => a + b, 0);
                     }
                 } catch (e) {}
+                this._pollMsgPending = false;
                 return;
             }
             try {
@@ -855,6 +857,7 @@ function notifBell() {
                 this._msgUnread      = total;
                 this._msgInitialized = true;
             } catch (e) {}
+            this._pollMsgPending = false;
         },
 
         playSound() { window.playNotifSound(); },
@@ -984,19 +987,23 @@ function onlineUsers() {
             const attach = () => {
                 if (!window._mqtt) return;
                 window._mqtt.onTopic('tm/presence/+', () => {
-                    this._fetch();
+                    clearTimeout(this._presenceDebounce);
+                    this._presenceDebounce = setTimeout(() => this._fetch(), 2000);
                 });
             };
             if (window._mqtt) { attach(); }
             else { document.addEventListener('mqtt:ready', attach, { once: true }); }
         },
         async _fetch() {
+            if (this._fetchPending) return;
+            this._fetchPending = true;
             try {
                 const res  = await fetch('{{ route("online.users") }}', { headers:{ 'X-Requested-With':'XMLHttpRequest' } });
                 if (!res.ok) return;
                 this.users = await res.json();
                 this.count = this.users.length;
             } catch(e) {}
+            this._fetchPending = false;
         },
         statusBg(s) {
             return { online:'#ECFDF5', away:'#FFFBEB', busy:'#FEF2F2', offline:'#F3F4F6' }[s] || '#F3F4F6';
