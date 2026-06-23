@@ -995,6 +995,14 @@ if (!empty($appSettings['logo_path'])) {
         $reportLogo = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($lp));
     }
 }
+$custLogoB64 = '';
+if (!empty($customer->logo)) {
+    $clp = Storage::disk('public')->path($customer->logo);
+    if (file_exists($clp)) {
+        $mime2 = mime_content_type($clp) ?: 'image/png';
+        $custLogoB64 = 'data:' . $mime2 . ';base64,' . base64_encode(file_get_contents($clp));
+    }
+}
 @endphp
 
 @push('scripts')
@@ -1128,6 +1136,7 @@ function buildCustomerReportHTML(immediate) {
     var mono     = company.charAt(0).toUpperCase();
     var custName = '{{ addslashes($customer->name) }}';
     var custCo   = '{{ addslashes($customer->company ?? '') }}';
+    var custLogo = '{{ $custLogoB64 }}';
     var custEmail= '{{ addslashes($customer->email ?? '') }}';
     var custPhone= '{{ addslashes($customer->phone ?? '') }}';
     var dateStr  = '{{ now()->format(config('app.date_format','M d, Y')) }}';
@@ -1177,6 +1186,7 @@ function buildCustomerReportHTML(immediate) {
     + '.hr { height:1px; background:#E5E7EB; }'
     + '.cust-strip { display:flex; align-items:center; gap:14px; padding:14px 32px; background:#F8FAFC; border-bottom:1px solid #E5E7EB; }'
     + '.cust-avatar { width:44px; height:44px; border-radius:11px; background:linear-gradient(135deg,#6366F1,#4F46E5); display:flex; align-items:center; justify-content:center; color:#fff; font-size:20px; font-weight:800; flex-shrink:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.cust-logo-img { width:44px; height:44px; border-radius:11px; object-fit:contain; background:#fff; border:1.5px solid #E5E7EB; flex-shrink:0; display:block; }'
     + '.cust-name  { font-size:15px; font-weight:800; color:#111827; }'
     + '.cust-co    { font-size:11px; color:#9CA3AF; margin-top:1px; }'
     + '.cust-facts { display:flex; gap:20px; margin-left:auto; }'
@@ -1309,7 +1319,10 @@ function buildCustomerReportHTML(immediate) {
       + '</div>';
 
     // ── Customer facts strip ──────────────────────────────
-    var custInitial = custName.charAt(0).toUpperCase();
+    var custInitial   = custName.charAt(0).toUpperCase();
+    var custAvatarEl  = custLogo
+        ? '<img class="cust-logo-img" src="' + custLogo + '" alt="' + custName + '">'
+        : '<div class="cust-avatar">' + custInitial + '</div>';
     var custFacts   =
         '<div class="cf"><div class="cf-val">{{ $total }}</div><div class="cf-lbl">Tasks</div></div>'
       + '<div class="cf"><div class="cf-val" style="color:#059669;">{{ $completionRate }}%</div><div class="cf-lbl">Done</div></div>'
@@ -1348,7 +1361,7 @@ function buildCustomerReportHTML(immediate) {
 
          /* Customer strip */
          + '<div class="cust-strip">'
-         +   '<div class="cust-avatar">' + custInitial + '</div>'
+         +   custAvatarEl
          +   '<div>'
          +     '<div class="cust-name">' + custName + '</div>'
          +     '<div class="cust-co">' + (custCo || '') + (custContact || '') + '</div>'
