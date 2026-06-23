@@ -78,7 +78,8 @@
       "Bash(cp /var/www/Task-Managment-System/resources/views/admin/tasks/show.blade.php /var/www/Task-Managment-System/resources/views/admin/tasks/show.blade.php.bak)",
       "Bash(cp /var/www/Task-Managment-System/resources/views/user/tasks/show.blade.php /var/www/Task-Managment-System/resources/views/user/tasks/show.blade.php.bak)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost/admin/tasks/65)",
-      "Bash(cp /var/www/Task-Managment-System/resources/views/messages/index.blade.php /var/www/Task-Managment-System/resources/views/messages/index.blade.php.bak4)"
+      "Bash(cp /var/www/Task-Managment-System/resources/views/messages/index.blade.php /var/www/Task-Managment-System/resources/views/messages/index.blade.php.bak4)",
+      "Bash(cp /var/www/Task-Managment-System/resources/views/admin/customers/index.blade.php /var/www/Task-Managment-System/resources/views/admin/customers/index.blade.php.bak)"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory",
