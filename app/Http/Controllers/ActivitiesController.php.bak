@@ -43,6 +43,15 @@ class ActivitiesController extends Controller
             $query->where('action', $request->action);
         }
 
+        // Search by note or task title
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->where(function ($q) use ($s) {
+                $q->where('note', 'like', "%{$s}%")
+                  ->orWhereHas('task', fn($tq) => $tq->where('title', 'like', "%{$s}%"));
+            });
+        }
+
         // Date range filter
         switch ($request->input('date_range')) {
             case 'today':     $query->whereDate('created_at', today()); break;
@@ -55,7 +64,7 @@ class ActivitiesController extends Controller
         $sort = $request->input('sort', 'newest');
         $sort === 'oldest' ? $query->oldest() : $query->latest();
 
-        $activities = $query->paginate(50)->withQueryString();
+        $activities = $query->paginate(20)->withQueryString();
 
         // Distinct action types for filter dropdown
         $actionTypes = TaskLog::select('action')->distinct()->orderBy('action')->pluck('action');

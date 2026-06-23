@@ -64,7 +64,20 @@
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
       "Bash(php -r \"if \\(function_exists\\('opcache_reset'\\)\\) { opcache_reset\\(\\); echo 'OPcache reset'.PHP_EOL; } else { echo 'OPcache not active'.PHP_EOL; }\")",
-      "Bash(php -r \"echo 'Syntax OK';\")"
+      "Bash(php -r \"echo 'Syntax OK';\")",
+      "Bash(git -C /var/www/Task-Managment-System status)",
+      "Bash(git -C /var/www/Task-Managment-System push origin main)",
+      "Bash(git -C /var/www/Task-Managment-System remote get-url origin)",
+      "Bash(git -C /var/www/Task-Managment-System log --oneline -3)",
+      "Bash(git -C /var/www/Task-Managment-System add app/Models/SocialAccount.php resources/views/admin/customers/summary.blade.php resources/views/admin/social-accounts/index.blade.php)",
+      "Bash(git -C /var/www/Task-Managment-System commit -m ' *)",
+      "Bash(xargs ls -la)",
+      "Bash(git -C /var/www/Task-Managment-System add resources/views/admin/customers/report.blade.php resources/views/admin/customers/show.blade.php resources/views/admin/reports/index.blade.php)",
+      "Bash(git -C /var/www/Task-Managment-System add resources/views/admin/customers/report.blade.php resources/views/admin/customers/show.blade.php)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost/admin/customers/3/report\" -H \"Cookie: $\\(php artisan tinker --execute=\"echo 'laravel_session=fake';\" \\)\")",
+      "Bash(cp /var/www/Task-Managment-System/resources/views/admin/tasks/show.blade.php /var/www/Task-Managment-System/resources/views/admin/tasks/show.blade.php.bak)",
+      "Bash(cp /var/www/Task-Managment-System/resources/views/user/tasks/show.blade.php /var/www/Task-Managment-System/resources/views/user/tasks/show.blade.php.bak)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost/admin/tasks/65)"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory",

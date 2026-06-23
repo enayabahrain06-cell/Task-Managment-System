@@ -1162,6 +1162,195 @@
         </div>
     </div>
 
+    {{-- ══ Social Accounts ══ --}}
+    @php
+        $socialAccounts = $customer->socialAccounts;
+        $saPlatforms    = App\Models\SocialAccount::platforms();
+    @endphp
+    <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;margin-top:20px;">
+
+        {{-- Header --}}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#F0FDF4,#DCFCE7);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(22,163,74,.15);">
+                    <i class="fas fa-share-nodes" style="font-size:14px;color:#16A34A;"></i>
+                </span>
+                <div>
+                    <h2 style="font-size:13px;font-weight:700;color:#111827;text-transform:uppercase;letter-spacing:.06em;margin:0;">Social Accounts</h2>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;font-weight:500;">{{ $socialAccounts->count() }} {{ Str::plural('account', $socialAccounts->count()) }} linked</p>
+                </div>
+            </div>
+            <a href="{{ route('admin.social-accounts.index', ['customer' => $customer->id]) }}"
+               style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#4F46E5;text-decoration:none;padding:7px 14px;border-radius:8px;background:#EEF2FF;border:1px solid #C7D2FE;transition:all .15s;"
+               onmouseover="this.style.background='#E0E7FF';this.style.borderColor='#A5B4FC';" onmouseout="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE';">
+                <i class="fas fa-arrow-up-right-from-square" style="font-size:10px;"></i>
+                Manage Accounts
+            </a>
+        </div>
+
+        @if($socialAccounts->isEmpty())
+            <div style="text-align:center;padding:36px 0 20px;">
+                <span style="width:56px;height:56px;border-radius:16px;background:#F3F4F6;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">
+                    <i class="fas fa-share-nodes" style="font-size:22px;color:#D1D5DB;"></i>
+                </span>
+                <p style="font-size:13px;font-weight:600;color:#6B7280;margin:0 0 4px;">No social accounts yet</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:0;">Link accounts from the Manage Accounts page.</p>
+            </div>
+        @else
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                @foreach($socialAccounts as $sa)
+                    @php
+                        $pi      = $saPlatforms[$sa->platform] ?? ['label'=>ucfirst($sa->platform),'icon'=>'fa-globe','color'=>'#6B7280','bg'=>'#F3F4F6'];
+                        $stBg    = match($sa->status) { 'active'=>'#DCFCE7','inactive'=>'#F3F4F6','suspended'=>'#FEE2E2', default=>'#F3F4F6' };
+                        $stColor = match($sa->status) { 'active'=>'#16A34A','inactive'=>'#6B7280','suspended'=>'#DC2626', default=>'#6B7280' };
+                        $stDot   = match($sa->status) { 'active'=>'#22C55E','inactive'=>'#9CA3AF','suspended'=>'#EF4444', default=>'#9CA3AF' };
+                        $decPw   = $sa->decrypted_password;
+                        $hasCreds = $sa->username || $sa->email || $decPw || $sa->account_id;
+                    @endphp
+                    <div x-data="{ showPw: false }"
+                         style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;overflow:hidden;transition:box-shadow .15s;"
+                         onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.07)'" onmouseout="this.style.boxShadow='none'">
+
+                        {{-- Row layout: icon+info | credentials | access+url --}}
+                        <div style="display:grid;grid-template-columns:auto 1fr auto;align-items:stretch;min-height:64px;">
+
+                            {{-- Left: platform icon + name --}}
+                            <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-right:1px solid #F3F4F6;min-width:200px;max-width:240px;">
+                                <span style="width:44px;height:44px;border-radius:12px;background:{{ $pi['bg'] }};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.06);">
+                                    <i class="fab {{ $pi['icon'] }}" style="font-size:22px;color:{{ $pi['color'] }};"></i>
+                                </span>
+                                <div style="min-width:0;">
+                                    <p style="font-size:13px;font-weight:700;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $sa->name }}</p>
+                                    <div style="display:flex;align-items:center;gap:5px;margin-top:3px;">
+                                        <span style="width:6px;height:6px;border-radius:50%;background:{{ $stDot }};flex-shrink:0;"></span>
+                                        <span style="font-size:11px;color:#6B7280;font-weight:500;">{{ $pi['label'] }}</span>
+                                        <span style="font-size:11px;color:#D1D5DB;">·</span>
+                                        <span style="font-size:11px;font-weight:600;color:{{ $stColor }};text-transform:capitalize;">{{ $sa->status }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Middle: credentials --}}
+                            <div style="padding:10px 18px;display:flex;flex-direction:column;justify-content:center;gap:4px;">
+                                @if(!$hasCreds)
+                                    <span style="font-size:12px;color:#D1D5DB;font-style:italic;">No credentials stored</span>
+                                @else
+                                    @if($sa->username)
+                                        <div style="display:flex;align-items:center;gap:8px;">
+                                            <span style="width:18px;text-align:center;flex-shrink:0;"><i class="fas fa-at" style="font-size:10px;color:#C4B5FD;"></i></span>
+                                            <span style="font-size:10px;color:#9CA3AF;width:60px;flex-shrink:0;text-transform:uppercase;letter-spacing:.05em;">User</span>
+                                            <span style="font-size:12px;font-weight:600;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $sa->username }}</span>
+                                            <button onclick="navigator.clipboard.writeText('{{ addslashes($sa->username) }}')" title="Copy username"
+                                                    style="background:none;border:none;cursor:pointer;padding:3px 5px;color:#E5E7EB;border-radius:4px;flex-shrink:0;"
+                                                    onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#E5E7EB'">
+                                                <i class="fas fa-copy" style="font-size:10px;"></i>
+                                            </button>
+                                        </div>
+                                    @endif
+                                    @if($sa->email)
+                                        <div style="display:flex;align-items:center;gap:8px;">
+                                            <span style="width:18px;text-align:center;flex-shrink:0;"><i class="fas fa-envelope" style="font-size:10px;color:#93C5FD;"></i></span>
+                                            <span style="font-size:10px;color:#9CA3AF;width:60px;flex-shrink:0;text-transform:uppercase;letter-spacing:.05em;">Email</span>
+                                            <span style="font-size:12px;font-weight:600;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $sa->email }}</span>
+                                            <button onclick="navigator.clipboard.writeText('{{ addslashes($sa->email) }}')" title="Copy email"
+                                                    style="background:none;border:none;cursor:pointer;padding:3px 5px;color:#E5E7EB;border-radius:4px;flex-shrink:0;"
+                                                    onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#E5E7EB'">
+                                                <i class="fas fa-copy" style="font-size:10px;"></i>
+                                            </button>
+                                        </div>
+                                    @endif
+                                    @if($decPw)
+                                        <div style="display:flex;align-items:center;gap:8px;">
+                                            <span style="width:18px;text-align:center;flex-shrink:0;"><i class="fas fa-lock" style="font-size:10px;color:#FCA5A5;"></i></span>
+                                            <span style="font-size:10px;color:#9CA3AF;width:60px;flex-shrink:0;text-transform:uppercase;letter-spacing:.05em;">Password</span>
+                                            <span x-text="showPw ? '{{ addslashes($decPw) }}' : '••••••••'"
+                                                  style="font-size:12px;font-weight:600;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;font-family:monospace;"></span>
+                                            <button @click="showPw = !showPw" title="Show/hide"
+                                                    style="background:none;border:none;cursor:pointer;padding:3px 5px;color:#E5E7EB;border-radius:4px;flex-shrink:0;"
+                                                    onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#E5E7EB'">
+                                                <i :class="showPw ? 'fas fa-eye-slash' : 'fas fa-eye'" style="font-size:10px;"></i>
+                                            </button>
+                                            <button onclick="navigator.clipboard.writeText('{{ addslashes($decPw) }}')" title="Copy password"
+                                                    style="background:none;border:none;cursor:pointer;padding:3px 5px;color:#E5E7EB;border-radius:4px;flex-shrink:0;"
+                                                    onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#E5E7EB'">
+                                                <i class="fas fa-copy" style="font-size:10px;"></i>
+                                            </button>
+                                        </div>
+                                    @endif
+                                    @if($sa->account_id)
+                                        <div style="display:flex;align-items:center;gap:8px;">
+                                            <span style="width:18px;text-align:center;flex-shrink:0;"><i class="fas fa-fingerprint" style="font-size:10px;color:#6EE7B7;"></i></span>
+                                            <span style="font-size:10px;color:#9CA3AF;width:60px;flex-shrink:0;text-transform:uppercase;letter-spacing:.05em;">Acct ID</span>
+                                            <span style="font-size:12px;font-weight:600;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $sa->account_id }}</span>
+                                            <button onclick="navigator.clipboard.writeText('{{ addslashes($sa->account_id) }}')" title="Copy account ID"
+                                                    style="background:none;border:none;cursor:pointer;padding:3px 5px;color:#E5E7EB;border-radius:4px;flex-shrink:0;"
+                                                    onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#E5E7EB'">
+                                                <i class="fas fa-copy" style="font-size:10px;"></i>
+                                            </button>
+                                        </div>
+                                    @endif
+                                @endif
+                            </div>
+
+                            {{-- Right: access + link + notes --}}
+                            <div style="padding:12px 18px;border-left:1px solid #F3F4F6;display:flex;flex-direction:column;justify-content:center;gap:8px;min-width:180px;background:#FAFAFA;">
+
+                                @if($sa->users->isNotEmpty())
+                                    <div>
+                                        <p style="font-size:10px;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin:0 0 5px;">Access</p>
+                                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                            <div style="display:flex;align-items:center;">
+                                                @foreach($sa->users->take(4) as $usr)
+                                                    @php $ac = ['#4F46E5','#0EA5E9','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899'][$usr->id % 7]; @endphp
+                                                    @if($usr->avatar)
+                                                        <img src="{{ Storage::url($usr->avatar) }}" alt="{{ $usr->name }}" title="{{ $usr->name }}"
+                                                             style="width:22px;height:22px;border-radius:50%;border:2px solid #FAFAFA;object-fit:cover;{{ $loop->first ? '' : 'margin-left:-6px;' }}">
+                                                    @else
+                                                        <span title="{{ $usr->name }}"
+                                                              style="width:22px;height:22px;border-radius:50%;border:2px solid #FAFAFA;background:{{ $ac }};display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;{{ $loop->first ? '' : 'margin-left:-6px;' }}">
+                                                            {{ strtoupper(substr($usr->name, 0, 1)) }}
+                                                        </span>
+                                                    @endif
+                                                @endforeach
+                                                @if($sa->users->count() > 4)
+                                                    <span title="{{ $sa->users->skip(4)->pluck('name')->join(', ') }}"
+                                                          style="width:22px;height:22px;border-radius:50%;border:2px solid #FAFAFA;background:#E5E7EB;display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#6B7280;margin-left:-6px;">
+                                                        +{{ $sa->users->count() - 4 }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                            <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;" title="{{ $sa->users->pluck('name')->join(', ') }}">
+                                                {{ $sa->users->count() === 1 ? $sa->users->first()->name : $sa->users->count().' users' }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                @if($sa->page_url)
+                                    <a href="{{ $sa->page_url }}" target="_blank" rel="noopener"
+                                       style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#6366F1;text-decoration:none;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;"
+                                       title="{{ $sa->page_url }}"
+                                       onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+                                        <i class="fas fa-arrow-up-right-from-square" style="font-size:9px;flex-shrink:0;"></i>
+                                        Open page
+                                    </a>
+                                @endif
+
+                                @if($sa->notes)
+                                    <p style="font-size:11px;color:#6B7280;margin:0;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;" title="{{ $sa->notes }}">{{ $sa->notes }}</p>
+                                @endif
+
+                            </div>
+
+                        </div>
+
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
+    </div>
+
     {{-- ══ Design Approval Timeline ══ --}}
     @php
         $approvalTasks = $customer->tasks

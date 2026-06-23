@@ -753,15 +753,28 @@
                 <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
                     @foreach($allAttachments as $att)
                     @php
-                        $attDlUrl  = $att->isFile() ? route('admin.attachments.download', $att) : $att->url();
-                        $item = ['name'=>$att->name,'size'=>$att->humanSize(),'url'=>$att->url(),'downloadUrl'=>$attDlUrl,'previewUrl'=>$att->isFile()?($attDlUrl.'?inline=1'):$att->url(),'icon'=>$att->iconClass(),'isLink'=>$att->isLink(),'isImage'=>in_array(strtolower(pathinfo($att->name,PATHINFO_EXTENSION)),['jpg','jpeg','png','gif','webp','svg']),'isVideo'=>in_array(strtolower(pathinfo($att->name,PATHINFO_EXTENSION)),['mp4','mov','avi','webm','mkv'])];
+                        $attDlUrl    = $att->isFile() ? route('admin.attachments.download', $att) : $att->url();
+                        $attImgExts  = ['jpg','jpeg','png','gif','webp','svg','avif'];
+                        $attExt      = strtolower(pathinfo($att->name, PATHINFO_EXTENSION));
+                        $attIsImage  = in_array($attExt, $attImgExts);
+                        $attIsVideo  = in_array($attExt, ['mp4','mov','avi','webm','mkv']);
+                        $item = ['name'=>$att->name,'size'=>$att->humanSize(),'url'=>$att->url(),'downloadUrl'=>$attDlUrl,'previewUrl'=>$att->isFile()?($attDlUrl.'?inline=1'):$att->url(),'icon'=>$att->iconClass(),'isLink'=>$att->isLink(),'isImage'=>$attIsImage,'isVideo'=>$attIsVideo];
                     @endphp
                     <div style="display:flex;align-items:center;gap:8px;">
                         <button type="button" @click="show({{ json_encode($item) }})"
                                 style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:#FAFAFA;border:1px solid #F3F4F6;border-radius:10px;flex:1;text-align:left;cursor:pointer;transition:border-color .15s,background .15s;min-width:0;"
                                 onmouseover="this.style.background='#F0F0FF';this.style.borderColor='#C7D2FE'" onmouseout="this.style.background='#FAFAFA';this.style.borderColor='#F3F4F6'">
-                            <div style="width:36px;height:36px;border-radius:9px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <div style="width:44px;height:44px;border-radius:9px;overflow:hidden;flex-shrink:0;background:#EEF2FF;display:flex;align-items:center;justify-content:center;">
+                                @if($attIsImage)
+                                <img src="{{ $att->url() }}" alt="" loading="lazy"
+                                     style="width:44px;height:44px;object-fit:cover;display:block;"
+                                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                                <span style="display:none;width:44px;height:44px;align-items:center;justify-content:center;">
+                                    <i class="fa {{ $att->iconClass() }}" style="color:#6366F1;font-size:14px;"></i>
+                                </span>
+                                @else
                                 <i class="fa {{ $att->iconClass() }}" style="color:#6366F1;font-size:14px;"></i>
+                                @endif
                             </div>
                             <div style="flex:1;min-width:0;">
                                 <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $att->name }}</p>

@@ -316,7 +316,7 @@
                                     'linkedin'  => ['LinkedIn',   'fa-linkedin',   '#0A66C2','#EAF2FB'],
                                     'tiktok'    => ['TikTok',     'fa-tiktok',     '#010101','#F5F5F5'],
                                     'youtube'   => ['YouTube',    'fa-youtube',    '#FF0000','#FFF0F0'],
-                                    'snapchat'  => ['Snapchat',   'fa-snapchat',   '#F7CA00','#FFFDE7'],
+                                    'snapchat'  => ['Snapchat',   'fa-snapchat',   '#FFFC00','#3D3300'],
                                     'other'     => ['Other',      'fa-share-alt','#6366F1','#EEF2FF'],
                                 ];
                                 @endphp
@@ -1151,19 +1151,28 @@
                             : 'display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px dashed #D1D5DB;border-radius:10px;cursor:pointer;background:#FAFAFA;transition:all .15s;'">
                         <i class="fa fa-paperclip" :style="dragging ? 'color:#6366F1;font-size:16px;' : 'color:#9CA3AF;font-size:16px;'"></i>
                         <div style="flex:1;">
-                            <p x-text="commentFile || (dragging ? 'Drop file here' : 'Attach a file — or drag & drop')" style="font-size:13px;font-weight:500;color:#374151;margin:0;"></p>
-                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Images, PDF, ZIP and more</p>
+                            <p x-text="dragging ? 'Drop files here' : 'Attach files — or drag & drop'" style="font-size:13px;font-weight:500;color:#374151;margin:0;"></p>
+                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Images, PDF, ZIP and more · multiple files supported</p>
                         </div>
-                        <template x-if="commentFile">
-                            <button type="button" @click.prevent="commentFile=''; $refs.commentFileInput.value=''"
-                                    style="width:22px;height:22px;border-radius:50%;background:#FEE2E2;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                <i class="fa fa-xmark" style="font-size:10px;color:#DC2626;"></i>
-                            </button>
-                        </template>
-                        <input type="file" name="file" x-ref="commentFileInput"
-                               @change="commentFile = $event.target.files[0]?.name || ''"
+                        <input type="file" name="comment_files[]" x-ref="commentFileInput" multiple
+                               @change="addFiles($event.target.files)"
                                style="display:none;">
                     </label>
+                    <template x-if="commentFiles.length > 0">
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
+                            <template x-for="(f, i) in commentFiles" :key="i">
+                                <div style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:20px;max-width:220px;">
+                                    <i class="fa fa-paperclip" style="color:#6366F1;font-size:10px;flex-shrink:0;"></i>
+                                    <span x-text="f.name" style="font-size:11px;font-weight:500;color:#3730A3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;"></span>
+                                    <span x-text="f.size" style="font-size:10px;color:#818CF8;flex-shrink:0;white-space:nowrap;"></span>
+                                    <button type="button" @click.prevent="removeCommentFile(i)"
+                                            style="width:16px;height:16px;border-radius:50%;background:#FEE2E2;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                        <i class="fa fa-xmark" style="font-size:8px;color:#DC2626;"></i>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
                 </div>
                 <button type="submit"
                         style="width:100%;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(99,102,241,.3);">
@@ -1346,132 +1355,132 @@
                                 $spUrl      = $meta['post_url'] ?? null;
                                 $spIsEdit   = $log->action === 'social_post_edited';
                                 $spNl       = chr(10);
-                                $spWaMsg    = 'Social media post for “' . $task->title . '”' . ($spUrl ? ($spNl . $spNl . $spUrl) : '');
-                                $spMailBody = $spUrl ? urlencode('Social media post for “' . $task->title . '”' . $spNl . $spNl . $spUrl) : '';
+                                $spWaMsg    = 'Social media post for "' . $task->title . '"' . ($spUrl ? ($spNl . $spNl . $spUrl) : '');
+                                $spMailBody = $spUrl ? urlencode('Social media post for "' . $task->title . '"' . $spNl . $spNl . $spUrl) : '';
                             @endphp
-                            <div style=”display:inline-flex;align-items:center;gap:8px;vertical-align:middle;”
-                                 data-wa-message=”{{ $spWaMsg }}”
-                                 data-wa-fetch-url=”{{ route('admin.approvals.whatsapp-customer') }}”
-                                 data-wa-csrf-token=”{{ csrf_token() }}”
-                                 x-data=”waShareButton()”
-                                 @scroll.window=”open=false”
-                                 @keydown.escape.window=”open=false; waPanel=false;”>
+                            <div style="display:inline-flex;align-items:center;gap:8px;vertical-align:middle;"
+                                 data-wa-message="{{ $spWaMsg }}"
+                                 data-wa-fetch-url="{{ route('admin.approvals.whatsapp-customer') }}"
+                                 data-wa-csrf-token="{{ csrf_token() }}"
+                                 x-data="waShareButton()"
+                                 @scroll.window="open=false"
+                                 @keydown.escape.window="open=false; waPanel=false;">
 
                                 {{-- Square brand icon button --}}
-                                <button @click=”@if($spIsEdit || !$spUrl) null @else open ? (open=false) : openDrop($el) @endif”
-                                        style=”width:38px;height:38px;border-radius:10px;background:{{ $spBg }};color:{{ $spIconClr }};border:none;{{ ($spIsEdit || !$spUrl) ? 'cursor:default;opacity:.65;' : 'cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.22);transition:transform .12s,box-shadow .12s;' }}display:flex;align-items:center;justify-content:center;flex-shrink:0;”
-                                        title=”{{ $spIsEdit ? 'Edited' : $spLabel }}”
+                                <button @click="@if($spIsEdit || !$spUrl) null @else open ? (open=false) : openDrop($el) @endif"
+                                        style="width:38px;height:38px;border-radius:10px;background:{{ $spBg }};color:{{ $spIconClr }};border:none;{{ ($spIsEdit || !$spUrl) ? 'cursor:default;opacity:.65;' : 'cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.22);transition:transform .12s,box-shadow .12s;' }}display:flex;align-items:center;justify-content:center;flex-shrink:0;"
+                                        title="{{ $spIsEdit ? 'Edited' : $spLabel }}"
                                         @if(!$spIsEdit && $spUrl)
-                                            onmouseover=”this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 16px rgba(0,0,0,.28)'”
-                                            onmouseout=”this.style.transform='';this.style.boxShadow='0 3px 10px rgba(0,0,0,.22)'”
+                                            onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 16px rgba(0,0,0,.28)'"
+                                            onmouseout="this.style.transform='';this.style.boxShadow='0 3px 10px rgba(0,0,0,.22)'"
                                         @endif>
-                                    <i class=”{{ $spIcon }}” style=”font-size:16px;”></i>
+                                    <i class="{{ $spIcon }}" style="font-size:16px;"></i>
                                 </button>
 
                                 @if(!$spIsEdit && $spUrl)
                                 {{-- Dropdown — teleported to <body> so it escapes overflow:hidden parents --}}
-                                <template x-teleport=”body”>
-                                <div x-show=”open”
-                                     @click.outside=”open=false; waPanel=false; waResult=null;”
-                                     x-transition:enter=”transition ease-out duration-150”
-                                     x-transition:enter-start=”opacity-0 scale-95”
-                                     x-transition:enter-end=”opacity-100 scale-100”
-                                     x-transition:leave=”transition ease-in duration-100”
-                                     x-transition:leave-start=”opacity-100 scale-100”
-                                     x-transition:leave-end=”opacity-0 scale-95”
-                                     :style=”`position:fixed;top:${dropY}px;left:${dropX}px;z-index:99999;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);min-width:220px;overflow:hidden;`”>
+                                <template x-teleport="body">
+                                <div x-show="open"
+                                     @click.outside="open=false; waPanel=false; waResult=null;"
+                                     x-transition:enter="transition ease-out duration-150"
+                                     x-transition:enter-start="opacity-0 scale-95"
+                                     x-transition:enter-end="opacity-100 scale-100"
+                                     x-transition:leave="transition ease-in duration-100"
+                                     x-transition:leave-start="opacity-100 scale-100"
+                                     x-transition:leave-end="opacity-0 scale-95"
+                                     :style="`position:fixed;top:${dropY}px;left:${dropX}px;z-index:99999;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);min-width:220px;overflow:hidden;`">
 
                                     {{-- Dropdown header --}}
-                                    <div style=”padding:10px 14px;background:{{ $spBg }};display:flex;align-items:center;gap:9px;”>
-                                        <i class=”{{ $spIcon }}” style=”color:{{ $spIconClr }};font-size:15px;flex-shrink:0;”></i>
+                                    <div style="padding:10px 14px;background:{{ $spBg }};display:flex;align-items:center;gap:9px;">
+                                        <i class="{{ $spIcon }}" style="color:{{ $spIconClr }};font-size:15px;flex-shrink:0;"></i>
                                         <div>
-                                            <p style=”font-size:12px;font-weight:700;color:{{ $spIconClr }};margin:0;”>{{ $spLabel }}</p>
-                                            <p style=”font-size:10px;color:{{ $spIconClr }};opacity:.75;margin:1px 0 0;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;”>{{ Str::limit($spUrl, 34) }}</p>
+                                            <p style="font-size:12px;font-weight:700;color:{{ $spIconClr }};margin:0;">{{ $spLabel }}</p>
+                                            <p style="font-size:10px;color:{{ $spIconClr }};opacity:.75;margin:1px 0 0;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ Str::limit($spUrl, 34) }}</p>
                                         </div>
                                     </div>
 
                                     {{-- Main menu --}}
-                                    <template x-if=”!waPanel”>
-                                        <div style=”padding:4px 0;”>
+                                    <template x-if="!waPanel">
+                                        <div style="padding:4px 0;">
                                             {{-- Copy Link --}}
-                                            <button @click=”navigator.clipboard.writeText('{{ $spUrl }}').then(()=>{ copied=true; setTimeout(()=>copied=false,1800); })”
-                                                    style=”width:100%;padding:9px 16px;background:none;border:none;text-align:left;font-size:13px;color:#374151;cursor:pointer;display:flex;align-items:center;gap:10px;”
-                                                    onmouseover=”this.style.background='#F5F3FF'” onmouseout=”this.style.background='none'”>
-                                                <span style=”width:26px;height:26px;border-radius:7px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;”>
-                                                    <i class=”fa fa-copy” style=”color:#6366F1;font-size:11px;” x-show=”!copied”></i>
-                                                    <i class=”fa fa-check” style=”color:#059669;font-size:11px;” x-show=”copied”></i>
+                                            <button @click="navigator.clipboard.writeText('{{ $spUrl }}').then(()=>{ copied=true; setTimeout(()=>copied=false,1800); })"
+                                                    style="width:100%;padding:9px 16px;background:none;border:none;text-align:left;font-size:13px;color:#374151;cursor:pointer;display:flex;align-items:center;gap:10px;"
+                                                    onmouseover="this.style.background='#F5F3FF'" onmouseout="this.style.background='none'">
+                                                <span style="width:26px;height:26px;border-radius:7px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                                    <i class="fa fa-copy" style="color:#6366F1;font-size:11px;" x-show="!copied"></i>
+                                                    <i class="fa fa-check" style="color:#059669;font-size:11px;" x-show="copied"></i>
                                                 </span>
-                                                <span x-text=”copied ? 'Copied!' : 'Copy Link'” style=”font-weight:600;”>Copy Link</span>
+                                                <span x-text="copied ? 'Copied!' : 'Copy Link'" style="font-weight:600;">Copy Link</span>
                                             </button>
                                             {{-- Send via WhatsApp --}}
-                                            <button @click=”waPanel=true; waPhone=''; waResult=null; $nextTick(()=>$refs.waInput?.focus())”
-                                                    style=”width:100%;padding:9px 16px;background:none;border:none;text-align:left;font-size:13px;color:#374151;cursor:pointer;display:flex;align-items:center;gap:10px;”
-                                                    onmouseover=”this.style.background='#F0FDF4'” onmouseout=”this.style.background='none'”>
-                                                <span style=”width:26px;height:26px;border-radius:7px;background:#DCFCE7;display:flex;align-items:center;justify-content:center;flex-shrink:0;”>
-                                                    <i class=”fab fa-whatsapp” style=”color:#25D366;font-size:13px;”></i>
+                                            <button @click="waPanel=true; waPhone=''; waResult=null; $nextTick(()=>$refs.waInput?.focus())"
+                                                    style="width:100%;padding:9px 16px;background:none;border:none;text-align:left;font-size:13px;color:#374151;cursor:pointer;display:flex;align-items:center;gap:10px;"
+                                                    onmouseover="this.style.background='#F0FDF4'" onmouseout="this.style.background='none'">
+                                                <span style="width:26px;height:26px;border-radius:7px;background:#DCFCE7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                                    <i class="fab fa-whatsapp" style="color:#25D366;font-size:13px;"></i>
                                                 </span>
-                                                <span style=”font-weight:600;”>Send via WhatsApp</span>
+                                                <span style="font-weight:600;">Send via WhatsApp</span>
                                             </button>
                                             {{-- Send via Email --}}
-                                            <a href=”mailto:?subject={{ urlencode($task->title) }}&body={{ $spMailBody }}”
-                                               style=”display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:13px;color:#374151;text-decoration:none;”
-                                               onmouseover=”this.style.background='#EFF6FF'” onmouseout=”this.style.background='none'”>
-                                                <span style=”width:26px;height:26px;border-radius:7px;background:#DBEAFE;display:flex;align-items:center;justify-content:center;flex-shrink:0;”>
-                                                    <i class=”fa fa-envelope” style=”color:#3B82F6;font-size:11px;”></i>
+                                            <a href="mailto:?subject={{ urlencode($task->title) }}&body={{ $spMailBody }}"
+                                               style="display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:13px;color:#374151;text-decoration:none;"
+                                               onmouseover="this.style.background='#EFF6FF'" onmouseout="this.style.background='none'">
+                                                <span style="width:26px;height:26px;border-radius:7px;background:#DBEAFE;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                                    <i class="fa fa-envelope" style="color:#3B82F6;font-size:11px;"></i>
                                                 </span>
-                                                <span style=”font-weight:600;”>Send via Email</span>
+                                                <span style="font-weight:600;">Send via Email</span>
                                             </a>
                                             {{-- Divider --}}
-                                            <div style=”height:1px;background:#F3F4F6;margin:4px 0;”></div>
+                                            <div style="height:1px;background:#F3F4F6;margin:4px 0;"></div>
                                             {{-- Open in New Window --}}
-                                            <a href=”{{ $spUrl }}” target=”_blank” rel=”noopener”
-                                               style=”display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:13px;color:#374151;text-decoration:none;”
-                                               onmouseover=”this.style.background='#F9FAFB'” onmouseout=”this.style.background='none'”>
-                                                <span style=”width:26px;height:26px;border-radius:7px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;”>
-                                                    <i class=”fa fa-arrow-up-right-from-square” style=”color:#6B7280;font-size:11px;”></i>
+                                            <a href="{{ $spUrl }}" target="_blank" rel="noopener"
+                                               style="display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:13px;color:#374151;text-decoration:none;"
+                                               onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='none'">
+                                                <span style="width:26px;height:26px;border-radius:7px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                                    <i class="fa fa-arrow-up-right-from-square" style="color:#6B7280;font-size:11px;"></i>
                                                 </span>
-                                                <span style=”font-weight:600;”>Open in New Window</span>
+                                                <span style="font-weight:600;">Open in New Window</span>
                                             </a>
                                         </div>
                                     </template>
 
                                     {{-- WhatsApp panel --}}
-                                    <template x-if=”waPanel”>
+                                    <template x-if="waPanel">
                                         <div>
-                                            <div style=”background:linear-gradient(135deg,#25D366,#128C7E);padding:12px 14px;display:flex;align-items:center;gap:10px;”>
-                                                <i class=”fab fa-whatsapp” style=”color:#fff;font-size:18px;flex-shrink:0;”></i>
+                                            <div style="background:linear-gradient(135deg,#25D366,#128C7E);padding:12px 14px;display:flex;align-items:center;gap:10px;">
+                                                <i class="fab fa-whatsapp" style="color:#fff;font-size:18px;flex-shrink:0;"></i>
                                                 <div>
-                                                    <p style=”font-size:13px;font-weight:700;color:#fff;margin:0;”>Share Social Post</p>
-                                                    <p style=”font-size:10px;color:rgba(255,255,255,.75);margin:2px 0 0;”>Sends link via WhatsApp API</p>
+                                                    <p style="font-size:13px;font-weight:700;color:#fff;margin:0;">Share Social Post</p>
+                                                    <p style="font-size:10px;color:rgba(255,255,255,.75);margin:2px 0 0;">Sends link via WhatsApp API</p>
                                                 </div>
                                             </div>
-                                            <div style=”padding:12px 14px;”>
-                                                <p style=”font-size:11px;color:#6B7280;margin:0 0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;”>
-                                                    <i class=”{{ $spIcon }}” style=”font-size:10px;color:{{ $spBg }};margin-right:3px;”></i>{{ $spLabel }} &mdash; {{ Str::limit($spUrl, 32) }}
+                                            <div style="padding:12px 14px;">
+                                                <p style="font-size:11px;color:#6B7280;margin:0 0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                                    <i class="{{ $spIcon }}" style="font-size:10px;color:{{ $spBg }};margin-right:3px;"></i>{{ $spLabel }} &mdash; {{ Str::limit($spUrl, 32) }}
                                                 </p>
-                                                <label style=”display:block;font-size:10px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;”>WhatsApp Number</label>
-                                                <input type=”tel” x-model=”waPhone” x-ref=”waInput”
-                                                       placeholder=”+971501234567”
-                                                       @keydown.enter=”doWaSend()”
-                                                       style=”width:100%;padding:8px 10px;border:1.5px solid #D1FAE5;background:#F0FDF4;border-radius:9px;font-size:12px;color:#111827;outline:none;box-sizing:border-box;margin-bottom:10px;”
-                                                       onfocus=”this.style.borderColor='#25D366'” onblur=”this.style.borderColor='#D1FAE5'”>
-                                                <button @click=”doWaSend()” :disabled=”waSending”
-                                                        :style=”waSending ? 'width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;background:#9CA3AF;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:not-allowed;' : 'width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(37,211,102,.35);'”
-                                                        onmouseover=”if(this.style.cursor!=='not-allowed')this.style.opacity='.85'” onmouseout=”this.style.opacity='1'”>
-                                                    <i class=”fab fa-whatsapp” style=”font-size:13px;” x-show=”!waSending”></i>
-                                                    <i class=”fas fa-spinner fa-spin” style=”font-size:12px;” x-show=”waSending”></i>
-                                                    <span x-text=”waSending ? 'Sending…' : 'Send via WhatsApp'”>Send via WhatsApp</span>
+                                                <label style="display:block;font-size:10px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">WhatsApp Number</label>
+                                                <input type="tel" x-model="waPhone" x-ref="waInput"
+                                                       placeholder="+971501234567"
+                                                       @keydown.enter="doWaSend()"
+                                                       style="width:100%;padding:8px 10px;border:1.5px solid #D1FAE5;background:#F0FDF4;border-radius:9px;font-size:12px;color:#111827;outline:none;box-sizing:border-box;margin-bottom:10px;"
+                                                       onfocus="this.style.borderColor='#25D366'" onblur="this.style.borderColor='#D1FAE5'">
+                                                <button @click="doWaSend()" :disabled="waSending"
+                                                        :style="waSending ? 'width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;background:#9CA3AF;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:not-allowed;' : 'width:100%;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(37,211,102,.35);'"
+                                                        onmouseover="if(this.style.cursor!=='not-allowed')this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                                                    <i class="fab fa-whatsapp" style="font-size:13px;" x-show="!waSending"></i>
+                                                    <i class="fas fa-spinner fa-spin" style="font-size:12px;" x-show="waSending"></i>
+                                                    <span x-text="waSending ? 'Sending…' : 'Send via WhatsApp'">Send via WhatsApp</span>
                                                 </button>
-                                                <template x-if=”waResult”>
-                                                    <div :style=”waResult.ok ? 'margin-top:8px;font-size:11px;color:#16A34A;display:flex;align-items:center;gap:4px;' : 'margin-top:8px;font-size:11px;color:#DC2626;display:flex;align-items:center;gap:4px;'”>
-                                                        <i :class=”waResult.ok ? 'fas fa-circle-check' : 'fas fa-circle-xmark'” style=”font-size:11px;”></i>
-                                                        <span x-text=”waResult.message ?? ''”></span>
+                                                <template x-if="waResult">
+                                                    <div :style="waResult.ok ? 'margin-top:8px;font-size:11px;color:#16A34A;display:flex;align-items:center;gap:4px;' : 'margin-top:8px;font-size:11px;color:#DC2626;display:flex;align-items:center;gap:4px;'">
+                                                        <i :class="waResult.ok ? 'fas fa-circle-check' : 'fas fa-circle-xmark'" style="font-size:11px;"></i>
+                                                        <span x-text="waResult.message ?? ''"></span>
                                                     </div>
                                                 </template>
-                                                <button @click=”waPanel=false; waResult=null;”
-                                                        style=”width:100%;margin-top:8px;padding:6px;background:none;border:1px solid #E5E7EB;border-radius:8px;font-size:11px;color:#6B7280;cursor:pointer;”
-                                                        onmouseover=”this.style.background='#F9FAFB'” onmouseout=”this.style.background='none'”>
-                                                    <i class=”fa fa-arrow-left” style=”font-size:9px;margin-right:4px;”></i> Back
+                                                <button @click="waPanel=false; waResult=null;"
+                                                        style="width:100%;margin-top:8px;padding:6px;background:none;border:1px solid #E5E7EB;border-radius:8px;font-size:11px;color:#6B7280;cursor:pointer;"
+                                                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='none'">
+                                                    <i class="fa fa-arrow-left" style="font-size:9px;margin-right:4px;"></i> Back
                                                 </button>
                                             </div>
                                         </div>
@@ -1736,13 +1745,40 @@
                 @php
                     $comment = $entry['comment'];
                     $isAdmin = $entry['isAdmin'];
-                    $cExt = strtolower(pathinfo($comment->original_filename ?? '', PATHINFO_EXTENSION));
-                    $cIsImage = in_array($cExt, ['jpg','jpeg','png','gif','webp','svg']);
-                    $cIsVideo = in_array($cExt, ['mp4','mov','avi','webm','mkv']);
-                    $cDlUrl = $comment->file_path ? route('admin.task-comments.file', $comment) : null;
-                    $cUrl = $cDlUrl ? ($cDlUrl . '?inline=1') : $comment->fileUrl();
                     $cIconMap = ['pdf'=>'fa-file-pdf','doc'=>'fa-file-word','docx'=>'fa-file-word','xls'=>'fa-file-excel','xlsx'=>'fa-file-excel','ppt'=>'fa-file-powerpoint','pptx'=>'fa-file-powerpoint','zip'=>'fa-file-zipper','rar'=>'fa-file-zipper','txt'=>'fa-file-lines'];
-                    $cIcon = $cIconMap[$cExt] ?? 'fa-file';
+                    // Build a unified list of file entries regardless of storage format
+                    $cFiles = [];
+                    if ($comment->files) {
+                        foreach ($comment->files as $fi => $f) {
+                            $ext = strtolower(pathinfo($f['original_filename'] ?? '', PATHINFO_EXTENSION));
+                            $dlUrl = route('admin.task-comments.file', $comment) . '?file_index=' . $fi;
+                            $cFiles[] = [
+                                'name'    => $f['original_filename'] ?? 'file',
+                                'ext'     => $ext,
+                                'isImage' => in_array($ext, ['jpg','jpeg','png','gif','webp','svg']),
+                                'isVideo' => in_array($ext, ['mp4','mov','avi','webm','mkv']),
+                                'icon'    => $cIconMap[$ext] ?? 'fa-file',
+                                'dlUrl'   => $dlUrl,
+                                'url'     => $dlUrl . '&inline=1',
+                                'nasPath' => $f['nas_path'] ?? null,
+                                'exists'  => \Illuminate\Support\Facades\Storage::disk('public')->exists($f['path'] ?? '') || ($f['nas_path'] ?? null),
+                            ];
+                        }
+                    } elseif ($comment->file_path) {
+                        $ext = strtolower(pathinfo($comment->original_filename ?? '', PATHINFO_EXTENSION));
+                        $dlUrl = route('admin.task-comments.file', $comment);
+                        $cFiles[] = [
+                            'name'    => $comment->original_filename ?? 'file',
+                            'ext'     => $ext,
+                            'isImage' => in_array($ext, ['jpg','jpeg','png','gif','webp','svg']),
+                            'isVideo' => in_array($ext, ['mp4','mov','avi','webm','mkv']),
+                            'icon'    => $cIconMap[$ext] ?? 'fa-file',
+                            'dlUrl'   => $dlUrl,
+                            'url'     => $dlUrl . '?inline=1',
+                            'nasPath' => $comment->nas_path,
+                            'exists'  => \Illuminate\Support\Facades\Storage::disk('public')->exists($comment->file_path) || $comment->nas_path,
+                        ];
+                    }
                     $isFirstWork = $firstWorkKey && $entry['at']->toDateTimeString() === $firstWorkKey;
                 @endphp
                 <div x-data="{
@@ -1767,7 +1803,7 @@
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                             <span style="font-size:12px;font-weight:600;color:#111827;">{{ $comment->user->name ?? 'Unknown' }}</span>
                             @if($isAdmin)<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:#EEF2FF;color:#4F46E5;">Admin</span>@endif
-                            @if($comment->file_path)<span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:10px;background:#D1FAE5;color:#065F46;display:inline-flex;align-items:center;gap:3px;"><i class="fa fa-paperclip" style="font-size:9px;"></i> {{ $comment->original_filename }}</span>@endif
+                            @if(count($cFiles) > 0)<span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:10px;background:#D1FAE5;color:#065F46;display:inline-flex;align-items:center;gap:3px;"><i class="fa fa-paperclip" style="font-size:9px;"></i> {{ count($cFiles) }} {{ count($cFiles) === 1 ? 'file' : 'files' }}</span>@endif
                             @if($isFirstWork)<span style="font-size:10px;font-weight:700;padding:1px 8px;border-radius:10px;background:#D1FAE5;color:#059669;display:inline-flex;align-items:center;gap:3px;"><i class="fa fa-circle-play" style="font-size:9px;"></i> Started Working</span>@endif
                             @if($comment->edits->isNotEmpty())
                             <button @click="showHistory=!showHistory" style="font-size:10px;background:#F3F4F6;color:#9CA3AF;border:none;padding:1px 6px;border-radius:4px;cursor:pointer;">edited</button>
@@ -1781,33 +1817,30 @@
                         </div>
                         <div style="background:{{ $isAdmin ? '#F5F3FF' : '#F9FAFB' }};border:1px solid {{ $isAdmin ? '#EDE9FE' : '#E5E7EB' }};border-radius:10px;padding:10px 14px;{{ $isAdmin ? 'border-left:3px solid #8B5CF6;' : '' }}">
                             <div x-show="!editing">
-                                <div class="rte-field" style="font-size:13px;color:#374151;margin:0{{ $comment->file_path ? ' 0 10px' : '' }};line-height:1.6;word-break:break-word;padding:0;min-height:0;" x-html="body"></div>
-                                @if($comment->file_path)
-                                    @php $cFileExists = \Illuminate\Support\Facades\Storage::disk('public')->exists($comment->file_path) || $comment->nas_path; @endphp
-                                    @if(!$cFileExists)
+                                <div class="rte-field" style="font-size:13px;color:#374151;margin:0{{ count($cFiles) > 0 ? ' 0 10px' : '' }};line-height:1.6;word-break:break-word;padding:0;min-height:0;" x-html="body"></div>
+                                @if(count($cFiles) > 0)
+                                <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                                @foreach($cFiles as $cf)
+                                    @if(!$cf['exists'])
                                     <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#F9FAFB;border:1px dashed #D1D5DB;border-radius:8px;max-width:280px;">
                                         <i class="fa fa-triangle-exclamation" style="color:#D97706;font-size:13px;flex-shrink:0;"></i>
                                         <div style="min-width:0;">
-                                            <p style="font-size:12px;font-weight:600;color:#374151;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $comment->original_filename }}</p>
+                                            <p style="font-size:12px;font-weight:600;color:#374151;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $cf['name'] }}</p>
                                             <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">File no longer available</p>
                                         </div>
                                     </div>
-                                    @elseif($cIsImage)
-                                    <button type="button" @click="showComment({{ json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'previewUrl'=>$cUrl,'downloadUrl'=>$cDlUrl,'isImage'=>true,'isVideo'=>false]) }})" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;width:100%;" onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
-                                        <img src="{{ $cUrl }}" alt="{{ $comment->original_filename }}" style="width:100%;max-height:140px;object-fit:cover;display:block;">
+                                    @elseif($cf['isImage'])
+                                    <button type="button" @click="showComment({{ json_encode(['name'=>$cf['name'],'url'=>$cf['url'],'previewUrl'=>$cf['url'],'downloadUrl'=>$cf['dlUrl'],'isImage'=>true,'isVideo'=>false]) }})" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:200px;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;" onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
+                                        <img src="{{ $cf['url'] }}" alt="{{ $cf['name'] }}" style="width:100%;max-height:120px;object-fit:cover;display:block;">
                                         <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
                                             <i class="fa fa-image" style="color:#6366F1;font-size:10px;"></i>
-                                            <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $comment->original_filename }}</span>
-                                            @if($comment->nas_path)
-                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;flex-shrink:0;letter-spacing:.3px;">NAS</span>
-                                            @else
-                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;flex-shrink:0;letter-spacing:.3px;">LOCAL</span>
-                                            @endif
+                                            <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $cf['name'] }}</span>
+                                            @if($cf['nasPath'])<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;flex-shrink:0;letter-spacing:.3px;">NAS</span>@else<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;flex-shrink:0;letter-spacing:.3px;">LOCAL</span>@endif
                                             <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
                                         </div>
                                     </button>
-                                    @elseif($cIsVideo)
-                                    <button type="button" @click="showComment({{ json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'previewUrl'=>$cUrl,'downloadUrl'=>$cDlUrl,'isImage'=>false,'isVideo'=>true]) }})" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;width:100%;" onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
+                                    @elseif($cf['isVideo'])
+                                    <button type="button" @click="showComment({{ json_encode(['name'=>$cf['name'],'url'=>$cf['url'],'previewUrl'=>$cf['url'],'downloadUrl'=>$cf['dlUrl'],'isImage'=>false,'isVideo'=>true]) }})" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:200px;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;" onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                                         <div style="background:#1F2937;height:90px;display:flex;align-items:center;justify-content:center;">
                                             <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;">
                                                 <i class="fa fa-play" style="color:#fff;font-size:13px;margin-left:2px;"></i>
@@ -1815,35 +1848,29 @@
                                         </div>
                                         <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
                                             <i class="fa fa-video" style="color:#6366F1;font-size:10px;"></i>
-                                            <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $comment->original_filename }}</span>
-                                            @if($comment->nas_path)
-                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;flex-shrink:0;letter-spacing:.3px;">NAS</span>
-                                            @else
-                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;flex-shrink:0;letter-spacing:.3px;">LOCAL</span>
-                                            @endif
+                                            <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $cf['name'] }}</span>
+                                            @if($cf['nasPath'])<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;flex-shrink:0;letter-spacing:.3px;">NAS</span>@else<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;flex-shrink:0;letter-spacing:.3px;">LOCAL</span>@endif
                                             <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
                                         </div>
                                     </button>
                                     @else
-                                    <a href="{{ $cDlUrl ?? $cUrl }}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;text-decoration:none;max-width:280px;transition:border-color .15s;"
+                                    <a href="{{ $cf['dlUrl'] }}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;text-decoration:none;max-width:240px;transition:border-color .15s;"
                                        onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                                         <div style="width:30px;height:30px;border-radius:7px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                            <i class="fa {{ $cIcon }}" style="color:#6366F1;font-size:13px;"></i>
+                                            <i class="fa {{ $cf['icon'] }}" style="color:#6366F1;font-size:13px;"></i>
                                         </div>
                                         <div style="flex:1;min-width:0;">
-                                            <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $comment->original_filename }}</p>
+                                            <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $cf['name'] }}</p>
                                             <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;text-transform:uppercase;display:flex;align-items:center;gap:5px;">
-                                                {{ $cExt ?: 'file' }}
-                                                @if($comment->nas_path)
-                                                    <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;letter-spacing:.3px;">NAS</span>
-                                                @else
-                                                    <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;letter-spacing:.3px;">LOCAL</span>
-                                                @endif
+                                                {{ $cf['ext'] ?: 'file' }}
+                                                @if($cf['nasPath'])<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;letter-spacing:.3px;">NAS</span>@else<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;letter-spacing:.3px;">LOCAL</span>@endif
                                             </p>
                                         </div>
                                         <i class="fa fa-arrow-up-right-from-square" style="font-size:10px;color:#9CA3AF;flex-shrink:0;"></i>
                                     </a>
                                     @endif
+                                @endforeach
+                                </div>
                                 @endif
                             </div>
                             <div x-show="editing">
@@ -2316,18 +2343,32 @@ function taskAttachmentViewer() {
 
 function taskCommentEditor() {
     return {
-        commentFile: '',
+        commentFiles: [],
         editorFocused: false,
         dragging: false, dragCount: 0,
+        fmtSize(b) {
+            if (b < 1024) return b + ' B';
+            if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+            return (b / 1048576).toFixed(1) + ' MB';
+        },
+        addFiles(fileList) {
+            Array.from(fileList).forEach(f => {
+                this.commentFiles.push({ name: f.name, size: this.fmtSize(f.size), file: f });
+            });
+            this.syncInput();
+        },
+        removeCommentFile(i) {
+            this.commentFiles.splice(i, 1);
+            this.syncInput();
+        },
+        syncInput() {
+            const dt = new DataTransfer();
+            this.commentFiles.forEach(f => dt.items.add(f.file));
+            this.$refs.commentFileInput.files = dt.files;
+        },
         handleDrop(e) {
             this.dragCount = 0; this.dragging = false;
-            const file = e.dataTransfer.files[0];
-            if (!file) return;
-            this.commentFile = file.name;
-            const input = this.$refs.commentFileInput;
-            const dt = new DataTransfer();
-            dt.items.add(file);
-            input.files = dt.files;
+            if (e.dataTransfer.files.length) this.addFiles(e.dataTransfer.files);
         },
         colorOpen: false, selectedColor: '#EF4444', savedRange: null,
         saveRange() {

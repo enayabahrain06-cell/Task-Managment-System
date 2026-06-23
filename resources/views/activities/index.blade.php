@@ -74,7 +74,7 @@
 
     {{-- Date range pills --}}
     <div class="flex items-center gap-1 flex-wrap">
-        @foreach([''=>'All','today'=>'Today','yesterday'=>'Yesterday','week'=>'Week','month'=>'Month'] as $val => $lbl)
+        @foreach([''=>'All','today'=>'Today','yesterday'=>'Yesterday','week'=>'Last 7 Days','month'=>'Month'] as $val => $lbl)
         <a href="{{ actUrl(['date_range' => $val]) }}"
            class="px-3 py-1.5 rounded-lg text-xs font-semibold transition {{ $currentDateRange === $val ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800' }}">
             {{ $lbl }}

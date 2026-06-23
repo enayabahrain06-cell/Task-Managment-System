@@ -4,14 +4,24 @@
 
 @push('styles')
 <style>
-.report-card { background:#fff; border-radius:14px; box-shadow:0 1px 4px rgba(0,0,0,.07); padding:24px; }
+.report-card { background:#fff; border-radius:14px; box-shadow:0 1px 4px rgba(0,0,0,.07); padding:24px; opacity:0; transform:translateY(8px); transition:opacity .18s ease-out, transform .18s ease-out; }
+.report-card.rpt-visible { opacity:1; transform:none; }
 .kpi-value { font-size:2rem; font-weight:700; line-height:1; }
 .bar-track { background:#f3f4f6; border-radius:999px; height:8px; overflow:hidden; }
-.bar-fill  { height:8px; border-radius:999px; transition:width .6s ease; }
+.bar-fill  { height:8px; border-radius:999px; }
 .insight-pill { display:flex; align-items:flex-start; gap:12px; padding:12px 16px; border-radius:10px; }
 canvas { max-width:100% !important; }
 .print-only { display:none; }
 [x-cloak] { display:none !important; }
+@keyframes rpt-num-pop {
+    0%   { opacity:0; transform:scale(.5) translateY(6px); }
+    60%  { transform:scale(1.08) translateY(-2px); }
+    100% { opacity:1; transform:scale(1) translateY(0); }
+}
+@keyframes rpt-pulse-dot {
+    0%,100% { opacity:1; transform:scale(1); }
+    50%      { opacity:.5; transform:scale(1.5); }
+}
 
 /* ── Sort controls ── */
 .sort-th { cursor:pointer; user-select:none; white-space:nowrap; }
@@ -68,6 +78,7 @@ canvas { max-width:100% !important; }
     table { page-break-inside: auto; font-size: 10px !important; }
     tr { page-break-inside: avoid; }
     thead { display: table-header-group; }
+    .report-card { opacity:1 !important; transform:none !important; transition:none !important; animation:none !important; }
 
     /* Gradient backgrounds */
     [style*="linear-gradient"] { background: #f8f4ff !important; }
@@ -128,16 +139,78 @@ canvas { max-width:100% !important; }
             </div>
             @endif
         </div>
-        <div style="display:flex;gap:8px;flex-shrink:0;">
-            <button onclick="printCustomerReport()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;">
-                <i class="fas fa-print"></i> Print
+        <div style="display:flex;gap:8px;flex-shrink:0;align-items:center;">
+            {{-- Smart Brief — standalone prominent button --}}
+            <button id="ai-brief-btn" onclick="openAiBrief()"
+                    style="background:linear-gradient(135deg,rgba(255,255,255,.25),rgba(255,255,255,.1));color:#fff;border:1.5px solid rgba(255,255,255,.5);border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,.15);"
+                    onmouseover="this.style.background='rgba(255,255,255,.3)';this.style.boxShadow='0 4px 16px rgba(0,0,0,.25)'"
+                    onmouseout="this.style.background='linear-gradient(135deg,rgba(255,255,255,.25),rgba(255,255,255,.1))';this.style.boxShadow='0 2px 8px rgba(0,0,0,.15)'">
+                <i class="fas fa-wand-magic-sparkles" style="font-size:12px;"></i> Smart Brief
             </button>
-            <button onclick="exportCustomerReportPDF()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;">
-                <i class="fas fa-file-pdf"></i> Export PDF
-            </button>
-            <span style="background:rgba(255,255,255,.1);color:#c7d2fe;border-radius:8px;padding:8px 14px;font-size:12px;">
-                Generated {{ now()->format('M j, Y') }}
-            </span>
+
+            {{-- Actions dropdown --}}
+            <div x-data="{ open: false }" @click.outside="open = false" style="position:relative;">
+                <button @click="open = !open"
+                        style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:7px;transition:background .15s;"
+                        onmouseover="this.style.background='rgba(255,255,255,.25)'"
+                        onmouseout="this.style.background='rgba(255,255,255,.15)'">
+                    <i class="fas fa-ellipsis" style="font-size:13px;"></i>
+                    <i class="fas fa-chevron-down" style="font-size:9px;opacity:.7;" :style="open ? 'transform:rotate(180deg)' : ''" style="transition:transform .2s;"></i>
+                </button>
+
+                <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-100"
+                     x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                     style="position:absolute;right:0;top:calc(100% + 8px);width:210px;background:#fff;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.18);border:1px solid #e5e7eb;overflow:hidden;z-index:200;">
+
+                    {{-- Date info header --}}
+                    <div style="padding:10px 14px 8px;border-bottom:1px solid #f3f4f6;background:#f9fafb;">
+                        <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.07em;">Report Generated</div>
+                        <div style="font-size:12px;font-weight:600;color:#374151;margin-top:2px;">{{ now()->format('M j, Y') }}</div>
+                    </div>
+
+                    {{-- Actions --}}
+                    <div style="padding:6px;">
+                        <button onclick="printCustomerReport(); $dispatch ? null : (document.querySelector('[x-data]').__x && document.querySelector('[x-data]').__x.$data.open=false)"
+                                @click="open = false; printCustomerReport()"
+                                style="width:100%;display:flex;align-items:center;gap:10px;padding:9px 10px;background:none;border:none;border-radius:8px;cursor:pointer;text-align:left;font-size:13px;color:#374151;transition:background .12s;"
+                                onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
+                            <span style="width:28px;height:28px;border-radius:7px;background:#eef2ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-print" style="font-size:11px;color:#6366f1;"></i>
+                            </span>
+                            <div>
+                                <div style="font-weight:600;line-height:1.3;">Print Report</div>
+                                <div style="font-size:11px;color:#9ca3af;">Browser print dialog</div>
+                            </div>
+                        </button>
+
+                        <button @click="open = false; exportCustomerReportPDF()"
+                                style="width:100%;display:flex;align-items:center;gap:10px;padding:9px 10px;background:none;border:none;border-radius:8px;cursor:pointer;text-align:left;font-size:13px;color:#374151;transition:background .12s;"
+                                onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
+                            <span style="width:28px;height:28px;border-radius:7px;background:#fef2f2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-file-pdf" style="font-size:11px;color:#ef4444;"></i>
+                            </span>
+                            <div>
+                                <div style="font-weight:600;line-height:1.3;">Export PDF</div>
+                                <div style="font-size:11px;color:#9ca3af;">Full report as PDF file</div>
+                            </div>
+                        </button>
+
+                        <div style="height:1px;background:#f3f4f6;margin:4px 0;"></div>
+
+                        <button @click="open = false; openAiBrief()"
+                                style="width:100%;display:flex;align-items:center;gap:10px;padding:9px 10px;background:none;border:none;border-radius:8px;cursor:pointer;text-align:left;font-size:13px;color:#374151;transition:background .12s;"
+                                onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
+                            <span style="width:28px;height:28px;border-radius:7px;background:#f5f3ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-wand-magic-sparkles" style="font-size:11px;color:#7c3aed;"></i>
+                            </span>
+                            <div>
+                                <div style="font-weight:600;line-height:1.3;">Smart Brief</div>
+                                <div style="font-size:11px;color:#9ca3af;">Export brief as PDF</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -155,6 +228,28 @@ canvas { max-width:100% !important; }
         @endif
         @if($customer->phone)
         <div style="display:flex;align-items:center;gap:7px;color:#374151;font-size:13px;"><i class="fas fa-phone" style="color:#9ca3af;font-size:11px;"></i>{{ $customer->phone }}</div>
+        @endif
+        @php $_saList = $customer->socialAccounts; @endphp
+        @if($_saList->isNotEmpty())
+        @php
+            $_saGroups = $_saList->groupBy('platform');
+            $_saPlatforms = \App\Models\SocialAccount::platforms();
+        @endphp
+        <div style="display:flex;align-items:center;gap:5px;">
+            <span style="font-size:9px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.08em;margin-right:1px;">Social</span>
+            @foreach($_saGroups as $_pKey => $_pAccounts)
+            @php $_pi = $_saPlatforms[$_pKey] ?? ['icon'=>'fa-globe','color'=>'#6B7280','label'=>ucfirst($_pKey)]; @endphp
+            <a href="{{ route('admin.social-accounts.index', ['customer' => $customer->id]) }}"
+               title="{{ $_pi['label'] }}{{ $_pAccounts->count() > 1 ? ' ('.$_pAccounts->count().')' : '' }}"
+               style="width:26px;height:26px;border-radius:7px;background:{{ $_pi['color'] }};display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;text-decoration:none;opacity:1;transition:opacity .15s;"
+               onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+                <i class="fab {{ $_pi['icon'] }}" style="font-size:12px;color:#fff;"></i>
+                @if($_pAccounts->count() > 1)
+                <span style="position:absolute;top:-4px;right:-5px;width:14px;height:14px;border-radius:50%;background:#fff;border:1.5px solid #e5e7eb;font-size:8px;font-weight:800;color:#374151;display:flex;align-items:center;justify-content:center;line-height:1;">{{ $_pAccounts->count() }}</span>
+                @endif
+            </a>
+            @endforeach
+        </div>
         @endif
         <div style="width:1px;height:36px;background:#f3f4f6;flex-shrink:0;"></div>
         <div style="display:flex;gap:24px;">
@@ -218,7 +313,7 @@ canvas { max-width:100% !important; }
                     <span style="font-size:11px;font-weight:600;color:#059669;">{{ $completionRate }}%</span>
                 </div>
                 <div style="background:#f3f4f6;border-radius:999px;height:6px;overflow:hidden;">
-                    <div style="height:6px;border-radius:999px;background:linear-gradient(90deg,#10b981,#34d399);width:{{ $completionRate }}%;transition:width .8s ease;"></div>
+                    <div class="bar-fill" style="height:6px;background:linear-gradient(90deg,#10b981,#34d399);width:{{ $completionRate }}%;"></div>
                 </div>
                 @if($deliveredOnTime > 0)
                 <div style="margin-top:6px;font-size:11px;color:#9ca3af;">
@@ -328,7 +423,9 @@ canvas { max-width:100% !important; }
             'delivered'          => ['label'=>'Delivered',   'bg'=>'#dcfce7','color'=>'#16a34a','border'=>'#bbf7d0'],
             'archived'           => ['label'=>'Archived',    'bg'=>'#f3f4f6','color'=>'#9ca3af','border'=>'#e5e7eb'],
         ];
+        $projPalette = ['#6366f1','#f59e0b','#10b981','#ef4444','#ec4899','#0ea5e9','#8b5cf6'];
         $projectsBreakdown = $allTasks
+            ->filter(fn($t) => !($t->project?->is_quick))
             ->groupBy(fn($t) => $t->project?->name ?? 'No Project')
             ->map(fn($g, $name) => [
                 'name'      => $name,
@@ -347,16 +444,25 @@ canvas { max-width:100% !important; }
             <div style="font-weight:700;font-size:15px;color:#111827;margin-bottom:16px;">
                 <i class="fas fa-chart-pie" style="color:#6366f1;margin-right:6px;"></i>Status Breakdown
             </div>
-            <div style="display:flex;flex-wrap:wrap;gap:8px;">
-                @foreach($statusConfig as $key => $cfg)
-                @php $cnt = $statusGroups[$key] ?? 0; @endphp
-                @if($cnt > 0)
-                <div style="display:flex;align-items:center;gap:8px;background:{{ $cfg['bg'] }};border:1px solid {{ $cfg['border'] }};border-radius:10px;padding:9px 14px;">
-                    <span style="font-size:1rem;font-weight:700;color:{{ $cfg['color'] }};">{{ $cnt }}</span>
-                    <span style="font-size:12px;font-weight:500;color:{{ $cfg['color'] }};">{{ $cfg['label'] }}</span>
+            <div style="display:flex;align-items:center;gap:20px;">
+                <div style="position:relative;width:120px;height:120px;flex-shrink:0;">
+                    <canvas id="statusDonut" width="120" height="120"></canvas>
+                    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
+                        <div style="font-size:1.6rem;font-weight:800;color:#111827;line-height:1;">{{ $total }}</div>
+                        <div style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;">tasks</div>
+                    </div>
                 </div>
-                @endif
-                @endforeach
+                <div style="flex:1;display:flex;flex-wrap:wrap;gap:8px;">
+                    @foreach($statusConfig as $key => $cfg)
+                    @php $cnt = $statusGroups[$key] ?? 0; @endphp
+                    @if($cnt > 0)
+                    <div style="display:flex;align-items:center;gap:8px;background:{{ $cfg['bg'] }};border:1px solid {{ $cfg['border'] }};border-radius:10px;padding:9px 14px;">
+                        <span style="font-size:1rem;font-weight:700;color:{{ $cfg['color'] }};">{{ $cnt }}</span>
+                        <span style="font-size:12px;font-weight:500;color:{{ $cfg['color'] }};">{{ $cfg['label'] }}</span>
+                    </div>
+                    @endif
+                    @endforeach
+                </div>
             </div>
         </div>
 
@@ -367,10 +473,20 @@ canvas { max-width:100% !important; }
                 <span style="font-size:12px;font-weight:400;color:#9ca3af;margin-left:6px;">{{ $projectsBreakdown->count() }} project{{ $projectsBreakdown->count() !== 1 ? 's' : '' }}</span>
             </div>
             <div style="display:flex;flex-direction:column;gap:10px;">
-                @foreach($projectsBreakdown as $proj)
+                @if($projectsBreakdown->isEmpty())
+                <div style="text-align:center;padding:20px 0;color:#9ca3af;font-size:13px;">
+                    <i class="fas fa-folder-open" style="font-size:22px;display:block;margin-bottom:8px;color:#d1d5db;"></i>
+                    No projects — all tasks are quick tasks
+                </div>
+                @endif
+                @foreach($projectsBreakdown as $pi => $proj)
+                @php $pColor = $projPalette[$pi % count($projPalette)]; @endphp
                 <div>
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-                        <span style="font-size:13px;font-weight:500;color:#1f2937;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%;">{{ $proj['name'] }}</span>
+                        <div style="display:flex;align-items:center;gap:7px;min-width:0;overflow:hidden;">
+                            <span style="width:8px;height:8px;border-radius:50%;background:{{ $pColor }};flex-shrink:0;display:inline-block;"></span>
+                            <span style="font-size:13px;font-weight:500;color:#1f2937;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $proj['name'] }}</span>
+                        </div>
                         <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
                             <span style="font-size:11px;color:#16a34a;">✓ {{ $proj['delivered'] }}</span>
                             @if($proj['active'] > 0)<span style="font-size:11px;color:#0284c7;">⏳ {{ $proj['active'] }}</span>@endif
@@ -378,7 +494,7 @@ canvas { max-width:100% !important; }
                         </div>
                     </div>
                     <div class="bar-track">
-                        <div class="bar-fill" style="background:#6366f1;width:{{ round($proj['total']/$maxProj*100) }}%;"></div>
+                        <div class="bar-fill" style="background:{{ $pColor }};width:{{ round($proj['total']/$maxProj*100) }}%;"></div>
                     </div>
                 </div>
                 @endforeach
@@ -473,27 +589,42 @@ canvas { max-width:100% !important; }
             </div>
             <div style="color:#9ca3af;font-size:12px;margin-bottom:16px;">Tasks per team member for this customer</div>
 
-            @php $maxLoad = $workload->max('total') ?: 1; $palette = ['#6366f1','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899']; @endphp
-            <div style="space-y:10px;">
-                @foreach($workload as $i => $member)
-                <div style="margin-bottom:12px;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;background:{{ $palette[$i % count($palette)] }}">
-                                {{ strtoupper(substr($member['name'], 0, 1)) }}
-                            </div>
-                            <span style="font-size:13px;font-weight:500;color:#1f2937;">{{ $member['name'] }}</span>
+            @php $maxLoad = $workload->max('total') ?: 1; $palette = ['#6366f1','#f59e0b','#10b981','#ef4444','#ec4899','#0ea5e9','#8b5cf6']; @endphp
+            <div style="display:flex;gap:20px;align-items:flex-start;">
+                @if($workload->count() > 0)
+                <div style="flex-shrink:0;text-align:center;">
+                    <canvas id="teamDonut" width="100" height="100" style="display:block;"></canvas>
+                    <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">
+                        @foreach($workload->take(5) as $i => $m)
+                        <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:#4b5563;white-space:nowrap;">
+                            <span style="width:8px;height:8px;border-radius:50%;background:{{ $palette[$i % count($palette)] }};flex-shrink:0;display:inline-block;"></span>
+                            {{ Str::limit($m['name'], 14) }}
                         </div>
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <span style="font-size:11px;color:#9ca3af;">{{ $member['delivered'] }}/{{ $member['total'] }} done</span>
-                            <span style="font-size:13px;font-weight:700;color:#1f2937;">{{ $member['total'] }}</span>
-                        </div>
-                    </div>
-                    <div class="bar-track">
-                        <div class="bar-fill" style="background:{{ $palette[$i % count($palette)] }};width:{{ round($member['total']/$maxLoad*100) }}%;"></div>
+                        @endforeach
                     </div>
                 </div>
-                @endforeach
+                @endif
+                <div style="flex:1;min-width:0;">
+                    @foreach($workload as $i => $member)
+                    <div style="margin-bottom:12px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <div style="width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;background:{{ $palette[$i % count($palette)] }}">
+                                    {{ strtoupper(substr($member['name'], 0, 1)) }}
+                                </div>
+                                <span style="font-size:13px;font-weight:500;color:#1f2937;">{{ $member['name'] }}</span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <span style="font-size:11px;color:#9ca3af;">{{ $member['delivered'] }}/{{ $member['total'] }} done</span>
+                                <span style="font-size:13px;font-weight:700;color:#1f2937;">{{ $member['total'] }}</span>
+                            </div>
+                        </div>
+                        <div class="bar-track">
+                            <div class="bar-fill" style="background:{{ $palette[$i % count($palette)] }};width:{{ round($member['total']/$maxLoad*100) }}%;"></div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
             </div>
 
             @if($workload->count() > 0)
@@ -520,19 +651,19 @@ canvas { max-width:100% !important; }
             ];
             $totalDel = $completionHours->count();
         @endphp
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
-            @foreach($bucketDefs as $b)
-            <div style="background:#fafafa;border-radius:10px;padding:14px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                    <span style="font-size:13px;color:#4b5563;">{{ $b['icon'] }} {{ $b['label'] }}</span>
-                    <span style="font-size:1rem;font-weight:700;color:#1f2937;">{{ $b['count'] }}</span>
-                </div>
-                <div class="bar-track">
-                    <div class="bar-fill" style="background:{{ $b['color'] }};width:{{ $totalDel > 0 ? round($b['count']/$totalDel*100) : 0 }}%;"></div>
-                </div>
-                <div style="font-size:11px;color:#9ca3af;margin-top:4px;">{{ $totalDel > 0 ? round($b['count']/$totalDel*100) : 0 }}% of deliveries</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:center;">
+            <div style="position:relative;height:160px;">
+                <canvas id="speedChart"></canvas>
             </div>
-            @endforeach
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                @foreach($bucketDefs as $b)
+                <div style="background:#fafafa;border-radius:10px;padding:12px;text-align:center;">
+                    <div style="font-size:1.5rem;font-weight:800;color:{{ $b['color'] }};line-height:1;">{{ $b['count'] }}</div>
+                    <div style="font-size:10px;color:#6b7280;margin-top:5px;">{{ $b['icon'] }} {{ $b['label'] }}</div>
+                    <div style="font-size:9px;color:#d1d5db;margin-top:2px;">{{ $totalDel > 0 ? round($b['count']/$totalDel*100) : 0 }}%</div>
+                </div>
+                @endforeach
+            </div>
         </div>
     </div>
     @endif
@@ -877,7 +1008,19 @@ if (!empty($appSettings['logo_path'])) {
 @endphp
 
 @push('scripts')
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script>
+/* html2pdf loaded on demand — not on every page visit */
+var _html2pdfLoaded = false;
+function _loadHtml2Pdf(cb) {
+    if (typeof html2pdf !== 'undefined') { cb(); return; }
+    if (_html2pdfLoaded) { var t = setInterval(function(){ if(typeof html2pdf!=='undefined'){clearInterval(t);cb();} },50); return; }
+    _html2pdfLoaded = true;
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    s.onload = cb;
+    document.head.appendChild(s);
+}
+</script>
 <script>
 window._reportTasks    = @json($taskRows);
 window._reportWorkload = @json($workload);
@@ -1084,7 +1227,8 @@ function buildCustomerReportHTML(immediate) {
     + '.foot-brand { font-size:10px; font-weight:700; color:#4F46E5; }'
     + '.foot-mid   { font-size:10px; color:#9CA3AF; }'
     + '.foot-conf  { font-size:10px; color:#9CA3AF; font-style:italic; }'
-    + '@@media print { .pbar{display:none !important;} body{background:#fff !important;} .doc{max-width:none;} *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;} tr{page-break-inside:avoid;} @@page{size:A4 portrait;margin:0;} }'
+    + 'tr { page-break-inside: avoid; -webkit-column-break-inside: avoid; }'
+    + '@@media print { .pbar{display:none !important;} body{background:#fff !important;} .doc{max-width:none;} *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;} @@page{size:A4 portrait;margin:0;} }'
     ;
 
     // ── Status badge map ─────────────────────────────────
@@ -1259,7 +1403,6 @@ function exportCustomerReportPDF() {
 }
 
 function _pdfDownload(buildFn, filename) {
-    if (typeof html2pdf === 'undefined') { alert('PDF library not loaded yet — please try again in a moment.'); return; }
     var overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(17,24,39,.55);z-index:99999;display:flex;align-items:center;justify-content:center;';
     overlay.innerHTML = '<div style="background:#fff;border-radius:14px;padding:22px 32px;font-size:14px;font-weight:600;color:#374151;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);"><div style="width:20px;height:20px;border:3px solid #4F46E5;border-top-color:transparent;border-radius:50%;animation:_pdf_spin .7s linear infinite;flex-shrink:0;"></div>Generating PDF…</div><style>@@keyframes _pdf_spin{to{transform:rotate(360deg)}}</style>';
@@ -1271,18 +1414,21 @@ function _pdfDownload(buildFn, filename) {
     var docNode = parsed.querySelector('.doc');
     if (!docNode) { document.body.removeChild(overlay); return; }
     var content = '<style>' + cssText + '</style>' + docNode.outerHTML;
+    _loadHtml2Pdf(function() {
     html2pdf().set({
         margin: 0,
         filename: filename,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false, windowWidth: 1100 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', '.kcard'] }
     }).from(content, 'string').save().then(function() {
         document.body.removeChild(overlay);
     }).catch(function(e) {
         document.body.removeChild(overlay);
         alert('PDF generation failed — ' + (e && e.message ? e.message : 'please try again.'));
     });
+    }); // end _loadHtml2Pdf
 }
 </script>
 @endpush
@@ -1303,37 +1449,101 @@ document.addEventListener('DOMContentLoaded', function () {
         return new Date(y, mo - 1).toLocaleString('default', { month: 'short', year: 'numeric' });
     });
 
-    // ── Monthly Activity Bar Chart ──────────────────────────────────────────
+    // ── Monthly Activity — bar (Created) + line (Delivered) hybrid ──────────
     new Chart(document.getElementById('activityChart'), {
         type: 'bar',
         data: {
             labels,
             datasets: [
                 {
+                    type: 'bar',
                     label: 'Tasks Created',
                     data: created,
-                    backgroundColor: 'rgba(99,102,241,0.85)',
-                    borderRadius: 6,
+                    backgroundColor: 'rgba(99,102,241,0.72)',
+                    borderRadius: 8,
                     borderSkipped: false,
+                    order: 2,
                 },
                 {
+                    type: 'line',
                     label: 'Tasks Delivered',
                     data: delivered,
-                    backgroundColor: 'rgba(16,185,129,0.85)',
-                    borderRadius: 6,
-                    borderSkipped: false,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16,185,129,0.1)',
+                    fill: true,
+                    tension: 0.45,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#10b981',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    borderWidth: 2.5,
+                    order: 1,
                 },
             ],
         },
         options: {
             responsive: true, maintainAspectRatio: false,
-            plugins: { legend: { position: 'top', labels: { usePointStyle: true, font: { size: 12 } } } },
+            plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'rectRounded', font: { size: 12 } } } },
             scales: {
                 y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: '#f3f4f6' } },
                 x: { ticks: { font: { size: 11 } }, grid: { display: false } },
             },
         },
     });
+
+    // ── Status Doughnut ─────────────────────────────────────────────────────
+    (function() {
+        const sLabels = [], sData = [], sColors = [];
+        @foreach($statusConfig as $key => $cfg)
+        @php $cnt = $statusGroups[$key] ?? 0; @endphp
+        @if($cnt > 0)
+        sLabels.push('{{ $cfg['label'] }}'); sData.push({{ $cnt }}); sColors.push('{{ $cfg['color'] }}');
+        @endif
+        @endforeach
+        const sdEl = document.getElementById('statusDonut');
+        if (sdEl && sData.length) new Chart(sdEl, {
+            type: 'doughnut',
+            data: { labels: sLabels, datasets: [{ data: sData, backgroundColor: sColors, borderWidth: 2, borderColor: '#fff', hoverOffset: 4 }] },
+            options: { cutout: '68%', responsive: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw}` } } } },
+        });
+    })();
+
+    // ── Team Contribution Doughnut ───────────────────────────────────────────
+    @if($workload->count() > 0)
+    (function() {
+        const tPal = ['#6366f1','#f59e0b','#10b981','#ef4444','#ec4899','#0ea5e9','#8b5cf6'];
+        const tLabels = @json($workload->pluck('name'));
+        const tTotals = @json($workload->pluck('total'));
+        const tdEl = document.getElementById('teamDonut');
+        if (tdEl) new Chart(tdEl, {
+            type: 'doughnut',
+            data: { labels: tLabels, datasets: [{ data: tTotals, backgroundColor: tPal.slice(0, tLabels.length), borderWidth: 2, borderColor: '#fff', hoverOffset: 4 }] },
+            options: { cutout: '58%', responsive: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} tasks (${Math.round(ctx.raw/{{ $total }}*100)}%)` } } } },
+        });
+    })();
+    @endif
+
+    // ── Delivery Speed Horizontal Bar ────────────────────────────────────────
+    @if($completionHours->count() > 0)
+    (function() {
+        const spEl = document.getElementById('speedChart');
+        if (spEl) new Chart(spEl, {
+            type: 'bar',
+            data: {
+                labels: ['Same Day', '1–3 Days', '3–7 Days', 'Over Week'],
+                datasets: [{ data: [{{ $completionBuckets['same_day'] }},{{ $completionBuckets['one_three'] }},{{ $completionBuckets['three_seven'] }},{{ $completionBuckets['over_week'] }}], backgroundColor: ['#10b981','#6366f1','#f59e0b','#ef4444'], borderRadius: 6, borderSkipped: false }],
+            },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw} task${ctx.raw !== 1 ? 's' : ''}` } } },
+                scales: {
+                    x: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } }, grid: { color: '#f3f4f6' } },
+                    y: { ticks: { font: { size: 11 } }, grid: { display: false } },
+                },
+            },
+        });
+    })();
+    @endif
 
     @if($approvalItems->count() > 0)
     // ── Approval Donut ───────────────────────────────────────────────────────
@@ -1362,5 +1572,440 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     @endif
 });
+</script>
+
+{{-- ═══════════════════ AI BRIEF MODAL ═══════════════════ --}}
+<div id="ai-brief-modal"
+     style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.6);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:16px;"
+     onclick="if(event.target===this)closeAiBrief()">
+    <div id="ai-brief-panel"
+         style="background:#fff;border-radius:20px;box-shadow:0 32px 80px rgba(0,0,0,.25);width:100%;max-width:720px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;transform:translateY(24px) scale(.97);opacity:0;transition:transform .3s cubic-bezier(.34,1.56,.64,1),opacity .25s ease;">
+
+        {{-- Header --}}
+        <div style="padding:22px 24px 18px;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-shrink:0;">
+            <div>
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+                    <div style="width:32px;height:32px;background:rgba(255,255,255,.2);border-radius:9px;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-wand-magic-sparkles" style="color:#fff;font-size:14px;"></i>
+                    </div>
+                    <span style="color:#e0e7ff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;">Smart Report Brief</span>
+                </div>
+                <div id="ai-brief-headline" style="color:#fff;font-size:1.15rem;font-weight:700;line-height:1.3;">
+                    Generating your brief…
+                </div>
+            </div>
+            <button onclick="closeAiBrief()"
+                    style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.15);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;transition:background .15s;"
+                    onmouseover="this.style.background='rgba(255,255,255,.3)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">
+                <i class="fas fa-times" style="font-size:12px;"></i>
+            </button>
+        </div>
+
+        {{-- Body --}}
+        <div id="ai-brief-body" style="flex:1;overflow-y:auto;padding:24px;">
+
+            {{-- Loading state --}}
+            <div id="ai-brief-loading" style="text-align:center;padding:48px 16px;">
+                <div style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#eef2ff,#e0e7ff);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                    <i class="fas fa-sparkles" style="color:#6366f1;font-size:22px;animation:spin 2s linear infinite;"></i>
+                </div>
+                <p style="font-size:14px;font-weight:600;color:#374151;margin:0 0 6px;">Building your smart brief…</p>
+                <p style="font-size:12px;color:#9ca3af;margin:0;">Analysing tasks, metrics, and delivery patterns</p>
+                <style>@keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }</style>
+            </div>
+
+            {{-- Error state --}}
+            <div id="ai-brief-error" style="display:none;text-align:center;padding:32px 16px;">
+                <div style="width:48px;height:48px;border-radius:50%;background:#fef2f2;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+                    <i class="fas fa-triangle-exclamation" style="color:#ef4444;font-size:18px;"></i>
+                </div>
+                <p style="font-size:14px;font-weight:600;color:#374151;margin:0 0 6px;">Could not generate brief</p>
+                <p id="ai-brief-error-msg" style="font-size:12px;color:#9ca3af;margin:0;"></p>
+                <button onclick="openAiBrief()"
+                        style="margin-top:16px;padding:8px 20px;background:#eef2ff;color:#4f46e5;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;">
+                    Try again
+                </button>
+            </div>
+
+            {{-- Content (hidden until loaded) --}}
+            <div id="ai-brief-content" style="display:none;">
+
+                {{-- Overview paragraph --}}
+                <div style="background:#f8fafc;border-radius:12px;padding:16px 18px;margin-bottom:20px;border-left:4px solid #6366f1;">
+                    <p id="ai-brief-overview" style="font-size:13.5px;color:#374151;line-height:1.7;margin:0;"></p>
+                </div>
+
+                {{-- Highlight pills --}}
+                <div id="ai-brief-highlights" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px;"></div>
+
+                {{-- Sections --}}
+                <div id="ai-brief-sections" style="display:flex;flex-direction:column;gap:16px;"></div>
+
+            </div>
+        </div>
+
+        {{-- Footer --}}
+        <div id="ai-brief-footer" style="padding:14px 24px;border-top:1px solid #f3f4f6;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fafafa;">
+            <span style="font-size:11px;color:#9ca3af;display:flex;align-items:center;gap:5px;">
+                <i class="fas fa-chart-bar" style="font-size:10px;"></i>
+                Smart Brief · {{ $customer->name }}
+            </span>
+            <div style="display:flex;gap:8px;">
+                <button id="ai-copy-btn" onclick="copyAiBrief()"
+                        style="padding:7px 14px;border-radius:8px;border:1.5px solid #e5e7eb;background:#fff;color:#374151;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:5px;transition:all .15s;"
+                        onmouseover="this.style.borderColor='#6366f1';this.style.color='#4f46e5'" onmouseout="this.style.borderColor='#e5e7eb';this.style.color='#374151'">
+                    <i class="fas fa-copy" style="font-size:10px;"></i> Copy
+                </button>
+                <button onclick="printAiBrief()"
+                        style="padding:7px 14px;border-radius:8px;border:1.5px solid #e5e7eb;background:#fff;color:#374151;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:5px;transition:all .15s;"
+                        onmouseover="this.style.borderColor='#6366f1';this.style.color='#4f46e5'" onmouseout="this.style.borderColor='#e5e7eb';this.style.color='#374151'">
+                    <i class="fas fa-print" style="font-size:10px;"></i> Print
+                </button>
+                <button onclick="closeAiBrief()"
+                        style="padding:7px 14px;border-radius:8px;background:#4f46e5;color:#fff;border:none;cursor:pointer;font-size:12px;font-weight:600;">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var _briefData = null;
+    var _aiBriefUrl = '{{ route("admin.customers.report.ai-brief", $customer) }}';
+    var _csrfToken  = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+
+    window.openAiBrief = function () {
+        var modal = document.getElementById('ai-brief-modal');
+        var panel = document.getElementById('ai-brief-panel');
+        modal.style.display = 'flex';
+        setTimeout(function () {
+            panel.style.opacity = '1';
+            panel.style.transform = 'translateY(0) scale(1)';
+        }, 20);
+        if (!_briefData) fetchBrief();
+    };
+
+    window.closeAiBrief = function () {
+        var panel = document.getElementById('ai-brief-panel');
+        panel.style.opacity = '0';
+        panel.style.transform = 'translateY(16px) scale(.97)';
+        setTimeout(function () {
+            document.getElementById('ai-brief-modal').style.display = 'none';
+        }, 260);
+    };
+
+    function fetchBrief() {
+        document.getElementById('ai-brief-loading').style.display = 'block';
+        document.getElementById('ai-brief-error').style.display   = 'none';
+        document.getElementById('ai-brief-content').style.display = 'none';
+        document.getElementById('ai-brief-headline').textContent   = 'Generating your brief…';
+
+        fetch(_aiBriefUrl, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': _csrfToken, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.error) { showError(data.error); return; }
+            _briefData = data.brief;
+            renderBrief(_briefData);
+        })
+        .catch(function (e) { showError('Network error — please try again.'); });
+    }
+
+    function showError(msg) {
+        document.getElementById('ai-brief-loading').style.display   = 'none';
+        document.getElementById('ai-brief-content').style.display   = 'none';
+        document.getElementById('ai-brief-error').style.display     = 'block';
+        document.getElementById('ai-brief-error-msg').textContent   = msg;
+        document.getElementById('ai-brief-headline').textContent    = 'Brief unavailable';
+    }
+
+    function renderBrief(b) {
+        document.getElementById('ai-brief-loading').style.display = 'none';
+        document.getElementById('ai-brief-error').style.display   = 'none';
+
+        document.getElementById('ai-brief-headline').textContent  = b.headline || 'Customer Performance Brief';
+        document.getElementById('ai-brief-overview').textContent  = b.overview || '';
+
+        // Highlights
+        var hlWrap = document.getElementById('ai-brief-highlights');
+        hlWrap.innerHTML = '';
+        (b.highlights || []).forEach(function (h) {
+            var el = document.createElement('div');
+            el.style.cssText = 'background:#f8fafc;border-radius:12px;padding:14px 16px;border:1.5px solid #f0f0f0;';
+            el.innerHTML =
+                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+                + '<div style="width:28px;height:28px;border-radius:7px;background:' + esc(h.color || '#6366f1') + '22;display:flex;align-items:center;justify-content:center;">'
+                + '<i class="fas ' + esc(h.icon || 'fa-chart-line') + '" style="font-size:11px;color:' + esc(h.color || '#6366f1') + ';"></i></div>'
+                + '<span style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.07em;">' + esc(h.label) + '</span></div>'
+                + '<div style="font-size:1.25rem;font-weight:800;color:#111827;line-height:1;">' + esc(h.value) + '</div>';
+            hlWrap.appendChild(el);
+        });
+
+        // Sections
+        var secWrap = document.getElementById('ai-brief-sections');
+        secWrap.innerHTML = '';
+        var sectionColors = ['#6366f1','#059669','#d97706','#e11d48'];
+        (b.sections || []).forEach(function (s, i) {
+            var el = document.createElement('div');
+            el.style.cssText = 'background:#fff;border:1.5px solid #f0f0f0;border-radius:12px;padding:16px 18px;';
+            el.innerHTML =
+                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+                + '<div style="width:4px;height:20px;border-radius:99px;background:' + (sectionColors[i] || '#6366f1') + ';flex-shrink:0;"></div>'
+                + '<h4 style="font-size:13px;font-weight:700;color:#111827;margin:0;">' + esc(s.title) + '</h4></div>'
+                + '<p style="font-size:13px;color:#4b5563;line-height:1.7;margin:0;">' + esc(s.body) + '</p>';
+            secWrap.appendChild(el);
+        });
+
+        document.getElementById('ai-brief-content').style.display = 'block';
+    }
+
+    window.copyAiBrief = function () {
+        if (!_briefData) return;
+        var text = _briefData.headline + '\n\n' + (_briefData.overview || '') + '\n\n';
+        (_briefData.highlights || []).forEach(function (h) { text += '• ' + h.label + ': ' + h.value + '\n'; });
+        text += '\n';
+        (_briefData.sections || []).forEach(function (s) { text += s.title + '\n' + s.body + '\n\n'; });
+        navigator.clipboard.writeText(text.trim()).then(function () {
+            var btn = document.getElementById('ai-copy-btn');
+            btn.innerHTML = '<i class="fas fa-check" style="font-size:10px;"></i> Copied!';
+            btn.style.color = '#059669'; btn.style.borderColor = '#059669';
+            setTimeout(function () {
+                btn.innerHTML = '<i class="fas fa-copy" style="font-size:10px;"></i> Copy';
+                btn.style.color = ''; btn.style.borderColor = '';
+            }, 2000);
+        });
+    };
+
+    window.printAiBrief = function () {
+        if (!_briefData) return;
+        var b   = _briefData;
+        var BRAND = {
+            logo:     '{{ $reportLogo }}',
+            company:  '{{ addslashes($appSettings["company_name"] ?? $appSettings["app_name"] ?? config("app.name")) }}',
+            tagline:  '{{ addslashes($appSettings["app_tagline"] ?? "") }}',
+            color:    '{{ $appSettings["primary_color"] ?? "#4f46e5" }}',
+            customer: '{{ addslashes($customer->name) }}',
+            custCo:   '{{ addslashes($customer->company ?? "") }}',
+            date:     '{{ now()->format("F j, Y") }}',
+            period:   '{{ $firstTaskAt ? $firstTaskAt->format("M j, Y")." – ".($lastTaskAt?->format("M j, Y") ?? "present") : "" }}',
+            total:    '{{ $total }}',
+            rate:     '{{ $completionRate }}',
+        };
+
+        var sectionIcons = ['▶','▶','▶','▶'];
+        var sectionAccents = [BRAND.color, '#059669', '#d97706', '#7c3aed'];
+
+        var hlHtml = (b.highlights||[]).map(function(h) {
+            return '<div style="flex:1;min-width:0;background:#fff;border:1.5px solid #e5e7eb;border-radius:10px;padding:14px 16px;text-align:center;">'
+                + '<div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">' + esc(h.label) + '</div>'
+                + '<div style="font-size:1.6rem;font-weight:800;color:' + esc(h.color||BRAND.color) + ';line-height:1;">' + esc(h.value) + '</div>'
+                + '</div>';
+        }).join('');
+
+        var sectHtml = (b.sections||[]).map(function(s,i) {
+            return '<div style="border-left:4px solid ' + sectionAccents[i%4] + ';padding:14px 18px;background:#fff;border-radius:0 10px 10px 0;border-top:1px solid #f3f4f6;border-right:1px solid #f3f4f6;border-bottom:1px solid #f3f4f6;">'
+                + '<div style="font-size:12px;font-weight:700;color:#111827;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">' + esc(s.title) + '</div>'
+                + '<div style="font-size:13px;color:#374151;line-height:1.75;">' + esc(s.body) + '</div>'
+                + '</div>';
+        }).join('');
+
+        var logoHtml = BRAND.logo
+            ? '<img src="' + BRAND.logo + '" alt="logo" style="height:40px;max-width:160px;object-fit:contain;display:block;">'
+            : '<div style="height:40px;display:flex;align-items:center;font-size:1.1rem;font-weight:800;color:#fff;letter-spacing:-.3px;">' + esc(BRAND.company) + '</div>';
+
+        var html = '<!DOCTYPE html><html><head><meta charset="utf-8">'
+            + '<title>Smart Brief — ' + esc(BRAND.customer) + '</title>'
+            + '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">'
+            + '<style>'
+            + '*{box-sizing:border-box;margin:0;padding:0;}'
+            + 'html,body{font-family:Inter,sans-serif;background:#fff;color:#111827;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+            + '.page{max-width:760px;margin:0 auto;padding:0;}'
+            /* Cover header */
+            + '.cover{background:linear-gradient(135deg,' + BRAND.color + ' 0%,' + shadeColor(BRAND.color, -20) + ' 100%);padding:28px 36px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;}'
+            + '.cover-right{text-align:right;}'
+            + '.cover-right .label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.6);margin-bottom:2px;}'
+            + '.cover-right .value{font-size:12px;font-weight:600;color:#fff;}'
+            /* Headline strip */
+            + '.headline-strip{background:#f8fafc;border-bottom:3px solid ' + BRAND.color + ';padding:20px 36px;}'
+            + '.headline-strip .badge{display:inline-block;padding:3px 10px;background:' + BRAND.color + '18;color:' + BRAND.color + ';font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border-radius:20px;margin-bottom:8px;}'
+            + '.headline-strip h1{font-size:1.25rem;font-weight:800;color:#111827;line-height:1.35;}'
+            /* Body */
+            + '.body{padding:24px 36px;display:flex;flex-direction:column;gap:20px;}'
+            + '.section-label{font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;display:flex;align-items:center;gap:6px;}'
+            + '.section-label::after{content:"";flex:1;height:1px;background:#e5e7eb;}'
+            + '.overview-box{background:#f8fafc;border-left:4px solid ' + BRAND.color + ';border-radius:0 10px 10px 0;padding:14px 18px;font-size:13.5px;color:#374151;line-height:1.75;}'
+            + '.highlights{display:flex;gap:12px;}'
+            + '.sections{display:flex;flex-direction:column;gap:12px;}'
+            /* Footer */
+            + '.footer{padding:16px 36px;border-top:1.5px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;background:#fafafa;}'
+            + '.footer .left{display:flex;align-items:center;gap:10px;}'
+            + '.footer .logo-sm img{height:22px;max-width:80px;object-fit:contain;opacity:.7;}'
+            + '.footer .divider{width:1px;height:20px;background:#e5e7eb;}'
+            + '.footer p{font-size:10.5px;color:#9ca3af;}'
+            + '.footer .right{font-size:10px;color:#9ca3af;text-align:right;}'
+            + '@media print{'
+            + '@page{size:A4 portrait;margin:0;}'
+            + 'body{margin:0;}'
+            + '.cover,.headline-strip,.body,.footer{break-inside:avoid;}'
+            + '}'
+            + '</style>'
+            + '</head><body><div class="page">'
+
+            /* ── Cover header ── */
+            + '<div class="cover">'
+            + '<div>' + logoHtml
+            + (BRAND.tagline ? '<div style="margin-top:5px;font-size:10px;color:rgba(255,255,255,.65);font-weight:500;">' + esc(BRAND.tagline) + '</div>' : '')
+            + '</div>'
+            + '<div class="cover-right">'
+            + '<div class="label">Customer</div>'
+            + '<div class="value">' + esc(BRAND.customer) + (BRAND.custCo ? ' · ' + esc(BRAND.custCo) : '') + '</div>'
+            + (BRAND.period ? '<div class="label" style="margin-top:8px;">Period</div><div class="value">' + esc(BRAND.period) + '</div>' : '')
+            + '<div class="label" style="margin-top:8px;">Generated</div>'
+            + '<div class="value">' + esc(BRAND.date) + '</div>'
+            + '</div></div>'
+
+            /* ── Headline ── */
+            + '<div class="headline-strip">'
+            + '<div class="badge">Smart Brief</div>'
+            + '<h1>' + esc(b.headline||'') + '</h1>'
+            + '</div>'
+
+            /* ── Body ── */
+            + '<div class="body">'
+
+            /* Overview */
+            + '<div>'
+            + '<div class="section-label">Executive Overview</div>'
+            + '<div class="overview-box">' + esc(b.overview||'') + '</div>'
+            + '</div>'
+
+            /* Highlights */
+            + '<div>'
+            + '<div class="section-label">Key Metrics</div>'
+            + '<div class="highlights">' + hlHtml + '</div>'
+            + '</div>'
+
+            /* Sections */
+            + '<div>'
+            + '<div class="section-label">Detailed Analysis</div>'
+            + '<div class="sections">' + sectHtml + '</div>'
+            + '</div>'
+
+            + '</div>'
+
+            /* ── Footer ── */
+            + '<div class="footer">'
+            + '<div class="left">'
+            + '<div class="logo-sm">' + (BRAND.logo ? '<img src="' + BRAND.logo + '" alt="">' : '<span style="font-size:11px;font-weight:700;color:' + BRAND.color + ';">' + esc(BRAND.company) + '</span>') + '</div>'
+            + '<div class="divider"></div>'
+            + '<p>Smart Brief · Confidential</p>'
+            + '</div>'
+            + '<div class="right">' + esc(BRAND.total) + ' tasks · ' + esc(BRAND.rate) + '% completion rate</div>'
+            + '</div>'
+
+            + '</div></body></html>';
+
+        var w = window.open('', '_blank', 'width=820,height=1060');
+        w.document.write(html);
+        w.document.close();
+        setTimeout(function () { w.focus(); w.print(); }, 800);
+    };
+
+    function shadeColor(hex, pct) {
+        hex = hex.replace('#','');
+        if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+        var r = Math.min(255, Math.max(0, parseInt(hex.substr(0,2),16) + Math.round(pct * 2.55)));
+        var g = Math.min(255, Math.max(0, parseInt(hex.substr(2,2),16) + Math.round(pct * 2.55)));
+        var b2= Math.min(255, Math.max(0, parseInt(hex.substr(4,2),16) + Math.round(pct * 2.55)));
+        return '#'+(r<16?'0':'')+r.toString(16)+(g<16?'0':'')+g.toString(16)+(b2<16?'0':'')+b2.toString(16);
+    }
+
+    function esc(str) {
+        return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+})();
+</script>
+
+<script>
+/* ── Report page animations ─────────────────────────────────────────────── */
+(function () {
+
+    /* 1. Card scroll-reveal with staggered entry */
+    var cards = Array.from(document.querySelectorAll('.report-card'));
+    var io = ('IntersectionObserver' in window)
+        ? new IntersectionObserver(function (entries) {
+            entries.forEach(function (e) {
+                if (!e.isIntersecting) return;
+                e.target.classList.add('rpt-visible');
+                io.unobserve(e.target);
+            });
+          }, { threshold: 0.06 })
+        : null;
+
+    var viewIdx = 0;
+    cards.forEach(function (c) {
+        var inView = c.getBoundingClientRect().top < window.innerHeight;
+        // max 4 staggered cards in viewport, 30ms apart — no perceived delay
+        c.style.transitionDelay = inView ? (Math.min(viewIdx++, 4) * 0.03) + 's' : '0s';
+        if (io) io.observe(c);
+        else    c.classList.add('rpt-visible');
+    });
+
+    /* 2. Bar fill — snap to width immediately, then animate */
+    document.querySelectorAll('.bar-fill').forEach(function (bar) {
+        var target = bar.style.width;
+        if (!target) return;
+        bar.style.transition = 'none';
+        bar.style.width = '0';
+        requestAnimationFrame(function () {
+            bar.style.transition = 'width .45s cubic-bezier(.4,0,.2,1)';
+            bar.style.width = target;
+        });
+    });
+
+    /* 3. Count-up for big KPI numbers — fast, snappy */
+    var numSels = [
+        '.report-card [style*="font-size:2.4rem"]',
+        '.report-card [style*="font-size:2rem"]',
+        '.report-card [style*="font-size:1.8rem"]',
+    ].join(',');
+
+    document.querySelectorAll(numSels).forEach(function (el) {
+        var node = el.childNodes[0];
+        if (!node || node.nodeType !== 3) return;
+        var raw = node.textContent.trim();
+        var m   = raw.match(/^(\d+(?:\.\d+)?)(.*)/);
+        if (!m) return;
+        var target  = parseFloat(m[1]);
+        var suffix  = m[2] || '';
+        if (!target) return;
+
+        var isFloat = !Number.isInteger(target);
+        var dur     = Math.min(550, Math.max(250, target * 6)); // max 550ms
+
+        el.style.animation      = 'rpt-num-pop .3s ease-out both';
+        el.style.animationDelay = '0s';
+        node.textContent = '0' + suffix;
+
+        var t0 = null;
+        requestAnimationFrame(function tick(ts) {
+            if (!t0) t0 = ts;
+            var p    = Math.min((ts - t0) / dur, 1);
+            var ease = 1 - Math.pow(1 - p, 3);
+            node.textContent = (isFloat ? (ease * target).toFixed(1) : Math.round(ease * target)) + suffix;
+            if (p < 1) requestAnimationFrame(tick);
+        });
+    });
+
+    /* 4. Pulse the active-status dots */
+    document.querySelectorAll('[style*="background:#3b82f6"][style*="border-radius:50%"], [style*="background:#22c55e"][style*="border-radius:50%"]').forEach(function (dot) {
+        dot.style.animation = 'rpt-pulse-dot 2s ease-in-out infinite';
+    });
+
+})();
 </script>
 @endsection

@@ -59,39 +59,32 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
 /* ── Stat cards ── */
 .cards-tbl { width:100%; border-collapse:separate; border-spacing:5px; margin-bottom:14px; }
 .cards-tbl td { padding:0; }
-.card      { border-radius:10px; padding:12px 13px; border:1px solid #E2E8F0; background:#fff; }
-.card-top  { display:table; width:100%; margin-bottom:6px; }
-.card-lbl  { display:table-cell; font-size:6.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#64748B; vertical-align:middle; }
-.card-ico  { display:table-cell; vertical-align:middle; text-align:right; }
+.card     { border-radius:10px; padding:12px 13px; border:1px solid #E2E8F0; background:#fff; }
+.card-top { display:table; width:100%; margin-bottom:6px; }
+.card-lbl { display:table-cell; font-size:6.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#64748B; vertical-align:middle; }
+.card-ico { display:table-cell; vertical-align:middle; text-align:right; }
 .card-ico-box { display:inline-block; width:22px; height:22px; border-radius:6px; text-align:center; line-height:22px; font-size:11px; }
-.card-val  { font-size:22px; font-weight:800; line-height:1; color:#0F172A; margin-bottom:3px; }
-.card-sub  { font-size:7px; color:#94A3B8; }
-.card-bar  { height:3px; border-radius:2px; margin-top:8px; background:#E2E8F0; }
+.card-val { font-size:22px; font-weight:800; line-height:1; color:#0F172A; margin-bottom:3px; }
+.card-sub { font-size:7px; color:#94A3B8; }
+.card-bar { height:3px; border-radius:2px; margin-top:8px; background:#E2E8F0; }
 
 .card-active   { background:{{ $primaryColor }}; border-color:{{ $primaryColor }}; }
 .card-active .card-lbl { color:rgba(255,255,255,.65); }
 .card-active .card-val { color:#fff; }
 .card-active .card-sub { color:rgba(255,255,255,.5); }
-.card-active .card-bar { background:rgba(255,255,255,.25); }
 
-.card-expiring { background:#FFFBEB; border-color:#FDE68A; }
-.card-expiring .card-lbl { color:#92400E; }
-.card-expiring .card-val { color:#B45309; }
-.card-expiring .card-sub { color:#D97706; opacity:.7; }
+.card-inactive { background:#F8FAFC; border-color:#CBD5E1; }
+.card-inactive .card-lbl { color:#475569; }
+.card-inactive .card-val { color:#475569; }
+.card-inactive .card-sub { color:#94A3B8; }
 
-.card-expired  { background:#FFF1F2; border-color:#FECDD3; }
-.card-expired .card-lbl { color:#9F1239; }
-.card-expired .card-val { color:#BE123C; }
-.card-expired .card-sub { color:#E11D48; opacity:.6; }
+.card-suspended { background:#FFF1F2; border-color:#FECDD3; }
+.card-suspended .card-lbl { color:#9F1239; }
+.card-suspended .card-val { color:#BE123C; }
+.card-suspended .card-sub { color:#E11D48; opacity:.6; }
 
-.card-spend { background:#F8FAFF; border-color:#C7D2FE; }
-.card-spend .card-val { color:{{ $primaryColor }}; }
-.card-spend .card-sub { color:#6366F1; opacity:.6; }
-
-.card-auto  { background:#F0FDF4; border-color:#86EFAC; }
-.card-auto .card-lbl { color:#166534; }
-.card-auto .card-val { color:#15803D; }
-.card-auto .card-sub { color:#16A34A; opacity:.7; }
+.card-plat { background:#F8FAFF; border-color:#C7D2FE; }
+.card-plat .card-val { color:{{ $primaryColor }}; }
 
 /* ── Distribution panels ── */
 .fin-wrap   { display:table; width:100%; border-collapse:separate; border-spacing:6px 0; margin-bottom:14px; }
@@ -102,21 +95,18 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
 .donut-layout { display:table; width:100%; }
 .donut-left   { display:table-cell; vertical-align:middle; width:88px; }
 .donut-right  { display:table-cell; vertical-align:middle; padding-left:10px; }
-.cy-item    { display:table; width:100%; margin-bottom:7px; }
+.cy-item    { display:table; width:100%; margin-bottom:6px; }
 .cy-dot-c   { display:table-cell; width:9px; vertical-align:middle; padding-right:5px; }
 .cy-dot-c span { display:block; width:7px; height:7px; border-radius:50%; }
 .cy-lbl-c   { display:table-cell; vertical-align:middle; font-size:8px; color:#334155; }
 .cy-cnt-c   { font-size:6px; color:#94A3B8; margin-left:2px; }
-.cy-amt-c   { display:table-cell; vertical-align:middle; text-align:right; font-size:8.5px; font-weight:700; color:#0F172A; white-space:nowrap; }
-.cy-sub-c   { font-size:6px; font-weight:400; color:#94A3B8; }
-.cy-divider { border:none; border-top:1px solid #F1F5F9; margin:5px 0; }
-.total-row  { display:table; width:100%; background:{{ $primaryLight }}; border-radius:6px; padding:7px 9px; border:1px solid {{ $primaryMid }}; }
+.cy-amt-c   { display:table-cell; vertical-align:middle; text-align:right; font-size:8px; font-weight:700; color:#0F172A; white-space:nowrap; }
+.cy-divider { border:none; border-top:1px solid #F1F5F9; margin:4px 0; }
+.total-row  { display:table; width:100%; background:{{ $primaryLight }}; border-radius:6px; padding:7px 9px; border:1px solid {{ $primaryMid }}; margin-top:8px; }
 .total-row td { display:table-cell; vertical-align:middle; }
 .tot-l  { font-size:7.5px; font-weight:700; color:#334155; }
-.tot-sl { font-size:6.5px; color:#94A3B8; margin-top:2px; }
 .tot-r  { text-align:right; }
 .tot-rv { font-size:12px; font-weight:800; color:{{ $primaryColor }}; }
-.tot-rs { font-size:7px; font-weight:600; color:{{ $primaryColor }}; opacity:.65; margin-top:2px; }
 
 /* Bar chart */
 .cat-item  { margin-bottom:9px; }
@@ -139,13 +129,11 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
 .nm-main  { font-weight:700; color:#0F172A; font-size:9px; }
 .nm-sub   { font-size:6.5px; color:#94A3B8; margin-top:1px; }
 .badge    { display:inline-block; padding:2px 7px; border-radius:20px; font-size:6.5px; font-weight:700; }
-.b-active   { background:#DCFCE7; color:#166534; border:1px solid #86EFAC; }
-.b-expiring { background:#FEF9C3; color:#854D0E; border:1px solid #FDE047; }
-.b-expired  { background:#FEE2E2; color:#991B1B; border:1px solid #FCA5A5; }
+.b-active    { background:#DCFCE7; color:#166534; border:1px solid #86EFAC; }
+.b-inactive  { background:#F1F5F9; color:#475569; border:1px solid #CBD5E1; }
+.b-suspended { background:#FEE2E2; color:#991B1B; border:1px solid #FCA5A5; }
+.plat-badge  { display:inline-block; padding:2px 7px; border-radius:20px; font-size:6.5px; font-weight:700; }
 .num-c    { color:#CBD5E1; font-size:8px; font-weight:600; }
-.cst-main { font-weight:700; color:#0F172A; }
-.chk-yes  { color:#15803D; font-weight:700; font-size:10px; }
-.chk-no   { color:#CBD5E1; font-size:10px; }
 
 /* ── Signature ── */
 .sig-tbl { width:100%; border-collapse:separate; border-spacing:14px 0; margin-top:18px; }
@@ -178,25 +166,21 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
         </div>
     </div>
     <div class="hdr-white-r">
-        <div class="rep-title">Domain Register</div>
+        <div class="rep-title">Social Accounts Report</div>
         <div class="rep-conf">Confidential &ndash; Internal Use Only</div>
     </div>
 </div>
 
 {{-- ═══ COLORED BAND ═══ --}}
 <div class="hdr-band">
-    <div class="hdr-band-l">
-        <span class="rep-badge"><span class="rep-badge-txt">Official Report</span></span>
-    </div>
-    <div class="hdr-band-r">
-        <span class="hdr-band-date">Generated {{ $summary['generated_at'] }} &bull; Prepared by {{ auth()->user()->name }}</span>
-    </div>
+    <div class="hdr-band-l"><span class="rep-badge"><span class="rep-badge-txt">Official Report</span></span></div>
+    <div class="hdr-band-r"><span class="hdr-band-date">Generated {{ $summary['generated_at'] }} &bull; Prepared by {{ auth()->user()->name }}</span></div>
 </div>
 
 {{-- ═══ META STRIP ═══ --}}
 <div class="meta-strip">
     <div class="meta-cell"><div class="meta-lbl">Generated</div><div class="meta-val">{{ $summary['generated_at'] }}</div></div>
-    <div class="meta-cell"><div class="meta-lbl">Total Records</div><div class="meta-val">{{ $summary['total'] }} domain{{ $summary['total']!==1?'s':'' }}</div></div>
+    <div class="meta-cell"><div class="meta-lbl">Total Records</div><div class="meta-val">{{ $summary['total'] }} account{{ $summary['total']!==1?'s':'' }}</div></div>
     <div class="meta-cell"><div class="meta-lbl">Prepared By</div><div class="meta-val">{{ auth()->user()->name }}</div></div>
     <div class="meta-cell"><div class="meta-lbl">Department</div><div class="meta-val">{{ $settings['department_name'] ?? ($settings['company_name'] ?? $appName) }}</div></div>
 </div>
@@ -207,78 +191,58 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
 <div class="sec-hdr">
     <div class="sec-hdr-l">
         <div class="sec-tag">Overview</div>
-        <div class="sec-title">Domain Summary</div>
+        <div class="sec-title">Accounts Summary</div>
     </div>
 </div>
 
 <table class="cards-tbl">
     <tr>
-        <td width="33%">
+        {{-- Total --}}
+        <td width="25%">
             <div class="card">
                 <div class="card-top">
                     <div class="card-lbl">Total</div>
                     <div class="card-ico"><div class="card-ico-box" style="background:{{ $primaryLight }};color:{{ $primaryColor }};">&#8734;</div></div>
                 </div>
                 <div class="card-val">{{ $summary['total'] }}</div>
-                <div class="card-sub">All domains</div>
+                <div class="card-sub">All accounts</div>
                 <div class="card-bar"><div style="height:3px;border-radius:2px;background:{{ $primaryMid }};width:100%;"></div></div>
             </div>
         </td>
-        <td width="33%">
+        {{-- Active --}}
+        <td width="25%">
             <div class="card card-active">
                 <div class="card-top">
                     <div class="card-lbl">Active</div>
                     <div class="card-ico"><div class="card-ico-box" style="background:rgba(255,255,255,.18);color:#fff;">&#10003;</div></div>
                 </div>
                 <div class="card-val">{{ $summary['active'] }}</div>
-                <div class="card-sub">Currently live</div>
+                <div class="card-sub">Currently active</div>
                 <div class="card-bar"></div>
             </div>
         </td>
-        <td width="33%">
-            <div class="card card-expiring">
+        {{-- Inactive --}}
+        <td width="25%">
+            <div class="card card-inactive">
                 <div class="card-top">
-                    <div class="card-lbl">Expiring Soon</div>
-                    <div class="card-ico"><div class="card-ico-box" style="background:#FDE68A;color:#B45309;">&#9651;</div></div>
+                    <div class="card-lbl">Inactive</div>
+                    <div class="card-ico"><div class="card-ico-box" style="background:#E2E8F0;color:#475569;">&#8212;</div></div>
                 </div>
-                <div class="card-val">{{ $summary['expiring_soon'] }}</div>
-                <div class="card-sub">Within 30 days</div>
-                <div class="card-bar"><div style="height:3px;border-radius:2px;background:#FCD34D;width:{{ $summary['expiring_soon'] ? '60' : '0' }}%;"></div></div>
+                <div class="card-val">{{ $summary['inactive'] }}</div>
+                <div class="card-sub">Not in use</div>
+                <div class="card-bar"><div style="height:3px;border-radius:2px;background:#94A3B8;width:{{ $summary['total'] ? round($summary['inactive']/$summary['total']*100) : 0 }}%;"></div></div>
             </div>
         </td>
-    </tr>
-    <tr>
-        <td width="33%">
-            <div class="card card-expired">
+        {{-- Suspended --}}
+        <td width="25%">
+            <div class="card card-suspended">
                 <div class="card-top">
-                    <div class="card-lbl">Expired</div>
+                    <div class="card-lbl">Suspended</div>
                     <div class="card-ico"><div class="card-ico-box" style="background:#FFE4E6;color:#BE123C;">&#8856;</div></div>
                 </div>
-                <div class="card-val">{{ $summary['expired'] }}</div>
+                <div class="card-val">{{ $summary['suspended'] }}</div>
                 <div class="card-sub">Action needed</div>
-                <div class="card-bar"><div style="height:3px;border-radius:2px;background:#FDA4AF;width:{{ $summary['expired'] ? '60' : '0' }}%;"></div></div>
-            </div>
-        </td>
-        <td width="33%">
-            <div class="card card-spend">
-                <div class="card-top">
-                    <div class="card-lbl">Annual Spend</div>
-                    <div class="card-ico"><div class="card-ico-box" style="background:#E0E7FF;color:{{ $primaryColor }};">&#36;</div></div>
-                </div>
-                <div class="card-val" style="font-size:13px;">BHD&nbsp;{{ number_format($summary['annual_total'],3) }}</div>
-                <div class="card-sub">Total yearly cost</div>
-                <div class="card-bar"><div style="height:3px;border-radius:2px;background:{{ $primaryMid }};width:100%;"></div></div>
-            </div>
-        </td>
-        <td width="33%">
-            <div class="card card-auto">
-                <div class="card-top">
-                    <div class="card-lbl">Auto-Renew</div>
-                    <div class="card-ico"><div class="card-ico-box" style="background:#BBF7D0;color:#15803D;">&#8635;</div></div>
-                </div>
-                <div class="card-val">{{ $summary['auto_renew_count'] }}</div>
-                <div class="card-sub">Auto-renewal enabled</div>
-                <div class="card-bar"><div style="height:3px;border-radius:2px;background:#86EFAC;width:{{ $summary['total'] ? round($summary['auto_renew_count']/$summary['total']*100) : 0 }}%;"></div></div>
+                <div class="card-bar"><div style="height:3px;border-radius:2px;background:#FDA4AF;width:{{ $summary['suspended'] ? '60' : '0' }}%;"></div></div>
             </div>
         </td>
     </tr>
@@ -286,20 +250,8 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
 
 {{-- ═══ DISTRIBUTION ═══ --}}
 @php
-    $cycleColors = [
-        'annual'    => $primaryColor,
-        'biennial'  => '#059669',
-        'triennial' => '#D97706',
-        'one_time'  => '#0EA5E9',
-    ];
-    $regPalette  = [$primaryColor,'#059669','#D97706','#DC2626','#0EA5E9','#7C3AED','#EC4899'];
-    $custPalette = ['#059669',$primaryColor,'#D97706','#DC2626','#0EA5E9','#7C3AED','#EC4899'];
-    $maxReg  = $summary['by_registrar']->max('count') ?: 1;
-    $maxCust = $summary['by_customer']->max('count') ?: 1;
-
-    /* SVG donut for billing cycle */
-    $activeCycles   = $summary['by_billing_cycle']->filter(fn($g)=>$g['count']>0);
-    $totalCycleAmt  = $activeCycles->sum('annual') ?: 1;
+    /* Donut for platforms */
+    $totalPlatCount = $summary['by_platform']->sum('count') ?: 1;
     $polar = fn($cx,$cy,$r,$deg) => [$cx+$r*cos(deg2rad($deg)), $cy+$r*sin(deg2rad($deg))];
     $donutPath = function($cx,$cy,$ro,$ri,$a1,$a2) use($polar) {
         if(abs($a2-$a1)>=360) $a2=$a1+359.99;
@@ -309,39 +261,36 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
         return sprintf('M%.2f %.2f A%.2f %.2f 0 %d 1 %.2f %.2f L%.2f %.2f A%.2f %.2f 0 %d 0 %.2f %.2f Z',
             $x1,$y1,$ro,$ro,$lg,$x2,$y2,$x3,$y3,$ri,$ri,$lg,$x4,$y4);
     };
-    $donutSegs=[]; $angle=-90;
-    foreach($activeCycles as $g){
-        $cycleKey = strtolower(str_replace(' ','_',$g['label']));
-        $color = $cycleColors[$cycleKey] ?? $primaryColor;
-        $amt = max($g['annual'], 1);
-        $sw = ($amt/$totalCycleAmt)*360;
-        if($totalCycleAmt <= 1) $sw = ($g['count'] / max($activeCycles->sum('count'),1)) * 360;
-        $donutSegs[]=['path'=>$donutPath(44,44,38,24,$angle,$angle+$sw),'color'=>$color,'label'=>$g['label'],'count'=>$g['count'],'amt'=>$g['annual']];
+    $platSegs=[]; $angle=-90;
+    foreach($summary['by_platform'] as $g){
+        $sw=($g['count']/$totalPlatCount)*360;
+        $platSegs[]=['path'=>$donutPath(44,44,38,24,$angle,$angle+$sw),'color'=>$g['color'],'label'=>$g['label'],'count'=>$g['count'],'active'=>$g['active']];
         $angle+=$sw;
     }
+    $maxCust = $summary['by_customer']->max('count') ?: 1;
+    $custPalette = [$primaryColor,'#059669','#D97706','#DC2626','#0EA5E9','#7C3AED','#EC4899'];
 @endphp
 
-@if($summary['by_billing_cycle']->count() || $summary['by_registrar']->count())
 <div class="sec-hdr">
     <div class="sec-hdr-l">
         <div class="sec-tag">Distribution</div>
-        <div class="sec-title">Billing Cycle &amp; Registrar Breakdown</div>
+        <div class="sec-title">By Platform &amp; Customer</div>
     </div>
 </div>
 
 <div class="fin-wrap">
-    {{-- BY BILLING CYCLE (donut) --}}
+    {{-- BY PLATFORM (donut) --}}
     <div class="fin-panel">
-        <div class="fin-title">By Billing Cycle</div>
+        <div class="fin-title">By Platform</div>
         <div class="donut-layout">
             <div class="donut-left">
                 <svg width="88" height="88" viewBox="0 0 88 88" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="44" cy="44" r="38" fill="none" stroke="#F1F5F9" stroke-width="14"/>
-                    @if(count($donutSegs)===1)
-                        <circle cx="44" cy="44" r="38" fill="{{ $donutSegs[0]['color'] }}" />
+                    @if(count($platSegs)===1)
+                        <circle cx="44" cy="44" r="38" fill="{{ $platSegs[0]['color'] }}" />
                         <circle cx="44" cy="44" r="24" fill="#fff" />
-                    @elseif(count($donutSegs)>1)
-                        @foreach($donutSegs as $seg)
+                    @elseif(count($platSegs)>1)
+                        @foreach($platSegs as $seg)
                             <path d="{{ $seg['path'] }}" fill="{{ $seg['color'] }}" />
                         @endforeach
                         <circle cx="44" cy="44" r="23" fill="#fff" />
@@ -350,55 +299,54 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
                         <circle cx="44" cy="44" r="24" fill="#fff" />
                     @endif
                     <text x="44" y="40" text-anchor="middle" font-size="11" font-weight="bold" fill="#0F172A" font-family="DejaVu Sans,Arial,sans-serif">{{ $summary['total'] }}</text>
-                    <text x="44" y="50" text-anchor="middle" font-size="6" fill="#94A3B8" font-family="DejaVu Sans,Arial,sans-serif">domains</text>
+                    <text x="44" y="50" text-anchor="middle" font-size="6" fill="#94A3B8" font-family="DejaVu Sans,Arial,sans-serif">accounts</text>
                 </svg>
             </div>
             <div class="donut-right">
-                @forelse($donutSegs as $i => $seg)
+                @forelse($platSegs as $i => $seg)
                     @if($i>0)<hr class="cy-divider">@endif
                     <div class="cy-item">
                         <div class="cy-dot-c"><span style="background:{{ $seg['color'] }};"></span></div>
                         <div class="cy-lbl-c">{{ $seg['label'] }}<span class="cy-cnt-c">({{ $seg['count'] }})</span></div>
-                        <div class="cy-amt-c">BHD {{ number_format($seg['amt'],3) }} <span class="cy-sub-c">/yr</span></div>
+                        <div class="cy-amt-c" style="color:{{ $seg['color'] }};">{{ $seg['active'] }} active</div>
                     </div>
                 @empty
                     <div style="font-size:8px;color:#94A3B8;">No data</div>
                 @endforelse
-                <table class="total-row" style="margin-top:8px;"><tr>
-                    <td><div class="tot-l">Total Annual</div><div class="tot-sl">Monthly equiv.</div></td>
-                    <td class="tot-r"><div class="tot-rv">BHD {{ number_format($summary['annual_total'],3) }}</div><div class="tot-rs">BHD {{ number_format($summary['monthly_total'],3) }}/mo</div></td>
+                <table class="total-row"><tr>
+                    <td><div class="tot-l">Total Accounts</div></td>
+                    <td class="tot-r"><div class="tot-rv">{{ $summary['total'] }}</div></td>
                 </tr></table>
             </div>
         </div>
     </div>
 
-    {{-- BY REGISTRAR (bars) --}}
+    {{-- BY CUSTOMER (bars) --}}
     <div class="fin-panel">
-        <div class="fin-title">By Registrar</div>
-        @forelse($summary['by_registrar'] as $ri => $row)
-        @php $rc = $regPalette[$ri % count($regPalette)]; $rp = max(4, round($row['count']/$maxReg*100)); @endphp
+        <div class="fin-title">By Customer</div>
+        @forelse($summary['by_customer'] as $ci => $row)
+        @php $cc = $custPalette[$ci % count($custPalette)]; $cp = max(4, round($row['count']/$maxCust*100)); @endphp
         <div class="cat-item">
             <div class="cat-top">
                 <div class="cat-name">{{ $row['label'] }}<span class="cat-cnt-s">({{ $row['count'] }})</span></div>
-                <div class="cat-val" style="color:{{ $rc }};">{{ $row['count'] }} domain{{ $row['count']!==1?'s':'' }}</div>
+                <div class="cat-val" style="color:{{ $cc }};">{{ $row['count'] }} account{{ $row['count']!==1?'s':'' }}</div>
             </div>
             <table class="bar-wrap"><tr>
-                <td class="bar-fill" style="width:{{ $rp }}%;background:{{ $rc }};"></td>
-                <td class="bar-empty" style="width:{{ 100-$rp }}%;"></td>
+                <td class="bar-fill" style="width:{{ $cp }}%;background:{{ $cc }};"></td>
+                <td class="bar-empty" style="width:{{ 100-$cp }}%;"></td>
             </tr></table>
         </div>
         @empty
-            <div style="font-size:8px;color:#94A3B8;">No registrar data</div>
+            <div style="font-size:8px;color:#94A3B8;">No customer data</div>
         @endforelse
     </div>
 </div>
-@endif
 
 {{-- ═══ DIRECTORY ═══ --}}
 <div class="sec-hdr">
     <div class="sec-hdr-l">
         <div class="sec-tag">Directory</div>
-        <div class="sec-title">All Domains</div>
+        <div class="sec-title">All Social Accounts</div>
     </div>
     <div class="sec-hdr-r">
         <span style="background:{{ $primaryLight }};color:{{ $primaryColor }};border:1px solid {{ $primaryMid }};border-radius:20px;padding:3px 10px;font-size:7.5px;font-weight:700;">
@@ -411,44 +359,50 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
     <thead>
         <tr>
             <th style="width:20px;">#</th>
-            <th>Domain</th>
+            <th>Account Name</th>
+            <th>Platform</th>
             <th>Customer</th>
-            <th>Registrar</th>
-            <th>Responsible</th>
-            <th>Expires</th>
-            <th>Cost (BHD/yr)</th>
-            <th>Auto</th>
+            <th>Username / Email</th>
+            <th>Assigned To</th>
             <th>Status</th>
         </tr>
     </thead>
     <tbody>
-        @foreach($all as $i => $d)
+        @foreach($all as $i => $acc)
         @php
-            $days = $d->days_until_expiry;
-            $daysLabel = $d->expires_at
-                ? ($days<0 ? abs($days).'d overdue' : ($days===0 ? 'Today' : $days.'d left'))
-                : '';
-            $dlColor = $d->status==='expired' ? '#DC2626' : ($d->status==='expiring_soon' ? '#D97706' : '#94A3B8');
+            $pInfo  = $platforms[$acc->platform] ?? ['label'=>ucfirst($acc->platform),'color'=>'#6B7280','bg'=>'#F3F4F6'];
+            $sBg    = $acc->status==='active' ? '#DCFCE7' : ($acc->status==='suspended' ? '#FEE2E2' : '#F1F5F9');
+            $sColor = $acc->status==='active' ? '#166534' : ($acc->status==='suspended' ? '#991B1B' : '#475569');
         @endphp
         <tr>
             <td class="num-c">{{ $i+1 }}</td>
             <td>
-                <div class="nm-main">{{ $d->domain }}</div>
-                @if($d->hosting_provider)<div class="nm-sub">{{ $d->hosting_provider }}</div>@endif
+                <div class="nm-main">{{ $acc->name }}</div>
+                @if($acc->account_id)<div class="nm-sub">ID: {{ $acc->account_id }}</div>@endif
             </td>
-            <td style="font-size:8px;">{{ $d->customer?->name ?? '—' }}</td>
-            <td style="font-size:8px;">{{ $d->registrar ?? '—' }}</td>
-            <td style="font-size:8px;">{{ $d->responsibleUser?->name ?? '—' }}</td>
-            <td style="font-size:8px;">
-                {{ $d->expires_at ? $d->expires_at->format('d M Y') : '—' }}
-                @if($daysLabel)<div style="font-size:6.5px;color:{{ $dlColor }};margin-top:1px;">{{ $daysLabel }}</div>@endif
-            </td>
-            <td class="cst-main">{{ number_format($d->annual_cost,3) }}</td>
-            <td class="{{ $d->auto_renew ? 'chk-yes' : 'chk-no' }}">{{ $d->auto_renew ? '&#10003;' : '&mdash;' }}</td>
             <td>
-                @if($d->status==='active')<span class="badge b-active">Active</span>
-                @elseif($d->status==='expiring_soon')<span class="badge b-expiring">Expiring</span>
-                @else<span class="badge b-expired">Expired</span>@endif
+                <span class="plat-badge" style="background:{{ $pInfo['bg'] }};color:{{ $pInfo['color'] }};border:1px solid {{ $pInfo['color'] }}20;">{{ $pInfo['label'] }}</span>
+            </td>
+            <td style="font-size:8px;">{{ $acc->customer?->name ?? '—' }}</td>
+            <td>
+                @if($acc->username)<div style="font-size:8px;font-weight:600;color:#0F172A;">{{ $acc->username }}</div>@endif
+                @if($acc->email)<div style="font-size:7px;color:#94A3B8;">{{ $acc->email }}</div>@endif
+                @if(!$acc->username && !$acc->email)<span style="color:#CBD5E1;">—</span>@endif
+            </td>
+            <td style="font-size:8px;">
+                @forelse($acc->users->take(2) as $u)
+                    <div>{{ $u->name }}</div>
+                @empty
+                    <span style="color:#CBD5E1;">—</span>
+                @endforelse
+                @if($acc->users->count() > 2)
+                    <div style="font-size:7px;color:#94A3B8;">+{{ $acc->users->count()-2 }} more</div>
+                @endif
+            </td>
+            <td>
+                <span class="badge" style="background:{{ $sBg }};color:{{ $sColor }};border:1px solid {{ $sColor }}30;">
+                    {{ ucfirst($acc->status) }}
+                </span>
             </td>
         </tr>
         @endforeach
@@ -468,7 +422,7 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
 
 {{-- ═══ FOOTER BAND ═══ --}}
 <div class="footer-strip">
-    <div class="ft-l">{{ $appName }} &mdash; Domain Register</div>
+    <div class="ft-l">{{ $appName }} &mdash; Social Accounts Register</div>
     <div class="ft-m">Generated {{ $summary['generated_at'] }} &bull; {{ auth()->user()->name }}</div>
     <div class="ft-r">Confidential</div>
 </div>

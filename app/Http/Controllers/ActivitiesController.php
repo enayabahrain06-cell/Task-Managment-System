@@ -53,10 +53,11 @@ class ActivitiesController extends Controller
         }
 
         // Date range filter
-        switch ($request->input('date_range')) {
+        $dateRange = $request->input('date_range', '');
+        switch ($dateRange) {
             case 'today':     $query->whereDate('created_at', today()); break;
             case 'yesterday': $query->whereDate('created_at', today()->subDay()); break;
-            case 'week':      $query->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()]); break;
+            case 'week':      $query->where('created_at', '>=', now()->subDays(7)); break;
             case 'month':     $query->whereMonth('created_at', now()->month)->whereYear('created_at', now()->year); break;
         }
 
