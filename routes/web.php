@@ -349,10 +349,31 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
         abort(404, 'File not found. It may have been removed from local storage.');
     })->name('submissions.download');
 
-    // Task comment file download (add ?inline=1 to serve inline for browser preview)
+    // Task comment file download (add ?inline=1 to serve inline; ?file_index=N for multi-file comments)
     Route::get('task-comments/{comment}/file', function (\App\Models\TaskComment $comment) {
+        $inline = request()->boolean('inline');
+        $idx    = (int) request()->input('file_index', -1);
+
+        // New multi-file format stored in `files` JSON column
+        if ($comment->files && $idx >= 0 && isset($comment->files[$idx])) {
+            $f        = $comment->files[$idx];
+            $filePath = $f['path'];
+            $filename = $f['original_filename'] ?? 'file';
+            $nasPath  = $f['nas_path'] ?? null;
+            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($filePath)) {
+                $fullPath = storage_path('app/public/' . $filePath);
+                return $inline
+                    ? response()->file($fullPath)
+                    : \Illuminate\Support\Facades\Storage::disk('public')->download($filePath, $filename);
+            }
+            if ($nasPath) {
+                return app(\App\Services\NasService::class)->downloadFromNas($nasPath, $filename, $inline);
+            }
+            abort(404, 'File not found.');
+        }
+
+        // Legacy single-file format
         abort_unless($comment->file_path, 404);
-        $inline   = request()->boolean('inline');
         $filename = $comment->original_filename ?? 'file';
         if (\Illuminate\Support\Facades\Storage::disk('public')->exists($comment->file_path)) {
             $fullPath = storage_path('app/public/' . $comment->file_path);

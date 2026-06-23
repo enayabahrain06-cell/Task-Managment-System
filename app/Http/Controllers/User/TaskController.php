@@ -533,19 +533,21 @@ class TaskController extends Controller
         $request->validate([
             'body'    => 'required|string',
             'files'   => 'nullable|array',
-            'files.*' => 'nullable|file',
+            'files.*' => 'nullable|file|max:10485760',
         ]);
 
-        $filePath = null;
-        $originalFilename = null;
-        $uploadedFiles = array_filter((array) $request->file('files'));
-        if (!empty($uploadedFiles)) {
-            $file             = reset($uploadedFiles);
-            $originalFilename = $file->getClientOriginalName();
-            $nas      = app(\App\Services\NasService::class);
-            $filePath = $file->store("task-comment-files/{$task->id}", 'public');
-            $nasPath  = $nas->copyToNas($task, $filePath, $originalFilename, '03_Working');
-            $nas->copyToNasReference($task, $filePath, $originalFilename);
+        $nas = app(\App\Services\NasService::class);
+        $storedFiles = [];
+        foreach (array_filter((array) $request->file('files')) as $file) {
+            $name    = $file->getClientOriginalName();
+            $path    = $file->store("task-comment-files/{$task->id}", 'public');
+            $nasPath = $nas->copyToNas($task, $path, $name, '03_Working');
+            $nas->copyToNasReference($task, $path, $name);
+            $storedFiles[] = [
+                'path'              => $path,
+                'original_filename' => $name,
+                'nas_path'          => $nasPath,
+            ];
         }
 
         // Auto-advance from viewed → in_progress on first comment
@@ -561,13 +563,13 @@ class TaskController extends Controller
         }
 
         $comment = TaskComment::create([
-            'task_id'           => $task->id,
-            'user_id'           => auth()->id(),
-            'body'              => $request->body,
-            'file_path'         => $filePath,
-            'nas_path'          => $nasPath ?? null,
-            'original_filename' => $originalFilename,
+            'task_id' => $task->id,
+            'user_id' => auth()->id(),
+            'body'    => $request->body,
+            'files'   => $storedFiles ?: null,
         ]);
+
+        $filenames = array_column($storedFiles, 'original_filename');
 
         TaskLog::create([
             'task_id'  => $task->id,
@@ -577,7 +579,7 @@ class TaskController extends Controller
             'metadata' => array_filter([
                 'comment_id'  => $comment->id,
                 'author_role' => 'user',
-                'filename'    => $originalFilename,
+                'filenames'   => $filenames ?: null,
             ]),
         ]);
 
