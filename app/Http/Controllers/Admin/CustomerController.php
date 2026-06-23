@@ -17,7 +17,10 @@ class CustomerController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Customer::withCount(['projects', 'tasks'])->with('creator:id,name');
+        $query = Customer::select('customers.*')
+            ->withCount(['projects' => fn($q) => $q->where('is_quick', false)])
+            ->selectRaw($this->taskCountRaw() . ' as tasks_count')
+            ->with('creator:id,name');
 
         if ($request->filled('search')) {
             $s = $request->search;
@@ -30,32 +33,13 @@ class CustomerController extends Controller
 
         $customers = $query->orderBy('name')->paginate(20)->withQueryString();
 
-        // Summary data — default range: 1 month back → today
-        $summaryDefaultFrom = now()->subMonth()->startOfDay();
-        $summaryDefaultTo   = now()->endOfDay();
-
-        $summaryList = Customer::withCount([
-            'projects',
-            'tasks' => fn($q) => $q->where('tasks.created_at', '>=', $summaryDefaultFrom)
-                                   ->where('tasks.created_at', '<=', $summaryDefaultTo),
-            'tasks as delivered_count' => fn($q) => $q->whereIn('status', ['delivered', 'approved'])
-                                                       ->where('tasks.created_at', '>=', $summaryDefaultFrom)
-                                                       ->where('tasks.created_at', '<=', $summaryDefaultTo),
-        ])->orderByDesc('tasks_count')->get();
-
-        $summaryTotals = [
-            'customers' => $summaryList->count(),
-            'projects'  => $summaryList->sum('projects_count'),
-            'tasks'     => $summaryList->sum('tasks_count'),
-            'delivered' => $summaryList->sum('delivered_count'),
-        ];
-
-        $summaryDefaultFromStr = $summaryDefaultFrom->toDateString();
-        $summaryDefaultToStr   = $summaryDefaultTo->toDateString();
+        // Summary default date range — passed to view for the date picker defaults only.
+        // The actual heavy summary query runs async via /admin/customers/summary-data.
+        $summaryDefaultFromStr = now()->subMonth()->toDateString();
+        $summaryDefaultToStr   = now()->toDateString();
 
         return view('admin.customers.index', compact(
-            'customers', 'summaryList', 'summaryTotals',
-            'summaryDefaultFromStr', 'summaryDefaultToStr'
+            'customers', 'summaryDefaultFromStr', 'summaryDefaultToStr'
         ));
     }
 
@@ -469,18 +453,15 @@ class CustomerController extends Controller
         $dateFrom = $request->filled('date_from') ? Carbon::parse($request->date_from)->startOfDay() : null;
         $dateTo   = $request->filled('date_to')   ? Carbon::parse($request->date_to)->endOfDay()     : null;
 
-        $summaryList = Customer::withCount([
-            'projects',
-            'tasks' => function ($q) use ($dateFrom, $dateTo) {
-                if ($dateFrom) $q->where('tasks.created_at', '>=', $dateFrom);
-                if ($dateTo)   $q->where('tasks.created_at', '<=', $dateTo);
-            },
-            'tasks as delivered_count' => function ($q) use ($dateFrom, $dateTo) {
-                $q->whereIn('status', ['delivered', 'approved']);
-                if ($dateFrom) $q->where('tasks.created_at', '>=', $dateFrom);
-                if ($dateTo)   $q->where('tasks.created_at', '<=', $dateTo);
-            },
-        ])->orderByDesc('tasks_count')->get(['id', 'name', 'company', 'logo']);
+        [$tcSql, $tcBind] = $this->taskCountRawBound($dateFrom, $dateTo);
+        [$dcSql, $dcBind] = $this->taskCountRawBound($dateFrom, $dateTo, ['delivered', 'approved']);
+
+        $summaryList = Customer::select('customers.*')
+            ->withCount(['projects' => fn($q) => $q->where('is_quick', false)])
+            ->selectRaw($tcSql . ' as tasks_count', $tcBind)
+            ->selectRaw($dcSql . ' as delivered_count', $dcBind)
+            ->orderByDesc('tasks_count')
+            ->get();
 
         $totalTasks = $summaryList->sum('tasks_count');
 
@@ -516,29 +497,19 @@ class CustomerController extends Controller
         $dateFrom = $request->filled('date_from') ? Carbon::parse($request->date_from)->startOfDay() : null;
         $dateTo   = $request->filled('date_to')   ? Carbon::parse($request->date_to)->endOfDay()     : null;
 
-        $summaryList = Customer::withCount([
-            'projects',
-            'tasks' => function ($q) use ($dateFrom, $dateTo) {
-                if ($dateFrom) $q->where('tasks.created_at', '>=', $dateFrom);
-                if ($dateTo)   $q->where('tasks.created_at', '<=', $dateTo);
-            },
-            'tasks as delivered_count' => function ($q) use ($dateFrom, $dateTo) {
-                $q->whereIn('status', ['delivered', 'approved']);
-                if ($dateFrom) $q->where('tasks.created_at', '>=', $dateFrom);
-                if ($dateTo)   $q->where('tasks.created_at', '<=', $dateTo);
-            },
-            'tasks as active_count' => function ($q) use ($dateFrom, $dateTo) {
-                $q->whereNotIn('status', ['delivered', 'approved', 'archived']);
-                if ($dateFrom) $q->where('tasks.created_at', '>=', $dateFrom);
-                if ($dateTo)   $q->where('tasks.created_at', '<=', $dateTo);
-            },
-            'tasks as overdue_count' => function ($q) use ($dateFrom, $dateTo) {
-                $q->whereNotIn('status', ['delivered', 'approved', 'archived'])
-                  ->whereNotNull('deadline')->where('deadline', '<', now());
-                if ($dateFrom) $q->where('tasks.created_at', '>=', $dateFrom);
-                if ($dateTo)   $q->where('tasks.created_at', '<=', $dateTo);
-            },
-        ])->orderByDesc('tasks_count')->get();
+        [$tcSql,  $tcBind]  = $this->taskCountRawBound($dateFrom, $dateTo);
+        [$dcSql,  $dcBind]  = $this->taskCountRawBound($dateFrom, $dateTo, ['delivered', 'approved']);
+        [$acSql,  $acBind]  = $this->taskCountRawBound($dateFrom, $dateTo, [], ['delivered', 'approved', 'archived']);
+        [$ocSql,  $ocBind]  = $this->taskCountRawBound($dateFrom, $dateTo, [], ['delivered', 'approved', 'archived'], true);
+
+        $summaryList = Customer::select('customers.*')
+            ->withCount(['projects' => fn($q) => $q->where('is_quick', false)])
+            ->selectRaw($tcSql . ' as tasks_count',     $tcBind)
+            ->selectRaw($dcSql . ' as delivered_count', $dcBind)
+            ->selectRaw($acSql . ' as active_count',    $acBind)
+            ->selectRaw($ocSql . ' as overdue_count',   $ocBind)
+            ->orderByDesc('tasks_count')
+            ->get();
 
         $summaryTotals = [
             'customers' => $summaryList->count(),
@@ -611,5 +582,44 @@ class CustomerController extends Controller
         $customer->delete();
 
         return redirect()->route('admin.customers.index')->with('success', "Customer \"{$name}\" deleted.");
+    }
+
+    // Returns a raw SQL fragment (no bindings) counting all tasks for a customer,
+    // including tasks that belong via the customer's projects (not just direct customer_id).
+    private function taskCountRaw(): string
+    {
+        return '(SELECT COUNT(*) FROM tasks WHERE tasks.customer_id = customers.id OR tasks.project_id IN (SELECT id FROM projects WHERE projects.customer_id = customers.id AND projects.is_quick = 0))';
+    }
+
+    // Returns [sql, bindings] for a bound task count with optional date range, status IN, status NOT IN, and overdue filters.
+    private function taskCountRawBound(
+        ?Carbon $from = null,
+        ?Carbon $to = null,
+        array $statusIn = [],
+        array $statusNotIn = [],
+        bool $overdueOnly = false
+    ): array {
+        $sql      = '(SELECT COUNT(*) FROM tasks WHERE (tasks.customer_id = customers.id OR tasks.project_id IN (SELECT id FROM projects WHERE projects.customer_id = customers.id AND projects.is_quick = 0))';
+        $bindings = [];
+
+        if ($statusIn) {
+            $placeholders = implode(',', array_fill(0, count($statusIn), '?'));
+            $sql .= " AND tasks.status IN ($placeholders)";
+            $bindings = array_merge($bindings, $statusIn);
+        }
+        if ($statusNotIn) {
+            $placeholders = implode(',', array_fill(0, count($statusNotIn), '?'));
+            $sql .= " AND tasks.status NOT IN ($placeholders)";
+            $bindings = array_merge($bindings, $statusNotIn);
+        }
+        if ($overdueOnly) {
+            $sql .= ' AND tasks.deadline IS NOT NULL AND tasks.deadline < ?';
+            $bindings[] = now();
+        }
+        if ($from) { $sql .= ' AND tasks.created_at >= ?'; $bindings[] = $from; }
+        if ($to)   { $sql .= ' AND tasks.created_at <= ?'; $bindings[] = $to; }
+
+        $sql .= ')';
+        return [$sql, $bindings];
     }
 }

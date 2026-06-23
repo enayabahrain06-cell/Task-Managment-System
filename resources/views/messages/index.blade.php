@@ -755,35 +755,60 @@ $onlineMapJson = json_encode($onlineMap);
                         </div>
                     </template>
                     <template x-if="!recording">
-                        <div class="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-200 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100 transition">
-                            <label class="cursor-pointer flex-shrink-0" title="Attach file">
-                                <input type="file" x-ref="fileInput" class="hidden" multiple @change="onFileSelected($event)">
-                                <span class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 transition text-gray-400 hover:text-indigo-500">
-                                    <i class="fa fa-paperclip text-sm"></i>
-                                </span>
-                            </label>
-                            <button type="button" @click="startRecording()" title="Voice message"
-                                    class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 transition text-gray-400 hover:text-red-500 flex-shrink-0">
-                                <i class="fa fa-microphone text-sm"></i>
-                            </button>
-                            <textarea
-                                   x-model="newMessage"
-                                   x-ref="msgInput"
-                                   placeholder="Type something… Use @ to mention"
-                                   @keydown.enter.prevent="if($event.shiftKey){newMessage+='\n';$nextTick(()=>_autoResize($event.target))}else{sendMessage();$nextTick(()=>{$event.target.style.height='auto'})}"
-                                   @keydown.escape="replyingTo=null;mentionSearch=null;showEmoji=false;"
-                                   @input="onInput($event);_autoResize($event.target)"
-                                   @keydown.arrow-up.prevent="mentionSearch!==null?moveMention(-1):null"
-                                   @keydown.arrow-down.prevent="mentionSearch!==null?moveMention(1):null"
-                                   @keydown.tab.prevent="mentionSearch!==null&&mentionResults.length?insertMention(mentionResults[mentionIndex]):null"
-                                   rows="1"
-                                   style="resize:none;overflow:hidden;max-height:96px;line-height:1.5;"
-                                   class="flex-1 bg-transparent text-sm text-gray-700 focus:outline-none placeholder-gray-400 min-w-0 self-center"></textarea>
-                            <button type="button" @click.stop="showEmoji=!showEmoji" title="Emoji"
-                                    :class="showEmoji?'text-indigo-500 bg-indigo-50':'text-gray-400 hover:text-yellow-500'"
-                                    class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 transition flex-shrink-0">
-                                <span class="text-base leading-none">😊</span>
-                            </button>
+                        <div class="flex items-center gap-2 rounded-xl px-3 py-2 border-2 transition-all duration-150"
+                             :class="composeDrag
+                                 ? 'bg-indigo-50 border-dashed border-indigo-400 ring-2 ring-indigo-100'
+                                 : 'bg-gray-50 border-gray-200 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100'"
+                             @dragenter.prevent="composeDragCount++; composeDrag=true; dragCount++; dragOver=true;"
+                             @dragleave.prevent="composeDragCount--; if(composeDragCount<=0){composeDrag=false;composeDragCount=0;} dragCount--; if(dragCount<=0){dragOver=false;dragCount=0;}"
+                             @dragover.prevent
+                             @drop.prevent="composeDragCount=0;composeDrag=false;dragCount=0;dragOver=false;addFiles($event.dataTransfer.files)">
+
+                            {{-- Drop-hint overlay (replaces inner content visually while dragging) --}}
+                            <template x-if="composeDrag">
+                                <div class="flex-1 flex items-center justify-center gap-2 py-0.5 pointer-events-none select-none">
+                                    <i class="fa fa-cloud-upload-alt text-indigo-400 text-base"></i>
+                                    <span class="text-sm font-medium text-indigo-500">Drop files to attach</span>
+                                </div>
+                            </template>
+
+                            <template x-if="!composeDrag">
+                                <label class="cursor-pointer flex-shrink-0" title="Attach file">
+                                    <input type="file" x-ref="fileInput" class="hidden" multiple @change="onFileSelected($event)">
+                                    <span class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 transition text-gray-400 hover:text-indigo-500">
+                                        <i class="fa fa-paperclip text-sm"></i>
+                                    </span>
+                                </label>
+                            </template>
+                            <template x-if="!composeDrag">
+                                <button type="button" @click="startRecording()" title="Voice message"
+                                        class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 transition text-gray-400 hover:text-red-500 flex-shrink-0">
+                                    <i class="fa fa-microphone text-sm"></i>
+                                </button>
+                            </template>
+                            <template x-if="!composeDrag">
+                                <textarea
+                                       x-model="newMessage"
+                                       x-ref="msgInput"
+                                       placeholder="Type something… Use @ to mention"
+                                       @keydown.enter.prevent="if($event.shiftKey){newMessage+='\n';$nextTick(()=>_autoResize($event.target))}else{sendMessage();$nextTick(()=>{$event.target.style.height='auto'})}"
+                                       @keydown.escape="replyingTo=null;mentionSearch=null;showEmoji=false;"
+                                       @input="onInput($event);_autoResize($event.target)"
+                                       @keydown.arrow-up.prevent="mentionSearch!==null?moveMention(-1):null"
+                                       @keydown.arrow-down.prevent="mentionSearch!==null?moveMention(1):null"
+                                       @keydown.tab.prevent="mentionSearch!==null&&mentionResults.length?insertMention(mentionResults[mentionIndex]):null"
+                                       @paste="if($event.clipboardData.files.length){$event.preventDefault();addFiles($event.clipboardData.files)}"
+                                       rows="1"
+                                       style="resize:none;overflow:hidden;max-height:96px;line-height:1.5;"
+                                       class="flex-1 bg-transparent text-sm text-gray-700 focus:outline-none placeholder-gray-400 min-w-0 self-center"></textarea>
+                            </template>
+                            <template x-if="!composeDrag">
+                                <button type="button" @click.stop="showEmoji=!showEmoji" title="Emoji"
+                                        :class="showEmoji?'text-indigo-500 bg-indigo-50':'text-gray-400 hover:text-yellow-500'"
+                                        class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 transition flex-shrink-0">
+                                    <span class="text-base leading-none">😊</span>
+                                </button>
+                            </template>
                             <button type="button"
                                     :disabled="sending||(newMessage.trim()===''&&pendingFiles.length===0)"
                                     @click="sendMessage()"
@@ -1055,7 +1080,7 @@ function messageApp() {
         showClearConfirm: false, clearingChat: false,
         groups: {!! $groupsJson !!},
         // File
-        pendingFiles: [], dragOver: false, dragCount: 0,
+        pendingFiles: [], dragOver: false, dragCount: 0, composeDrag: false, composeDragCount: 0,
         // Voice recording
         recording: false, recorder: null, audioChunks: [], recordingTime: 0, recordingTimer: null, mediaStream: null,
         // @mention
@@ -1089,11 +1114,12 @@ function messageApp() {
                 window._mqtt.onTopic('tm/user/{{ auth()->id() }}/messages/new', (payload) => {
                     if (payload.type === 'direct') {
                         if (!this.isGroup && this.activeUserId === payload.sender_id) {
-                            // Active conversation — append the pushed message directly
+                            // Active conversation — append the pushed message directly.
+                            // The server formats `mine` from the sender's perspective, so fix it here.
                             const already = this.messages.find(m => m.id === payload.message.id);
                             if (!already) {
                                 const wasAtBottom = this.isAtBottom();
-                                this.messages.push(payload.message);
+                                this.messages.push({ ...payload.message, mine: false });
                                 if (wasAtBottom) this.$nextTick(() => this.scrollToBottom());
                             }
                         } else {
@@ -1104,11 +1130,12 @@ function messageApp() {
                         }
                     } else if (payload.type === 'group') {
                         if (this.isGroup && this.activeGroupId === payload.group_id) {
-                            // Active group — append the pushed message directly
+                            // Active group — append the pushed message directly.
+                            // Fix mine: false for the same reason as direct messages.
                             const already = this.messages.find(m => m.id === payload.message.id);
                             if (!already) {
                                 const wasAtBottom = this.isAtBottom();
-                                this.messages.push(payload.message);
+                                this.messages.push({ ...payload.message, mine: false });
                                 if (wasAtBottom) this.$nextTick(() => this.scrollToBottom());
                             }
                         } else {
