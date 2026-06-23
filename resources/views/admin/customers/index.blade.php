@@ -65,7 +65,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
         summaryDateFrom: window._custSummaryDefaults ? window._custSummaryDefaults.from : '',
         summaryDateTo: window._custSummaryDefaults ? window._custSummaryDefaults.to : '',
         summaryPreset: 'custom',
-        summaryLoading: false,
+        summaryLoading: true,
         summaryList: [],
         summaryTotals: {customers:0,projects:0,tasks:0,delivered:0},
         init() { this.fetchSummary(); },

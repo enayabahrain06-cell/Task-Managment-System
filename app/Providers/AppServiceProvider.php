@@ -71,8 +71,10 @@ class AppServiceProvider extends ServiceProvider
                 try {
                     $user = auth()->user();
 
-                    // Auto-delete notifications older than 30 days
-                    $user->notifications()->where('created_at', '<', now()->subDays(30))->delete();
+                    // Auto-delete old notifications — runs on ~1% of requests to avoid per-request write
+                    if (random_int(1, 100) === 1) {
+                        $user->notifications()->where('created_at', '<', now()->subDays(30))->delete();
+                    }
 
                     // Only show unread notifications — read ones are dismissed from the list
                     $notifications     = $user->unreadNotifications()->latest()->get();
