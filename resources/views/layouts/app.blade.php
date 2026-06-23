@@ -825,8 +825,9 @@ function notifBell() {
         },
 
         async _pollMessages() {
-            if (this._pollMsgPending) return;
-            this._pollMsgPending = true;
+            const _now = Date.now();
+            if (_now - (this._lastMsgPoll || 0) < 3000) return;
+            this._lastMsgPoll = _now;
             // Skip while the messages page is open — that page handles its own sound
             if (location.pathname.startsWith('/messages')) {
                 // Still sync the baseline so we don't double-ring when leaving the page
@@ -840,7 +841,6 @@ function notifBell() {
                                         + Object.values(d.groups ?? {}).reduce((a, b) => a + b, 0);
                     }
                 } catch (e) {}
-                this._pollMsgPending = false;
                 return;
             }
             try {
@@ -857,7 +857,6 @@ function notifBell() {
                 this._msgUnread      = total;
                 this._msgInitialized = true;
             } catch (e) {}
-            this._pollMsgPending = false;
         },
 
         playSound() { window.playNotifSound(); },
@@ -995,15 +994,15 @@ function onlineUsers() {
             else { document.addEventListener('mqtt:ready', attach, { once: true }); }
         },
         async _fetch() {
-            if (this._fetchPending) return;
-            this._fetchPending = true;
+            const _now = Date.now();
+            if (_now - (this._lastFetch || 0) < 3000) return;
+            this._lastFetch = _now;
             try {
                 const res  = await fetch('{{ route("online.users") }}', { headers:{ 'X-Requested-With':'XMLHttpRequest' } });
                 if (!res.ok) return;
                 this.users = await res.json();
                 this.count = this.users.length;
             } catch(e) {}
-            this._fetchPending = false;
         },
         statusBg(s) {
             return { online:'#ECFDF5', away:'#FFFBEB', busy:'#FEF2F2', offline:'#F3F4F6' }[s] || '#F3F4F6';
