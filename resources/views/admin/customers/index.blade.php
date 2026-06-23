@@ -20,19 +20,10 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
 @keyframes cust-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 .cust-skeleton { animation: cust-pulse 1.4s ease-in-out infinite; }
 
-/* Row / card entrance */
-@keyframes cust-fadein { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
-.cust-row  { animation: cust-fadein .35s ease both; }
-.cust-card { animation: cust-fadein .35s ease both; }
-.cust-row:nth-child(1),.cust-card:nth-child(1)  { animation-delay: .04s }
-.cust-row:nth-child(2),.cust-card:nth-child(2)  { animation-delay: .08s }
-.cust-row:nth-child(3),.cust-card:nth-child(3)  { animation-delay: .12s }
-.cust-row:nth-child(4),.cust-card:nth-child(4)  { animation-delay: .16s }
-.cust-row:nth-child(5),.cust-card:nth-child(5)  { animation-delay: .20s }
-.cust-row:nth-child(6),.cust-card:nth-child(6)  { animation-delay: .24s }
-.cust-row:nth-child(7),.cust-card:nth-child(7)  { animation-delay: .28s }
-.cust-row:nth-child(8),.cust-card:nth-child(8)  { animation-delay: .32s }
-.cust-row:nth-child(n+9),.cust-card:nth-child(n+9) { animation-delay: .36s }
+/* Row / card entrance — no stagger (delays kept rows 9+ at opacity:0 for 360ms) */
+@keyframes cust-fadein { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+.cust-row  { animation: cust-fadein .18s ease both; }
+.cust-card { animation: cust-fadein .18s ease both; }
 
 /* Card hover lift */
 .cust-card { transition: box-shadow .2s, transform .2s; }
