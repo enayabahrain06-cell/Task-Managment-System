@@ -129,11 +129,11 @@ class MessagesController extends Controller
 
         $formatted = $this->formatMessage($message, auth()->id());
 
-        // Push to receiver via MQTT
+        // Push to receiver via MQTT — override mine:false so it appears on their left
         MqttService::publish("tm/user/{$request->receiver_id}/messages/new", [
             'type'      => 'direct',
             'sender_id' => auth()->id(),
-            'message'   => $formatted,
+            'message'   => array_merge($formatted, ['mine' => false]),
         ]);
 
         // Bell notification — one entry per message so the badge count reflects reality.
@@ -273,15 +273,16 @@ class MessagesController extends Controller
 
         $formatted = $this->formatMessage($message, $me);
 
-        // Push to every group member except sender via MQTT + bell notification
+        // Push to every group member except sender — override mine:false for recipients
+        $formattedForRecipient = array_merge($formatted, ['mine' => false]);
         $group->members()
             ->where('user_id', '!=', $me)
             ->get()
-            ->each(function ($member) use ($formatted, $group, $message) {
+            ->each(function ($member) use ($formattedForRecipient, $group, $message) {
                 MqttService::publish("tm/user/{$member->id}/messages/new", [
                     'type'     => 'group',
                     'group_id' => $group->id,
-                    'message'  => $formatted,
+                    'message'  => $formattedForRecipient,
                 ]);
                 $member->notify(new NewMessageNotification($message));
             });

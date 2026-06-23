@@ -193,6 +193,7 @@
 @media (max-width: 768px) { .proj-stat-grid { grid-template-columns: repeat(2,1fr); } }
 @media (max-width: 480px) { .proj-stat-grid { grid-template-columns: 1fr; } }
 .proj-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.proj-table-wrap table { min-width: 600px; }
 .proj-tab-bar { flex-wrap: wrap; }
 </style>
 
