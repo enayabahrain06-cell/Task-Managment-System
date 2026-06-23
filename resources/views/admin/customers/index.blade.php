@@ -124,11 +124,13 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
             <p style="font-size:13px;color:#9CA3AF;margin:4px 0 0;">Manage your clients and link them to projects & tasks</p>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
+            @if(($appSettings['hide_summarize_button'] ?? '0') !== '1')
             <button @click="summarizeModal = true; if (!_summaryLoaded) { _summaryLoaded = true; fetchSummary(); }"
                     style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;background:#fff;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;"
                     onmouseover="this.style.background='#EEF2FF'" onmouseout="this.style.background='#fff'">
                 <i class="fas fa-chart-pie" style="font-size:11px;"></i> Summarize
             </button>
+            @endif
             <button @click="modal = true"
                     style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
                 <i class="fas fa-plus" style="font-size:11px;"></i> New Customer

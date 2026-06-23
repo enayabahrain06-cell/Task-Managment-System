@@ -200,6 +200,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('settings/approval-customer-notify', [AdminSettingsController::class, 'toggleApprovalCustomerNotify'])->name('settings.approval-customer-notify');
     Route::post('settings/hourly-rate',              [AdminSettingsController::class, 'toggleHourlyRate'])->name('settings.hourly-rate');
     Route::post('settings/hide-wa-web',              [AdminSettingsController::class, 'toggleHideWaWeb'])->name('settings.hide-wa-web');
+    Route::post('settings/hide-summarize',           [AdminSettingsController::class, 'toggleHideSummarize'])->name('settings.hide-summarize');
     Route::post('settings/clear-cache',              [AdminSettingsController::class, 'clearCache'])->name('settings.clear-cache');
     Route::get('social-budget',                      [AdminSocialBudgetController::class, 'index'])->name('social-budget.index');
     Route::get('social-accounts/export/pdf', [AdminSocialAccountController::class, 'exportPdf'])->name('social-accounts.export.pdf');

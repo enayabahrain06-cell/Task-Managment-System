@@ -217,6 +217,14 @@ class SettingsController extends Controller
         return response()->json(['hide_wa_web_button' => $new === '1']);
     }
 
+    public function toggleHideSummarize()
+    {
+        $current = Setting::get('hide_summarize_button', '0');
+        $new     = $current === '1' ? '0' : '1';
+        Setting::set('hide_summarize_button', $new);
+        return response()->json(['hide_summarize_button' => $new === '1']);
+    }
+
     public function toggleManagerRolesAccess()
     {
         $current = Setting::get('manager_can_view_roles', '0');
