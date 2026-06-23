@@ -1151,19 +1151,28 @@
                             : 'display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px dashed #D1D5DB;border-radius:10px;cursor:pointer;background:#FAFAFA;transition:all .15s;'">
                         <i class="fa fa-paperclip" :style="dragging ? 'color:#6366F1;font-size:16px;' : 'color:#9CA3AF;font-size:16px;'"></i>
                         <div style="flex:1;">
-                            <p x-text="commentFile || (dragging ? 'Drop file here' : 'Attach a file — or drag & drop')" style="font-size:13px;font-weight:500;color:#374151;margin:0;"></p>
-                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Images, PDF, ZIP and more</p>
+                            <p x-text="dragging ? 'Drop files here' : 'Attach files — or drag & drop'" style="font-size:13px;font-weight:500;color:#374151;margin:0;"></p>
+                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Images, PDF, ZIP and more · multiple files supported</p>
                         </div>
-                        <template x-if="commentFile">
-                            <button type="button" @click.prevent="commentFile=''; $refs.commentFileInput.value=''"
-                                    style="width:22px;height:22px;border-radius:50%;background:#FEE2E2;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                <i class="fa fa-xmark" style="font-size:10px;color:#DC2626;"></i>
-                            </button>
-                        </template>
-                        <input type="file" name="file" x-ref="commentFileInput"
-                               @change="commentFile = $event.target.files[0]?.name || ''"
+                        <input type="file" name="comment_files[]" x-ref="commentFileInput" multiple
+                               @change="addFiles($event.target.files)"
                                style="display:none;">
                     </label>
+                    <template x-if="commentFiles.length > 0">
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
+                            <template x-for="(f, i) in commentFiles" :key="i">
+                                <div style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:20px;max-width:220px;">
+                                    <i class="fa fa-paperclip" style="color:#6366F1;font-size:10px;flex-shrink:0;"></i>
+                                    <span x-text="f.name" style="font-size:11px;font-weight:500;color:#3730A3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;"></span>
+                                    <span x-text="f.size" style="font-size:10px;color:#818CF8;flex-shrink:0;white-space:nowrap;"></span>
+                                    <button type="button" @click.prevent="removeCommentFile(i)"
+                                            style="width:16px;height:16px;border-radius:50%;background:#FEE2E2;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                        <i class="fa fa-xmark" style="font-size:8px;color:#DC2626;"></i>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
                 </div>
                 <button type="submit"
                         style="width:100%;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(99,102,241,.3);">
@@ -1736,13 +1745,40 @@
                 @php
                     $comment = $entry['comment'];
                     $isAdmin = $entry['isAdmin'];
-                    $cExt = strtolower(pathinfo($comment->original_filename ?? '', PATHINFO_EXTENSION));
-                    $cIsImage = in_array($cExt, ['jpg','jpeg','png','gif','webp','svg']);
-                    $cIsVideo = in_array($cExt, ['mp4','mov','avi','webm','mkv']);
-                    $cDlUrl = $comment->file_path ? route('admin.task-comments.file', $comment) : null;
-                    $cUrl = $cDlUrl ? ($cDlUrl . '?inline=1') : $comment->fileUrl();
                     $cIconMap = ['pdf'=>'fa-file-pdf','doc'=>'fa-file-word','docx'=>'fa-file-word','xls'=>'fa-file-excel','xlsx'=>'fa-file-excel','ppt'=>'fa-file-powerpoint','pptx'=>'fa-file-powerpoint','zip'=>'fa-file-zipper','rar'=>'fa-file-zipper','txt'=>'fa-file-lines'];
-                    $cIcon = $cIconMap[$cExt] ?? 'fa-file';
+                    // Build a unified list of file entries regardless of storage format
+                    $cFiles = [];
+                    if ($comment->files) {
+                        foreach ($comment->files as $fi => $f) {
+                            $ext = strtolower(pathinfo($f['original_filename'] ?? '', PATHINFO_EXTENSION));
+                            $dlUrl = route('admin.task-comments.file', $comment) . '?file_index=' . $fi;
+                            $cFiles[] = [
+                                'name'    => $f['original_filename'] ?? 'file',
+                                'ext'     => $ext,
+                                'isImage' => in_array($ext, ['jpg','jpeg','png','gif','webp','svg','avif','avifs']),
+                                'isVideo' => in_array($ext, ['mp4','mov','avi','webm','mkv']),
+                                'icon'    => $cIconMap[$ext] ?? 'fa-file',
+                                'dlUrl'   => $dlUrl,
+                                'url'     => $dlUrl . '&inline=1',
+                                'nasPath' => $f['nas_path'] ?? null,
+                                'exists'  => \Illuminate\Support\Facades\Storage::disk('public')->exists($f['path'] ?? '') || ($f['nas_path'] ?? null),
+                            ];
+                        }
+                    } elseif ($comment->file_path) {
+                        $ext = strtolower(pathinfo($comment->original_filename ?? '', PATHINFO_EXTENSION));
+                        $dlUrl = route('admin.task-comments.file', $comment);
+                        $cFiles[] = [
+                            'name'    => $comment->original_filename ?? 'file',
+                            'ext'     => $ext,
+                            'isImage' => in_array($ext, ['jpg','jpeg','png','gif','webp','svg']),
+                            'isVideo' => in_array($ext, ['mp4','mov','avi','webm','mkv']),
+                            'icon'    => $cIconMap[$ext] ?? 'fa-file',
+                            'dlUrl'   => $dlUrl,
+                            'url'     => $dlUrl . '?inline=1',
+                            'nasPath' => $comment->nas_path,
+                            'exists'  => \Illuminate\Support\Facades\Storage::disk('public')->exists($comment->file_path) || $comment->nas_path,
+                        ];
+                    }
                     $isFirstWork = $firstWorkKey && $entry['at']->toDateTimeString() === $firstWorkKey;
                 @endphp
                 <div x-data="{
@@ -1767,7 +1803,7 @@
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                             <span style="font-size:12px;font-weight:600;color:#111827;">{{ $comment->user->name ?? 'Unknown' }}</span>
                             @if($isAdmin)<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:#EEF2FF;color:#4F46E5;">Admin</span>@endif
-                            @if($comment->file_path)<span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:10px;background:#D1FAE5;color:#065F46;display:inline-flex;align-items:center;gap:3px;"><i class="fa fa-paperclip" style="font-size:9px;"></i> {{ $comment->original_filename }}</span>@endif
+                            @if(count($cFiles) > 0)<span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:10px;background:#D1FAE5;color:#065F46;display:inline-flex;align-items:center;gap:3px;"><i class="fa fa-paperclip" style="font-size:9px;"></i> {{ count($cFiles) }} {{ count($cFiles) === 1 ? 'file' : 'files' }}</span>@endif
                             @if($isFirstWork)<span style="font-size:10px;font-weight:700;padding:1px 8px;border-radius:10px;background:#D1FAE5;color:#059669;display:inline-flex;align-items:center;gap:3px;"><i class="fa fa-circle-play" style="font-size:9px;"></i> Started Working</span>@endif
                             @if($comment->edits->isNotEmpty())
                             <button @click="showHistory=!showHistory" style="font-size:10px;background:#F3F4F6;color:#9CA3AF;border:none;padding:1px 6px;border-radius:4px;cursor:pointer;">edited</button>
@@ -1781,69 +1817,100 @@
                         </div>
                         <div style="background:{{ $isAdmin ? '#F5F3FF' : '#F9FAFB' }};border:1px solid {{ $isAdmin ? '#EDE9FE' : '#E5E7EB' }};border-radius:10px;padding:10px 14px;{{ $isAdmin ? 'border-left:3px solid #8B5CF6;' : '' }}">
                             <div x-show="!editing">
-                                <div class="rte-field" style="font-size:13px;color:#374151;margin:0{{ $comment->file_path ? ' 0 10px' : '' }};line-height:1.6;word-break:break-word;padding:0;min-height:0;" x-html="body"></div>
-                                @if($comment->file_path)
-                                    @php $cFileExists = \Illuminate\Support\Facades\Storage::disk('public')->exists($comment->file_path) || $comment->nas_path; @endphp
-                                    @if(!$cFileExists)
-                                    <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#F9FAFB;border:1px dashed #D1D5DB;border-radius:8px;max-width:280px;">
-                                        <i class="fa fa-triangle-exclamation" style="color:#D97706;font-size:13px;flex-shrink:0;"></i>
-                                        <div style="min-width:0;">
-                                            <p style="font-size:12px;font-weight:600;color:#374151;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $comment->original_filename }}</p>
-                                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">File no longer available</p>
-                                        </div>
-                                    </div>
-                                    @elseif($cIsImage)
-                                    <button type="button" @click="showComment({{ json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'previewUrl'=>$cUrl,'downloadUrl'=>$cDlUrl,'isImage'=>true,'isVideo'=>false]) }})" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;width:100%;" onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
-                                        <img src="{{ $cUrl }}" alt="{{ $comment->original_filename }}" style="width:100%;max-height:140px;object-fit:cover;display:block;">
-                                        <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
-                                            <i class="fa fa-image" style="color:#6366F1;font-size:10px;"></i>
-                                            <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $comment->original_filename }}</span>
-                                            @if($comment->nas_path)
-                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;flex-shrink:0;letter-spacing:.3px;">NAS</span>
+                                <div class="rte-field" style="font-size:13px;color:#374151;margin:0{{ count($cFiles) > 0 ? ' 0 10px' : '' }};line-height:1.6;word-break:break-word;padding:0;min-height:0;" x-html="body"></div>
+                                @if(count($cFiles) > 0)
+                                @php
+                                    $mediaCf  = array_values(array_filter($cFiles, fn($f) => $f['isImage'] || $f['isVideo']));
+                                    $docCf    = array_values(array_filter($cFiles, fn($f) => !$f['isImage'] && !$f['isVideo']));
+                                    $visMax   = 4;
+                                    $visMed   = array_slice($mediaCf, 0, $visMax);
+                                    $hiddenCnt = max(0, count($mediaCf) - $visMax);
+                                    $mc = count($visMed);
+                                    if ($mc === 1)     { $gCols='1fr';     $gRows='';              $gW='100%';  $cellH='220px'; }
+                                    elseif ($mc === 2) { $gCols='1fr 1fr'; $gRows='';              $gW='380px'; $cellH='145px'; }
+                                    elseif ($mc === 3) { $gCols='2fr 1fr'; $gRows='115px 115px';   $gW='380px'; $cellH='auto';  }
+                                    else               { $gCols='1fr 1fr'; $gRows='130px 130px';   $gW='380px'; $cellH='auto';  }
+                                @endphp
+                                <div style="margin-top:8px;">
+                                    @if($mc > 0)
+                                    <div style="display:grid;grid-template-columns:{{ $gCols }};{{ $gRows ? 'grid-template-rows:'.$gRows.';' : '' }}gap:3px;border-radius:10px;overflow:hidden;max-width:min({{ $gW }},100%);">
+                                        @foreach($visMed as $vIdx => $cf)
+                                        @php
+                                            $isLV   = ($vIdx === $mc - 1) && $hiddenCnt > 0;
+                                            $spanRow = ($mc === 3 && $vIdx === 0) ? 'grid-row:span 2;' : '';
+                                            $hStyle  = $cellH !== 'auto' ? 'height:'.$cellH.';' : '';
+                                            $cData   = json_encode(['name'=>$cf['name'],'url'=>$cf['url'],'previewUrl'=>$cf['url'],'downloadUrl'=>$cf['dlUrl'],'isImage'=>$cf['isImage'],'isVideo'=>$cf['isVideo']]);
+                                        @endphp
+                                        <button type="button" x-data="{hov:false}" @mouseenter="hov=true" @mouseleave="hov=false"
+                                                @click="showComment({{ $cData }})"
+                                                style="position:relative;display:block;overflow:hidden;cursor:pointer;border:none;padding:0;background:#E5E7EB;{{ $spanRow }}{{ $hStyle }}">
+                                            @if(!$cf['exists'])
+                                            <div style="width:100%;height:100%;min-height:80px;background:#F3F4F6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;">
+                                                <i class="fa fa-image" style="font-size:16px;color:#D1D5DB;"></i>
+                                                <span style="font-size:10px;color:#9CA3AF;">Not found</span>
+                                            </div>
+                                            @elseif($cf['isImage'])
+                                            <img src="{{ $cf['url'] }}" alt="{{ $cf['name'] }}"
+                                                 style="width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s ease;"
+                                                 :style="{transform: hov ? 'scale(1.04)' : 'scale(1)'}">
                                             @else
-                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;flex-shrink:0;letter-spacing:.3px;">LOCAL</span>
+                                            <div style="width:100%;height:100%;min-height:80px;background:#111827;display:flex;align-items:center;justify-content:center;">
+                                                <div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;">
+                                                    <i class="fa fa-play" style="color:#fff;font-size:13px;margin-left:3px;"></i>
+                                                </div>
+                                            </div>
                                             @endif
-                                            <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
-                                        </div>
-                                    </button>
-                                    @elseif($cIsVideo)
-                                    <button type="button" @click="showComment({{ json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'previewUrl'=>$cUrl,'downloadUrl'=>$cDlUrl,'isImage'=>false,'isVideo'=>true]) }})" style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;width:100%;" onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
-                                        <div style="background:#1F2937;height:90px;display:flex;align-items:center;justify-content:center;">
-                                            <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;">
-                                                <i class="fa fa-play" style="color:#fff;font-size:13px;margin-left:2px;"></i>
+                                            <div :style="{opacity: hov ? '1' : '0'}"
+                                                 style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.62) 0%,transparent 55%);transition:opacity .2s ease;display:flex;flex-direction:column;justify-content:flex-end;padding:7px 8px;pointer-events:none;opacity:0;">
+                                                <span style="font-size:10px;font-weight:500;color:rgba(255,255,255,.9);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;">{{ $cf['name'] }}</span>
+                                                @if($cf['nasPath'])<span style="font-size:9px;font-weight:700;color:#6EE7B7;letter-spacing:.4px;">NAS</span>@endif
+                                            </div>
+                                            <div :style="{opacity: hov ? '1' : '0'}"
+                                                 style="position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:6px;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;transition:opacity .2s ease;pointer-events:none;opacity:0;">
+                                                <i class="fa fa-expand" style="font-size:8px;color:#fff;"></i>
+                                            </div>
+                                            @if($isLV)
+                                            <div style="position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;pointer-events:none;">
+                                                <span style="font-size:22px;font-weight:700;color:#fff;letter-spacing:-1px;">+{{ $hiddenCnt }}</span>
+                                            </div>
+                                            @endif
+                                        </button>
+                                        @endforeach
+                                    </div>
+                                    @endif
+                                    @if(count($docCf) > 0)
+                                    <div style="display:flex;flex-wrap:wrap;gap:6px;{{ $mc > 0 ? 'margin-top:8px;' : '' }}">
+                                        @foreach($docCf as $cf)
+                                        @if(!$cf['exists'])
+                                        <div style="display:inline-flex;align-items:center;gap:7px;padding:6px 10px;background:#FFFBEB;border:1px dashed #FCD34D;border-radius:8px;max-width:240px;">
+                                            <i class="fa fa-triangle-exclamation" style="color:#D97706;font-size:11px;flex-shrink:0;"></i>
+                                            <div style="min-width:0;">
+                                                <p style="font-size:11px;font-weight:600;color:#92400E;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $cf['name'] }}</p>
+                                                <p style="font-size:10px;color:#B45309;margin:1px 0 0;">Not available</p>
                                             </div>
                                         </div>
-                                        <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
-                                            <i class="fa fa-video" style="color:#6366F1;font-size:10px;"></i>
-                                            <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $comment->original_filename }}</span>
-                                            @if($comment->nas_path)
-                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;flex-shrink:0;letter-spacing:.3px;">NAS</span>
-                                            @else
-                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;flex-shrink:0;letter-spacing:.3px;">LOCAL</span>
-                                            @endif
-                                            <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
-                                        </div>
-                                    </button>
-                                    @else
-                                    <a href="{{ $cDlUrl ?? $cUrl }}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;text-decoration:none;max-width:280px;transition:border-color .15s;"
-                                       onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
-                                        <div style="width:30px;height:30px;border-radius:7px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                            <i class="fa {{ $cIcon }}" style="color:#6366F1;font-size:13px;"></i>
-                                        </div>
-                                        <div style="flex:1;min-width:0;">
-                                            <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $comment->original_filename }}</p>
-                                            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;text-transform:uppercase;display:flex;align-items:center;gap:5px;">
-                                                {{ $cExt ?: 'file' }}
-                                                @if($comment->nas_path)
-                                                    <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;letter-spacing:.3px;">NAS</span>
-                                                @else
-                                                    <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;letter-spacing:.3px;">LOCAL</span>
-                                                @endif
-                                            </p>
-                                        </div>
-                                        <i class="fa fa-arrow-up-right-from-square" style="font-size:10px;color:#9CA3AF;flex-shrink:0;"></i>
-                                    </a>
+                                        @else
+                                        <a href="{{ $cf['dlUrl'] }}" target="_blank"
+                                           style="display:inline-flex;align-items:center;gap:7px;padding:6px 10px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;text-decoration:none;max-width:240px;transition:all .15s;"
+                                           onmouseover="this.style.borderColor='#6366F1';this.style.background='#F5F3FF'"
+                                           onmouseout="this.style.borderColor='#E5E7EB';this.style.background='#fff'">
+                                            <div style="width:28px;height:28px;border-radius:7px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                                <i class="fa {{ $cf['icon'] }}" style="color:#6366F1;font-size:12px;"></i>
+                                            </div>
+                                            <div style="flex:1;min-width:0;">
+                                                <p style="font-size:11px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $cf['name'] }}</p>
+                                                <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:4px;">
+                                                    {{ $cf['ext'] ?: 'file' }}
+                                                    @if($cf['nasPath'])<span style="background:#D1FAE5;color:#065F46;padding:0 4px;border-radius:3px;font-weight:700;font-size:9px;letter-spacing:.3px;">NAS</span>@endif
+                                                </p>
+                                            </div>
+                                            <i class="fa fa-arrow-down-to-line" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
+                                        </a>
+                                        @endif
+                                        @endforeach
+                                    </div>
                                     @endif
+                                </div>
                                 @endif
                             </div>
                             <div x-show="editing">
@@ -2316,18 +2383,32 @@ function taskAttachmentViewer() {
 
 function taskCommentEditor() {
     return {
-        commentFile: '',
+        commentFiles: [],
         editorFocused: false,
         dragging: false, dragCount: 0,
+        fmtSize(b) {
+            if (b < 1024) return b + ' B';
+            if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+            return (b / 1048576).toFixed(1) + ' MB';
+        },
+        addFiles(fileList) {
+            Array.from(fileList).forEach(f => {
+                this.commentFiles.push({ name: f.name, size: this.fmtSize(f.size), file: f });
+            });
+            this.syncInput();
+        },
+        removeCommentFile(i) {
+            this.commentFiles.splice(i, 1);
+            this.syncInput();
+        },
+        syncInput() {
+            const dt = new DataTransfer();
+            this.commentFiles.forEach(f => dt.items.add(f.file));
+            this.$refs.commentFileInput.files = dt.files;
+        },
         handleDrop(e) {
             this.dragCount = 0; this.dragging = false;
-            const file = e.dataTransfer.files[0];
-            if (!file) return;
-            this.commentFile = file.name;
-            const input = this.$refs.commentFileInput;
-            const dt = new DataTransfer();
-            dt.items.add(file);
-            input.files = dt.files;
+            if (e.dataTransfer.files.length) this.addFiles(e.dataTransfer.files);
         },
         colorOpen: false, selectedColor: '#EF4444', savedRange: null,
         saveRange() {
