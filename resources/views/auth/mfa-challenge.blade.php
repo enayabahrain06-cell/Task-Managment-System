@@ -109,10 +109,16 @@
         </div>
 
         {{-- Toggle --}}
-        <div style="margin-top:14px;text-align:center;">
+        <div style="margin-top:14px;text-align:center;display:flex;flex-direction:column;gap:6px;">
             <button type="button" @click="useRecovery=!useRecovery"
                     style="font-size:12px;color:#6366F1;background:none;border:none;cursor:pointer;font-weight:500;"
                     x-text="useRecovery ? '← Use authenticator app' : 'Use recovery code instead'"></button>
+            <a href="{{ route('mfa.email-recovery') }}"
+               style="font-size:11px;color:#9CA3AF;text-decoration:none;"
+               onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#9CA3AF'">
+                <i class="fas fa-envelope" style="font-size:10px;margin-right:3px;"></i>
+                Lost access to your app? Verify via email
+            </a>
         </div>
 
         {{-- Back to login --}}

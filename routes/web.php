@@ -294,6 +294,10 @@ Route::middleware([AdminMiddleware::class, MfaMiddleware::class])->prefix('admin
     Route::post('users/{user}/transfer-tasks',     [AdminUserController::class, 'transferTasks'])->name('users.transfer-tasks');
     // Hold / release account
     Route::post('users/{user}/hold',               [AdminUserController::class, 'hold'])->name('users.hold');
+    Route::post('users/{user}/disable-mfa',           [AdminUserController::class, 'disableMfa'])->name('users.disable-mfa');
+    Route::post('users/{user}/require-mfa',           [AdminUserController::class, 'requireMfa'])->name('users.require-mfa');
+    Route::post('users/{user}/cancel-mfa-requirement',[AdminUserController::class, 'cancelMfaRequirement'])->name('users.cancel-mfa-requirement');
+    Route::post('users/{user}/reset-mfa',             [AdminUserController::class, 'resetMfa'])->name('users.reset-mfa');
     Route::post('users/{user}/clone',              [AdminUserController::class, 'cloneUser'])->name('users.clone');
     // Restore archived user
     Route::post('users/{user}/restore',            [AdminUserController::class, 'restore'])->name('users.restore');

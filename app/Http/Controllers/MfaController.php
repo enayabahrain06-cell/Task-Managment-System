@@ -8,7 +8,9 @@ use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
 
@@ -166,7 +168,86 @@ class MfaController extends Controller
         return view('auth.mfa-recovery-codes', ['codes' => $codes, 'regenerated' => true]);
     }
 
+    // ── Email recovery (lost authenticator app) ───────────────────────────
+
+    public function emailRecovery()
+    {
+        if (! auth()->check()) {
+            return redirect()->route('login');
+        }
+
+        if (session('mfa_verified')) {
+            return $this->redirectToDashboard();
+        }
+
+        $user   = auth()->user();
+        $masked = $this->maskEmail($user->email);
+        $sent   = session('mfa_email_code_sent', false);
+
+        return view('auth.mfa-email-recovery', compact('masked', 'sent'));
+    }
+
+    public function sendEmailCode(Request $request)
+    {
+        $user = auth()->user();
+
+        $throttleKey = "mfa_email_throttle_{$user->id}";
+        if (Cache::get($throttleKey, 0) >= 3) {
+            return back()->withErrors(['throttle' => 'Too many requests. Please wait 10 minutes before trying again.']);
+        }
+        Cache::put($throttleKey, Cache::get($throttleKey, 0) + 1, now()->addMinutes(10));
+
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        Cache::put("mfa_email_otp_{$user->id}", bcrypt($otp), now()->addMinutes(10));
+
+        $appName = Setting::get('app_name', config('app.name', 'TaskMS'));
+
+        Mail::raw(
+            "Hi {$user->name},\n\n"
+            . "Your MFA recovery code is:\n\n"
+            . "  {$otp}\n\n"
+            . "This code expires in 10 minutes and can only be used once.\n\n"
+            . "If you did not request this, please contact your administrator immediately.\n\n"
+            . "— {$appName}",
+            function ($message) use ($user, $appName) {
+                $message->to($user->email)
+                        ->subject("MFA Recovery Code — {$appName}");
+            }
+        );
+
+        session(['mfa_email_code_sent' => true]);
+
+        return redirect()->route('mfa.email-recovery')->with('code_sent', true);
+    }
+
+    public function verifyEmailCode(Request $request)
+    {
+        $request->validate(['code' => 'required|digits:6']);
+
+        $user   = auth()->user();
+        $stored = Cache::get("mfa_email_otp_{$user->id}");
+
+        if (! $stored || ! Hash::check($request->code, $stored)) {
+            return back()->withErrors(['code' => 'Invalid or expired code. Please request a new one.']);
+        }
+
+        Cache::forget("mfa_email_otp_{$user->id}");
+        Cache::forget("mfa_email_throttle_{$user->id}");
+        session(['mfa_verified' => true]);
+
+        return $this->redirectToDashboard();
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────
+
+    private function maskEmail(string $email): string
+    {
+        [$local, $domain] = explode('@', $email, 2);
+        $visible = min(2, strlen($local));
+        $masked  = substr($local, 0, $visible) . str_repeat('*', max(1, strlen($local) - $visible));
+
+        return $masked . '@' . $domain;
+    }
 
     private function generateRecoveryCodes(): array
     {

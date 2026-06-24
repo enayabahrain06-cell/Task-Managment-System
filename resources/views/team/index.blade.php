@@ -279,6 +279,17 @@
                     <i class="fa fa-lock text-xs"></i> Held
                 </span>
                 @endif
+                @if($member->mfa_enabled)
+                <span title="Two-factor authentication enabled"
+                      style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#4F46E5);box-shadow:0 2px 6px rgba(99,102,241,0.45);flex-shrink:0;">
+                    <i class="fas fa-shield-halved" style="color:#fff;font-size:9px;"></i>
+                </span>
+                @elseif($member->mfa_required)
+                <span title="MFA setup required on next login"
+                      style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#F97316,#FB923C);box-shadow:0 2px 6px rgba(249,115,22,0.4);flex-shrink:0;">
+                    <i class="fas fa-shield-halved" style="color:#fff;font-size:9px;"></i>
+                </span>
+                @endif
             </div>
         </div>
 
@@ -309,7 +320,7 @@
             </div>
             @else
             <button type="button"
-                    onclick='window.dispatchEvent(new CustomEvent("open-edit-user",{detail:{{ json_encode(['id'=>$member->id,'name'=>$member->name,'username'=>$member->username??'','email'=>$member->email,'phone'=>$member->phone??'','job_title'=>$member->job_title??'','nationality'=>$member->nationality??'','role'=>$member->role,'status'=>$member->status,'avatar'=>$member->avatarUrl()??'','hourly_rate'=>$member->hourly_rate??'']) }}}))'
+                    onclick='window.dispatchEvent(new CustomEvent("open-edit-user",{detail:{{ json_encode(['id'=>$member->id,'name'=>$member->name,'username'=>$member->username??'','email'=>$member->email,'phone'=>$member->phone??'','job_title'=>$member->job_title??'','nationality'=>$member->nationality??'','role'=>$member->role,'status'=>$member->status,'avatar'=>$member->avatarUrl()??'','hourly_rate'=>$member->hourly_rate??'','mfa_enabled'=>(bool)$member->mfa_enabled,'mfa_required'=>(bool)$member->mfa_required]) }}}))'
                     class="flex-1 text-center text-xs bg-gray-100 hover:bg-indigo-100 text-gray-600 hover:text-indigo-600 py-1.5 rounded-lg transition font-medium">
                 <i class="fa fa-pen text-xs mr-1"></i> Edit
             </button>
@@ -326,7 +337,7 @@
                         class="act-drop-trigger w-full text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 py-1.5 rounded-lg transition font-medium flex items-center justify-center gap-1">
                     Actions <i class="fa fa-chevron-down text-xs"></i>
                 </button>
-                <div id="act-card-{{ $member->id }}" class="act-drop" style="display:none;position:fixed;min-width:180px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.18);border:1px solid #F3F4F6;z-index:9999;overflow:hidden;">
+                <div id="act-card-{{ $member->id }}" class="act-drop" style="display:none;position:fixed;min-width:190px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.18);border:1px solid #F3F4F6;z-index:9999;overflow:hidden;">
                     <form method="POST" action="{{ route('admin.users.hold', $member) }}">
                         @csrf
                         <button type="submit"
@@ -346,6 +357,40 @@
                             class="w-full text-left px-4 py-2.5 text-xs font-medium text-violet-600 hover:bg-violet-50 flex items-center gap-2.5 transition">
                         <i class="fa fa-clone text-xs w-3"></i> Clone User
                     </button>
+                    {{-- MFA Section --}}
+                    <div style="height:1px;background:#F3F4F6;margin:2px 0;"></div>
+                    <div style="padding:4px 16px 3px;font-size:9px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px;text-transform:uppercase;">MFA</div>
+                    @if($member->mfa_enabled)
+                        <form method="POST" action="{{ route('admin.users.reset-mfa', $member) }}" onsubmit="return confirm('Reset MFA for {{ addslashes($member->name) }}? They must re-enroll on next login.')">
+                            @csrf
+                            <button type="submit" class="w-full text-left px-4 py-2.5 text-xs font-medium text-orange-600 hover:bg-orange-50 flex items-center gap-2.5 transition">
+                                <i class="fas fa-rotate-right text-xs w-3"></i> Reset MFA
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ route('admin.users.disable-mfa', $member) }}" onsubmit="return confirm('Disable MFA for {{ addslashes($member->name) }}? They can log in with password only.')">
+                            @csrf
+                            <button type="submit" class="w-full text-left px-4 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition">
+                                <i class="fas fa-shield-halved text-xs w-3"></i> Disable MFA
+                            </button>
+                        </form>
+                    @elseif($member->mfa_required)
+                        <span class="w-full text-left px-4 py-2.5 text-xs font-medium text-orange-500 flex items-center gap-2.5">
+                            <i class="fas fa-clock text-xs w-3"></i> Setup pending…
+                        </span>
+                        <form method="POST" action="{{ route('admin.users.cancel-mfa-requirement', $member) }}">
+                            @csrf
+                            <button type="submit" class="w-full text-left px-4 py-2.5 text-xs font-medium text-gray-500 hover:bg-gray-50 flex items-center gap-2.5 transition">
+                                <i class="fas fa-xmark text-xs w-3"></i> Cancel Requirement
+                            </button>
+                        </form>
+                    @else
+                        <form method="POST" action="{{ route('admin.users.require-mfa', $member) }}">
+                            @csrf
+                            <button type="submit" class="w-full text-left px-4 py-2.5 text-xs font-medium text-violet-600 hover:bg-violet-50 flex items-center gap-2.5 transition">
+                                <i class="fas fa-shield-halved text-xs w-3"></i> Require MFA Setup
+                            </button>
+                        </form>
+                    @endif
                     <div style="height:1px;background:#F3F4F6;margin:2px 0;"></div>
                     <button type="button"
                             onclick="openDeleteConfirm('{{ route('admin.users.destroy', $member) }}','{{ addslashes($member->name) }}'); closeActDrop();"
@@ -453,7 +498,7 @@
                     <div class="flex items-center gap-2">
                         @if(!$managerBlocked2)
                         <button type="button"
-                                onclick='window.dispatchEvent(new CustomEvent("open-edit-user",{detail:{{ json_encode(['id'=>$member->id,'name'=>$member->name,'username'=>$member->username??'','email'=>$member->email,'phone'=>$member->phone??'','job_title'=>$member->job_title??'','nationality'=>$member->nationality??'','role'=>$member->role,'status'=>$member->status,'avatar'=>$member->avatarUrl()??'','hourly_rate'=>$member->hourly_rate??'']) }}}))'
+                                onclick='window.dispatchEvent(new CustomEvent("open-edit-user",{detail:{{ json_encode(['id'=>$member->id,'name'=>$member->name,'username'=>$member->username??'','email'=>$member->email,'phone'=>$member->phone??'','job_title'=>$member->job_title??'','nationality'=>$member->nationality??'','role'=>$member->role,'status'=>$member->status,'avatar'=>$member->avatarUrl()??'','hourly_rate'=>$member->hourly_rate??'','mfa_enabled'=>(bool)$member->mfa_enabled,'mfa_required'=>(bool)$member->mfa_required]) }}}))'
                                 class="text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition">
                             <i class="fa fa-pen text-xs mr-1"></i> Edit
                         </button>
@@ -467,7 +512,7 @@
                                     class="act-drop-trigger text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2.5 py-1.5 rounded-lg transition font-medium flex items-center gap-1">
                                 Actions <i class="fa fa-chevron-down text-xs"></i>
                             </button>
-                            <div id="act-tbl-{{ $member->id }}" class="act-drop" style="display:none;position:fixed;min-width:180px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.18);border:1px solid #F3F4F6;z-index:9999;overflow:hidden;">
+                            <div id="act-tbl-{{ $member->id }}" class="act-drop" style="display:none;position:fixed;min-width:190px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.18);border:1px solid #F3F4F6;z-index:9999;overflow:hidden;">
                                 <form method="POST" action="{{ route('admin.users.hold', $member) }}">
                                     @csrf
                                     <button type="submit"
@@ -487,6 +532,40 @@
                                         class="w-full text-left px-4 py-2.5 text-xs font-medium text-violet-600 hover:bg-violet-50 flex items-center gap-2.5 transition">
                                     <i class="fa fa-clone text-xs w-3"></i> Clone User
                                 </button>
+                                {{-- MFA Section --}}
+                                <div style="height:1px;background:#F3F4F6;margin:2px 0;"></div>
+                                <div style="padding:4px 16px 3px;font-size:9px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px;text-transform:uppercase;">MFA</div>
+                                @if($member->mfa_enabled)
+                                    <form method="POST" action="{{ route('admin.users.reset-mfa', $member) }}" onsubmit="return confirm('Reset MFA for {{ addslashes($member->name) }}? They must re-enroll on next login.')">
+                                        @csrf
+                                        <button type="submit" class="w-full text-left px-4 py-2.5 text-xs font-medium text-orange-600 hover:bg-orange-50 flex items-center gap-2.5 transition">
+                                            <i class="fas fa-rotate-right text-xs w-3"></i> Reset MFA
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ route('admin.users.disable-mfa', $member) }}" onsubmit="return confirm('Disable MFA for {{ addslashes($member->name) }}? They can log in with password only.')">
+                                        @csrf
+                                        <button type="submit" class="w-full text-left px-4 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition">
+                                            <i class="fas fa-shield-halved text-xs w-3"></i> Disable MFA
+                                        </button>
+                                    </form>
+                                @elseif($member->mfa_required)
+                                    <span class="w-full text-left px-4 py-2.5 text-xs font-medium text-orange-500 flex items-center gap-2.5">
+                                        <i class="fas fa-clock text-xs w-3"></i> Setup pending…
+                                    </span>
+                                    <form method="POST" action="{{ route('admin.users.cancel-mfa-requirement', $member) }}">
+                                        @csrf
+                                        <button type="submit" class="w-full text-left px-4 py-2.5 text-xs font-medium text-gray-500 hover:bg-gray-50 flex items-center gap-2.5 transition">
+                                            <i class="fas fa-xmark text-xs w-3"></i> Cancel Requirement
+                                        </button>
+                                    </form>
+                                @else
+                                    <form method="POST" action="{{ route('admin.users.require-mfa', $member) }}">
+                                        @csrf
+                                        <button type="submit" class="w-full text-left px-4 py-2.5 text-xs font-medium text-violet-600 hover:bg-violet-50 flex items-center gap-2.5 transition">
+                                            <i class="fas fa-shield-halved text-xs w-3"></i> Require MFA Setup
+                                        </button>
+                                    </form>
+                                @endif
                                 <div style="height:1px;background:#F3F4F6;margin:2px 0;"></div>
                                 <button type="button"
                                         onclick="openDeleteConfirm('{{ route('admin.users.destroy', $member) }}','{{ addslashes($member->name) }}'); closeActDrop();"
@@ -1564,49 +1643,85 @@ function rolesTab() {
 
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Nationality</label>
-                        <input type="hidden" name="nationality" :value="nationality">
-                        <div x-ref="natTrigger"
-                             @click="natOpenDrop(); $nextTick(()=>$refs.natInput.focus())"
-                             @click.outside="natOpen=false; natQuery=''"
-                             style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;cursor:pointer;background:#F9FAFB;transition:border-color .15s;box-sizing:border-box;"
-                             :style="natOpen ? 'border-color:#6366F1;box-shadow:0 0 0 3px rgba(99,102,241,0.1);' : ''">
-                            <span x-text="nationalityList.find(n=>n.value===nationality)?.flag ?? '🌍'"
-                                  style="font-size:15px;flex-shrink:0;line-height:1;width:20px;text-align:center;"></span>
-                            <input type="text" x-ref="natInput" x-model="natQuery"
-                                   :placeholder="nationality || 'Search nationality…'"
-                                   @focus="natOpenDrop()" @input="natOpen=true; natActiveIdx=-1"
-                                   @keydown="natOnKey($event)"
-                                   style="flex:1;border:none;outline:none;font-size:13px;color:#111827;background:transparent;min-width:0;cursor:pointer;"
-                                   autocomplete="off" spellcheck="false">
-                            <button type="button" x-show="nationality" @click.stop="nationality=''; natQuery=''; natOpen=false;"
-                                    style="background:none;border:none;cursor:pointer;color:#9CA3AF;padding:0;font-size:16px;line-height:1;flex-shrink:0;" title="Clear">×</button>
-                            <i class="fas fa-chevron-down" style="color:#9CA3AF;font-size:10px;flex-shrink:0;transition:transform .15s;"
-                               :style="natOpen ? 'transform:rotate(180deg)' : ''"></i>
-                        </div>
-                        <template x-teleport="body">
-                            <div x-show="natOpen"
-                                 x-transition:enter="transition ease-out duration-100"
-                                 x-transition:enter-start="opacity-0 -translate-y-1"
-                                 x-transition:enter-end="opacity-100 translate-y-0"
-                                 :style="`position:absolute;top:${natDropTop}px;left:${natDropLeft}px;width:${natDropWidth}px;z-index:99999;background:#fff;border:1.5px solid #E5E7EB;border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,0.12);overflow:hidden;`">
-                                <div style="max-height:220px;overflow-y:auto;">
-                                    <template x-for="(item, idx) in natFiltered" :key="item.value">
-                                        <div :id="'nat-opt-'+idx"
-                                             @click="natPick(item)"
-                                             @mouseenter="natActiveIdx = idx"
-                                             :style="natActiveIdx===idx ? 'background:#EEF2FF;' : (nationality===item.value ? 'background:#F5F3FF;' : '')"
-                                             style="padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .1s;">
-                                            <span x-text="item.flag" style="font-size:16px;width:24px;text-align:center;flex-shrink:0;"></span>
-                                            <span x-text="item.label" style="font-size:13px;font-weight:500;color:#111827;flex:1;"></span>
-                                            <i x-show="nationality===item.value" class="fas fa-check" style="color:#6366F1;font-size:10px;flex-shrink:0;"></i>
-                                        </div>
-                                    </template>
-                                    <div x-show="natFiltered.length===0" style="padding:20px;text-align:center;font-size:13px;color:#9CA3AF;">
-                                        No results for "<span x-text="natQuery"></span>"
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
+                        <select name="nationality" x-model="nationality"
+                                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;cursor:pointer;">
+                            <option value="">— Select nationality —</option>
+                            <option value="Afghan">🇦🇫 Afghan</option>
+                            <option value="Albanian">🇦🇱 Albanian</option>
+                            <option value="Algerian">🇩🇿 Algerian</option>
+                            <option value="American">🇺🇸 American</option>
+                            <option value="Argentinian">🇦🇷 Argentinian</option>
+                            <option value="Australian">🇦🇺 Australian</option>
+                            <option value="Austrian">🇦🇹 Austrian</option>
+                            <option value="Bahraini">🇧🇭 Bahraini</option>
+                            <option value="Bangladeshi">🇧🇩 Bangladeshi</option>
+                            <option value="Belgian">🇧🇪 Belgian</option>
+                            <option value="Brazilian">🇧🇷 Brazilian</option>
+                            <option value="British">🇬🇧 British</option>
+                            <option value="Bulgarian">🇧🇬 Bulgarian</option>
+                            <option value="Cambodian">🇰🇭 Cambodian</option>
+                            <option value="Canadian">🇨🇦 Canadian</option>
+                            <option value="Chilean">🇨🇱 Chilean</option>
+                            <option value="Chinese">🇨🇳 Chinese</option>
+                            <option value="Colombian">🇨🇴 Colombian</option>
+                            <option value="Croatian">🇭🇷 Croatian</option>
+                            <option value="Czech">🇨🇿 Czech</option>
+                            <option value="Danish">🇩🇰 Danish</option>
+                            <option value="Dutch">🇳🇱 Dutch</option>
+                            <option value="Egyptian">🇪🇬 Egyptian</option>
+                            <option value="Emirati">🇦🇪 Emirati</option>
+                            <option value="Estonian">🇪🇪 Estonian</option>
+                            <option value="Ethiopian">🇪🇹 Ethiopian</option>
+                            <option value="Filipino">🇵🇭 Filipino</option>
+                            <option value="Finnish">🇫🇮 Finnish</option>
+                            <option value="French">🇫🇷 French</option>
+                            <option value="German">🇩🇪 German</option>
+                            <option value="Ghanaian">🇬🇭 Ghanaian</option>
+                            <option value="Greek">🇬🇷 Greek</option>
+                            <option value="Hungarian">🇭🇺 Hungarian</option>
+                            <option value="Indian">🇮🇳 Indian</option>
+                            <option value="Indonesian">🇮🇩 Indonesian</option>
+                            <option value="Iranian">🇮🇷 Iranian</option>
+                            <option value="Iraqi">🇮🇶 Iraqi</option>
+                            <option value="Irish">🇮🇪 Irish</option>
+                            <option value="Israeli">🇮🇱 Israeli</option>
+                            <option value="Italian">🇮🇹 Italian</option>
+                            <option value="Japanese">🇯🇵 Japanese</option>
+                            <option value="Jordanian">🇯🇴 Jordanian</option>
+                            <option value="Kenyan">🇰🇪 Kenyan</option>
+                            <option value="Korean">🇰🇷 Korean</option>
+                            <option value="Kuwaiti">🇰🇼 Kuwaiti</option>
+                            <option value="Lebanese">🇱🇧 Lebanese</option>
+                            <option value="Libyan">🇱🇾 Libyan</option>
+                            <option value="Malaysian">🇲🇾 Malaysian</option>
+                            <option value="Mexican">🇲🇽 Mexican</option>
+                            <option value="Moroccan">🇲🇦 Moroccan</option>
+                            <option value="Nigerian">🇳🇬 Nigerian</option>
+                            <option value="Norwegian">🇳🇴 Norwegian</option>
+                            <option value="Omani">🇴🇲 Omani</option>
+                            <option value="Pakistani">🇵🇰 Pakistani</option>
+                            <option value="Palestinian">🇵🇸 Palestinian</option>
+                            <option value="Polish">🇵🇱 Polish</option>
+                            <option value="Portuguese">🇵🇹 Portuguese</option>
+                            <option value="Qatari">🇶🇦 Qatari</option>
+                            <option value="Romanian">🇷🇴 Romanian</option>
+                            <option value="Russian">🇷🇺 Russian</option>
+                            <option value="Saudi">🇸🇦 Saudi</option>
+                            <option value="Serbian">🇷🇸 Serbian</option>
+                            <option value="Singaporean">🇸🇬 Singaporean</option>
+                            <option value="South African">🇿🇦 South African</option>
+                            <option value="Spanish">🇪🇸 Spanish</option>
+                            <option value="Sri Lankan">🇱🇰 Sri Lankan</option>
+                            <option value="Sudanese">🇸🇩 Sudanese</option>
+                            <option value="Swedish">🇸🇪 Swedish</option>
+                            <option value="Swiss">🇨🇭 Swiss</option>
+                            <option value="Syrian">🇸🇾 Syrian</option>
+                            <option value="Thai">🇹🇭 Thai</option>
+                            <option value="Tunisian">🇹🇳 Tunisian</option>
+                            <option value="Turkish">🇹🇷 Turkish</option>
+                            <option value="Ukrainian">🇺🇦 Ukrainian</option>
+                            <option value="Yemeni">🇾🇪 Yemeni</option>
+                        </select>
                     </div>
 
                     <div>
@@ -1661,6 +1776,100 @@ function rolesTab() {
                 </div>
 
             </form>
+
+            {{-- MFA Security (outside main edit form — separate action routes) --}}
+            <div style="border:1.5px solid #F3F4F6;border-radius:12px;overflow:hidden;margin-top:4px;margin-bottom:4px;">
+                <div style="padding:10px 14px;background:#F9FAFB;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
+                    <div style="display:flex;align-items:center;gap:7px;">
+                        <i class="fas fa-shield-halved" style="font-size:11px;color:#6366F1;"></i>
+                        <span style="font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">MFA Security</span>
+                    </div>
+                    <template x-if="mfaEnabled">
+                        <span style="font-size:11px;font-weight:600;background:#EEF2FF;color:#4F46E5;padding:2px 9px;border-radius:6px;border:1px solid #C7D2FE;">
+                            <i class="fas fa-shield-halved" style="font-size:9px;margin-right:3px;"></i> Enabled
+                        </span>
+                    </template>
+                    <template x-if="!mfaEnabled && mfaRequired">
+                        <span style="font-size:11px;font-weight:600;background:#FFF7ED;color:#C2410C;padding:2px 9px;border-radius:6px;border:1px solid #FED7AA;">
+                            <i class="fas fa-clock" style="font-size:9px;margin-right:3px;"></i> Setup Pending
+                        </span>
+                    </template>
+                    <template x-if="!mfaEnabled && !mfaRequired">
+                        <span style="font-size:11px;font-weight:500;background:#F3F4F6;color:#9CA3AF;padding:2px 9px;border-radius:6px;border:1px solid #E5E7EB;">Off</span>
+                    </template>
+                </div>
+                <div style="padding:14px;">
+
+                    {{-- Inline feedback message --}}
+                    <div x-show="mfaMsg" x-transition
+                         :style="mfaMsgOk ? 'background:#ECFDF5;border:1px solid #A7F3D0;color:#065F46;' : 'background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;'"
+                         style="border-radius:8px;padding:9px 12px;margin-bottom:10px;display:flex;align-items:center;gap:7px;font-size:11px;font-weight:500;">
+                        <i :class="mfaMsgOk ? 'fas fa-circle-check' : 'fas fa-circle-xmark'" style="font-size:12px;flex-shrink:0;"></i>
+                        <span x-text="mfaMsg"></span>
+                    </div>
+
+                    {{-- Inline confirm bar (destructive actions) --}}
+                    <div x-show="mfaConfirm" x-transition
+                         style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                        <span style="font-size:12px;font-weight:600;color:#92400E;">
+                            <i class="fas fa-triangle-exclamation" style="font-size:11px;margin-right:4px;"></i>
+                            <span x-text="mfaConfirm==='reset' ? 'Reset MFA — user must re-enroll on next login.' : 'Disable MFA — user can log in with password only.'"></span>
+                        </span>
+                        <div style="display:flex;gap:7px;flex-shrink:0;">
+                            <button type="button" @click="mfaConfirm=''"
+                                    style="padding:5px 12px;background:#F3F4F6;border:1px solid #D1D5DB;border-radius:7px;font-size:11px;font-weight:600;color:#6B7280;cursor:pointer;">
+                                Cancel
+                            </button>
+                            <button type="button" @click="mfaFetch(mfaConfirm+'-mfa')" :disabled="mfaLoading"
+                                    style="padding:5px 12px;background:#DC2626;border:none;border-radius:7px;font-size:11px;font-weight:600;color:#fff;cursor:pointer;display:flex;align-items:center;gap:5px;">
+                                <i x-show="mfaLoading" class="fas fa-spinner fa-spin" style="font-size:10px;"></i>
+                                <span x-text="mfaLoading ? 'Working…' : 'Yes, confirm'"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- State: MFA enabled → Reset + Disable --}}
+                    <div x-show="mfaEnabled && !mfaConfirm" style="display:flex;gap:8px;">
+                        <button type="button" @click="mfaMsg=''; mfaConfirm='reset'" :disabled="mfaLoading"
+                                style="flex:1;padding:8px 12px;background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;font-size:12px;font-weight:600;color:#C2410C;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                            <i class="fas fa-rotate-right" style="font-size:11px;"></i> Reset MFA
+                        </button>
+                        <button type="button" @click="mfaMsg=''; mfaConfirm='disable'" :disabled="mfaLoading"
+                                style="flex:1;padding:8px 12px;background:#FEF2F2;border:1.5px solid #FECACA;border-radius:10px;font-size:12px;font-weight:600;color:#B91C1C;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                            <i class="fas fa-shield-halved" style="font-size:11px;"></i> Disable MFA
+                        </button>
+                    </div>
+
+                    {{-- State: required but not yet set up → info + cancel --}}
+                    <div x-show="!mfaEnabled && mfaRequired && !mfaConfirm">
+                        <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:9px 12px;margin-bottom:10px;display:flex;align-items:center;gap:7px;">
+                            <i class="fas fa-clock" style="color:#F97316;font-size:12px;flex-shrink:0;"></i>
+                            <p style="font-size:11px;color:#92400E;margin:0;">MFA setup is required — this user will be redirected to MFA setup on their next login.</p>
+                        </div>
+                        <button type="button" @click="mfaFetch('cancel-mfa-requirement')" :disabled="mfaLoading"
+                                style="width:100%;padding:8px 12px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:10px;font-size:12px;font-weight:600;color:#6B7280;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                            <i x-show="!mfaLoading" class="fas fa-xmark" style="font-size:11px;"></i>
+                            <i x-show="mfaLoading" class="fas fa-spinner fa-spin" style="font-size:11px;"></i>
+                            <span x-text="mfaLoading ? 'Working…' : 'Cancel Requirement'"></span>
+                        </button>
+                    </div>
+
+                    {{-- State: no MFA at all → offer to require it --}}
+                    <div x-show="!mfaEnabled && !mfaRequired && !mfaConfirm">
+                        <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:9px 12px;margin-bottom:10px;">
+                            <p style="font-size:11px;color:#6B7280;margin:0;">This user has not set up two-factor authentication. You can require it for their next login.</p>
+                        </div>
+                        <button type="button" @click="mfaFetch('require-mfa')" :disabled="mfaLoading"
+                                style="width:100%;padding:8px 12px;background:#EEF2FF;border:1.5px solid #C7D2FE;border-radius:10px;font-size:12px;font-weight:600;color:#4F46E5;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                            <i x-show="!mfaLoading" class="fas fa-shield-halved" style="font-size:11px;"></i>
+                            <i x-show="mfaLoading" class="fas fa-spinner fa-spin" style="font-size:11px;"></i>
+                            <span x-text="mfaLoading ? 'Working…' : 'Require MFA Setup'"></span>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
         </div>
 
         {{-- Footer --}}
@@ -1679,48 +1888,6 @@ function rolesTab() {
     </div>
 </div>
 
-<script>
-window.nationalityList = [
-    {value:'Afghan',flag:'🇦🇫',label:'Afghan'},{value:'Albanian',flag:'🇦🇱',label:'Albanian'},
-    {value:'Algerian',flag:'🇩🇿',label:'Algerian'},{value:'American',flag:'🇺🇸',label:'American'},
-    {value:'Argentinian',flag:'🇦🇷',label:'Argentinian'},{value:'Australian',flag:'🇦🇺',label:'Australian'},
-    {value:'Austrian',flag:'🇦🇹',label:'Austrian'},{value:'Bahraini',flag:'🇧🇭',label:'Bahraini'},
-    {value:'Bangladeshi',flag:'🇧🇩',label:'Bangladeshi'},{value:'Belgian',flag:'🇧🇪',label:'Belgian'},
-    {value:'Brazilian',flag:'🇧🇷',label:'Brazilian'},{value:'British',flag:'🇬🇧',label:'British'},
-    {value:'Bulgarian',flag:'🇧🇬',label:'Bulgarian'},{value:'Cambodian',flag:'🇰🇭',label:'Cambodian'},
-    {value:'Canadian',flag:'🇨🇦',label:'Canadian'},{value:'Chilean',flag:'🇨🇱',label:'Chilean'},
-    {value:'Chinese',flag:'🇨🇳',label:'Chinese'},{value:'Colombian',flag:'🇨🇴',label:'Colombian'},
-    {value:'Croatian',flag:'🇭🇷',label:'Croatian'},{value:'Czech',flag:'🇨🇿',label:'Czech'},
-    {value:'Danish',flag:'🇩🇰',label:'Danish'},{value:'Dutch',flag:'🇳🇱',label:'Dutch'},
-    {value:'Egyptian',flag:'🇪🇬',label:'Egyptian'},{value:'Emirati',flag:'🇦🇪',label:'Emirati'},
-    {value:'Estonian',flag:'🇪🇪',label:'Estonian'},{value:'Ethiopian',flag:'🇪🇹',label:'Ethiopian'},
-    {value:'Filipino',flag:'🇵🇭',label:'Filipino'},{value:'Finnish',flag:'🇫🇮',label:'Finnish'},
-    {value:'French',flag:'🇫🇷',label:'French'},{value:'German',flag:'🇩🇪',label:'German'},
-    {value:'Ghanaian',flag:'🇬🇭',label:'Ghanaian'},{value:'Greek',flag:'🇬🇷',label:'Greek'},
-    {value:'Hungarian',flag:'🇭🇺',label:'Hungarian'},{value:'Indian',flag:'🇮🇳',label:'Indian'},
-    {value:'Indonesian',flag:'🇮🇩',label:'Indonesian'},{value:'Iranian',flag:'🇮🇷',label:'Iranian'},
-    {value:'Iraqi',flag:'🇮🇶',label:'Iraqi'},{value:'Irish',flag:'🇮🇪',label:'Irish'},
-    {value:'Israeli',flag:'🇮🇱',label:'Israeli'},{value:'Italian',flag:'🇮🇹',label:'Italian'},
-    {value:'Japanese',flag:'🇯🇵',label:'Japanese'},{value:'Jordanian',flag:'🇯🇴',label:'Jordanian'},
-    {value:'Kenyan',flag:'🇰🇪',label:'Kenyan'},{value:'Korean',flag:'🇰🇷',label:'Korean'},
-    {value:'Kuwaiti',flag:'🇰🇼',label:'Kuwaiti'},{value:'Lebanese',flag:'🇱🇧',label:'Lebanese'},
-    {value:'Libyan',flag:'🇱🇾',label:'Libyan'},{value:'Malaysian',flag:'🇲🇾',label:'Malaysian'},
-    {value:'Mexican',flag:'🇲🇽',label:'Mexican'},{value:'Moroccan',flag:'🇲🇦',label:'Moroccan'},
-    {value:'Nigerian',flag:'🇳🇬',label:'Nigerian'},{value:'Norwegian',flag:'🇳🇴',label:'Norwegian'},
-    {value:'Omani',flag:'🇴🇲',label:'Omani'},{value:'Pakistani',flag:'🇵🇰',label:'Pakistani'},
-    {value:'Palestinian',flag:'🇵🇸',label:'Palestinian'},{value:'Polish',flag:'🇵🇱',label:'Polish'},
-    {value:'Portuguese',flag:'🇵🇹',label:'Portuguese'},{value:'Qatari',flag:'🇶🇦',label:'Qatari'},
-    {value:'Romanian',flag:'🇷🇴',label:'Romanian'},{value:'Russian',flag:'🇷🇺',label:'Russian'},
-    {value:'Saudi',flag:'🇸🇦',label:'Saudi'},{value:'Serbian',flag:'🇷🇸',label:'Serbian'},
-    {value:'Singaporean',flag:'🇸🇬',label:'Singaporean'},{value:'South African',flag:'🇿🇦',label:'South African'},
-    {value:'Spanish',flag:'🇪🇸',label:'Spanish'},{value:'Sri Lankan',flag:'🇱🇰',label:'Sri Lankan'},
-    {value:'Sudanese',flag:'🇸🇩',label:'Sudanese'},{value:'Swedish',flag:'🇸🇪',label:'Swedish'},
-    {value:'Swiss',flag:'🇨🇭',label:'Swiss'},{value:'Syrian',flag:'🇸🇾',label:'Syrian'},
-    {value:'Thai',flag:'🇹🇭',label:'Thai'},{value:'Tunisian',flag:'🇹🇳',label:'Tunisian'},
-    {value:'Turkish',flag:'🇹🇷',label:'Turkish'},{value:'Ukrainian',flag:'🇺🇦',label:'Ukrainian'},
-    {value:'Yemeni',flag:'🇾🇪',label:'Yemeni'},
-];
-</script>
 
 <script>
 /* ─── Country dial-code list ─── */
@@ -1917,6 +2084,12 @@ function editUserModal() {
         status:       '',
         hourlyRate:   '',
         avatarPreview: null,
+        mfaEnabled:   false,
+        mfaRequired:  false,
+        mfaLoading:   false,
+        mfaMsg:       '',
+        mfaMsgOk:     true,
+        mfaConfirm:   '', // 'reset' | 'disable' | ''
         /* phone picker */
         dialCode:      '+971',
         dialFlag:      '🇦🇪',
@@ -1942,29 +2115,32 @@ function editUserModal() {
             return n ? this.dialCode + n : '';
         },
         pickDial(c) { this.dialCode = c.dial; this.dialFlag = c.flag; this.phoneSearch = ''; this.phoneDropOpen = false; },
-        natQuery: '', natOpen: false, natActiveIdx: -1,
-        natDropTop: 0, natDropLeft: 0, natDropWidth: 0,
-        get natFiltered() {
-            const q = this.natQuery.trim().toLowerCase();
-            return q ? window.nationalityList.filter(n => n.label.toLowerCase().includes(q)) : window.nationalityList;
-        },
-        natOpenDrop() {
-            const rect = this.$refs.natTrigger.getBoundingClientRect();
-            this.natDropTop = rect.bottom + window.scrollY + 4;
-            this.natDropLeft = rect.left + window.scrollX;
-            this.natDropWidth = rect.width;
-            this.natOpen = true; this.natActiveIdx = -1;
-        },
-        natPick(item) {
-            this.nationality = item.value; this.natQuery = ''; this.natOpen = false; this.natActiveIdx = -1;
-        },
-        natOnKey(e) {
-            if (!this.natOpen) { this.natOpenDrop(); return; }
-            const len = this.natFiltered.length;
-            if (e.key === 'ArrowDown') { e.preventDefault(); this.natActiveIdx = (this.natActiveIdx + 1) % len; this.$nextTick(() => { const el = document.getElementById('nat-opt-'+this.natActiveIdx); if(el) el.scrollIntoView({block:'nearest'}); }); }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); this.natActiveIdx = (this.natActiveIdx - 1 + len) % len; this.$nextTick(() => { const el = document.getElementById('nat-opt-'+this.natActiveIdx); if(el) el.scrollIntoView({block:'nearest'}); }); }
-            else if (e.key === 'Enter') { e.preventDefault(); if (this.natActiveIdx >= 0 && this.natFiltered[this.natActiveIdx]) this.natPick(this.natFiltered[this.natActiveIdx]); }
-            else if (e.key === 'Escape') { this.natOpen = false; this.natActiveIdx = -1; }
+
+        async mfaFetch(action) {
+            this.mfaLoading = true;
+            this.mfaMsg = '';
+            this.mfaConfirm = '';
+            try {
+                const res = await fetch(`/admin/users/${this.userId}/${action}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').getAttribute('content'),
+                        'Accept': 'application/json',
+                    },
+                });
+                const data = await res.json();
+                this.mfaMsgOk = data.ok;
+                this.mfaMsg   = data.message;
+                if (data.ok) {
+                    this.mfaEnabled  = !!data.mfa_enabled;
+                    this.mfaRequired = !!data.mfa_required;
+                }
+            } catch (e) {
+                this.mfaMsgOk = false;
+                this.mfaMsg   = 'Something went wrong. Please try again.';
+            } finally {
+                this.mfaLoading = false;
+            }
         },
 
         open(u) {
@@ -1979,6 +2155,11 @@ function editUserModal() {
             this.status        = u.status;
             this.avatarPreview = u.avatar || null;
             this.hourlyRate    = u.hourly_rate || '';
+            this.mfaEnabled    = !!u.mfa_enabled;
+            this.mfaRequired   = !!u.mfa_required;
+            this.mfaLoading    = false;
+            this.mfaMsg        = '';
+            this.mfaConfirm    = '';
             this.saving        = false;
             /* parse phone into dial-code + local */
             const pp = window.parsePhoneNumber(u.phone || '');
@@ -2184,49 +2365,85 @@ function editUserModal() {
                     </div>
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Nationality</label>
-                        <input type="hidden" name="nationality" :value="nationality">
-                        <div x-ref="natTrigger"
-                             @click="natOpenDrop(); $nextTick(()=>$refs.natInput.focus())"
-                             @click.outside="natOpen=false; natQuery=''"
-                             style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;cursor:pointer;background:#F9FAFB;transition:border-color .15s;box-sizing:border-box;"
-                             :style="natOpen ? 'border-color:#6366F1;box-shadow:0 0 0 3px rgba(99,102,241,0.1);' : ''">
-                            <span x-text="nationalityList.find(n=>n.value===nationality)?.flag ?? '🌍'"
-                                  style="font-size:15px;flex-shrink:0;line-height:1;width:20px;text-align:center;"></span>
-                            <input type="text" x-ref="natInput" x-model="natQuery"
-                                   :placeholder="nationality || 'Search nationality…'"
-                                   @focus="natOpenDrop()" @input="natOpen=true; natActiveIdx=-1"
-                                   @keydown="natOnKey($event)"
-                                   style="flex:1;border:none;outline:none;font-size:13px;color:#111827;background:transparent;min-width:0;cursor:pointer;"
-                                   autocomplete="off" spellcheck="false">
-                            <button type="button" x-show="nationality" @click.stop="nationality=''; natQuery=''; natOpen=false;"
-                                    style="background:none;border:none;cursor:pointer;color:#9CA3AF;padding:0;font-size:16px;line-height:1;flex-shrink:0;" title="Clear">×</button>
-                            <i class="fas fa-chevron-down" style="color:#9CA3AF;font-size:10px;flex-shrink:0;transition:transform .15s;"
-                               :style="natOpen ? 'transform:rotate(180deg)' : ''"></i>
-                        </div>
-                        <template x-teleport="body">
-                            <div x-show="natOpen"
-                                 x-transition:enter="transition ease-out duration-100"
-                                 x-transition:enter-start="opacity-0 -translate-y-1"
-                                 x-transition:enter-end="opacity-100 translate-y-0"
-                                 :style="`position:absolute;top:${natDropTop}px;left:${natDropLeft}px;width:${natDropWidth}px;z-index:99999;background:#fff;border:1.5px solid #E5E7EB;border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,0.12);overflow:hidden;`">
-                                <div style="max-height:220px;overflow-y:auto;">
-                                    <template x-for="(item, idx) in natFiltered" :key="item.value">
-                                        <div :id="'nat-opt-'+idx"
-                                             @click="natPick(item)"
-                                             @mouseenter="natActiveIdx = idx"
-                                             :style="natActiveIdx===idx ? 'background:#EEF2FF;' : (nationality===item.value ? 'background:#F5F3FF;' : '')"
-                                             style="padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .1s;">
-                                            <span x-text="item.flag" style="font-size:16px;width:24px;text-align:center;flex-shrink:0;"></span>
-                                            <span x-text="item.label" style="font-size:13px;font-weight:500;color:#111827;flex:1;"></span>
-                                            <i x-show="nationality===item.value" class="fas fa-check" style="color:#6366F1;font-size:10px;flex-shrink:0;"></i>
-                                        </div>
-                                    </template>
-                                    <div x-show="natFiltered.length===0" style="padding:20px;text-align:center;font-size:13px;color:#9CA3AF;">
-                                        No results for "<span x-text="natQuery"></span>"
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
+                        <select name="nationality" x-model="nationality"
+                                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;cursor:pointer;">
+                            <option value="">— Select nationality —</option>
+                            <option value="Afghan">🇦🇫 Afghan</option>
+                            <option value="Albanian">🇦🇱 Albanian</option>
+                            <option value="Algerian">🇩🇿 Algerian</option>
+                            <option value="American">🇺🇸 American</option>
+                            <option value="Argentinian">🇦🇷 Argentinian</option>
+                            <option value="Australian">🇦🇺 Australian</option>
+                            <option value="Austrian">🇦🇹 Austrian</option>
+                            <option value="Bahraini">🇧🇭 Bahraini</option>
+                            <option value="Bangladeshi">🇧🇩 Bangladeshi</option>
+                            <option value="Belgian">🇧🇪 Belgian</option>
+                            <option value="Brazilian">🇧🇷 Brazilian</option>
+                            <option value="British">🇬🇧 British</option>
+                            <option value="Bulgarian">🇧🇬 Bulgarian</option>
+                            <option value="Cambodian">🇰🇭 Cambodian</option>
+                            <option value="Canadian">🇨🇦 Canadian</option>
+                            <option value="Chilean">🇨🇱 Chilean</option>
+                            <option value="Chinese">🇨🇳 Chinese</option>
+                            <option value="Colombian">🇨🇴 Colombian</option>
+                            <option value="Croatian">🇭🇷 Croatian</option>
+                            <option value="Czech">🇨🇿 Czech</option>
+                            <option value="Danish">🇩🇰 Danish</option>
+                            <option value="Dutch">🇳🇱 Dutch</option>
+                            <option value="Egyptian">🇪🇬 Egyptian</option>
+                            <option value="Emirati">🇦🇪 Emirati</option>
+                            <option value="Estonian">🇪🇪 Estonian</option>
+                            <option value="Ethiopian">🇪🇹 Ethiopian</option>
+                            <option value="Filipino">🇵🇭 Filipino</option>
+                            <option value="Finnish">🇫🇮 Finnish</option>
+                            <option value="French">🇫🇷 French</option>
+                            <option value="German">🇩🇪 German</option>
+                            <option value="Ghanaian">🇬🇭 Ghanaian</option>
+                            <option value="Greek">🇬🇷 Greek</option>
+                            <option value="Hungarian">🇭🇺 Hungarian</option>
+                            <option value="Indian">🇮🇳 Indian</option>
+                            <option value="Indonesian">🇮🇩 Indonesian</option>
+                            <option value="Iranian">🇮🇷 Iranian</option>
+                            <option value="Iraqi">🇮🇶 Iraqi</option>
+                            <option value="Irish">🇮🇪 Irish</option>
+                            <option value="Israeli">🇮🇱 Israeli</option>
+                            <option value="Italian">🇮🇹 Italian</option>
+                            <option value="Japanese">🇯🇵 Japanese</option>
+                            <option value="Jordanian">🇯🇴 Jordanian</option>
+                            <option value="Kenyan">🇰🇪 Kenyan</option>
+                            <option value="Korean">🇰🇷 Korean</option>
+                            <option value="Kuwaiti">🇰🇼 Kuwaiti</option>
+                            <option value="Lebanese">🇱🇧 Lebanese</option>
+                            <option value="Libyan">🇱🇾 Libyan</option>
+                            <option value="Malaysian">🇲🇾 Malaysian</option>
+                            <option value="Mexican">🇲🇽 Mexican</option>
+                            <option value="Moroccan">🇲🇦 Moroccan</option>
+                            <option value="Nigerian">🇳🇬 Nigerian</option>
+                            <option value="Norwegian">🇳🇴 Norwegian</option>
+                            <option value="Omani">🇴🇲 Omani</option>
+                            <option value="Pakistani">🇵🇰 Pakistani</option>
+                            <option value="Palestinian">🇵🇸 Palestinian</option>
+                            <option value="Polish">🇵🇱 Polish</option>
+                            <option value="Portuguese">🇵🇹 Portuguese</option>
+                            <option value="Qatari">🇶🇦 Qatari</option>
+                            <option value="Romanian">🇷🇴 Romanian</option>
+                            <option value="Russian">🇷🇺 Russian</option>
+                            <option value="Saudi">🇸🇦 Saudi</option>
+                            <option value="Serbian">🇷🇸 Serbian</option>
+                            <option value="Singaporean">🇸🇬 Singaporean</option>
+                            <option value="South African">🇿🇦 South African</option>
+                            <option value="Spanish">🇪🇸 Spanish</option>
+                            <option value="Sri Lankan">🇱🇰 Sri Lankan</option>
+                            <option value="Sudanese">🇸🇩 Sudanese</option>
+                            <option value="Swedish">🇸🇪 Swedish</option>
+                            <option value="Swiss">🇨🇭 Swiss</option>
+                            <option value="Syrian">🇸🇾 Syrian</option>
+                            <option value="Thai">🇹🇭 Thai</option>
+                            <option value="Tunisian">🇹🇳 Tunisian</option>
+                            <option value="Turkish">🇹🇷 Turkish</option>
+                            <option value="Ukrainian">🇺🇦 Ukrainian</option>
+                            <option value="Yemeni">🇾🇪 Yemeni</option>
+                        </select>
                     </div>
                 </div>
 
@@ -2251,6 +2468,32 @@ function editUserModal() {
                             <button type="button" x-on:click="s2=!s2" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9CA3AF;">
                                 <i :class="s2?'fa fa-eye-slash':'fa fa-eye'" style="font-size:13px;"></i>
                             </button>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- MFA Security --}}
+                <div style="border:1.5px solid #F3F4F6;border-radius:12px;overflow:hidden;margin-bottom:16px;" x-data="{mfaReq:false}">
+                    <div style="padding:10px 14px;background:#F9FAFB;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;gap:7px;">
+                        <i class="fas fa-shield-halved" style="font-size:11px;color:#9CA3AF;"></i>
+                        <span style="font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Security</span>
+                    </div>
+                    <div style="padding:14px 16px;">
+                        <label style="display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:pointer;" @click="mfaReq=!mfaReq">
+                            <div>
+                                <p style="font-size:13px;font-weight:600;color:#374151;margin:0;">Require MFA Setup</p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">User must set up two-factor authentication on first login</p>
+                            </div>
+                            <div :style="mfaReq ? 'background:#6366F1;border-color:#6366F1;' : ''"
+                                 style="position:relative;width:44px;height:24px;border-radius:12px;border:2px solid #D1D5DB;background:#fff;transition:background .2s,border-color .2s;flex-shrink:0;">
+                                <div :style="mfaReq ? 'transform:translateX(20px);' : ''"
+                                     style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s;"></div>
+                            </div>
+                        </label>
+                        <input type="hidden" name="mfa_required" :value="mfaReq ? '1' : '0'">
+                        <div x-show="mfaReq" x-transition style="margin-top:10px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:8px;padding:9px 12px;display:flex;align-items:center;gap:7px;">
+                            <i class="fas fa-circle-info" style="color:#6366F1;font-size:11px;flex-shrink:0;"></i>
+                            <p style="font-size:11px;color:#4338CA;margin:0;">The user will be redirected to MFA setup on their first login and cannot access the app until they complete it.</p>
                         </div>
                     </div>
                 </div>
@@ -2334,30 +2577,6 @@ function addUserModal() {
         perms:        [...defaultPerms],
         avatarPreview: null,
         nationality:   '',
-        natQuery: '', natOpen: false, natActiveIdx: -1,
-        natDropTop: 0, natDropLeft: 0, natDropWidth: 0,
-        get natFiltered() {
-            const q = this.natQuery.trim().toLowerCase();
-            return q ? window.nationalityList.filter(n => n.label.toLowerCase().includes(q)) : window.nationalityList;
-        },
-        natOpenDrop() {
-            const rect = this.$refs.natTrigger.getBoundingClientRect();
-            this.natDropTop = rect.bottom + window.scrollY + 4;
-            this.natDropLeft = rect.left + window.scrollX;
-            this.natDropWidth = rect.width;
-            this.natOpen = true; this.natActiveIdx = -1;
-        },
-        natPick(item) {
-            this.nationality = item.value; this.natQuery = ''; this.natOpen = false; this.natActiveIdx = -1;
-        },
-        natOnKey(e) {
-            if (!this.natOpen) { this.natOpenDrop(); return; }
-            const len = this.natFiltered.length;
-            if (e.key === 'ArrowDown') { e.preventDefault(); this.natActiveIdx = (this.natActiveIdx + 1) % len; this.$nextTick(() => { const el = document.getElementById('nat-opt-'+this.natActiveIdx); if(el) el.scrollIntoView({block:'nearest'}); }); }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); this.natActiveIdx = (this.natActiveIdx - 1 + len) % len; this.$nextTick(() => { const el = document.getElementById('nat-opt-'+this.natActiveIdx); if(el) el.scrollIntoView({block:'nearest'}); }); }
-            else if (e.key === 'Enter') { e.preventDefault(); if (this.natActiveIdx >= 0 && this.natFiltered[this.natActiveIdx]) this.natPick(this.natFiltered[this.natActiveIdx]); }
-            else if (e.key === 'Escape') { this.natOpen = false; this.natActiveIdx = -1; }
-        },
 
         open() {
             this.show          = true;
@@ -2367,7 +2586,6 @@ function addUserModal() {
             this.perms         = [...defaultPerms];
             this.avatarPreview = null;
             this.nationality   = '';
-            this.natQuery = ''; this.natOpen = false; this.natActiveIdx = -1;
             document.body.style.overflow = 'hidden';
         },
 

@@ -24,5 +24,8 @@ Route::middleware(['auth'])->prefix('mfa')->name('mfa.')->group(function () {
     Route::post('/enable',          [\App\Http\Controllers\MfaController::class, 'enable'])->name('enable');
     Route::post('/disable',         [\App\Http\Controllers\MfaController::class, 'disable'])->name('disable');
     Route::post('/regenerate-codes',[\App\Http\Controllers\MfaController::class, 'regenerateCodes'])->name('regenerate');
+    Route::get('/email-recovery',   [\App\Http\Controllers\MfaController::class, 'emailRecovery'])->name('email-recovery');
+    Route::post('/email-recovery',  [\App\Http\Controllers\MfaController::class, 'sendEmailCode'])->name('send-email-code');
+    Route::post('/verify-email',    [\App\Http\Controllers\MfaController::class, 'verifyEmailCode'])->name('verify-email');
 });
 

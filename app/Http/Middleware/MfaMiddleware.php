@@ -17,8 +17,8 @@ class MfaMiddleware
 
         $forceMfa = Setting::get('force_mfa', '0') === '1';
 
-        // Force-MFA: user hasn't set up MFA yet — send to setup
-        if ($forceMfa && ! $user->mfa_enabled && ! session('mfa_verified')) {
+        // Force-MFA: global setting OR per-user requirement
+        if (($forceMfa || $user->mfa_required) && ! $user->mfa_enabled && ! session('mfa_verified')) {
             if (! $request->routeIs('mfa.*')) {
                 return redirect()->route('mfa.setup');
             }

@@ -41,6 +41,7 @@ class User extends Authenticatable
         'mfa_secret',
         'mfa_enabled',
         'mfa_recovery_codes',
+        'mfa_required',
     ];
 
     public const ALL_PERMISSIONS = [
@@ -140,6 +141,7 @@ class User extends Authenticatable
             'role'               => 'string',
             'permissions'        => 'array',
             'mfa_enabled'        => 'boolean',
+            'mfa_required'       => 'boolean',
             'mfa_recovery_codes' => 'array',
         ];
     }

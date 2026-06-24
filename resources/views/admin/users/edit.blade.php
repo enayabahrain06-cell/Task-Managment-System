@@ -140,6 +140,65 @@
             </div>
         </div>
 
+        {{-- MFA Security --}}
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <p class="text-sm font-semibold text-gray-700">Two-Factor Authentication</p>
+                    <p class="text-xs text-gray-400 mt-0.5">Manage MFA for this user's account</p>
+                </div>
+                @if($user->mfa_enabled)
+                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-violet-100 text-violet-700 border border-violet-200">
+                        <i class="fas fa-shield-halved text-xs"></i> Enabled
+                    </span>
+                @else
+                    <span class="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-gray-100 text-gray-400 border border-gray-200">
+                        <i class="fas fa-shield-halved text-xs"></i> Not enabled
+                    </span>
+                @endif
+            </div>
+
+            @if($user->mfa_enabled)
+                <div class="bg-violet-50 border border-violet-100 rounded-xl p-4 mb-4">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <i class="fas fa-lock text-violet-600 text-xs"></i>
+                        </div>
+                        <div class="text-xs text-violet-700 leading-relaxed">
+                            <p class="font-semibold mb-0.5">MFA is active on this account</p>
+                            <p class="text-violet-500">
+                                Recovery codes remaining: <strong>{{ count($user->mfa_recovery_codes ?? []) }}</strong> of 8
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <form action="{{ route('admin.users.disable-mfa', $user) }}" method="POST"
+                      onsubmit="return confirm('Disable MFA for {{ addslashes($user->name) }}? They will be able to log in with password only.')">
+                    @csrf
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl text-sm font-semibold transition">
+                        <i class="fas fa-shield-halved text-xs"></i> Disable MFA for this user
+                    </button>
+                </form>
+            @else
+                <div class="bg-gray-50 border border-gray-100 rounded-xl p-4 mb-4">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <i class="fas fa-circle-info text-gray-400 text-xs"></i>
+                        </div>
+                        <div class="text-xs text-gray-500 leading-relaxed">
+                            <p class="font-semibold text-gray-600 mb-0.5">MFA is not set up</p>
+                            <p>This user has not enabled two-factor authentication. They must set it up themselves by going to their profile.</p>
+                            <p class="mt-1">To require MFA for <strong>all users</strong>, enable the global setting in
+                                <a href="{{ route('admin.settings.index') }}#security" class="text-indigo-500 hover:underline font-semibold">Settings → Security</a>.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </div>
+
         {{-- Permissions --}}
         @if($user->role === 'user')
         <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-4"
