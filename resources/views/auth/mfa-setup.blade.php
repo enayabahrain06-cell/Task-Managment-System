@@ -304,12 +304,12 @@
 </div>
 
 <script>
-// OTP boxes — no auto-submit, user clicks the button
 (function () {
     const container = document.getElementById('enableBoxes');
     if (!container) return;
     const inputs = Array.from(container.querySelectorAll('input.otp-box'));
     const hidden  = document.getElementById('enableCode');
+    const form    = document.getElementById('enableForm');
 
     function sync() {
         hidden.value = inputs.map(i => i.value).join('');
@@ -323,6 +323,7 @@
             inp.value = v ? v[v.length - 1] : '';
             sync();
             if (inp.value && idx < inputs.length - 1) inputs[idx + 1].focus();
+            if (hidden.value.length === 6) form.submit();
         });
         inp.addEventListener('keydown', e => {
             if (e.key === 'Backspace') {
@@ -335,7 +336,8 @@
             const paste = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
             inputs.forEach((inp2, j) => { inp2.value = paste[j] || ''; });
             sync();
-            inputs[Math.min(paste.length, inputs.length - 1)].focus();
+            if (paste.length === 6) { form.submit(); }
+            else inputs[Math.min(paste.length, inputs.length - 1)].focus();
         });
     });
 

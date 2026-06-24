@@ -102,16 +102,7 @@
 </div>
 @endif
 
-@if($errors->userEdit->any())
-<div class="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
-    <div class="flex items-center gap-2 font-semibold mb-1"><i class="fa fa-circle-exclamation"></i> Could not save user — please fix the following errors:</div>
-    <ul class="list-disc list-inside space-y-0.5">
-        @foreach($errors->userEdit->all() as $error)
-        <li>{{ $error }}</li>
-        @endforeach
-    </ul>
-</div>
-@elseif($errors->any())
+@if($errors->any())
 <div class="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
     <div class="flex items-center gap-2 font-semibold mb-1"><i class="fa fa-circle-exclamation"></i> Please fix the following errors:</div>
     <ul class="list-disc list-inside space-y-0.5">
@@ -1512,8 +1503,7 @@ function rolesTab() {
         {{-- Scrollable body --}}
         <div style="overflow-y:auto;flex:1;padding:20px 24px;">
             <form id="edit-user-form" method="POST" :action="'/admin/users/' + userId"
-                  enctype="multipart/form-data"
-                  @submit.prevent="pwdMismatch = !!(editPwd && editPwd !== editPwdConfirm); if(!pwdMismatch){ saving=true; $el.submit(); }">
+                  enctype="multipart/form-data" @submit="saving = true">
                 @csrf
                 @method('PUT')
 
@@ -1769,28 +1759,19 @@ function rolesTab() {
                     </div>
                     <div class="team-form-grid-2" style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;" x-data="{s1:false,s2:false}">
                         <div style="position:relative;">
-                            <input :type="s1?'text':'password'" name="password" x-model="editPwd"
-                                   placeholder="New password…" autocomplete="new-password"
-                                   style="width:100%;padding:9px 36px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
-                                   :style="pwdMismatch ? 'border-color:#EF4444;' : ''">
+                            <input :type="s1?'text':'password'" name="password" placeholder="New password…"
+                                   style="width:100%;padding:9px 36px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;">
                             <button type="button" x-on:click="s1=!s1" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9CA3AF;">
                                 <i :class="s1?'fa fa-eye-slash':'fa fa-eye'" style="font-size:13px;"></i>
                             </button>
                         </div>
                         <div style="position:relative;">
-                            <input :type="s2?'text':'password'" name="password_confirmation" x-model="editPwdConfirm"
-                                   placeholder="Confirm password" autocomplete="new-password"
-                                   style="width:100%;padding:9px 36px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
-                                   :style="pwdMismatch ? 'border-color:#EF4444;' : ''">
+                            <input :type="s2?'text':'password'" name="password_confirmation" placeholder="Confirm password"
+                                   style="width:100%;padding:9px 36px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;">
                             <button type="button" x-on:click="s2=!s2" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9CA3AF;">
                                 <i :class="s2?'fa fa-eye-slash':'fa fa-eye'" style="font-size:13px;"></i>
                             </button>
                         </div>
-                    </div>
-                    <div x-show="pwdMismatch" style="padding:0 14px 12px;">
-                        <p style="font-size:11px;color:#EF4444;margin:0;display:flex;align-items:center;gap:5px;">
-                            <i class="fas fa-circle-exclamation" style="font-size:11px;"></i> Passwords do not match.
-                        </p>
                     </div>
                 </div>
 
@@ -2109,9 +2090,6 @@ function editUserModal() {
         mfaMsg:       '',
         mfaMsgOk:     true,
         mfaConfirm:   '', // 'reset' | 'disable' | ''
-        editPwd:         '',
-        editPwdConfirm:  '',
-        pwdMismatch:     false,
         /* phone picker */
         dialCode:      '+971',
         dialFlag:      '🇦🇪',
@@ -2182,9 +2160,6 @@ function editUserModal() {
             this.mfaLoading    = false;
             this.mfaMsg        = '';
             this.mfaConfirm    = '';
-            this.editPwd        = '';
-            this.editPwdConfirm = '';
-            this.pwdMismatch    = false;
             this.saving        = false;
             /* parse phone into dial-code + local */
             const pp = window.parsePhoneNumber(u.phone || '');

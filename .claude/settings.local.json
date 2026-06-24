@@ -93,7 +93,9 @@
       "Bash(git -C /var/www/Task-Managment-System remote -v)",
       "Bash(git -C /var/www/Task-Managment-System config --list)",
       "Read(//root/**)",
-      "Read(//root/.ssh/**)"
+      "Read(//root/.ssh/**)",
+      "Bash(cp /var/www/Task-Managment-System/resources/views/team/index.blade.php /var/www/Task-Managment-System/resources/views/team/index.blade.php.bak4)",
+      "Bash(cp /var/www/Task-Managment-System/resources/views/layouts/app.blade.php /var/www/Task-Managment-System/resources/views/layouts/app.blade.php.bak)"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory",

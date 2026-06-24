@@ -124,6 +124,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'mfa_secret',
+        'mfa_recovery_codes',
     ];
 
     /**
@@ -142,6 +144,7 @@ class User extends Authenticatable
             'permissions'        => 'array',
             'mfa_enabled'        => 'boolean',
             'mfa_required'       => 'boolean',
+            'mfa_secret'         => 'encrypted',
             'mfa_recovery_codes' => 'array',
         ];
     }

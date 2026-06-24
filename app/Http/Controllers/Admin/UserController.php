@@ -143,7 +143,7 @@ class UserController extends Controller
             return back()->with('error', 'Managers cannot edit administrator accounts.');
         }
 
-        $request->validate([
+        $request->validateWithBag('userEdit', [
             'name' => [
                 'required', 'string', 'max:255',
                 function ($attribute, $value, $fail) use ($user) {

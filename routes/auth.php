@@ -19,13 +19,13 @@ Route::post('/register', '\App\Http\Controllers\Auth\RegisteredUserController@st
 // MFA routes (require auth but NOT mfa middleware)
 Route::middleware(['auth'])->prefix('mfa')->name('mfa.')->group(function () {
     Route::get('/challenge',        [\App\Http\Controllers\MfaController::class, 'challenge'])->name('challenge');
-    Route::post('/challenge',       [\App\Http\Controllers\MfaController::class, 'verify'])->name('verify');
+    Route::post('/challenge',       [\App\Http\Controllers\MfaController::class, 'verify'])->middleware('throttle:10,1')->name('verify');
     Route::get('/setup',            [\App\Http\Controllers\MfaController::class, 'setup'])->name('setup');
-    Route::post('/enable',          [\App\Http\Controllers\MfaController::class, 'enable'])->name('enable');
+    Route::post('/enable',          [\App\Http\Controllers\MfaController::class, 'enable'])->middleware('throttle:5,1')->name('enable');
     Route::post('/disable',         [\App\Http\Controllers\MfaController::class, 'disable'])->name('disable');
     Route::post('/regenerate-codes',[\App\Http\Controllers\MfaController::class, 'regenerateCodes'])->name('regenerate');
     Route::get('/email-recovery',   [\App\Http\Controllers\MfaController::class, 'emailRecovery'])->name('email-recovery');
     Route::post('/email-recovery',  [\App\Http\Controllers\MfaController::class, 'sendEmailCode'])->name('send-email-code');
-    Route::post('/verify-email',    [\App\Http\Controllers\MfaController::class, 'verifyEmailCode'])->name('verify-email');
+    Route::post('/verify-email',    [\App\Http\Controllers\MfaController::class, 'verifyEmailCode'])->middleware('throttle:5,1')->name('verify-email');
 });
 
