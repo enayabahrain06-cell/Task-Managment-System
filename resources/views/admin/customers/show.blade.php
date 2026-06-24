@@ -493,18 +493,14 @@
 
             {{-- Header --}}
             <div style="padding:20px 24px 18px;border-bottom:1px solid #F0F2F8;display:flex;align-items:center;gap:12px;flex-shrink:0;background:linear-gradient(135deg,#F8F9FF,#fff);">
-                @if($customer->logo)
-                <img src="{{ Storage::url($customer->logo) }}" alt="{{ $customer->name }}"
-                     style="width:42px;height:42px;border-radius:11px;object-fit:contain;background:#fff;border:1.5px solid #E5E7EB;flex-shrink:0;"
-                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                <div style="width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:none;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0;">
+                <div style="position:relative;width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;">
                     {{ strtoupper(substr($customer->name, 0, 1)) }}
+                    @if($customer->logo)
+                    <img src="{{ Storage::url($customer->logo) }}" alt="" decoding="async"
+                         style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;"
+                         onerror="this.remove()">
+                    @endif
                 </div>
-                @else
-                <div style="width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0;">
-                    {{ strtoupper(substr($customer->name, 0, 1)) }}
-                </div>
-                @endif
                 <div style="flex:1;min-width:0;">
                     <h3 style="font-size:15px;font-weight:700;color:#111827;margin:0;">Send to {{ $customer->name }}</h3>
                     @if($customer->company)<p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">{{ $customer->company }}</p>@endif
@@ -773,18 +769,14 @@
         </a>
         <div style="flex:1;">
             <div style="display:flex;align-items:center;gap:10px;">
-                @if($customer->logo)
-                <img src="{{ Storage::url($customer->logo) }}" alt="{{ $customer->name }}"
-                     style="width:48px;height:48px;border-radius:12px;object-fit:contain;background:#fff;border:1.5px solid #E5E7EB;flex-shrink:0;"
-                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:none;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;">
+                <div style="position:relative;width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;">
                     {{ strtoupper(substr($customer->name, 0, 1)) }}
+                    @if($customer->logo)
+                    <img src="{{ Storage::url($customer->logo) }}" alt="" decoding="async"
+                         style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;"
+                         onerror="this.remove()">
+                    @endif
                 </div>
-                @else
-                <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;">
-                    {{ strtoupper(substr($customer->name, 0, 1)) }}
-                </div>
-                @endif
                 <div>
                     <h1 style="font-size:20px;font-weight:700;color:#111827;margin:0;">{{ $customer->name }}</h1>
                     @if($customer->company)

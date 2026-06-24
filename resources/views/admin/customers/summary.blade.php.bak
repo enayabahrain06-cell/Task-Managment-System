@@ -83,13 +83,27 @@
                 {{ $summaryTotals['customers'] }} customers · {{ $periodLabel }} · Generated {{ now()->format('M j, Y') }}
             </div>
         </div>
-        <div style="display:flex;gap:8px;flex-shrink:0;">
-            <button onclick="printSummaryReport()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;">
-                <i class="fas fa-print"></i> Print
+        <div style="position:relative;flex-shrink:0;" x-data="{ open: false }" @keydown.escape.window="open=false" @click.outside="open=false">
+            <button @click="open=!open"
+                    style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:7px;transition:background .15s;"
+                    onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">
+                <i class="fas fa-ellipsis" style="font-size:13px;"></i>
+                <i class="fas fa-chevron-down" :style="open ? 'transform:rotate(180deg)' : ''" style="transition:transform .2s;font-size:11px;"></i>
             </button>
-            <button onclick="exportSummaryPDF()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;">
-                <i class="fas fa-file-pdf"></i> Export PDF
-            </button>
+            <div x-show="open" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                 style="position:absolute;right:0;top:calc(100% + 8px);background:#fff;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.14);border:1px solid #e5e7eb;min-width:170px;z-index:50;overflow:hidden;padding:4px 0;"
+                 @click="open=false">
+                <button onclick="printSummaryReport()"
+                        style="width:100%;text-align:left;padding:9px 14px;background:none;border:none;cursor:pointer;font-size:13px;color:#374151;display:flex;align-items:center;gap:10px;transition:background .1s;"
+                        onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
+                    <i class="fas fa-print" style="color:#6b7280;width:14px;text-align:center;"></i> Print
+                </button>
+                <button onclick="exportSummaryPDF()"
+                        style="width:100%;text-align:left;padding:9px 14px;background:none;border:none;cursor:pointer;font-size:13px;color:#374151;display:flex;align-items:center;gap:10px;transition:background .1s;"
+                        onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='none'">
+                    <i class="fas fa-file-pdf" style="color:#ef4444;width:14px;text-align:center;"></i> Export PDF
+                </button>
+            </div>
         </div>
     </div>
 
@@ -276,7 +290,7 @@ if (!empty($appSettings['logo_path'])) {
 @endphp
 
 @push('scripts')
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="/js/html2pdf.bundle.min.js"></script>
 <script>
 /* ══════════════════════════════════════════════════════════
    CUSTOMERS SUMMARY — Branded Print & Export PDF
@@ -370,7 +384,8 @@ function buildSummaryHTML(immediate) {
     + '.foot-brand { font-size:10px; font-weight:700; color:#4F46E5; }'
     + '.foot-mid   { font-size:10px; color:#9CA3AF; }'
     + '.foot-conf  { font-size:10px; color:#9CA3AF; font-style:italic; }'
-    + '@@media print { .pbar{display:none !important;} body{background:#fff !important;} .doc{max-width:none;} *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;} tr{page-break-inside:avoid;} @@page{size:A4 landscape;margin:0;} }'
+    + 'tr { page-break-inside: avoid; -webkit-column-break-inside: avoid; }'
+    + '@@media print { .pbar{display:none !important;} body{background:#fff !important;} .doc{max-width:none;} *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;} @@page{size:A4 landscape;margin:0;} }'
     ;
 
     // ── Palette for customer avatars ─────────────────────
@@ -520,7 +535,8 @@ function _pdfDownload(buildFn, filename) {
         filename: filename,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false, windowWidth: 1100 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', '.kcard'] }
     }).from(content, 'string').save().then(function() {
         document.body.removeChild(overlay);
     }).catch(function(e) {

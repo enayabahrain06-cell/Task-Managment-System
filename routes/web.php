@@ -135,6 +135,20 @@ Route::middleware(['auth'])->group(function () {
     // Submission file download — shared across all roles (add ?inline=1 for browser preview)
     Route::get('/submissions/{submission}/file', function (\App\Models\TaskSubmission $submission) {
         abort_unless($submission->file_path, 404);
+        $user = auth()->user();
+        if (!in_array($user->role, ['admin', 'manager'])) {
+            $uid     = $user->id;
+            $task    = $submission->task;
+            $allowed = $task &&
+                ($task->assigned_to == $uid
+                 || $task->social_assigned_to == $uid
+                 || \App\Models\Task::where('id', $task->id)
+                     ->whereExists(fn ($x) => $x->selectRaw('1')->from('task_assignees')
+                         ->whereColumn('task_assignees.task_id', 'tasks.id')
+                         ->where('task_assignees.user_id', $uid))
+                     ->exists());
+            abort_unless($allowed, 403);
+        }
         $inline = request()->boolean('inline');
         if (\Illuminate\Support\Facades\Storage::disk('public')->exists($submission->file_path)) {
             $fullPath = storage_path('app/public/' . $submission->file_path);
@@ -424,8 +438,14 @@ Route::middleware([UserMiddleware::class])->prefix('user')->name('user.')->group
     Route::get('/reports', [UserReportsController::class, 'index'])->name('reports.index');
     Route::get('/reports/export', [UserReportsController::class, 'exportTasks'])->name('reports.export');
     Route::get('/attachments/{attachment}/download', function (\App\Models\ProjectAttachment $attachment) {
-        $allowed = auth()->user()->tasks()
-            ->where('project_id', $attachment->project_id)
+        $userId = auth()->id();
+        $allowed = \App\Models\Task::where('project_id', $attachment->project_id)
+            ->where(function ($q) use ($userId) {
+                $q->where('assigned_to', $userId)
+                  ->orWhereExists(fn ($x) => $x->selectRaw('1')->from('task_assignees')
+                      ->whereColumn('task_assignees.task_id', 'tasks.id')
+                      ->where('task_assignees.user_id', $userId));
+            })
             ->exists();
         abort_unless($allowed, 403);
         abort_unless($attachment->isFile(), 404);

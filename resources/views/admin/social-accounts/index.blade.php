@@ -242,7 +242,7 @@ let formPreselectedUserIds = [];
             <span style="width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;"
                   :style="current ? {'background': current.color} : {'background': '#F3F4F6'}">
                 <template x-if="current && current.logo">
-                    <img :src="current.logo" style="width:100%;height:100%;object-fit:cover;">
+                    <img :src="current.logo" style="width:100%;height:100%;object-fit:contain;">
                 </template>
                 <template x-if="current && !current.logo">
                     <span x-text="current.initials" style="font-size:10px;font-weight:700;color:#fff;"></span>
@@ -279,7 +279,7 @@ let formPreselectedUserIds = [];
                         <span style="width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;"
                               :style="{'background': c.color}">
                             <template x-if="c.logo">
-                                <img :src="c.logo" style="width:100%;height:100%;object-fit:cover;">
+                                <img :src="c.logo" style="width:100%;height:100%;object-fit:contain;">
                             </template>
                             <template x-if="!c.logo">
                                 <span x-text="c.initials" style="font-size:11px;font-weight:700;color:#fff;"></span>
@@ -768,7 +768,7 @@ let formPreselectedUserIds = [];
                             <span style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;"
                                   :style="current ? {'background': current.color} : {'background': '#F3F4F6'}">
                                 <template x-if="current && current.logo">
-                                    <img :src="current.logo" style="width:100%;height:100%;object-fit:cover;">
+                                    <img :src="current.logo" style="width:100%;height:100%;object-fit:contain;">
                                 </template>
                                 <template x-if="current && !current.logo">
                                     <span x-text="current.initials" style="font-size:12px;font-weight:700;color:#fff;"></span>
@@ -809,7 +809,7 @@ let formPreselectedUserIds = [];
                                         <span style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;"
                                               :style="{'background': c.color}">
                                             <template x-if="c.logo">
-                                                <img :src="c.logo" style="width:100%;height:100%;object-fit:cover;">
+                                                <img :src="c.logo" style="width:100%;height:100%;object-fit:contain;">
                                             </template>
                                             <template x-if="!c.logo">
                                                 <span x-text="c.initials" style="font-size:12px;font-weight:700;color:#fff;"></span>

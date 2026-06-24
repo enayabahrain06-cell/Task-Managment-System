@@ -47,7 +47,7 @@
                     <div style="position:relative;width:88px;height:88px;">
                         <template x-if="logoPreview">
                             <img :src="logoPreview"
-                                 style="width:88px;height:88px;border-radius:16px;object-fit:cover;border:2px solid #E5E7EB;">
+                                 style="width:88px;height:88px;border-radius:16px;object-fit:contain;background:#fff;border:2px solid #E5E7EB;">
                         </template>
                         <template x-if="!logoPreview">
                             <div style="width:88px;height:88px;border-radius:16px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;">

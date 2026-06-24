@@ -66,7 +66,28 @@
       "Bash(php -r \"if \\(function_exists\\('opcache_reset'\\)\\) { opcache_reset\\(\\); echo 'OPcache reset'.PHP_EOL; } else { echo 'OPcache not active'.PHP_EOL; }\")",
       "Bash(php -r \"echo 'Syntax OK';\")",
       "Bash(cp /var/www/Task-Managment-System/resources/views/admin/tasks/show.blade.php /var/www/Task-Managment-System/resources/views/admin/tasks/show.blade.php.bak)",
-      "Bash(git status *)"
+      "Bash(git status *)",
+      "Read(//dev/**)",
+      "Bash(curl -o /dev/null -s -w \"Total: %{time_total}s | TTFB: %{time_starttransfer}s | Size: %{size_download} bytes\\\\n\" -H \"Cookie: $\\(grep -o 'laravel_session=[^;]*' /dev/null 2>/dev/null || echo ''\\)\" http://localhost/admin/customers)",
+      "Bash(awk '{print $5, $9}')",
+      "Bash(curl -s -o /dev/null -w \"Content-Encoding: %{header_content_encoding}\\\\nSize: %{size_download}\\\\n\" -H \"Accept-Encoding: gzip, deflate, br\" http://localhost/build/assets/app-CxUyLXMM.js)",
+      "Bash(gzip -c /var/www/Task-Managment-System/public/build/assets/app-CxUyLXMM.js)",
+      "Bash(cp /var/www/Task-Managment-System/public/.htaccess /var/www/Task-Managment-System/public/.htaccess.bak)",
+      "Bash(a2enmod expires *)",
+      "Bash(apache2ctl graceful *)",
+      "Bash(curl -s -o /dev/null -w 'Content-Encoding: %{header_content_encoding} | Size: %{size_download} bytes | Status: %{http_code}\\\\n' -H 'Accept-Encoding: gzip, deflate, br' http://localhost/build/assets/app-CxUyLXMM.js)",
+      "Bash(curl -sI -H 'Accept-Encoding: gzip, deflate, br' http://localhost/build/assets/app-CxUyLXMM.js)",
+      "Bash(git remote *)",
+      "Bash(git config *)",
+      "Read(//var/log/apache2/**)",
+      "Bash(php -r \"var_dump\\(opcache_get_status\\(false\\)['opcache_enabled'] ?? false\\);\")",
+      "Bash(curl -sI http://localhost/css/fa-all.min.css)",
+      "Bash(gzip -c /var/www/Task-Managment-System/public/css/fa-all.min.css)",
+      "Bash(gzip -c /var/www/Task-Managment-System/public/css/inter.css)",
+      "Bash(curl -sI -H \"Accept-Encoding: gzip, deflate, br\" http://localhost/css/fa-all.min.css)",
+      "Bash(curl -sI -H \"Accept-Encoding: gzip, deflate, br\" http://localhost/build/assets/app-CxUyLXMM.js)",
+      "Bash(cp /var/www/Task-Managment-System/routes/web.php /var/www/Task-Managment-System/routes/web.php.bak)",
+      "Bash(php -r \"echo file_get_contents\\('/var/www/Task-Managment-System/resources/views/admin/customers/index.blade.php'\\);\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory",
@@ -76,7 +97,9 @@
       "/etc/apache2/sites-available",
       "/etc/apache2/sites-enabled",
       "/var/www/Task-Managment-System/resources/views/admin/subscriptions",
-      "/var/www/Task-Managment-System/resources/views/admin/tasks"
+      "/var/www/Task-Managment-System/resources/views/admin/tasks",
+      "/var/www/Task-Managment-System/public",
+      "/var/www/Task-Managment-System/routes"
     ]
   }
 }

@@ -113,11 +113,12 @@ class SettingsController extends Controller
         'storage_create_brand_assets'  => '1',
         'storage_file_naming_pattern'  => '{company}_{project}_{type}_{desc}_{date}_v{ver}',
         // Chat Agent
-        'agent_name'     => 'Task Assistant',
-        'agent_subtitle' => 'Ask me anything about your tasks',
-        'agent_welcome'  => "👋 Hi! I'm your **Task Assistant**. I can show your tasks, stats, overdue items, projects, and more.",
-        'agent_color'    => '#4F46E5',
-        'agent_icon'     => 'robot',
+        'agent_name'       => 'Task Assistant',
+        'agent_subtitle'   => 'Ask me anything about your tasks',
+        'agent_welcome'    => "👋 Hi! I'm your **Task Assistant**. I can show your tasks, stats, overdue items, projects, and more.",
+        'agent_color'      => '#4F46E5',
+        'agent_icon'       => 'robot',
+        'support_user_id'  => '',
     ];
 
     public function index()
@@ -158,7 +159,11 @@ class SettingsController extends Controller
                                 : round($dbBytes / 1024) . ' KB',
         ];
 
-        return view('admin.settings', compact('settings', 'stats'));
+        $supportUsers = User::whereIn('role', ['admin', 'manager'])
+            ->orderBy('name')
+            ->get(['id', 'name', 'role']);
+
+        return view('admin.settings', compact('settings', 'stats', 'supportUsers'));
     }
 
     public function toggleDevMode()
@@ -535,14 +540,16 @@ class SettingsController extends Controller
     public function updateAgent(Request $request)
     {
         $request->validate([
-            'agent_name'     => 'required|string|max:60',
-            'agent_subtitle' => 'nullable|string|max:120',
-            'agent_welcome'  => 'nullable|string|max:400',
-            'agent_color'    => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
-            'agent_icon'     => 'required|in:robot,brain,comments,headset,bolt,star',
+            'agent_name'      => 'required|string|max:60',
+            'agent_subtitle'  => 'nullable|string|max:120',
+            'agent_welcome'   => 'nullable|string|max:400',
+            'agent_color'     => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'agent_icon'      => 'required|in:robot,brain,comments,headset,bolt,star',
+            'support_user_id' => 'nullable|exists:users,id',
         ]);
 
         Setting::setMany($request->only('agent_name', 'agent_subtitle', 'agent_welcome', 'agent_color', 'agent_icon'));
+        Setting::set('support_user_id', $request->input('support_user_id', ''));
 
         AuditLogger::log('settings.updated', null, 'Chat agent settings updated', ['section' => 'agent']);
 

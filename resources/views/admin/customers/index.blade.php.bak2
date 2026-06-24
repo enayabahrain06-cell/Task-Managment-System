@@ -206,6 +206,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
                                 @if($customer->logo)
                                 <img src="{{ Storage::url($customer->logo) }}" alt="{{ $customer->name }}"
                                      class="cust-logo"
+                                     loading="lazy" decoding="async"
                                      style="width:38px;height:38px;border-radius:10px;object-fit:contain;background:#fff;border:1px solid #E5E7EB;flex-shrink:0;"
                                      onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
                                 <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:none;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;">
@@ -299,6 +300,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
                         @if($customer->logo)
                         <img src="{{ Storage::url($customer->logo) }}" alt="{{ $customer->name }}"
                              class="cust-logo"
+                             loading="lazy" decoding="async"
                              style="width:46px;height:46px;border-radius:12px;object-fit:contain;background:#fff;border:1.5px solid #E5E7EB;flex-shrink:0;"
                              onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
                         <div style="width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:none;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;">
