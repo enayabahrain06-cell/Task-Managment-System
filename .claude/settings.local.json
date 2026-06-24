@@ -81,7 +81,11 @@
       "Bash(cp /var/www/Task-Managment-System/resources/views/messages/index.blade.php /var/www/Task-Managment-System/resources/views/messages/index.blade.php.bak4)",
       "Bash(cp /var/www/Task-Managment-System/resources/views/admin/customers/index.blade.php /var/www/Task-Managment-System/resources/views/admin/customers/index.blade.php.bak)",
       "Bash(grep -n \"background:\\\\${u.color}\" /var/www/Task-Managment-System/resources/views/team/index.blade.php)",
-      "Bash(grep -n \"background:\\\\${u\\\\.\" /var/www/Task-Managment-System/resources/views/team/index.blade.php)"
+      "Bash(grep -n \"background:\\\\${u\\\\.\" /var/www/Task-Managment-System/resources/views/team/index.blade.php)",
+      "Bash(cp /var/www/Task-Managment-System/resources/views/auth/mfa-challenge.blade.php /var/www/Task-Managment-System/resources/views/auth/mfa-challenge.blade.php.bak)",
+      "Bash(cp /var/www/Task-Managment-System/resources/views/auth/mfa-setup.blade.php /var/www/Task-Managment-System/resources/views/auth/mfa-setup.blade.php.bak)",
+      "Bash(git -C /var/www/Task-Managment-System diff --stat HEAD)",
+      "Bash(git -C /var/www/Task-Managment-System diff --cached --stat)"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory",

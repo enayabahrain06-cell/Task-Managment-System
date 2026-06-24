@@ -68,11 +68,18 @@ class User extends Authenticatable
         'export_data'          => 'Export & Download Data',
         'view_audit_log'       => 'Audit Log',
 
+        // Clients & Media
+        'manage_customers'       => 'Manage Customers',
+        'manage_social_accounts' => 'Social Accounts',
+        'view_social_budget'     => 'Social Budget',
+
         // Administration
-        'manage_users'         => 'Manage Users',
-        'manage_roles'         => 'Manage Roles & Permissions',
-        'manage_settings'      => 'System Settings',
-        'view_approvals'       => 'Task Approvals',
+        'manage_users'           => 'Manage Users',
+        'manage_roles'           => 'Manage Roles & Permissions',
+        'manage_settings'        => 'System Settings',
+        'view_approvals'         => 'Task Approvals',
+        'manage_subscriptions'   => 'Subscriptions & Licenses',
+        'manage_domains'         => 'Domain Management',
     ];
 
     /** Returns true if the user has the given permission (null = all allowed). */

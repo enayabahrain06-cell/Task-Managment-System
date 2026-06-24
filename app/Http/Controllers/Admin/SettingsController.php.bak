@@ -217,6 +217,14 @@ class SettingsController extends Controller
         return response()->json(['hide_wa_web_button' => $new === '1']);
     }
 
+    public function toggleHideSummarize()
+    {
+        $current = Setting::get('hide_summarize_button', '0');
+        $new     = $current === '1' ? '0' : '1';
+        Setting::set('hide_summarize_button', $new);
+        return response()->json(['hide_summarize_button' => $new === '1']);
+    }
+
     public function toggleManagerRolesAccess()
     {
         $current = Setting::get('manager_can_view_roles', '0');
@@ -1269,6 +1277,13 @@ class SettingsController extends Controller
 
     // ── Full System Backup / Restore ─────────────────────────────────────
 
+    public function verifyRestorePassword(Request $request)
+    {
+        $request->validate(['password' => 'required|string']);
+        $ok = \Illuminate\Support\Facades\Hash::check($request->input('password'), auth()->user()->password);
+        return response()->json(['ok' => $ok]);
+    }
+
     public function downloadBackup()
     {
         $stamp       = now()->format('Ymd_His');
@@ -1377,6 +1392,28 @@ class SettingsController extends Controller
         AuditLogger::log('system.backup', null, 'Full backup saved to NAS: ' . $filename, []);
 
         return response()->json(['ok' => true, 'msg' => 'Backup saved to NAS: Backups/' . now()->format('Y/Y-m') . '/' . $filename]);
+    }
+
+    public function saveBackupSqliteToNas()
+    {
+        $nas = app(\App\Services\NasService::class);
+        if (!$nas->isEnabled()) {
+            return response()->json(['ok' => false, 'msg' => 'NAS is not enabled.']);
+        }
+
+        $dbPath   = database_path('database.sqlite');
+        $stamp    = now()->format('Ymd_His');
+        $filename = 'backup_' . $stamp . '.sqlite';
+
+        $ok = $nas->saveBackupToNas($dbPath, $filename);
+
+        if (!$ok) {
+            return response()->json(['ok' => false, 'msg' => 'Upload to NAS failed. Check NAS connection.']);
+        }
+
+        AuditLogger::log('system.backup', null, 'Database-only backup saved to NAS: ' . $filename, []);
+
+        return response()->json(['ok' => true, 'msg' => 'Database saved to NAS: Backups/' . now()->format('Y/Y-m') . '/' . $filename]);
     }
 
     public function listNasBackups()
@@ -1639,6 +1676,18 @@ class SettingsController extends Controller
             return back()->with('error', 'Invalid clear type.')->withFragment('danger');
         }
 
+        if ($type === 'full_reset') {
+            $request->validate([
+                'password'       => 'required|string',
+                'signatory_name' => 'required|string|max:150',
+                'agreed'         => 'required|accepted',
+            ]);
+
+            if (!\Illuminate\Support\Facades\Hash::check($request->input('password'), auth()->user()->password)) {
+                return back()->with('error', 'Password incorrect. Full data reset was cancelled.')->withFragment('danger');
+            }
+        }
+
         // Disable foreign key checks for SQLite so deletes don't fail on constraints
         DB::statement('PRAGMA foreign_keys = OFF');
 
@@ -1710,7 +1759,13 @@ class SettingsController extends Controller
             'full_reset'     => 'Full data reset completed. Users and settings are untouched.',
         ];
 
-        AuditLogger::log('data.cleared', null, 'Data cleared: ' . $type, ['type' => $type]);
+        $auditMeta = ['type' => $type];
+        if ($type === 'full_reset') {
+            $auditMeta['signatory_name']  = $request->input('signatory_name');
+            $auditMeta['signatory_email'] = auth()->user()->email;
+            $auditMeta['acknowledged_at'] = now()->toDateTimeString();
+        }
+        AuditLogger::log('data.cleared', null, 'Data cleared: ' . $type, $auditMeta);
 
         return back()->with('success', $labels[$type])->withFragment('danger');
     }

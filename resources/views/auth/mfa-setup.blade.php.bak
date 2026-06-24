@@ -1,0 +1,120 @@
+@extends('layouts.auth')
+
+@section('content')
+<style>
+.mfa-card {
+    width: 100%;
+    max-width: 460px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(79,70,229,0.15);
+    overflow: hidden;
+}
+.mfa-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.mfa-step-num {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #EEF2FF;
+    color: #4F46E5;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+</style>
+
+<div class="mfa-card">
+    <div style="padding:36px 36px 28px;">
+
+        {{-- Header --}}
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+            <div style="width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#4F46E5,#6366F1);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(79,70,229,0.35);">
+                <i class="fas fa-shield-halved" style="color:#fff;font-size:18px;"></i>
+            </div>
+            <div>
+                <h1 style="font-size:18px;font-weight:800;color:#111827;margin:0;">Set Up Two-Factor Authentication</h1>
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Secure your account with an authenticator app</p>
+            </div>
+        </div>
+
+        @if($errors->any())
+        <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:10px 14px;margin-bottom:18px;font-size:12px;color:#DC2626;display:flex;align-items:center;gap:8px;">
+            <i class="fa fa-exclamation-circle"></i> {{ $errors->first() }}
+        </div>
+        @endif
+
+        {{-- Steps --}}
+        <div style="margin-bottom:20px;">
+            <div class="mfa-step">
+                <div class="mfa-step-num">1</div>
+                <div>
+                    <p style="font-size:12px;font-weight:600;color:#374151;margin:0 0 3px;">Install an authenticator app</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;">Google Authenticator, Authy, or any TOTP-compatible app</p>
+                </div>
+            </div>
+            <div class="mfa-step">
+                <div class="mfa-step-num">2</div>
+                <div>
+                    <p style="font-size:12px;font-weight:600;color:#374151;margin:0 0 6px;">Scan this QR code</p>
+                    <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:12px;padding:16px;display:inline-block;">
+                        {!! $qrSvg !!}
+                    </div>
+                    <p style="font-size:11px;color:#9CA3AF;margin:8px 0 0;">Can't scan? Enter this key manually:</p>
+                    <p style="font-size:12px;font-weight:700;color:#374151;letter-spacing:2px;font-family:monospace;background:#F3F4F6;padding:6px 10px;border-radius:6px;display:inline-block;margin-top:4px;">{{ chunk_split($secret, 4, ' ') }}</p>
+                </div>
+            </div>
+            <div class="mfa-step">
+                <div class="mfa-step-num">3</div>
+                <div style="width:100%;">
+                    <p style="font-size:12px;font-weight:600;color:#374151;margin:0 0 8px;">Enter the 6-digit code to confirm</p>
+                    <form method="POST" action="{{ route('mfa.enable') }}">
+                        @csrf
+                        <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code"
+                               placeholder="000 000" maxlength="6"
+                               style="width:100%;padding:12px 14px;border:1.5px solid #E5E7EB;border-radius:12px;font-size:20px;font-weight:700;text-align:center;letter-spacing:8px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;font-family:monospace;"
+                               onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.1)'"
+                               onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow='none'">
+                        <button type="submit"
+                                style="margin-top:14px;width:100%;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;font-size:14px;font-weight:600;padding:13px;border:none;border-radius:12px;cursor:pointer;box-shadow:0 6px 20px rgba(79,70,229,0.35);"
+                                onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
+                            <i class="fas fa-check" style="margin-right:6px;font-size:11px;"></i> Enable Two-Factor Auth
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {{-- Skip / logout --}}
+        @php $forceMfa = (\App\Models\Setting::get('force_mfa','0') === '1'); @endphp
+        @unless($forceMfa)
+        <div style="text-align:center;padding-top:12px;border-top:1px solid #F3F4F6;">
+            <a href="{{ match(auth()->user()->role) { 'admin' => route('admin.dashboard'), 'manager' => route('manager.dashboard'), default => route('user.dashboard') } }}"
+               style="font-size:12px;color:#9CA3AF;text-decoration:none;">
+                Skip for now
+            </a>
+        </div>
+        @endunless
+
+        @if($forceMfa)
+        <div style="text-align:center;padding-top:12px;border-top:1px solid #F3F4F6;">
+            <form method="POST" action="{{ route('logout') }}" style="display:inline;">
+                @csrf
+                <button type="submit" style="font-size:12px;color:#9CA3AF;background:none;border:none;cursor:pointer;">
+                    <i class="fa fa-arrow-left" style="margin-right:4px;"></i> Back to login
+                </button>
+            </form>
+        </div>
+        @endif
+
+    </div>
+</div>
+@endsection
