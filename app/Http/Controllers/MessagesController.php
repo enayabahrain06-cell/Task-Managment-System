@@ -39,8 +39,12 @@ class MessagesController extends Controller
                             : ($msgs->first()->body ?: ($msgs->first()->file_name ? '📎 '.$msgs->first()->file_name : '📎 File')),
                 'time' => $msgs->first()->created_at->diffForHumans(null, true, true, 1),
                 'mine' => $msgs->first()->sender_id === $me,
+                'ts'   => $msgs->first()->created_at->timestamp,
             ])
             ->toArray();
+
+        // Sort contacts: most recently messaged first, then alphabetically for those with no messages
+        $teamMembers = $teamMembers->sortByDesc(fn($u) => $lastMsgs[$u->id]['ts'] ?? 0)->values();
 
         // Online status map: userId → true/false (active within 3 minutes)
         $onlineMap = $teamMembers->mapWithKeys(fn($u) => [
