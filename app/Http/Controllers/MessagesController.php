@@ -23,28 +23,29 @@ class MessagesController extends Controller
 
         $me = auth()->id();
 
-        $teamMembers = User::where('id', '!=', $me)->orderBy('name')->get();
-
-        // Last message preview per direct conversation
-        $lastMsgs = Message::where(function ($q) use ($me) {
+        // Last message preview per direct conversation (keyed by other user's ID)
+        $lastMsgsRaw = Message::where(function ($q) use ($me) {
                 $q->where('sender_id', $me)->orWhere('receiver_id', $me);
             })
             ->whereNull('group_id')
             ->orderBy('created_at', 'desc')
             ->get()
-            ->groupBy(fn($m) => $m->sender_id === $me ? $m->receiver_id : $m->sender_id)
-            ->map(fn($msgs) => [
-                'body' => $msgs->first()->deleted_at
-                            ? '🚫 Message deleted'
-                            : ($msgs->first()->body ?: ($msgs->first()->file_name ? '📎 '.$msgs->first()->file_name : '📎 File')),
-                'time' => $msgs->first()->created_at->diffForHumans(null, true, true, 1),
-                'mine' => $msgs->first()->sender_id === $me,
-                'ts'   => $msgs->first()->created_at->timestamp,
+            ->groupBy(fn($m) => $m->sender_id === $me ? $m->receiver_id : $m->sender_id);
+
+        $lastMsgs = $lastMsgsRaw->map(fn($msgs) => [
+                'body'      => $msgs->first()->deleted_at
+                                ? '🚫 Message deleted'
+                                : ($msgs->first()->body ?: ($msgs->first()->file_name ? '📎 '.$msgs->first()->file_name : '📎 File')),
+                'time'      => $msgs->first()->created_at->diffForHumans(null, true, true, 1),
+                'mine'      => $msgs->first()->sender_id === $me,
+                'timestamp' => $msgs->first()->created_at->timestamp,
             ])
             ->toArray();
 
-        // Sort contacts: most recently messaged first, then alphabetically for those with no messages
-        $teamMembers = $teamMembers->sortByDesc(fn($u) => $lastMsgs[$u->id]['ts'] ?? 0)->values();
+        // Sort contacts: users with messages first (most recent first), then the rest alphabetically
+        $teamMembers = User::where('id', '!=', $me)->orderBy('name')->get()
+            ->sortByDesc(fn($u) => $lastMsgs[$u->id]['timestamp'] ?? 0)
+            ->values();
 
         // Online status map: userId → true/false (active within 3 minutes)
         $onlineMap = $teamMembers->mapWithKeys(fn($u) => [

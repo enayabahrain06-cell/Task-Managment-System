@@ -28,14 +28,24 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        $user = auth()->user();
-        $role = $user->role;
+        $user     = auth()->user();
+        $forceMfa = \App\Models\Setting::get('force_mfa', '0') === '1';
 
-        return match($role) {
-            'admin' => redirect()->intended('/admin/dashboard'),
+        // Redirect to MFA challenge if user has MFA enabled or admin forces it
+        if ($user->mfa_enabled) {
+            return redirect()->route('mfa.challenge');
+        }
+
+        // Force-MFA: user hasn't set up MFA yet — send to setup
+        if ($forceMfa && ! $user->mfa_enabled) {
+            return redirect()->route('mfa.setup');
+        }
+
+        return match($user->role) {
+            'admin'   => redirect()->intended('/admin/dashboard'),
             'manager' => redirect()->intended('/manager/dashboard'),
-            'user' => redirect()->intended('/user/dashboard'),
-            default => redirect()->intended('/user/dashboard'),
+            'user'    => redirect()->intended('/user/dashboard'),
+            default   => redirect()->intended('/user/dashboard'),
         };
     }
 

@@ -1348,6 +1348,17 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
+                        <div class="sf-toggle-row">
+                            <div>
+                                <p class="sf-toggle-label">Require Two-Factor Authentication (MFA)</p>
+                                <p class="sf-toggle-hint">Force all users to set up an authenticator app before accessing their account</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" name="force_mfa" value="1"
+                                       {{ ($settings['force_mfa'] ?? '0') === '1' ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
                     </div>
                     <div class="scard-footer">
                         <button type="submit" class="btn-save"><i class="fas fa-check" style="font-size:11px;margin-right:5px;"></i>Save Security</button>

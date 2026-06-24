@@ -33,6 +33,7 @@ use App\Http\Controllers\User\ReportsController as UserReportsController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\ManagerMiddleware;
 use App\Http\Middleware\UserMiddleware;
+use App\Http\Middleware\MfaMiddleware;
 
 // Home: redirect authenticated users to their dashboard, guests to login
 Route::get('/', function () {
@@ -164,7 +165,7 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Admin routes
-Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware([AdminMiddleware::class, MfaMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', fn() => redirect()->route('admin.dashboard'))->name('index');
     Route::get('/dashboard', [AdminDashboard::class, 'index'])->name('dashboard');
     Route::get('/dashboard/refresh', [AdminDashboard::class, 'refresh'])->name('dashboard.refresh');
@@ -406,7 +407,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
 });
 
 // Manager routes
-Route::middleware([ManagerMiddleware::class])->prefix('manager')->name('manager.')->group(function () {
+Route::middleware([ManagerMiddleware::class, MfaMiddleware::class])->prefix('manager')->name('manager.')->group(function () {
     Route::get('/dashboard',         [ManagerDashboard::class, 'index'])->name('dashboard');
     Route::get('/dashboard/refresh', [ManagerDashboard::class, 'refresh'])->name('dashboard.refresh');
     Route::resource('projects', AdminProjectController::class)->only(['index', 'store']);
@@ -418,7 +419,7 @@ Route::middleware([ManagerMiddleware::class])->prefix('manager')->name('manager.
 });
 
 // User routes
-Route::middleware([UserMiddleware::class])->prefix('user')->name('user.')->group(function () {
+Route::middleware([UserMiddleware::class, MfaMiddleware::class])->prefix('user')->name('user.')->group(function () {
     Route::get('/dashboard', [UserDashboard::class, 'index'])->name('dashboard');
     Route::get('/licenses',  [UserLicensesController::class, 'index'])->name('licenses.index');
     Route::get('/domains',   [UserDomainsController::class, 'index'])->name('domains.index');

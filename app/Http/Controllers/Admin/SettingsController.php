@@ -528,6 +528,7 @@ class SettingsController extends Controller
             'session_timeout'          => $request->session_timeout,
             'require_strong_password'  => $request->boolean('require_strong_password') ? '1' : '0',
             'max_login_attempts'       => $request->max_login_attempts,
+            'force_mfa'                => $request->boolean('force_mfa') ? '1' : '0',
         ]);
 
         AuditLogger::log('settings.updated', null, 'Security settings updated', ['section' => 'security']);

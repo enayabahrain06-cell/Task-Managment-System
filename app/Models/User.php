@@ -38,6 +38,9 @@ class User extends Authenticatable
         'archived_at',
         'archived_by',
         'hourly_rate',
+        'mfa_secret',
+        'mfa_enabled',
+        'mfa_recovery_codes',
     ];
 
     public const ALL_PERMISSIONS = [
@@ -130,12 +133,14 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'archived_at'       => 'datetime',
-            'last_seen_at'      => 'datetime',
-            'password'          => 'hashed',
-            'role'              => 'string',
-            'permissions'       => 'array',
+            'email_verified_at'  => 'datetime',
+            'archived_at'        => 'datetime',
+            'last_seen_at'       => 'datetime',
+            'password'           => 'hashed',
+            'role'               => 'string',
+            'permissions'        => 'array',
+            'mfa_enabled'        => 'boolean',
+            'mfa_recovery_codes' => 'array',
         ];
     }
 
