@@ -79,7 +79,9 @@
       "Bash(cp /var/www/Task-Managment-System/resources/views/user/tasks/show.blade.php /var/www/Task-Managment-System/resources/views/user/tasks/show.blade.php.bak)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost/admin/tasks/65)",
       "Bash(cp /var/www/Task-Managment-System/resources/views/messages/index.blade.php /var/www/Task-Managment-System/resources/views/messages/index.blade.php.bak4)",
-      "Bash(cp /var/www/Task-Managment-System/resources/views/admin/customers/index.blade.php /var/www/Task-Managment-System/resources/views/admin/customers/index.blade.php.bak)"
+      "Bash(cp /var/www/Task-Managment-System/resources/views/admin/customers/index.blade.php /var/www/Task-Managment-System/resources/views/admin/customers/index.blade.php.bak)",
+      "Bash(grep -n \"background:\\\\${u.color}\" /var/www/Task-Managment-System/resources/views/team/index.blade.php)",
+      "Bash(grep -n \"background:\\\\${u\\\\.\" /var/www/Task-Managment-System/resources/views/team/index.blade.php)"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory",

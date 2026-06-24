@@ -177,7 +177,7 @@
                             <td style="padding:10px 16px;">
                                 <div style="display:flex;align-items:center;gap:10px;">
                                     @if($sc->logo)
-                                    <img src="{{ Storage::url($sc->logo) }}" style="width:30px;height:30px;border-radius:8px;object-fit:cover;border:1px solid #e5e7eb;flex-shrink:0;">
+                                    <img src="{{ Storage::url($sc->logo) }}" style="width:30px;height:30px;border-radius:8px;object-fit:contain;background:#fff;border:1px solid #e5e7eb;flex-shrink:0;">
                                     @else
                                     <div style="width:30px;height:30px;border-radius:8px;background:{{ $palette[$i % count($palette)] }};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">
                                         {{ strtoupper(substr($sc->name, 0, 1)) }}

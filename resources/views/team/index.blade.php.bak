@@ -618,17 +618,27 @@ $roleColorMap = ['admin'=>'bg-red-100 text-red-600','manager'=>'bg-amber-100 tex
             'icon' => 'fa-chart-bar', 'color' => '#F59E0B', 'bg' => '#FFFBEB',
             'perms' => [
                 'view_reports'   => ['icon' => 'fa-chart-column',  'label' => 'My Reports', 'desc' => 'Reports & analytics page'],
+                'view_social_budget' => ['icon' => 'fa-wallet',    'label' => 'Social Budget',       'desc' => 'Social media spend tracking'],
                 'export_data'    => ['icon' => 'fa-file-export',   'label' => 'Export Data',         'desc' => 'Export & download data'],
                 'view_audit_log' => ['icon' => 'fa-shield-halved', 'label' => 'Audit Log',           'desc' => 'View audit log entries'],
+            ],
+        ],
+        'Clients & Media' => [
+            'icon' => 'fa-building', 'color' => '#8B5CF6', 'bg' => '#F5F3FF',
+            'perms' => [
+                'manage_customers'       => ['icon' => 'fa-building',    'label' => 'Manage Customers',  'desc' => 'Client directory & management'],
+                'manage_social_accounts' => ['icon' => 'fa-share-nodes', 'label' => 'Social Accounts',   'desc' => 'Social media account registry'],
             ],
         ],
         'Administration' => [
             'icon' => 'fa-gear', 'color' => '#EF4444', 'bg' => '#FEF2F2',
             'perms' => [
-                'manage_users'    => ['icon' => 'fa-user-shield', 'label' => 'Manage Users',    'desc' => 'Create & manage users'],
-                'manage_roles'    => ['icon' => 'fa-tag',         'label' => 'Manage Roles',    'desc' => 'Roles & permissions config'],
-                'manage_settings' => ['icon' => 'fa-sliders',     'label' => 'System Settings', 'desc' => 'System settings & config'],
-                'view_approvals'  => ['icon' => 'fa-stamp',       'label' => 'Task Approvals',  'desc' => 'Task approvals queue'],
+                'manage_users'         => ['icon' => 'fa-user-shield', 'label' => 'Manage Users',         'desc' => 'Create & manage users'],
+                'manage_roles'         => ['icon' => 'fa-tag',         'label' => 'Manage Roles',         'desc' => 'Roles & permissions config'],
+                'manage_settings'      => ['icon' => 'fa-sliders',     'label' => 'System Settings',      'desc' => 'System settings & config'],
+                'view_approvals'       => ['icon' => 'fa-stamp',       'label' => 'Task Approvals',       'desc' => 'Task approvals queue'],
+                'manage_subscriptions' => ['icon' => 'fa-layer-group', 'label' => 'Subscriptions',        'desc' => 'Subscriptions & licenses'],
+                'manage_domains'       => ['icon' => 'fa-globe',       'label' => 'Domains',              'desc' => 'Domain registry & renewals'],
             ],
         ],
     ];
@@ -1063,8 +1073,9 @@ function permsApp() {
                         'Tasks & Work' => ['icon' => 'fa-square-check', 'color' => '#6366F1', 'bg' => '#EEF2FF', 'perms' => ['view_tasks' => ['icon' => 'fa-list-check', 'desc' => 'View & manage own tasks'], 'submit_work' => ['icon' => 'fa-paper-plane', 'desc' => 'Submit deliverables for review'], 'manage_tasks' => ['icon' => 'fa-pen-to-square', 'desc' => 'Create, edit & assign tasks'], 'delete_tasks' => ['icon' => 'fa-trash', 'desc' => 'Move tasks to recycle bin'], 'view_trash' => ['icon' => 'fa-trash-can', 'desc' => 'Access & restore deleted tasks'], 'approve_tasks' => ['icon' => 'fa-clipboard-check', 'desc' => 'Approve or reject submissions'], 'view_activity_log' => ['icon' => 'fa-bolt', 'desc' => 'Task history & change log'], 'view_version_history' => ['icon' => 'fa-clock-rotate-left', 'desc' => 'Submitted version history'], 'view_comments' => ['icon' => 'fa-comments', 'desc' => 'Read & write task comments']]],
                         'Projects & Team' => ['icon' => 'fa-diagram-project', 'color' => '#10B981', 'bg' => '#ECFDF5', 'perms' => ['view_projects' => ['icon' => 'fa-folder-open', 'desc' => 'Browse own projects'], 'manage_projects' => ['icon' => 'fa-folder-plus', 'desc' => 'Create & manage projects'], 'delete_projects' => ['icon' => 'fa-trash', 'desc' => 'Permanently delete projects'], 'view_team_tasks' => ['icon' => 'fa-users-viewfinder', 'desc' => 'View tasks of teammates'], 'view_team' => ['icon' => 'fa-users', 'desc' => 'Team member directory']]],
                         'Communication' => ['icon' => 'fa-comment-dots', 'color' => '#3B82F6', 'bg' => '#EFF6FF', 'perms' => ['view_messages' => ['icon' => 'fa-envelope', 'desc' => 'Direct messaging'], 'view_calendar' => ['icon' => 'fa-calendar-days', 'desc' => 'Calendar & schedule']]],
-                        'Reports & Data' => ['icon' => 'fa-chart-bar', 'color' => '#F59E0B', 'bg' => '#FFFBEB', 'perms' => ['view_reports' => ['icon' => 'fa-chart-column', 'desc' => 'Reports & analytics page'], 'export_data' => ['icon' => 'fa-file-export', 'desc' => 'Export & download data'], 'view_audit_log' => ['icon' => 'fa-shield-halved', 'desc' => 'View audit log entries']]],
-                        'Administration' => ['icon' => 'fa-gear', 'color' => '#EF4444', 'bg' => '#FEF2F2', 'perms' => ['manage_users' => ['icon' => 'fa-user-shield', 'desc' => 'Create & manage users'], 'manage_roles' => ['icon' => 'fa-tag', 'desc' => 'Manage roles & permissions'], 'manage_settings' => ['icon' => 'fa-sliders', 'desc' => 'System settings & config'], 'view_approvals' => ['icon' => 'fa-stamp', 'desc' => 'Task approvals queue']]],
+                        'Reports & Data' => ['icon' => 'fa-chart-bar', 'color' => '#F59E0B', 'bg' => '#FFFBEB', 'perms' => ['view_reports' => ['icon' => 'fa-chart-column', 'desc' => 'Reports & analytics page'], 'view_social_budget' => ['icon' => 'fa-wallet', 'desc' => 'Social media spend tracking'], 'export_data' => ['icon' => 'fa-file-export', 'desc' => 'Export & download data'], 'view_audit_log' => ['icon' => 'fa-shield-halved', 'desc' => 'View audit log entries']]],
+                        'Clients & Media' => ['icon' => 'fa-building', 'color' => '#8B5CF6', 'bg' => '#F5F3FF', 'perms' => ['manage_customers' => ['icon' => 'fa-building', 'desc' => 'Client directory & management'], 'manage_social_accounts' => ['icon' => 'fa-share-nodes', 'desc' => 'Social media account registry']]],
+                        'Administration' => ['icon' => 'fa-gear', 'color' => '#EF4444', 'bg' => '#FEF2F2', 'perms' => ['manage_users' => ['icon' => 'fa-user-shield', 'desc' => 'Create & manage users'], 'manage_roles' => ['icon' => 'fa-tag', 'desc' => 'Manage roles & permissions'], 'manage_settings' => ['icon' => 'fa-sliders', 'desc' => 'System settings & config'], 'view_approvals' => ['icon' => 'fa-stamp', 'desc' => 'Task approvals queue'], 'manage_subscriptions' => ['icon' => 'fa-layer-group', 'desc' => 'Subscriptions & licenses'], 'manage_domains' => ['icon' => 'fa-globe', 'desc' => 'Domain registry & renewals']]],
                     ];
                 @endphp
 
