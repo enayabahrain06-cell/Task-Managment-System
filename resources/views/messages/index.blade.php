@@ -96,7 +96,7 @@
 </style>
 
 @php
-$teamMembersJson = $teamMembers->map(fn($m) => ['id'=>$m->id,'name'=>$m->name,'role'=>ucfirst($m->role)])->values()->toJson();
+$teamMembersJson = $teamMembers->map(fn($m) => ['id'=>$m->id,'name'=>$m->name,'role'=>ucfirst($m->role),'avatar'=>$m->avatarUrl()])->values()->toJson();
 $groupsJson      = $groups->toJson();
 $colors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
 $lastMsgsJson = json_encode($lastMsgs);
@@ -119,9 +119,14 @@ $onlineMapJson = json_encode($onlineMap);
             <div class="space-y-1 max-h-64 overflow-y-auto">
                 <template x-for="m in filtered" :key="m.id">
                     <button @click="startChat(m)" class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-50 text-left transition">
-                        <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" :style="'background:'+colorFor(m.id)">
-                            <span x-text="m.name.charAt(0).toUpperCase()"></span>
-                        </div>
+                        <template x-if="m.avatar">
+                            <img :src="m.avatar" :alt="m.name" class="w-9 h-9 rounded-full object-cover flex-shrink-0">
+                        </template>
+                        <template x-if="!m.avatar">
+                            <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" :style="'background:'+colorFor(m.id)">
+                                <span x-text="m.name.charAt(0).toUpperCase()"></span>
+                            </div>
+                        </template>
                         <div>
                             <p class="text-sm font-medium text-gray-900" x-text="m.name"></p>
                             <p class="text-xs text-gray-400" x-text="m.role"></p>
@@ -253,13 +258,21 @@ $onlineMapJson = json_encode($onlineMap);
                     $dotClass     = $memberOnline ? 'online' : 'offline';
                 @endphp
                 <button data-user-id="{{ $member->id }}"
-                        @click="selectUser({{ $member->id }},'{{ addslashes($member->name) }}','{{ $memberColor }}',{{ $memberOnline ? 'true' : 'false' }})"
+                        @click="selectUser({{ $member->id }},'{{ addslashes($member->name) }}','{{ $memberColor }}',{{ $memberOnline ? 'true' : 'false' }},'{{ $member->avatarUrl() }}')"
                         :class="activeUserId==={{ $member->id }} && !isGroup ? 'contact-active' : 'contact-item'"
                         class="w-full flex items-center gap-2.5 p-2 rounded-lg text-left transition"
                         x-show="search===''||'{{ strtolower($member->name) }}'.includes(search.toLowerCase())">
                     <div class="relative flex-shrink-0">
+                        @if($member->avatar)
+                        <img src="{{ $member->avatarUrl() }}" alt="{{ $member->name }}"
+                             class="w-9 h-9 rounded-full object-cover"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                        <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                             style="background:{{ $memberColor }};display:none;">{{ strtoupper(substr($member->name,0,1)) }}</div>
+                        @else
                         <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold"
                              style="background:{{ $memberColor }}">{{ strtoupper(substr($member->name,0,1)) }}</div>
+                        @endif
                         <span class="online-dot {{ $dotClass }}"></span>
                     </div>
                     <div class="flex-1 min-w-0">
@@ -367,7 +380,12 @@ $onlineMapJson = json_encode($onlineMap);
                 <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
                     <div class="flex items-center gap-3 min-w-0">
                         <div class="relative flex-shrink-0">
-                            <template x-if="!isGroup">
+                            <template x-if="!isGroup && activeUserAvatar">
+                                <img :src="activeUserAvatar" :alt="activeUserName"
+                                     class="w-9 h-9 rounded-full object-cover"
+                                     @error="activeUserAvatar=null">
+                            </template>
+                            <template x-if="!isGroup && !activeUserAvatar">
                                 <div class="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm" :style="'background:'+activeUserColor">
                                     <span x-text="activeUserName.charAt(0).toUpperCase()"></span>
                                 </div>
@@ -936,9 +954,16 @@ $onlineMapJson = json_encode($onlineMap);
         <template x-if="!isGroup && activeUserId!==null">
             <div>
                 <div class="text-center mb-5">
-                    <div class="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-3" :style="'background:'+activeUserColor">
-                        <span x-text="activeUserName.charAt(0).toUpperCase()"></span>
-                    </div>
+                    <template x-if="activeUserAvatar">
+                        <img :src="activeUserAvatar" :alt="activeUserName"
+                             class="w-16 h-16 rounded-full object-cover mx-auto mb-3"
+                             @error="activeUserAvatar=null">
+                    </template>
+                    <template x-if="!activeUserAvatar">
+                        <div class="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-3" :style="'background:'+activeUserColor">
+                            <span x-text="activeUserName.charAt(0).toUpperCase()"></span>
+                        </div>
+                    </template>
                     <h3 class="font-bold text-gray-900" x-text="activeUserName"></h3>
                     <p class="text-xs text-gray-400 mt-1" x-text="messages.length+' messages'"></p>
                 </div>
@@ -1062,12 +1087,12 @@ function createGroupModal() {
 function messageApp() {
     return {
         // Direct
-        activeUserId: null, activeUserName: '', activeUserColor: '#6366F1',
+        activeUserId: null, activeUserName: '', activeUserColor: '#6366F1', activeUserAvatar: null,
         // Group
         isGroup: false, activeGroupId: null, activeGroupName: '', groupMembers: [],
         showLeaveConfirm: false, canManageGroup: false,
         addMemberOpen: false, addMemberSearch: '', addMemberAdding: false, addMemberError: '',
-        allUsers: {!! json_encode($teamMembers->map(fn($u) => ['id'=>$u->id,'name'=>$u->name,'role'=>ucfirst($u->role)])) !!},
+        allUsers: {!! json_encode($teamMembers->map(fn($u) => ['id'=>$u->id,'name'=>$u->name,'role'=>ucfirst($u->role),'avatar'=>$u->avatarUrl()])) !!},
         // Shared
         messages: [], newMessage: '', loading: false, sending: false,
         search: '', unreadCounts: {}, pollTimer: null, replyingTo: null,
@@ -1192,9 +1217,10 @@ function messageApp() {
         },
 
         /* ── Direct conversation ── */
-        async selectUser(id, name, color, isOnline) {
+        async selectUser(id, name, color, isOnline, avatar) {
             this.isGroup = false; this.activeGroupId = null; this.showLeaveConfirm = false;
             this.activeUserId = id; this.activeUserName = name; this.activeUserColor = color;
+            this.activeUserAvatar = avatar || null;
             this.activeUserOnline = isOnline ?? (this.onlineMap[id] ?? false);
             const hadUnread = (this.unreadCounts?.direct?.[id] || 0) > 0;
             this.messages = []; this._lastMsgId = 0; this.replyingTo = null;
