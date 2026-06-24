@@ -70,6 +70,7 @@ class CustomerController extends Controller
 
         if ($request->hasFile('logo')) {
             $data['logo'] = $request->file('logo')->store('customer-logos', 'public');
+            $this->resizeLogo($data['logo']);
         }
 
         $customer = Customer::create($data);
@@ -547,6 +548,7 @@ class CustomerController extends Controller
                 Storage::disk('public')->delete($customer->logo);
             }
             $data['logo'] = $request->file('logo')->store('customer-logos', 'public');
+            $this->resizeLogo($data['logo']);
         } elseif ($request->boolean('remove_logo')) {
             if ($customer->logo) {
                 Storage::disk('public')->delete($customer->logo);
@@ -582,6 +584,57 @@ class CustomerController extends Controller
         $customer->delete();
 
         return redirect()->route('admin.customers.index')->with('success', "Customer \"{$name}\" deleted.");
+    }
+
+    // Resize a freshly uploaded logo to fit within 300×300px and re-save it in-place.
+    // Requires PHP GD (php8.2-gd). Silently skips non-image or unsupported formats.
+    private function resizeLogo(string $storagePath): void
+    {
+        $fullPath = Storage::disk('public')->path($storagePath);
+        if (!file_exists($fullPath)) return;
+
+        $info = @getimagesize($fullPath);
+        if (!$info) return;
+
+        [$srcW, $srcH, $type] = $info;
+        $maxDim = 300;
+
+        // Skip if already small enough
+        if ($srcW <= $maxDim && $srcH <= $maxDim) return;
+
+        $scale  = min($maxDim / $srcW, $maxDim / $srcH);
+        $dstW   = (int) round($srcW * $scale);
+        $dstH   = (int) round($srcH * $scale);
+
+        $src = match ($type) {
+            IMAGETYPE_JPEG => @imagecreatefromjpeg($fullPath),
+            IMAGETYPE_PNG  => @imagecreatefrompng($fullPath),
+            IMAGETYPE_WEBP => @imagecreatefromwebp($fullPath),
+            default        => null,
+        };
+        if (!$src) return;
+
+        $dst = imagecreatetruecolor($dstW, $dstH);
+
+        // Preserve PNG transparency
+        if ($type === IMAGETYPE_PNG) {
+            imagealphablending($dst, false);
+            imagesavealpha($dst, true);
+            $transparent = imagecolorallocatealpha($dst, 0, 0, 0, 127);
+            imagefilledrectangle($dst, 0, 0, $dstW, $dstH, $transparent);
+        }
+
+        imagecopyresampled($dst, $src, 0, 0, 0, 0, $dstW, $dstH, $srcW, $srcH);
+
+        match ($type) {
+            IMAGETYPE_JPEG => imagejpeg($dst, $fullPath, 85),
+            IMAGETYPE_PNG  => imagepng($dst, $fullPath, 7),
+            IMAGETYPE_WEBP => imagewebp($dst, $fullPath, 85),
+            default        => null,
+        };
+
+        imagedestroy($src);
+        imagedestroy($dst);
     }
 
     // Returns a raw SQL fragment (no bindings) counting all tasks for a customer,

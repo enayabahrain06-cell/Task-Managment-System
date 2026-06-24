@@ -185,7 +185,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
     @else
 
     {{-- ── TABLE VIEW ── --}}
-    <div x-show="view === 'table'">
+    <div x-show="view === 'table'" style="display:block;">
         <div class="cust-tbl-scroll" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
         <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
             <table style="width:100%;min-width:600px;border-collapse:collapse;">
@@ -203,19 +203,15 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
                     <tr class="cust-row" style="border-bottom:1px solid #F9FAFB;transition:background .1s;" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background=''">
                         <td style="padding:14px 20px;">
                             <div style="display:flex;align-items:center;gap:12px;">
-                                @if($customer->logo)
-                                <img src="{{ Storage::url($customer->logo) }}" alt="{{ $customer->name }}"
-                                     class="cust-logo"
-                                     style="width:38px;height:38px;border-radius:10px;object-fit:contain;background:#fff;border:1px solid #E5E7EB;flex-shrink:0;"
-                                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                                <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:none;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;">
+                                <div class="cust-logo" style="position:relative;width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;">
                                     {{ strtoupper(substr($customer->name, 0, 1)) }}
+                                    @if($customer->logo)
+                                    <img src="{{ Storage::url($customer->logo) }}" alt=""
+                                         decoding="async"
+                                         style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;"
+                                         onerror="this.remove()">
+                                    @endif
                                 </div>
-                                @else
-                                <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;">
-                                    {{ strtoupper(substr($customer->name, 0, 1)) }}
-                                </div>
-                                @endif
                                 <div>
                                     <a href="{{ route('admin.customers.show', $customer) }}"
                                        style="font-size:14px;font-weight:600;color:#111827;text-decoration:none;">{{ $customer->name }}</a>
@@ -288,7 +284,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
     </div>
 
     {{-- ── CARD VIEW ── --}}
-    <div x-show="view === 'cards'">
+    <div x-show="view === 'cards'" style="display:none;">
         <div class="cust-cards-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
             @foreach($customers as $customer)
             <div class="cust-card" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;display:flex;flex-direction:column;gap:14px;">
@@ -296,19 +292,15 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
                 {{-- Card top: avatar + name + actions --}}
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
                     <div style="display:flex;align-items:center;gap:12px;min-width:0;">
-                        @if($customer->logo)
-                        <img src="{{ Storage::url($customer->logo) }}" alt="{{ $customer->name }}"
-                             class="cust-logo"
-                             style="width:46px;height:46px;border-radius:12px;object-fit:contain;background:#fff;border:1.5px solid #E5E7EB;flex-shrink:0;"
-                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-                        <div style="width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:none;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;">
+                        <div class="cust-logo" style="position:relative;width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;">
                             {{ strtoupper(substr($customer->name, 0, 1)) }}
+                            @if($customer->logo)
+                            <img src="{{ Storage::url($customer->logo) }}" alt=""
+                                 decoding="async"
+                                 style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;"
+                                 onerror="this.remove()">
+                            @endif
                         </div>
-                        @else
-                        <div style="width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;">
-                            {{ strtoupper(substr($customer->name, 0, 1)) }}
-                        </div>
-                        @endif
                         <div style="min-width:0;">
                             <a href="{{ route('admin.customers.show', $customer) }}"
                                style="font-size:14px;font-weight:700;color:#111827;text-decoration:none;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $customer->name }}</a>
@@ -660,7 +652,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
                                 {{-- Avatar --}}
                                 <template x-if="sc.logo">
                                     <img :src="sc.logo" :alt="sc.name"
-                                         style="width:36px;height:36px;border-radius:9px;object-fit:cover;border:1px solid #E5E7EB;flex-shrink:0;">
+                                         style="width:36px;height:36px;border-radius:9px;object-fit:contain;background:#fff;border:1px solid #E5E7EB;flex-shrink:0;">
                                 </template>
                                 <template x-if="!sc.logo">
                                     <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;"

@@ -21,32 +21,34 @@ class AppServiceProvider extends ServiceProvider
         // Publish MQTT push when any DB notification is created
         DatabaseNotification::observe(DatabaseNotificationObserver::class);
 
-        // Apply saved timezone and date format globally
+        // Load all boot-time settings in a single query instead of 10 individual ones
         try {
-            $timezone   = Setting::get('timezone', config('app.timezone', 'UTC'));
-            $dateFormat = Setting::get('date_format', 'M d, Y');
+            $bootSettings = Setting::getMany([
+                'timezone', 'date_format',
+                'storage_omv_protocol', 'storage_omv_host', 'storage_omv_port',
+                'storage_omv_username', 'storage_omv_password', 'storage_omv_path',
+                'storage_omv_share', 'storage_nas_schema',
+            ]);
+
+            $timezone   = $bootSettings['timezone']    ?? config('app.timezone', 'UTC');
+            $dateFormat = $bootSettings['date_format'] ?? 'M d, Y';
             config(['app.timezone'    => $timezone]);
             config(['app.date_format' => $dateFormat]);
             date_default_timezone_set($timezone);
             \Carbon\Carbon::setLocale(config('app.locale', 'en'));
-        } catch (\Throwable) {
-            // settings table may not exist yet (migrations)
-        }
 
-        // Override NAS file-manager package config with DB settings
-        try {
             config(['nas-file-manager.connection' => [
-                'protocol'   => Setting::get('storage_omv_protocol', 'smb'),
-                'host'       => Setting::get('storage_omv_host', ''),
-                'port'       => (int) (Setting::get('storage_omv_port', '') ?: 445),
-                'username'   => Setting::get('storage_omv_username', ''),
-                'password'   => Setting::get('storage_omv_password', ''),
-                'path'       => Setting::get('storage_omv_path', '/'),
-                'smb_share'  => Setting::get('storage_omv_share', ''),
+                'protocol'   => $bootSettings['storage_omv_protocol'] ?? 'smb',
+                'host'       => $bootSettings['storage_omv_host']     ?? '',
+                'port'       => (int) (($bootSettings['storage_omv_port'] ?? '') ?: 445),
+                'username'   => $bootSettings['storage_omv_username'] ?? '',
+                'password'   => $bootSettings['storage_omv_password'] ?? '',
+                'path'       => $bootSettings['storage_omv_path']     ?? '/',
+                'smb_share'  => $bootSettings['storage_omv_share']    ?? '',
                 'smb_domain' => '',
             ]]);
-            // Load custom NAS schema from DB if admin has saved one
-            $savedSchema = Setting::get('storage_nas_schema', '');
+
+            $savedSchema = $bootSettings['storage_nas_schema'] ?? '';
             if ($savedSchema) {
                 $decoded = json_decode($savedSchema, true);
                 if (is_array($decoded)) {
@@ -54,7 +56,7 @@ class AppServiceProvider extends ServiceProvider
                 }
             }
         } catch (\Throwable) {
-            // settings table may not exist yet
+            // settings table may not exist yet (migrations)
         }
 
         // Share recent projects with the navigation sidebar
