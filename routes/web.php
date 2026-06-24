@@ -234,12 +234,14 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('settings/restore/projects',      [AdminSettingsController::class, 'restoreProjects'])->name('settings.restore.projects');
     Route::get('settings/backup/download',        [AdminSettingsController::class, 'downloadBackup'])->name('settings.backup.download');
     Route::get('settings/backup/download/sqlite', [AdminSettingsController::class, 'downloadBackupSqlite'])->name('settings.backup.download.sqlite');
-    Route::post('settings/backup/restore',        [AdminSettingsController::class, 'restoreBackup'])->name('settings.backup.restore');
+    Route::post('settings/backup/restore',             [AdminSettingsController::class, 'restoreBackup'])->name('settings.backup.restore');
+    Route::post('settings/backup/verify-password',     [AdminSettingsController::class, 'verifyRestorePassword'])->name('settings.backup.verify.password');
     Route::get('settings/backup/server-files',    [AdminSettingsController::class, 'listServerBackups'])->name('settings.backup.server.list');
     Route::post('settings/backup/restore-server', [AdminSettingsController::class, 'restoreFromServer'])->name('settings.backup.restore.server');
-    Route::post('settings/backup/save-to-nas',    [AdminSettingsController::class, 'saveBackupToNas'])->name('settings.backup.save.nas');
-    Route::get('settings/backup/nas-files',       [AdminSettingsController::class, 'listNasBackups'])->name('settings.backup.nas.list');
-    Route::post('settings/backup/restore-from-nas', [AdminSettingsController::class, 'restoreFromNas'])->name('settings.backup.restore.nas');
+    Route::post('settings/backup/save-to-nas',        [AdminSettingsController::class, 'saveBackupToNas'])->name('settings.backup.save.nas');
+    Route::post('settings/backup/save-to-nas/sqlite', [AdminSettingsController::class, 'saveBackupSqliteToNas'])->name('settings.backup.save.nas.sqlite');
+    Route::get('settings/backup/nas-files',           [AdminSettingsController::class, 'listNasBackups'])->name('settings.backup.nas.list');
+    Route::post('settings/backup/restore-from-nas',   [AdminSettingsController::class, 'restoreFromNas'])->name('settings.backup.restore.nas');
     Route::post('settings/clear',                 [AdminSettingsController::class, 'clearData'])->name('settings.clear');
     Route::post('settings/storage',                    [AdminSettingsController::class, 'updateStorage'])->name('settings.storage');
     Route::post('settings/storage/test/gdrive',        [AdminSettingsController::class, 'testStorageGdrive'])->name('settings.storage.test.gdrive');

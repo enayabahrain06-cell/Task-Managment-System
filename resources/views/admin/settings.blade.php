@@ -137,7 +137,33 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
          confirm: null, phrase: '',
          setTab(t) { this.tab = t; window.location.hash = t; },
          openClear(type){ this.confirm = type; this.phrase = ''; },
-         closeClear(){ this.confirm = null; }
+         closeClear(){ this.confirm = null; },
+
+         showFullReset: false,
+         frStep: 1,
+         frPassword: '', frPasswordError: '', frPasswordChecking: false,
+         frAgree: false, frSignature: '', frPhrase: '',
+         openFullReset() {
+             this.frStep=1; this.frPassword=''; this.frPasswordError='';
+             this.frPasswordChecking=false; this.frAgree=false;
+             this.frSignature=''; this.frPhrase='';
+             this.showFullReset=true;
+             this.$nextTick(()=>document.getElementById('fr-pwd-input')?.focus());
+         },
+         closeFullReset() { this.showFullReset=false; },
+         verifyFrPassword() {
+             this.frPasswordChecking=true; this.frPasswordError='';
+             fetch('{{ route('admin.settings.backup.verify.password') }}', {
+                 method:'POST',
+                 headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Content-Type':'application/json','Accept':'application/json'},
+                 body: JSON.stringify({password: this.frPassword})
+             }).then(r=>r.json()).then(d=>{
+                 this.frPasswordChecking=false;
+                 if (d.ok) { this.frStep=2; this.$nextTick(()=>document.getElementById('fr-sig-input')?.focus()); }
+                 else { this.frPasswordError='Incorrect password. Please try again.'; }
+             }).catch(()=>{ this.frPasswordChecking=false; this.frPasswordError='Request failed. Try again.'; });
+         },
+         get frCanSubmit() { return this.frAgree && this.frSignature.trim().length >= 2 && this.frPhrase === 'DELETE'; }
      }"
      x-init="window.addEventListener('hashchange', () => { tab = window.location.hash.slice(1) || 'general'; })">
 
@@ -1996,7 +2022,100 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
         {{-- ════ BACKUP & EXPORT ════ --}}
         <div x-show="tab === 'backup'" x-cloak>
 
-            <div class="scard" x-data="{ showRestore: false, showBackupPicker: false }" style="margin-bottom:16px;">
+            <div class="scard" x-data="{
+                showRestore: false, showBackupPicker: false,
+                showRestoreAuth: false, authPassword: '', authError: '', authChecking: false, restoreUnlocked: false,
+                pendingNasPath: '',
+                openRestore() {
+                    if (this.restoreUnlocked) { this.showRestore = !this.showRestore; return; }
+                    this.authPassword=''; this.authError=''; this.showRestoreAuth=true;
+                    this.$nextTick(()=>{ document.getElementById('restore-pwd-input')?.focus(); });
+                },
+                openNasRestore(path) {
+                    if (this.restoreUnlocked) { this._submitNasRestore(path); return; }
+                    this.pendingNasPath=path; this.authPassword=''; this.authError=''; this.showRestoreAuth=true;
+                    this.$nextTick(()=>{ document.getElementById('restore-pwd-input')?.focus(); });
+                },
+                verifyPassword() {
+                    this.authChecking=true; this.authError='';
+                    fetch('{{ route('admin.settings.backup.verify.password') }}', {
+                        method:'POST',
+                        headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Content-Type':'application/json','Accept':'application/json'},
+                        body: JSON.stringify({password: this.authPassword})
+                    }).then(r=>r.json()).then(d=>{
+                        this.authChecking=false;
+                        if (d.ok) {
+                            this.restoreUnlocked=true; this.showRestoreAuth=false;
+                            if (this.pendingNasPath) { this._submitNasRestore(this.pendingNasPath); this.pendingNasPath=''; }
+                            else { this.showRestore=true; }
+                        } else {
+                            this.authError='Incorrect password. Please try again.';
+                        }
+                    }).catch(()=>{ this.authChecking=false; this.authError='Request failed. Try again.'; });
+                },
+                _submitNasRestore(path) {
+                    if (!window.confirm('Restore from NAS file: ' + path.split('/').pop() + '?\n\nThis replaces ALL current data and cannot be undone.')) return;
+                    const f = document.getElementById('nas-restore-form');
+                    f.querySelector('[name=nas_path]').value = path;
+                    f.submit();
+                }
+            }" style="margin-bottom:16px;">
+
+                {{-- Hidden NAS restore form (shared by all NAS restore buttons) --}}
+                <form id="nas-restore-form" method="POST" action="{{ route('admin.settings.backup.restore.nas') }}" style="display:none;">
+                    @csrf
+                    <input type="hidden" name="nas_path" value="">
+                </form>
+
+                {{-- Restore password auth modal --}}
+                <div x-show="showRestoreAuth" x-cloak
+                     style="position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.5);"
+                     @click.self="showRestoreAuth=false">
+                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;padding:28px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+                        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                            <div style="width:40px;height:40px;border-radius:10px;background:#FEF2F2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-lock" style="color:#DC2626;font-size:16px;"></i>
+                            </div>
+                            <div>
+                                <p style="font-size:15px;font-weight:700;color:#111827;margin:0;">Confirm Identity</p>
+                                <p style="font-size:12px;color:#6B7280;margin:2px 0 0;">Enter your password to unlock system restore</p>
+                            </div>
+                        </div>
+
+                        <p style="font-size:11px;color:#7F1D1D;background:#FEF2F2;border:1px solid #FECACA;border-radius:7px;padding:8px 12px;margin:0 0 16px;line-height:1.5;">
+                            <i class="fas fa-triangle-exclamation" style="margin-right:5px;"></i>
+                            <strong>Warning:</strong> Restoring replaces ALL current data and cannot be undone.
+                        </p>
+
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Your Password</label>
+                        <div style="position:relative;margin-bottom:12px;">
+                            <input id="restore-pwd-input" type="password" x-model="authPassword"
+                                   @keyup.enter="verifyPassword()"
+                                   style="width:100%;padding:9px 40px 9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;"
+                                   :style="authError ? 'border-color:#DC2626;' : ''"
+                                   placeholder="Enter your account password"
+                                   autocomplete="current-password">
+                            <i class="fas fa-key" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:13px;pointer-events:none;"></i>
+                        </div>
+
+                        <p x-show="authError !== ''" x-text="authError" x-cloak
+                           style="font-size:11px;color:#DC2626;margin:0 0 12px;display:flex;align-items:center;gap:5px;">
+                        </p>
+
+                        <div style="display:flex;gap:8px;">
+                            <button type="button" @click="showRestoreAuth=false; pendingNasPath='';"
+                                    style="flex:1;padding:9px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
+                                Cancel
+                            </button>
+                            <button type="button" @click="verifyPassword()" :disabled="authChecking || authPassword.length === 0"
+                                    style="flex:2;padding:9px;background:#DC2626;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"
+                                    onmouseover="if(!this.disabled)this.style.background='#B91C1C'" onmouseout="if(!this.disabled)this.style.background='#DC2626'">
+                                <i class="fas" :class="authChecking ? 'fa-circle-notch fa-spin' : 'fa-unlock'" style="font-size:11px;"></i>
+                                <span x-text="authChecking ? 'Verifying…' : 'Unlock Restore'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
                 {{-- Backup format picker modal --}}
                 <div x-show="showBackupPicker" x-cloak
@@ -2073,11 +2192,14 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                 @php $nasEnabled = app(\App\Services\NasService::class)->isEnabled(); @endphp
                 @if($nasEnabled)
                 <div style="border-top:1px solid #F3F4F6;padding:14px 20px 16px;"
-                     x-data="{ saving: false, ok: null, msg: '', showFiles: false, loadingFiles: false, files: [], filesLoaded: false,
-                        save() {
-                            if (!window.confirm('Save a full backup ZIP to NAS now?')) return;
+                     x-data="{
+                        saving: false, ok: null, msg: '', showFiles: false, loadingFiles: false, files: [], filesLoaded: false,
+                        showNasPicker: false,
+                        save(url, label) {
+                            this.showNasPicker = false;
+                            if (!window.confirm('Save ' + label + ' to NAS now?')) return;
                             this.saving=true; this.ok=null; this.msg='';
-                            fetch('{{ route('admin.settings.backup.save.nas') }}', {method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}})
+                            fetch(url, {method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}})
                                 .then(r=>r.json()).then(d=>{ this.ok=d.ok; this.msg=d.msg; this.saving=false; })
                                 .catch(()=>{ this.ok=false; this.msg='Request failed.'; this.saving=false; });
                         },
@@ -2088,6 +2210,50 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         },
                         toggle() { this.showFiles=!this.showFiles; if(this.showFiles && !this.filesLoaded) this.loadFiles(); }
                      }">
+
+                    {{-- NAS backup format picker modal --}}
+                    <div x-show="showNasPicker" x-cloak
+                         style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);"
+                         @click.self="showNasPicker=false">
+                        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;padding:28px 28px 24px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+                            <p style="font-size:15px;font-weight:700;color:#111827;margin:0 0 4px;">Save Backup to NAS</p>
+                            <p style="font-size:12px;color:#6B7280;margin:0 0 20px;line-height:1.5;">Select what to save to <code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">Backups/YYYY/YYYY-MM/</code> on your NAS share.</p>
+
+                            <button type="button"
+                                    @click="save('{{ route('admin.settings.backup.save.nas') }}', 'a full backup ZIP')"
+                                    :disabled="saving"
+                                    style="display:flex;align-items:flex-start;gap:12px;padding:14px;border:2px solid #E0E7FF;border-radius:10px;margin-bottom:10px;width:100%;text-align:left;background:#fff;cursor:pointer;transition:border-color .15s;"
+                                    onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E0E7FF'">
+                                <div style="width:34px;height:34px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-file-zipper" style="color:#6366F1;font-size:14px;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:13px;font-weight:700;color:#111827;margin:0 0 2px;">Full Backup <span style="font-size:10px;font-weight:600;padding:1px 6px;background:#EEF2FF;color:#6366F1;border-radius:5px;margin-left:4px;">ZIP</span></p>
+                                    <p style="font-size:11px;color:#6B7280;margin:0;line-height:1.4;">Database + all uploaded files. Larger file, complete restore.</p>
+                                </div>
+                            </button>
+
+                            <button type="button"
+                                    @click="save('{{ route('admin.settings.backup.save.nas.sqlite') }}', 'the database only')"
+                                    :disabled="saving"
+                                    style="display:flex;align-items:flex-start;gap:12px;padding:14px;border:2px solid #F3F4F6;border-radius:10px;margin-bottom:0;width:100%;text-align:left;background:#fff;cursor:pointer;transition:border-color .15s;"
+                                    onmouseover="this.style.borderColor='#9CA3AF'" onmouseout="this.style.borderColor='#F3F4F6'">
+                                <div style="width:34px;height:34px;border-radius:8px;background:#F9FAFB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-database" style="color:#6B7280;font-size:14px;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:13px;font-weight:700;color:#111827;margin:0 0 2px;">Database Only <span style="font-size:10px;font-weight:600;padding:1px 6px;background:#F3F4F6;color:#6B7280;border-radius:5px;margin-left:4px;">SQLite</span></p>
+                                    <p style="font-size:11px;color:#6B7280;margin:0;line-height:1.4;">Settings, users, tasks & projects only. Small file, fast upload. Uploaded files not included.</p>
+                                </div>
+                            </button>
+
+                            <button type="button" @click="showNasPicker=false"
+                                    style="width:100%;margin-top:16px;padding:8px;border:none;background:#F3F4F6;color:#6B7280;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                         <div style="display:flex;align-items:center;gap:10px;">
                             <div style="width:32px;height:32px;border-radius:8px;background:#ECFDF5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -2104,7 +2270,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 <i class="fas fa-folder-open" style="font-size:10px;"></i>
                                 <span x-text="showFiles ? 'Hide Files' : 'View NAS Backups'"></span>
                             </button>
-                            <button type="button" @click="save()" :disabled="saving"
+                            <button type="button" @click="showNasPicker=true" :disabled="saving"
                                     style="display:flex;align-items:center;gap:6px;padding:7px 14px;background:#059669;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;"
                                     onmouseover="this.style.background='#047857'" onmouseout="this.style.background='#059669'">
                                 <i class="fas" :class="saving ? 'fa-circle-notch fa-spin' : 'fa-cloud-arrow-up'" style="font-size:10px;"></i>
@@ -2137,16 +2303,11 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                             <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="f.name"></p>
                                             <p style="font-size:11px;color:#9CA3AF;margin:0;" x-text="f.size + ' MB · ' + f.month"></p>
                                         </div>
-                                        <form method="POST" action="{{ route('admin.settings.backup.restore.nas') }}"
-                                              @submit.prevent="if(window.confirm('Restore from NAS file: ' + f.name + '?\n\nThis replaces ALL current data and cannot be undone.')) $el.submit()">
-                                            @csrf
-                                            <input type="hidden" name="nas_path" :value="f.path">
-                                            <button type="submit"
-                                                    style="display:flex;align-items:center;gap:5px;padding:5px 10px;background:#DC2626;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap;"
-                                                    onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
-                                                <i class="fas fa-rotate-left" style="font-size:9px;"></i> Restore
-                                            </button>
-                                        </form>
+                                                        <button type="button" @click="openNasRestore(f.path)"
+                                                style="display:flex;align-items:center;gap:5px;padding:5px 10px;background:#DC2626;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap;"
+                                                onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
+                                            <i class="fas fa-rotate-left" style="font-size:9px;"></i> Restore
+                                        </button>
                                     </div>
                                 </template>
                             </div>
@@ -2163,14 +2324,20 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 <i class="fas fa-rotate-left" style="color:#DC2626;font-size:13px;"></i>
                             </div>
                             <div>
-                                <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">Full System Restore</p>
+                                <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">
+                                    Full System Restore
+                                    <span x-show="restoreUnlocked" x-cloak
+                                          style="font-size:10px;font-weight:600;padding:2px 7px;background:#D1FAE5;color:#065F46;border-radius:20px;margin-left:6px;vertical-align:middle;">
+                                        <i class="fas fa-unlock" style="font-size:9px;margin-right:3px;"></i>Unlocked
+                                    </span>
+                                </p>
                                 <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Upload a <code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">.zip</code> backup (DB + files) or a legacy <code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">.sqlite</code> file</p>
                             </div>
                         </div>
-                        <button type="button" @click="showRestore = !showRestore"
+                        <button type="button" @click="openRestore()"
                                 style="display:flex;align-items:center;gap:6px;padding:7px 14px;background:#DC2626;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;"
                                 onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
-                            <i class="fas fa-upload" style="font-size:10px;"></i>
+                            <i class="fas" :class="restoreUnlocked && showRestore ? 'fa-xmark' : (restoreUnlocked ? 'fa-upload' : 'fa-lock')" style="font-size:10px;"></i>
                             <span x-text="showRestore ? 'Cancel' : 'Restore'"></span>
                         </button>
                     </div>
@@ -3094,7 +3261,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </div>
                         </div>
                         <button type="button"
-                                @click="openClear('full_reset')"
+                                @click="openFullReset()"
                                 style="padding:7px 16px;font-size:12px;font-weight:700;background:#DC2626;color:#fff;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;flex-shrink:0;"
                                 onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
                             <i class="fas fa-bomb" style="font-size:10px;margin-right:5px;"></i>Full Reset
@@ -3154,6 +3321,155 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     :disabled="phrase !== 'DELETE'">
                                 <i class="fas fa-trash" style="font-size:11px;margin-right:6px;"></i>Yes, Delete
                             </button>
+                        </form>
+                    </div>
+
+                </div>
+                </div>
+            </div>
+        </template>
+
+        {{-- Full Data Reset — password + agreement modal --}}
+        <template x-teleport="body">
+            <div x-show="showFullReset"
+                 x-cloak
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 @keydown.escape.window="closeFullReset()"
+                 style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;">
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;">
+                <div style="background:#fff;border-radius:16px;width:100%;max-width:460px;box-shadow:0 25px 60px rgba(0,0,0,0.3);overflow:hidden;" @click.stop>
+
+                    {{-- Step indicator --}}
+                    <div style="background:#FEF2F2;border-bottom:1px solid #FECACA;padding:14px 24px;display:flex;align-items:center;gap:10px;">
+                        <div style="width:44px;height:44px;background:#DC2626;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas fa-bomb" style="color:#fff;font-size:18px;"></i>
+                        </div>
+                        <div style="flex:1;">
+                            <p style="font-size:14px;font-weight:700;color:#7F1D1D;margin:0;">Full Data Reset</p>
+                            <div style="display:flex;gap:6px;margin-top:5px;align-items:center;">
+                                <div :style="frStep >= 1 ? 'background:#DC2626;' : 'background:#FECACA;'"
+                                     style="height:4px;border-radius:2px;flex:1;transition:background .3s;"></div>
+                                <div :style="frStep >= 2 ? 'background:#DC2626;' : 'background:#FECACA;'"
+                                     style="height:4px;border-radius:2px;flex:1;transition:background .3s;"></div>
+                            </div>
+                            <p style="font-size:10px;color:#B91C1C;margin:3px 0 0;" x-text="frStep === 1 ? 'Step 1 of 2 — Verify identity' : 'Step 2 of 2 — Sign responsibility agreement'"></p>
+                        </div>
+                        <button type="button" @click="closeFullReset()"
+                                style="width:28px;height:28px;background:#FECACA;border:none;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#B91C1C;">
+                            <i class="fas fa-xmark" style="font-size:12px;"></i>
+                        </button>
+                    </div>
+
+                    {{-- Step 1: Password --}}
+                    <div x-show="frStep === 1" style="padding:24px;">
+                        <p style="font-size:13px;font-weight:600;color:#111827;margin:0 0 6px;">Enter your account password</p>
+                        <p style="font-size:12px;color:#6B7280;margin:0 0 16px;line-height:1.5;">
+                            This destructive action requires identity confirmation before proceeding.
+                        </p>
+
+                        <div style="position:relative;margin-bottom:10px;">
+                            <input id="fr-pwd-input" type="password" x-model="frPassword"
+                                   @keyup.enter="if(frPassword.length) verifyFrPassword()"
+                                   style="width:100%;padding:10px 40px 10px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
+                                   :style="frPasswordError ? 'border-color:#DC2626;background:#FEF2F2;' : ''"
+                                   placeholder="Your account password"
+                                   autocomplete="current-password">
+                            <i class="fas fa-lock" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:13px;pointer-events:none;"></i>
+                        </div>
+                        <p x-show="frPasswordError !== ''" x-text="frPasswordError" x-cloak
+                           style="font-size:11px;color:#DC2626;margin:0 0 12px;"></p>
+
+                        <div style="display:flex;gap:8px;margin-top:16px;">
+                            <button type="button" @click="closeFullReset()"
+                                    style="flex:1;padding:10px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;">
+                                Cancel
+                            </button>
+                            <button type="button" @click="verifyFrPassword()"
+                                    :disabled="frPasswordChecking || frPassword.length === 0"
+                                    style="flex:2;padding:10px;background:#DC2626;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"
+                                    onmouseover="if(!this.disabled)this.style.background='#B91C1C'" onmouseout="if(!this.disabled)this.style.background='#DC2626'">
+                                <i class="fas" :class="frPasswordChecking ? 'fa-circle-notch fa-spin' : 'fa-arrow-right'" style="font-size:11px;"></i>
+                                <span x-text="frPasswordChecking ? 'Verifying…' : 'Continue'"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- Step 2: Agreement + Signature --}}
+                    <div x-show="frStep === 2" style="padding:24px;">
+                        {{-- Warning block --}}
+                        <div style="background:#FEF2F2;border:1.5px solid #FECACA;border-radius:10px;padding:14px;margin-bottom:18px;">
+                            <p style="font-size:12px;font-weight:700;color:#7F1D1D;margin:0 0 6px;">
+                                <i class="fas fa-triangle-exclamation" style="margin-right:5px;"></i>
+                                You are about to permanently destroy all system data
+                            </p>
+                            <ul style="font-size:11px;color:#B91C1C;margin:0;padding-left:18px;line-height:1.8;">
+                                <li>All tasks, projects and project files</li>
+                                <li>All messages and notifications</li>
+                                <li>All task activity, comments and submissions</li>
+                                <li>All audit logs and calendar events</li>
+                            </ul>
+                            <p style="font-size:11px;color:#7F1D1D;margin:8px 0 0;font-weight:600;">
+                                Users and system settings are kept. This action <u>cannot be undone</u>.
+                            </p>
+                        </div>
+
+                        {{-- Responsibility agreement checkbox --}}
+                        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-bottom:16px;">
+                            <input type="checkbox" x-model="frAgree"
+                                   style="width:16px;height:16px;margin-top:2px;accent-color:#DC2626;flex-shrink:0;cursor:pointer;">
+                            <span style="font-size:12px;color:#374151;line-height:1.6;">
+                                I understand that this action is <strong>irreversible</strong>. I accept full responsibility for this data reset and confirm I am authorised to perform it.
+                            </span>
+                        </label>
+
+                        {{-- Name signature --}}
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">
+                            Sign with your full name
+                        </label>
+                        <div style="position:relative;margin-bottom:14px;">
+                            <input id="fr-sig-input" type="text" x-model="frSignature"
+                                   style="width:100%;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;font-style:italic;outline:none;box-sizing:border-box;font-family:Georgia,serif;"
+                                   :style="frSignature.trim().length >= 2 ? 'border-color:#16A34A;background:#F0FDF4;' : ''"
+                                   placeholder="Your full name"
+                                   autocomplete="name">
+                        </div>
+
+                        {{-- DELETE phrase --}}
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">
+                            Type <span style="color:#DC2626;letter-spacing:.06em;font-family:monospace;">DELETE</span> to confirm
+                        </label>
+                        <input type="text" x-model="frPhrase"
+                               style="width:100%;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:18px;"
+                               :style="frPhrase === 'DELETE' ? 'border-color:#16A34A;background:#F0FDF4;' : ''"
+                               placeholder="DELETE"
+                               autocomplete="off"
+                               @keydown.enter="if(frCanSubmit) $refs.frSubmitBtn.click()">
+
+                        {{-- Submit form --}}
+                        <form method="POST" action="{{ route('admin.settings.clear') }}" id="fr-submit-form" style="margin:0;">
+                            @csrf
+                            <input type="hidden" name="type" value="full_reset">
+                            <input type="hidden" name="password" :value="frPassword">
+                            <input type="hidden" name="signatory_name" :value="frSignature">
+                            <input type="hidden" name="agreed" value="1">
+
+                            <div style="display:flex;gap:8px;">
+                                <button type="button" @click="frStep=1"
+                                        style="flex:1;padding:10px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;">
+                                    <i class="fas fa-arrow-left" style="font-size:11px;margin-right:4px;"></i>Back
+                                </button>
+                                <button type="submit" x-ref="frSubmitBtn"
+                                        :disabled="!frCanSubmit"
+                                        style="flex:2;padding:10px;background:#DC2626;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"
+                                        :style="!frCanSubmit ? 'opacity:.45;cursor:not-allowed;' : ''"
+                                        onmouseover="if(!this.disabled)this.style.background='#B91C1C'" onmouseout="if(!this.disabled)this.style.background='#DC2626'"
+                                        onclick="return window.confirm('FINAL CONFIRMATION: This will permanently delete all data. There is no undo. Proceed?')">
+                                    <i class="fas fa-bomb" style="font-size:11px;"></i>
+                                    Execute Full Reset
+                                </button>
+                            </div>
                         </form>
                     </div>
 
