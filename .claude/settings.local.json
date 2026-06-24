@@ -85,7 +85,15 @@
       "Bash(cp /var/www/Task-Managment-System/resources/views/auth/mfa-challenge.blade.php /var/www/Task-Managment-System/resources/views/auth/mfa-challenge.blade.php.bak)",
       "Bash(cp /var/www/Task-Managment-System/resources/views/auth/mfa-setup.blade.php /var/www/Task-Managment-System/resources/views/auth/mfa-setup.blade.php.bak)",
       "Bash(git -C /var/www/Task-Managment-System diff --stat HEAD)",
-      "Bash(git -C /var/www/Task-Managment-System diff --cached --stat)"
+      "Bash(git -C /var/www/Task-Managment-System diff --cached --stat)",
+      "Bash(php -l /var/www/Task-Managment-System/app/Http/Controllers/MfaController.php)",
+      "Bash(php -l /var/www/Task-Managment-System/app/Http/Controllers/Admin/UserController.php)",
+      "Bash(cp /var/www/Task-Managment-System/resources/views/team/index.blade.php /var/www/Task-Managment-System/resources/views/team/index.blade.php.bak3)",
+      "Bash(git -C /var/www/Task-Managment-System add app/Http/Controllers/Admin/UserController.php app/Http/Controllers/MfaController.php app/Http/Middleware/MfaMiddleware.php app/Models/User.php resources/views/admin/users/edit.blade.php resources/views/admin/users/index.blade.php resources/views/auth/mfa-challenge.blade.php resources/views/auth/mfa-setup.blade.php resources/views/auth/mfa-email-recovery.blade.php resources/views/team/index.blade.php routes/auth.php routes/web.php database/migrations/2026_06_24_200000_add_mfa_required_to_users_table.php)",
+      "Bash(git -C /var/www/Task-Managment-System remote -v)",
+      "Bash(git -C /var/www/Task-Managment-System config --list)",
+      "Read(//root/**)",
+      "Read(//root/.ssh/**)"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory",
@@ -95,7 +103,8 @@
       "/etc/apache2/sites-available",
       "/etc/apache2/sites-enabled",
       "/var/www/Task-Managment-System/resources/views/admin/subscriptions",
-      "/var/www/Task-Managment-System/resources/views/messages"
+      "/var/www/Task-Managment-System/resources/views/messages",
+      "/var/www/Task-Managment-System/resources/views/team"
     ]
   }
 }

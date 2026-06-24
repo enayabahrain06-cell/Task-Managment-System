@@ -279,17 +279,6 @@
                     <i class="fa fa-lock text-xs"></i> Held
                 </span>
                 @endif
-                @if($member->mfa_enabled)
-                <span title="Two-factor authentication enabled"
-                      style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#4F46E5);box-shadow:0 2px 6px rgba(99,102,241,0.45);flex-shrink:0;">
-                    <i class="fas fa-shield-halved" style="color:#fff;font-size:9px;"></i>
-                </span>
-                @elseif($member->mfa_required)
-                <span title="MFA setup required on next login"
-                      style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#F97316,#FB923C);box-shadow:0 2px 6px rgba(249,115,22,0.4);flex-shrink:0;">
-                    <i class="fas fa-shield-halved" style="color:#fff;font-size:9px;"></i>
-                </span>
-                @endif
             </div>
         </div>
 
@@ -337,7 +326,7 @@
                         class="act-drop-trigger w-full text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 py-1.5 rounded-lg transition font-medium flex items-center justify-center gap-1">
                     Actions <i class="fa fa-chevron-down text-xs"></i>
                 </button>
-                <div id="act-card-{{ $member->id }}" class="act-drop" style="display:none;position:fixed;min-width:190px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.18);border:1px solid #F3F4F6;z-index:9999;overflow:hidden;">
+                <div id="act-card-{{ $member->id }}" class="act-drop" style="display:none;position:fixed;min-width:180px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.18);border:1px solid #F3F4F6;z-index:9999;overflow:hidden;">
                     <form method="POST" action="{{ route('admin.users.hold', $member) }}">
                         @csrf
                         <button type="submit"
@@ -357,40 +346,6 @@
                             class="w-full text-left px-4 py-2.5 text-xs font-medium text-violet-600 hover:bg-violet-50 flex items-center gap-2.5 transition">
                         <i class="fa fa-clone text-xs w-3"></i> Clone User
                     </button>
-                    {{-- MFA Section --}}
-                    <div style="height:1px;background:#F3F4F6;margin:2px 0;"></div>
-                    <div style="padding:4px 16px 3px;font-size:9px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px;text-transform:uppercase;">MFA</div>
-                    @if($member->mfa_enabled)
-                        <form method="POST" action="{{ route('admin.users.reset-mfa', $member) }}" onsubmit="return confirm('Reset MFA for {{ addslashes($member->name) }}? They must re-enroll on next login.')">
-                            @csrf
-                            <button type="submit" class="w-full text-left px-4 py-2.5 text-xs font-medium text-orange-600 hover:bg-orange-50 flex items-center gap-2.5 transition">
-                                <i class="fas fa-rotate-right text-xs w-3"></i> Reset MFA
-                            </button>
-                        </form>
-                        <form method="POST" action="{{ route('admin.users.disable-mfa', $member) }}" onsubmit="return confirm('Disable MFA for {{ addslashes($member->name) }}? They can log in with password only.')">
-                            @csrf
-                            <button type="submit" class="w-full text-left px-4 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition">
-                                <i class="fas fa-shield-halved text-xs w-3"></i> Disable MFA
-                            </button>
-                        </form>
-                    @elseif($member->mfa_required)
-                        <span class="w-full text-left px-4 py-2.5 text-xs font-medium text-orange-500 flex items-center gap-2.5">
-                            <i class="fas fa-clock text-xs w-3"></i> Setup pending…
-                        </span>
-                        <form method="POST" action="{{ route('admin.users.cancel-mfa-requirement', $member) }}">
-                            @csrf
-                            <button type="submit" class="w-full text-left px-4 py-2.5 text-xs font-medium text-gray-500 hover:bg-gray-50 flex items-center gap-2.5 transition">
-                                <i class="fas fa-xmark text-xs w-3"></i> Cancel Requirement
-                            </button>
-                        </form>
-                    @else
-                        <form method="POST" action="{{ route('admin.users.require-mfa', $member) }}">
-                            @csrf
-                            <button type="submit" class="w-full text-left px-4 py-2.5 text-xs font-medium text-violet-600 hover:bg-violet-50 flex items-center gap-2.5 transition">
-                                <i class="fas fa-shield-halved text-xs w-3"></i> Require MFA Setup
-                            </button>
-                        </form>
-                    @endif
                     <div style="height:1px;background:#F3F4F6;margin:2px 0;"></div>
                     <button type="button"
                             onclick="openDeleteConfirm('{{ route('admin.users.destroy', $member) }}','{{ addslashes($member->name) }}'); closeActDrop();"
@@ -512,7 +467,7 @@
                                     class="act-drop-trigger text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-2.5 py-1.5 rounded-lg transition font-medium flex items-center gap-1">
                                 Actions <i class="fa fa-chevron-down text-xs"></i>
                             </button>
-                            <div id="act-tbl-{{ $member->id }}" class="act-drop" style="display:none;position:fixed;min-width:190px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.18);border:1px solid #F3F4F6;z-index:9999;overflow:hidden;">
+                            <div id="act-tbl-{{ $member->id }}" class="act-drop" style="display:none;position:fixed;min-width:180px;background:#fff;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.18);border:1px solid #F3F4F6;z-index:9999;overflow:hidden;">
                                 <form method="POST" action="{{ route('admin.users.hold', $member) }}">
                                     @csrf
                                     <button type="submit"
@@ -532,40 +487,6 @@
                                         class="w-full text-left px-4 py-2.5 text-xs font-medium text-violet-600 hover:bg-violet-50 flex items-center gap-2.5 transition">
                                     <i class="fa fa-clone text-xs w-3"></i> Clone User
                                 </button>
-                                {{-- MFA Section --}}
-                                <div style="height:1px;background:#F3F4F6;margin:2px 0;"></div>
-                                <div style="padding:4px 16px 3px;font-size:9px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px;text-transform:uppercase;">MFA</div>
-                                @if($member->mfa_enabled)
-                                    <form method="POST" action="{{ route('admin.users.reset-mfa', $member) }}" onsubmit="return confirm('Reset MFA for {{ addslashes($member->name) }}? They must re-enroll on next login.')">
-                                        @csrf
-                                        <button type="submit" class="w-full text-left px-4 py-2.5 text-xs font-medium text-orange-600 hover:bg-orange-50 flex items-center gap-2.5 transition">
-                                            <i class="fas fa-rotate-right text-xs w-3"></i> Reset MFA
-                                        </button>
-                                    </form>
-                                    <form method="POST" action="{{ route('admin.users.disable-mfa', $member) }}" onsubmit="return confirm('Disable MFA for {{ addslashes($member->name) }}? They can log in with password only.')">
-                                        @csrf
-                                        <button type="submit" class="w-full text-left px-4 py-2.5 text-xs font-medium text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition">
-                                            <i class="fas fa-shield-halved text-xs w-3"></i> Disable MFA
-                                        </button>
-                                    </form>
-                                @elseif($member->mfa_required)
-                                    <span class="w-full text-left px-4 py-2.5 text-xs font-medium text-orange-500 flex items-center gap-2.5">
-                                        <i class="fas fa-clock text-xs w-3"></i> Setup pending…
-                                    </span>
-                                    <form method="POST" action="{{ route('admin.users.cancel-mfa-requirement', $member) }}">
-                                        @csrf
-                                        <button type="submit" class="w-full text-left px-4 py-2.5 text-xs font-medium text-gray-500 hover:bg-gray-50 flex items-center gap-2.5 transition">
-                                            <i class="fas fa-xmark text-xs w-3"></i> Cancel Requirement
-                                        </button>
-                                    </form>
-                                @else
-                                    <form method="POST" action="{{ route('admin.users.require-mfa', $member) }}">
-                                        @csrf
-                                        <button type="submit" class="w-full text-left px-4 py-2.5 text-xs font-medium text-violet-600 hover:bg-violet-50 flex items-center gap-2.5 transition">
-                                            <i class="fas fa-shield-halved text-xs w-3"></i> Require MFA Setup
-                                        </button>
-                                    </form>
-                                @endif
                                 <div style="height:1px;background:#F3F4F6;margin:2px 0;"></div>
                                 <button type="button"
                                         onclick="openDeleteConfirm('{{ route('admin.users.destroy', $member) }}','{{ addslashes($member->name) }}'); closeActDrop();"
@@ -2330,32 +2251,6 @@ function editUserModal() {
                             <button type="button" x-on:click="s2=!s2" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9CA3AF;">
                                 <i :class="s2?'fa fa-eye-slash':'fa fa-eye'" style="font-size:13px;"></i>
                             </button>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- MFA Security --}}
-                <div style="border:1.5px solid #F3F4F6;border-radius:12px;overflow:hidden;margin-bottom:16px;" x-data="{mfaReq:false}">
-                    <div style="padding:10px 14px;background:#F9FAFB;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;gap:7px;">
-                        <i class="fas fa-shield-halved" style="font-size:11px;color:#9CA3AF;"></i>
-                        <span style="font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Security</span>
-                    </div>
-                    <div style="padding:14px 16px;">
-                        <label style="display:flex;align-items:center;justify-content:space-between;gap:16px;cursor:pointer;" @click="mfaReq=!mfaReq">
-                            <div>
-                                <p style="font-size:13px;font-weight:600;color:#374151;margin:0;">Require MFA Setup</p>
-                                <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">User must set up two-factor authentication on first login</p>
-                            </div>
-                            <div :style="mfaReq ? 'background:#6366F1;border-color:#6366F1;' : ''"
-                                 style="position:relative;width:44px;height:24px;border-radius:12px;border:2px solid #D1D5DB;background:#fff;transition:background .2s,border-color .2s;flex-shrink:0;">
-                                <div :style="mfaReq ? 'transform:translateX(20px);' : ''"
-                                     style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s;"></div>
-                            </div>
-                        </label>
-                        <input type="hidden" name="mfa_required" :value="mfaReq ? '1' : '0'">
-                        <div x-show="mfaReq" x-transition style="margin-top:10px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:8px;padding:9px 12px;display:flex;align-items:center;gap:7px;">
-                            <i class="fas fa-circle-info" style="color:#6366F1;font-size:11px;flex-shrink:0;"></i>
-                            <p style="font-size:11px;color:#4338CA;margin:0;">The user will be redirected to MFA setup on their first login and cannot access the app until they complete it.</p>
                         </div>
                     </div>
                 </div>

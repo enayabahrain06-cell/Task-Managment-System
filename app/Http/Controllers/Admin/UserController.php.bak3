@@ -97,17 +97,16 @@ class UserController extends Controller
         }
 
         $data = [
-            'name'         => $request->name,
-            'username'     => $request->username ?: null,
-            'email'        => strtolower($request->email),
-            'password'     => $request->password,
-            'role'         => $request->role,
-            'phone'        => $request->phone,
-            'job_title'    => $request->job_title,
-            'nationality'  => $request->nationality,
-            'status'       => $request->status ?? 'active',
-            'permissions'  => $perms,
-            'mfa_required' => $request->boolean('mfa_required'),
+            'name'        => $request->name,
+            'username'    => $request->username ?: null,
+            'email'       => strtolower($request->email),
+            'password'    => $request->password,
+            'role'        => $request->role,
+            'phone'       => $request->phone,
+            'job_title'   => $request->job_title,
+            'nationality' => $request->nationality,
+            'status'      => $request->status ?? 'active',
+            'permissions' => $perms,
         ];
 
         if ($request->hasFile('avatar')) {
@@ -371,83 +370,6 @@ class UserController extends Controller
         $user->delete();
 
         return redirect()->route('team.index')->with('success', $name . ' has been permanently deleted from the system.');
-    }
-
-    public function requireMfa(User $user)
-    {
-        if ($user->mfa_enabled) {
-            return back()->with('info', "{$user->name} already has MFA enabled.");
-        }
-
-        $user->update(['mfa_required' => true]);
-
-        AuditLogger::log(
-            auth()->user(),
-            'user.mfa_required',
-            $user,
-            "MFA setup required for {$user->name} by admin",
-            ['admin_id' => auth()->id()]
-        );
-
-        return back()->with('success', "MFA setup is now required for {$user->name}. They will be prompted on next login.");
-    }
-
-    public function cancelMfaRequirement(User $user)
-    {
-        $user->update(['mfa_required' => false]);
-
-        AuditLogger::log(
-            auth()->user(),
-            'user.mfa_requirement_cancelled',
-            $user,
-            "MFA requirement removed for {$user->name} by admin",
-            ['admin_id' => auth()->id()]
-        );
-
-        return back()->with('success', "MFA requirement removed for {$user->name}.");
-    }
-
-    public function resetMfa(User $user)
-    {
-        $user->update([
-            'mfa_enabled'        => false,
-            'mfa_secret'         => null,
-            'mfa_recovery_codes' => null,
-            'mfa_required'       => true,
-        ]);
-
-        AuditLogger::log(
-            auth()->user(),
-            'user.mfa_reset',
-            $user,
-            "MFA reset for {$user->name} — required to re-enroll",
-            ['admin_id' => auth()->id()]
-        );
-
-        return back()->with('success', "MFA has been reset for {$user->name}. They must re-enroll on next login.");
-    }
-
-    public function disableMfa(User $user)
-    {
-        if (! $user->mfa_enabled) {
-            return back()->with('info', "{$user->name} does not have MFA enabled.");
-        }
-
-        $user->update([
-            'mfa_enabled'        => false,
-            'mfa_secret'         => null,
-            'mfa_recovery_codes' => null,
-        ]);
-
-        AuditLogger::log(
-            auth()->user(),
-            'user.mfa_disabled',
-            $user,
-            "MFA disabled for {$user->name} by admin",
-            ['admin_id' => auth()->id()]
-        );
-
-        return back()->with('success', "MFA has been disabled for {$user->name}. They can now log in with their password only.");
     }
 
     public function hold(User $user)

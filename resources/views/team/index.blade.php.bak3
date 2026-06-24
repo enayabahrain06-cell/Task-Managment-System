@@ -320,7 +320,7 @@
             </div>
             @else
             <button type="button"
-                    onclick='window.dispatchEvent(new CustomEvent("open-edit-user",{detail:{{ json_encode(['id'=>$member->id,'name'=>$member->name,'username'=>$member->username??'','email'=>$member->email,'phone'=>$member->phone??'','job_title'=>$member->job_title??'','nationality'=>$member->nationality??'','role'=>$member->role,'status'=>$member->status,'avatar'=>$member->avatarUrl()??'','hourly_rate'=>$member->hourly_rate??'']) }}}))'
+                    onclick='window.dispatchEvent(new CustomEvent("open-edit-user",{detail:{{ json_encode(['id'=>$member->id,'name'=>$member->name,'username'=>$member->username??'','email'=>$member->email,'phone'=>$member->phone??'','job_title'=>$member->job_title??'','nationality'=>$member->nationality??'','role'=>$member->role,'status'=>$member->status,'avatar'=>$member->avatarUrl()??'','hourly_rate'=>$member->hourly_rate??'','mfa_enabled'=>(bool)$member->mfa_enabled,'mfa_required'=>(bool)$member->mfa_required]) }}}))'
                     class="flex-1 text-center text-xs bg-gray-100 hover:bg-indigo-100 text-gray-600 hover:text-indigo-600 py-1.5 rounded-lg transition font-medium">
                 <i class="fa fa-pen text-xs mr-1"></i> Edit
             </button>
@@ -498,7 +498,7 @@
                     <div class="flex items-center gap-2">
                         @if(!$managerBlocked2)
                         <button type="button"
-                                onclick='window.dispatchEvent(new CustomEvent("open-edit-user",{detail:{{ json_encode(['id'=>$member->id,'name'=>$member->name,'username'=>$member->username??'','email'=>$member->email,'phone'=>$member->phone??'','job_title'=>$member->job_title??'','nationality'=>$member->nationality??'','role'=>$member->role,'status'=>$member->status,'avatar'=>$member->avatarUrl()??'','hourly_rate'=>$member->hourly_rate??'']) }}}))'
+                                onclick='window.dispatchEvent(new CustomEvent("open-edit-user",{detail:{{ json_encode(['id'=>$member->id,'name'=>$member->name,'username'=>$member->username??'','email'=>$member->email,'phone'=>$member->phone??'','job_title'=>$member->job_title??'','nationality'=>$member->nationality??'','role'=>$member->role,'status'=>$member->status,'avatar'=>$member->avatarUrl()??'','hourly_rate'=>$member->hourly_rate??'','mfa_enabled'=>(bool)$member->mfa_enabled,'mfa_required'=>(bool)$member->mfa_required]) }}}))'
                                 class="text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition">
                             <i class="fa fa-pen text-xs mr-1"></i> Edit
                         </button>
@@ -1740,6 +1740,78 @@ function rolesTab() {
                 </div>
 
             </form>
+
+            {{-- MFA Security (outside main edit form — separate action routes) --}}
+            <div style="border:1.5px solid #F3F4F6;border-radius:12px;overflow:hidden;margin-top:4px;margin-bottom:4px;">
+                <div style="padding:10px 14px;background:#F9FAFB;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
+                    <div style="display:flex;align-items:center;gap:7px;">
+                        <i class="fas fa-shield-halved" style="font-size:11px;color:#6366F1;"></i>
+                        <span style="font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">MFA Security</span>
+                    </div>
+                    <template x-if="mfaEnabled">
+                        <span style="font-size:11px;font-weight:600;background:#EEF2FF;color:#4F46E5;padding:2px 9px;border-radius:6px;border:1px solid #C7D2FE;">
+                            <i class="fas fa-shield-halved" style="font-size:9px;margin-right:3px;"></i> Enabled
+                        </span>
+                    </template>
+                    <template x-if="!mfaEnabled && mfaRequired">
+                        <span style="font-size:11px;font-weight:600;background:#FFF7ED;color:#C2410C;padding:2px 9px;border-radius:6px;border:1px solid #FED7AA;">
+                            <i class="fas fa-clock" style="font-size:9px;margin-right:3px;"></i> Setup Pending
+                        </span>
+                    </template>
+                    <template x-if="!mfaEnabled && !mfaRequired">
+                        <span style="font-size:11px;font-weight:500;background:#F3F4F6;color:#9CA3AF;padding:2px 9px;border-radius:6px;border:1px solid #E5E7EB;">Off</span>
+                    </template>
+                </div>
+                <div style="padding:14px;">
+
+                    {{-- State: MFA enabled → Reset + Disable --}}
+                    <div x-show="mfaEnabled" style="display:flex;gap:8px;">
+                        <form method="POST" :action="'/admin/users/' + userId + '/reset-mfa'" style="flex:1;"
+                              onsubmit="return confirm('Reset MFA? The user must re-enroll on next login.')">
+                            @csrf
+                            <button type="submit" style="width:100%;padding:8px 12px;background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;font-size:12px;font-weight:600;color:#C2410C;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                                <i class="fas fa-rotate-right" style="font-size:11px;"></i> Reset MFA
+                            </button>
+                        </form>
+                        <form method="POST" :action="'/admin/users/' + userId + '/disable-mfa'" style="flex:1;"
+                              onsubmit="return confirm('Disable MFA? The user can log in with password only.')">
+                            @csrf
+                            <button type="submit" style="width:100%;padding:8px 12px;background:#FEF2F2;border:1.5px solid #FECACA;border-radius:10px;font-size:12px;font-weight:600;color:#B91C1C;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                                <i class="fas fa-shield-halved" style="font-size:11px;"></i> Disable MFA
+                            </button>
+                        </form>
+                    </div>
+
+                    {{-- State: required but not yet set up → info + cancel --}}
+                    <div x-show="!mfaEnabled && mfaRequired">
+                        <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:9px 12px;margin-bottom:10px;display:flex;align-items:center;gap:7px;">
+                            <i class="fas fa-clock" style="color:#F97316;font-size:12px;flex-shrink:0;"></i>
+                            <p style="font-size:11px;color:#92400E;margin:0;">MFA setup is required — this user will be redirected to MFA setup on their next login.</p>
+                        </div>
+                        <form method="POST" :action="'/admin/users/' + userId + '/cancel-mfa-requirement'">
+                            @csrf
+                            <button type="submit" style="width:100%;padding:8px 12px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:10px;font-size:12px;font-weight:600;color:#6B7280;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                                <i class="fas fa-xmark" style="font-size:11px;"></i> Cancel Requirement
+                            </button>
+                        </form>
+                    </div>
+
+                    {{-- State: no MFA at all → offer to require it --}}
+                    <div x-show="!mfaEnabled && !mfaRequired">
+                        <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:9px 12px;margin-bottom:10px;">
+                            <p style="font-size:11px;color:#6B7280;margin:0;">This user has not set up two-factor authentication. You can require it for their next login.</p>
+                        </div>
+                        <form method="POST" :action="'/admin/users/' + userId + '/require-mfa'">
+                            @csrf
+                            <button type="submit" style="width:100%;padding:8px 12px;background:#EEF2FF;border:1.5px solid #C7D2FE;border-radius:10px;font-size:12px;font-weight:600;color:#4F46E5;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                                <i class="fas fa-shield-halved" style="font-size:11px;"></i> Require MFA Setup
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
+            </div>
+
         </div>
 
         {{-- Footer --}}
@@ -1996,6 +2068,8 @@ function editUserModal() {
         status:       '',
         hourlyRate:   '',
         avatarPreview: null,
+        mfaEnabled:   false,
+        mfaRequired:  false,
         /* phone picker */
         dialCode:      '+971',
         dialFlag:      '🇦🇪',
@@ -2058,6 +2132,8 @@ function editUserModal() {
             this.status        = u.status;
             this.avatarPreview = u.avatar || null;
             this.hourlyRate    = u.hourly_rate || '';
+            this.mfaEnabled    = !!u.mfa_enabled;
+            this.mfaRequired   = !!u.mfa_required;
             this.saving        = false;
             /* parse phone into dial-code + local */
             const pp = window.parsePhoneNumber(u.phone || '');

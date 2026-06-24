@@ -382,7 +382,6 @@ class UserController extends Controller
         $user->update(['mfa_required' => true]);
 
         AuditLogger::log(
-            auth()->user(),
             'user.mfa_required',
             $user,
             "MFA setup required for {$user->name} by admin",
@@ -397,7 +396,6 @@ class UserController extends Controller
         $user->update(['mfa_required' => false]);
 
         AuditLogger::log(
-            auth()->user(),
             'user.mfa_requirement_cancelled',
             $user,
             "MFA requirement removed for {$user->name} by admin",
@@ -417,7 +415,6 @@ class UserController extends Controller
         ]);
 
         AuditLogger::log(
-            auth()->user(),
             'user.mfa_reset',
             $user,
             "MFA reset for {$user->name} — required to re-enroll",
@@ -440,7 +437,6 @@ class UserController extends Controller
         ]);
 
         AuditLogger::log(
-            auth()->user(),
             'user.mfa_disabled',
             $user,
             "MFA disabled for {$user->name} by admin",
