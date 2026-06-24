@@ -383,7 +383,7 @@ $onlineMapJson = json_encode($onlineMap);
                             <template x-if="!isGroup && activeUserAvatar">
                                 <img :src="activeUserAvatar" :alt="activeUserName"
                                      class="w-9 h-9 rounded-full object-cover"
-                                     @error="activeUserAvatar=null">
+                                     x-on:error="activeUserAvatar=null">
                             </template>
                             <template x-if="!isGroup && !activeUserAvatar">
                                 <div class="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm" :style="'background:'+activeUserColor">
@@ -957,7 +957,7 @@ $onlineMapJson = json_encode($onlineMap);
                     <template x-if="activeUserAvatar">
                         <img :src="activeUserAvatar" :alt="activeUserName"
                              class="w-16 h-16 rounded-full object-cover mx-auto mb-3"
-                             @error="activeUserAvatar=null">
+                             x-on:error="activeUserAvatar=null">
                     </template>
                     <template x-if="!activeUserAvatar">
                         <div class="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-3" :style="'background:'+activeUserColor">
