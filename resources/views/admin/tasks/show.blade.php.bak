@@ -1826,7 +1826,7 @@
                                     $visMed   = array_slice($mediaCf, 0, $visMax);
                                     $hiddenCnt = max(0, count($mediaCf) - $visMax);
                                     $mc = count($visMed);
-                                    if ($mc === 1)     { $gCols='1fr';     $gRows='';              $gW='100%';  $cellH='220px'; }
+                                    if ($mc === 1)     { $gCols='1fr';     $gRows='';              $gW='320px'; $cellH='220px'; }
                                     elseif ($mc === 2) { $gCols='1fr 1fr'; $gRows='';              $gW='380px'; $cellH='145px'; }
                                     elseif ($mc === 3) { $gCols='2fr 1fr'; $gRows='115px 115px';   $gW='380px'; $cellH='auto';  }
                                     else               { $gCols='1fr 1fr'; $gRows='130px 130px';   $gW='380px'; $cellH='auto';  }
