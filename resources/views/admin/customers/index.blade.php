@@ -208,7 +208,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
                                     @if($customer->logo)
                                     <img src="{{ Storage::url($customer->logo) }}" alt=""
                                          decoding="async"
-                                         style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;"
+                                         style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;padding:3px;box-sizing:border-box;"
                                          onerror="this.remove()">
                                     @endif
                                 </div>
@@ -297,7 +297,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
                             @if($customer->logo)
                             <img src="{{ Storage::url($customer->logo) }}" alt=""
                                  decoding="async"
-                                 style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;"
+                                 style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;padding:3px;box-sizing:border-box;"
                                  onerror="this.remove()">
                             @endif
                         </div>

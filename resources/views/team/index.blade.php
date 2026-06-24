@@ -676,7 +676,7 @@ $roleColorMap = ['admin'=>'bg-red-100 text-red-600','manager'=>'bg-amber-100 tex
                         <img :src="u.avatar" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;">
                     </template>
                     <template x-if="!u.avatar">
-                        <div :style="`background:${u.color}`" style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;flex-shrink:0;" x-text="u.initials"></div>
+                        <div :style="{ background: u.color }" style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;flex-shrink:0;" x-text="u.initials"></div>
                     </template>
                     <div style="flex:1;min-width:0;">
                         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
@@ -727,7 +727,7 @@ $roleColorMap = ['admin'=>'bg-red-100 text-red-600','manager'=>'bg-amber-100 tex
                             <img :src="activeUser.avatar" style="width:46px;height:46px;border-radius:50%;object-fit:cover;border:2px solid #E5E7EB;flex-shrink:0;">
                         </template>
                         <template x-if="!activeUser.avatar">
-                            <div :style="`background:${activeUser.color}`" style="width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:700;flex-shrink:0;border:2px solid #E5E7EB;" x-text="activeUser.initials"></div>
+                            <div :style="{ background: activeUser.color }" style="width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:700;flex-shrink:0;border:2px solid #E5E7EB;" x-text="activeUser.initials"></div>
                         </template>
                         <div>
                             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">

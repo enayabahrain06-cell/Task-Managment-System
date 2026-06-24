@@ -207,8 +207,10 @@ canvas { max-width:100% !important; }
     {{-- ── Customer Info Bar ──────────────────────────────────────────────────── --}}
     <div class="report-card no-print" style="margin-bottom:20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:16px 20px;">
         @if($customer->logo && \Illuminate\Support\Facades\Storage::disk('public')->exists($customer->logo))
-        <img src="{{ \Illuminate\Support\Facades\Storage::url($customer->logo) }}" alt="{{ $customer->name }}"
-             style="width:48px;height:48px;border-radius:12px;object-fit:contain;background:#fff;border:1.5px solid #e5e7eb;flex-shrink:0;display:block;">
+        <div style="width:48px;height:48px;border-radius:12px;border:1.5px solid #e5e7eb;background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:4px;box-sizing:border-box;">
+            <img src="{{ \Illuminate\Support\Facades\Storage::url($customer->logo) }}" alt="{{ $customer->name }}"
+                 style="max-width:100%;max-height:100%;object-fit:contain;display:block;">
+        </div>
         @else
         <div style="width:48px;height:48px;border-radius:12px;background:#6366f1;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:800;color:#fff;flex-shrink:0;">
             {{ strtoupper(substr($customer->name, 0, 1)) }}
@@ -1191,7 +1193,8 @@ function buildCustomerReportHTML(immediate) {
     + '.hr { height:1px; background:#E5E7EB; }'
     + '.cust-strip { display:flex; align-items:center; gap:14px; padding:14px 32px; background:#F8FAFC; border-bottom:1px solid #E5E7EB; }'
     + '.cust-avatar { width:44px; height:44px; border-radius:11px; background:linear-gradient(135deg,#6366F1,#4F46E5); display:flex; align-items:center; justify-content:center; color:#fff; font-size:20px; font-weight:800; flex-shrink:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
-    + '.cust-logo-img { width:44px; height:44px; border-radius:11px; object-fit:contain; background:#fff; border:1.5px solid #E5E7EB; flex-shrink:0; display:block; }'
+    + '.cust-logo-wrap { width:44px; height:44px; border-radius:11px; border:1.5px solid #E5E7EB; background:#fff; flex-shrink:0; display:flex; align-items:center; justify-content:center; padding:4px; box-sizing:border-box; }'
+    + '.cust-logo-img { max-width:100%; max-height:100%; object-fit:contain; display:block; }'
     + '.cust-name  { font-size:15px; font-weight:800; color:#111827; }'
     + '.cust-co    { font-size:11px; color:#9CA3AF; margin-top:1px; }'
     + '.cust-facts { display:flex; gap:20px; margin-left:auto; }'
@@ -1326,7 +1329,7 @@ function buildCustomerReportHTML(immediate) {
     // ── Customer facts strip ──────────────────────────────
     var custInitial   = custName.charAt(0).toUpperCase();
     var custAvatarEl  = custLogo
-        ? '<img class="cust-logo-img" src="' + custLogo + '" alt="' + custName + '">'
+        ? '<div class="cust-logo-wrap"><img class="cust-logo-img" src="' + custLogo + '" alt="' + custName + '"></div>'
         : '<div class="cust-avatar">' + custInitial + '</div>';
     var custFacts   =
         '<div class="cf"><div class="cf-val">{{ $total }}</div><div class="cf-lbl">Tasks</div></div>'

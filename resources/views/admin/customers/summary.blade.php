@@ -287,6 +287,17 @@ if (!empty($appSettings['logo_path'])) {
         $summaryLogo = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($lp));
     }
 }
+
+$custLogos = [];
+foreach($summaryList as $sc) {
+    if ($sc->logo) {
+        $lp = Storage::disk('public')->path($sc->logo);
+        if (file_exists($lp)) {
+            $mime = mime_content_type($lp) ?: 'image/png';
+            $custLogos[$sc->id] = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($lp));
+        }
+    }
+}
 @endphp
 
 @push('scripts')
@@ -324,7 +335,7 @@ function buildSummaryHTML(immediate) {
     var customers = [
         @foreach($summaryList as $i => $sc)
         @php $scRate = $sc->tasks_count > 0 ? round($sc->delivered_count / $sc->tasks_count * 100) : 0; @endphp
-        { name:'{{ addslashes($sc->name) }}', co:'{{ addslashes($sc->company ?? '') }}', projects:{{ $sc->projects_count }}, tasks:{{ $sc->tasks_count }}, delivered:{{ $sc->delivered_count }}, active:{{ $sc->active_count }}, overdue:{{ $sc->overdue_count }}, rate:{{ $scRate }} },
+        { name:'{{ addslashes($sc->name) }}', co:'{{ addslashes($sc->company ?? '') }}', logo:'{{ $custLogos[$sc->id] ?? '' }}', projects:{{ $sc->projects_count }}, tasks:{{ $sc->tasks_count }}, delivered:{{ $sc->delivered_count }}, active:{{ $sc->active_count }}, overdue:{{ $sc->overdue_count }}, rate:{{ $scRate }} },
         @endforeach
     ];
 
@@ -430,10 +441,13 @@ function buildSummaryHTML(immediate) {
         var rbg  = c.rate >= 80 ? '#D1FAE5' : (c.rate >= 50 ? '#FEF3C7' : '#FEE2E2');
         var pct  = palette[i % palette.length];
         var init = c.name.charAt(0).toUpperCase();
+        var avatarEl = c.logo
+            ? '<div style="width:28px;height:28px;border-radius:7px;flex-shrink:0;background:#fff;border:1px solid #E5E7EB;display:flex;align-items:center;justify-content:center;padding:2px;box-sizing:border-box;overflow:hidden;"><img src="' + c.logo + '" style="max-width:100%;max-height:100%;object-fit:contain;display:block;" alt=""></div>'
+            : '<div class="cav" style="background:' + pct + ';">' + init + '</div>';
         tHtml += '<tr>'
               + '<td style="color:#9CA3AF;font-size:10px;">' + (i+1) + '</td>'
               + '<td><div style="display:flex;align-items:center;gap:9px;">'
-              +   '<div class="cav" style="background:' + pct + ';">' + init + '</div>'
+              +   avatarEl
               +   '<div><div class="td-n">' + c.name + '</div>' + (c.co ? '<div class="td-sm">' + c.co + '</div>' : '') + '</div>'
               + '</div></td>'
               + '<td class="td-c" style="color:#4F46E5;">' + c.projects + '</td>'
