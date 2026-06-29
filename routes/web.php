@@ -226,6 +226,7 @@ Route::middleware([AdminMiddleware::class, MfaMiddleware::class])->prefix('admin
     Route::post('settings/hourly-rate',              [AdminSettingsController::class, 'toggleHourlyRate'])->name('settings.hourly-rate');
     Route::post('settings/hide-wa-web',              [AdminSettingsController::class, 'toggleHideWaWeb'])->name('settings.hide-wa-web');
     Route::post('settings/hide-summarize',           [AdminSettingsController::class, 'toggleHideSummarize'])->name('settings.hide-summarize');
+    Route::post('settings/hide-features-tab',        [AdminSettingsController::class, 'toggleHideFeaturesTab'])->name('settings.hide-features-tab');
     Route::post('settings/features/disable-all',        [AdminSettingsController::class, 'disableAllFeatures'])->name('settings.features.disable-all');
     Route::post('settings/features/gantt-chart',        [AdminSettingsController::class, 'toggleGanttChart'])->name('settings.features.gantt-chart');
     Route::post('settings/features/excel-export',       [AdminSettingsController::class, 'toggleExcelExport'])->name('settings.features.excel-export');

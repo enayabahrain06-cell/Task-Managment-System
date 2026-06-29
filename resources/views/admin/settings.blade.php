@@ -133,7 +133,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 
 <div class="settings-wrap"
      x-data="{
-         tab: (window.location.hash.slice(1) || '{{ session('_fragment') ?? 'general' }}'),
+         tab: (function(){ var h = window.location.hash.slice(1) || '{{ session('_fragment') ?? 'general' }}'; return (h === 'features' && {{ ($appSettings['hide_features_tab'] ?? '0') === '1' ? 'true' : 'false' }}) ? 'general' : h; })(),
          confirm: null, phrase: '',
          setTab(t) { this.tab = t; window.location.hash = t; },
          openClear(type){ this.confirm = type; this.phrase = ''; },
@@ -187,6 +187,9 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
         ];
         @endphp
         @foreach($navItems as $nav)
+        @if($nav['id'] === 'features' && ($appSettings['hide_features_tab'] ?? '0') === '1')
+            @continue
+        @endif
         @if($nav['id'] === 'danger')
         <button class="snav-item"
                 :class="tab === 'danger' ? 'active' : ''"
@@ -2830,6 +2833,26 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     :style="hideSummarize ? 'background:#4F46E5;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
                                 <i class="fas" :class="hideSummarize ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
                                 <span x-text="hideSummarize ? 'On' : 'Off'"></span>
+                            </button>
+                        </div>
+                        {{-- Hide Features Tab --}}
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
+                             x-data="{ hideFeaturesTab: {{ ($appSettings['hide_features_tab'] ?? '0') === '1' ? 'true' : 'false' }} }">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="width:28px;height:28px;border-radius:8px;background:#F0FDF4;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-puzzle-piece" style="font-size:11px;color:#16A34A;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Hide Features Tab</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Remove the Features tab from settings — existing feature states are preserved</p>
+                                </div>
+                            </div>
+                            <button type="button"
+                                    @click="fetch('{{ route('admin.settings.hide-features-tab') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ hideFeaturesTab = d.hide_features_tab; if(d.hide_features_tab && window.location.hash === '#features') { window.location.hash = 'developer'; } })"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                    :style="hideFeaturesTab ? 'background:#16A34A;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                                <i class="fas" :class="hideFeaturesTab ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                                <span x-text="hideFeaturesTab ? 'On' : 'Off'"></span>
                             </button>
                         </div>
                         {{-- Clear Cache --}}

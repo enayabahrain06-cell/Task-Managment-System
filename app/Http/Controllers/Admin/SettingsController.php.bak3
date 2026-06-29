@@ -226,14 +226,6 @@ class SettingsController extends Controller
         return response()->json(['hide_summarize_button' => $new === '1']);
     }
 
-    public function toggleHideFeaturesTab()
-    {
-        $current = Setting::get('hide_features_tab', '0');
-        $new     = $current === '1' ? '0' : '1';
-        Setting::set('hide_features_tab', $new);
-        return response()->json(['hide_features_tab' => $new === '1']);
-    }
-
     public function toggleManagerRolesAccess()
     {
         $current = Setting::get('manager_can_view_roles', '0');
