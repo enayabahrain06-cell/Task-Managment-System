@@ -562,6 +562,12 @@
         @if($task->task_type)
         <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;"><i class="fa fa-tag" style="margin-right:4px;color:#9CA3AF;"></i>{{ $task->task_type }}</span>
         @endif
+        @if($task->is_recurring)
+        <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#ECFEFF;color:#0891B2;" title="Repeats {{ $task->recurring_type }}">
+            <i class="fas fa-rotate" style="margin-right:4px;"></i>{{ ucfirst($task->recurring_type) }}
+            @if($task->recurring_parent_id) <span style="opacity:.7;">· #{{ $task->recurring_count }}</span> @endif
+        </span>
+        @endif
         <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:{{ $p['bg'] }};color:{{ $p['color'] }};">{{ ucfirst($task->priority) }} Priority</span>
         <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:{{ $s['bg'] }};color:{{ $s['color'] }};">{{ $s['label'] }}</span>
         @if($isOverdue)

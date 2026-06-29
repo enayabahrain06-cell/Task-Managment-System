@@ -358,6 +358,9 @@ class ProjectController extends Controller
             'assignees'              => 'nullable|array',
             'assignees.*.user_id'    => 'required|exists:users,id',
             'assignees.*.role'       => 'nullable|string|max:255',
+            'recurring_type'         => 'nullable|in:daily,weekly,monthly',
+            'recurring_end_date'     => 'nullable|date|after:deadline',
+            'recurring_max'          => 'nullable|integer|min:1|max:365',
         ]);
 
         $validAssignees = collect($request->input('assignees', []))
@@ -375,19 +378,25 @@ class ProjectController extends Controller
                 ->toArray();
         }
 
+        $recurringType = $request->filled('recurring_type') ? $request->recurring_type : null;
+
         $task = Task::create([
-            'title'       => $request->title,
-            'description' => $request->description,
-            'assigned_to' => $primaryAssigneeId,
-            'priority'    => $request->priority,
-            'deadline'    => $request->deadline,
-            'project_id'  => $project->id,
-            'customer_id' => $request->customer_id ?: null,
-            'status'      => $primaryAssigneeId ? 'assigned' : 'draft',
-            'created_by'  => auth()->id(),
-            'reviewer_id' => $request->reviewer_id,
-            'task_type'   => $request->task_type,
-            'tags'        => $tags,
+            'title'               => $request->title,
+            'description'         => $request->description,
+            'assigned_to'         => $primaryAssigneeId,
+            'priority'            => $request->priority,
+            'deadline'            => $request->deadline,
+            'project_id'          => $project->id,
+            'customer_id'         => $request->customer_id ?: null,
+            'status'              => $primaryAssigneeId ? 'assigned' : 'draft',
+            'created_by'          => auth()->id(),
+            'reviewer_id'         => $request->reviewer_id,
+            'task_type'           => $request->task_type,
+            'tags'                => $tags,
+            'is_recurring'        => (bool) $recurringType,
+            'recurring_type'      => $recurringType,
+            'recurring_end_date'  => $recurringType && $request->filled('recurring_end_date') ? $request->recurring_end_date : null,
+            'recurring_max'       => $recurringType && $request->filled('recurring_max') ? (int)$request->recurring_max : null,
         ]);
 
         $syncData = [];

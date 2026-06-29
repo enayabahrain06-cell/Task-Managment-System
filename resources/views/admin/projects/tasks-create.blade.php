@@ -143,11 +143,48 @@
             </div>
 
             {{-- Description --}}
-            <div style="margin-bottom:24px;">
+            <div style="margin-bottom:16px;">
                 <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Description</label>
                 <textarea name="description" rows="3" placeholder="What needs to be done..."
                           style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;resize:vertical;font-family:'Inter',sans-serif;">{{ old('description') }}</textarea>
             </div>
+
+            @if(\App\Models\Setting::get('show_recurring_tasks','1') === '1')
+            {{-- Recurring --}}
+            <div x-data="{ recurring: '{{ old('recurring_type','') }}' }"
+                 style="margin-bottom:24px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:12px;padding:16px;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                    <div style="width:26px;height:26px;border-radius:7px;background:#ECFEFF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="fas fa-rotate" style="font-size:11px;color:#0891B2;"></i>
+                    </div>
+                    <p style="font-size:12px;font-weight:700;color:#111827;margin:0;">Repeat this task</p>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:0;">
+                    @foreach([''=>'No repeat','daily'=>'Daily','weekly'=>'Weekly','monthly'=>'Monthly'] as $val=>$label)
+                    <label style="cursor:pointer;">
+                        <input type="radio" name="recurring_type" value="{{ $val }}" x-model="recurring"
+                               style="display:none;">
+                        <div :style="recurring==='{{ $val }}' ? 'background:#0891B2;color:#fff;border-color:#0891B2;' : 'background:#fff;color:#374151;border-color:#E5E7EB;'"
+                             style="padding:8px 4px;border-radius:9px;border:1.5px solid;text-align:center;font-size:12px;font-weight:600;transition:all .15s;">
+                            {{ $label }}
+                        </div>
+                    </label>
+                    @endforeach
+                </div>
+                <div x-show="recurring !== ''" x-collapse style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:5px;">End date <span style="font-weight:400;color:#9CA3AF;">— optional</span></label>
+                        <input type="date" name="recurring_end_date" value="{{ old('recurring_end_date') }}"
+                               style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:12px;color:#111827;box-sizing:border-box;outline:none;">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:5px;">Max repeats <span style="font-weight:400;color:#9CA3AF;">— optional</span></label>
+                        <input type="number" name="recurring_max" value="{{ old('recurring_max') }}" min="1" placeholder="e.g. 12"
+                               style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:12px;color:#111827;box-sizing:border-box;outline:none;">
+                    </div>
+                </div>
+            </div>
+            @endif
 
             <div style="display:flex;gap:10px;">
                 <button type="submit"

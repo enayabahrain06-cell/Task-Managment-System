@@ -22,6 +22,12 @@ class Task extends Model
         'description',
         'assigned_to',
         'social_assigned_to',
+        'is_recurring',
+        'recurring_type',
+        'recurring_end_date',
+        'recurring_max',
+        'recurring_count',
+        'recurring_parent_id',
         'social_posted_at',
         'social_required',
         'social_description',
@@ -52,7 +58,9 @@ class Task extends Model
         'social_posted_at'     => 'datetime',
         'social_required'  => 'boolean',
         'social_platforms' => 'array',
-        'tags'             => 'array',
+        'tags'                => 'array',
+        'is_recurring'        => 'boolean',
+        'recurring_end_date'  => 'date',
     ];
 
     public function project(): BelongsTo
@@ -134,6 +142,78 @@ class Task extends Model
     {
         return $this->belongsToMany(Task::class, 'task_dependencies', 'depends_on_task_id', 'task_id')
                     ->withTimestamps();
+    }
+
+    public function recurringParent(): BelongsTo
+    {
+        return $this->belongsTo(Task::class, 'recurring_parent_id');
+    }
+
+    public function recurringChildren(): HasMany
+    {
+        return $this->hasMany(Task::class, 'recurring_parent_id');
+    }
+
+    /** Calculate the deadline for the next occurrence. */
+    public function nextRecurringDeadline(): ?\Carbon\Carbon
+    {
+        if (!$this->deadline || !$this->recurring_type) return null;
+        $base = $this->recurring_parent_id
+            ? ($this->recurringParent?->deadline ?? $this->deadline)
+            : $this->deadline;
+        $count = ($this->recurring_count ?? 0) + 1;
+        return match ($this->recurring_type) {
+            'daily'   => $this->deadline->copy()->addDays(1),
+            'weekly'  => $this->deadline->copy()->addWeeks(1),
+            'monthly' => $this->deadline->copy()->addMonthsNoOverflow(1),
+            default   => null,
+        };
+    }
+
+    /** Spawn the next recurring copy. Returns the new Task or null if limit reached. */
+    public function createNextRecurrence(): ?self
+    {
+        if (!$this->is_recurring || !$this->recurring_type) return null;
+
+        $nextDeadline = $this->nextRecurringDeadline();
+        if (!$nextDeadline) return null;
+
+        // Check end date
+        if ($this->recurring_end_date && $nextDeadline->gt($this->recurring_end_date)) return null;
+
+        // Check max count
+        $parentId = $this->recurring_parent_id ?? $this->id;
+        $totalCreated = self::where('recurring_parent_id', $parentId)->count() + 1;
+        if ($this->recurring_max && $totalCreated > $this->recurring_max) return null;
+
+        $next = self::create([
+            'project_id'          => $this->project_id,
+            'customer_id'         => $this->customer_id,
+            'title'               => $this->title,
+            'description'         => $this->description,
+            'assigned_to'         => $this->assigned_to,
+            'social_assigned_to'  => $this->social_assigned_to,
+            'social_required'     => $this->social_required,
+            'social_description'  => $this->social_description,
+            'social_caption'      => $this->social_caption,
+            'social_budget'       => $this->social_budget,
+            'social_platforms'    => $this->social_platforms,
+            'priority'            => $this->priority,
+            'deadline'            => $nextDeadline->toDateString(),
+            'task_type'           => $this->task_type,
+            'tags'                => $this->tags,
+            'reviewer_id'         => $this->reviewer_id,
+            'created_by'          => $this->created_by,
+            'status'              => 'assigned',
+            'is_recurring'        => true,
+            'recurring_type'      => $this->recurring_type,
+            'recurring_end_date'  => $this->recurring_end_date,
+            'recurring_max'       => $this->recurring_max,
+            'recurring_count'     => $totalCreated,
+            'recurring_parent_id' => $parentId,
+        ]);
+
+        return $next;
     }
 
     /** Returns true if all blocking tasks are in a done state. */

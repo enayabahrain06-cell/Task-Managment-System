@@ -8,6 +8,7 @@ use App\Models\Task;
 use App\Models\TaskLog;
 use App\Notifications\TaskAssigned;
 use App\Services\AssignmentNotifier;
+use App\Services\AuditLogger;
 
 class TaskObserver
 {
@@ -60,6 +61,32 @@ class TaskObserver
                     'description' => $task->description,
                     'start_date'  => $task->deadline,
                 ]);
+            }
+        }
+
+        // Spawn next recurring task when this one is delivered
+        if ($task->wasChanged('status')
+            && $task->status === 'delivered'
+            && $task->is_recurring
+            && Setting::get('show_recurring_tasks', '1') === '1'
+        ) {
+            $next = $task->createNextRecurrence();
+            if ($next) {
+                TaskLog::create([
+                    'task_id'  => $next->id,
+                    'user_id'  => null,
+                    'action'   => 'recurring_created',
+                    'note'     => "Auto-created from recurring task #{$task->id}",
+                    'metadata' => [
+                        'parent_id'      => $task->id,
+                        'recurring_type' => $task->recurring_type,
+                        'occurrence'     => $next->recurring_count,
+                    ],
+                ]);
+                AuditLogger::log('task.recurring_spawned', $next,
+                    "Recurring task spawned from #{$task->id} — occurrence #{$next->recurring_count}",
+                    ['parent_id' => $task->id, 'type' => $task->recurring_type]
+                );
             }
         }
 
