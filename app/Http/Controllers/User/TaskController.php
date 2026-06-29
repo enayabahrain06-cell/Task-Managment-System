@@ -446,7 +446,7 @@ class TaskController extends Controller
             'body'         => 'nullable|string',
             'delivery_url' => 'nullable|url|max:2048',
             'files'        => 'nullable|array',
-            'files.*'      => 'nullable|file|max:10485760',
+            'files.*'      => 'nullable|file',
         ]);
 
         $note        = $request->body ?? $request->note;
@@ -533,7 +533,7 @@ class TaskController extends Controller
         $request->validate([
             'body'    => 'required|string',
             'files'   => 'nullable|array',
-            'files.*' => 'nullable|file|max:10485760',
+            'files.*' => 'nullable|file',
         ]);
 
         $nas = app(\App\Services\NasService::class);

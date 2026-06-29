@@ -143,7 +143,7 @@ class TaskController extends Controller
             'deadline'             => 'nullable|date',
             'description'          => 'nullable|string',
             'new_attachments'      => 'nullable|array',
-            'new_attachments.*'    => 'file|max:10485760',
+            'new_attachments.*'    => 'file',
             'delete_attachments'   => 'nullable|array',
             'delete_attachments.*' => 'integer|exists:project_attachments,id',
         ]);
@@ -232,7 +232,7 @@ class TaskController extends Controller
         $request->validate([
             'body'            => 'required|string',
             'comment_files'   => 'nullable|array',
-            'comment_files.*' => 'file|max:10485760',
+            'comment_files.*' => 'file',
         ]);
 
         $nas = app(\App\Services\NasService::class);
@@ -773,7 +773,7 @@ class TaskController extends Controller
 
         $request->validate([
             'attachments'   => 'required|array|min:1',
-            'attachments.*' => 'file|max:10485760',
+            'attachments.*' => 'file',
         ]);
 
         $names = [];
