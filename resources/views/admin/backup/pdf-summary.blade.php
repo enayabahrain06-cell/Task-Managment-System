@@ -73,7 +73,11 @@ tr:nth-child(even) td { background: #FAFAFA; }
     <div class="header">
         <div class="header-top">
             <div class="header-left">
-                <div class="app-name">{{ $appName }}</div>
+                @if(!empty($logoBase64))
+                    <img src="{{ $logoBase64 }}" style="height:32px;max-width:140px;object-fit:contain;display:block;margin-bottom:5px;">
+                @else
+                    <div class="app-name">{{ $appName }}</div>
+                @endif
                 <div class="report-title">System Summary Report</div>
                 <div class="meta">Generated: {{ $generatedAt }}</div>
             </div>

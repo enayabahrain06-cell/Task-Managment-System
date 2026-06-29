@@ -1328,11 +1328,24 @@ class SettingsController extends Controller
         ]);
     }
 
+    private function imageToBase64(string $storagePath): string
+    {
+        $full = storage_path('app/public/' . ltrim($storagePath, '/'));
+        if (!file_exists($full)) return '';
+        $ext  = strtolower(pathinfo($full, PATHINFO_EXTENSION));
+        $mime = match($ext) { 'png' => 'png', 'gif' => 'gif', 'webp' => 'webp', default => 'jpeg' };
+        return 'data:image/' . $mime . ';base64,' . base64_encode(file_get_contents($full));
+    }
+
     private function generateBackupPdfs(string $dir): void
     {
         $appName     = Setting::get('app_name', config('app.name', 'TaskMS'));
         $generatedAt = now()->format('F j, Y  H:i');
         $doneStatuses = ['approved', 'delivered'];
+
+        // Embed logo as base64 so DomPDF can render it without HTTP requests
+        $logoPath   = Setting::get('logo_path', '');
+        $logoBase64 = $logoPath ? $this->imageToBase64($logoPath) : '';
 
         // ── Summary PDF data ────────────────────────────────────────────────
         $totalTasks     = Task::count();
@@ -1355,7 +1368,7 @@ class SettingsController extends Controller
         $summaryPdf = Pdf::loadView('admin.backup.pdf-summary', compact(
             'appName', 'generatedAt', 'totalTasks', 'completedTasks',
             'pendingTasks', 'totalUsers', 'totalProjects', 'completionRate',
-            'tasksByStatus', 'projects'
+            'tasksByStatus', 'projects', 'logoBase64'
         ))->setPaper('a4', 'portrait');
 
         file_put_contents($dir . '/system-summary.pdf', $summaryPdf->output());
@@ -1403,6 +1416,7 @@ class SettingsController extends Controller
             'totalAssigned'  => $totalAssigned,
             'totalCompleted' => $totalCompleted,
             'overallRate'    => $overallRate,
+            'logoBase64'     => $logoBase64,
         ])->setPaper('a4', 'landscape');
 
         file_put_contents($dir . '/user-performance.pdf', $perfPdf->output());
@@ -1424,6 +1438,7 @@ class SettingsController extends Controller
             $pendingTasks   = $tasks->whereIn('status', ['assigned','viewed','in_progress','paused'])->count();
             $inReviewTasks  = $tasks->whereIn('status', ['submitted','revision_requested'])->count();
             $completionRate = $totalTasks > 0 ? round($completedTasks / $totalTasks * 100) : 0;
+            $avatarBase64   = $u->avatar ? $this->imageToBase64($u->avatar) : '';
 
             $userPdf = Pdf::loadView('admin.backup.pdf-user-report', [
                 'appName'        => $appName,
@@ -1435,6 +1450,8 @@ class SettingsController extends Controller
                 'pendingTasks'   => $pendingTasks,
                 'inReviewTasks'  => $inReviewTasks,
                 'completionRate' => $completionRate,
+                'logoBase64'     => $logoBase64,
+                'avatarBase64'   => $avatarBase64,
             ])->setPaper('a4', 'portrait');
 
             $slug = preg_replace('/[^a-z0-9]+/', '-', strtolower($u->name));

@@ -91,7 +91,11 @@ tr:nth-child(even) td { background: #FAFAFA; }
     {{-- Header --}}
     <div class="header">
         <div class="header-left">
-            <div class="app-name">{{ $appName }}</div>
+            @if(!empty($logoBase64))
+                <img src="{{ $logoBase64 }}" style="height:28px;max-width:120px;object-fit:contain;display:block;margin-bottom:4px;">
+            @else
+                <div class="app-name">{{ $appName }}</div>
+            @endif
             <div class="report-title">Individual User Report</div>
             <div class="meta">Backup snapshot · {{ $generatedAt }}</div>
         </div>
@@ -103,9 +107,13 @@ tr:nth-child(even) td { background: #FAFAFA; }
     {{-- User card --}}
     <div class="user-card">
         <div class="user-avatar">
-            <div style="width:44px;height:44px;border-radius:50%;background:#4F46E5;display:flex;align-items:center;justify-content:center;">
-                <span style="color:#fff;font-size:20px;font-weight:bold;">{{ strtoupper(substr($user->name,0,1)) }}</span>
-            </div>
+            @if(!empty($avatarBase64))
+                <img src="{{ $avatarBase64 }}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid #C7D2FE;">
+            @else
+                <div style="width:44px;height:44px;border-radius:50%;background:#4F46E5;display:table-cell;text-align:center;vertical-align:middle;">
+                    <span style="color:#fff;font-size:20px;font-weight:bold;">{{ strtoupper(substr($user->name,0,1)) }}</span>
+                </div>
+            @endif
         </div>
         <div class="user-info">
             <div class="user-name">{{ $user->name }}</div>
@@ -183,7 +191,7 @@ tr:nth-child(even) td { background: #FAFAFA; }
             <tr>
                 <td style="color:#9CA3AF;width:24px;">{{ $i + 1 }}</td>
                 <td style="max-width:180px;">{{ $task->title }}</td>
-                <td style="color:#6B7280;max-width:100px;">{{ $task->project->name ?? '—' }}</td>
+                <td style="color:#6B7280;max-width:100px;">{{ ($task->project && !$task->project->is_quick) ? $task->project->name : '—' }}</td>
                 <td>
                     <span class="st st-{{ str_replace(' ','_',$task->status) }}">
                         {{ ucfirst(str_replace('_',' ',$task->status)) }}
