@@ -399,7 +399,7 @@ class UserController extends Controller
 
     public function cancelMfaRequirement(User $user)
     {
-        $user->update(['mfa_required' => false]);
+        $user->update(['mfa_required' => null]);
 
         AuditLogger::log(
             'user.mfa_requirement_cancelled',
@@ -449,6 +449,7 @@ class UserController extends Controller
             'mfa_enabled'        => false,
             'mfa_secret'         => null,
             'mfa_recovery_codes' => null,
+            'mfa_required'       => false,  // explicitly exempt from force_mfa
         ]);
 
         AuditLogger::log(

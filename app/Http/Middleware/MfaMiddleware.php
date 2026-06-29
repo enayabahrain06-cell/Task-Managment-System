@@ -17,8 +17,17 @@ class MfaMiddleware
 
         $forceMfa = Setting::get('force_mfa', '0') === '1';
 
-        // Force-MFA: global setting OR per-user requirement
-        if (($forceMfa || $user->mfa_required) && ! $user->mfa_enabled && ! session('mfa_verified')) {
+        // mfa_required tri-state: null = follow global policy, 1/true = always required, 0/false = admin-exempted
+        $mfaRequired = $user->getRawOriginal('mfa_required');
+        if ($mfaRequired === null) {
+            $mustSetup = $forceMfa;          // follow global
+        } elseif ((int) $mfaRequired === 1) {
+            $mustSetup = true;               // admin explicitly required
+        } else {
+            $mustSetup = false;              // admin explicitly exempted — bypass force_mfa
+        }
+
+        if ($mustSetup && ! $user->mfa_enabled && ! session('mfa_verified')) {
             if (! $request->routeIs('mfa.*')) {
                 return redirect()->route('mfa.setup');
             }

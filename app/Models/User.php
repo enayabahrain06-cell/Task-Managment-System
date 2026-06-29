@@ -143,7 +143,6 @@ class User extends Authenticatable
             'role'               => 'string',
             'permissions'        => 'array',
             'mfa_enabled'        => 'boolean',
-            'mfa_required'       => 'boolean',
             'mfa_secret'         => 'encrypted',
             'mfa_recovery_codes' => 'encrypted:array',
         ];
