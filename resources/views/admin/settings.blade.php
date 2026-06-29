@@ -2459,7 +2459,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         Each toggle below controls whether a feature is visible and accessible across the system.
                         Disabling a feature hides it from all pages — no data is deleted.
                         You can re-enable any feature at any time and everything will reappear exactly as before.
-                        Features marked <span style="background:#FEF3C7;color:#92400E;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;">COMING SOON</span> are planned and will be built next.
+                        These features are being built — enabling them now pre-configures the system so they activate automatically once ready.
                     </p>
                 </div>
             </div>
@@ -2534,9 +2534,6 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             <div style="min-width:0;">
                                 <div style="display:flex;align-items:center;gap:7px;">
                                     <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">{{ $f['label'] }}</p>
-                                    @if($f['status'] === 'coming-soon')
-                                    <span style="background:#FEF3C7;color:#92400E;font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.3px;white-space:nowrap;">COMING SOON</span>
-                                    @endif
                                 </div>
                                 <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">{{ $f['hint'] }}</p>
                             </div>
@@ -2640,9 +2637,6 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             <div style="min-width:0;">
                                 <div style="display:flex;align-items:center;gap:7px;">
                                     <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">{{ $f['label'] }}</p>
-                                    @if($f['status'] === 'coming-soon')
-                                    <span style="background:#FEF3C7;color:#92400E;font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.3px;white-space:nowrap;">COMING SOON</span>
-                                    @endif
                                 </div>
                                 <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">{{ $f['hint'] }}</p>
                             </div>
