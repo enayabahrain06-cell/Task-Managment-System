@@ -1101,8 +1101,9 @@ async function submitSaReveal() {
         const data = await res.json();
         if (res.status === 403) { err.textContent = 'Incorrect password.'; err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Reveal'; return; }
         if (!res.ok)            { err.textContent = 'Error. Please try again.'; err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Reveal'; return; }
+        const cb = _saRevealCallback;
         closeSaRevealModal();
-        if (_saRevealCallback) _saRevealCallback(data.secret);
+        if (cb) cb(data.secret);
     } catch (e) {
         err.textContent = 'Network error. Please try again.';
         err.style.display = 'block';
