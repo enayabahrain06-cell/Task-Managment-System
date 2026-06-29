@@ -403,16 +403,14 @@ let formPreselectedUserIds = [];
                 </div>
                 @endif
                 @if($account->password)
-                <div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid #F7F8FA;" x-data="pwReveal({{ $account->id }})">
+                <div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid #F7F8FA;">
                     <span class="sa-cred-label">Password</span>
-                    <span style="font-size:12px;color:#111827;font-family:monospace;flex:1;letter-spacing:.12em;" x-text="revealed ? pw : '••••••••'"></span>
-                    <div style="display:flex;align-items:center;gap:4px;margin-left:6px;flex-shrink:0;">
-                        <span x-show="revealed" x-text="seconds+'s'" style="font-size:9px;color:#9CA3AF;font-weight:700;min-width:18px;text-align:right;"></span>
-                        <button class="sa-cred-btn sa-reveal-btn" @click="toggle()" :title="revealed ? 'Hide' : 'Reveal'">
-                            <i :class="loading ? 'fas fa-spinner fa-spin' : (revealed ? 'fas fa-eye-slash' : 'fas fa-eye')"></i>
-                        </button>
-                        <button class="sa-cred-btn sa-copy-btn" x-show="revealed" @click="copyPw($el)" title="Copy"><i class="fas fa-copy"></i></button>
-                    </div>
+                    <span style="font-size:12px;color:#111827;font-family:monospace;flex:1;letter-spacing:.12em;">••••••••</span>
+                    <button class="sa-cred-btn sa-reveal-btn"
+                            onclick="openSaRevealModal({{ $account->id }}, '{{ addslashes($account->name) }}')"
+                            title="Reveal password">
+                        <i class="fas fa-eye"></i>
+                    </button>
                 </div>
                 @endif
                 @if($account->account_id)
@@ -584,19 +582,14 @@ let formPreselectedUserIds = [];
                 </td>
 
                 {{-- Password --}}
-                <td x-data="pwReveal({{ $account->id }})">
+                <td>
                     @if($account->password)
                     <div style="display:flex;align-items:center;gap:4px;">
-                        <span x-show="!revealed" style="font-size:12px;color:#374151;font-family:monospace;letter-spacing:.1em;">••••••</span>
-                        <span x-show="revealed" x-text="pw" style="font-size:12px;color:#374151;font-family:monospace;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-                        <span x-show="revealed" x-text="seconds+'s'" style="font-size:9px;color:#9CA3AF;font-weight:700;"></span>
-                        <button @click="toggle()"
-                                style="width:20px;height:20px;border:none;border-radius:5px;background:#F3F4F6;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#9CA3AF;">
-                            <i :class="loading ? 'fas fa-spinner fa-spin' : (revealed ? 'fas fa-eye-slash' : 'fas fa-eye')" style="font-size:8px;pointer-events:none;"></i>
-                        </button>
-                        <button x-show="revealed" @click="copyPw($el)"
-                                style="width:20px;height:20px;border:none;border-radius:5px;background:#EEF2FF;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#6366F1;">
-                            <i class="fas fa-copy" style="font-size:8px;"></i>
+                        <span style="font-size:12px;color:#374151;font-family:monospace;letter-spacing:.1em;">••••••</span>
+                        <button onclick="openSaRevealModal({{ $account->id }}, '{{ addslashes($account->name) }}')"
+                                style="width:20px;height:20px;border:none;border-radius:5px;background:#F3F4F6;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#9CA3AF;"
+                                title="Reveal password">
+                            <i class="fas fa-eye" style="font-size:8px;pointer-events:none;"></i>
                         </button>
                     </div>
                     @else
@@ -1062,23 +1055,23 @@ function copyToClipboard(text, btn) {
     });
 }
 
-var _saRevealCallback = null;
-var _saRevealAccountId = null;
+// ── Step 1: Auth modal ──────────────────────────────────────────────────────
+var _saRevealAccountId   = null;
+var _saRevealAccountName = null;
 
-function openSaRevealModal(accountId, callback) {
-    _saRevealAccountId = accountId;
-    _saRevealCallback  = callback;
+function openSaRevealModal(accountId, accountName) {
+    _saRevealAccountId   = accountId;
+    _saRevealAccountName = accountName;
     document.getElementById('sa-reveal-input').value = '';
     document.getElementById('sa-reveal-error').style.display = 'none';
-    document.getElementById('sa-reveal-btn').disabled = false;
-    document.getElementById('sa-reveal-btn').textContent = 'Reveal';
+    const btn = document.getElementById('sa-reveal-btn');
+    btn.disabled = false;
+    btn.innerHTML = 'Reveal';
     document.getElementById('sa-reveal-modal').style.display = 'flex';
     setTimeout(() => document.getElementById('sa-reveal-input').focus(), 50);
 }
 function closeSaRevealModal() {
     document.getElementById('sa-reveal-modal').style.display = 'none';
-    _saRevealCallback  = null;
-    _saRevealAccountId = null;
 }
 async function submitSaReveal() {
     const pwd = document.getElementById('sa-reveal-input').value;
@@ -1099,41 +1092,105 @@ async function submitSaReveal() {
             body: JSON.stringify({ password: pwd })
         });
         const data = await res.json();
-        if (res.status === 403) { err.textContent = 'Incorrect password.'; err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Reveal'; return; }
-        if (!res.ok)            { err.textContent = 'Error. Please try again.'; err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Reveal'; return; }
-        const cb = _saRevealCallback;
+        if (res.status === 403) { err.textContent = 'Incorrect password.'; err.style.display = 'block'; btn.disabled = false; btn.innerHTML = 'Reveal'; return; }
+        if (!res.ok)            { err.textContent = 'Error. Please try again.';  err.style.display = 'block'; btn.disabled = false; btn.innerHTML = 'Reveal'; return; }
         closeSaRevealModal();
-        if (cb) cb(data.secret);
+        openSaSecretModal(data.secret, _saRevealAccountName);
     } catch (e) {
         err.textContent = 'Network error. Please try again.';
         err.style.display = 'block';
         btn.disabled = false;
-        btn.textContent = 'Reveal';
+        btn.innerHTML = 'Reveal';
     }
 }
+
+// ── Step 2: Secret display modal ────────────────────────────────────────────
+var _saSecret      = '';
+var _saSecretShown = false;
+var _saSecretTimer = null;
+const _SA_TIMER_SECS = 15;
+const _SA_CIRC       = 2 * Math.PI * 18; // ≈ 113.1
+
+function openSaSecretModal(secret, accountName) {
+    _saSecret      = secret;
+    _saSecretShown = false;
+
+    document.getElementById('sa-secret-acctname').textContent = accountName;
+    document.getElementById('sa-secret-display').textContent  = '••••••••••••';
+    document.getElementById('sa-secret-display').style.letterSpacing = '.15em';
+    document.getElementById('sa-secret-toggle-icon').className = 'fas fa-eye';
+    const copyBtn = document.getElementById('sa-secret-copy');
+    copyBtn.innerHTML = '<i class="fas fa-copy" style="font-size:12px;"></i> Copy';
+    copyBtn.style.background = '#EEF2FF';
+    copyBtn.style.color = '#4F46E5';
+
+    document.getElementById('sa-secret-modal').style.display = 'flex';
+    _startSaTimer();
+}
+
+function closeSaSecretModal() {
+    clearInterval(_saSecretTimer);
+    document.getElementById('sa-secret-modal').style.display = 'none';
+    _saSecret = '';
+}
+
+function _startSaTimer() {
+    clearInterval(_saSecretTimer);
+    let remaining = _SA_TIMER_SECS;
+    const ring = document.getElementById('sa-timer-ring');
+    const text = document.getElementById('sa-timer-text');
+    ring.style.transition = 'none';
+    ring.style.strokeDashoffset = '0';
+    text.textContent = remaining;
+
+    const footer = document.getElementById('sa-timer-footer');
+    if (footer) footer.textContent = remaining;
+
+    _saSecretTimer = setInterval(() => {
+        remaining--;
+        text.textContent = remaining;
+        if (footer) footer.textContent = remaining;
+        ring.style.transition = 'stroke-dashoffset 1s linear';
+        ring.style.strokeDashoffset = String(_SA_CIRC * (1 - remaining / _SA_TIMER_SECS));
+        if (remaining <= 0) { clearInterval(_saSecretTimer); closeSaSecretModal(); }
+    }, 1000);
+}
+
+function toggleSaSecret() {
+    _saSecretShown = !_saSecretShown;
+    const el   = document.getElementById('sa-secret-display');
+    const icon = document.getElementById('sa-secret-toggle-icon');
+    el.textContent           = _saSecretShown ? _saSecret : '••••••••••••';
+    el.style.letterSpacing   = _saSecretShown ? '.05em' : '.15em';
+    icon.className           = _saSecretShown ? 'fas fa-eye-slash' : 'fas fa-eye';
+}
+
+function copySaSecret() {
+    navigator.clipboard.writeText(_saSecret).then(() => {
+        const btn = document.getElementById('sa-secret-copy');
+        btn.innerHTML = '<i class="fas fa-check" style="font-size:12px;"></i> Copied!';
+        btn.style.background = '#DCFCE7';
+        btn.style.color = '#16A34A';
+        setTimeout(() => {
+            btn.innerHTML = '<i class="fas fa-copy" style="font-size:12px;"></i> Copy';
+            btn.style.background = '#EEF2FF';
+            btn.style.color = '#4F46E5';
+        }, 2000);
+    });
+}
+
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeSaRevealModal();
+    if (e.key === 'Escape') {
+        closeSaRevealModal();
+        closeSaSecretModal();
+    }
     if (e.key === 'Enter' && document.getElementById('sa-reveal-modal')?.style.display === 'flex') submitSaReveal();
 });
 
 function pwReveal(accountId) {
     return {
-        pw: '',
-        revealed: false,
-        loading: false,
-        seconds: 0,
-        _countdown: null,
-
+        pw: '', revealed: false, loading: false, seconds: 0, _countdown: null,
         toggle() {
-            if (this.revealed) { this.hide(); return; }
-            // Password already fetched this session — just re-show
-            if (this.pw) { this._startCountdown(); this.revealed = true; return; }
-            openSaRevealModal(accountId, (secret) => {
-                this.pw = secret;
-                this._startCountdown();
-                this.revealed = true;
-            });
-        },
 
         hide() {
             this.revealed = false;
@@ -1171,7 +1228,61 @@ function pwReveal(accountId) {
 </script>
 @endpush
 
-{{-- Password-gated reveal modal --}}
+{{-- Secret display modal (step 2 — shows revealed password with countdown) --}}
+<div id="sa-secret-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;align-items:center;justify-content:center;" onclick="if(event.target===this)closeSaSecretModal()">
+    <div style="background:#fff;border-radius:18px;width:100%;max-width:400px;box-shadow:0 24px 70px rgba(0,0,0,.3);overflow:hidden;">
+
+        {{-- Header --}}
+        <div style="background:linear-gradient(135deg,#4338CA,#6366F1);padding:20px 22px 18px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:38px;height:38px;background:rgba(255,255,255,0.18);border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-key" style="color:#fff;font-size:15px;"></i>
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:14px;font-weight:700;color:#fff;line-height:1.2;">Password Revealed</div>
+                    <div id="sa-secret-acctname" style="font-size:12px;color:rgba(255,255,255,0.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;"></div>
+                </div>
+                {{-- Countdown ring --}}
+                <div style="position:relative;width:46px;height:46px;flex-shrink:0;">
+                    <svg width="46" height="46" style="transform:rotate(-90deg);display:block;">
+                        <circle cx="23" cy="23" r="18" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="3.5"/>
+                        <circle id="sa-timer-ring" cx="23" cy="23" r="18" fill="none" stroke="#fff" stroke-width="3.5"
+                                stroke-dasharray="113.1" stroke-dashoffset="0" stroke-linecap="round"/>
+                    </svg>
+                    <div id="sa-timer-text" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;">15</div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Body --}}
+        <div style="padding:20px 22px 22px;">
+            <div style="font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Password</div>
+            <div style="position:relative;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:11px;padding:13px 46px 13px 14px;margin-bottom:14px;">
+                <code id="sa-secret-display" style="font-family:monospace;font-size:16px;font-weight:700;color:#111827;letter-spacing:.15em;word-break:break-all;display:block;"></code>
+                <button onclick="toggleSaSecret()" title="Show / hide"
+                        style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;color:#9CA3AF;line-height:1;">
+                    <i id="sa-secret-toggle-icon" class="fas fa-eye" style="font-size:14px;"></i>
+                </button>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button id="sa-secret-copy" onclick="copySaSecret()"
+                        style="flex:1;padding:10px 12px;background:#EEF2FF;border:none;border-radius:9px;font-size:13px;font-weight:600;color:#4F46E5;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .15s,color .15s;">
+                    <i class="fas fa-copy" style="font-size:12px;"></i> Copy
+                </button>
+                <button onclick="closeSaSecretModal()"
+                        style="flex:1;padding:10px 12px;background:#F3F4F6;border:none;border-radius:9px;font-size:13px;font-weight:600;color:#6B7280;cursor:pointer;">
+                    Done
+                </button>
+            </div>
+            <p style="font-size:11px;color:#D1D5DB;text-align:center;margin:12px 0 0;display:flex;align-items:center;justify-content:center;gap:5px;">
+                <i class="fas fa-shield-halved" style="color:#D97706;font-size:10px;"></i>
+                Password hidden automatically after <span id="sa-timer-footer" style="font-weight:700;color:#374151;">15</span>s
+            </p>
+        </div>
+    </div>
+</div>
+
+{{-- Password-gated auth modal (step 1) --}}
 <div id="sa-reveal-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)closeSaRevealModal()">
     <div style="background:#fff;border-radius:16px;padding:28px 28px 24px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.25);">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
