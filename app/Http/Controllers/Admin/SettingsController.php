@@ -1960,6 +1960,19 @@ class SettingsController extends Controller
         return response()->json([$key => $new === '1']);
     }
 
+    public function disableAllFeatures()
+    {
+        $keys = [
+            'show_gantt_chart', 'show_excel_export', 'show_workload_view',
+            'show_task_dependencies', 'show_recurring_tasks',
+            'show_time_tracking', 'show_task_templates',
+        ];
+        foreach ($keys as $key) {
+            Setting::set($key, '0');
+        }
+        return response()->json(['ok' => true]);
+    }
+
     public function toggleGanttChart()          { return $this->featureToggle('show_gantt_chart'); }
     public function toggleExcelExport()         { return $this->featureToggle('show_excel_export'); }
     public function toggleWorkloadView()        { return $this->featureToggle('show_workload_view'); }

@@ -2449,19 +2449,35 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
         <div x-show="tab === 'features'" x-cloak>
 
             {{-- Intro banner --}}
-            <div style="background:#F8FAFF;border:1px solid #E0E7FF;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;gap:14px;align-items:flex-start;">
-                <div style="width:36px;height:36px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
-                    <i class="fas fa-circle-info" style="color:#4F46E5;font-size:15px;"></i>
+            <div x-data="{ disabling: false }"
+                 style="background:#F8FAFF;border:1px solid #E0E7FF;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;gap:14px;align-items:flex-start;justify-content:space-between;">
+                <div style="display:flex;gap:14px;align-items:flex-start;">
+                    <div style="width:36px;height:36px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
+                        <i class="fas fa-circle-info" style="color:#4F46E5;font-size:15px;"></i>
+                    </div>
+                    <div>
+                        <p style="font-size:13px;font-weight:700;color:#1E1B4B;margin:0 0 4px;">About this page</p>
+                        <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.7;">
+                            Each toggle below controls whether a feature is visible and accessible across the system.
+                            Disabling a feature hides it from all pages — no data is deleted.
+                            You can re-enable any feature at any time and everything will reappear exactly as before.
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <p style="font-size:13px;font-weight:700;color:#1E1B4B;margin:0 0 4px;">About this page</p>
-                    <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.7;">
-                        Each toggle below controls whether a feature is visible and accessible across the system.
-                        Disabling a feature hides it from all pages — no data is deleted.
-                        You can re-enable any feature at any time and everything will reappear exactly as before.
-                        These features are being built — enabling them now pre-configures the system so they activate automatically once ready.
-                    </p>
-                </div>
+                <button type="button" :disabled="disabling"
+                        @click="if(!confirm('Disable all features?')) return;
+                                disabling=true;
+                                fetch('{{ route('admin.settings.features.disable-all') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}})
+                                .then(r=>r.json()).then(()=>{
+                                    document.querySelectorAll('[data-feature-toggle]').forEach(el=>{ el.__x && (el.__x.$data.enabled=false) });
+                                    Alpine.store && Alpine.store('features') && (Alpine.store('features').allDisabled=true);
+                                    window.location.reload();
+                                }).finally(()=>{ disabling=false })"
+                        style="flex-shrink:0;display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:9px;font-size:12px;font-weight:600;border:1.5px solid #FCA5A5;background:#FEF2F2;color:#DC2626;cursor:pointer;white-space:nowrap;transition:all .2s;"
+                        onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
+                    <i class="fas fa-toggle-off" style="font-size:13px;"></i>
+                    <span x-text="disabling ? 'Disabling…' : 'Disable All'"></span>
+                </button>
             </div>
 
             {{-- Task Features --}}
