@@ -1187,44 +1187,6 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && document.getElementById('sa-reveal-modal')?.style.display === 'flex') submitSaReveal();
 });
 
-function pwReveal(accountId) {
-    return {
-        pw: '', revealed: false, loading: false, seconds: 0, _countdown: null,
-        toggle() {
-
-        hide() {
-            this.revealed = false;
-            this.pw = '';          // wipe from memory on manual hide
-            this.seconds = 0;
-            clearInterval(this._countdown);
-        },
-
-        _startCountdown() {
-            clearInterval(this._countdown);
-            this.seconds = 15;
-            this._countdown = setInterval(() => {
-                this.seconds--;
-                if (this.seconds <= 0) {
-                    clearInterval(this._countdown);
-                    this.revealed = false;
-                    this.pw = '';  // wipe after auto-hide
-                }
-            }, 1000);
-        },
-
-        copyPw(btn) {
-            if (!this.pw) return;
-            navigator.clipboard.writeText(this.pw).then(() => {
-                const icon = btn.querySelector('i');
-                if (icon) {
-                    icon.className = 'fas fa-check';
-                    icon.style.color = '#16A34A';
-                    setTimeout(() => { icon.className = 'fas fa-copy'; icon.style.color = ''; }, 1800);
-                }
-            });
-        },
-    };
-}
 </script>
 @endpush
 
