@@ -2465,7 +2465,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                     </div>
                 </div>
                 <button type="button" :disabled="disabling"
-                        @click="if(!confirm('Disable all features?')) return;
+                        @click="if(!window.confirm('Disable all features?')) return;
                                 disabling=true;
                                 fetch('{{ route('admin.settings.features.disable-all') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}})
                                 .then(r=>r.json()).then(()=>{
