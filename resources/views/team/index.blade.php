@@ -227,7 +227,7 @@
     $roleColors = ['admin' => '#EF4444', 'manager' => '#6366F1', 'user' => '#10B981'];
     $roleBg     = ['admin' => 'bg-red-100 text-red-600', 'manager' => 'bg-indigo-100 text-indigo-600', 'user' => 'bg-emerald-100 text-emerald-700'];
     $avatarColors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6','#EC4899','#06B6D4'];
-    $natFlags = ['Afghan'=>'🇦🇫','Albanian'=>'🇦🇱','Algerian'=>'🇩🇿','American'=>'🇺🇸','Argentinian'=>'🇦🇷','Australian'=>'🇦🇺','Austrian'=>'🇦🇹','Bahraini'=>'🇧🇭','Bangladeshi'=>'🇧🇩','Belgian'=>'🇧🇪','Brazilian'=>'🇧🇷','British'=>'🇬🇧','Bulgarian'=>'🇧🇬','Cambodian'=>'🇰🇭','Canadian'=>'🇨🇦','Chilean'=>'🇨🇱','Chinese'=>'🇨🇳','Colombian'=>'🇨🇴','Croatian'=>'🇭🇷','Czech'=>'🇨🇿','Danish'=>'🇩🇰','Dutch'=>'🇳🇱','Egyptian'=>'🇪🇬','Emirati'=>'🇦🇪','Estonian'=>'🇪🇪','Ethiopian'=>'🇪🇹','Filipino'=>'🇵🇭','Finnish'=>'🇫🇮','French'=>'🇫🇷','German'=>'🇩🇪','Ghanaian'=>'🇬🇭','Greek'=>'🇬🇷','Hungarian'=>'🇭🇺','Indian'=>'🇮🇳','Indonesian'=>'🇮🇩','Iranian'=>'🇮🇷','Iraqi'=>'🇮🇶','Irish'=>'🇮🇪','Israeli'=>'🇮🇱','Italian'=>'🇮🇹','Japanese'=>'🇯🇵','Jordanian'=>'🇯🇴','Kenyan'=>'🇰🇪','Korean'=>'🇰🇷','Kuwaiti'=>'🇰🇼','Lebanese'=>'🇱🇧','Libyan'=>'🇱🇾','Malaysian'=>'🇲🇾','Mexican'=>'🇲🇽','Moroccan'=>'🇲🇦','Nigerian'=>'🇳🇬','Norwegian'=>'🇳🇴','Omani'=>'🇴🇲','Pakistani'=>'🇵🇰','Palestinian'=>'🇵🇸','Polish'=>'🇵🇱','Portuguese'=>'🇵🇹','Qatari'=>'🇶🇦','Romanian'=>'🇷🇴','Russian'=>'🇷🇺','Saudi'=>'🇸🇦','Serbian'=>'🇷🇸','Singaporean'=>'🇸🇬','South African'=>'🇿🇦','Spanish'=>'🇪🇸','Sri Lankan'=>'🇱🇰','Sudanese'=>'🇸🇩','Swedish'=>'🇸🇪','Swiss'=>'🇨🇭','Syrian'=>'🇸🇾','Thai'=>'🇹🇭','Tunisian'=>'🇹🇳','Turkish'=>'🇹🇷','Ukrainian'=>'🇺🇦','Yemeni'=>'🇾🇪'];
+    $natCodes = ['Afghan'=>'AF','Albanian'=>'AL','Algerian'=>'DZ','American'=>'US','Argentinian'=>'AR','Australian'=>'AU','Austrian'=>'AT','Bahraini'=>'BH','Bangladeshi'=>'BD','Belgian'=>'BE','Brazilian'=>'BR','British'=>'GB','Bulgarian'=>'BG','Cambodian'=>'KH','Canadian'=>'CA','Chilean'=>'CL','Chinese'=>'CN','Colombian'=>'CO','Croatian'=>'HR','Czech'=>'CZ','Danish'=>'DK','Dutch'=>'NL','Egyptian'=>'EG','Emirati'=>'AE','Estonian'=>'EE','Ethiopian'=>'ET','Filipino'=>'PH','Finnish'=>'FI','French'=>'FR','German'=>'DE','Ghanaian'=>'GH','Greek'=>'GR','Hungarian'=>'HU','Indian'=>'IN','Indonesian'=>'ID','Iranian'=>'IR','Iraqi'=>'IQ','Irish'=>'IE','Israeli'=>'IL','Italian'=>'IT','Japanese'=>'JP','Jordanian'=>'JO','Kenyan'=>'KE','Korean'=>'KR','Kuwaiti'=>'KW','Lebanese'=>'LB','Libyan'=>'LY','Malaysian'=>'MY','Mexican'=>'MX','Moroccan'=>'MA','Nigerian'=>'NG','Norwegian'=>'NO','Omani'=>'OM','Pakistani'=>'PK','Palestinian'=>'PS','Polish'=>'PL','Portuguese'=>'PT','Qatari'=>'QA','Romanian'=>'RO','Russian'=>'RU','Saudi'=>'SA','Serbian'=>'RS','Singaporean'=>'SG','South African'=>'ZA','Spanish'=>'ES','Sri Lankan'=>'LK','Sudanese'=>'SD','Swedish'=>'SE','Swiss'=>'CH','Syrian'=>'SY','Thai'=>'TH','Tunisian'=>'TN','Turkish'=>'TR','Ukrainian'=>'UA','Yemeni'=>'YE'];
 @endphp
 
 {{-- View Toggle Wrapper --}}
@@ -272,9 +272,9 @@
                     {{ strtoupper(substr($member->name, 0, 1)) }}
                 </div>
                 @endif
-                @if(!empty($member->nationality) && isset($natFlags[$member->nationality]))
+                @if(!empty($member->nationality) && isset($natCodes[$member->nationality]))
                 <span title="{{ $member->nationality }}"
-                      style="position:absolute;bottom:0;right:0;font-size:16px;line-height:1;background:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.18);ring:2px solid #fff;">{{ $natFlags[$member->nationality] }}</span>
+                      style="position:absolute;bottom:0;right:0;background:#EEF2FF;border:1.5px solid #fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.18);font-size:7px;font-weight:800;color:#4F46E5;letter-spacing:0;line-height:1;font-family:monospace;">{{ $natCodes[$member->nationality] }}</span>
                 @endif
             </div>
             <h3 class="font-semibold text-gray-900 text-sm">{{ $member->name }}</h3>
@@ -2907,16 +2907,18 @@ let _openActDrop = null;
 function toggleActDrop(btn, id) {
     const drop = document.getElementById(id);
     if (!drop) return;
-    // If this exact drop is already open, close it
     if (_openActDrop === drop) { closeActDrop(); return; }
-    // Close any other open drop
     closeActDrop();
-    // Position under the button using fixed coords
     const r = btn.getBoundingClientRect();
-    drop.style.top   = (r.bottom + 6) + 'px';
-    drop.style.right = (window.innerWidth - r.right) + 'px';
-    drop.style.left  = 'auto';
+    // Show offscreen first so we can measure the real height
+    drop.style.top     = '-9999px';
+    drop.style.right   = (window.innerWidth - r.right) + 'px';
+    drop.style.left    = 'auto';
     drop.style.display = 'block';
+    const dropH     = drop.offsetHeight;
+    const spaceBelow = window.innerHeight - r.bottom;
+    // Flip upward if it won't fit below
+    drop.style.top = (spaceBelow >= dropH + 10 ? r.bottom + 6 : r.top - dropH - 6) + 'px';
     _openActDrop = drop;
 }
 

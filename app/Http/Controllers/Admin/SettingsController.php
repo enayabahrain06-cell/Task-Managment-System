@@ -12,6 +12,7 @@ use App\Models\TaskSubmission;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\NasService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -1292,18 +1293,17 @@ class SettingsController extends Controller
         $dbPath      = database_path('database.sqlite');
         $storageBase = storage_path('app/public');
 
-        // Stream the ZIP directly to the browser using the system zip command.
-        // -0 = store only (no compression) so it starts instantly even for large files.
-        // We pipe: database file + all storage files, with path prefixes via -j/-r tricks.
-        // Strategy: create a tmp dir with symlinks so paths inside the ZIP are clean.
         $tmpDir = sys_get_temp_dir() . '/bk_' . $stamp;
         mkdir($tmpDir);
         mkdir($tmpDir . '/database');
+        mkdir($tmpDir . '/reports');
         symlink($dbPath, $tmpDir . '/database/database.sqlite');
         symlink($storageBase, $tmpDir . '/storage');
 
-        // Run zip from inside tmpDir so archive paths are relative (database/... storage/...)
-        $zipCmd = 'cd ' . escapeshellarg($tmpDir) . ' && zip -0 -r - database storage 2>/dev/null';
+        // Generate snapshot PDFs into the reports/ folder
+        $this->generateBackupPdfs($tmpDir . '/reports');
+
+        $zipCmd = 'cd ' . escapeshellarg($tmpDir) . ' && zip -0 -r - database storage reports 2>/dev/null';
 
         return response()->stream(function () use ($zipCmd, $tmpDir) {
             $proc = popen($zipCmd, 'r');
@@ -1312,16 +1312,134 @@ class SettingsController extends Controller
                 flush();
             }
             pclose($proc);
-            // Cleanup symlinks and tmp dir
             @unlink($tmpDir . '/database/database.sqlite');
             @unlink($tmpDir . '/storage');
+            @unlink($tmpDir . '/reports/system-summary.pdf');
+            @unlink($tmpDir . '/reports/user-performance.pdf');
+            foreach (glob($tmpDir . '/reports/users/*.pdf') ?: [] as $f) @unlink($f);
+            @rmdir($tmpDir . '/reports/users');
             @rmdir($tmpDir . '/database');
+            @rmdir($tmpDir . '/reports');
             @rmdir($tmpDir);
         }, 200, [
             'Content-Type'        => 'application/zip',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
             'X-Accel-Buffering'   => 'no',
         ]);
+    }
+
+    private function generateBackupPdfs(string $dir): void
+    {
+        $appName     = Setting::get('app_name', config('app.name', 'TaskMS'));
+        $generatedAt = now()->format('F j, Y  H:i');
+        $doneStatuses = ['approved', 'delivered'];
+
+        // ── Summary PDF data ────────────────────────────────────────────────
+        $totalTasks     = Task::count();
+        $completedTasks = Task::whereIn('status', $doneStatuses)->count();
+        $pendingTasks   = Task::whereIn('status', ['draft','assigned','viewed','in_progress','paused'])->count();
+        $totalUsers     = User::where('status', 'active')->count();
+        $totalProjects  = Project::where('is_quick', false)->count();
+        $completionRate = $totalTasks > 0 ? round($completedTasks / $totalTasks * 100) : 0;
+
+        $tasksByStatus = Task::select('status', DB::raw('count(*) as cnt'))
+            ->groupBy('status')
+            ->orderByDesc('cnt')
+            ->get();
+
+        $projects = Project::where('is_quick', false)
+            ->withCount(['tasks as task_count', 'tasks as done_count' => fn($q) => $q->whereIn('status', $doneStatuses)])
+            ->orderByDesc('task_count')
+            ->get();
+
+        $summaryPdf = Pdf::loadView('admin.backup.pdf-summary', compact(
+            'appName', 'generatedAt', 'totalTasks', 'completedTasks',
+            'pendingTasks', 'totalUsers', 'totalProjects', 'completionRate',
+            'tasksByStatus', 'projects'
+        ))->setPaper('a4', 'portrait');
+
+        file_put_contents($dir . '/system-summary.pdf', $summaryPdf->output());
+
+        // ── User performance PDF data ───────────────────────────────────────
+        $allUsers   = User::orderByRaw("CASE role WHEN 'admin' THEN 1 WHEN 'manager' THEN 2 ELSE 3 END")
+                          ->orderBy('name')
+                          ->get();
+
+        $userData = $allUsers->map(function ($u) use ($doneStatuses) {
+            $scope = fn($q) => $q->where('assigned_to', $u->id)
+                ->orWhereExists(fn($x) => $x->selectRaw('1')
+                    ->from('task_assignees')
+                    ->whereColumn('task_assignees.task_id', 'tasks.id')
+                    ->where('task_assignees.user_id', $u->id));
+
+            $total     = Task::where($scope)->count();
+            $completed = Task::where($scope)->whereIn('status', $doneStatuses)->count();
+            $pending   = Task::where($scope)->whereIn('status', ['assigned','viewed','in_progress','paused'])->count();
+            $inReview  = Task::where($scope)->whereIn('status', ['submitted','revision_requested'])->count();
+
+            return (object) [
+                'name'      => $u->name,
+                'role'      => $u->role,
+                'total'     => $total,
+                'completed' => $completed,
+                'pending'   => $pending,
+                'in_review' => $inReview,
+                'last_seen' => $u->last_seen_at ? $u->last_seen_at->format('d M Y') : 'Never',
+            ];
+        });
+
+        $totalAssigned  = $userData->sum('total');
+        $totalCompleted = $userData->sum('completed');
+        $overallRate    = $totalAssigned > 0 ? round($totalCompleted / $totalAssigned * 100) : 0;
+        $totalUsersAll  = $allUsers->count();
+        $activeUsers    = $allUsers->where('status', 'active')->count();
+
+        $perfPdf = Pdf::loadView('admin.backup.pdf-performance', [
+            'appName'        => $appName,
+            'generatedAt'    => $generatedAt,
+            'users'          => $userData,
+            'totalUsers'     => $totalUsersAll,
+            'activeUsers'    => $activeUsers,
+            'totalAssigned'  => $totalAssigned,
+            'totalCompleted' => $totalCompleted,
+            'overallRate'    => $overallRate,
+        ])->setPaper('a4', 'landscape');
+
+        file_put_contents($dir . '/user-performance.pdf', $perfPdf->output());
+
+        // ── Per-user individual PDFs ────────────────────────────────────────
+        $usersDir = $dir . '/users';
+        mkdir($usersDir, 0755, true);
+
+        foreach ($allUsers as $u) {
+            $scope = fn($q) => $q->where('assigned_to', $u->id)
+                ->orWhereExists(fn($x) => $x->selectRaw('1')
+                    ->from('task_assignees')
+                    ->whereColumn('task_assignees.task_id', 'tasks.id')
+                    ->where('task_assignees.user_id', $u->id));
+
+            $tasks          = Task::where($scope)->with('project')->orderByDesc('created_at')->get();
+            $totalTasks     = $tasks->count();
+            $completedTasks = $tasks->whereIn('status', $doneStatuses)->count();
+            $pendingTasks   = $tasks->whereIn('status', ['assigned','viewed','in_progress','paused'])->count();
+            $inReviewTasks  = $tasks->whereIn('status', ['submitted','revision_requested'])->count();
+            $completionRate = $totalTasks > 0 ? round($completedTasks / $totalTasks * 100) : 0;
+
+            $userPdf = Pdf::loadView('admin.backup.pdf-user-report', [
+                'appName'        => $appName,
+                'generatedAt'    => $generatedAt,
+                'user'           => $u,
+                'tasks'          => $tasks,
+                'totalTasks'     => $totalTasks,
+                'completedTasks' => $completedTasks,
+                'pendingTasks'   => $pendingTasks,
+                'inReviewTasks'  => $inReviewTasks,
+                'completionRate' => $completionRate,
+            ])->setPaper('a4', 'portrait');
+
+            $slug = preg_replace('/[^a-z0-9]+/', '-', strtolower($u->name));
+            file_put_contents($usersDir . '/' . $slug . '.pdf', $userPdf->output());
+        }
     }
 
     public function downloadBackupSqlite()
@@ -1369,14 +1487,21 @@ class SettingsController extends Controller
         $tmpDir = sys_get_temp_dir() . '/bk_' . $stamp;
         mkdir($tmpDir);
         mkdir($tmpDir . '/database');
+        mkdir($tmpDir . '/reports');
         symlink($dbPath, $tmpDir . '/database/database.sqlite');
         symlink($storageBase, $tmpDir . '/storage');
+        $this->generateBackupPdfs($tmpDir . '/reports');
 
-        exec('cd ' . escapeshellarg($tmpDir) . ' && zip -0 -r ' . escapeshellarg($zipPath) . ' database storage 2>/dev/null', $out, $code);
+        exec('cd ' . escapeshellarg($tmpDir) . ' && zip -0 -r ' . escapeshellarg($zipPath) . ' database storage reports 2>/dev/null', $out, $code);
 
         @unlink($tmpDir . '/database/database.sqlite');
         @unlink($tmpDir . '/storage');
+        @unlink($tmpDir . '/reports/system-summary.pdf');
+        @unlink($tmpDir . '/reports/user-performance.pdf');
+        foreach (glob($tmpDir . '/reports/users/*.pdf') ?: [] as $f) @unlink($f);
+        @rmdir($tmpDir . '/reports/users');
         @rmdir($tmpDir . '/database');
+        @rmdir($tmpDir . '/reports');
         @rmdir($tmpDir);
 
         if ($code !== 0 || !file_exists($zipPath)) {
