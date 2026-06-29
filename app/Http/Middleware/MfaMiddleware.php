@@ -33,8 +33,12 @@ class MfaMiddleware
             }
         }
 
-        // MFA enabled on account but not yet verified this session
-        if ($user->mfa_enabled && ! session('mfa_verified')) {
+        // MFA enabled on account but not yet verified this session.
+        // Only challenge when MFA is actually required for this user —
+        // either individually (mfa_required=1) or via the global force_mfa policy.
+        // When force_mfa is off and the user has no individual requirement, the
+        // account's MFA setup is kept but the challenge is skipped.
+        if ($mustSetup && $user->mfa_enabled && ! session('mfa_verified')) {
             if (! $request->routeIs('mfa.*')) {
                 return redirect()->route('mfa.challenge');
             }
