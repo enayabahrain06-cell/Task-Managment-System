@@ -31,13 +31,23 @@ class AuthenticatedSessionController extends Controller
         $user     = auth()->user();
         $forceMfa = \App\Models\Setting::get('force_mfa', '0') === '1';
 
-        // Redirect to MFA challenge if user has MFA enabled or admin forces it
-        if ($user->mfa_enabled) {
+        // Resolve per-user MFA requirement (tri-state: null=global, 1=always, 0=exempt)
+        $mfaRequired = $user->getRawOriginal('mfa_required');
+        if ($mfaRequired === null) {
+            $mustMfa = $forceMfa;
+        } elseif ((int) $mfaRequired === 1) {
+            $mustMfa = true;
+        } else {
+            $mustMfa = false;
+        }
+
+        // Challenge only when MFA is actually required for this user
+        if ($mustMfa && $user->mfa_enabled) {
             return redirect()->route('mfa.challenge');
         }
 
         // Force-MFA: user hasn't set up MFA yet — send to setup
-        if ($forceMfa && ! $user->mfa_enabled) {
+        if ($mustMfa && ! $user->mfa_enabled) {
             return redirect()->route('mfa.setup');
         }
 
