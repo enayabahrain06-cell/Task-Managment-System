@@ -106,7 +106,7 @@ class AppServiceProvider extends ServiceProvider
         // Share global app settings with all views
         View::composer('*', function ($view) {
             try {
-                $appSettings = Setting::getMany(['app_name','app_tagline','company_name','primary_color','department_name','logo_path','favicon_path','login_bg_type','login_bg_color','login_bg_image','copyright','developer_mode','hidden_elements','shown_extras','nav_hidden','maintenance_mode','hide_approval_customer_notify','hide_hourly_rate','hide_wa_web_button','notif_sound_type','notif_sound_volume','agent_name','agent_subtitle','agent_welcome','agent_color','agent_icon','hide_agent','support_user_id','hide_summarize_button']);
+                $appSettings = Setting::getMany(['app_name','app_tagline','company_name','primary_color','department_name','logo_path','favicon_path','login_bg_type','login_bg_color','login_bg_image','copyright','developer_mode','hidden_elements','shown_extras','nav_hidden','maintenance_mode','hide_approval_customer_notify','hide_hourly_rate','hide_wa_web_button','notif_sound_type','notif_sound_volume','agent_name','agent_subtitle','agent_welcome','agent_color','agent_icon','hide_agent','support_user_id','hide_summarize_button','hide_features_tab']);
                 $view->with('appSettings', array_merge([
                     'app_name'        => 'Dash',
                     'app_tagline'     => '',
