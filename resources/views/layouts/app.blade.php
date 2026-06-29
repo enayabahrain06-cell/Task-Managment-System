@@ -1147,17 +1147,19 @@ function onlineUsers() {
 @stack('scripts')
 
 @auth
-{{-- MQTT: initialize the browser client for the logged-in user --}}
+{{-- MQTT: credentials fetched server-side to avoid embedding secrets in HTML --}}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     if (window._mqtt && window._mqtt.initMqtt) {
-        window._mqtt.initMqtt({
-            userId:   {{ auth()->id() }},
-            wsUrl:    '{{ env("MQTT_WS_URL", "/mqtt") }}',
-            username: '{{ env("MQTT_BROWSER_USER", "tm_browser") }}',
-            password: '{{ env("MQTT_BROWSER_PASS", "") }}',
+        fetch('{{ route("mqtt.credentials") }}', {
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' }
+        })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(cfg) {
+            if (!cfg) return;
+            window._mqtt.initMqtt(cfg);
+            document.dispatchEvent(new Event('mqtt:ready'));
         });
-        document.dispatchEvent(new Event('mqtt:ready'));
     }
 });
 </script>

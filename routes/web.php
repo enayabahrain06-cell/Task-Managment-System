@@ -59,7 +59,17 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Shared authenticated routes (accessible by all roles)
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', MfaMiddleware::class])->group(function () {
+    // MQTT credentials endpoint — served per-session to avoid embedding in HTML source
+    Route::get('/mqtt/credentials', function () {
+        return response()->json([
+            'wsUrl'    => env('MQTT_WS_URL', '/mqtt'),
+            'username' => env('MQTT_BROWSER_USER', 'tm_browser'),
+            'password' => env('MQTT_BROWSER_PASS', ''),
+            'userId'   => auth()->id(),
+        ])->header('Cache-Control', 'no-store');
+    })->name('mqtt.credentials');
+
     // Profile update (all roles)
     Route::post('/profile/update', [UserDashboard::class, 'updateProfile'])->name('user.profile.update');
 
@@ -373,6 +383,20 @@ Route::middleware([AdminMiddleware::class, MfaMiddleware::class])->prefix('admin
 
     // Task comment file download (add ?inline=1 to serve inline; ?file_index=N for multi-file comments)
     Route::get('task-comments/{comment}/file', function (\App\Models\TaskComment $comment) {
+        $authUser = auth()->user();
+        $isAdminOrManager = in_array($authUser->role, ['admin', 'manager']);
+        $isCommentAuthor  = $comment->user_id === $authUser->id;
+        $isTaskParticipant = false;
+        if (! $isAdminOrManager && ! $isCommentAuthor) {
+            $task = \App\Models\Task::find($comment->task_id);
+            if ($task) {
+                $isTaskParticipant = $task->assigned_to === $authUser->id
+                    || $task->social_assigned_to === $authUser->id
+                    || $task->assignees()->where('user_id', $authUser->id)->exists();
+            }
+        }
+        abort_unless($isAdminOrManager || $isCommentAuthor || $isTaskParticipant, 403);
+
         $inline = request()->boolean('inline');
         $idx    = (int) request()->input('file_index', -1);
 

@@ -15,6 +15,7 @@ use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
@@ -79,7 +80,7 @@ class UserController extends Controller
                     }
                 },
             ],
-            'password'    => 'required|string|min:8|confirmed',
+            'password'    => ['required', 'confirmed', Password::defaults()],
             'role'        => ['required', Rule::in(Role::pluck('name'))],
             'phone'       => 'nullable|string|max:30',
             'job_title'   => 'nullable|string|max:80',
@@ -163,7 +164,7 @@ class UserController extends Controller
                 },
             ],
             'role'        => ['required', Rule::in(Role::pluck('name'))],
-            'password'    => 'nullable|string|min:8|confirmed',
+            'password'    => ['nullable', 'sometimes', 'confirmed', Password::defaults()],
             'phone'       => 'nullable|string|max:30',
             'job_title'   => 'nullable|string|max:80',
             'nationality' => 'nullable|string|max:80',
@@ -1124,7 +1125,7 @@ class UserController extends Controller
                 },
             ],
             'username' => 'nullable|string|max:60|unique:users|alpha_dash',
-            'password' => 'required|string|min:8|confirmed',
+            'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
         $clone = User::create([

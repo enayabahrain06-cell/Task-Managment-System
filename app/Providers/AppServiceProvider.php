@@ -8,6 +8,7 @@ use App\Observers\DatabaseNotificationObserver;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -28,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
                 'storage_omv_protocol', 'storage_omv_host', 'storage_omv_port',
                 'storage_omv_username', 'storage_omv_password', 'storage_omv_path',
                 'storage_omv_share', 'storage_nas_schema',
+                'min_password_length', 'require_strong_password',
             ]);
 
             $timezone   = $bootSettings['timezone']    ?? config('app.timezone', 'UTC');
@@ -36,6 +38,13 @@ class AppServiceProvider extends ServiceProvider
             config(['app.date_format' => $dateFormat]);
             date_default_timezone_set($timezone);
             \Carbon\Carbon::setLocale(config('app.locale', 'en'));
+
+            $minLen = max(6, (int)($bootSettings['min_password_length'] ?? 8));
+            $strong = ($bootSettings['require_strong_password'] ?? '0') === '1';
+            Password::defaults(function () use ($minLen, $strong) {
+                $rule = Password::min($minLen);
+                return $strong ? $rule->mixedCase()->numbers()->symbols() : $rule;
+            });
 
             config(['nas-file-manager.connection' => [
                 'protocol'   => $bootSettings['storage_omv_protocol'] ?? 'smb',
