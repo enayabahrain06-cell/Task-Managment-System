@@ -2447,10 +2447,22 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 
         {{-- ════ FEATURES ════ --}}
         <div x-show="tab === 'features'" x-cloak>
-            @php
-                $featureToggleJs = fn(string $route, string $key) =>
-                    "fetch('{$route}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{ enabled=d['{$key}'] })";
-            @endphp
+
+            {{-- Intro banner --}}
+            <div style="background:#F8FAFF;border:1px solid #E0E7FF;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;gap:14px;align-items:flex-start;">
+                <div style="width:36px;height:36px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
+                    <i class="fas fa-circle-info" style="color:#4F46E5;font-size:15px;"></i>
+                </div>
+                <div>
+                    <p style="font-size:13px;font-weight:700;color:#1E1B4B;margin:0 0 4px;">About this page</p>
+                    <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.7;">
+                        Each toggle below controls whether a feature is visible and accessible across the system.
+                        Disabling a feature hides it from all pages — no data is deleted.
+                        You can re-enable any feature at any time and everything will reappear exactly as before.
+                        Features marked <span style="background:#FEF3C7;color:#92400E;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;">COMING SOON</span> are planned and will be built next.
+                    </p>
+                </div>
+            </div>
 
             {{-- Task Features --}}
             <div class="scard" style="margin-bottom:20px;">
@@ -2458,39 +2470,113 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                     <div class="scard-icon" style="background:#EEF2FF;color:#4F46E5;"><i class="fas fa-list-check"></i></div>
                     <div>
                         <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Task Features</p>
-                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Enable or disable advanced task capabilities</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Advanced task capabilities — enable what your team needs</p>
                     </div>
                 </div>
 
                 @php
                 $taskFeatures = [
-                    ['key'=>'show_task_dependencies', 'route'=>route('admin.settings.features.task-dependencies'), 'icon'=>'fa-diagram-project', 'color'=>'#4F46E5', 'bg'=>'#EEF2FF', 'label'=>'Task Dependencies', 'hint'=>'Link tasks so one must finish before another can start'],
-                    ['key'=>'show_recurring_tasks',   'route'=>route('admin.settings.features.recurring-tasks'),   'icon'=>'fa-rotate',           'color'=>'#0891B2', 'bg'=>'#ECFEFF', 'label'=>'Recurring Tasks',    'hint'=>'Schedule tasks to repeat daily, weekly, or monthly'],
-                    ['key'=>'show_time_tracking',     'route'=>route('admin.settings.features.time-tracking'),     'icon'=>'fa-clock',            'color'=>'#059669', 'bg'=>'#ECFDF5', 'label'=>'Time Tracking',       'hint'=>'Let users log hours spent on each task'],
-                    ['key'=>'show_task_templates',    'route'=>route('admin.settings.features.task-templates'),    'icon'=>'fa-clone',            'color'=>'#D97706', 'bg'=>'#FFFBEB', 'label'=>'Task Templates',      'hint'=>'Save common task setups as reusable templates'],
+                    [
+                        'key'   => 'show_task_dependencies',
+                        'route' => route('admin.settings.features.task-dependencies'),
+                        'icon'  => 'fa-diagram-project', 'color' => '#4F46E5', 'bg' => '#EEF2FF',
+                        'label' => 'Task Dependencies',
+                        'hint'  => 'Block a task from starting until another one is finished',
+                        'status' => 'coming-soon',
+                        'what'  => 'Links two tasks together so that Task B cannot move to "In Progress" until Task A is marked as completed.',
+                        'how'   => 'When creating or editing a task, a "Depends on" field will appear where you can pick another task. The blocked task will show a warning and prevent progress until the dependency is resolved.',
+                        'best'  => 'Use this when you have sequential work — e.g. the design must be approved before development begins.',
+                    ],
+                    [
+                        'key'   => 'show_recurring_tasks',
+                        'route' => route('admin.settings.features.recurring-tasks'),
+                        'icon'  => 'fa-rotate', 'color' => '#0891B2', 'bg' => '#ECFEFF',
+                        'label' => 'Recurring Tasks',
+                        'hint'  => 'Auto-create tasks on a schedule — daily, weekly, or monthly',
+                        'status' => 'coming-soon',
+                        'what'  => 'A task can be set to repeat on a fixed schedule. When the current task is completed, a fresh copy is automatically created and assigned to the same person.',
+                        'how'   => 'When creating a task, a "Repeat" section will appear with options: Daily, Weekly (pick days), Monthly (pick date), or Custom interval. You can also set an end date or a max number of repeats.',
+                        'best'  => 'Ideal for routine work like weekly reports, monthly invoices, or daily stand-up summaries.',
+                    ],
+                    [
+                        'key'   => 'show_time_tracking',
+                        'route' => route('admin.settings.features.time-tracking'),
+                        'icon'  => 'fa-clock', 'color' => '#059669', 'bg' => '#ECFDF5',
+                        'label' => 'Time Tracking',
+                        'hint'  => 'Let users log the hours they spend working on a task',
+                        'status' => 'coming-soon',
+                        'what'  => 'Users can start a timer when they begin work on a task, or manually enter the hours spent. All logs are stored per task and visible to admins.',
+                        'how'   => 'A "Log Time" button will appear on each task. Users can start/stop a live timer or type in hours and minutes with an optional note. Admins see a time summary per task and per user in the reports section.',
+                        'best'  => 'Useful for billing clients by the hour, estimating future tasks, and understanding where team time is going.',
+                    ],
+                    [
+                        'key'   => 'show_task_templates',
+                        'route' => route('admin.settings.features.task-templates'),
+                        'icon'  => 'fa-clone', 'color' => '#D97706', 'bg' => '#FFFBEB',
+                        'label' => 'Task Templates',
+                        'hint'  => 'Save a task setup as a template to reuse it quickly',
+                        'status' => 'coming-soon',
+                        'what'  => 'Admins can save any task (title, description, checklist, assignee, priority, deadline offset) as a named template. New tasks can then be created from a template in one click.',
+                        'how'   => 'A "Save as Template" button will appear on any task. When creating a new task, a "Use Template" option will pre-fill all fields from the saved template.',
+                        'best'  => 'Perfect for project onboarding checklists, recurring project types, or any task your team creates repeatedly with the same structure.',
+                    ],
                 ];
                 @endphp
 
                 @foreach($taskFeatures as $f)
-                <div style="padding:14px 24px;border-bottom:1px solid #F3F4F6;"
-                     x-data="{ enabled: {{ ($appSettings[$f['key']] ?? '1') === '1' ? 'true' : 'false' }} }">
-                    <div style="display:flex;align-items:center;justify-content:space-between;">
-                        <div style="display:flex;align-items:center;gap:10px;">
+                <div style="border-bottom:1px solid #F3F4F6;" x-data="{ enabled: {{ ($appSettings[$f['key']] ?? '1') === '1' ? 'true' : 'false' }}, open: false }">
+                    {{-- Toggle row --}}
+                    <div style="padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                        <div style="display:flex;align-items:center;gap:10px;min-width:0;">
                             <div style="width:28px;height:28px;border-radius:8px;background:{{ $f['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                 <i class="fas {{ $f['icon'] }}" style="font-size:11px;color:{{ $f['color'] }};"></i>
                             </div>
-                            <div>
-                                <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">{{ $f['label'] }}</p>
+                            <div style="min-width:0;">
+                                <div style="display:flex;align-items:center;gap:7px;">
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">{{ $f['label'] }}</p>
+                                    @if($f['status'] === 'coming-soon')
+                                    <span style="background:#FEF3C7;color:#92400E;font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.3px;white-space:nowrap;">COMING SOON</span>
+                                    @endif
+                                </div>
                                 <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">{{ $f['hint'] }}</p>
                             </div>
                         </div>
-                        <button type="button"
-                                @click="fetch('{{ $f['route'] }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{ enabled=d['{{ $f['key'] }}'] })"
-                                style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
-                                :style="enabled ? 'background:#10B981;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
-                            <i class="fas" :class="enabled ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
-                            <span x-text="enabled ? 'Enabled' : 'Disabled'"></span>
-                        </button>
+                        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                            <button type="button" @click="open=!open"
+                                    style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:7px;font-size:11px;font-weight:600;border:1px solid #E5E7EB;background:#fff;color:#6B7280;cursor:pointer;">
+                                <i class="fas" :class="open ? 'fa-chevron-up' : 'fa-circle-info'" style="font-size:10px;"></i>
+                                <span x-text="open ? 'Hide' : 'How it works'"></span>
+                            </button>
+                            <button type="button"
+                                    @click="fetch('{{ $f['route'] }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{ enabled=d['{{ $f['key'] }}'] })"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;"
+                                    :style="enabled ? 'background:#10B981;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                                <i class="fas" :class="enabled ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                                <span x-text="enabled ? 'Enabled' : 'Disabled'"></span>
+                            </button>
+                        </div>
+                    </div>
+                    {{-- Info panel --}}
+                    <div x-show="open" x-collapse style="padding:0 24px 16px;">
+                        <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
+                            <div style="display:flex;gap:10px;">
+                                <div style="flex:1;">
+                                    <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 3px;text-transform:uppercase;letter-spacing:.5px;">What it does</p>
+                                    <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.6;">{{ $f['what'] }}</p>
+                                </div>
+                            </div>
+                            <div style="height:1px;background:#E5E7EB;"></div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                <div>
+                                    <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 3px;text-transform:uppercase;letter-spacing:.5px;">How to use</p>
+                                    <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.6;">{{ $f['how'] }}</p>
+                                </div>
+                                <div>
+                                    <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 3px;text-transform:uppercase;letter-spacing:.5px;">Best for</p>
+                                    <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.6;">{{ $f['best'] }}</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 @endforeach
@@ -2508,32 +2594,92 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 
                 @php
                 $reportFeatures = [
-                    ['key'=>'show_gantt_chart',   'route'=>route('admin.settings.features.gantt-chart'),   'icon'=>'fa-bars-progress', 'color'=>'#7C3AED', 'bg'=>'#F5F3FF', 'label'=>'Gantt Chart',          'hint'=>'Timeline view showing task progress and deadlines'],
-                    ['key'=>'show_excel_export',  'route'=>route('admin.settings.features.excel-export'),  'icon'=>'fa-file-excel',    'color'=>'#16A34A', 'bg'=>'#F0FDF4', 'label'=>'Export to Excel / CSV', 'hint'=>'Download task and project data as spreadsheets'],
-                    ['key'=>'show_workload_view', 'route'=>route('admin.settings.features.workload-view'), 'icon'=>'fa-people-arrows', 'color'=>'#0284C7', 'bg'=>'#F0F9FF', 'label'=>'Team Workload View',    'hint'=>'See how tasks are distributed across team members'],
+                    [
+                        'key'   => 'show_gantt_chart',
+                        'route' => route('admin.settings.features.gantt-chart'),
+                        'icon'  => 'fa-bars-progress', 'color' => '#7C3AED', 'bg' => '#F5F3FF',
+                        'label' => 'Gantt Chart',
+                        'hint'  => 'Timeline bar chart showing task schedule and progress',
+                        'status' => 'coming-soon',
+                        'what'  => 'A horizontal timeline where each task is shown as a bar spanning its start and deadline dates. Bars are colour-coded by status and grouped by project.',
+                        'how'   => 'A "Gantt" tab or link will appear in the Projects section. Admins and managers can view the full team timeline; users see only their own tasks. You can drag bars to adjust deadlines directly on the chart.',
+                        'best'  => 'Best for project planning meetings, showing stakeholders the schedule at a glance, and spotting deadline conflicts before they happen.',
+                    ],
+                    [
+                        'key'   => 'show_excel_export',
+                        'route' => route('admin.settings.features.excel-export'),
+                        'icon'  => 'fa-file-excel', 'color' => '#16A34A', 'bg' => '#F0FDF4',
+                        'label' => 'Export to Excel / CSV',
+                        'hint'  => 'Download task and project data as a spreadsheet',
+                        'status' => 'coming-soon',
+                        'what'  => 'Adds an "Export" button to the tasks list, project reports, and user performance pages. Exports all visible rows as an .xlsx or .csv file.',
+                        'how'   => 'Click the Export button, choose Excel or CSV format, and the file downloads immediately. Filters applied on the page (date range, status, user) are respected in the export.',
+                        'best'  => 'Useful for sharing reports with clients or management outside the system, importing into accounting tools, or doing custom analysis in Excel.',
+                    ],
+                    [
+                        'key'   => 'show_workload_view',
+                        'route' => route('admin.settings.features.workload-view'),
+                        'icon'  => 'fa-people-arrows', 'color' => '#0284C7', 'bg' => '#F0F9FF',
+                        'label' => 'Team Workload View',
+                        'hint'  => 'See how many active tasks each team member currently has',
+                        'status' => 'coming-soon',
+                        'what'  => 'A visual grid showing every team member alongside their current open task count, a load bar (light / moderate / heavy), and upcoming deadlines this week.',
+                        'how'   => 'Accessible from the admin dashboard or the Team section. Clicking a member expands their task list. Managers use it during sprint planning to balance who gets the next task.',
+                        'best'  => 'Use before assigning a new task to check who is available. Prevents overloading one person while others have capacity.',
+                    ],
                 ];
                 @endphp
 
                 @foreach($reportFeatures as $f)
-                <div style="padding:14px 24px;border-bottom:1px solid #F3F4F6;"
-                     x-data="{ enabled: {{ ($appSettings[$f['key']] ?? '1') === '1' ? 'true' : 'false' }} }">
-                    <div style="display:flex;align-items:center;justify-content:space-between;">
-                        <div style="display:flex;align-items:center;gap:10px;">
+                <div style="border-bottom:1px solid #F3F4F6;" x-data="{ enabled: {{ ($appSettings[$f['key']] ?? '1') === '1' ? 'true' : 'false' }}, open: false }">
+                    <div style="padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                        <div style="display:flex;align-items:center;gap:10px;min-width:0;">
                             <div style="width:28px;height:28px;border-radius:8px;background:{{ $f['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                 <i class="fas {{ $f['icon'] }}" style="font-size:11px;color:{{ $f['color'] }};"></i>
                             </div>
-                            <div>
-                                <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">{{ $f['label'] }}</p>
+                            <div style="min-width:0;">
+                                <div style="display:flex;align-items:center;gap:7px;">
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">{{ $f['label'] }}</p>
+                                    @if($f['status'] === 'coming-soon')
+                                    <span style="background:#FEF3C7;color:#92400E;font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.3px;white-space:nowrap;">COMING SOON</span>
+                                    @endif
+                                </div>
                                 <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">{{ $f['hint'] }}</p>
                             </div>
                         </div>
-                        <button type="button"
-                                @click="fetch('{{ $f['route'] }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{ enabled=d['{{ $f['key'] }}'] })"
-                                style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
-                                :style="enabled ? 'background:#10B981;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
-                            <i class="fas" :class="enabled ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
-                            <span x-text="enabled ? 'Enabled' : 'Disabled'"></span>
-                        </button>
+                        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                            <button type="button" @click="open=!open"
+                                    style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:7px;font-size:11px;font-weight:600;border:1px solid #E5E7EB;background:#fff;color:#6B7280;cursor:pointer;">
+                                <i class="fas" :class="open ? 'fa-chevron-up' : 'fa-circle-info'" style="font-size:10px;"></i>
+                                <span x-text="open ? 'Hide' : 'How it works'"></span>
+                            </button>
+                            <button type="button"
+                                    @click="fetch('{{ $f['route'] }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{ enabled=d['{{ $f['key'] }}'] })"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;"
+                                    :style="enabled ? 'background:#10B981;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                                <i class="fas" :class="enabled ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                                <span x-text="enabled ? 'Enabled' : 'Disabled'"></span>
+                            </button>
+                        </div>
+                    </div>
+                    <div x-show="open" x-collapse style="padding:0 24px 16px;">
+                        <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
+                            <div>
+                                <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 3px;text-transform:uppercase;letter-spacing:.5px;">What it does</p>
+                                <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.6;">{{ $f['what'] }}</p>
+                            </div>
+                            <div style="height:1px;background:#E5E7EB;"></div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                <div>
+                                    <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 3px;text-transform:uppercase;letter-spacing:.5px;">How to use</p>
+                                    <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.6;">{{ $f['how'] }}</p>
+                                </div>
+                                <div>
+                                    <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 3px;text-transform:uppercase;letter-spacing:.5px;">Best for</p>
+                                    <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.6;">{{ $f['best'] }}</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 @endforeach
