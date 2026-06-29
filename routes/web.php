@@ -226,6 +226,13 @@ Route::middleware([AdminMiddleware::class, MfaMiddleware::class])->prefix('admin
     Route::post('settings/hourly-rate',              [AdminSettingsController::class, 'toggleHourlyRate'])->name('settings.hourly-rate');
     Route::post('settings/hide-wa-web',              [AdminSettingsController::class, 'toggleHideWaWeb'])->name('settings.hide-wa-web');
     Route::post('settings/hide-summarize',           [AdminSettingsController::class, 'toggleHideSummarize'])->name('settings.hide-summarize');
+    Route::post('settings/features/gantt-chart',        [AdminSettingsController::class, 'toggleGanttChart'])->name('settings.features.gantt-chart');
+    Route::post('settings/features/excel-export',       [AdminSettingsController::class, 'toggleExcelExport'])->name('settings.features.excel-export');
+    Route::post('settings/features/workload-view',      [AdminSettingsController::class, 'toggleWorkloadView'])->name('settings.features.workload-view');
+    Route::post('settings/features/task-dependencies',  [AdminSettingsController::class, 'toggleTaskDependencies'])->name('settings.features.task-dependencies');
+    Route::post('settings/features/recurring-tasks',    [AdminSettingsController::class, 'toggleRecurringTasks'])->name('settings.features.recurring-tasks');
+    Route::post('settings/features/time-tracking',      [AdminSettingsController::class, 'toggleTimeTracking'])->name('settings.features.time-tracking');
+    Route::post('settings/features/task-templates',     [AdminSettingsController::class, 'toggleTaskTemplates'])->name('settings.features.task-templates');
     Route::post('settings/clear-cache',              [AdminSettingsController::class, 'clearCache'])->name('settings.clear-cache');
     Route::get('social-budget',                      [AdminSocialBudgetController::class, 'index'])->name('social-budget.index');
     Route::get('social-accounts/export/pdf', [AdminSocialAccountController::class, 'exportPdf'])->name('social-accounts.export.pdf');

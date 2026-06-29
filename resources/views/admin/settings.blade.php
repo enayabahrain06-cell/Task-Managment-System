@@ -181,6 +181,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
             ['id'=>'security',      'icon'=>'fa-shield-halved',  'label'=>'Security'],
             ['id'=>'storage',        'icon'=>'fa-hard-drive',      'label'=>'Storage / NAS'],
             ['id'=>'backup',        'icon'=>'fa-database',       'label'=>'Backup & Export'],
+            ['id'=>'features',      'icon'=>'fa-puzzle-piece',   'label'=>'Features'],
             ['id'=>'developer',     'icon'=>'fa-code',           'label'=>'Developer'],
             ['id'=>'danger',        'icon'=>'fa-trash-can',      'label'=>'Clear Data'],
         ];
@@ -2442,6 +2443,101 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 
             </div>
 
+        </div>
+
+        {{-- ════ FEATURES ════ --}}
+        <div x-show="tab === 'features'" x-cloak>
+            @php
+                $featureToggleJs = fn(string $route, string $key) =>
+                    "fetch('{$route}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{ enabled=d['{$key}'] })";
+            @endphp
+
+            {{-- Task Features --}}
+            <div class="scard" style="margin-bottom:20px;">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#EEF2FF;color:#4F46E5;"><i class="fas fa-list-check"></i></div>
+                    <div>
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Task Features</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Enable or disable advanced task capabilities</p>
+                    </div>
+                </div>
+
+                @php
+                $taskFeatures = [
+                    ['key'=>'show_task_dependencies', 'route'=>route('admin.settings.features.task-dependencies'), 'icon'=>'fa-diagram-project', 'color'=>'#4F46E5', 'bg'=>'#EEF2FF', 'label'=>'Task Dependencies', 'hint'=>'Link tasks so one must finish before another can start'],
+                    ['key'=>'show_recurring_tasks',   'route'=>route('admin.settings.features.recurring-tasks'),   'icon'=>'fa-rotate',           'color'=>'#0891B2', 'bg'=>'#ECFEFF', 'label'=>'Recurring Tasks',    'hint'=>'Schedule tasks to repeat daily, weekly, or monthly'],
+                    ['key'=>'show_time_tracking',     'route'=>route('admin.settings.features.time-tracking'),     'icon'=>'fa-clock',            'color'=>'#059669', 'bg'=>'#ECFDF5', 'label'=>'Time Tracking',       'hint'=>'Let users log hours spent on each task'],
+                    ['key'=>'show_task_templates',    'route'=>route('admin.settings.features.task-templates'),    'icon'=>'fa-clone',            'color'=>'#D97706', 'bg'=>'#FFFBEB', 'label'=>'Task Templates',      'hint'=>'Save common task setups as reusable templates'],
+                ];
+                @endphp
+
+                @foreach($taskFeatures as $f)
+                <div style="padding:14px 24px;border-bottom:1px solid #F3F4F6;"
+                     x-data="{ enabled: {{ ($appSettings[$f['key']] ?? '1') === '1' ? 'true' : 'false' }} }">
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:28px;height:28px;border-radius:8px;background:{{ $f['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas {{ $f['icon'] }}" style="font-size:11px;color:{{ $f['color'] }};"></i>
+                            </div>
+                            <div>
+                                <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">{{ $f['label'] }}</p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">{{ $f['hint'] }}</p>
+                            </div>
+                        </div>
+                        <button type="button"
+                                @click="fetch('{{ $f['route'] }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{ enabled=d['{{ $f['key'] }}'] })"
+                                style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                :style="enabled ? 'background:#10B981;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                            <i class="fas" :class="enabled ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                            <span x-text="enabled ? 'Enabled' : 'Disabled'"></span>
+                        </button>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+
+            {{-- Views & Reports --}}
+            <div class="scard">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#F0FDF4;color:#16A34A;"><i class="fas fa-chart-bar"></i></div>
+                    <div>
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Views & Reports</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Show or hide reporting and visualisation tools</p>
+                    </div>
+                </div>
+
+                @php
+                $reportFeatures = [
+                    ['key'=>'show_gantt_chart',   'route'=>route('admin.settings.features.gantt-chart'),   'icon'=>'fa-bars-progress', 'color'=>'#7C3AED', 'bg'=>'#F5F3FF', 'label'=>'Gantt Chart',          'hint'=>'Timeline view showing task progress and deadlines'],
+                    ['key'=>'show_excel_export',  'route'=>route('admin.settings.features.excel-export'),  'icon'=>'fa-file-excel',    'color'=>'#16A34A', 'bg'=>'#F0FDF4', 'label'=>'Export to Excel / CSV', 'hint'=>'Download task and project data as spreadsheets'],
+                    ['key'=>'show_workload_view', 'route'=>route('admin.settings.features.workload-view'), 'icon'=>'fa-people-arrows', 'color'=>'#0284C7', 'bg'=>'#F0F9FF', 'label'=>'Team Workload View',    'hint'=>'See how tasks are distributed across team members'],
+                ];
+                @endphp
+
+                @foreach($reportFeatures as $f)
+                <div style="padding:14px 24px;border-bottom:1px solid #F3F4F6;"
+                     x-data="{ enabled: {{ ($appSettings[$f['key']] ?? '1') === '1' ? 'true' : 'false' }} }">
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:28px;height:28px;border-radius:8px;background:{{ $f['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas {{ $f['icon'] }}" style="font-size:11px;color:{{ $f['color'] }};"></i>
+                            </div>
+                            <div>
+                                <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">{{ $f['label'] }}</p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">{{ $f['hint'] }}</p>
+                            </div>
+                        </div>
+                        <button type="button"
+                                @click="fetch('{{ $f['route'] }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{ enabled=d['{{ $f['key'] }}'] })"
+                                style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                :style="enabled ? 'background:#10B981;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                            <i class="fas" :class="enabled ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                            <span x-text="enabled ? 'Enabled' : 'Disabled'"></span>
+                        </button>
+                    </div>
+                </div>
+                @endforeach
+            </div>
         </div>
 
         {{-- ════ DEVELOPER ════ --}}

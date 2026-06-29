@@ -1950,4 +1950,21 @@ class SettingsController extends Controller
 
         file_put_contents($path, $content);
     }
+
+    // ── Feature toggles ────────────────────────────────────────────────────────
+
+    private function featureToggle(string $key): \Illuminate\Http\JsonResponse
+    {
+        $new = Setting::get($key, '1') === '1' ? '0' : '1';
+        Setting::set($key, $new);
+        return response()->json([$key => $new === '1']);
+    }
+
+    public function toggleGanttChart()          { return $this->featureToggle('show_gantt_chart'); }
+    public function toggleExcelExport()         { return $this->featureToggle('show_excel_export'); }
+    public function toggleWorkloadView()        { return $this->featureToggle('show_workload_view'); }
+    public function toggleTaskDependencies()    { return $this->featureToggle('show_task_dependencies'); }
+    public function toggleRecurringTasks()      { return $this->featureToggle('show_recurring_tasks'); }
+    public function toggleTimeTracking()        { return $this->featureToggle('show_time_tracking'); }
+    public function toggleTaskTemplates()       { return $this->featureToggle('show_task_templates'); }
 }
