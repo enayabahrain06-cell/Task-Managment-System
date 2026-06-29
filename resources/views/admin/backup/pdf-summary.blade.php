@@ -47,7 +47,7 @@ table.data tr:nth-child(even) td { background: #FAFAFA; }
 <tr>
     <td>
         @if(!empty($logoBase64))
-            <img src="{{ $logoBase64 }}" style="height:32px;max-width:140px;"><br>
+            <img src="{{ $logoBase64 }}" style="height:52px;max-width:200px;"><br>
         @else
             <div class="app-name">{{ $appName }}</div>
         @endif

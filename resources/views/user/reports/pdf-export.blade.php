@@ -44,6 +44,7 @@ table.data tr:nth-child(even) td { background: #FAFAFA; }
 
 .st { display: inline-block; padding: 2px 6px; border-radius: 20px; font-size: 8px; font-weight: bold; white-space: nowrap; }
 .st-delivered          { background: #D1FAE5; color: #065F46; }
+.st-archived           { background: #D1FAE5; color: #065F46; }
 .st-approved           { background: #E0E7FF; color: #3730A3; }
 .st-submitted          { background: #FEF3C7; color: #92400E; }
 .st-in_progress        { background: #DBEAFE; color: #1E40AF; }
@@ -70,14 +71,22 @@ table.data tr:nth-child(even) td { background: #FAFAFA; }
 <tr>
     <td>
         @if(!empty($logoBase64))
-            <img src="{{ $logoBase64 }}" style="height:52px;max-width:200px;"><br>
+        <table cellpadding="0" cellspacing="0">
+        <tr>
+            <td valign="middle"><img src="{{ $logoBase64 }}" style="height:44px;max-width:160px;display:block;"></td>
+            <td valign="middle" style="padding-left:10px;">
+                <div style="font-size:15px;font-weight:bold;color:#111827;line-height:1.2;">{{ $companyName }}</div>
+                <div style="font-size:9px;color:#9CA3AF;margin-top:2px;">{{ $appName }}</div>
+            </td>
+        </tr>
+        </table>
         @else
-            <div class="app-name">{{ $appName }}</div>
+            <div class="app-name">{{ $companyName }}</div>
         @endif
-        <div class="sub-title">Individual User Report</div>
-        <div class="meta-txt">Backup snapshot · {{ $generatedAt }}</div>
+        <div class="sub-title" style="margin-top:6px;">My Performance Report</div>
+        <div class="meta-txt">Generated: {{ $generatedAt }}</div>
     </td>
-    <td align="right" valign="middle" style="font-size:10px;color:#6B7280;">Confidential</td>
+    <td></td>
 </tr>
 </table>
 
@@ -90,15 +99,17 @@ table.data tr:nth-child(even) td { background: #FAFAFA; }
                 <img src="{{ $avatarBase64 }}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid #C7D2FE;">
             @else
                 <div style="width:44px;height:44px;border-radius:50%;background:#4F46E5;text-align:center;padding-top:10px;">
-                    <span style="color:#fff;font-size:18px;font-weight:bold;line-height:1;">{{ strtoupper(substr($user->name,0,1)) }}</span>
+                    <span style="color:#fff;font-size:18px;font-weight:bold;line-height:1;">{{ strtoupper(substr($user->name, 0, 1)) }}</span>
                 </div>
             @endif
         </td>
         <td valign="middle" style="padding-left:12px;">
             <div class="user-name">{{ $user->name }}</div>
             <div class="user-meta">{{ $user->email }}
-                @if($user->job_title) &middot; {{ $user->job_title }} @endif
-                @if($user->nationality) &middot; {{ $user->nationality }} @endif
+                @if($user->job_title) &middot; {{ $user->job_title }}
+                @endif
+                @if($user->nationality) &middot; {{ $user->nationality }}
+                @endif
             </div>
             <div style="margin-top:5px;">
                 <span class="badge badge-{{ $user->role }}">{{ ucfirst($user->role) }}</span>
@@ -142,7 +153,7 @@ table.data tr:nth-child(even) td { background: #FAFAFA; }
 </tr>
 </table>
 <div class="bar-bg" style="margin-bottom:16px;">
-    <div class="bar-fill" style="width:{{ $completionRate }}%;background:{{ $completionRate>=80?'#10B981':($completionRate>=50?'#F59E0B':'#EF4444') }};"></div>
+    <div class="bar-fill" style="width:{{ $completionRate }}%;background:{{ $completionRate >= 80 ? '#10B981' : ($completionRate >= 50 ? '#F59E0B' : '#EF4444') }};"></div>
 </div>
 @endif
 
@@ -168,17 +179,18 @@ table.data tr:nth-child(even) td { background: #FAFAFA; }
     @php
         $isOverdue = $task->deadline
             && \Carbon\Carbon::parse($task->deadline)->isPast()
-            && !in_array($task->status, ['approved','delivered']);
+            && !in_array($task->status, ['approved','delivered','archived']);
     @endphp
     <tr>
         <td style="color:#9CA3AF;">{{ $i + 1 }}</td>
         <td>{{ $task->title }}</td>
         <td style="color:#6B7280;">{{ ($task->project && !$task->project->is_quick) ? $task->project->name : '—' }}</td>
-        <td><span class="st st-{{ $task->status }}">{{ ucfirst(str_replace('_',' ',$task->status)) }}</span></td>
+        <td><span class="st st-{{ $task->status }}">{{ ucfirst(str_replace('_', ' ', $task->status)) }}</span></td>
         <td>
             @if($task->priority)
                 <span class="dot dot-{{ $task->priority }}"></span>{{ ucfirst($task->priority) }}
-            @else —
+            @else
+                —
             @endif
         </td>
         <td style="color:{{ $isOverdue ? '#DC2626' : '#374151' }};white-space:nowrap;">
@@ -194,7 +206,7 @@ table.data tr:nth-child(even) td { background: #FAFAFA; }
 {{-- Footer --}}
 <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #E5E7EB;padding-top:10px;margin-top:20px;">
 <tr>
-    <td class="footer-txt">{{ $appName }} — {{ $user->name }} · Backup Report · Confidential</td>
+    <td class="footer-txt">{{ $appName }} — {{ $user->name }} · Performance Report</td>
     <td class="footer-txt" align="right">Generated on {{ $generatedAt }}</td>
 </tr>
 </table>

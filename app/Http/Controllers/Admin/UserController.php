@@ -49,8 +49,9 @@ class UserController extends Controller
         ];
 
         $allRoles = Role::ordered();
+        $forceMfa = Setting::get('force_mfa', '0') === '1';
 
-        return view('admin.users.index', compact('users', 'stats', 'allRoles'));
+        return view('admin.users.index', compact('users', 'stats', 'allRoles', 'forceMfa'));
     }
 
     public function create()
@@ -439,10 +440,20 @@ class UserController extends Controller
     public function disableMfa(User $user)
     {
         if (! $user->mfa_enabled) {
+            // User never had MFA — just exempt them from the global force_mfa requirement
+            $user->update(['mfa_required' => false]);
+
+            AuditLogger::log(
+                'user.mfa_exempted',
+                $user,
+                "MFA requirement exempted for {$user->name} by admin",
+                ['admin_id' => auth()->id()]
+            );
+
             if (request()->expectsJson()) {
-                return response()->json(['ok' => false, 'message' => "{$user->name} does not have MFA enabled."]);
+                return response()->json(['ok' => true, 'message' => "{$user->name} has been exempted from MFA requirement.", 'mfa_enabled' => false, 'mfa_required' => false]);
             }
-            return back()->with('info', "{$user->name} does not have MFA enabled.");
+            return back()->with('success', "{$user->name} has been exempted from the MFA requirement.");
         }
 
         $user->update([

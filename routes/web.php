@@ -444,6 +444,7 @@ Route::middleware([UserMiddleware::class, MfaMiddleware::class])->prefix('user')
     Route::get('/projects/{project}', [UserProjectController::class, 'show'])->name('projects.show');
     Route::get('/reports', [UserReportsController::class, 'index'])->name('reports.index');
     Route::get('/reports/export', [UserReportsController::class, 'exportTasks'])->name('reports.export');
+    Route::get('/reports/export-pdf', [UserReportsController::class, 'exportPdf'])->name('reports.export.pdf');
     Route::get('/attachments/{attachment}/download', function (\App\Models\ProjectAttachment $attachment) {
         $userId = auth()->id();
         $allowed = \App\Models\Task::where('project_id', $attachment->project_id)

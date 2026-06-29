@@ -186,12 +186,12 @@
                     Export as CSV
                 </a>
 
-                <button onclick="exportTasksPDF()" @click="exportOpen=false"
-                        style="display:flex;align-items:center;gap:9px;padding:10px 14px;font-size:13px;color:#374151;width:100%;border:none;background:transparent;cursor:pointer;text-align:left;"
-                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='transparent'">
+                <a href="{{ route('user.reports.export.pdf') }}" @click="exportOpen=false"
+                   style="display:flex;align-items:center;gap:9px;padding:10px 14px;font-size:13px;color:#374151;text-decoration:none;"
+                   onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='transparent'">
                     <i class="fas fa-file-pdf" style="font-size:12px;color:#DC2626;width:14px;text-align:center;"></i>
                     Export as PDF
-                </button>
+                </a>
             </div>
         </div>
         {{-- Range selector --}}

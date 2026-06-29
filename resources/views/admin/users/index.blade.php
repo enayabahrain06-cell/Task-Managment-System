@@ -172,6 +172,11 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
                     @endif
                 </td>
                 {{-- MFA --}}
+                @php
+                    $mfaRaw = $user->getRawOriginal('mfa_required');
+                    $isExempted = !$user->mfa_enabled && $mfaRaw !== null && (int)$mfaRaw === 0;
+                    $isForced   = $forceMfa && !$user->mfa_enabled && !$isExempted;
+                @endphp
                 <td class="px-5 py-3.5 hidden md:table-cell">
                     @if($user->mfa_enabled)
                     <form action="{{ route('admin.users.disable-mfa', $user) }}" method="POST"
@@ -183,8 +188,19 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
                             <i class="fas fa-shield-halved text-xs"></i> On
                         </button>
                     </form>
+                    @elseif($isForced)
+                    <form action="{{ route('admin.users.disable-mfa', $user) }}" method="POST"
+                          onsubmit="return confirm('Exempt {{ addslashes($user->name) }} from the MFA requirement? They will be able to log in with password only.')">
+                        @csrf
+                        <button type="submit"
+                                class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 hover:bg-red-100 hover:text-red-600 border border-amber-200 hover:border-red-200 transition"
+                                title="MFA required by global policy — click to exempt this user">
+                            <i class="fas fa-shield-halved text-xs"></i> Forced
+                        </button>
+                    </form>
                     @else
-                    <span class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-400">
+                    <span class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-400"
+                          title="{{ $isExempted ? 'Exempted from MFA requirement' : 'MFA not enabled' }}">
                         <i class="fas fa-shield-halved text-xs"></i> Off
                     </span>
                     @endif
