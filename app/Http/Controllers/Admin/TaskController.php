@@ -18,6 +18,7 @@ use App\Notifications\TaskCommentPosted;
 use App\Notifications\TaskDelivered;
 use App\Notifications\TaskReassigned;
 use App\Services\AuditLogger;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -120,12 +121,14 @@ class TaskController extends Controller
             'comments.user', 'comments.edits.editor',
             'transfers.fromUser', 'transfers.toUser', 'transfers.transferredBy',
             'attachments',
+            'dependencies.project',
         ]);
         $users       = User::whereIn('role', ['user', 'manager'])->orderBy('name')->get();
         $socialUsers = User::where('role', 'user')->orderBy('name')->get();
         $projects    = Project::where('is_quick', false)->orderBy('name')->get();
         $customers   = Customer::orderBy('name')->get();
-        return view('admin.tasks.show', compact('task', 'users', 'socialUsers', 'projects', 'customers'));
+        $depsFeatureOn = \App\Models\Setting::get('show_task_dependencies', '1') === '1';
+        return view('admin.tasks.show', compact('task', 'users', 'socialUsers', 'projects', 'customers', 'depsFeatureOn'));
     }
 
     public function update(Request $request, Task $task)
@@ -314,6 +317,77 @@ class TaskController extends Controller
         ]);
         $submission->update(['note' => $request->note]);
         return back()->with('success', 'Submission note updated.');
+    }
+
+    // ── Task Dependencies ────────────────────────────────────────────────────
+
+    public function storeDependency(Request $request, Task $task)
+    {
+        $request->validate([
+            'depends_on_task_id' => 'required|integer|exists:tasks,id',
+        ]);
+
+        $dependsOnId = (int) $request->depends_on_task_id;
+
+        if ($dependsOnId === $task->id) {
+            return response()->json(['error' => 'A task cannot depend on itself.'], 422);
+        }
+
+        // Prevent circular: check that the target doesn't already depend on $task
+        $circular = \DB::table('task_dependencies')
+            ->where('task_id', $dependsOnId)
+            ->where('depends_on_task_id', $task->id)
+            ->exists();
+        if ($circular) {
+            return response()->json(['error' => 'Circular dependency detected.'], 422);
+        }
+
+        $task->dependencies()->syncWithoutDetaching([
+            $dependsOnId => ['created_by' => auth()->id()],
+        ]);
+
+        $dep = Task::with('project:id,name,is_quick')->find($dependsOnId);
+        AuditLogger::log('task.dependency_added', $task, "Dependency added: #{$dep->id} {$dep->title}", ['depends_on_id' => $dependsOnId]);
+
+        return response()->json([
+            'ok'  => true,
+            'dep' => [
+                'id'      => $dep->id,
+                'title'   => $dep->title,
+                'status'  => $dep->status,
+                'project' => ($dep->project && !$dep->project->is_quick) ? $dep->project->name : null,
+            ],
+        ]);
+    }
+
+    public function destroyDependency(Task $task, int $dependsOnId)
+    {
+        $task->dependencies()->detach($dependsOnId);
+        AuditLogger::log('task.dependency_removed', $task, "Dependency removed: #{$dependsOnId}", ['depends_on_id' => $dependsOnId]);
+        return response()->json(['ok' => true]);
+    }
+
+    public function searchTasksForDependency(Request $request, Task $task)
+    {
+        $q = $request->input('q', '');
+        $alreadyIds = $task->dependencies()->pluck('depends_on_task_id')->push($task->id);
+
+        $results = Task::where('id', '!=', $task->id)
+            ->whereNotIn('id', $alreadyIds)
+            ->where(function ($query) use ($q) {
+                $query->where('title', 'like', "%{$q}%")
+                      ->orWhere('id', 'like', "%{$q}%");
+            })
+            ->with('project:id,name,is_quick')
+            ->limit(10)
+            ->get(['id', 'title', 'status', 'project_id']);
+
+        return response()->json($results->map(fn($t) => [
+            'id'      => $t->id,
+            'title'   => $t->title,
+            'status'  => $t->status,
+            'project' => ($t->project && !$t->project->is_quick) ? $t->project->name : null,
+        ]));
     }
 
     public function deliver(Request $request, Task $task)

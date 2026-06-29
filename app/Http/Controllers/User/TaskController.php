@@ -164,6 +164,17 @@ class TaskController extends Controller
             return back()->with('error', 'Timer cannot be started at this stage.');
         }
 
+        // Block start if unresolved dependencies exist (and feature is enabled)
+        if (\App\Models\Setting::get('show_task_dependencies', '1') === '1'
+            && $task->status === 'viewed'
+            && !$task->dependenciesResolved()) {
+            $blocking = $task->dependencies()
+                ->whereNotIn('status', ['approved', 'delivered', 'archived'])
+                ->get(['id', 'title', 'status']);
+            $list = $blocking->map(fn($t) => "#{$t->id} {$t->title} ({$t->status})")->join(', ');
+            return back()->with('error', "Cannot start — waiting for: {$list}");
+        }
+
         $userId = auth()->id();
 
         // Auto-pause other running tasks

@@ -122,6 +122,27 @@ class Task extends Model
         return $this->hasMany(ProjectAttachment::class);
     }
 
+    /** Tasks that THIS task is waiting for (must complete first). */
+    public function dependencies(): BelongsToMany
+    {
+        return $this->belongsToMany(Task::class, 'task_dependencies', 'task_id', 'depends_on_task_id')
+                    ->withTimestamps();
+    }
+
+    /** Tasks that are blocked waiting for THIS task to complete. */
+    public function dependents(): BelongsToMany
+    {
+        return $this->belongsToMany(Task::class, 'task_dependencies', 'depends_on_task_id', 'task_id')
+                    ->withTimestamps();
+    }
+
+    /** Returns true if all blocking tasks are in a done state. */
+    public function dependenciesResolved(): bool
+    {
+        $doneStatuses = ['approved', 'delivered', 'archived'];
+        return $this->dependencies()->whereNotIn('status', $doneStatuses)->doesntExist();
+    }
+
     public function transfers(): HasMany
     {
         return $this->hasMany(TaskTransfer::class)->orderBy('transferred_at');

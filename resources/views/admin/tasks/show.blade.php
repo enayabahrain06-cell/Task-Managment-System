@@ -2133,6 +2133,114 @@
     {{-- Right sidebar --}}
     <div style="display:flex;flex-direction:column;gap:16px;">
 
+        {{-- Task Dependencies --}}
+        @if($depsFeatureOn)
+        @php $doneStatuses = ['approved','delivered','archived']; @endphp
+        <div x-data="{
+                deps: {{ $task->dependencies->map(fn($d) => ['id'=>$d->id,'title'=>$d->title,'status'=>$d->status,'project'=>($d->project && !$d->project->is_quick)?$d->project->name:null])->toJson() }},
+                search: '', results: [], searching: false, adding: false, errMsg: '',
+                csrfToken: '{{ csrf_token() }}',
+                storeUrl: '{{ route('admin.tasks.dependencies.store', $task) }}',
+                searchUrl: '{{ route('admin.tasks.dependencies.search', $task) }}',
+                destroyBase: '{{ url('admin/tasks/'.$task->id.'/dependencies') }}',
+                doSearch() {
+                    if (this.search.length < 1) { this.results = []; return; }
+                    this.searching = true;
+                    fetch(this.searchUrl + '?q=' + encodeURIComponent(this.search), {headers:{'Accept':'application/json'}})
+                        .then(r=>r.json()).then(d=>{ this.results=d; this.searching=false; });
+                },
+                addDep(task) {
+                    this.adding = true; this.errMsg = '';
+                    fetch(this.storeUrl, {method:'POST',headers:{'X-CSRF-TOKEN':this.csrfToken,'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({depends_on_task_id:task.id})})
+                        .then(r=>r.json()).then(d=>{
+                            if(d.error){ this.errMsg=d.error; } else { this.deps.push(d.dep); this.search=''; this.results=[]; }
+                            this.adding=false;
+                        });
+                },
+                removeDep(id) {
+                    fetch(this.destroyBase+'/'+id, {method:'DELETE',headers:{'X-CSRF-TOKEN':this.csrfToken,'Accept':'application/json'}})
+                        .then(()=>{ this.deps=this.deps.filter(d=>d.id!==id); });
+                },
+                statusColor(s) {
+                    const map={'draft':'#9CA3AF','assigned':'#3B82F6','viewed':'#8B5CF6','in_progress':'#F59E0B','paused':'#F59E0B','submitted':'#F97316','revision_requested':'#EF4444','approved':'#10B981','delivered':'#10B981','archived':'#6B7280'};
+                    return map[s]||'#9CA3AF';
+                },
+                isDone(s) { return ['approved','delivered','archived'].includes(s); }
+             }"
+             style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;">
+
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <h3 style="font-size:13px;font-weight:600;color:#374151;margin:0;text-transform:uppercase;letter-spacing:.04em;">
+                    <i class="fas fa-diagram-project" style="color:#4F46E5;margin-right:6px;"></i>Dependencies
+                </h3>
+                <span style="font-size:11px;color:#9CA3AF;" x-text="deps.length + ' task' + (deps.length===1?'':'s')"></span>
+            </div>
+
+            {{-- Blocking warning --}}
+            @if(!$task->dependenciesResolved() && !in_array($task->status, ['approved','delivered','archived']))
+            <div style="background:#FEF2F2;border:1px solid #FEE2E2;border-radius:9px;padding:10px 12px;margin-bottom:12px;display:flex;gap:8px;align-items:flex-start;">
+                <i class="fas fa-circle-exclamation" style="color:#DC2626;font-size:13px;margin-top:1px;flex-shrink:0;"></i>
+                <p style="font-size:12px;color:#991B1B;margin:0;line-height:1.5;">This task is <strong>blocked</strong> — it cannot start until the tasks below are completed.</p>
+            </div>
+            @endif
+
+            {{-- Deps list --}}
+            <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;">
+                <template x-if="deps.length === 0">
+                    <p style="font-size:12px;color:#9CA3AF;margin:0;text-align:center;padding:8px 0;">No dependencies set</p>
+                </template>
+                <template x-for="dep in deps" :key="dep.id">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#F9FAFB;border-radius:8px;border:1px solid #E5E7EB;">
+                        <div style="min-width:0;">
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <span style="font-size:10px;color:#9CA3AF;" x-text="'#'+dep.id"></span>
+                                <span style="font-size:12px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;" x-text="dep.title"></span>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+                                <span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:20px;color:#fff;"
+                                      :style="'background:'+statusColor(dep.status)"
+                                      x-text="dep.status.replace('_',' ')"></span>
+                                <span x-show="dep.project" style="font-size:10px;color:#9CA3AF;" x-text="dep.project"></span>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                            <i class="fas" :class="isDone(dep.status) ? 'fa-circle-check' : 'fa-clock'"
+                               :style="isDone(dep.status) ? 'color:#10B981;font-size:14px;' : 'color:#F59E0B;font-size:14px;'"></i>
+                            <button type="button" @click="removeDep(dep.id)"
+                                    style="width:22px;height:22px;border-radius:6px;border:none;background:#FEE2E2;color:#DC2626;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                                <i class="fas fa-xmark" style="font-size:10px;"></i>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            {{-- Search & add --}}
+            <div style="position:relative;">
+                <input type="text" x-model="search" @input.debounce.300ms="doSearch()"
+                       placeholder="Search task to add as dependency…"
+                       style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:12px;color:#111827;box-sizing:border-box;outline:none;">
+                <div x-show="results.length > 0" style="position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid #E5E7EB;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:50;max-height:200px;overflow-y:auto;">
+                    <template x-for="r in results" :key="r.id">
+                        <div @click="addDep(r)"
+                             style="padding:9px 12px;cursor:pointer;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;"
+                             onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='#fff'">
+                            <div>
+                                <span style="font-size:10px;color:#9CA3AF;" x-text="'#'+r.id+' '"></span>
+                                <span style="font-size:12px;font-weight:600;color:#111827;" x-text="r.title"></span>
+                                <span x-show="r.project" style="font-size:10px;color:#9CA3AF;" x-text="' · '+r.project"></span>
+                            </div>
+                            <span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:20px;color:#fff;"
+                                  :style="'background:'+statusColor(r.status)"
+                                  x-text="r.status.replace('_',' ')"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+            <p x-show="errMsg" x-text="errMsg" style="font-size:11px;color:#DC2626;margin:6px 0 0;"></p>
+        </div>
+        @endif
+
         {{-- Reassign Task --}}
         @php $isClosed = in_array($task->status, ['approved','delivered','archived']); @endphp
         <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;">

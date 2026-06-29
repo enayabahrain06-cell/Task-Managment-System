@@ -301,6 +301,9 @@ Route::middleware([AdminMiddleware::class, MfaMiddleware::class])->prefix('admin
     Route::patch('tasks/{task}/submissions/{submission}/note',   [AdminTaskController::class, 'editSubmissionNote'])->name('tasks.submissions.note');
     Route::post('tasks/{task}/deliver',            [AdminTaskController::class, 'deliver'])->name('tasks.deliver');
     Route::post('tasks/{task}/reassign',           [AdminTaskController::class, 'reassign'])->name('tasks.reassign');
+    Route::post('tasks/{task}/dependencies',               [AdminTaskController::class, 'storeDependency'])->name('tasks.dependencies.store');
+    Route::delete('tasks/{task}/dependencies/{dependsOnId}', [AdminTaskController::class, 'destroyDependency'])->name('tasks.dependencies.destroy');
+    Route::get('tasks/{task}/dependencies/search',         [AdminTaskController::class, 'searchTasksForDependency'])->name('tasks.dependencies.search');
     Route::patch('tasks/{task}/deadline',          [AdminTaskController::class, 'updateDeadline'])->name('tasks.deadline');
     Route::post('tasks/{task}/archive',            [AdminTaskController::class, 'archive'])->name('tasks.archive');
     Route::post('tasks/{task}/reopen',             [AdminTaskController::class, 'reopen'])->name('tasks.reopen');
