@@ -1085,6 +1085,7 @@ function navHistory() {
             if (/\/users\/\d/.test(url))    return 'fa-user';
             if (/\/settings/.test(url))     return 'fa-gear';
             if (/\/calendar/.test(url))     return 'fa-calendar';
+            if (/\/gantt/.test(url))        return 'fa-bars-progress';
             if (/\/activities/.test(url))   return 'fa-timeline';
             return 'fa-house';
         },

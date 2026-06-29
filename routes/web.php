@@ -26,6 +26,7 @@ use App\Http\Controllers\Admin\SocialAccountController as AdminSocialAccountCont
 use App\Http\Controllers\Admin\CustomerController as AdminCustomerController;
 use App\Http\Controllers\Admin\SubscriptionController as AdminSubscriptionController;
 use App\Http\Controllers\Admin\DomainController as AdminDomainController;
+use App\Http\Controllers\Admin\GanttController as AdminGanttController;
 use App\Http\Controllers\User\LicensesController as UserLicensesController;
 use App\Http\Controllers\User\ProjectController as UserProjectController;
 use App\Http\Controllers\User\DomainsController as UserDomainsController;
@@ -185,6 +186,7 @@ Route::middleware([AdminMiddleware::class, MfaMiddleware::class])->prefix('admin
     Route::get('/dashboard/social-posts',    [AdminDashboard::class, 'socialPosts'])->name('dashboard.social-posts');
     Route::get('/dashboard/analytics-tasks',[AdminDashboard::class, 'analyticsTasks'])->name('dashboard.analytics-tasks');
     Route::get('/reports',                     [AdminReportsController::class, 'index'])->name('reports.index');
+    Route::get('/gantt',                       [AdminGanttController::class, 'index'])->name('gantt.index');
     Route::get('/reports/summary-data',        [AdminReportsController::class, 'summaryData'])->name('reports.summary-data');
     Route::get('/reports/export-users',        [AdminReportsController::class, 'exportUsers'])->name('reports.export-users');
     Route::get('/reports/user-detail',         [AdminReportsController::class, 'userDetail'])->name('reports.user-detail');

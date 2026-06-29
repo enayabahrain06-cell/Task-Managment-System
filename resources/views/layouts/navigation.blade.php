@@ -342,6 +342,16 @@
             </div>
         </a>
         @endif
+
+        @if($hasAnyAdminPerm && ($appSettings['show_gantt_chart'] ?? '1') === '1' && !in_array('nav_gantt', $navHidden))
+        <a href="{{ route('admin.gantt.index') }}"
+           class="nav-item {{ request()->routeIs('admin.gantt.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-bars-progress nav-icon"></i>
+                Gantt Chart
+            </div>
+        </a>
+        @endif
         @endif
 
         {{-- Recent Projects --}}
