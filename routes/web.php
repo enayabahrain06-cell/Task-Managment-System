@@ -220,7 +220,7 @@ Route::middleware([AdminMiddleware::class, MfaMiddleware::class])->prefix('admin
     Route::get('social-budget',                      [AdminSocialBudgetController::class, 'index'])->name('social-budget.index');
     Route::get('social-accounts/export/pdf', [AdminSocialAccountController::class, 'exportPdf'])->name('social-accounts.export.pdf');
     Route::resource('social-accounts', AdminSocialAccountController::class)->except(['create','edit','show']);
-    Route::get('social-accounts/{socialAccount}/password', [AdminSocialAccountController::class, 'revealPassword'])->name('social-accounts.password');
+    Route::post('social-accounts/{socialAccount}/reveal-password', [AdminSocialAccountController::class, 'revealPassword'])->name('social-accounts.reveal-password');
     Route::post('settings/elements/toggle',       [AdminSettingsController::class, 'toggleElement'])->name('settings.elements.toggle');
     Route::post('settings/nav/toggle',            [AdminSettingsController::class, 'toggleNavItem'])->name('settings.nav.toggle');
     Route::post('meetings',                        [AdminMeetingController::class, 'store'])->name('meetings.store');

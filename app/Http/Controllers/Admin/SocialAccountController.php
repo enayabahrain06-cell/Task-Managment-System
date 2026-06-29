@@ -10,6 +10,7 @@ use App\Services\AuditLogger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Hash;
 
 class SocialAccountController extends Controller
 {
@@ -172,16 +173,20 @@ class SocialAccountController extends Controller
         return back()->with('success', "Account \"{$name}\" deleted.");
     }
 
-    public function revealPassword(SocialAccount $socialAccount): \Illuminate\Http\JsonResponse
+    public function revealPassword(Request $request, SocialAccount $socialAccount): \Illuminate\Http\JsonResponse
     {
-        if (! $socialAccount->password) {
-            return response()->json(['error' => 'No password set'], 404);
+        $request->validate(['password' => 'required|string']);
+
+        if (! Hash::check($request->password, auth()->user()->password)) {
+            return response()->json(['error' => 'Incorrect password.'], 403);
         }
 
-        $password = $socialAccount->decrypted_password;
+        if (! $socialAccount->password) {
+            return response()->json(['error' => 'No password stored.'], 404);
+        }
 
-        AuditLogger::log('viewed', $socialAccount, "Revealed password for: {$socialAccount->name}");
+        AuditLogger::log('reveal_password', $socialAccount, "Revealed password for social account: {$socialAccount->name}", ['admin_id' => auth()->id()]);
 
-        return response()->json(['password' => $password]);
+        return response()->json(['secret' => $socialAccount->decrypted_password]);
     }
 }

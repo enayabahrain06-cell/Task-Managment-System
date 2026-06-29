@@ -1062,6 +1062,59 @@ function copyToClipboard(text, btn) {
     });
 }
 
+var _saRevealCallback = null;
+var _saRevealAccountId = null;
+
+function openSaRevealModal(accountId, callback) {
+    _saRevealAccountId = accountId;
+    _saRevealCallback  = callback;
+    document.getElementById('sa-reveal-input').value = '';
+    document.getElementById('sa-reveal-error').style.display = 'none';
+    document.getElementById('sa-reveal-btn').disabled = false;
+    document.getElementById('sa-reveal-btn').textContent = 'Reveal';
+    document.getElementById('sa-reveal-modal').style.display = 'flex';
+    setTimeout(() => document.getElementById('sa-reveal-input').focus(), 50);
+}
+function closeSaRevealModal() {
+    document.getElementById('sa-reveal-modal').style.display = 'none';
+    _saRevealCallback  = null;
+    _saRevealAccountId = null;
+}
+async function submitSaReveal() {
+    const pwd = document.getElementById('sa-reveal-input').value;
+    const btn = document.getElementById('sa-reveal-btn');
+    const err = document.getElementById('sa-reveal-error');
+    err.style.display = 'none';
+    if (!pwd) { err.textContent = 'Please enter your password.'; err.style.display = 'block'; return; }
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:12px;margin-right:5px;"></i>Checking…';
+    try {
+        const res = await fetch(`/admin/social-accounts/${_saRevealAccountId}/reveal-password`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ password: pwd })
+        });
+        const data = await res.json();
+        if (res.status === 403) { err.textContent = 'Incorrect password.'; err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Reveal'; return; }
+        if (!res.ok)            { err.textContent = 'Error. Please try again.'; err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Reveal'; return; }
+        closeSaRevealModal();
+        if (_saRevealCallback) _saRevealCallback(data.secret);
+    } catch (e) {
+        err.textContent = 'Network error. Please try again.';
+        err.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Reveal';
+    }
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeSaRevealModal();
+    if (e.key === 'Enter' && document.getElementById('sa-reveal-modal')?.style.display === 'flex') submitSaReveal();
+});
+
 function pwReveal(accountId) {
     return {
         pw: '',
@@ -1070,25 +1123,15 @@ function pwReveal(accountId) {
         seconds: 0,
         _countdown: null,
 
-        async toggle() {
+        toggle() {
             if (this.revealed) { this.hide(); return; }
             // Password already fetched this session — just re-show
             if (this.pw) { this._startCountdown(); this.revealed = true; return; }
-            this.loading = true;
-            try {
-                const res = await fetch(`/admin/social-accounts/${accountId}/password`, {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
-                });
-                if (!res.ok) throw new Error('fetch failed');
-                const data = await res.json();
-                this.pw = data.password;
+            openSaRevealModal(accountId, (secret) => {
+                this.pw = secret;
                 this._startCountdown();
                 this.revealed = true;
-            } catch (e) {
-                // silent — no toast needed, eye icon returns to normal
-            } finally {
-                this.loading = false;
-            }
+            });
         },
 
         hide() {
@@ -1126,4 +1169,31 @@ function pwReveal(accountId) {
 }
 </script>
 @endpush
+
+{{-- Password-gated reveal modal --}}
+<div id="sa-reveal-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)closeSaRevealModal()">
+    <div style="background:#fff;border-radius:16px;padding:28px 28px 24px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <div style="width:34px;height:34px;background:#EEF2FF;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-lock" style="color:#4F46E5;font-size:14px;"></i>
+            </div>
+            <div>
+                <div style="font-size:15px;font-weight:700;color:#111827;">Reveal Password</div>
+                <div style="font-size:12px;color:#6B7280;">Enter your account password to continue</div>
+            </div>
+        </div>
+        <p style="font-size:12px;color:#9CA3AF;margin:10px 0 14px;padding:8px 10px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;">
+            <i class="fas fa-triangle-exclamation" style="color:#F97316;margin-right:5px;font-size:11px;"></i>
+            Access is logged · password hides after 15 seconds
+        </p>
+        <input type="password" id="sa-reveal-input" placeholder="Your account password"
+               style="width:100%;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:8px;"
+               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+        <div id="sa-reveal-error" style="display:none;font-size:12px;color:#DC2626;margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;">
+            <button onclick="closeSaRevealModal()" style="flex:1;padding:9px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;font-size:13px;font-weight:600;color:#6B7280;cursor:pointer;">Cancel</button>
+            <button id="sa-reveal-btn" onclick="submitSaReveal()" style="flex:1;padding:9px;border:none;border-radius:8px;background:#4F46E5;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">Reveal</button>
+        </div>
+    </div>
+</div>
 @endsection
