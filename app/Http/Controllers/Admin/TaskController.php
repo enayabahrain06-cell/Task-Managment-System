@@ -127,8 +127,11 @@ class TaskController extends Controller
         $socialUsers = User::where('role', 'user')->orderBy('name')->get();
         $projects    = Project::where('is_quick', false)->orderBy('name')->get();
         $customers   = Customer::orderBy('name')->get();
-        $depsFeatureOn = \App\Models\Setting::get('show_task_dependencies', '1') === '1';
-        return view('admin.tasks.show', compact('task', 'users', 'socialUsers', 'projects', 'customers', 'depsFeatureOn'));
+        $depsFeatureOn  = \App\Models\Setting::get('show_task_dependencies', '1') === '1';
+        $timeFeatureOn  = \App\Models\Setting::get('show_time_tracking', '1') === '1';
+        $timeByUser     = $timeFeatureOn ? $task->timerSecondsByUser() : collect();
+        $totalSeconds   = $timeFeatureOn ? $task->totalTimerSeconds() : 0;
+        return view('admin.tasks.show', compact('task', 'users', 'socialUsers', 'projects', 'customers', 'depsFeatureOn', 'timeFeatureOn', 'timeByUser', 'totalSeconds'));
     }
 
     public function update(Request $request, Task $task)

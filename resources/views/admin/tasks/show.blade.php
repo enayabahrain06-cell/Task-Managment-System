@@ -2247,6 +2247,59 @@
         </div>
         @endif
 
+        {{-- Time Tracking Summary --}}
+        @if($timeFeatureOn)
+        @php
+            $formatSecs = function(int $s): string {
+                $h = intdiv($s, 3600);
+                $m = intdiv($s % 3600, 60);
+                return ($h > 0 ? "{$h}h " : '') . "{$m}m";
+            };
+            $phaseColors = ['work'=>['#EEF2FF','#4F46E5'],'revision'=>['#FEF3C7','#D97706'],'review'=>['#F0FDF4','#16A34A'],'social'=>['#F5F3FF','#7C3AED'],'manual'=>['#ECFDF5','#059669']];
+        @endphp
+        <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                <h3 style="font-size:13px;font-weight:600;color:#374151;margin:0;text-transform:uppercase;letter-spacing:.04em;">
+                    <i class="fas fa-clock" style="color:#059669;margin-right:6px;"></i>Time Logged
+                </h3>
+                <span style="font-size:16px;font-weight:700;color:#111827;">{{ $formatSecs($totalSeconds) }}</span>
+            </div>
+
+            @if($timeByUser->isEmpty())
+            <p style="font-size:12px;color:#9CA3AF;text-align:center;margin:0;padding:8px 0;">No time logged yet</p>
+            @else
+            @php $grouped = $timeByUser->groupBy('user_id'); @endphp
+            @foreach($grouped as $userId => $rows)
+            @php
+                $user = \App\Models\User::find($userId);
+                $userTotal = $rows->sum('total_seconds');
+            @endphp
+            <div style="margin-bottom:12px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <div style="display:flex;align-items:center;gap:7px;">
+                        @if($user?->avatar)
+                        <img src="{{ Storage::url($user->avatar) }}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;">
+                        @else
+                        <div style="width:22px;height:22px;border-radius:50%;background:#E5E7EB;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#374151;">{{ strtoupper(substr($user?->name ?? '?', 0, 1)) }}</div>
+                        @endif
+                        <span style="font-size:12px;font-weight:600;color:#111827;">{{ $user?->name ?? 'Unknown' }}</span>
+                    </div>
+                    <span style="font-size:12px;font-weight:700;color:#059669;">{{ $formatSecs($userTotal) }}</span>
+                </div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                    @foreach($rows as $row)
+                    @php [$pbg,$pco] = $phaseColors[$row->phase] ?? ['#F3F4F6','#374151']; @endphp
+                    <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:{{ $pbg }};color:{{ $pco }};">
+                        {{ $row->phase }}: {{ $formatSecs($row->total_seconds) }}
+                    </span>
+                    @endforeach
+                </div>
+            </div>
+            @endforeach
+            @endif
+        </div>
+        @endif
+
         {{-- Reassign Task --}}
         @php $isClosed = in_array($task->status, ['approved','delivered','archived']); @endphp
         <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;">

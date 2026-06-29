@@ -1815,6 +1815,51 @@
         </div>
         @endif
 
+        {{-- Manual Time Log --}}
+        @if(\App\Models\Setting::get('show_time_tracking','1') === '1' && !in_array($task->status, ['draft','assigned']))
+        <div x-data="{ open: false }" style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
+            <button type="button" @click="open=!open"
+                    style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:none;border:none;cursor:pointer;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <i class="fas fa-pen-to-square" style="color:#059669;font-size:12px;"></i>
+                    <span style="font-size:12px;font-weight:600;color:#374151;">Log Time Manually</span>
+                </div>
+                <i class="fas" :class="open ? 'fa-chevron-up' : 'fa-chevron-down'" style="font-size:10px;color:#9CA3AF;"></i>
+            </button>
+            <div x-show="open" x-collapse style="padding:0 20px 16px;">
+                <form method="POST" action="{{ route('user.tasks.timer.manual', $task) }}">
+                    @csrf
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+                        <div>
+                            <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:5px;">Hours</label>
+                            <input type="number" name="hours" value="0" min="0" max="23"
+                                   style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;text-align:center;">
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:5px;">Minutes</label>
+                            <input type="number" name="minutes" value="30" min="0" max="59"
+                                   style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;text-align:center;">
+                        </div>
+                    </div>
+                    <div style="margin-bottom:10px;">
+                        <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:5px;">Date <span style="font-weight:400;color:#9CA3AF;">— optional</span></label>
+                        <input type="date" name="log_date" value="{{ now()->toDateString() }}" max="{{ now()->toDateString() }}"
+                               style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:12px;color:#111827;box-sizing:border-box;outline:none;">
+                    </div>
+                    <div style="margin-bottom:12px;">
+                        <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:5px;">Note <span style="font-weight:400;color:#9CA3AF;">— optional</span></label>
+                        <input type="text" name="note" placeholder="What did you work on?"
+                               style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:12px;color:#111827;box-sizing:border-box;outline:none;">
+                    </div>
+                    <button type="submit"
+                            style="width:100%;background:#059669;color:#fff;border:none;padding:9px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;">
+                        <i class="fas fa-plus" style="margin-right:5px;"></i>Add Time
+                    </button>
+                </form>
+            </div>
+        </div>
+        @endif
+
         <style>
             @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
             .rte-field:empty:before { content: attr(data-placeholder); color: #9CA3AF; pointer-events: none; display: block; }

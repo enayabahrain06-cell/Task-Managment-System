@@ -475,6 +475,7 @@ Route::middleware([UserMiddleware::class, MfaMiddleware::class])->prefix('user')
     Route::patch('/tasks/{task}/submissions/{submission}/note',  [UserTaskController::class, 'editSubmissionNote'])->name('tasks.submissions.note');
     Route::post('/tasks/{task}/timer/start',             [UserTaskController::class, 'startTimer'])->name('tasks.timer.start');
     Route::post('/tasks/{task}/timer/pause',             [UserTaskController::class, 'pauseTimer'])->name('tasks.timer.pause');
+    Route::post('/tasks/{task}/timer/manual',            [UserTaskController::class, 'logTimeManually'])->name('tasks.timer.manual');
     Route::post('/tasks/{task}/acknowledge-revision',    [UserTaskController::class, 'acknowledgeRevision'])->name('tasks.acknowledge-revision');
     Route::get('/projects', [UserProjectController::class, 'index'])->name('projects.index');
     Route::get('/projects/{project}', [UserProjectController::class, 'show'])->name('projects.show');

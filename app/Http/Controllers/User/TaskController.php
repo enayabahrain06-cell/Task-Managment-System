@@ -305,6 +305,53 @@ class TaskController extends Controller
         return $response;
     }
 
+    public function logTimeManually(Request $request, Task $task)
+    {
+        if (!$this->isAssigned($task)) abort(403);
+
+        if (\App\Models\Setting::get('show_time_tracking', '1') !== '1') abort(404);
+
+        $request->validate([
+            'hours'   => 'required|integer|min:0|max:23',
+            'minutes' => 'required|integer|min:0|max:59',
+            'note'    => 'nullable|string|max:500',
+            'log_date'=> 'nullable|date|before_or_equal:today',
+        ]);
+
+        $hours   = (int) $request->hours;
+        $minutes = (int) $request->minutes;
+        $seconds = ($hours * 3600) + ($minutes * 60);
+
+        if ($seconds === 0) {
+            return back()->with('error', 'Please enter at least 1 minute.');
+        }
+
+        $logDate  = $request->filled('log_date') ? $request->log_date : now()->toDateString();
+        $startedAt = \Carbon\Carbon::parse($logDate . ' 09:00:00');
+        $endedAt   = $startedAt->copy()->addSeconds($seconds);
+
+        TaskTimerSegment::create([
+            'task_id'          => $task->id,
+            'user_id'          => auth()->id(),
+            'phase'            => 'manual',
+            'started_at'       => $startedAt,
+            'ended_at'         => $endedAt,
+            'duration_seconds' => $seconds,
+            'pause_reason'     => $request->note ?: null,
+        ]);
+
+        TaskLog::create([
+            'task_id'  => $task->id,
+            'user_id'  => auth()->id(),
+            'action'   => 'time_logged_manually',
+            'note'     => "Manual time log: {$hours}h {$minutes}m" . ($request->note ? " — {$request->note}" : ''),
+            'metadata' => ['hours' => $hours, 'minutes' => $minutes, 'seconds' => $seconds, 'note' => $request->note],
+        ]);
+
+        $formatted = ($hours > 0 ? "{$hours}h " : '') . "{$minutes}m";
+        return back()->with('success', "{$formatted} logged successfully.");
+    }
+
     // ── Main CRUD ────────────────────────────────────────────────────────────
 
     public function show(Task $task)
