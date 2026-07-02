@@ -92,6 +92,35 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 .scard.collapsed .acc-chevron { transform:translateY(-50%) rotate(-90deg); }
 .scard.collapsed .scard-body,
 .scard.collapsed .scard-footer { display:none; }
+
+/* ── Mobile: collapse inline-grid panels that have no responsive class ── */
+@media(max-width:768px){
+    /* Login BG type selector: 3-col → 1-col */
+    [style*="grid-template-columns:repeat(3,1fr)"] { grid-template-columns:1fr !important; }
+    /* SMTP connection row: host + port + encryption → stack */
+    [style*="grid-template-columns:1fr 120px 160px"] { grid-template-columns:1fr !important; }
+    /* Data/backup inline-stats strip: 4-col → 2-col */
+    [style*="grid-template-columns:repeat(4,1fr)"][style*="padding:14px 20px"] { grid-template-columns:repeat(2,1fr) !important; }
+    /* CSV export rows: auto 1fr auto auto → stack label+buttons */
+    [style*="grid-template-columns:auto 1fr auto auto"] { grid-template-columns:1fr 1fr !important; }
+    /* Nav controls grid */
+    #nav-controls-grid { grid-template-columns:1fr !important; }
+    /* Generic 2-col inline grids inside scard-body */
+    .scard-body [style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr !important; }
+    /* 3-col inline grids inside scard panels */
+    .scard-body [style*="grid-template-columns:repeat(3,1fr)"] { grid-template-columns:1fr !important; }
+    /* NAS/storage section layout */
+    [style*="grid-template-columns:1fr 340px"] { grid-template-columns:1fr !important; }
+}
+@media(max-width:480px){
+    /* Stat strip in backup section → 1-col */
+    [style*="grid-template-columns:repeat(4,1fr)"] { grid-template-columns:repeat(2,1fr) !important; }
+    /* Any remaining 2-col grids */
+    [style*="grid-template-columns:1fr 120px"] { grid-template-columns:1fr !important; }
+    /* CSV rows full stack */
+    [style*="grid-template-columns:auto 1fr auto auto"] { grid-template-columns:1fr !important; }
+    .scard-body [style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr !important; }
+}
 </style>
 
 {{-- Page Header --}}
@@ -104,11 +133,37 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 
 <div class="settings-wrap"
      x-data="{
-         tab: (window.location.hash.slice(1) || '{{ session('_fragment') ?? 'general' }}'),
+         tab: (function(){ var h = window.location.hash.slice(1) || '{{ session('_fragment') ?? 'general' }}'; return (h === 'features' && {{ ($appSettings['hide_features_tab'] ?? '0') === '1' ? 'true' : 'false' }}) ? 'general' : h; })(),
          confirm: null, phrase: '',
          setTab(t) { this.tab = t; window.location.hash = t; },
          openClear(type){ this.confirm = type; this.phrase = ''; },
-         closeClear(){ this.confirm = null; }
+         closeClear(){ this.confirm = null; },
+
+         showFullReset: false,
+         frStep: 1,
+         frPassword: '', frPasswordError: '', frPasswordChecking: false,
+         frAgree: false, frSignature: '', frPhrase: '',
+         openFullReset() {
+             this.frStep=1; this.frPassword=''; this.frPasswordError='';
+             this.frPasswordChecking=false; this.frAgree=false;
+             this.frSignature=''; this.frPhrase='';
+             this.showFullReset=true;
+             this.$nextTick(()=>document.getElementById('fr-pwd-input')?.focus());
+         },
+         closeFullReset() { this.showFullReset=false; },
+         verifyFrPassword() {
+             this.frPasswordChecking=true; this.frPasswordError='';
+             fetch('{{ route('admin.settings.backup.verify.password') }}', {
+                 method:'POST',
+                 headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Content-Type':'application/json','Accept':'application/json'},
+                 body: JSON.stringify({password: this.frPassword})
+             }).then(r=>r.json()).then(d=>{
+                 this.frPasswordChecking=false;
+                 if (d.ok) { this.frStep=2; this.$nextTick(()=>document.getElementById('fr-sig-input')?.focus()); }
+                 else { this.frPasswordError='Incorrect password. Please try again.'; }
+             }).catch(()=>{ this.frPasswordChecking=false; this.frPasswordError='Request failed. Try again.'; });
+         },
+         get frCanSubmit() { return this.frAgree && this.frSignature.trim().length >= 2 && this.frPhrase === 'DELETE'; }
      }"
      x-init="window.addEventListener('hashchange', () => { tab = window.location.hash.slice(1) || 'general'; })">
 
@@ -118,6 +173,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
         $navItems = [
             ['id'=>'general',       'icon'=>'fa-sliders',        'label'=>'General'],
             ['id'=>'branding',      'icon'=>'fa-palette',        'label'=>'Branding'],
+            ['id'=>'agent',         'icon'=>'fa-robot',          'label'=>'Chat Agent'],
             ['id'=>'team',          'icon'=>'fa-users',          'label'=>'Team'],
             ['id'=>'notifications', 'icon'=>'fa-bell',           'label'=>'Notifications'],
             ['id'=>'mail',          'icon'=>'fa-envelope',       'label'=>'Mail / SMTP'],
@@ -125,11 +181,15 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
             ['id'=>'security',      'icon'=>'fa-shield-halved',  'label'=>'Security'],
             ['id'=>'storage',        'icon'=>'fa-hard-drive',      'label'=>'Storage / NAS'],
             ['id'=>'backup',        'icon'=>'fa-database',       'label'=>'Backup & Export'],
+            ['id'=>'features',      'icon'=>'fa-puzzle-piece',   'label'=>'Features'],
             ['id'=>'developer',     'icon'=>'fa-code',           'label'=>'Developer'],
             ['id'=>'danger',        'icon'=>'fa-trash-can',      'label'=>'Clear Data'],
         ];
         @endphp
         @foreach($navItems as $nav)
+        @if($nav['id'] === 'features' && ($appSettings['hide_features_tab'] ?? '0') === '1')
+            @continue
+        @endif
         @if($nav['id'] === 'danger')
         <button class="snav-item"
                 :class="tab === 'danger' ? 'active' : ''"
@@ -354,9 +414,10 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                 loginBgColor:     '{{ $settings['login_bg_color'] ?? '#e8eaf6' }}',
                 loginBgPreview:   '{{ isset($settings['login_bg_image']) && $settings['login_bg_image'] ? Storage::url($settings['login_bg_image']) : '' }}',
                 removeBgImage:    false,
+                loginDecoColor:   '{{ $settings['login_deco_color'] ?? '#4F46E5' }}',
                 setLogo(e)    { const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=ev=>{ this.logoPreview=ev.target.result; this.removeLogo=false; }; r.readAsDataURL(f); } },
                 setFavicon(e) { const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=ev=>{ this.faviconPreview=ev.target.result; this.removeFavicon=false; }; r.readAsDataURL(f); } },
-                setBgImage(e) { const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=ev=>{ this.loginBgPreview=ev.target.result; this.removeBgImage=false; }; r.readAsDataURL(f); } },
+                setBgImage(e) { const f=(e.files||e.target.files)[0]; if(f){ const r=new FileReader(); r.onload=ev=>{ this.loginBgPreview=ev.target.result; this.removeBgImage=false; }; r.readAsDataURL(f); } },
             }">
                 <div class="scard-header">
                     <div class="scard-icon" style="background:#FDF2F8;color:#EC4899;"><i class="fas fa-palette"></i></div>
@@ -548,7 +609,8 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 </label>
                                 <div class="upload-zone" @dragover.prevent @drop.prevent="setBgImage($event.dataTransfer)"
                                      style="min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;">
-                                    <input type="file" name="login_bg_image" accept="image/png,image/jpeg,image/webp" @change="setBgImage($event)">
+                                    <input type="file" name="login_bg_image" accept="image/png,image/jpeg,image/webp" @change="setBgImage($event)"
+                                           :style="(loginBgPreview && !removeBgImage) ? 'pointer-events:none' : ''">
                                     <input type="hidden" name="remove_login_bg_image" :value="removeBgImage ? '1' : '0'">
 
                                     <template x-if="loginBgPreview && !removeBgImage">
@@ -574,11 +636,190 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </div>
                         </div>
 
+                        {{-- ── Login Panel (deco column) colour ── --}}
+                        <div style="margin-top:24px;padding-top:20px;border-top:1px solid #F3F4F6;">
+                            <label class="sf-label" style="margin-bottom:4px;">Login Panel Color</label>
+                            <p class="sf-hint" style="margin-bottom:12px;">Gradient tint for the right illustration panel on the login page.</p>
+                            <div class="color-wrap">
+                                <input type="color" x-model="loginDecoColor" class="color-swatch"
+                                       :style="`background:${loginDecoColor};border-color:${loginDecoColor}`">
+                                <input type="text" name="login_deco_color" class="sf-input"
+                                       x-model="loginDecoColor" pattern="^#[0-9A-Fa-f]{6}$">
+                            </div>
+                            {{-- Live gradient preview --}}
+                            <div :style="`margin-top:10px;height:28px;border-radius:8px;background:linear-gradient(145deg,${loginDecoColor}99 0%,${loginDecoColor} 45%,${loginDecoColor}cc 100%);`"></div>
+                        </div>
+
                     </div>
 
                     <div class="scard-footer">
                         <button type="submit" class="btn-save">
                             <i class="fas fa-check" style="font-size:11px;margin-right:5px;"></i>Save Branding
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {{-- ════ CHAT AGENT ════ --}}
+        <div x-show="tab === 'agent'" x-cloak>
+            <div class="scard">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#EEF2FF;color:#4F46E5;"><i class="fas fa-robot"></i></div>
+                    <div>
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Chat Agent</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Rename, restyle and customise the assistant widget</p>
+                    </div>
+                </div>
+
+                {{-- Hide Agent toggle --}}
+                <div style="padding:14px 24px;border-bottom:1px solid #F3F4F6;"
+                     x-data="{ hideAgent: {{ ($appSettings['hide_agent'] ?? '0') === '1' ? 'true' : 'false' }} }">
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:28px;height:28px;border-radius:8px;background:#FEF2F2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-eye-slash" style="font-size:11px;color:#EF4444;"></i>
+                            </div>
+                            <div>
+                                <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Hide Chat Agent</p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Remove the chat widget from all pages sitewide</p>
+                            </div>
+                        </div>
+                        <button type="button"
+                                @click="fetch('{{ route('admin.settings.hide-agent') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ hideAgent = d.hide_agent })"
+                                style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                :style="hideAgent ? 'background:#EF4444;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                            <i class="fas" :class="hideAgent ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                            <span x-text="hideAgent ? 'Hidden' : 'Visible'"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ route('admin.settings.agent') }}">
+                    @csrf
+                    <div class="scard-body">
+
+                        {{-- Live preview --}}
+                        @php
+                            $agentColor   = $settings['agent_color'] ?? '#4F46E5';
+                            $agentIcon    = $settings['agent_icon']  ?? 'robot';
+                            $agentName    = $settings['agent_name']  ?? 'Task Assistant';
+                            $agentSub     = $settings['agent_subtitle'] ?? 'Ask me anything about your tasks';
+                            $agentWelcome = $settings['agent_welcome']  ?? '';
+                        @endphp
+                        <div x-data="{
+                            agentName:    '{{ addslashes($agentName) }}',
+                            agentSub:     '{{ addslashes($agentSub) }}',
+                            agentColor:   '{{ $agentColor }}',
+                            agentIcon:    '{{ $agentIcon }}',
+                            agentWelcome: '{{ addslashes($agentWelcome) }}',
+                        }">
+                            {{-- Preview bubble --}}
+                            <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;margin-bottom:24px;">
+                                <div style="flex:0 0 260px;">
+                                    <p style="font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.07em;margin:0 0 8px;">Live Preview</p>
+                                    <div style="border-radius:14px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.12);width:260px;">
+                                        <div :style="'background:linear-gradient(135deg,'+agentColor+','+agentColor+'cc);padding:12px 14px;display:flex;align-items:center;gap:10px;'">
+                                            <div style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                                <i :class="'fas fa-'+agentIcon" style="color:#fff;font-size:13px;"></i>
+                                            </div>
+                                            <div style="flex:1;min-width:0;">
+                                                <div x-text="agentName" style="font-weight:700;color:#fff;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+                                                <div x-text="agentSub" style="font-size:10px;color:rgba(255,255,255,.75);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+                                            </div>
+                                        </div>
+                                        <div style="background:#F8FAFC;padding:10px 12px;">
+                                            <div style="display:flex;align-items:flex-start;gap:7px;">
+                                                <div :style="'width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:'+agentColor+'22;'">
+                                                    <i :class="'fas fa-'+agentIcon" :style="'font-size:10px;color:'+agentColor+';'"></i>
+                                                </div>
+                                                <div style="background:#fff;border-radius:10px;border-top-left-radius:2px;padding:8px 10px;font-size:11px;color:#374151;box-shadow:0 1px 3px rgba(0,0,0,.08);max-width:180px;">
+                                                    <span x-text="agentWelcome || 'Hello! How can I help?'"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {{-- FAB preview --}}
+                                    <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
+                                        <div :style="'width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.2);background:'+agentColor+';'">
+                                            <i :class="'fas fa-'+agentIcon" style="color:#fff;font-size:17px;"></i>
+                                        </div>
+                                        <span style="font-size:11px;color:#9CA3AF;">FAB button</span>
+                                    </div>
+                                </div>
+
+                                {{-- Fields --}}
+                                <div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:16px;">
+                                    <div>
+                                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Agent Name</label>
+                                        <input type="text" name="agent_name" x-model="agentName" maxlength="60" required
+                                               style="width:100%;border:1px solid #E5E7EB;border-radius:8px;padding:8px 12px;font-size:13px;outline:none;" />
+                                    </div>
+                                    <div>
+                                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Subtitle</label>
+                                        <input type="text" name="agent_subtitle" x-model="agentSub" maxlength="120"
+                                               style="width:100%;border:1px solid #E5E7EB;border-radius:8px;padding:8px 12px;font-size:13px;outline:none;" />
+                                    </div>
+                                    <div>
+                                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Welcome Message</label>
+                                        <textarea name="agent_welcome" x-model="agentWelcome" maxlength="400" rows="3"
+                                                  style="width:100%;border:1px solid #E5E7EB;border-radius:8px;padding:8px 12px;font-size:13px;outline:none;resize:vertical;"></textarea>
+                                        <p style="font-size:11px;color:#9CA3AF;margin:4px 0 0;">Shown when the user first opens the chat. Supports **bold** text.</p>
+                                    </div>
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                        <div>
+                                            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Accent Colour</label>
+                                            <div style="display:flex;align-items:center;gap:8px;">
+                                                <input type="color" name="agent_color" x-model="agentColor"
+                                                       style="width:42px;height:36px;border:1px solid #E5E7EB;border-radius:8px;padding:2px;cursor:pointer;" />
+                                                <input type="text" x-model="agentColor" @input="agentColor=$event.target.value"
+                                                       maxlength="7" style="flex:1;border:1px solid #E5E7EB;border-radius:8px;padding:8px 10px;font-size:13px;font-family:monospace;outline:none;" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Icon</label>
+                                            <select name="agent_icon" x-model="agentIcon"
+                                                    style="width:100%;border:1px solid #E5E7EB;border-radius:8px;padding:8px 10px;font-size:13px;outline:none;background:#fff;">
+                                                <option value="robot">🤖 Robot</option>
+                                                <option value="brain">🧠 Brain</option>
+                                                <option value="comments">💬 Comments</option>
+                                                <option value="headset">🎧 Headset</option>
+                                                <option value="bolt">⚡ Bolt</option>
+                                                <option value="star">⭐ Star</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Support Team --}}
+                        <div style="padding-top:18px;border-top:1px solid #F3F4F6;margin-top:6px;">
+                            <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">
+                                <div style="width:28px;height:28px;border-radius:8px;background:#FFF7ED;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
+                                    <i class="fas fa-headset" style="font-size:11px;color:#F97316;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Support Team Recipient</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Who receives support messages sent from the chat agent widget</p>
+                                </div>
+                            </div>
+                            <select name="support_user_id"
+                                    style="width:100%;padding:8px 12px;border:1px solid #E5E7EB;border-radius:8px;font-size:13px;color:#374151;background:#fff;outline:none;">
+                                <option value="">— Automatically pick first admin/manager —</option>
+                                @foreach($supportUsers as $su)
+                                    <option value="{{ $su->id }}"
+                                        {{ ($settings['support_user_id'] ?? '') == $su->id ? 'selected' : '' }}>
+                                        {{ $su->name }} ({{ ucfirst($su->role) }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                    </div>
+                    <div class="scard-footer">
+                        <button type="submit" class="btn-save">
+                            <i class="fas fa-check" style="font-size:11px;margin-right:5px;"></i>Save Agent Settings
                         </button>
                     </div>
                 </form>
@@ -813,6 +1054,92 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             @endif
                         </div>
 
+                        {{-- ── Bell Sound ── --}}
+                        <div style="margin-top:20px;padding-top:20px;border-top:1px solid #F3F4F6;"
+                             x-data="{
+                                soundType:   '{{ $settings['notif_sound_type']   ?? 'chime' }}',
+                                soundVolume: {{ (float)($settings['notif_sound_volume'] ?? 0.3) }},
+                                playing: false,
+                                sounds: {
+                                    chime:  { label: 'Chime',      icon: 'fa-music',         notes: [[784,0],[988,0.18]] },
+                                    ding:   { label: 'Ding',       icon: 'fa-bell',           notes: [[880,0]] },
+                                    double: { label: 'Double tap', icon: 'fa-repeat',         notes: [[1047,0],[1047,0.22]] },
+                                    pop:    { label: 'Soft pop',   icon: 'fa-circle-dot',     notes: [[440,0],[554,0.12]] },
+                                    alert:  { label: 'Alert',      icon: 'fa-triangle-exclamation', notes: [[987,0],[1175,0.1],[1397,0.22]] },
+                                    none:   { label: 'Silent',     icon: 'fa-volume-xmark',   notes: [] },
+                                },
+                                preview() {
+                                    if (this.soundType === 'none') return;
+                                    const notes = this.sounds[this.soundType]?.notes || [];
+                                    if (!notes.length) return;
+                                    this.playing = true;
+                                    try {
+                                        const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+                                        const vol  = this.soundVolume;
+                                        notes.forEach(([freq, delay]) => {
+                                            const osc  = ctx.createOscillator();
+                                            const gain = ctx.createGain();
+                                            osc.connect(gain); gain.connect(ctx.destination);
+                                            osc.type = 'sine';
+                                            osc.frequency.value = freq;
+                                            const t = ctx.currentTime + delay;
+                                            gain.gain.setValueAtTime(0, t);
+                                            gain.gain.linearRampToValueAtTime(vol, t + 0.015);
+                                            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+                                            osc.start(t); osc.stop(t + 0.6);
+                                        });
+                                    } catch(e) {}
+                                    setTimeout(() => this.playing = false, 700);
+                                }
+                             }">
+                            <p style="font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px;">
+                                <i class="fas fa-volume-high" style="margin-right:5px;"></i>Bell Sound
+                            </p>
+
+                            {{-- Sound type picker --}}
+                            <input type="hidden" name="notif_sound_type" :value="soundType">
+                            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
+                                <template x-for="(cfg, key) in sounds" :key="key">
+                                    <button type="button"
+                                        @click="soundType = key"
+                                        :style="soundType === key
+                                            ? 'border:2px solid #4F46E5;background:#EEF2FF;color:#4F46E5;'
+                                            : 'border:2px solid #E5E7EB;background:#fff;color:#6B7280;'"
+                                        style="padding:10px 6px;border-radius:10px;cursor:pointer;text-align:center;transition:all .15s;font-size:12px;font-weight:600;">
+                                        <i :class="'fas ' + cfg.icon" style="display:block;font-size:16px;margin-bottom:4px;"></i>
+                                        <span x-text="cfg.label"></span>
+                                    </button>
+                                </template>
+                            </div>
+
+                            {{-- Volume slider (hidden when silent) --}}
+                            <div x-show="soundType !== 'none'" style="margin-bottom:14px;">
+                                <input type="hidden" name="notif_sound_volume" :value="soundVolume">
+                                <label style="font-size:12px;font-weight:600;color:#374151;display:flex;justify-content:space-between;margin-bottom:6px;">
+                                    <span>Volume</span>
+                                    <span x-text="Math.round(soundVolume * 100) + '%'" style="color:#4F46E5;"></span>
+                                </label>
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    <i class="fas fa-volume-low" style="color:#9CA3AF;font-size:12px;"></i>
+                                    <input type="range" x-model.number="soundVolume"
+                                           min="0.05" max="1" step="0.05"
+                                           style="flex:1;accent-color:#4F46E5;">
+                                    <i class="fas fa-volume-high" style="color:#4F46E5;font-size:12px;"></i>
+                                </div>
+                            </div>
+
+                            {{-- Preview button --}}
+                            <button type="button" @click="preview()"
+                                    x-show="soundType !== 'none'"
+                                    :disabled="playing"
+                                    style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;border:1px solid #E5E7EB;background:#F9FAFB;font-size:12px;font-weight:600;color:#374151;cursor:pointer;transition:all .15s;"
+                                    :style="playing ? 'opacity:.6;cursor:not-allowed;' : ''">
+                                <i class="fas" :class="playing ? 'fa-spinner fa-spin' : 'fa-play'" style="font-size:10px;"></i>
+                                <span x-text="playing ? 'Playing…' : 'Preview sound'"></span>
+                            </button>
+                            <p style="font-size:11px;color:#9CA3AF;margin:8px 0 0;">This is the default. Each user can still override it from the notification bell menu.</p>
+                        </div>
+
                     </div>
                     <div class="scard-footer">
                         <button type="submit" class="btn-save"><i class="fas fa-check" style="font-size:11px;margin-right:5px;"></i>Save Preferences</button>
@@ -1038,6 +1365,17 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             <label class="toggle">
                                 <input type="checkbox" name="require_strong_password" value="1"
                                        {{ $settings['require_strong_password'] === '1' ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="sf-toggle-row">
+                            <div>
+                                <p class="sf-toggle-label">Require Two-Factor Authentication (MFA)</p>
+                                <p class="sf-toggle-hint">Force all users to set up an authenticator app before accessing their account</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" name="force_mfa" value="1"
+                                       {{ ($settings['force_mfa'] ?? '0') === '1' ? 'checked' : '' }}>
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
@@ -1715,7 +2053,100 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
         {{-- ════ BACKUP & EXPORT ════ --}}
         <div x-show="tab === 'backup'" x-cloak>
 
-            <div class="scard" x-data="{ showRestore: false, showBackupPicker: false }" style="margin-bottom:16px;">
+            <div class="scard" x-data="{
+                showRestore: false, showBackupPicker: false,
+                showRestoreAuth: false, authPassword: '', authError: '', authChecking: false, restoreUnlocked: false,
+                pendingNasPath: '',
+                openRestore() {
+                    if (this.restoreUnlocked) { this.showRestore = !this.showRestore; return; }
+                    this.authPassword=''; this.authError=''; this.showRestoreAuth=true;
+                    this.$nextTick(()=>{ document.getElementById('restore-pwd-input')?.focus(); });
+                },
+                openNasRestore(path) {
+                    if (this.restoreUnlocked) { this._submitNasRestore(path); return; }
+                    this.pendingNasPath=path; this.authPassword=''; this.authError=''; this.showRestoreAuth=true;
+                    this.$nextTick(()=>{ document.getElementById('restore-pwd-input')?.focus(); });
+                },
+                verifyPassword() {
+                    this.authChecking=true; this.authError='';
+                    fetch('{{ route('admin.settings.backup.verify.password') }}', {
+                        method:'POST',
+                        headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Content-Type':'application/json','Accept':'application/json'},
+                        body: JSON.stringify({password: this.authPassword})
+                    }).then(r=>r.json()).then(d=>{
+                        this.authChecking=false;
+                        if (d.ok) {
+                            this.restoreUnlocked=true; this.showRestoreAuth=false;
+                            if (this.pendingNasPath) { this._submitNasRestore(this.pendingNasPath); this.pendingNasPath=''; }
+                            else { this.showRestore=true; }
+                        } else {
+                            this.authError='Incorrect password. Please try again.';
+                        }
+                    }).catch(()=>{ this.authChecking=false; this.authError='Request failed. Try again.'; });
+                },
+                _submitNasRestore(path) {
+                    if (!window.confirm('Restore from NAS file: ' + path.split('/').pop() + '?\n\nThis replaces ALL current data and cannot be undone.')) return;
+                    const f = document.getElementById('nas-restore-form');
+                    f.querySelector('[name=nas_path]').value = path;
+                    f.submit();
+                }
+            }" style="margin-bottom:16px;">
+
+                {{-- Hidden NAS restore form (shared by all NAS restore buttons) --}}
+                <form id="nas-restore-form" method="POST" action="{{ route('admin.settings.backup.restore.nas') }}" style="display:none;">
+                    @csrf
+                    <input type="hidden" name="nas_path" value="">
+                </form>
+
+                {{-- Restore password auth modal --}}
+                <div x-show="showRestoreAuth" x-cloak
+                     style="position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.5);"
+                     @click.self="showRestoreAuth=false">
+                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;padding:28px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+                        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                            <div style="width:40px;height:40px;border-radius:10px;background:#FEF2F2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-lock" style="color:#DC2626;font-size:16px;"></i>
+                            </div>
+                            <div>
+                                <p style="font-size:15px;font-weight:700;color:#111827;margin:0;">Confirm Identity</p>
+                                <p style="font-size:12px;color:#6B7280;margin:2px 0 0;">Enter your password to unlock system restore</p>
+                            </div>
+                        </div>
+
+                        <p style="font-size:11px;color:#7F1D1D;background:#FEF2F2;border:1px solid #FECACA;border-radius:7px;padding:8px 12px;margin:0 0 16px;line-height:1.5;">
+                            <i class="fas fa-triangle-exclamation" style="margin-right:5px;"></i>
+                            <strong>Warning:</strong> Restoring replaces ALL current data and cannot be undone.
+                        </p>
+
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Your Password</label>
+                        <div style="position:relative;margin-bottom:12px;">
+                            <input id="restore-pwd-input" type="password" x-model="authPassword"
+                                   @keyup.enter="verifyPassword()"
+                                   style="width:100%;padding:9px 40px 9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;"
+                                   :style="authError ? 'border-color:#DC2626;' : ''"
+                                   placeholder="Enter your account password"
+                                   autocomplete="current-password">
+                            <i class="fas fa-key" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:13px;pointer-events:none;"></i>
+                        </div>
+
+                        <p x-show="authError !== ''" x-text="authError" x-cloak
+                           style="font-size:11px;color:#DC2626;margin:0 0 12px;display:flex;align-items:center;gap:5px;">
+                        </p>
+
+                        <div style="display:flex;gap:8px;">
+                            <button type="button" @click="showRestoreAuth=false; pendingNasPath='';"
+                                    style="flex:1;padding:9px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
+                                Cancel
+                            </button>
+                            <button type="button" @click="verifyPassword()" :disabled="authChecking || authPassword.length === 0"
+                                    style="flex:2;padding:9px;background:#DC2626;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"
+                                    onmouseover="if(!this.disabled)this.style.background='#B91C1C'" onmouseout="if(!this.disabled)this.style.background='#DC2626'">
+                                <i class="fas" :class="authChecking ? 'fa-circle-notch fa-spin' : 'fa-unlock'" style="font-size:11px;"></i>
+                                <span x-text="authChecking ? 'Verifying…' : 'Unlock Restore'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
                 {{-- Backup format picker modal --}}
                 <div x-show="showBackupPicker" x-cloak
@@ -1792,11 +2223,14 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                 @php $nasEnabled = app(\App\Services\NasService::class)->isEnabled(); @endphp
                 @if($nasEnabled)
                 <div style="border-top:1px solid #F3F4F6;padding:14px 20px 16px;"
-                     x-data="{ saving: false, ok: null, msg: '', showFiles: false, loadingFiles: false, files: [], filesLoaded: false,
-                        save() {
-                            if (!window.confirm('Save a full backup ZIP to NAS now?')) return;
+                     x-data="{
+                        saving: false, ok: null, msg: '', showFiles: false, loadingFiles: false, files: [], filesLoaded: false,
+                        showNasPicker: false,
+                        save(url, label) {
+                            this.showNasPicker = false;
+                            if (!window.confirm('Save ' + label + ' to NAS now?')) return;
                             this.saving=true; this.ok=null; this.msg='';
-                            fetch('{{ route('admin.settings.backup.save.nas') }}', {method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}})
+                            fetch(url, {method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}})
                                 .then(r=>r.json()).then(d=>{ this.ok=d.ok; this.msg=d.msg; this.saving=false; })
                                 .catch(()=>{ this.ok=false; this.msg='Request failed.'; this.saving=false; });
                         },
@@ -1807,6 +2241,50 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         },
                         toggle() { this.showFiles=!this.showFiles; if(this.showFiles && !this.filesLoaded) this.loadFiles(); }
                      }">
+
+                    {{-- NAS backup format picker modal --}}
+                    <div x-show="showNasPicker" x-cloak
+                         style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);"
+                         @click.self="showNasPicker=false">
+                        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:16px;padding:28px 28px 24px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+                            <p style="font-size:15px;font-weight:700;color:#111827;margin:0 0 4px;">Save Backup to NAS</p>
+                            <p style="font-size:12px;color:#6B7280;margin:0 0 20px;line-height:1.5;">Select what to save to <code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">Backups/YYYY/YYYY-MM/</code> on your NAS share.</p>
+
+                            <button type="button"
+                                    @click="save('{{ route('admin.settings.backup.save.nas') }}', 'a full backup ZIP')"
+                                    :disabled="saving"
+                                    style="display:flex;align-items:flex-start;gap:12px;padding:14px;border:2px solid #E0E7FF;border-radius:10px;margin-bottom:10px;width:100%;text-align:left;background:#fff;cursor:pointer;transition:border-color .15s;"
+                                    onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E0E7FF'">
+                                <div style="width:34px;height:34px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-file-zipper" style="color:#6366F1;font-size:14px;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:13px;font-weight:700;color:#111827;margin:0 0 2px;">Full Backup <span style="font-size:10px;font-weight:600;padding:1px 6px;background:#EEF2FF;color:#6366F1;border-radius:5px;margin-left:4px;">ZIP</span></p>
+                                    <p style="font-size:11px;color:#6B7280;margin:0;line-height:1.4;">Database + all uploaded files. Larger file, complete restore.</p>
+                                </div>
+                            </button>
+
+                            <button type="button"
+                                    @click="save('{{ route('admin.settings.backup.save.nas.sqlite') }}', 'the database only')"
+                                    :disabled="saving"
+                                    style="display:flex;align-items:flex-start;gap:12px;padding:14px;border:2px solid #F3F4F6;border-radius:10px;margin-bottom:0;width:100%;text-align:left;background:#fff;cursor:pointer;transition:border-color .15s;"
+                                    onmouseover="this.style.borderColor='#9CA3AF'" onmouseout="this.style.borderColor='#F3F4F6'">
+                                <div style="width:34px;height:34px;border-radius:8px;background:#F9FAFB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-database" style="color:#6B7280;font-size:14px;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:13px;font-weight:700;color:#111827;margin:0 0 2px;">Database Only <span style="font-size:10px;font-weight:600;padding:1px 6px;background:#F3F4F6;color:#6B7280;border-radius:5px;margin-left:4px;">SQLite</span></p>
+                                    <p style="font-size:11px;color:#6B7280;margin:0;line-height:1.4;">Settings, users, tasks & projects only. Small file, fast upload. Uploaded files not included.</p>
+                                </div>
+                            </button>
+
+                            <button type="button" @click="showNasPicker=false"
+                                    style="width:100%;margin-top:16px;padding:8px;border:none;background:#F3F4F6;color:#6B7280;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                         <div style="display:flex;align-items:center;gap:10px;">
                             <div style="width:32px;height:32px;border-radius:8px;background:#ECFDF5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -1823,7 +2301,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 <i class="fas fa-folder-open" style="font-size:10px;"></i>
                                 <span x-text="showFiles ? 'Hide Files' : 'View NAS Backups'"></span>
                             </button>
-                            <button type="button" @click="save()" :disabled="saving"
+                            <button type="button" @click="showNasPicker=true" :disabled="saving"
                                     style="display:flex;align-items:center;gap:6px;padding:7px 14px;background:#059669;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;"
                                     onmouseover="this.style.background='#047857'" onmouseout="this.style.background='#059669'">
                                 <i class="fas" :class="saving ? 'fa-circle-notch fa-spin' : 'fa-cloud-arrow-up'" style="font-size:10px;"></i>
@@ -1856,16 +2334,11 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                             <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="f.name"></p>
                                             <p style="font-size:11px;color:#9CA3AF;margin:0;" x-text="f.size + ' MB · ' + f.month"></p>
                                         </div>
-                                        <form method="POST" action="{{ route('admin.settings.backup.restore.nas') }}"
-                                              @submit.prevent="if(window.confirm('Restore from NAS file: ' + f.name + '?\n\nThis replaces ALL current data and cannot be undone.')) $el.submit()">
-                                            @csrf
-                                            <input type="hidden" name="nas_path" :value="f.path">
-                                            <button type="submit"
-                                                    style="display:flex;align-items:center;gap:5px;padding:5px 10px;background:#DC2626;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap;"
-                                                    onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
-                                                <i class="fas fa-rotate-left" style="font-size:9px;"></i> Restore
-                                            </button>
-                                        </form>
+                                                        <button type="button" @click="openNasRestore(f.path)"
+                                                style="display:flex;align-items:center;gap:5px;padding:5px 10px;background:#DC2626;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap;"
+                                                onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
+                                            <i class="fas fa-rotate-left" style="font-size:9px;"></i> Restore
+                                        </button>
                                     </div>
                                 </template>
                             </div>
@@ -1882,14 +2355,20 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 <i class="fas fa-rotate-left" style="color:#DC2626;font-size:13px;"></i>
                             </div>
                             <div>
-                                <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">Full System Restore</p>
+                                <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">
+                                    Full System Restore
+                                    <span x-show="restoreUnlocked" x-cloak
+                                          style="font-size:10px;font-weight:600;padding:2px 7px;background:#D1FAE5;color:#065F46;border-radius:20px;margin-left:6px;vertical-align:middle;">
+                                        <i class="fas fa-unlock" style="font-size:9px;margin-right:3px;"></i>Unlocked
+                                    </span>
+                                </p>
                                 <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Upload a <code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">.zip</code> backup (DB + files) or a legacy <code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">.sqlite</code> file</p>
                             </div>
                         </div>
-                        <button type="button" @click="showRestore = !showRestore"
+                        <button type="button" @click="openRestore()"
                                 style="display:flex;align-items:center;gap:6px;padding:7px 14px;background:#DC2626;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;"
                                 onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
-                            <i class="fas fa-upload" style="font-size:10px;"></i>
+                            <i class="fas" :class="restoreUnlocked && showRestore ? 'fa-xmark' : (restoreUnlocked ? 'fa-upload' : 'fa-lock')" style="font-size:10px;"></i>
                             <span x-text="showRestore ? 'Cancel' : 'Restore'"></span>
                         </button>
                     </div>
@@ -1985,6 +2464,257 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 
         </div>
 
+        {{-- ════ FEATURES ════ --}}
+        <div x-show="tab === 'features'" x-cloak>
+
+            {{-- Intro banner --}}
+            <div x-data="{ disabling: false }"
+                 style="background:#F8FAFF;border:1px solid #E0E7FF;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;gap:14px;align-items:flex-start;justify-content:space-between;">
+                <div style="display:flex;gap:14px;align-items:flex-start;">
+                    <div style="width:36px;height:36px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
+                        <i class="fas fa-circle-info" style="color:#4F46E5;font-size:15px;"></i>
+                    </div>
+                    <div>
+                        <p style="font-size:13px;font-weight:700;color:#1E1B4B;margin:0 0 4px;">About this page</p>
+                        <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.7;">
+                            Each toggle below controls whether a feature is visible and accessible across the system.
+                            Disabling a feature hides it from all pages — no data is deleted.
+                            You can re-enable any feature at any time and everything will reappear exactly as before.
+                        </p>
+                    </div>
+                </div>
+                <button type="button" :disabled="disabling"
+                        @click="if(!window.confirm('Disable all features?')) return;
+                                disabling=true;
+                                fetch('{{ route('admin.settings.features.disable-all') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}})
+                                .then(r=>r.json()).then(()=>{
+                                    document.querySelectorAll('[data-feature-toggle]').forEach(el=>{ el.__x && (el.__x.$data.enabled=false) });
+                                    Alpine.store && Alpine.store('features') && (Alpine.store('features').allDisabled=true);
+                                    window.location.reload();
+                                }).finally(()=>{ disabling=false })"
+                        style="flex-shrink:0;display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:9px;font-size:12px;font-weight:600;border:1.5px solid #FCA5A5;background:#FEF2F2;color:#DC2626;cursor:pointer;white-space:nowrap;transition:all .2s;"
+                        onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
+                    <i class="fas fa-toggle-off" style="font-size:13px;"></i>
+                    <span x-text="disabling ? 'Disabling…' : 'Disable All'"></span>
+                </button>
+            </div>
+
+            {{-- Task Features --}}
+            <div class="scard" style="margin-bottom:20px;">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#EEF2FF;color:#4F46E5;"><i class="fas fa-list-check"></i></div>
+                    <div>
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Task Features</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Advanced task capabilities — enable what your team needs</p>
+                    </div>
+                </div>
+
+                @php
+                $taskFeatures = [
+                    [
+                        'key'   => 'show_task_dependencies',
+                        'route' => route('admin.settings.features.task-dependencies'),
+                        'icon'  => 'fa-diagram-project', 'color' => '#4F46E5', 'bg' => '#EEF2FF',
+                        'label' => 'Task Dependencies',
+                        'hint'  => 'Block a task from starting until another one is finished',
+                        'status' => 'coming-soon',
+                        'what'  => 'Links two tasks together so that Task B cannot move to "In Progress" until Task A is marked as completed.',
+                        'how'   => 'When creating or editing a task, a "Depends on" field will appear where you can pick another task. The blocked task will show a warning and prevent progress until the dependency is resolved.',
+                        'best'  => 'Use this when you have sequential work — e.g. the design must be approved before development begins.',
+                    ],
+                    [
+                        'key'   => 'show_recurring_tasks',
+                        'route' => route('admin.settings.features.recurring-tasks'),
+                        'icon'  => 'fa-rotate', 'color' => '#0891B2', 'bg' => '#ECFEFF',
+                        'label' => 'Recurring Tasks',
+                        'hint'  => 'Auto-create tasks on a schedule — daily, weekly, or monthly',
+                        'status' => 'coming-soon',
+                        'what'  => 'A task can be set to repeat on a fixed schedule. When the current task is completed, a fresh copy is automatically created and assigned to the same person.',
+                        'how'   => 'When creating a task, a "Repeat" section will appear with options: Daily, Weekly (pick days), Monthly (pick date), or Custom interval. You can also set an end date or a max number of repeats.',
+                        'best'  => 'Ideal for routine work like weekly reports, monthly invoices, or daily stand-up summaries.',
+                    ],
+                    [
+                        'key'   => 'show_time_tracking',
+                        'route' => route('admin.settings.features.time-tracking'),
+                        'icon'  => 'fa-clock', 'color' => '#059669', 'bg' => '#ECFDF5',
+                        'label' => 'Time Tracking',
+                        'hint'  => 'Let users log the hours they spend working on a task',
+                        'status' => 'coming-soon',
+                        'what'  => 'Users can start a timer when they begin work on a task, or manually enter the hours spent. All logs are stored per task and visible to admins.',
+                        'how'   => 'A "Log Time" button will appear on each task. Users can start/stop a live timer or type in hours and minutes with an optional note. Admins see a time summary per task and per user in the reports section.',
+                        'best'  => 'Useful for billing clients by the hour, estimating future tasks, and understanding where team time is going.',
+                    ],
+                    [
+                        'key'   => 'show_task_templates',
+                        'route' => route('admin.settings.features.task-templates'),
+                        'icon'  => 'fa-clone', 'color' => '#D97706', 'bg' => '#FFFBEB',
+                        'label' => 'Task Templates',
+                        'hint'  => 'Save a task setup as a template to reuse it quickly',
+                        'status' => 'coming-soon',
+                        'what'  => 'Admins can save any task (title, description, checklist, assignee, priority, deadline offset) as a named template. New tasks can then be created from a template in one click.',
+                        'how'   => 'A "Save as Template" button will appear on any task. When creating a new task, a "Use Template" option will pre-fill all fields from the saved template.',
+                        'best'  => 'Perfect for project onboarding checklists, recurring project types, or any task your team creates repeatedly with the same structure.',
+                    ],
+                ];
+                @endphp
+
+                @foreach($taskFeatures as $f)
+                <div style="border-bottom:1px solid #F3F4F6;" x-data="{ enabled: {{ ($appSettings[$f['key']] ?? '1') === '1' ? 'true' : 'false' }}, open: false }">
+                    {{-- Toggle row --}}
+                    <div style="padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                        <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+                            <div style="width:28px;height:28px;border-radius:8px;background:{{ $f['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas {{ $f['icon'] }}" style="font-size:11px;color:{{ $f['color'] }};"></i>
+                            </div>
+                            <div style="min-width:0;">
+                                <div style="display:flex;align-items:center;gap:7px;">
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">{{ $f['label'] }}</p>
+                                </div>
+                                <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">{{ $f['hint'] }}</p>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                            <button type="button" @click="open=!open"
+                                    style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:7px;font-size:11px;font-weight:600;border:1px solid #E5E7EB;background:#fff;color:#6B7280;cursor:pointer;">
+                                <i class="fas" :class="open ? 'fa-chevron-up' : 'fa-circle-info'" style="font-size:10px;"></i>
+                                <span x-text="open ? 'Hide' : 'How it works'"></span>
+                            </button>
+                            <button type="button"
+                                    @click="fetch('{{ $f['route'] }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{ enabled=d['{{ $f['key'] }}'] })"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;"
+                                    :style="enabled ? 'background:#10B981;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                                <i class="fas" :class="enabled ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                                <span x-text="enabled ? 'Enabled' : 'Disabled'"></span>
+                            </button>
+                        </div>
+                    </div>
+                    {{-- Info panel --}}
+                    <div x-show="open" x-collapse style="padding:0 24px 16px;">
+                        <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
+                            <div style="display:flex;gap:10px;">
+                                <div style="flex:1;">
+                                    <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 3px;text-transform:uppercase;letter-spacing:.5px;">What it does</p>
+                                    <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.6;">{{ $f['what'] }}</p>
+                                </div>
+                            </div>
+                            <div style="height:1px;background:#E5E7EB;"></div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                <div>
+                                    <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 3px;text-transform:uppercase;letter-spacing:.5px;">How to use</p>
+                                    <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.6;">{{ $f['how'] }}</p>
+                                </div>
+                                <div>
+                                    <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 3px;text-transform:uppercase;letter-spacing:.5px;">Best for</p>
+                                    <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.6;">{{ $f['best'] }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+
+            {{-- Views & Reports --}}
+            <div class="scard">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#F0FDF4;color:#16A34A;"><i class="fas fa-chart-bar"></i></div>
+                    <div>
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Views & Reports</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Show or hide reporting and visualisation tools</p>
+                    </div>
+                </div>
+
+                @php
+                $reportFeatures = [
+                    [
+                        'key'   => 'show_gantt_chart',
+                        'route' => route('admin.settings.features.gantt-chart'),
+                        'icon'  => 'fa-bars-progress', 'color' => '#7C3AED', 'bg' => '#F5F3FF',
+                        'label' => 'Gantt Chart',
+                        'hint'  => 'Timeline bar chart showing task schedule and progress',
+                        'status' => 'coming-soon',
+                        'what'  => 'A horizontal timeline where each task is shown as a bar spanning its start and deadline dates. Bars are colour-coded by status and grouped by project.',
+                        'how'   => 'A "Gantt" tab or link will appear in the Projects section. Admins and managers can view the full team timeline; users see only their own tasks. You can drag bars to adjust deadlines directly on the chart.',
+                        'best'  => 'Best for project planning meetings, showing stakeholders the schedule at a glance, and spotting deadline conflicts before they happen.',
+                    ],
+                    [
+                        'key'   => 'show_excel_export',
+                        'route' => route('admin.settings.features.excel-export'),
+                        'icon'  => 'fa-file-excel', 'color' => '#16A34A', 'bg' => '#F0FDF4',
+                        'label' => 'Export to Excel / CSV',
+                        'hint'  => 'Download task and project data as a spreadsheet',
+                        'status' => 'coming-soon',
+                        'what'  => 'Adds an "Export" button to the tasks list, project reports, and user performance pages. Exports all visible rows as an .xlsx or .csv file.',
+                        'how'   => 'Click the Export button, choose Excel or CSV format, and the file downloads immediately. Filters applied on the page (date range, status, user) are respected in the export.',
+                        'best'  => 'Useful for sharing reports with clients or management outside the system, importing into accounting tools, or doing custom analysis in Excel.',
+                    ],
+                    [
+                        'key'   => 'show_workload_view',
+                        'route' => route('admin.settings.features.workload-view'),
+                        'icon'  => 'fa-people-arrows', 'color' => '#0284C7', 'bg' => '#F0F9FF',
+                        'label' => 'Team Workload View',
+                        'hint'  => 'See how many active tasks each team member currently has',
+                        'status' => 'coming-soon',
+                        'what'  => 'A visual grid showing every team member alongside their current open task count, a load bar (light / moderate / heavy), and upcoming deadlines this week.',
+                        'how'   => 'Accessible from the admin dashboard or the Team section. Clicking a member expands their task list. Managers use it during sprint planning to balance who gets the next task.',
+                        'best'  => 'Use before assigning a new task to check who is available. Prevents overloading one person while others have capacity.',
+                    ],
+                ];
+                @endphp
+
+                @foreach($reportFeatures as $f)
+                <div style="border-bottom:1px solid #F3F4F6;" x-data="{ enabled: {{ ($appSettings[$f['key']] ?? '1') === '1' ? 'true' : 'false' }}, open: false }">
+                    <div style="padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                        <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+                            <div style="width:28px;height:28px;border-radius:8px;background:{{ $f['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas {{ $f['icon'] }}" style="font-size:11px;color:{{ $f['color'] }};"></i>
+                            </div>
+                            <div style="min-width:0;">
+                                <div style="display:flex;align-items:center;gap:7px;">
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">{{ $f['label'] }}</p>
+                                </div>
+                                <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">{{ $f['hint'] }}</p>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                            <button type="button" @click="open=!open"
+                                    style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:7px;font-size:11px;font-weight:600;border:1px solid #E5E7EB;background:#fff;color:#6B7280;cursor:pointer;">
+                                <i class="fas" :class="open ? 'fa-chevron-up' : 'fa-circle-info'" style="font-size:10px;"></i>
+                                <span x-text="open ? 'Hide' : 'How it works'"></span>
+                            </button>
+                            <button type="button"
+                                    @click="fetch('{{ $f['route'] }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{ enabled=d['{{ $f['key'] }}'] })"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;"
+                                    :style="enabled ? 'background:#10B981;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                                <i class="fas" :class="enabled ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                                <span x-text="enabled ? 'Enabled' : 'Disabled'"></span>
+                            </button>
+                        </div>
+                    </div>
+                    <div x-show="open" x-collapse style="padding:0 24px 16px;">
+                        <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
+                            <div>
+                                <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 3px;text-transform:uppercase;letter-spacing:.5px;">What it does</p>
+                                <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.6;">{{ $f['what'] }}</p>
+                            </div>
+                            <div style="height:1px;background:#E5E7EB;"></div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                <div>
+                                    <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 3px;text-transform:uppercase;letter-spacing:.5px;">How to use</p>
+                                    <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.6;">{{ $f['how'] }}</p>
+                                </div>
+                                <div>
+                                    <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 3px;text-transform:uppercase;letter-spacing:.5px;">Best for</p>
+                                    <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.6;">{{ $f['best'] }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+
         {{-- ════ DEVELOPER ════ --}}
         <div x-show="tab === 'developer'" x-cloak>
 
@@ -2002,44 +2732,38 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                     </div>
                     <div style="padding:0 20px 16px;display:flex;flex-direction:column;gap:0;">
                         {{-- Maintenance Mode --}}
-                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
+                             x-data="{ maintenanceOn: {{ ($appSettings['maintenance_mode'] ?? '0') === '1' ? 'true' : 'false' }} }">
                             <div style="display:flex;align-items:center;gap:10px;">
                                 <div style="width:28px;height:28px;border-radius:8px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                     <i class="fas fa-triangle-exclamation" style="font-size:11px;color:#D97706;"></i>
                                 </div>
                                 <div>
                                     <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Maintenance Mode</p>
-                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;" id="maintenance-status">
-                                        {{ ($appSettings['maintenance_mode'] ?? '0') === '1' ? 'Active — admins only' : 'Inactive' }}
-                                    </p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;" x-text="maintenanceOn ? 'Active — admins only' : 'Inactive'"></p>
                                 </div>
                             </div>
-                            <button id="maintenance-toggle" onclick="toggleMaintenance(this)"
-                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;
-                                           {{ ($appSettings['maintenance_mode'] ?? '0') === '1' ? 'background:#D97706;color:#fff;' : 'background:#F3F4F6;color:#374151;' }}">
-                                <i class="fas {{ ($appSettings['maintenance_mode'] ?? '0') === '1' ? 'fa-toggle-on' : 'fa-toggle-off' }}" id="maintenance-icon"></i>
-                                <span id="maintenance-label">{{ ($appSettings['maintenance_mode'] ?? '0') === '1' ? 'On' : 'Off' }}</span>
-                            </button>
+                            <div @click="fetch(_maintenanceToggleUrl,{method:'POST',headers:{'X-CSRF-TOKEN':_csrfToken,'Content-Type':'application/json'}}).then(r=>r.json()).then(d=>{maintenanceOn=d.maintenance_mode;if(d.maintenance_mode)_unlockCard('manager-access-card');else _lockCard('manager-access-card','Enable Maintenance Mode to edit manager access');})"
+                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (maintenanceOn ? 'background:#D97706;' : 'background:#D1D5DB;')">
+                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (maintenanceOn ? 'left:23px;' : 'left:3px;')"></div>
+                            </div>
                         </div>
                         {{-- Developer Mode --}}
-                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
+                             x-data="{ devModeOn: {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'true' : 'false' }} }">
                             <div style="display:flex;align-items:center;gap:10px;">
                                 <div style="width:28px;height:28px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                     <i class="fas fa-code" style="font-size:11px;color:#6366F1;"></i>
                                 </div>
                                 <div>
                                     <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Developer Mode</p>
-                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;" id="dev-mode-status">
-                                        {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'Active — click to hide sections' : 'Inactive' }}
-                                    </p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;" x-text="devModeOn ? 'Active — click to hide sections' : 'Inactive'"></p>
                                 </div>
                             </div>
-                            <button id="dev-mode-toggle" onclick="toggleDevMode(this)"
-                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;
-                                           {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'background:#6366F1;color:#fff;' : 'background:#F3F4F6;color:#374151;' }}">
-                                <i class="fas {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'fa-toggle-on' : 'fa-toggle-off' }}" id="dev-mode-icon"></i>
-                                <span id="dev-mode-label">{{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'On' : 'Off' }}</span>
-                            </button>
+                            <div @click="fetch(_devToggleUrl,{method:'POST',headers:{'X-CSRF-TOKEN':_csrfToken,'Content-Type':'application/json'}}).then(r=>r.json()).then(d=>{devModeOn=d.developer_mode;if(d.developer_mode){_unlockCard('sidebar-nav-card');_unlockCard('header-elements-card');_unlockCard('dashboard-sections-card');}else{_lockCard('sidebar-nav-card','Enable Developer Mode to edit navigation');_lockCard('header-elements-card','Enable Developer Mode to edit navigation');_lockCard('dashboard-sections-card','Enable Developer Mode to edit dashboard sections');}if(typeof window._devModeChanged==='function')window._devModeChanged(d.developer_mode);})"
+                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (devModeOn ? 'background:#6366F1;' : 'background:#D1D5DB;')">
+                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (devModeOn ? 'left:23px;' : 'left:3px;')"></div>
+                            </div>
                         </div>
                         {{-- Hide Approval Customer Notify --}}
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
@@ -2053,13 +2777,27 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Remove the customer notification section from the approval modal</p>
                                 </div>
                             </div>
-                            <button type="button"
-                                    @click="fetch('{{ route('admin.settings.approval-customer-notify') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ hideNotify = d.hide_approval_customer_notify })"
-                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
-                                    :style="hideNotify ? 'background:#D97706;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
-                                <i class="fas" :class="hideNotify ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
-                                <span x-text="hideNotify ? 'On' : 'Off'"></span>
-                            </button>
+                            <div @click="fetch('{{ route('admin.settings.approval-customer-notify') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{hideNotify=d.hide_approval_customer_notify})"
+                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (hideNotify ? 'background:#D97706;' : 'background:#D1D5DB;')">
+                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (hideNotify ? 'left:23px;' : 'left:3px;')"></div>
+                            </div>
+                        </div>
+                        {{-- Hide WhatsApp Web Button --}}
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
+                             x-data="{ hideWaWeb: {{ ($appSettings['hide_wa_web_button'] ?? '0') === '1' ? 'true' : 'false' }} }">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="width:28px;height:28px;border-radius:8px;background:#DCFCE7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fab fa-whatsapp" style="font-size:12px;color:#25D366;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Hide "Send via WhatsApp Web"</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Remove the WhatsApp Web button from the approvals page (keeps API button only)</p>
+                                </div>
+                            </div>
+                            <div @click="fetch('{{ route('admin.settings.hide-wa-web') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{hideWaWeb=d.hide_wa_web_button})"
+                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (hideWaWeb ? 'background:#25D366;' : 'background:#D1D5DB;')">
+                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (hideWaWeb ? 'left:23px;' : 'left:3px;')"></div>
+                            </div>
                         </div>
                         {{-- Hide Hourly Rate --}}
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
@@ -2073,13 +2811,44 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Hide hourly rate field in user edit &amp; billing columns in reports</p>
                                 </div>
                             </div>
-                            <button type="button"
-                                    @click="fetch('{{ route('admin.settings.hourly-rate') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ hideHourly = d.hide_hourly_rate })"
-                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
-                                    :style="hideHourly ? 'background:#059669;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
-                                <i class="fas" :class="hideHourly ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
-                                <span x-text="hideHourly ? 'On' : 'Off'"></span>
-                            </button>
+                            <div @click="fetch('{{ route('admin.settings.hourly-rate') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{hideHourly=d.hide_hourly_rate})"
+                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (hideHourly ? 'background:#059669;' : 'background:#D1D5DB;')">
+                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (hideHourly ? 'left:23px;' : 'left:3px;')"></div>
+                            </div>
+                        </div>
+                        {{-- Hide Summarize Button --}}
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
+                             x-data="{ hideSummarize: {{ ($appSettings['hide_summarize_button'] ?? '0') === '1' ? 'true' : 'false' }} }">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="width:28px;height:28px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-chart-pie" style="font-size:11px;color:#4F46E5;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Hide "Summarize" Button on Customers Page</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Remove the Summarize button from the customers list header</p>
+                                </div>
+                            </div>
+                            <div @click="fetch('{{ route('admin.settings.hide-summarize') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{hideSummarize=d.hide_summarize_button})"
+                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (hideSummarize ? 'background:#4F46E5;' : 'background:#D1D5DB;')">
+                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (hideSummarize ? 'left:23px;' : 'left:3px;')"></div>
+                            </div>
+                        </div>
+                        {{-- Hide Features Tab --}}
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
+                             x-data="{ hideFeaturesTab: {{ ($appSettings['hide_features_tab'] ?? '0') === '1' ? 'true' : 'false' }} }">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="width:28px;height:28px;border-radius:8px;background:#F0FDF4;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-puzzle-piece" style="font-size:11px;color:#16A34A;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Hide Features Tab</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Remove the Features tab from settings — existing feature states are preserved</p>
+                                </div>
+                            </div>
+                            <div @click="fetch('{{ route('admin.settings.hide-features-tab') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{hideFeaturesTab=d.hide_features_tab;if(d.hide_features_tab&&window.location.hash==='#features'){window.location.hash='developer';}})"
+                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (hideFeaturesTab ? 'background:#16A34A;' : 'background:#D1D5DB;')">
+                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (hideFeaturesTab ? 'left:23px;' : 'left:3px;')"></div>
+                            </div>
                         </div>
                         {{-- Clear Cache --}}
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
@@ -2095,11 +2864,8 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </div>
                             <button type="button"
                                     :disabled="clearing"
-                                    @click="clearing=true; done=false;
-                                        fetch('{{ route('admin.settings.clear-cache') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} })
-                                        .then(r=>r.json()).then(d=>{ clearing=false; done=true; setTimeout(()=>done=false,4000); })"
-                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
-                                    :style="done ? 'background:#059669;color:#fff;' : (clearing ? 'background:#E5E7EB;color:#9CA3AF;cursor:not-allowed;' : 'background:#F3F4F6;color:#374151;')">
+                                    @click="clearing=true;done=false;fetch('{{ route('admin.settings.clear-cache') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{clearing=false;done=true;setTimeout(()=>done=false,4000);})"
+                                    :style="'display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;transition:all .2s;flex-shrink:0;' + (done ? 'background:#059669;color:#fff;cursor:pointer;' : (clearing ? 'background:#E5E7EB;color:#9CA3AF;cursor:not-allowed;' : 'background:#F3F4F6;color:#374151;cursor:pointer;'))">
                                 <i class="fas" :class="clearing ? 'fa-spinner fa-spin' : (done ? 'fa-check' : 'fa-broom')"></i>
                                 <span x-text="clearing ? 'Clearing…' : (done ? 'Done!' : 'Clear Cache')"></span>
                             </button>
@@ -2129,13 +2895,10 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Roles tab in Team page</p>
                                 </div>
                             </div>
-                            <button type="button"
-                                    @click="fetch('{{ route('admin.settings.manager-roles-access') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ rolesOn = d.manager_can_view_roles })"
-                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
-                                    :style="rolesOn ? 'background:#6366F1;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
-                                <i class="fas" :class="rolesOn ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
-                                <span x-text="rolesOn ? 'On' : 'Off'"></span>
-                            </button>
+                            <div @click="fetch('{{ route('admin.settings.manager-roles-access') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{rolesOn=d.manager_can_view_roles})"
+                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (rolesOn ? 'background:#6366F1;' : 'background:#D1D5DB;')">
+                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (rolesOn ? 'left:23px;' : 'left:3px;')"></div>
+                            </div>
                         </div>
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;">
                             <div style="display:flex;align-items:center;gap:10px;">
@@ -2147,13 +2910,10 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Edit, reset & deactivate admins</p>
                                 </div>
                             </div>
-                            <button type="button"
-                                    @click="fetch('{{ route('admin.settings.manager-admin-access') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ adminOn = d.manager_can_edit_admin })"
-                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
-                                    :style="adminOn ? 'background:#EF4444;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
-                                <i class="fas" :class="adminOn ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
-                                <span x-text="adminOn ? 'On' : 'Off'"></span>
-                            </button>
+                            <div @click="fetch('{{ route('admin.settings.manager-admin-access') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{adminOn=d.manager_can_edit_admin})"
+                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (adminOn ? 'background:#EF4444;' : 'background:#D1D5DB;')">
+                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (adminOn ? 'left:23px;' : 'left:3px;')"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2382,9 +3142,9 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">WhatsApp API Configuration</p>
                                 <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Connect your WhatsApp Business account to send messages</p>
                             </div>
-                            <label class="toggle" style="flex-shrink:0;">
-                                <input type="checkbox" name="wa_enabled" value="1" x-model="waEnabled"
-                                       {{ ($settings['wa_enabled'] ?? '0') === '1' ? 'checked' : '' }}>
+                            <label class="toggle" style="flex-shrink:0;" onclick="event.stopPropagation()">
+                                <input type="hidden" name="wa_enabled" value="0">
+                                <input type="checkbox" name="wa_enabled" value="1" x-model="waEnabled">
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
@@ -2561,15 +3321,15 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </div>
                         </div>
 
+                        {{-- Internal staff templates (3-col grid) --}}
                         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
                             @php
                             $templates = [
-                                ['key'=>'wa_tpl_assigned',         'icon'=>'fa-user-plus',          'color'=>'#4F46E5', 'label'=>'Task Assigned',          'hint'=>'Sent to user when a task is assigned to them'],
-                                ['key'=>'wa_tpl_approved',         'icon'=>'fa-circle-check',        'color'=>'#16a34a', 'label'=>'Task Approved',           'hint'=>'Sent when admin approves a submitted task'],
-                                ['key'=>'wa_tpl_reminder',         'icon'=>'fa-clock',               'color'=>'#D97706', 'label'=>'Deadline Reminder',       'hint'=>'Sent X days before the task deadline'],
-                                ['key'=>'wa_tpl_overdue',          'icon'=>'fa-triangle-exclamation','color'=>'#DC2626', 'label'=>'Overdue Alert',           'hint'=>'Automated daily alert for overdue tasks'],
-                                ['key'=>'wa_tpl_social',           'icon'=>'fa-share-alt',         'color'=>'#7C3AED', 'label'=>'Social Media Assigned',   'hint'=>'Sent when a task is assigned for social posting'],
-                                ['key'=>'wa_tpl_customer_design',  'icon'=>'fa-image',               'color'=>'#0891B2', 'label'=>'Customer Design Ready',   'hint'=>'Sent to customer when their design is approved and ready for review. Variables: {customer_name}, {task_title}, {design_link}, {admin_note}, {company}'],
+                                ['key'=>'wa_tpl_assigned',         'icon'=>'fa-user-plus',           'color'=>'#4F46E5', 'label'=>'Task Assigned',         'hint'=>'Sent to user when a task is assigned to them'],
+                                ['key'=>'wa_tpl_approved',         'icon'=>'fa-circle-check',         'color'=>'#16a34a', 'label'=>'Task Approved',          'hint'=>'Sent when admin approves a submitted task'],
+                                ['key'=>'wa_tpl_reminder',         'icon'=>'fa-clock',                'color'=>'#D97706', 'label'=>'Deadline Reminder',      'hint'=>'Sent X days before the task deadline'],
+                                ['key'=>'wa_tpl_overdue',          'icon'=>'fa-triangle-exclamation', 'color'=>'#DC2626', 'label'=>'Overdue Alert',          'hint'=>'Automated daily alert for overdue tasks'],
+                                ['key'=>'wa_tpl_social',           'icon'=>'fa-share-alt',            'color'=>'#7C3AED', 'label'=>'Social Media Assigned',  'hint'=>'Sent when a task is assigned for social posting'],
                             ];
                             @endphp
                             @foreach($templates as $tpl)
@@ -2585,6 +3345,42 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </div>
                             @endforeach
                         </div>
+
+                        {{-- Customer-facing templates (full-width, highlighted) --}}
+                        <div style="margin-top:24px;padding-top:20px;border-top:1px solid #E5E7EB;">
+                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                                <div style="width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#D1FAE5,#A7F3D0);display:flex;align-items:center;justify-content:center;">
+                                    <i class="fas fa-users" style="font-size:11px;color:#059669;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">Customer Messages</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:0;">Messages sent directly to your customers. Variables: <code style="background:#f0fdf4;color:#059669;border:1px solid #bbf7d0;border-radius:4px;padding:1px 6px;font-size:10px;">{customer_name}</code> <code style="background:#f0fdf4;color:#059669;border:1px solid #bbf7d0;border-radius:4px;padding:1px 6px;font-size:10px;">{task_title}</code> <code style="background:#f0fdf4;color:#059669;border:1px solid #bbf7d0;border-radius:4px;padding:1px 6px;font-size:10px;">{design_link}</code> <code style="background:#f0fdf4;color:#059669;border:1px solid #bbf7d0;border-radius:4px;padding:1px 6px;font-size:10px;">{admin_note}</code> <code style="background:#f0fdf4;color:#059669;border:1px solid #bbf7d0;border-radius:4px;padding:1px 6px;font-size:10px;">{company}</code></p>
+                                </div>
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                                <div style="background:#F0FDF4;border:1.5px solid #BBF7D0;border-radius:12px;padding:16px;">
+                                    <label class="sf-label" style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                                        <i class="fas fa-eye" style="color:#25D366;font-size:11px;"></i>
+                                        Send Preview (Approvals page)
+                                    </label>
+                                    <p style="font-size:11px;color:#6B7280;margin:0 0 8px;">Sent when admin clicks <strong>"Send via WhatsApp API"</strong> on the Approvals page — asking the customer to review the design before final approval.</p>
+                                    <textarea name="wa_tpl_customer_preview" rows="8"
+                                              style="width:100%;padding:9px 12px;font-size:12px;font-family:monospace;border:1.5px solid #BBF7D0;border-radius:9px;color:#111827;resize:vertical;outline:none;background:#fff;box-sizing:border-box;"
+                                              onfocus="this.style.borderColor='#25D366';this.style.boxShadow='0 0 0 3px rgba(37,211,102,.1)'" onblur="this.style.borderColor='#BBF7D0';this.style.boxShadow='none'">{{ $settings['wa_tpl_customer_preview'] ?? '' }}</textarea>
+                                </div>
+                                <div style="background:#EFF6FF;border:1.5px solid #BFDBFE;border-radius:12px;padding:16px;">
+                                    <label class="sf-label" style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+                                        <i class="fas fa-image" style="color:#0891B2;font-size:11px;"></i>
+                                        Design Ready (after approval)
+                                    </label>
+                                    <p style="font-size:11px;color:#6B7280;margin:0 0 8px;">Sent when the design is <strong>fully approved</strong> and delivered to the customer. Supports <code style="font-size:10px;">{admin_note}</code> too.</p>
+                                    <textarea name="wa_tpl_customer_design" rows="8"
+                                              style="width:100%;padding:9px 12px;font-size:12px;font-family:monospace;border:1.5px solid #BFDBFE;border-radius:9px;color:#111827;resize:vertical;outline:none;background:#fff;box-sizing:border-box;"
+                                              onfocus="this.style.borderColor='#0891B2';this.style.boxShadow='0 0 0 3px rgba(8,145,178,.1)'" onblur="this.style.borderColor='#BFDBFE';this.style.boxShadow='none'">{{ $settings['wa_tpl_customer_design'] ?? '' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                     <div class="scard-footer">
                         <button type="submit" class="btn-save"><i class="fas fa-check" style="margin-right:6px;font-size:11px;"></i>Save Templates</button>
@@ -2737,7 +3533,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </div>
                         </div>
                         <button type="button"
-                                @click="openClear('full_reset')"
+                                @click="openFullReset()"
                                 style="padding:7px 16px;font-size:12px;font-weight:700;background:#DC2626;color:#fff;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;flex-shrink:0;"
                                 onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
                             <i class="fas fa-bomb" style="font-size:10px;margin-right:5px;"></i>Full Reset
@@ -2797,6 +3593,155 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     :disabled="phrase !== 'DELETE'">
                                 <i class="fas fa-trash" style="font-size:11px;margin-right:6px;"></i>Yes, Delete
                             </button>
+                        </form>
+                    </div>
+
+                </div>
+                </div>
+            </div>
+        </template>
+
+        {{-- Full Data Reset — password + agreement modal --}}
+        <template x-teleport="body">
+            <div x-show="showFullReset"
+                 x-cloak
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 @keydown.escape.window="closeFullReset()"
+                 style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;">
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;">
+                <div style="background:#fff;border-radius:16px;width:100%;max-width:460px;box-shadow:0 25px 60px rgba(0,0,0,0.3);overflow:hidden;" @click.stop>
+
+                    {{-- Step indicator --}}
+                    <div style="background:#FEF2F2;border-bottom:1px solid #FECACA;padding:14px 24px;display:flex;align-items:center;gap:10px;">
+                        <div style="width:44px;height:44px;background:#DC2626;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas fa-bomb" style="color:#fff;font-size:18px;"></i>
+                        </div>
+                        <div style="flex:1;">
+                            <p style="font-size:14px;font-weight:700;color:#7F1D1D;margin:0;">Full Data Reset</p>
+                            <div style="display:flex;gap:6px;margin-top:5px;align-items:center;">
+                                <div :style="frStep >= 1 ? 'background:#DC2626;' : 'background:#FECACA;'"
+                                     style="height:4px;border-radius:2px;flex:1;transition:background .3s;"></div>
+                                <div :style="frStep >= 2 ? 'background:#DC2626;' : 'background:#FECACA;'"
+                                     style="height:4px;border-radius:2px;flex:1;transition:background .3s;"></div>
+                            </div>
+                            <p style="font-size:10px;color:#B91C1C;margin:3px 0 0;" x-text="frStep === 1 ? 'Step 1 of 2 — Verify identity' : 'Step 2 of 2 — Sign responsibility agreement'"></p>
+                        </div>
+                        <button type="button" @click="closeFullReset()"
+                                style="width:28px;height:28px;background:#FECACA;border:none;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#B91C1C;">
+                            <i class="fas fa-xmark" style="font-size:12px;"></i>
+                        </button>
+                    </div>
+
+                    {{-- Step 1: Password --}}
+                    <div x-show="frStep === 1" style="padding:24px;">
+                        <p style="font-size:13px;font-weight:600;color:#111827;margin:0 0 6px;">Enter your account password</p>
+                        <p style="font-size:12px;color:#6B7280;margin:0 0 16px;line-height:1.5;">
+                            This destructive action requires identity confirmation before proceeding.
+                        </p>
+
+                        <div style="position:relative;margin-bottom:10px;">
+                            <input id="fr-pwd-input" type="password" x-model="frPassword"
+                                   @keyup.enter="if(frPassword.length) verifyFrPassword()"
+                                   style="width:100%;padding:10px 40px 10px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
+                                   :style="frPasswordError ? 'border-color:#DC2626;background:#FEF2F2;' : ''"
+                                   placeholder="Your account password"
+                                   autocomplete="current-password">
+                            <i class="fas fa-lock" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:13px;pointer-events:none;"></i>
+                        </div>
+                        <p x-show="frPasswordError !== ''" x-text="frPasswordError" x-cloak
+                           style="font-size:11px;color:#DC2626;margin:0 0 12px;"></p>
+
+                        <div style="display:flex;gap:8px;margin-top:16px;">
+                            <button type="button" @click="closeFullReset()"
+                                    style="flex:1;padding:10px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;">
+                                Cancel
+                            </button>
+                            <button type="button" @click="verifyFrPassword()"
+                                    :disabled="frPasswordChecking || frPassword.length === 0"
+                                    style="flex:2;padding:10px;background:#DC2626;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"
+                                    onmouseover="if(!this.disabled)this.style.background='#B91C1C'" onmouseout="if(!this.disabled)this.style.background='#DC2626'">
+                                <i class="fas" :class="frPasswordChecking ? 'fa-circle-notch fa-spin' : 'fa-arrow-right'" style="font-size:11px;"></i>
+                                <span x-text="frPasswordChecking ? 'Verifying…' : 'Continue'"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- Step 2: Agreement + Signature --}}
+                    <div x-show="frStep === 2" style="padding:24px;">
+                        {{-- Warning block --}}
+                        <div style="background:#FEF2F2;border:1.5px solid #FECACA;border-radius:10px;padding:14px;margin-bottom:18px;">
+                            <p style="font-size:12px;font-weight:700;color:#7F1D1D;margin:0 0 6px;">
+                                <i class="fas fa-triangle-exclamation" style="margin-right:5px;"></i>
+                                You are about to permanently destroy all system data
+                            </p>
+                            <ul style="font-size:11px;color:#B91C1C;margin:0;padding-left:18px;line-height:1.8;">
+                                <li>All tasks, projects and project files</li>
+                                <li>All messages and notifications</li>
+                                <li>All task activity, comments and submissions</li>
+                                <li>All audit logs and calendar events</li>
+                            </ul>
+                            <p style="font-size:11px;color:#7F1D1D;margin:8px 0 0;font-weight:600;">
+                                Users and system settings are kept. This action <u>cannot be undone</u>.
+                            </p>
+                        </div>
+
+                        {{-- Responsibility agreement checkbox --}}
+                        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-bottom:16px;">
+                            <input type="checkbox" x-model="frAgree"
+                                   style="width:16px;height:16px;margin-top:2px;accent-color:#DC2626;flex-shrink:0;cursor:pointer;">
+                            <span style="font-size:12px;color:#374151;line-height:1.6;">
+                                I understand that this action is <strong>irreversible</strong>. I accept full responsibility for this data reset and confirm I am authorised to perform it.
+                            </span>
+                        </label>
+
+                        {{-- Name signature --}}
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">
+                            Sign with your full name
+                        </label>
+                        <div style="position:relative;margin-bottom:14px;">
+                            <input id="fr-sig-input" type="text" x-model="frSignature"
+                                   style="width:100%;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;font-style:italic;outline:none;box-sizing:border-box;font-family:Georgia,serif;"
+                                   :style="frSignature.trim().length >= 2 ? 'border-color:#16A34A;background:#F0FDF4;' : ''"
+                                   placeholder="Your full name"
+                                   autocomplete="name">
+                        </div>
+
+                        {{-- DELETE phrase --}}
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">
+                            Type <span style="color:#DC2626;letter-spacing:.06em;font-family:monospace;">DELETE</span> to confirm
+                        </label>
+                        <input type="text" x-model="frPhrase"
+                               style="width:100%;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:18px;"
+                               :style="frPhrase === 'DELETE' ? 'border-color:#16A34A;background:#F0FDF4;' : ''"
+                               placeholder="DELETE"
+                               autocomplete="off"
+                               @keydown.enter="if(frCanSubmit) $refs.frSubmitBtn.click()">
+
+                        {{-- Submit form --}}
+                        <form method="POST" action="{{ route('admin.settings.clear') }}" id="fr-submit-form" style="margin:0;">
+                            @csrf
+                            <input type="hidden" name="type" value="full_reset">
+                            <input type="hidden" name="password" :value="frPassword">
+                            <input type="hidden" name="signatory_name" :value="frSignature">
+                            <input type="hidden" name="agreed" value="1">
+
+                            <div style="display:flex;gap:8px;">
+                                <button type="button" @click="frStep=1"
+                                        style="flex:1;padding:10px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;">
+                                    <i class="fas fa-arrow-left" style="font-size:11px;margin-right:4px;"></i>Back
+                                </button>
+                                <button type="submit" x-ref="frSubmitBtn"
+                                        :disabled="!frCanSubmit"
+                                        style="flex:2;padding:10px;background:#DC2626;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"
+                                        :style="!frCanSubmit ? 'opacity:.45;cursor:not-allowed;' : ''"
+                                        onmouseover="if(!this.disabled)this.style.background='#B91C1C'" onmouseout="if(!this.disabled)this.style.background='#DC2626'"
+                                        onclick="return window.confirm('FINAL CONFIRMATION: This will permanently delete all data. There is no undo. Proceed?')">
+                                    <i class="fas fa-bomb" style="font-size:11px;"></i>
+                                    Execute Full Reset
+                                </button>
+                            </div>
                         </form>
                     </div>
 

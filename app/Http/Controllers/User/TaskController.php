@@ -12,8 +12,10 @@ use App\Models\TaskLog;
 use App\Models\TaskSubmission;
 use App\Models\TaskSubmissionEdit;
 use App\Models\TaskTimerSegment;
+use App\Models\DeadlineExtensionRequest;
 use App\Models\TaskTransfer;
 use App\Models\User;
+use App\Notifications\DeadlineExtensionRequested;
 use App\Notifications\TaskAutoPaused;
 use App\Notifications\TaskCommentPosted;
 use App\Notifications\TaskCompleted;
@@ -239,12 +241,14 @@ class TaskController extends Controller
 
         $task->update(['status' => 'paused']);
 
+        $reason = trim($request->input('pause_reason', ''));
+
         TaskLog::create([
             'task_id'  => $task->id,
             'user_id'  => auth()->id(),
             'action'   => 'timer_paused',
-            'note'     => 'Timer paused manually.',
-            'metadata' => ['old_status' => 'in_progress', 'new_status' => 'paused'],
+            'note'     => $reason ? 'Timer paused: ' . $reason : 'Timer paused manually.',
+            'metadata' => ['old_status' => 'in_progress', 'new_status' => 'paused', 'reason' => $reason],
         ]);
 
         return back()->with('success', 'Timer paused.');
@@ -435,7 +439,68 @@ class TaskController extends Controller
             ->sortByDesc('started_at')
             ->first();
 
-        return view('user.tasks.show', compact('task', 'incomingTransfer', 'completedTimerSeconds', 'activeSegment', 'isSocialAssignee'));
+        // Warn if user already has another task in progress
+        $otherInProgressTask = Task::where('id', '!=', $task->id)
+            ->where(function ($q) use ($uid) {
+                $q->where('assigned_to', $uid)
+                  ->orWhere('social_assigned_to', $uid)
+                  ->orWhereExists(fn($sub) => $sub->selectRaw('1')
+                      ->from('task_assignees')
+                      ->whereColumn('task_assignees.task_id', 'tasks.id')
+                      ->where('task_assignees.user_id', $uid));
+            })
+            ->where('status', 'in_progress')
+            ->first(['id', 'title']);
+
+        $pendingExtension = $task->deadlineExtensionRequests()
+            ->where('status', 'pending')
+            ->latest()
+            ->first();
+
+        $latestExtension = $task->deadlineExtensionRequests()
+            ->latest()
+            ->first();
+
+        return view('user.tasks.show', compact('task', 'incomingTransfer', 'completedTimerSeconds', 'activeSegment', 'isSocialAssignee', 'otherInProgressTask', 'pendingExtension', 'latestExtension'));
+    }
+
+    public function requestDeadlineExtension(Request $request, Task $task)
+    {
+        if (!$this->isAssigned($task)) {
+            abort(403);
+        }
+
+        $request->validate([
+            'reason'             => 'required|string|max:1000',
+            'requested_deadline' => 'required|date|after:today',
+        ]);
+
+        // Cancel any existing pending request for this task
+        $task->deadlineExtensionRequests()->where('status', 'pending')->update(['status' => 'rejected']);
+
+        $extension = $task->deadlineExtensionRequests()->create([
+            'user_id'            => auth()->id(),
+            'reason'             => $request->reason,
+            'requested_deadline' => $request->requested_deadline,
+            'status'             => 'pending',
+        ]);
+
+        TaskLog::create([
+            'task_id'  => $task->id,
+            'user_id'  => auth()->id(),
+            'action'   => 'deadline_extension_requested',
+            'note'     => 'Deadline extension requested until ' . \Carbon\Carbon::parse($request->requested_deadline)->format('M d, Y') . '. Reason: ' . $request->reason,
+            'metadata' => [
+                'requested_deadline' => $request->requested_deadline,
+                'reason'             => $request->reason,
+            ],
+        ]);
+
+        User::where('role', 'admin')->each(
+            fn($admin) => $admin->notify(new DeadlineExtensionRequested($task, $extension, auth()->user()))
+        );
+
+        return back()->with('success', 'Extension request submitted — admin will review it shortly.');
     }
 
     public function updateStatus(Request $request, Task $task)

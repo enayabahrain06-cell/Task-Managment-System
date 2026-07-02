@@ -39,6 +39,10 @@ class SettingsController extends Controller
         'login_bg_type'         => 'gradient',
         'login_bg_color'        => '#e8eaf6',
         'login_bg_image'        => '',
+        'login_bg_position'     => 'center center',
+        'login_bg_size'         => 'cover',
+        'login_bg_attachment'   => 'fixed',
+        'login_bg_overlay'      => '0',
         // Team & Files
         'default_role'          => 'user',
         'allow_registration'       => '0',
@@ -153,7 +157,7 @@ class SettingsController extends Controller
         $dbBytes = file_exists(database_path('database.sqlite')) ? filesize(database_path('database.sqlite')) : 0;
         $stats = [
             'users'      => User::count(),
-            'projects'   => Project::count(),
+            'projects'   => Project::where('is_quick', false)->count(),
             'tasks'      => Task::count(),
             'db_size'    => $dbBytes >= 1048576
                                 ? round($dbBytes / 1048576, 1) . ' MB'
@@ -164,7 +168,13 @@ class SettingsController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'role']);
 
-        return view('admin.settings', compact('settings', 'stats', 'supportUsers'));
+        $aboutPageTeamMembers = User::where('status', 'active')
+            ->where('role', '!=', 'admin')
+            ->orderBy('role')
+            ->orderBy('name')
+            ->get(['id', 'name', 'avatar', 'job_title', 'role']);
+
+        return view('admin.settings', compact('settings', 'stats', 'supportUsers', 'aboutPageTeamMembers'));
     }
 
     public function toggleDevMode()
@@ -321,9 +331,21 @@ class SettingsController extends Controller
             'accent_color'     => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
             'logo'             => 'nullable|image|mimes:png,jpg,jpeg,svg,webp|max:2048',
             'favicon'          => 'nullable|image|mimes:png,jpg,jpeg,ico,svg|max:512',
-            'login_bg_type'    => 'nullable|in:gradient,color,image',
-            'login_bg_color'   => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
-            'login_bg_image'   => 'nullable|image|mimes:png,jpg,jpeg,webp|max:5120',
+            'login_bg_type'       => 'nullable|in:gradient,color,image',
+            'login_bg_color'      => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'login_bg_image'      => 'nullable|file|mimes:png,jpg,jpeg,webp,mp4,webm,mov,m4v',
+            'login_team_artwork'    => 'nullable|array',
+            'login_team_artwork.*'  => 'file|mimes:png,jpg,jpeg,webp,mp4,webm,mov,m4v',
+            'remove_login_team_artwork'    => 'nullable|array',
+            'remove_login_team_artwork.*'  => 'string',
+            'login_deco_color'    => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'login_bg_position'   => 'nullable|string|in:top left,top center,top right,center left,center center,center right,bottom left,bottom center,bottom right',
+            'login_bg_size'       => 'nullable|in:cover,contain,auto',
+            'login_bg_attachment' => 'nullable|in:fixed,scroll',
+            'login_bg_overlay'    => 'nullable|integer|min:0|max:80',
+            'login_hero_tagline'  => 'nullable|string|max:120',
+            'login_pill_text'     => 'nullable|string|max:60',
+            'login_pill_accent'   => 'nullable|string|max:60',
         ]);
 
         Setting::setMany($request->only('company_name', 'copyright', 'primary_color', 'accent_color'));
@@ -335,6 +357,23 @@ class SettingsController extends Controller
         if ($request->filled('login_bg_color')) {
             Setting::set('login_bg_color', $request->login_bg_color);
         }
+        if ($request->filled('login_deco_color')) {
+            Setting::set('login_deco_color', $request->login_deco_color);
+        }
+        if ($request->filled('login_bg_position')) {
+            Setting::set('login_bg_position', $request->login_bg_position);
+        }
+        if ($request->filled('login_bg_size')) {
+            Setting::set('login_bg_size', $request->login_bg_size);
+        }
+        if ($request->filled('login_bg_attachment')) {
+            Setting::set('login_bg_attachment', $request->login_bg_attachment);
+        }
+        Setting::set('login_bg_overlay', (int) $request->input('login_bg_overlay', 0));
+        Setting::set('login_show_doodles', $request->has('login_show_doodles') ? '1' : '0');
+        Setting::set('login_hero_tagline', $request->input('login_hero_tagline', 'Together we build. Together we achieve.'));
+        Setting::set('login_pill_text', $request->input('login_pill_text', 'One Team. One Goal.'));
+        Setting::set('login_pill_accent', $request->input('login_pill_accent', 'Unlimited Impact.'));
 
         if ($request->hasFile('logo')) {
             $old = Setting::get('logo_path');
@@ -355,6 +394,32 @@ class SettingsController extends Controller
             if ($old) Storage::disk('public')->delete($old);
             $path = $request->file('login_bg_image')->store('branding', 'public');
             Setting::set('login_bg_image', $path);
+        }
+
+        $artworkRaw = Setting::get('login_team_artwork', '');
+        $artworkList = json_decode($artworkRaw, true);
+        if (!is_array($artworkList)) {
+            $artworkList = $artworkRaw !== '' ? [$artworkRaw] : [];
+        }
+
+        $removeArtworkPaths = (array) $request->input('remove_login_team_artwork', []);
+        if ($removeArtworkPaths) {
+            foreach ($removeArtworkPaths as $path) {
+                if (in_array($path, $artworkList, true)) {
+                    Storage::disk('public')->delete($path);
+                }
+            }
+            $artworkList = array_values(array_diff($artworkList, $removeArtworkPaths));
+        }
+
+        if ($request->hasFile('login_team_artwork')) {
+            foreach ($request->file('login_team_artwork') as $file) {
+                $artworkList[] = $file->store('branding', 'public');
+            }
+        }
+
+        if ($removeArtworkPaths || $request->hasFile('login_team_artwork')) {
+            Setting::set('login_team_artwork', json_encode(array_values($artworkList)));
         }
 
         if ($request->input('remove_logo') === '1') {
@@ -378,6 +443,63 @@ class SettingsController extends Controller
         AuditLogger::log('settings.updated', null, 'Branding settings updated', ['section' => 'branding']);
 
         return back()->with('success', 'Branding saved.')->withFragment('branding');
+    }
+
+    public function updateAboutPage(Request $request)
+    {
+        $rules = [
+            'about_page_intro'            => 'nullable|string|max:200',
+            'about_page_cta_text'         => 'nullable|string|max:40',
+            'about_page_cta_link'         => 'nullable|string|max:255',
+            'about_page_services_heading' => 'nullable|string|max:60',
+            'about_page_who_text'         => 'nullable|string|max:600',
+            'about_page_mission'          => 'nullable|string|max:400',
+            'about_page_vision'           => 'nullable|string|max:400',
+        ];
+        foreach ([1, 2, 3, 4, 5, 6] as $i) {
+            $rules["about_page_service{$i}_title"] = 'nullable|string|max:60';
+            $rules["about_page_service{$i}_desc"]  = 'nullable|string|max:160';
+            $rules["about_page_value{$i}_title"]   = 'nullable|string|max:40';
+            $rules["about_page_value{$i}_desc"]    = 'nullable|string|max:160';
+        }
+        $request->validate($rules);
+
+        Setting::set('about_page_enabled', $request->has('about_page_enabled') ? '1' : '0');
+        Setting::set('about_page_intro', $request->input('about_page_intro', ''));
+        Setting::set('about_page_cta_enabled', $request->has('about_page_cta_enabled') ? '1' : '0');
+        Setting::set('about_page_cta_text', $request->input('about_page_cta_text', 'Get in Touch'));
+        Setting::set('about_page_cta_link', $request->input('about_page_cta_link', ''));
+        Setting::set('about_page_services_heading', $request->input('about_page_services_heading', 'What We Do'));
+        Setting::set('about_page_who_text', $request->input('about_page_who_text', ''));
+        Setting::set('about_page_mission', $request->input('about_page_mission', ''));
+        Setting::set('about_page_vision', $request->input('about_page_vision', ''));
+        foreach ([1, 2, 3, 4, 5, 6] as $i) {
+            Setting::set("about_page_service{$i}_title", $request->input("about_page_service{$i}_title", ''));
+            Setting::set("about_page_service{$i}_desc", $request->input("about_page_service{$i}_desc", ''));
+            Setting::set("about_page_value{$i}_title", $request->input("about_page_value{$i}_title", ''));
+            Setting::set("about_page_value{$i}_desc", $request->input("about_page_value{$i}_desc", ''));
+        }
+
+        AuditLogger::log('settings.updated', null, 'About page settings updated', ['section' => 'about_page']);
+
+        return back()->with('success', 'About page settings saved.')->withFragment('about_page');
+    }
+
+    public function updateAboutPageTeamPhoto(Request $request, User $user)
+    {
+        $request->validate([
+            'avatar' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+        ]);
+
+        if ($user->avatar) {
+            Storage::disk('public')->delete($user->avatar);
+        }
+        $user->avatar = $request->file('avatar')->store('avatars', 'public');
+        $user->save();
+
+        AuditLogger::log('settings.updated', $user, "Updated {$user->name}'s About Page photo", ['section' => 'about_page']);
+
+        return back()->with('success', "{$user->name}'s photo updated.")->withFragment('about_page');
     }
 
     public function updateTeam(Request $request)

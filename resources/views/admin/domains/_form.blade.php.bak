@@ -1,0 +1,163 @@
+{{-- Reusable domain form fields — used by both Create modal and Show edit modal --}}
+@php
+    $billingCycles = \App\Models\Domain::billingCycleOptions();
+    $currencies    = ['BHD','USD','EUR','GBP','SAR','AED','KWD','QAR','OMR'];
+@endphp
+
+<div style="display:flex;flex-wrap:wrap;gap:14px;">
+    <div style="flex:1;min-width:220px;">
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Domain Name <span style="color:#DC2626;">*</span></label>
+        <input name="domain" type="text" value="{{ old('domain', $domain?->domain) }}" placeholder="example.com" required
+               style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
+               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+    </div>
+    <div style="flex:1;min-width:180px;">
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Registrar</label>
+        <input name="registrar" type="text" value="{{ old('registrar', $domain?->registrar) }}" placeholder="GoDaddy, Namecheap…"
+               list="registrar-list"
+               style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
+               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+        <datalist id="registrar-list">
+            @foreach(\App\Models\Domain::registrarOptions() as $r)
+            <option value="{{ $r }}">
+            @endforeach
+        </datalist>
+    </div>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;">
+    <div style="flex:1;min-width:200px;">
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Customer</label>
+        <select name="customer_id" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;">
+            <option value="">— No customer —</option>
+            @foreach($customers as $c)
+            <option value="{{ $c->id }}" {{ old('customer_id', $domain?->customer_id) == $c->id ? 'selected' : '' }}>
+                {{ $c->name }}{{ $c->company ? ' – '.$c->company : '' }}
+            </option>
+            @endforeach
+        </select>
+    </div>
+    <div style="flex:1;min-width:200px;">
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Responsible Person</label>
+        <select name="responsible_user_id" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;">
+            <option value="">— Not assigned —</option>
+            @foreach($staffUsers as $u)
+            <option value="{{ $u->id }}" {{ old('responsible_user_id', $domain?->responsible_user_id) == $u->id ? 'selected' : '' }}>
+                {{ $u->name }}
+            </option>
+            @endforeach
+        </select>
+    </div>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;">
+    <div style="flex:1;min-width:200px;">
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Bill To</label>
+        <input name="billing_to" type="text" value="{{ old('billing_to', $domain?->billing_to) }}" placeholder="Client name, contact person…"
+               style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
+               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+    </div>
+    <div style="flex:1;min-width:180px;">
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Hosting Provider</label>
+        <input name="hosting_provider" type="text" value="{{ old('hosting_provider', $domain?->hosting_provider) }}" placeholder="SiteGround, Cloudflare…"
+               style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
+               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+    </div>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;">
+    <div style="flex:1;min-width:100px;">
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Cost <span style="color:#DC2626;">*</span></label>
+        <input name="cost" type="number" step="0.001" min="0" value="{{ old('cost', $domain?->cost ?? 0) }}" required
+               style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
+               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+    </div>
+    <div style="flex:1;min-width:100px;">
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Currency</label>
+        <select name="currency" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;">
+            @foreach($currencies as $cur)
+            <option value="{{ $cur }}" {{ old('currency', $domain?->currency ?? 'BHD') === $cur ? 'selected' : '' }}>{{ $cur }}</option>
+            @endforeach
+        </select>
+    </div>
+    <div style="flex:1;min-width:160px;">
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Billing Cycle</label>
+        <select name="billing_cycle" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;">
+            @foreach($billingCycles as $key => $label)
+            <option value="{{ $key }}" {{ old('billing_cycle', $domain?->billing_cycle ?? 'annual') === $key ? 'selected' : '' }}>{{ $label }}</option>
+            @endforeach
+        </select>
+    </div>
+</div>
+
+<div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;">
+    <div style="flex:1;min-width:160px;">
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Registered On</label>
+        <input name="registered_at" type="date" value="{{ old('registered_at', $domain?->registered_at?->format('Y-m-d')) }}"
+               style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
+               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+    </div>
+    <div style="flex:1;min-width:160px;">
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Expires On</label>
+        <input name="expires_at" type="date" value="{{ old('expires_at', $domain?->expires_at?->format('Y-m-d')) }}"
+               style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
+               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+    </div>
+</div>
+
+<div style="margin-top:14px;">
+    <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Nameservers <span style="font-size:11px;color:#9CA3AF;">(one per line)</span></label>
+    <textarea name="nameservers" rows="3" placeholder="ns1.example.com&#10;ns2.example.com"
+              style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;resize:vertical;"
+              onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">{{ old('nameservers', implode("\n", $domain?->nameservers ?? [])) }}</textarea>
+</div>
+
+<div style="margin-top:14px;padding:14px;background:#F9FAFB;border-radius:10px;border:1.5px solid #E5E7EB;">
+    <div style="font-size:12px;font-weight:700;color:#6B7280;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+        <i class="fas fa-lock" style="font-size:11px;"></i> REGISTRAR CREDENTIALS
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;">
+        <div style="flex:2;min-width:200px;">
+            <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Login URL</label>
+            <input name="login_url" type="url" value="{{ old('login_url', $domain?->login_url) }}" placeholder="https://account.registrar.com"
+                   style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
+                   onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+        </div>
+        <div style="flex:1;min-width:160px;">
+            <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Username</label>
+            <input name="username" type="text" value="{{ old('username', $domain?->username) }}"
+                   style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
+                   onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+        </div>
+    </div>
+    <div style="margin-top:10px;">
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">
+            Password{{ $domain ? ' (leave blank to keep current)' : '' }}
+        </label>
+        <input name="password" type="password" placeholder="{{ $domain ? 'Enter new password to change' : 'Registrar account password' }}"
+               style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
+               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+    </div>
+</div>
+
+<div style="margin-top:14px;display:flex;align-items:center;gap:10px;">
+    <input type="checkbox" name="auto_renew" value="1" id="form_auto_renew"
+           {{ old('auto_renew', $domain?->auto_renew) ? 'checked' : '' }}
+           style="width:16px;height:16px;accent-color:#6366F1;cursor:pointer;">
+    <label for="form_auto_renew" style="font-size:13px;font-weight:600;color:#374151;cursor:pointer;">
+        Auto-renew enabled
+    </label>
+</div>
+
+<div style="margin-top:14px;">
+    <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Notes</label>
+    <textarea name="notes" rows="3" placeholder="Internal notes, DNS records, special instructions…"
+              style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;resize:vertical;"
+              onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">{{ old('notes', $domain?->notes) }}</textarea>
+</div>
+
+<input type="hidden" name="notify_days[]" value="60">
+<input type="hidden" name="notify_days[]" value="30">
+<input type="hidden" name="notify_days[]" value="14">
+<input type="hidden" name="notify_days[]" value="7">
+<input type="hidden" name="notify_days[]" value="1">

@@ -13,6 +13,7 @@
         "laravel/tinker": "^2.10.1",
         "p7h/nas-file-manager": "dev-main",
         "php-mqtt/client": "^2.3",
+        "phpoffice/phpspreadsheet": "^5.8",
         "pragmarx/google2fa": "^9.0"
     },
     "require-dev": {

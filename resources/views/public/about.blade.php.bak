@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ $teamName ?? strtoupper($appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name','Our')) }} — About</title>
+    @if(!empty($appSettings['favicon_path']))
+    <link rel="icon" type="image/png" href="{{ Storage::url($appSettings['favicon_path']) }}">
+    @endif
+    <link rel="stylesheet" href="/css/inter.css">
+    <link rel="stylesheet" href="/css/fa-all.min.css">
+    <script defer src="/js/alpine.min.js"></script>
+
+    @php
+        $teamName = strtoupper($appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name','Our'));
+        $artworkUrls = collect($appSettings['login_team_artwork'] ?? [])
+            ->map(fn($path) => Storage::url($path))
+            ->values();
+        $hasArtwork = $artworkUrls->isNotEmpty();
+    @endphp
+
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg,#F5F3FE 0%,#ECE9FB 45%,#E8ECFC 100%);
+            color: #1E1B4B;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* ── Background decoration ── */
+        .bg-deco { position: fixed; z-index: 0; pointer-events: none; }
+        .bg-blob-tl  { top:-90px; left:-90px; width:280px; height:280px; border-radius:50%; background:radial-gradient(circle,rgba(129,140,248,0.35),rgba(129,140,248,0) 70%); }
+        .bg-blob-br  { bottom:-100px; right:-60px; width:320px; height:320px; border-radius:50%; background:radial-gradient(circle,rgba(167,139,250,0.32),rgba(167,139,250,0) 70%); }
+
+        /* ── Top bar ── */
+        .about-nav {
+            position: relative; z-index: 2;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 20px 32px;
+            max-width: 1100px; margin: 0 auto;
+        }
+        .about-brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; }
+        .about-brand-icon {
+            width: 36px; height: 36px; border-radius: 11px;
+            background: linear-gradient(135deg,#A5B4FC,#6366F1);
+            display: flex; align-items: center; justify-content: center; color: #fff;
+        }
+        .about-login-btn {
+            padding: 9px 20px; border-radius: 999px;
+            background: #fff; color: #4F46E5; font-weight: 700; font-size: 13.5px;
+            text-decoration: none; box-shadow: 0 2px 10px rgba(79,70,229,0.15);
+            border: 1px solid rgba(99,102,241,0.15);
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .about-login-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79,70,229,0.22); }
+
+        /* ── Hero ── */
+        .about-hero { position: relative; z-index: 2; text-align: center; padding: 48px 20px 20px; max-width: 720px; margin: 0 auto; }
+        .about-hero-icon {
+            width: 64px; height: 64px; border-radius: 20px; margin: 0 auto 18px;
+            background: linear-gradient(135deg,#A5B4FC,#6366F1);
+            display: flex; align-items: center; justify-content: center; color: #fff; font-size: 24px;
+            box-shadow: 0 12px 30px rgba(99,102,241,0.35);
+        }
+        .about-hero h1 { font-size: clamp(26px, 4vw, 42px); font-weight: 800; margin: 0 0 12px; }
+        .about-hero h1 .accent { color: #6366F1; }
+        .about-hero p { font-size: 15px; color: #6B7280; margin: 0 auto; max-width: 520px; }
+        .about-artwork-btn {
+            margin-top: 22px; display: inline-flex; align-items: center; gap: 8px;
+            padding: 11px 24px; border-radius: 999px; border: none; cursor: pointer;
+            background: #fff; color: #4F46E5; font-weight: 700; font-size: 13.5px;
+            box-shadow: 0 4px 14px rgba(79,70,229,0.18);
+            transition: transform 0.15s;
+        }
+        .about-artwork-btn:hover { transform: translateY(-1px); }
+
+        /* ── Team grid ── */
+        .about-team-section { position: relative; z-index: 2; max-width: 1000px; margin: 0 auto; padding: 40px 24px 70px; }
+        .about-team-heading { text-align: center; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; color: #6366F1; text-transform: uppercase; margin-bottom: 28px; }
+        .about-team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 20px; }
+        .about-team-card {
+            background: #fff; border-radius: 18px; padding: 22px 16px; text-align: center;
+            box-shadow: 0 4px 20px rgba(99,102,241,0.08);
+            border: 1px solid rgba(99,102,241,0.06);
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .about-team-card:hover { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(99,102,241,0.16); }
+        .about-team-avatar {
+            width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 14px;
+            object-fit: cover; box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+        }
+        .about-team-initials {
+            width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 24px; color: #fff;
+            background: linear-gradient(135deg,#A5B4FC,#6366F1);
+        }
+        .about-team-name { font-weight: 700; font-size: 14.5px; margin: 0 0 2px; }
+        .about-team-role { font-size: 12px; color: #8B5CF6; font-weight: 600; text-transform: capitalize; margin: 0; }
+        .about-team-empty { text-align: center; color: #9CA3AF; font-size: 14px; padding: 30px; }
+
+        /* ── Footer ── */
+        .about-footer { position: relative; z-index: 2; text-align: center; padding: 20px; font-size: 12.5px; color: #9CA3AF; }
+
+        /* ── Artwork popup (shared pattern with login page) ── */
+        [x-cloak] { display: none !important; }
+        .team-artwork-backdrop {
+            position: fixed; inset: 0; z-index: 9999;
+            background: rgba(17,24,39,0.6);
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px;
+        }
+        .team-artwork-card {
+            position: relative; background: #fff; border-radius: 20px; padding: 16px;
+            max-width: 680px; width: 100%; max-height: 90vh; overflow: auto;
+            box-shadow: 0 32px 80px rgba(0,0,0,0.3);
+        }
+        .team-artwork-close {
+            position: absolute; top: 12px; right: 12px;
+            width: 32px; height: 32px; border-radius: 50%;
+            background: #F3F4F6; border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            color: #374151; z-index: 2;
+        }
+        .team-artwork-img { display: block; border-radius: 12px; margin: 0 auto; max-width: 100%; max-height: 60vh; width: auto; height: auto; }
+        .team-artwork-video { background: #111827; }
+        .team-artwork-stage { position: relative; min-height: 200px; max-height: 60vh; display: flex; align-items: center; justify-content: center; }
+        .team-artwork-stage.is-multi { cursor: pointer; }
+        .team-artwork-nav {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            width: 38px; height: 38px; border-radius: 50%;
+            background: rgba(17,24,39,0.55); border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 14px; z-index: 1; transition: background 0.15s;
+        }
+        .team-artwork-nav:hover { background: rgba(17,24,39,0.8); }
+        .team-artwork-nav.prev { left: 10px; }
+        .team-artwork-nav.next { right: 10px; }
+        .team-artwork-dots { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 12px; }
+        .team-artwork-counter { background: #F3F4F6; color: #6B7280; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; letter-spacing: .02em; }
+        .team-artwork-dotrow { display: flex; gap: 6px; }
+        .team-artwork-dot { width: 7px; height: 7px; border-radius: 50%; border: none; background: #E5E7EB; cursor: pointer; padding: 0; }
+        .team-artwork-dot.active { background: #6366F1; width: 18px; border-radius: 4px; }
+
+        @media (max-width: 600px) {
+            .about-nav { padding: 16px 20px; }
+            .about-hero { padding: 32px 16px 8px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="bg-deco bg-blob-tl"></div>
+<div class="bg-deco bg-blob-br"></div>
+
+<div @if($hasArtwork) x-data="{
+        artworkOpen: false, artworkIndex: 0, artworkTimer: null,
+        artworkImgs: {{ json_encode($artworkUrls) }},
+        artworkNext() { this.artworkIndex = (this.artworkIndex + 1) % this.artworkImgs.length },
+        artworkPrev() { this.artworkIndex = (this.artworkIndex - 1 + this.artworkImgs.length) % this.artworkImgs.length },
+        artworkGoto(i) { this.artworkIndex = i },
+        artworkIsVideo(url) { return /\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(url) },
+        artworkRestart() {
+            clearInterval(this.artworkTimer);
+            if (this.artworkImgs.length > 1 && !this.artworkIsVideo(this.artworkImgs[this.artworkIndex])) {
+                this.artworkTimer = setInterval(() => this.artworkNext(), 4000);
+            }
+        },
+        artworkStop() { clearInterval(this.artworkTimer) }
+    }" @endif>
+
+    <header class="about-nav">
+        <div class="about-brand">
+            @if(!empty($appSettings['logo_path']))
+                <img src="{{ Storage::url($appSettings['logo_path']) }}" alt="Logo" style="height:32px;">
+            @else
+                <div class="about-brand-icon"><i class="fa fa-users"></i></div>
+            @endif
+            {{ $appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name') }}
+        </div>
+        <a href="{{ route('login') }}" class="about-login-btn">Login <i class="fa fa-arrow-right" style="margin-left:4px;"></i></a>
+    </header>
+
+    <section class="about-hero">
+        <div class="about-hero-icon"><i class="fa fa-users"></i></div>
+        <h1>THE <span class="accent">{{ $teamName }}</span> TEAM</h1>
+        <p>{{ $appSettings['about_page_intro'] ?: ($appSettings['login_hero_tagline'] ?? 'Together we build. Together we achieve.') }}</p>
+
+        @if($hasArtwork)
+        <button type="button" class="about-artwork-btn" @click="artworkOpen = true; artworkIndex = 0; artworkRestart()">
+            <i class="fa fa-image"></i> View our work
+        </button>
+        @endif
+    </section>
+
+    @if($hasArtwork)
+    <div x-show="artworkOpen" x-cloak class="team-artwork-backdrop" @click.self="artworkOpen = false; artworkStop()"
+         @keydown.window.escape="artworkOpen = false; artworkStop()"
+         @keydown.window.arrow-left="if (artworkOpen) { artworkPrev(); artworkRestart() }"
+         @keydown.window.arrow-right="if (artworkOpen) { artworkNext(); artworkRestart() }">
+        <div class="team-artwork-card">
+            <button type="button" class="team-artwork-close" @click="artworkOpen = false; artworkStop()">
+                <i class="fa fa-times"></i>
+            </button>
+            <div class="team-artwork-stage" :class="{ 'is-multi': artworkImgs.length > 1 && !artworkIsVideo(artworkImgs[artworkIndex]) }"
+                 @mouseenter="artworkStop()" @mouseleave="artworkRestart()"
+                 @click="if (artworkImgs.length > 1 && !artworkIsVideo(artworkImgs[artworkIndex])) { ($event.offsetX > $event.currentTarget.offsetWidth / 2) ? artworkNext() : artworkPrev(); artworkRestart() }">
+                <template x-for="(img, i) in artworkImgs" :key="i">
+                    <img :src="img" x-show="artworkIndex === i && !artworkIsVideo(img)" alt="Team artwork" class="team-artwork-img">
+                </template>
+                <template x-for="(img, i) in artworkImgs" :key="'v'+i">
+                    <video :src="img" x-show="artworkIndex === i && artworkIsVideo(img)"
+                           controls playsinline preload="metadata" class="team-artwork-img team-artwork-video"></video>
+                </template>
+
+                <template x-if="artworkImgs.length > 1">
+                    <button type="button" class="team-artwork-nav prev" @click.stop="artworkPrev(); artworkRestart()">
+                        <i class="fa fa-chevron-left"></i>
+                    </button>
+                </template>
+                <template x-if="artworkImgs.length > 1">
+                    <button type="button" class="team-artwork-nav next" @click.stop="artworkNext(); artworkRestart()">
+                        <i class="fa fa-chevron-right"></i>
+                    </button>
+                </template>
+            </div>
+
+            <template x-if="artworkImgs.length > 1">
+                <div class="team-artwork-dots">
+                    <span class="team-artwork-counter" x-text="(artworkIndex + 1) + ' / ' + artworkImgs.length"></span>
+                    <div class="team-artwork-dotrow">
+                        <template x-for="(img, i) in artworkImgs" :key="'dot'+i">
+                            <button type="button" class="team-artwork-dot" :class="{ active: artworkIndex === i }"
+                                    @click="artworkGoto(i); artworkRestart()"></button>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+    @endif
+</div>
+
+<section class="about-team-section">
+    <p class="about-team-heading">Meet the team</p>
+
+    @if($teamMembers->isEmpty())
+        <p class="about-team-empty">No team members to show yet.</p>
+    @else
+        <div class="about-team-grid">
+            @foreach($teamMembers as $member)
+            <div class="about-team-card">
+                @if($member->avatar)
+                    <img src="{{ Storage::url($member->avatar) }}" alt="{{ $member->name }}" class="about-team-avatar">
+                @else
+                    <div class="about-team-initials">{{ mb_strtoupper(mb_substr($member->name, 0, 1)) }}</div>
+                @endif
+                <p class="about-team-name">{{ $member->name }}</p>
+                <p class="about-team-role">{{ $member->job_title ?: $member->role }}</p>
+            </div>
+            @endforeach
+        </div>
+    @endif
+</section>
+
+<footer class="about-footer">
+    <i class="fa fa-star"></i> {{ $appSettings['login_pill_text'] ?? 'One Team. One Goal.' }} {{ $appSettings['login_pill_accent'] ?? 'Unlimited Impact.' }}
+    @if(!empty($appSettings['copyright']))
+        <br>{{ $appSettings['copyright'] }}
+    @endif
+</footer>
+
+</body>
+</html>

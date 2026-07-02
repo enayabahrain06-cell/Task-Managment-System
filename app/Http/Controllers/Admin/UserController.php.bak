@@ -143,7 +143,7 @@ class UserController extends Controller
             return back()->with('error', 'Managers cannot edit administrator accounts.');
         }
 
-        $request->validate([
+        $request->validateWithBag('userEdit', [
             'name' => [
                 'required', 'string', 'max:255',
                 function ($attribute, $value, $fail) use ($user) {
@@ -376,34 +376,41 @@ class UserController extends Controller
     public function requireMfa(User $user)
     {
         if ($user->mfa_enabled) {
+            if (request()->expectsJson()) {
+                return response()->json(['ok' => false, 'message' => "{$user->name} already has MFA enabled."]);
+            }
             return back()->with('info', "{$user->name} already has MFA enabled.");
         }
 
         $user->update(['mfa_required' => true]);
 
         AuditLogger::log(
-            auth()->user(),
             'user.mfa_required',
             $user,
             "MFA setup required for {$user->name} by admin",
             ['admin_id' => auth()->id()]
         );
 
+        if (request()->expectsJson()) {
+            return response()->json(['ok' => true, 'message' => "MFA setup required — {$user->name} will be prompted on next login.", 'mfa_enabled' => false, 'mfa_required' => true]);
+        }
         return back()->with('success', "MFA setup is now required for {$user->name}. They will be prompted on next login.");
     }
 
     public function cancelMfaRequirement(User $user)
     {
-        $user->update(['mfa_required' => false]);
+        $user->update(['mfa_required' => null]);
 
         AuditLogger::log(
-            auth()->user(),
             'user.mfa_requirement_cancelled',
             $user,
             "MFA requirement removed for {$user->name} by admin",
             ['admin_id' => auth()->id()]
         );
 
+        if (request()->expectsJson()) {
+            return response()->json(['ok' => true, 'message' => "MFA requirement removed for {$user->name}.", 'mfa_enabled' => false, 'mfa_required' => false]);
+        }
         return back()->with('success', "MFA requirement removed for {$user->name}.");
     }
 
@@ -417,19 +424,24 @@ class UserController extends Controller
         ]);
 
         AuditLogger::log(
-            auth()->user(),
             'user.mfa_reset',
             $user,
             "MFA reset for {$user->name} — required to re-enroll",
             ['admin_id' => auth()->id()]
         );
 
+        if (request()->expectsJson()) {
+            return response()->json(['ok' => true, 'message' => "MFA reset — {$user->name} must re-enroll on next login.", 'mfa_enabled' => false, 'mfa_required' => true]);
+        }
         return back()->with('success', "MFA has been reset for {$user->name}. They must re-enroll on next login.");
     }
 
     public function disableMfa(User $user)
     {
         if (! $user->mfa_enabled) {
+            if (request()->expectsJson()) {
+                return response()->json(['ok' => false, 'message' => "{$user->name} does not have MFA enabled."]);
+            }
             return back()->with('info', "{$user->name} does not have MFA enabled.");
         }
 
@@ -437,16 +449,19 @@ class UserController extends Controller
             'mfa_enabled'        => false,
             'mfa_secret'         => null,
             'mfa_recovery_codes' => null,
+            'mfa_required'       => false,  // explicitly exempt from force_mfa
         ]);
 
         AuditLogger::log(
-            auth()->user(),
             'user.mfa_disabled',
             $user,
             "MFA disabled for {$user->name} by admin",
             ['admin_id' => auth()->id()]
         );
 
+        if (request()->expectsJson()) {
+            return response()->json(['ok' => true, 'message' => "MFA disabled for {$user->name}. They can now log in with password only.", 'mfa_enabled' => false, 'mfa_required' => false]);
+        }
         return back()->with('success', "MFA has been disabled for {$user->name}. They can now log in with their password only.");
     }
 

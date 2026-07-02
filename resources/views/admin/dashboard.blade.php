@@ -2035,15 +2035,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     @php
     $statusMeta = [
-        'draft'              => ['label'=>'Draft',       'bg'=>'#F3F4F6','color'=>'#6B7280'],
-        'assigned'           => ['label'=>'Assigned',    'bg'=>'#EEF2FF','color'=>'#4F46E5'],
-        'viewed'             => ['label'=>'Viewed',      'bg'=>'#E0F2FE','color'=>'#0369A1'],
-        'in_progress'        => ['label'=>'In Progress', 'bg'=>'#FEF3C7','color'=>'#D97706'],
-        'submitted'          => ['label'=>'In Review',   'bg'=>'#EDE9FE','color'=>'#7C3AED'],
-        'revision_requested' => ['label'=>'Revision',    'bg'=>'#FEE2E2','color'=>'#DC2626'],
-        'approved'           => ['label'=>'Approved',    'bg'=>'#D1FAE5','color'=>'#059669'],
-        'delivered'          => ['label'=>'Delivered',   'bg'=>'#ECFDF5','color'=>'#047857'],
-        'archived'           => ['label'=>'Archived',    'bg'=>'#F3F4F6','color'=>'#6B7280'],
+        'draft'              => ['label'=>'Draft',            'bg'=>'#F3F4F6','color'=>'#6B7280'],
+        'assigned'           => ['label'=>'Assigned',         'bg'=>'#EEF2FF','color'=>'#4F46E5'],
+        'viewed'             => ['label'=>'Viewed',           'bg'=>'#E0F2FE','color'=>'#0369A1'],
+        'in_progress'        => ['label'=>'In Progress',      'bg'=>'#FEF3C7','color'=>'#D97706'],
+        'paused'             => ['label'=>'Paused',           'bg'=>'#FFFBEB','color'=>'#92400E'],
+        'pending_customer'   => ['label'=>'Awaiting Client',  'bg'=>'#FFF7ED','color'=>'#C2410C'],
+        'submitted'          => ['label'=>'In Review',        'bg'=>'#EDE9FE','color'=>'#7C3AED'],
+        'revision_requested' => ['label'=>'Revision',         'bg'=>'#FEE2E2','color'=>'#DC2626'],
+        'approved'           => ['label'=>'Approved',         'bg'=>'#D1FAE5','color'=>'#059669'],
+        'delivered'          => ['label'=>'Delivered',        'bg'=>'#ECFDF5','color'=>'#047857'],
+        'archived'           => ['label'=>'Archived',         'bg'=>'#F3F4F6','color'=>'#6B7280'],
     ];
     $priorityMeta = [
         'high'   => ['label'=>'High',   'bg'=>'#FEE2E2','color'=>'#DC2626'],
@@ -2510,15 +2512,17 @@ fetch('{{ route('admin.dashboard.chart-tasks') }}?period=' + encodeURIComponent(
             }
 
             var statusMeta = {
-                draft:              { label: 'Draft',       bg: '#F3F4F6', color: '#6B7280' },
-                assigned:           { label: 'Assigned',    bg: '#EEF2FF', color: '#4F46E5' },
-                viewed:             { label: 'Viewed',      bg: '#F0F9FF', color: '#0369A1' },
-                in_progress:        { label: 'In Progress', bg: '#FFFBEB', color: '#D97706' },
-                submitted:          { label: 'In Review',   bg: '#F5F3FF', color: '#7C3AED' },
-                revision_requested: { label: 'Revision',    bg: '#FFF7ED', color: '#C2410C' },
-                approved:           { label: 'Approved',    bg: '#F0FDF4', color: '#15803D' },
-                delivered:          { label: 'Delivered',   bg: '#ECFDF5', color: '#065F46' },
-                archived:           { label: 'Archived',    bg: '#F3F4F6', color: '#6B7280' },
+                draft:              { label: 'Draft',           bg: '#F3F4F6', color: '#6B7280' },
+                assigned:           { label: 'Assigned',        bg: '#EEF2FF', color: '#4F46E5' },
+                viewed:             { label: 'Viewed',          bg: '#F0F9FF', color: '#0369A1' },
+                in_progress:        { label: 'In Progress',     bg: '#FFFBEB', color: '#D97706' },
+                paused:             { label: 'Paused',          bg: '#FFFBEB', color: '#92400E' },
+                pending_customer:   { label: 'Awaiting Client', bg: '#FFF7ED', color: '#C2410C' },
+                submitted:          { label: 'In Review',       bg: '#F5F3FF', color: '#7C3AED' },
+                revision_requested: { label: 'Revision',        bg: '#FFF7ED', color: '#C2410C' },
+                approved:           { label: 'Approved',        bg: '#F0FDF4', color: '#15803D' },
+                delivered:          { label: 'Delivered',       bg: '#ECFDF5', color: '#065F46' },
+                archived:           { label: 'Archived',        bg: '#F3F4F6', color: '#6B7280' },
             };
             var priorityMeta = {
                 high:   { label: 'High',   color: '#EF4444' },
@@ -2638,15 +2642,17 @@ fetch('{{ route('admin.dashboard.workload-tasks') }}?index=' + index, { headers:
             if (!d.tasks || !d.tasks.length) { empty.style.display = 'block'; return; }
 
             var statusMeta = {
-                draft:              { label: 'Draft',       bg: '#F3F4F6', color: '#6B7280' },
-                assigned:           { label: 'Assigned',    bg: '#EEF2FF', color: '#4F46E5' },
-                viewed:             { label: 'Viewed',      bg: '#F0F9FF', color: '#0369A1' },
-                in_progress:        { label: 'In Progress', bg: '#FFFBEB', color: '#D97706' },
-                submitted:          { label: 'In Review',   bg: '#F5F3FF', color: '#7C3AED' },
-                revision_requested: { label: 'Revision',    bg: '#FFF7ED', color: '#C2410C' },
-                approved:           { label: 'Approved',    bg: '#F0FDF4', color: '#15803D' },
-                delivered:          { label: 'Delivered',   bg: '#ECFDF5', color: '#065F46' },
-                archived:           { label: 'Archived',    bg: '#F3F4F6', color: '#6B7280' },
+                draft:              { label: 'Draft',           bg: '#F3F4F6', color: '#6B7280' },
+                assigned:           { label: 'Assigned',        bg: '#EEF2FF', color: '#4F46E5' },
+                viewed:             { label: 'Viewed',          bg: '#F0F9FF', color: '#0369A1' },
+                in_progress:        { label: 'In Progress',     bg: '#FFFBEB', color: '#D97706' },
+                paused:             { label: 'Paused',          bg: '#FFFBEB', color: '#92400E' },
+                pending_customer:   { label: 'Awaiting Client', bg: '#FFF7ED', color: '#C2410C' },
+                submitted:          { label: 'In Review',       bg: '#F5F3FF', color: '#7C3AED' },
+                revision_requested: { label: 'Revision',        bg: '#FFF7ED', color: '#C2410C' },
+                approved:           { label: 'Approved',        bg: '#F0FDF4', color: '#15803D' },
+                delivered:          { label: 'Delivered',       bg: '#ECFDF5', color: '#065F46' },
+                archived:           { label: 'Archived',        bg: '#F3F4F6', color: '#6B7280' },
             };
             var priorityMeta = {
                 high:   { label: 'High',   color: '#EF4444' },

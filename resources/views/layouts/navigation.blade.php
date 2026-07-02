@@ -175,14 +175,14 @@
         </a>
         @endif
 
-        {{-- User-only: My Licenses --}}
+        {{-- User-only: My Vault --}}
         @if($role === 'user' && !in_array('nav_licenses', $navHidden))
         @php $myLicenseCount = \App\Models\Subscription::whereHas('users', fn($q) => $q->where('user_id', auth()->id()))->count(); @endphp
         <a href="{{ route('user.licenses.index') }}"
            class="nav-item {{ request()->routeIs('user.licenses.*') ? 'active' : '' }}">
             <div class="nav-left">
                 <i class="fas fa-key nav-icon"></i>
-                My Licenses
+                My Access
             </div>
             @if($myLicenseCount > 0)
             <span class="nav-badge nav-badge-blue">{{ $myLicenseCount }}</span>
@@ -240,6 +240,26 @@
             <div class="nav-left">
                 <i class="fas fa-list-check nav-icon"></i>
                 Tasks
+            </div>
+        </a>
+        @endif
+
+        @if($hasAnyAdminPerm && auth()->user()->hasPermission('view_reports') && !in_array('nav_reports', $navHidden))
+        <a href="{{ route('admin.reports.index') }}"
+           class="nav-item {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-chart-bar nav-icon"></i>
+                Reports
+            </div>
+        </a>
+        @endif
+
+        @if($hasAnyAdminPerm && ($appSettings['show_gantt_chart'] ?? '1') === '1' && !in_array('nav_gantt', $navHidden))
+        <a href="{{ route('admin.gantt.index') }}"
+           class="nav-item {{ request()->routeIs('admin.gantt.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-bars-progress nav-icon"></i>
+                Gantt Chart
             </div>
         </a>
         @endif
@@ -333,25 +353,6 @@
         </a>
         @endif
 
-        @if($hasAnyAdminPerm && auth()->user()->hasPermission('view_reports') && !in_array('nav_reports', $navHidden))
-        <a href="{{ route('admin.reports.index') }}"
-           class="nav-item {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">
-            <div class="nav-left">
-                <i class="fas fa-chart-bar nav-icon"></i>
-                Reports
-            </div>
-        </a>
-        @endif
-
-        @if($hasAnyAdminPerm && ($appSettings['show_gantt_chart'] ?? '1') === '1' && !in_array('nav_gantt', $navHidden))
-        <a href="{{ route('admin.gantt.index') }}"
-           class="nav-item {{ request()->routeIs('admin.gantt.*') ? 'active' : '' }}">
-            <div class="nav-left">
-                <i class="fas fa-bars-progress nav-icon"></i>
-                Gantt Chart
-            </div>
-        </a>
-        @endif
         @endif
 
         {{-- Recent Projects --}}

@@ -133,7 +133,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 
 <div class="settings-wrap"
      x-data="{
-         tab: (window.location.hash.slice(1) || '{{ session('_fragment') ?? 'general' }}'),
+         tab: (function(){ var h = window.location.hash.slice(1) || '{{ session('_fragment') ?? 'general' }}'; return (h === 'features' && {{ ($appSettings['hide_features_tab'] ?? '0') === '1' ? 'true' : 'false' }}) ? 'general' : h; })(),
          confirm: null, phrase: '',
          setTab(t) { this.tab = t; window.location.hash = t; },
          openClear(type){ this.confirm = type; this.phrase = ''; },
@@ -187,6 +187,9 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
         ];
         @endphp
         @foreach($navItems as $nav)
+        @if($nav['id'] === 'features' && ($appSettings['hide_features_tab'] ?? '0') === '1')
+            @continue
+        @endif
         @if($nav['id'] === 'danger')
         <button class="snav-item"
                 :class="tab === 'danger' ? 'active' : ''"
@@ -2465,7 +2468,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                     </div>
                 </div>
                 <button type="button" :disabled="disabling"
-                        @click="if(!confirm('Disable all features?')) return;
+                        @click="if(!window.confirm('Disable all features?')) return;
                                 disabling=true;
                                 fetch('{{ route('admin.settings.features.disable-all') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}})
                                 .then(r=>r.json()).then(()=>{
@@ -2713,44 +2716,38 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                     </div>
                     <div style="padding:0 20px 16px;display:flex;flex-direction:column;gap:0;">
                         {{-- Maintenance Mode --}}
-                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
+                             x-data="{ maintenanceOn: {{ ($appSettings['maintenance_mode'] ?? '0') === '1' ? 'true' : 'false' }} }">
                             <div style="display:flex;align-items:center;gap:10px;">
                                 <div style="width:28px;height:28px;border-radius:8px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                     <i class="fas fa-triangle-exclamation" style="font-size:11px;color:#D97706;"></i>
                                 </div>
                                 <div>
                                     <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Maintenance Mode</p>
-                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;" id="maintenance-status">
-                                        {{ ($appSettings['maintenance_mode'] ?? '0') === '1' ? 'Active — admins only' : 'Inactive' }}
-                                    </p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;" x-text="maintenanceOn ? 'Active — admins only' : 'Inactive'"></p>
                                 </div>
                             </div>
-                            <button id="maintenance-toggle" onclick="toggleMaintenance(this)"
-                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;
-                                           {{ ($appSettings['maintenance_mode'] ?? '0') === '1' ? 'background:#D97706;color:#fff;' : 'background:#F3F4F6;color:#374151;' }}">
-                                <i class="fas {{ ($appSettings['maintenance_mode'] ?? '0') === '1' ? 'fa-toggle-on' : 'fa-toggle-off' }}" id="maintenance-icon"></i>
-                                <span id="maintenance-label">{{ ($appSettings['maintenance_mode'] ?? '0') === '1' ? 'On' : 'Off' }}</span>
-                            </button>
+                            <div @click="fetch(_maintenanceToggleUrl,{method:'POST',headers:{'X-CSRF-TOKEN':_csrfToken,'Content-Type':'application/json'}}).then(r=>r.json()).then(d=>{maintenanceOn=d.maintenance_mode;if(d.maintenance_mode)_unlockCard('manager-access-card');else _lockCard('manager-access-card','Enable Maintenance Mode to edit manager access');})"
+                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (maintenanceOn ? 'background:#D97706;' : 'background:#D1D5DB;')">
+                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (maintenanceOn ? 'left:23px;' : 'left:3px;')"></div>
+                            </div>
                         </div>
                         {{-- Developer Mode --}}
-                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
+                             x-data="{ devModeOn: {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'true' : 'false' }} }">
                             <div style="display:flex;align-items:center;gap:10px;">
                                 <div style="width:28px;height:28px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                     <i class="fas fa-code" style="font-size:11px;color:#6366F1;"></i>
                                 </div>
                                 <div>
                                     <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Developer Mode</p>
-                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;" id="dev-mode-status">
-                                        {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'Active — click to hide sections' : 'Inactive' }}
-                                    </p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;" x-text="devModeOn ? 'Active — click to hide sections' : 'Inactive'"></p>
                                 </div>
                             </div>
-                            <button id="dev-mode-toggle" onclick="toggleDevMode(this)"
-                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;
-                                           {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'background:#6366F1;color:#fff;' : 'background:#F3F4F6;color:#374151;' }}">
-                                <i class="fas {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'fa-toggle-on' : 'fa-toggle-off' }}" id="dev-mode-icon"></i>
-                                <span id="dev-mode-label">{{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'On' : 'Off' }}</span>
-                            </button>
+                            <div @click="fetch(_devToggleUrl,{method:'POST',headers:{'X-CSRF-TOKEN':_csrfToken,'Content-Type':'application/json'}}).then(r=>r.json()).then(d=>{devModeOn=d.developer_mode;if(d.developer_mode){_unlockCard('sidebar-nav-card');_unlockCard('header-elements-card');_unlockCard('dashboard-sections-card');}else{_lockCard('sidebar-nav-card','Enable Developer Mode to edit navigation');_lockCard('header-elements-card','Enable Developer Mode to edit navigation');_lockCard('dashboard-sections-card','Enable Developer Mode to edit dashboard sections');}if(typeof window._devModeChanged==='function')window._devModeChanged(d.developer_mode);})"
+                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (devModeOn ? 'background:#6366F1;' : 'background:#D1D5DB;')">
+                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (devModeOn ? 'left:23px;' : 'left:3px;')"></div>
+                            </div>
                         </div>
                         {{-- Hide Approval Customer Notify --}}
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
@@ -2764,13 +2761,10 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Remove the customer notification section from the approval modal</p>
                                 </div>
                             </div>
-                            <button type="button"
-                                    @click="fetch('{{ route('admin.settings.approval-customer-notify') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ hideNotify = d.hide_approval_customer_notify })"
-                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
-                                    :style="hideNotify ? 'background:#D97706;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
-                                <i class="fas" :class="hideNotify ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
-                                <span x-text="hideNotify ? 'On' : 'Off'"></span>
-                            </button>
+                            <div @click="fetch('{{ route('admin.settings.approval-customer-notify') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{hideNotify=d.hide_approval_customer_notify})"
+                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (hideNotify ? 'background:#D97706;' : 'background:#D1D5DB;')">
+                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (hideNotify ? 'left:23px;' : 'left:3px;')"></div>
+                            </div>
                         </div>
                         {{-- Hide WhatsApp Web Button --}}
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
@@ -2784,13 +2778,10 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Remove the WhatsApp Web button from the approvals page (keeps API button only)</p>
                                 </div>
                             </div>
-                            <button type="button"
-                                    @click="fetch('{{ route('admin.settings.hide-wa-web') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ hideWaWeb = d.hide_wa_web_button })"
-                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
-                                    :style="hideWaWeb ? 'background:#25D366;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
-                                <i class="fas" :class="hideWaWeb ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
-                                <span x-text="hideWaWeb ? 'On' : 'Off'"></span>
-                            </button>
+                            <div @click="fetch('{{ route('admin.settings.hide-wa-web') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{hideWaWeb=d.hide_wa_web_button})"
+                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (hideWaWeb ? 'background:#25D366;' : 'background:#D1D5DB;')">
+                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (hideWaWeb ? 'left:23px;' : 'left:3px;')"></div>
+                            </div>
                         </div>
                         {{-- Hide Hourly Rate --}}
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
@@ -2804,13 +2795,10 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Hide hourly rate field in user edit &amp; billing columns in reports</p>
                                 </div>
                             </div>
-                            <button type="button"
-                                    @click="fetch('{{ route('admin.settings.hourly-rate') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ hideHourly = d.hide_hourly_rate })"
-                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
-                                    :style="hideHourly ? 'background:#059669;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
-                                <i class="fas" :class="hideHourly ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
-                                <span x-text="hideHourly ? 'On' : 'Off'"></span>
-                            </button>
+                            <div @click="fetch('{{ route('admin.settings.hourly-rate') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{hideHourly=d.hide_hourly_rate})"
+                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (hideHourly ? 'background:#059669;' : 'background:#D1D5DB;')">
+                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (hideHourly ? 'left:23px;' : 'left:3px;')"></div>
+                            </div>
                         </div>
                         {{-- Hide Summarize Button --}}
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
@@ -2824,13 +2812,27 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Remove the Summarize button from the customers list header</p>
                                 </div>
                             </div>
-                            <button type="button"
-                                    @click="fetch('{{ route('admin.settings.hide-summarize') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ hideSummarize = d.hide_summarize_button })"
-                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
-                                    :style="hideSummarize ? 'background:#4F46E5;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
-                                <i class="fas" :class="hideSummarize ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
-                                <span x-text="hideSummarize ? 'On' : 'Off'"></span>
-                            </button>
+                            <div @click="fetch('{{ route('admin.settings.hide-summarize') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{hideSummarize=d.hide_summarize_button})"
+                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (hideSummarize ? 'background:#4F46E5;' : 'background:#D1D5DB;')">
+                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (hideSummarize ? 'left:23px;' : 'left:3px;')"></div>
+                            </div>
+                        </div>
+                        {{-- Hide Features Tab --}}
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
+                             x-data="{ hideFeaturesTab: {{ ($appSettings['hide_features_tab'] ?? '0') === '1' ? 'true' : 'false' }} }">
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <div style="width:28px;height:28px;border-radius:8px;background:#F0FDF4;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-puzzle-piece" style="font-size:11px;color:#16A34A;"></i>
+                                </div>
+                                <div>
+                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Hide Features Tab</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Remove the Features tab from settings — existing feature states are preserved</p>
+                                </div>
+                            </div>
+                            <div @click="fetch('{{ route('admin.settings.hide-features-tab') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{hideFeaturesTab=d.hide_features_tab;if(d.hide_features_tab&&window.location.hash==='#features'){window.location.hash='developer';}})"
+                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (hideFeaturesTab ? 'background:#16A34A;' : 'background:#D1D5DB;')">
+                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (hideFeaturesTab ? 'left:23px;' : 'left:3px;')"></div>
+                            </div>
                         </div>
                         {{-- Clear Cache --}}
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
@@ -2846,11 +2848,8 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </div>
                             <button type="button"
                                     :disabled="clearing"
-                                    @click="clearing=true; done=false;
-                                        fetch('{{ route('admin.settings.clear-cache') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} })
-                                        .then(r=>r.json()).then(d=>{ clearing=false; done=true; setTimeout(()=>done=false,4000); })"
-                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
-                                    :style="done ? 'background:#059669;color:#fff;' : (clearing ? 'background:#E5E7EB;color:#9CA3AF;cursor:not-allowed;' : 'background:#F3F4F6;color:#374151;')">
+                                    @click="clearing=true;done=false;fetch('{{ route('admin.settings.clear-cache') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{clearing=false;done=true;setTimeout(()=>done=false,4000);})"
+                                    :style="'display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;transition:all .2s;flex-shrink:0;' + (done ? 'background:#059669;color:#fff;cursor:pointer;' : (clearing ? 'background:#E5E7EB;color:#9CA3AF;cursor:not-allowed;' : 'background:#F3F4F6;color:#374151;cursor:pointer;'))">
                                 <i class="fas" :class="clearing ? 'fa-spinner fa-spin' : (done ? 'fa-check' : 'fa-broom')"></i>
                                 <span x-text="clearing ? 'Clearing…' : (done ? 'Done!' : 'Clear Cache')"></span>
                             </button>
@@ -2880,13 +2879,10 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Roles tab in Team page</p>
                                 </div>
                             </div>
-                            <button type="button"
-                                    @click="fetch('{{ route('admin.settings.manager-roles-access') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ rolesOn = d.manager_can_view_roles })"
-                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
-                                    :style="rolesOn ? 'background:#6366F1;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
-                                <i class="fas" :class="rolesOn ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
-                                <span x-text="rolesOn ? 'On' : 'Off'"></span>
-                            </button>
+                            <div @click="fetch('{{ route('admin.settings.manager-roles-access') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{rolesOn=d.manager_can_view_roles})"
+                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (rolesOn ? 'background:#6366F1;' : 'background:#D1D5DB;')">
+                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (rolesOn ? 'left:23px;' : 'left:3px;')"></div>
+                            </div>
                         </div>
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;">
                             <div style="display:flex;align-items:center;gap:10px;">
@@ -2898,13 +2894,10 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Edit, reset & deactivate admins</p>
                                 </div>
                             </div>
-                            <button type="button"
-                                    @click="fetch('{{ route('admin.settings.manager-admin-access') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ adminOn = d.manager_can_edit_admin })"
-                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
-                                    :style="adminOn ? 'background:#EF4444;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
-                                <i class="fas" :class="adminOn ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
-                                <span x-text="adminOn ? 'On' : 'Off'"></span>
-                            </button>
+                            <div @click="fetch('{{ route('admin.settings.manager-admin-access') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{adminOn=d.manager_can_edit_admin})"
+                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (adminOn ? 'background:#EF4444;' : 'background:#D1D5DB;')">
+                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (adminOn ? 'left:23px;' : 'left:3px;')"></div>
+                            </div>
                         </div>
                     </div>
                 </div>

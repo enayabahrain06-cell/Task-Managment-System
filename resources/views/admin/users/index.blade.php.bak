@@ -111,6 +111,7 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
                 <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Contact</th>
                 <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
                 <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">Status</th>
+                <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden md:table-cell">MFA</th>
                 <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Tasks</th>
                 <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider hidden lg:table-cell">Joined</th>
                 <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
@@ -167,6 +168,24 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
                     @else
                     <span class="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium bg-gray-100 text-gray-500">
                         <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span> Inactive
+                    </span>
+                    @endif
+                </td>
+                {{-- MFA --}}
+                <td class="px-5 py-3.5 hidden md:table-cell">
+                    @if($user->mfa_enabled)
+                    <form action="{{ route('admin.users.disable-mfa', $user) }}" method="POST"
+                          onsubmit="return confirm('Disable MFA for {{ addslashes($user->name) }}? They will log in with password only.')">
+                        @csrf
+                        <button type="submit"
+                                class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-violet-100 text-violet-700 hover:bg-red-100 hover:text-red-600 border border-violet-200 hover:border-red-200 transition"
+                                title="MFA enabled — click to disable">
+                            <i class="fas fa-shield-halved text-xs"></i> On
+                        </button>
+                    </form>
+                    @else
+                    <span class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-gray-100 text-gray-400">
+                        <i class="fas fa-shield-halved text-xs"></i> Off
                     </span>
                     @endif
                 </td>

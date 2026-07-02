@@ -214,6 +214,10 @@ class UserController extends Controller
             if ($user->avatar) Storage::disk('public')->delete($user->avatar);
             $data['avatar'] = $request->file('avatar')->store('avatars', 'public');
             $changes['avatar'] = ['from' => 'previous', 'to' => 'updated'];
+        } elseif ($request->input('remove_avatar') === '1' && $user->avatar) {
+            Storage::disk('public')->delete($user->avatar);
+            $data['avatar'] = null;
+            $changes['avatar'] = ['from' => 'previous', 'to' => 'removed'];
         }
 
         $passwordChanged = false;

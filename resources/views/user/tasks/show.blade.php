@@ -30,6 +30,7 @@
 </style>
 @php
     $isSocialAssignee = $isSocialAssignee ?? false;
+    $pendingExtension = $pendingExtension ?? null;
     $doneStatuses = ['approved', 'delivered', 'archived'];
     $deadlineEOD  = $task->deadline ? \App\Models\Setting::deadlineEOD($task->deadline) : null;
     $isOverdue    = $deadlineEOD && $deadlineEOD->isPast() && !in_array($task->status, $doneStatuses);
@@ -570,17 +571,34 @@
         </div>
 
         @elseif($task->status === 'paused')
-        <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:12px;">
-            <div style="width:36px;height:36px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <i class="fa fa-circle-pause" style="color:#6B7280;font-size:16px;"></i>
+        @php
+            $lastPauseLog   = $task->logs->where('action','timer_paused')->sortByDesc('created_at')->first();
+            $pauseReasons   = ($lastPauseLog && !empty($lastPauseLog->metadata['reason']))
+                ? array_filter(array_map('trim', explode(', ', $lastPauseLog->metadata['reason'])))
+                : [];
+        @endphp
+        <div style="background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:14px;padding:18px 20px;display:flex;align-items:flex-start;gap:12px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
+                <i class="fa fa-circle-pause" style="color:#D97706;font-size:16px;"></i>
             </div>
-            <div style="flex:1;">
-                <p style="font-size:14px;font-weight:700;color:#374151;margin:0;">Timer Paused</p>
-                <p style="font-size:12px;color:#6B7280;margin:0;">Your timer is paused. Resume when you're ready to continue working.</p>
+            <div style="flex:1;min-width:0;">
+                <p style="font-size:14px;font-weight:700;color:#92400E;margin:0 0 3px;">Timer Paused</p>
+                @if($pauseReasons)
+                <p style="font-size:11px;font-weight:600;color:#B45309;margin:0 0 8px;text-transform:uppercase;letter-spacing:.04em;">Paused because:</p>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                    @foreach($pauseReasons as $pr)
+                    <span style="font-size:12px;font-weight:600;background:#FEF3C7;color:#D97706;border:1.5px solid #FDE68A;padding:4px 12px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;">
+                        <i class="fa fa-circle-pause" style="font-size:9px;"></i> {{ $pr }}
+                    </span>
+                    @endforeach
+                </div>
+                @else
+                <p style="font-size:12px;color:#B45309;margin:0;">Resume when you're ready to continue working.</p>
+                @endif
             </div>
-            <form method="POST" action="{{ route('user.tasks.timer.start', $task) }}">
+            <form id="_resumeTimerForm" method="POST" action="{{ route('user.tasks.timer.start', $task) }}" style="flex-shrink:0;">
                 @csrf
-                <button type="submit" style="background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
+                <button type="button" onclick="confirmStart('_resumeTimerForm')" style="background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
                     <i class="fa fa-circle-play"></i> Resume Timer
                 </button>
             </form>
@@ -641,16 +659,17 @@
                 </p>
             </div>
             @if($activeSegment)
-            <form method="POST" action="{{ route('user.tasks.timer.pause', $task) }}">
+            <form id="_pauseForm" method="POST" action="{{ route('user.tasks.timer.pause', $task) }}">
                 @csrf
-                <button type="submit" style="background:#F59E0B;color:#fff;border:none;padding:9px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
+                <input type="hidden" name="pause_reason" id="_pauseReasonInput">
+                <button type="button" onclick="openPauseModal('_pauseForm','_pauseReasonInput')" style="background:#F59E0B;color:#fff;border:none;padding:9px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
                     <i class="fa fa-circle-pause"></i> Pause
                 </button>
             </form>
             @else
-            <form method="POST" action="{{ route('user.tasks.timer.start', $task) }}">
+            <form id="_startTimerForm" method="POST" action="{{ route('user.tasks.timer.start', $task) }}">
                 @csrf
-                <button type="submit" style="background:linear-gradient(135deg,#D97706,#B45309);color:#fff;border:none;padding:9px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
+                <button type="button" onclick="confirmStart('_startTimerForm')" style="background:linear-gradient(135deg,#D97706,#B45309);color:#fff;border:none;padding:9px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
                     <i class="fa fa-circle-play"></i> Start Timer
                 </button>
             </form>
@@ -658,6 +677,54 @@
         </div>
         @endif
         @endif {{-- !isSocialAssignee --}}
+
+        {{-- Deadline extension request banner (overdue OR approaching) --}}
+        @if($deadlineEOD && !$isSocialAssignee && !in_array($task->status, ['submitted','approved','delivered','archived']))
+        @php
+            $extBg        = $isOverdue ? '#FEF2F2'                                    : '#EEF2FF';
+            $extBorder    = $isOverdue ? '#FECACA'                                    : '#C7D2FE';
+            $extIconBg    = $isOverdue ? '#FEE2E2'                                    : '#E0E7FF';
+            $extIcon      = $isOverdue ? 'fa-calendar-xmark'                          : 'fa-hourglass-half';
+            $extIconColor = $isOverdue ? '#DC2626'                                    : '#4F46E5';
+            $extTitle     = $isOverdue ? 'This task is overdue'                       : 'Deadline approaching';
+            $extDesc      = $isOverdue ? 'You can request more time from your admin.' : 'Need more time? You can request a deadline extension before it expires.';
+            $extTitleColor= $isOverdue ? '#991B1B'                                    : '#1E40AF';
+            $extTextColor = $isOverdue ? '#B91C1C'                                    : '#3B82F6';
+            $extBtnBg     = $isOverdue ? 'linear-gradient(135deg,#DC2626,#B91C1C)'   : 'linear-gradient(135deg,#4F46E5,#6366F1)';
+            $extBtnShadow = $isOverdue ? 'rgba(220,38,38,.3)'                         : 'rgba(99,102,241,.3)';
+        @endphp
+        <div style="background:{{ $extBg }};border:1.5px solid {{ $extBorder }};border-radius:14px;padding:16px 20px;">
+            <div style="display:flex;align-items:flex-start;gap:12px;">
+                <div style="width:36px;height:36px;border-radius:50%;background:{{ $extIconBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fa {{ $extIcon }}" style="color:{{ $extIconColor }};font-size:15px;"></i>
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <p style="font-size:13px;font-weight:700;color:{{ $extTitleColor }};margin:0 0 3px;">{{ $extTitle }}</p>
+                    @if($pendingExtension)
+                    <p style="font-size:12px;color:{{ $extTextColor }};margin:0;">Your extension request for <strong>{{ $pendingExtension->requested_deadline->format('M d, Y') }}</strong> is pending admin review.</p>
+                    @elseif(($latestExtension ?? null) && $latestExtension->status === 'rejected')
+                    <p style="font-size:12px;color:#B91C1C;margin:0;">Your request for <strong>{{ $latestExtension->requested_deadline->format('M d, Y') }}</strong> was rejected.@if($latestExtension->admin_note) <em>"{{ $latestExtension->admin_note }}"</em>@endif</p>
+                    @else
+                    <p style="font-size:12px;color:{{ $extTextColor }};margin:0;">{{ $extDesc }}</p>
+                    @endif
+                </div>
+                @if($pendingExtension)
+                <span style="font-size:11px;font-weight:600;background:#FEF3C7;color:#D97706;padding:5px 12px;border-radius:20px;white-space:nowrap;flex-shrink:0;display:flex;align-items:center;gap:5px;">
+                    <i class="fa fa-clock"></i> Pending Review
+                </span>
+                @elseif(($latestExtension ?? null) && $latestExtension->status === 'rejected')
+                <span style="font-size:11px;font-weight:600;background:#FEE2E2;color:#DC2626;padding:5px 12px;border-radius:20px;white-space:nowrap;flex-shrink:0;display:flex;align-items:center;gap:5px;">
+                    <i class="fa fa-circle-xmark"></i> Request Rejected
+                </span>
+                @else
+                <button type="button" onclick="document.getElementById('_extModal').style.display='flex'"
+                        style="background:{{ $extBtnBg }};color:#fff;border:none;padding:9px 16px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0;box-shadow:0 3px 10px {{ $extBtnShadow }};">
+                    <i class="fa fa-calendar-plus"></i> Request More Time
+                </button>
+                @endif
+            </div>
+        </div>
+        @endif
 
         {{-- Unified: Comment + Submit --}}
         @if(!in_array($task->status, ['revision_requested']) && (auth()->user()->hasPermission('view_comments') || ($canSubmit && auth()->user()->hasPermission('submit_work'))))
@@ -902,7 +969,7 @@
                                     ? (showModal = true)
                                     : (getBody()
                                         ? $refs.commentBtn.click()
-                                        : document.getElementById('_startForm').submit())
+                                        : confirmStart('_startForm'))
                             @else
                                 $refs.commentBtn?.click()
                             @endif"
@@ -1067,6 +1134,16 @@
                             <span style="font-size:11px;background:#FEF3C7;color:#D97706;padding:2px 8px;border-radius:6px;">{{ Str::limit($meta['reason'], 80) }}</span>
                             @endif
                         </div>
+                        @elseif($log->action === 'timer_paused' && !empty($meta['reason']))
+                        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;align-items:center;">
+                            <span style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.04em;">Reason:</span>
+                            @foreach(explode(', ', $meta['reason']) as $pauseReason)
+                            <span style="font-size:11px;font-weight:600;background:#FEF3C7;color:#D97706;padding:3px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;">
+                                <i class="fa fa-circle-pause" style="font-size:9px;"></i>
+                                {{ trim($pauseReason) }}
+                            </span>
+                            @endforeach
+                        </div>
                         @elseif($log->action === 'auto_paused' && isset($meta['paused_by_task_id']))
                         <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;">
                             <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
@@ -1128,7 +1205,7 @@
                         @if(isset($meta['rejection_reason']))
                         <p style="font-size:12px;color:#DC2626;background:#FEF2F2;padding:6px 10px;border-radius:8px;border-left:3px solid #EF4444;margin:5px 0 0;">"{{ $meta['rejection_reason'] }}"</p>
                         @endif
-                        @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','task_reassigned','task_transferred','deadline_updated','auto_paused','social_posted','social_post_edited','attachment_added','attachment_deleted']))
+                        @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','task_reassigned','task_transferred','deadline_updated','auto_paused','timer_paused','social_posted','social_post_edited','attachment_added','attachment_deleted']))
                         @php
                             $noteHtml = e(strip_tags($log->note));
                             $noteHtml = preg_replace_callback('/(https?:\/\/[^\s<>"\']+)/i', function($m) {
@@ -1794,16 +1871,17 @@
             </p>
             @if(!in_array($task->status, $timerDoneStatuses) && !in_array($task->status, ['submitted', 'revision_requested', 'pending_customer']))
                 @if($timerRunning)
-                <form method="POST" action="{{ route('user.tasks.timer.pause', $task) }}" style="display:inline;">
+                <form id="_sidebarPauseForm" method="POST" action="{{ route('user.tasks.timer.pause', $task) }}" style="display:inline;">
                     @csrf
-                    <button type="submit" style="background:#F3F4F6;color:#374151;border:none;padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                    <input type="hidden" name="pause_reason" id="_sidebarPauseReasonInput">
+                    <button type="button" onclick="openPauseModal('_sidebarPauseForm','_sidebarPauseReasonInput')" style="background:#F3F4F6;color:#374151;border:none;padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
                         <i class="fa fa-circle-pause"></i> Pause Timer
                     </button>
                 </form>
                 @elseif(in_array($task->status, ['in_progress', 'paused', 'viewed']))
-                <form method="POST" action="{{ route('user.tasks.timer.start', $task) }}" style="display:inline;">
+                <form id="_sidebarStartTimerForm" method="POST" action="{{ route('user.tasks.timer.start', $task) }}" style="display:inline;">
                     @csrf
-                    <button type="submit" style="background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(99,102,241,.3);">
+                    <button type="button" onclick="confirmStart('_sidebarStartTimerForm')" style="background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(99,102,241,.3);">
                         <i class="fa fa-circle-play"></i> {{ $task->status === 'viewed' ? 'Start Timer' : ($completedTimerSeconds > 0 ? 'Resume Timer' : 'Start Timer') }}
                     </button>
                 </form>
@@ -1925,6 +2003,36 @@
             a.setAttribute('target', '_blank');
             a.setAttribute('rel', 'noopener');
         });
+
+        var _pauseTargetForm  = null;
+        var _pauseTargetInput = null;
+        function openPauseModal(formId, inputId) {
+            _pauseTargetForm  = document.getElementById(formId);
+            _pauseTargetInput = document.getElementById(inputId);
+            document.getElementById('_pauseModal').style.display = 'flex';
+            window.dispatchEvent(new CustomEvent('pause-modal-open'));
+        }
+        function _closePauseModal() {
+            document.getElementById('_pauseModal').style.display = 'none';
+        }
+
+        function confirmStart(formId) {
+            @if($otherInProgressTask)
+            var modal = document.getElementById('_inProgressConfirmModal');
+            modal.dataset.target = formId;
+            modal.style.display = 'flex';
+            @else
+            document.getElementById(formId).submit();
+            @endif
+        }
+        function _doConfirmedStart() {
+            var modal = document.getElementById('_inProgressConfirmModal');
+            modal.style.display = 'none';
+            document.getElementById(modal.dataset.target).submit();
+        }
+        function _cancelConfirmedStart() {
+            document.getElementById('_inProgressConfirmModal').style.display = 'none';
+        }
         </script>
 
         {{-- Time remaining --}}
@@ -1939,7 +2047,23 @@
         <div style="background:{{ $tbg }};border:1px solid {{ $tbo }};border-radius:14px;padding:20px;text-align:center;">
             <i class="fa fa-clock" style="font-size:24px;color:{{ $tico }};margin-bottom:8px;display:block;"></i>
             <p style="font-size:14px;font-weight:700;color:#111827;margin:0 0 4px;">{{ $ttitle }}</p>
-            <p style="font-size:12px;color:#6B7280;margin:0;">{{ $tsub }}</p>
+            <p style="font-size:12px;color:#6B7280;margin:{{ ($deadlineEOD && !$isSocialAssignee && !in_array($task->status, ['submitted','approved','delivered','archived'])) ? '0 0 12px' : '0' }};">{{ $tsub }}</p>
+            @if($deadlineEOD && !$isSocialAssignee && !in_array($task->status, ['submitted','approved','delivered','archived']))
+            @if($pendingExtension ?? null)
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;background:#FEF3C7;color:#D97706;padding:5px 12px;border-radius:20px;">
+                <i class="fa fa-clock"></i> Extension Pending
+            </span>
+            @elseif(($latestExtension ?? null) && $latestExtension->status === 'rejected')
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;background:#FEE2E2;color:#DC2626;padding:5px 12px;border-radius:20px;">
+                <i class="fa fa-circle-xmark"></i> Request Rejected
+            </span>
+            @else
+            <button type="button" onclick="document.getElementById('_extModal').style.display='flex'"
+                    style="display:inline-flex;align-items:center;gap:5px;background:transparent;border:1.5px solid {{ $tbo }};color:{{ $tico }};padding:6px 14px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;">
+                <i class="fa fa-calendar-plus"></i> Request More Time
+            </button>
+            @endif
+            @endif
         </div>
 
         {{-- Other tasks in same project --}}
@@ -1974,5 +2098,152 @@
 
     </div>{{-- /right --}}
 
+</div>
+
+{{-- Pause reason modal --}}
+<div id="_pauseModal"
+     style="display:none;position:fixed;inset:0;background:rgba(17,24,39,.55);backdrop-filter:blur(4px);z-index:10000;align-items:center;justify-content:center;padding:20px;"
+     onclick="if(event.target===this) _closePauseModal()">
+    <div x-data="{
+            selected: [],
+            otherText: '',
+            error: false,
+            options: [
+                {key:'feedback',  label:'Waiting for feedback',    icon:'fa-comments',        color:'#D97706', bg:'#FEF3C7'},
+                {key:'blocked',   label:'Blocked by another task', icon:'fa-link-slash',      color:'#EA580C', bg:'#FFF7ED'},
+                {key:'info',      label:'Need more information',   icon:'fa-circle-question', color:'#0369A1', bg:'#E0F2FE'},
+                {key:'technical', label:'Technical issue',         icon:'fa-wrench',          color:'#DC2626', bg:'#FEF2F2'},
+                {key:'assets',    label:'Waiting for assets',      icon:'fa-file-arrow-down', color:'#7C3AED', bg:'#F5F3FF'},
+                {key:'endofday',  label:'End of work day',         icon:'fa-moon',            color:'#4F46E5', bg:'#EEF2FF'},
+                {key:'other',     label:'Other',                   icon:'fa-ellipsis',        color:'#6B7280', bg:'#F3F4F6'},
+            ]
+         }"
+         @pause-modal-open.window="selected=[]; otherText=''; error=false;"
+         style="background:#fff;border-radius:20px;padding:28px 24px;max-width:460px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.18);">
+
+        <div style="text-align:center;margin-bottom:20px;">
+            <div style="width:52px;height:52px;border-radius:50%;background:#FFFBEB;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+                <i class="fa fa-circle-pause" style="color:#D97706;font-size:22px;"></i>
+            </div>
+            <h3 style="font-size:16px;font-weight:700;color:#111827;margin:0 0 5px;">Why are you pausing?</h3>
+            <p style="font-size:13px;color:#6B7280;margin:0;">Select one or more reasons</p>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+            <template x-for="opt in options" :key="opt.key">
+                <button type="button"
+                        @click="let i=selected.indexOf(opt.key); i>-1?selected.splice(i,1):selected.push(opt.key); error=false;"
+                        :style="'display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;cursor:pointer;text-align:left;transition:all .15s;font-size:12px;font-weight:600;width:100%;border:2px solid;' + (selected.includes(opt.key) ? 'background:'+opt.bg+';border-color:'+opt.color+';color:'+opt.color+';' : 'background:#F9FAFB;border-color:#E5E7EB;color:#374151;')">
+                    <i class="fas" :class="opt.icon" :style="'font-size:12px;flex-shrink:0;color:'+opt.color"></i>
+                    <span x-text="opt.label" style="line-height:1.3;"></span>
+                </button>
+            </template>
+        </div>
+
+        <div x-show="selected.includes('other')" x-transition style="margin-bottom:12px;">
+            <textarea x-model="otherText"
+                      placeholder="Describe your reason…"
+                      rows="2"
+                      style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;resize:none;outline:none;box-sizing:border-box;font-family:inherit;line-height:1.5;"
+                      onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"></textarea>
+        </div>
+
+        <p x-show="error" style="font-size:12px;color:#DC2626;margin:0 0 10px;">
+            <span x-text="selected.includes('other') && selected.length > 0 ? 'Please describe your other reason.' : 'Please select at least one reason.'"></span>
+        </p>
+
+        <div style="display:flex;flex-direction:column;gap:10px;">
+            <button type="button"
+                    @click="
+                        if(selected.length===0){error=true;return;}
+                        if(selected.includes('other')&&!otherText.trim()){error=true;return;}
+                        var labels=options.filter(o=>selected.includes(o.key)&&o.key!=='other').map(o=>o.label);
+                        if(selected.includes('other')&&otherText.trim()) labels.push(otherText.trim());
+                        _pauseTargetInput.value=labels.join(', ');
+                        document.getElementById('_pauseModal').style.display='none';
+                        _pauseTargetForm.submit();
+                        selected=[];otherText='';
+                    "
+                    style="width:100%;padding:12px;border-radius:10px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(245,158,11,.3);">
+                <i class="fa fa-circle-pause" style="margin-right:6px;"></i> Pause Task
+            </button>
+            <button type="button" onclick="_closePauseModal()"
+                    style="width:100%;padding:12px;border-radius:10px;background:#F3F4F6;color:#374151;border:none;font-size:14px;font-weight:600;cursor:pointer;">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+@if($otherInProgressTask)
+<div id="_inProgressConfirmModal"
+     style="display:none;position:fixed;inset:0;background:rgba(17,24,39,.55);backdrop-filter:blur(4px);z-index:10000;align-items:center;justify-content:center;padding:20px;"
+     onclick="if(event.target===this) _cancelConfirmedStart()">
+    <div style="background:#fff;border-radius:20px;padding:28px 24px;max-width:400px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.18);">
+        <div style="text-align:center;margin-bottom:22px;">
+            <div style="width:56px;height:56px;border-radius:50%;background:#FEF3C7;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                <i class="fa fa-triangle-exclamation" style="color:#D97706;font-size:22px;"></i>
+            </div>
+            <h3 style="font-size:16px;font-weight:700;color:#111827;margin:0 0 10px;">You Have a Task In Progress</h3>
+            <p style="font-size:13px;color:#6B7280;margin:0;line-height:1.65;">
+                <strong style="color:#111827;">{{ Str::limit($otherInProgressTask->title, 65) }}</strong>
+                is currently in progress.<br><br>
+                Starting this task will automatically pause that task's timer. Do you want to continue?
+            </p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+            <button onclick="_doConfirmedStart()"
+                    style="width:100%;padding:12px;border-radius:10px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(99,102,241,.3);">
+                <i class="fa fa-play" style="margin-right:6px;font-size:12px;"></i> Yes, Start This Task
+            </button>
+            <button onclick="_cancelConfirmedStart()"
+                    style="width:100%;padding:12px;border-radius:10px;background:#F3F4F6;color:#374151;border:none;font-size:14px;font-weight:600;cursor:pointer;">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+@endif
+
+{{-- Deadline Extension Request Modal --}}
+<div id="_extModal"
+     style="display:none;position:fixed;inset:0;background:rgba(17,24,39,.55);backdrop-filter:blur(4px);z-index:10000;align-items:center;justify-content:center;padding:20px;"
+     onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#fff;border-radius:20px;padding:28px 24px;max-width:440px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.18);">
+        <div style="text-align:center;margin-bottom:22px;">
+            <div style="width:52px;height:52px;border-radius:50%;background:#FEE2E2;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+                <i class="fa fa-calendar-plus" style="color:#DC2626;font-size:22px;"></i>
+            </div>
+            <h3 style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">Request More Time</h3>
+            <p style="font-size:13px;color:#6B7280;margin:0;">Tell your admin why you need more time and when you can deliver.</p>
+        </div>
+        <form method="POST" action="{{ route('user.tasks.deadline-extension.request', $task) }}" id="_extForm">
+            @csrf
+            <div style="margin-bottom:14px;">
+                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">New Deadline <span style="color:#DC2626;">*</span></label>
+                <input type="date" name="requested_deadline" required
+                       min="{{ now()->addDay()->format('Y-m-d') }}"
+                       style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;outline:none;box-sizing:border-box;"
+                       onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+            </div>
+            <div style="margin-bottom:16px;">
+                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Reason <span style="color:#DC2626;">*</span></label>
+                <textarea name="reason" required rows="3"
+                          placeholder="Explain why you need more time…"
+                          style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;resize:none;outline:none;box-sizing:border-box;font-family:inherit;line-height:1.5;"
+                          onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"></textarea>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                <button type="submit"
+                        style="width:100%;padding:12px;border-radius:10px;background:linear-gradient(135deg,#DC2626,#B91C1C);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(220,38,38,.3);">
+                    <i class="fa fa-paper-plane" style="margin-right:6px;"></i> Submit Request
+                </button>
+                <button type="button" onclick="document.getElementById('_extModal').style.display='none'"
+                        style="width:100%;padding:12px;border-radius:10px;background:#F3F4F6;color:#374151;border:none;font-size:14px;font-weight:600;cursor:pointer;">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 @endsection

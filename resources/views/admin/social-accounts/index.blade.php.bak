@@ -4,12 +4,16 @@
 @section('content')
 <style>
 /* ── Credential helpers ── */
-.sa-cred-val  { font-size:12px; font-weight:600; color:#111827; font-family:monospace; background:#F3F4F6; border-radius:6px; padding:4px 8px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.sa-cred-btn  { border:none; border-radius:6px; padding:4px 8px; cursor:pointer; font-size:10px; flex-shrink:0; transition:background .15s; }
+.sa-cred-val  { font-size:12px; font-weight:500; color:#111827; font-family:monospace; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sa-cred-btn  { border:none; border-radius:6px; padding:3px 7px; cursor:pointer; font-size:10px; flex-shrink:0; transition:background .15s; }
 .sa-copy-btn  { background:#EEF2FF; color:#4F46E5; }
 .sa-copy-btn:hover  { background:#C7D2FE; }
 .sa-reveal-btn { background:#F3F4F6; color:#6B7280; }
 .sa-reveal-btn:hover { background:#E5E7EB; }
+/* ── Vault-style cred row ── */
+.vc-row   { display:flex; align-items:center; gap:8px; }
+.vc-icon  { width:20px; text-align:center; flex-shrink:0; }
+.vc-label { font-size:10px; color:#9CA3AF; width:62px; flex-shrink:0; text-transform:uppercase; letter-spacing:.04em; }
 /* ── Platform filter tabs ── */
 .sa-plat-tab { display:inline-flex; align-items:center; gap:5px; padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; border:1.5px solid #E5E7EB; background:#fff; transition:all .15s; text-decoration:none; color:#374151; white-space:nowrap; }
 .sa-plat-tab.active, .sa-plat-tab:hover { border-color:#6366F1; background:#EEF2FF; color:#4F46E5; }
@@ -350,62 +354,77 @@ let formPreselectedUserIds = [];
                 default     => ['bg'=>'#F9FAFB','border'=>'#E5E7EB','color'=>'#6B7280'],
             };
         @endphp
-        <div class="sa-card" style="animation-delay:{{ $idx * 0.035 }}s;"
+        <div class="sa-card" style="animation-delay:{{ $idx * 0.035 }}s;cursor:pointer;"
              x-show="matchesCard('{{ addslashes($account->name) }}', '{{ $account->status }}')"
-             x-data="{showPw:false}">
+             x-data="{showPw:false}"
+             @click="openEdit({
+                id: {{ $account->id }},
+                name: '{{ addslashes($account->name) }}',
+                platform: '{{ $account->platform }}',
+                customer_id: {{ $account->customer_id ?? 'null' }},
+                username: '{{ addslashes($account->username ?? '') }}',
+                email: '{{ addslashes($account->email ?? '') }}',
+                account_id: '{{ addslashes($account->account_id ?? '') }}',
+                page_url: '{{ addslashes($account->page_url ?? '') }}',
+                status: '{{ $account->status }}',
+                notes: {{ json_encode($account->notes ?? '') }},
+                has_password: {{ $account->password ? 'true' : 'false' }},
+                user_ids: {{ json_encode($assignedUsers->pluck('id')->toArray()) }}
+             })">
 
-            {{-- ── Colored header zone ── --}}
-            <div style="padding:14px 16px 13px;background:{{ $pi['bg'] }};border-bottom:1.5px solid {{ $pi['color'] }}25;display:flex;align-items:center;gap:12px;">
-                {{-- Platform icon with shadow --}}
-                <div style="width:50px;height:50px;border-radius:12px;background:{{ $pi['color'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px {{ $pi['color'] }}45;">
-                    <i class="fab {{ $pi['icon'] }}" style="font-size:22px;color:#fff;"></i>
+            {{-- ── Header: gradient + platform icon inline ── --}}
+            <div style="background:linear-gradient(135deg,{{ $pi['color'] }}18,{{ $pi['color'] }}08);padding:16px 18px 13px;display:flex;align-items:flex-start;gap:13px;border-bottom:1.5px solid {{ $pi['color'] }}18;">
+                <div style="width:50px;height:50px;border-radius:13px;background:{{ $pi['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px {{ $pi['color'] }}22;">
+                    <i class="fab {{ $pi['icon'] }}" style="font-size:23px;color:{{ $pi['color'] }};"></i>
                 </div>
-                {{-- Name + badges --}}
                 <div style="flex:1;min-width:0;">
-                    <p style="font-size:15px;font-weight:800;color:#111827;margin:0 0 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:-.2px;">{{ $account->name }}</p>
+                    <h3 style="font-size:15px;font-weight:800;color:#111827;margin:0 0 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:-.2px;">{{ $account->name }}</h3>
                     <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
-                        <span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;background:{{ $pi['color'] }}18;color:{{ $pi['color'] }};text-transform:uppercase;letter-spacing:.07em;border:1px solid {{ $pi['color'] }}28;">{{ $pi['label'] }}</span>
+                        <span style="width:7px;height:7px;border-radius:50%;background:{{ $stDot }};flex-shrink:0;"></span>
+                        <span style="font-size:12px;color:#6B7280;font-weight:500;">{{ $pi['label'] }}</span>
                         @if($customer)
-                        <a href="{{ route('admin.customers.show', $customer->id) }}"
-                           style="font-size:10px;color:#6366F1;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;">
-                            <i class="fas fa-building" style="font-size:7px;"></i> {{ $customer->name }}
-                        </a>
+                        <span style="font-size:11px;color:#D1D5DB;">·</span>
+                        <i class="fas fa-building" style="font-size:9px;color:#6366F1;"></i>
+                        <a href="{{ route('admin.customers.show', $customer->id) }}" @click.stop
+                           style="font-size:11px;color:#6366F1;font-weight:600;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px;">{{ $customer->name }}</a>
                         @elseif($account->username)
-                        <span style="font-size:10px;color:#6B7280;font-family:monospace;">&#64;{{ $account->username }}</span>
+                        <span style="font-size:11px;color:#D1D5DB;">·</span>
+                        <span style="font-size:11px;color:#6B7280;font-family:monospace;">&#64;{{ $account->username }}</span>
                         @endif
                     </div>
                 </div>
-                {{-- Status pill --}}
-                <div style="flex-shrink:0;">
-                    <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;background:{{ $stPill['bg'] }};border:1px solid {{ $stPill['border'] }};">
-                        <span style="width:5px;height:5px;border-radius:50%;background:{{ $stDot }};flex-shrink:0;"></span>
-                        <span style="font-size:9px;font-weight:700;color:{{ $stPill['color'] }};text-transform:uppercase;letter-spacing:.08em;">{{ $account->status }}</span>
-                    </span>
-                </div>
+                <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:{{ $stPill['bg'] }};color:{{ $stPill['color'] }};flex-shrink:0;text-transform:capitalize;border:1px solid {{ $stPill['border'] }};">
+                    {{ $account->status }}
+                </span>
             </div>
 
             {{-- ── Credentials ── --}}
             @if($hasCreds)
-            <div class="sa-rule"></div>
-            <div style="padding:10px 16px;display:flex;flex-direction:column;">
+            <div style="padding:12px 18px;display:flex;flex-direction:column;gap:7px;border-bottom:1.5px solid #F3F4F6;">
+                <p style="font-size:10px;font-weight:700;color:#4F46E5;text-transform:uppercase;letter-spacing:.05em;margin:0 0 2px;display:flex;align-items:center;gap:5px;">
+                    <i class="fas fa-vault" style="font-size:9px;"></i> Credentials
+                </p>
                 @if($account->email)
-                <div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid #F7F8FA;">
-                    <span class="sa-cred-label">Email</span>
-                    <span style="font-size:12px;color:#111827;font-family:monospace;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $account->email }}</span>
-                    <button class="sa-cred-btn sa-copy-btn" style="margin-left:6px;" onclick="copyToClipboard('{{ addslashes($account->email) }}', this)" title="Copy"><i class="fas fa-copy"></i></button>
+                <div class="vc-row">
+                    <div class="vc-icon"><i class="fas fa-envelope" style="font-size:10px;color:#A5B4FC;"></i></div>
+                    <span class="vc-label">Email</span>
+                    <span class="sa-cred-val">{{ $account->email }}</span>
+                    <button class="sa-cred-btn sa-copy-btn" onclick="copyToClipboard('{{ addslashes($account->email) }}', this)" title="Copy"><i class="fas fa-copy"></i></button>
                 </div>
                 @endif
-                @if($account->username && !$account->email)
-                <div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid #F7F8FA;">
-                    <span class="sa-cred-label">Handle</span>
-                    <span style="font-size:12px;color:#111827;font-family:monospace;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">&#64;{{ $account->username }}</span>
-                    <button class="sa-cred-btn sa-copy-btn" style="margin-left:6px;" onclick="copyToClipboard('{{ addslashes($account->username) }}', this)" title="Copy"><i class="fas fa-copy"></i></button>
+                @if($account->username)
+                <div class="vc-row">
+                    <div class="vc-icon"><i class="fas fa-at" style="font-size:10px;color:#C4B5FD;"></i></div>
+                    <span class="vc-label">Handle</span>
+                    <span class="sa-cred-val">{{ $account->username }}</span>
+                    <button class="sa-cred-btn sa-copy-btn" onclick="copyToClipboard('{{ addslashes($account->username) }}', this)" title="Copy"><i class="fas fa-copy"></i></button>
                 </div>
                 @endif
                 @if($account->password)
-                <div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid #F7F8FA;">
-                    <span class="sa-cred-label">Password</span>
-                    <span style="font-size:12px;color:#111827;font-family:monospace;flex:1;letter-spacing:.12em;">••••••••</span>
+                <div class="vc-row">
+                    <div class="vc-icon"><i class="fas fa-lock" style="font-size:10px;color:#FCA5A5;"></i></div>
+                    <span class="vc-label">Password</span>
+                    <span class="sa-cred-val" style="letter-spacing:.1em;">••••••••</span>
                     <button class="sa-cred-btn sa-reveal-btn"
                             onclick="openSaRevealModal({{ $account->id }}, '{{ addslashes($account->name) }}')"
                             title="Reveal password">
@@ -414,10 +433,11 @@ let formPreselectedUserIds = [];
                 </div>
                 @endif
                 @if($account->account_id)
-                <div style="display:flex;align-items:center;padding:5px 0;">
-                    <span class="sa-cred-label">Acct ID</span>
-                    <span style="font-size:12px;color:#111827;font-family:monospace;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $account->account_id }}</span>
-                    <button class="sa-cred-btn sa-copy-btn" style="margin-left:6px;" onclick="copyToClipboard('{{ addslashes($account->account_id) }}', this)" title="Copy"><i class="fas fa-copy"></i></button>
+                <div class="vc-row">
+                    <div class="vc-icon"><i class="fas fa-fingerprint" style="font-size:10px;color:#6EE7B7;"></i></div>
+                    <span class="vc-label">Acct ID</span>
+                    <span class="sa-cred-val">{{ $account->account_id }}</span>
+                    <button class="sa-cred-btn sa-copy-btn" onclick="copyToClipboard('{{ addslashes($account->account_id) }}', this)" title="Copy"><i class="fas fa-copy"></i></button>
                 </div>
                 @endif
             </div>
@@ -425,10 +445,9 @@ let formPreselectedUserIds = [];
 
             {{-- ── Page URL ── --}}
             @if($account->page_url)
-            <div class="sa-rule"></div>
-            <div style="padding:8px 16px;">
+            <div style="padding:8px 18px;border-bottom:1.5px solid #F3F4F6;">
                 <a href="{{ $account->page_url }}" target="_blank"
-                   style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:{{ $pi['color'] }};text-decoration:none;text-transform:uppercase;letter-spacing:.06em;">
+                   style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:{{ $pi['color'] }};text-decoration:none;">
                     <i class="fas fa-arrow-up-right-from-square" style="font-size:9px;"></i>
                     {{ parse_url($account->page_url, PHP_URL_HOST) ?? 'Open Page' }}
                 </a>
@@ -437,42 +456,40 @@ let formPreselectedUserIds = [];
 
             {{-- ── Notes ── --}}
             @if($account->notes)
-            <div class="sa-rule"></div>
-            <div style="padding:8px 16px;">
+            <div style="padding:8px 18px;border-bottom:1.5px solid #F3F4F6;">
                 <p style="font-size:11.5px;color:#6B7280;margin:0;line-height:1.6;">{{ $account->notes }}</p>
             </div>
             @endif
 
             {{-- ── Footer: access + actions ── --}}
-            <div class="sa-rule" style="margin-top:auto;"></div>
-            <div style="padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <div style="padding:11px 18px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;">
                 {{-- Stacked avatars --}}
-                <div style="display:flex;align-items:center;gap:6px;min-width:0;">
+                <div style="display:flex;align-items:center;gap:7px;min-width:0;">
                     @if($assignedUsers->count())
                     <div style="display:flex;align-items:center;">
                         @foreach($assignedUsers->take(4) as $au)
                         @php $auc = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6'][$au->id % 5]; @endphp
                         <span title="{{ $au->name }}"
-                              style="width:22px;height:22px;border-radius:50%;border:2px solid #fff;background:{{ $auc }};display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;{{ $loop->first ? '' : 'margin-left:-6px;' }}">
+                              style="width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:{{ $auc }};display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;{{ $loop->first ? '' : 'margin-left:-7px;' }}">
                             {{ strtoupper(substr($au->name, 0, 1)) }}
                         </span>
                         @endforeach
                         @if($assignedUsers->count() > 4)
-                        <span style="width:22px;height:22px;border-radius:50%;border:2px solid #fff;background:#E5E7EB;display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#6B7280;margin-left:-6px;">
+                        <span style="width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:#E5E7EB;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#6B7280;margin-left:-7px;">
                             +{{ $assignedUsers->count() - 4 }}
                         </span>
                         @endif
                     </div>
-                    <span style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;">
+                    <span style="font-size:11px;color:#9CA3AF;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">
                         {{ $assignedUsers->count() === 1 ? $assignedUsers->first()->name : $assignedUsers->count().' users' }}
                     </span>
                     @else
-                    <span style="font-size:10px;font-weight:600;color:#D1D5DB;text-transform:uppercase;letter-spacing:.06em;">No access</span>
+                    <span style="font-size:11px;color:#D1D5DB;font-weight:500;">No access</span>
                     @endif
                 </div>
                 {{-- Actions --}}
-                <div style="display:flex;gap:4px;flex-shrink:0;">
-                    <button @click="openEdit({
+                <div style="display:flex;gap:5px;flex-shrink:0;">
+                    <button @click.stop="openEdit({
                                 id: {{ $account->id }},
                                 name: '{{ addslashes($account->name) }}',
                                 platform: '{{ $account->platform }}',
@@ -486,13 +503,13 @@ let formPreselectedUserIds = [];
                                 has_password: {{ $account->password ? 'true' : 'false' }},
                                 user_ids: {{ json_encode($assignedUsers->pluck('id')->toArray()) }}
                             })"
-                            style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;background:transparent;color:#374151;border:1px solid #E2E4E9;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.05em;transition:all .15s;"
-                            onmouseover="this.style.borderColor='#4F46E5';this.style.color='#4F46E5';" onmouseout="this.style.borderColor='#E2E4E9';this.style.color='#374151';">
+                            style="display:inline-flex;align-items:center;gap:5px;padding:6px 13px;background:#EEF2FF;color:#4F46E5;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;transition:background .15s;"
+                            onmouseover="this.style.background='#C7D2FE'" onmouseout="this.style.background='#EEF2FF'">
                         <i class="fas fa-pen" style="font-size:9px;"></i> Edit
                     </button>
-                    <button @click="openDelete({{ $account->id }}, '{{ addslashes($account->name) }}')"
-                            style="width:28px;height:28px;background:transparent;color:#9CA3AF;border:1px solid #E2E4E9;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;"
-                            onmouseover="this.style.borderColor='#DC2626';this.style.color='#DC2626';" onmouseout="this.style.borderColor='#E2E4E9';this.style.color='#9CA3AF';"
+                    <button @click.stop="openDelete({{ $account->id }}, '{{ addslashes($account->name) }}')"
+                            style="width:30px;height:30px;background:#FEF2F2;color:#DC2626;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;"
+                            onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'"
                             title="Delete">
                         <i class="fas fa-trash" style="font-size:9px;"></i>
                     </button>
@@ -1187,44 +1204,6 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && document.getElementById('sa-reveal-modal')?.style.display === 'flex') submitSaReveal();
 });
 
-function pwReveal(accountId) {
-    return {
-        pw: '', revealed: false, loading: false, seconds: 0, _countdown: null,
-        toggle() {
-
-        hide() {
-            this.revealed = false;
-            this.pw = '';          // wipe from memory on manual hide
-            this.seconds = 0;
-            clearInterval(this._countdown);
-        },
-
-        _startCountdown() {
-            clearInterval(this._countdown);
-            this.seconds = 15;
-            this._countdown = setInterval(() => {
-                this.seconds--;
-                if (this.seconds <= 0) {
-                    clearInterval(this._countdown);
-                    this.revealed = false;
-                    this.pw = '';  // wipe after auto-hide
-                }
-            }, 1000);
-        },
-
-        copyPw(btn) {
-            if (!this.pw) return;
-            navigator.clipboard.writeText(this.pw).then(() => {
-                const icon = btn.querySelector('i');
-                if (icon) {
-                    icon.className = 'fas fa-check';
-                    icon.style.color = '#16A34A';
-                    setTimeout(() => { icon.className = 'fas fa-copy'; icon.style.color = ''; }, 1800);
-                }
-            });
-        },
-    };
-}
 </script>
 @endpush
 

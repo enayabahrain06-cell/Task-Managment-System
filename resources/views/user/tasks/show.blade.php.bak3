@@ -349,7 +349,7 @@
                 'url'     => $a->url(),
                 'icon'    => $a->iconClass(),
                 'isLink'  => $a->isLink(),
-                'isImage' => in_array(strtolower(pathinfo($a->name, PATHINFO_EXTENSION)), ['jpg','jpeg','png','gif','webp','svg']),
+                'isImage' => in_array(strtolower(pathinfo($a->name, PATHINFO_EXTENSION)), ['jpg','jpeg','png','gif','webp','svg','avif']),
             ])->values();
         @endphp
         <div x-data="{
@@ -368,14 +368,27 @@
                 <div style="display:flex;flex-direction:column;gap:8px;">
                     @foreach($allAttachments as $att)
                     @php
-                        $attDlUrl = $att->isFile() ? route('user.attachments.download', $att) : $att->url();
-                        $item = ['name'=>$att->name,'size'=>$att->humanSize(),'url'=>$att->url(),'downloadUrl'=>$attDlUrl,'previewUrl'=>$att->isFile()?($attDlUrl.'?inline=1'):$att->url(),'icon'=>$att->iconClass(),'isLink'=>$att->isLink(),'isImage'=>in_array(strtolower(pathinfo($att->name,PATHINFO_EXTENSION)),['jpg','jpeg','png','gif','webp','svg']),'isVideo'=>in_array(strtolower(pathinfo($att->name,PATHINFO_EXTENSION)),['mp4','mov','avi','webm','mkv'])];
+                        $attDlUrl    = $att->isFile() ? route('user.attachments.download', $att) : $att->url();
+                        $attImgExts  = ['jpg','jpeg','png','gif','webp','svg','avif'];
+                        $attExt      = strtolower(pathinfo($att->name, PATHINFO_EXTENSION));
+                        $attIsImage  = in_array($attExt, $attImgExts);
+                        $attIsVideo  = in_array($attExt, ['mp4','mov','avi','webm','mkv']);
+                        $item = ['name'=>$att->name,'size'=>$att->humanSize(),'url'=>$att->url(),'downloadUrl'=>$attDlUrl,'previewUrl'=>$att->isFile()?($attDlUrl.'?inline=1'):$att->url(),'icon'=>$att->iconClass(),'isLink'=>$att->isLink(),'isImage'=>$attIsImage,'isVideo'=>$attIsVideo];
                     @endphp
                     <button type="button" @click="show({{ json_encode($item) }})"
                             style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:#FAFAFA;border:1px solid #F3F4F6;border-radius:10px;width:100%;text-align:left;cursor:pointer;transition:border-color .15s,background .15s;"
                             onmouseover="this.style.background='#F0F0FF';this.style.borderColor='#C7D2FE'" onmouseout="this.style.background='#FAFAFA';this.style.borderColor='#F3F4F6'">
-                        <div style="width:36px;height:36px;border-radius:9px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <div style="width:44px;height:44px;border-radius:9px;overflow:hidden;flex-shrink:0;background:#EEF2FF;display:flex;align-items:center;justify-content:center;">
+                            @if($attIsImage)
+                            <img src="{{ $att->url() }}" alt="" loading="lazy"
+                                 style="width:44px;height:44px;object-fit:cover;display:block;"
+                                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                            <span style="display:none;width:44px;height:44px;align-items:center;justify-content:center;">
+                                <i class="fa {{ $att->iconClass() }}" style="color:#6366F1;font-size:14px;"></i>
+                            </span>
+                            @else
                             <i class="fa {{ $att->iconClass() }}" style="color:#6366F1;font-size:14px;"></i>
+                            @endif
                         </div>
                         <div style="flex:1;min-width:0;">
                             <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $att->name }}</p>
@@ -452,6 +465,39 @@
         </div>
         @endif
 
+        {{-- Social-only assignee CTA --}}
+        @if($isSocialAssignee && !$task->social_posted_at)
+        <div style="background:linear-gradient(135deg,#EEF2FF,#F5F3FF);border:1.5px solid #C7D2FE;border-radius:14px;padding:20px;display:flex;align-items:center;gap:16px;">
+            <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(99,102,241,.3);">
+                <i class="fas fa-share-alt" style="color:#fff;font-size:18px;"></i>
+            </div>
+            <div style="flex:1;">
+                <p style="font-size:14px;font-weight:700;color:#3730A3;margin:0 0 4px;">Social Media Post Pending</p>
+                <p style="font-size:12px;color:#6D28D9;margin:0;">You're assigned to post this content on social media. Record the post once it's live.</p>
+            </div>
+            <a href="{{ route('social.show', $task) }}"
+               style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;box-shadow:0 4px 12px rgba(99,102,241,.3);flex-shrink:0;white-space:nowrap;"
+               onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">
+                <i class="fas fa-arrow-right" style="font-size:11px;"></i> Record Post
+            </a>
+        </div>
+        @elseif($isSocialAssignee && $task->social_posted_at)
+        <div style="background:linear-gradient(135deg,#ECFDF5,#F0FDF4);border:1.5px solid #A7F3D0;border-radius:14px;padding:20px;display:flex;align-items:center;gap:16px;">
+            <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#059669,#10B981);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-circle-check" style="color:#fff;font-size:18px;"></i>
+            </div>
+            <div style="flex:1;">
+                <p style="font-size:14px;font-weight:700;color:#065F46;margin:0 0 4px;">Social Post Submitted</p>
+                <p style="font-size:12px;color:#047857;margin:0;">Posted on {{ $task->social_posted_at->format(config('app.date_format', 'M d, Y') . ' · H:i') }}.</p>
+            </div>
+            <a href="{{ route('social.show', $task) }}"
+               style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:#ECFDF5;color:#059669;border:1.5px solid #A7F3D0;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;flex-shrink:0;white-space:nowrap;"
+               onmouseover="this.style.background='#D1FAE5'" onmouseout="this.style.background='#ECFDF5'">
+                <i class="fas fa-eye" style="font-size:11px;"></i> View Post
+            </a>
+        </div>
+        @endif
+
         {{-- Status Banner --}}
         @if(!$isSocialAssignee)
         @if($task->status === 'submitted')
@@ -524,17 +570,34 @@
         </div>
 
         @elseif($task->status === 'paused')
-        <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:12px;">
-            <div style="width:36px;height:36px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <i class="fa fa-circle-pause" style="color:#6B7280;font-size:16px;"></i>
+        @php
+            $lastPauseLog   = $task->logs->where('action','timer_paused')->sortByDesc('created_at')->first();
+            $pauseReasons   = ($lastPauseLog && !empty($lastPauseLog->metadata['reason']))
+                ? array_filter(array_map('trim', explode(', ', $lastPauseLog->metadata['reason'])))
+                : [];
+        @endphp
+        <div style="background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:14px;padding:18px 20px;display:flex;align-items:flex-start;gap:12px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
+                <i class="fa fa-circle-pause" style="color:#D97706;font-size:16px;"></i>
             </div>
-            <div style="flex:1;">
-                <p style="font-size:14px;font-weight:700;color:#374151;margin:0;">Timer Paused</p>
-                <p style="font-size:12px;color:#6B7280;margin:0;">Your timer is paused. Resume when you're ready to continue working.</p>
+            <div style="flex:1;min-width:0;">
+                <p style="font-size:14px;font-weight:700;color:#92400E;margin:0 0 3px;">Timer Paused</p>
+                @if($pauseReasons)
+                <p style="font-size:11px;font-weight:600;color:#B45309;margin:0 0 8px;text-transform:uppercase;letter-spacing:.04em;">Paused because:</p>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                    @foreach($pauseReasons as $pr)
+                    <span style="font-size:12px;font-weight:600;background:#FEF3C7;color:#D97706;border:1.5px solid #FDE68A;padding:4px 12px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;">
+                        <i class="fa fa-circle-pause" style="font-size:9px;"></i> {{ $pr }}
+                    </span>
+                    @endforeach
+                </div>
+                @else
+                <p style="font-size:12px;color:#B45309;margin:0;">Resume when you're ready to continue working.</p>
+                @endif
             </div>
-            <form method="POST" action="{{ route('user.tasks.timer.start', $task) }}">
+            <form id="_resumeTimerForm" method="POST" action="{{ route('user.tasks.timer.start', $task) }}" style="flex-shrink:0;">
                 @csrf
-                <button type="submit" style="background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
+                <button type="button" onclick="confirmStart('_resumeTimerForm')" style="background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
                     <i class="fa fa-circle-play"></i> Resume Timer
                 </button>
             </form>
@@ -595,16 +658,17 @@
                 </p>
             </div>
             @if($activeSegment)
-            <form method="POST" action="{{ route('user.tasks.timer.pause', $task) }}">
+            <form id="_pauseForm" method="POST" action="{{ route('user.tasks.timer.pause', $task) }}">
                 @csrf
-                <button type="submit" style="background:#F59E0B;color:#fff;border:none;padding:9px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
+                <input type="hidden" name="pause_reason" id="_pauseReasonInput">
+                <button type="button" onclick="openPauseModal('_pauseForm','_pauseReasonInput')" style="background:#F59E0B;color:#fff;border:none;padding:9px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
                     <i class="fa fa-circle-pause"></i> Pause
                 </button>
             </form>
             @else
-            <form method="POST" action="{{ route('user.tasks.timer.start', $task) }}">
+            <form id="_startTimerForm" method="POST" action="{{ route('user.tasks.timer.start', $task) }}">
                 @csrf
-                <button type="submit" style="background:linear-gradient(135deg,#D97706,#B45309);color:#fff;border:none;padding:9px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
+                <button type="button" onclick="confirmStart('_startTimerForm')" style="background:linear-gradient(135deg,#D97706,#B45309);color:#fff;border:none;padding:9px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
                     <i class="fa fa-circle-play"></i> Start Timer
                 </button>
             </form>
@@ -621,15 +685,16 @@
                 dragging: false, dragCount: 0,
                 editorFocused: false, colorOpen: false, selectedColor: '#EF4444', savedRange: null,
                 linkOpen: false, linkUrl: '',
+                fmtSize(b) { if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; },
+                addUFiles(fileList) {
+                    Array.from(fileList).forEach(f => this.uFiles.push({name:f.name, size:this.fmtSize(f.size), file:f}));
+                    this.syncUInput();
+                },
+                removeUFile(i) { this.uFiles.splice(i,1); this.syncUInput(); },
+                syncUInput() { const dt=new DataTransfer(); this.uFiles.forEach(f=>dt.items.add(f.file)); this.$refs.uFileInput.files=dt.files; },
                 handleDrop(e) {
                     this.dragCount = 0; this.dragging = false;
-                    const files = Array.from(e.dataTransfer.files);
-                    if (!files.length) return;
-                    this.uFiles = files.map(f => f.name);
-                    const input = this.$refs.uFileInput;
-                    const dt = new DataTransfer();
-                    files.forEach(f => dt.items.add(f));
-                    input.files = dt.files;
+                    if (e.dataTransfer.files.length) this.addUFiles(e.dataTransfer.files);
                 },
                 saveRange() { const s=window.getSelection(); if(s.rangeCount) this.savedRange=s.getRangeAt(0).cloneRange(); },
                 restoreRange() { if(!this.savedRange) return; const s=window.getSelection(); s.removeAllRanges(); s.addRange(this.savedRange); },
@@ -777,30 +842,27 @@
                             : 'display:flex;align-items:center;gap:12px;padding:12px 16px;border:1.5px dashed #D1D5DB;border-radius:10px;cursor:pointer;background:#FAFAFA;transition:all .15s;'">
                         <i class="fa fa-paperclip" :style="dragging ? 'color:#6366F1;font-size:16px;' : 'color:#9CA3AF;font-size:16px;'"></i>
                         <div style="flex:1;">
-                            <p x-text="uFiles.length === 0 ? (dragging ? 'Drop files here' : 'Attach files — or drag & drop') : uFiles.length + (uFiles.length === 1 ? ' file selected' : ' files selected')"
-                               style="font-size:13px;font-weight:500;color:#374151;margin:0;"></p>
-                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Images, PDF, ZIP and more — drop multiple files at once</p>
+                            <p x-text="dragging ? 'Drop files here' : 'Attach files — or drag & drop'" style="font-size:13px;font-weight:500;color:#374151;margin:0;"></p>
+                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Images, PDF, ZIP and more · multiple files supported</p>
                         </div>
-                        <template x-if="uFiles.length > 0">
-                            <button type="button" @click.prevent="uFiles=[]; $refs.uFileInput.value=''"
-                                    style="width:22px;height:22px;border-radius:50%;background:#FEE2E2;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                <i class="fa fa-xmark" style="font-size:10px;color:#DC2626;"></i>
-                            </button>
-                        </template>
                         <input type="file" name="files[]" multiple x-ref="uFileInput"
-                               @change="uFiles = Array.from($event.target.files).map(f => f.name)"
+                               @change="addUFiles($event.target.files)"
                                style="display:none;">
                     </label>
-                    {{-- File chips --}}
                     <template x-if="uFiles.length > 0">
-                        <ul style="margin:6px 0 0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:4px;">
-                            <template x-for="name in uFiles" :key="name">
-                                <li style="display:flex;align-items:center;gap:4px;padding:2px 8px;background:#EEF2FF;border-radius:6px;font-size:11px;color:#4F46E5;font-weight:500;">
-                                    <i class="fa fa-file" style="font-size:9px;"></i>
-                                    <span x-text="name"></span>
-                                </li>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
+                            <template x-for="(f, i) in uFiles" :key="i">
+                                <div style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:20px;max-width:220px;">
+                                    <i class="fa fa-paperclip" style="color:#6366F1;font-size:10px;flex-shrink:0;"></i>
+                                    <span x-text="f.name" style="font-size:11px;font-weight:500;color:#3730A3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;"></span>
+                                    <span x-text="f.size" style="font-size:10px;color:#818CF8;flex-shrink:0;white-space:nowrap;"></span>
+                                    <button type="button" @click.prevent="removeUFile(i)"
+                                            style="width:16px;height:16px;border-radius:50%;background:#FEE2E2;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                        <i class="fa fa-xmark" style="font-size:8px;color:#DC2626;"></i>
+                                    </button>
+                                </div>
                             </template>
-                        </ul>
+                        </div>
                     </template>
                     @error('files.*')<p style="font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</p>@enderror
                     </div>
@@ -858,7 +920,7 @@
                                     ? (showModal = true)
                                     : (getBody()
                                         ? $refs.commentBtn.click()
-                                        : document.getElementById('_startForm').submit())
+                                        : confirmStart('_startForm'))
                             @else
                                 $refs.commentBtn?.click()
                             @endif"
@@ -1023,6 +1085,16 @@
                             <span style="font-size:11px;background:#FEF3C7;color:#D97706;padding:2px 8px;border-radius:6px;">{{ Str::limit($meta['reason'], 80) }}</span>
                             @endif
                         </div>
+                        @elseif($log->action === 'timer_paused' && !empty($meta['reason']))
+                        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;align-items:center;">
+                            <span style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.04em;">Reason:</span>
+                            @foreach(explode(', ', $meta['reason']) as $pauseReason)
+                            <span style="font-size:11px;font-weight:600;background:#FEF3C7;color:#D97706;padding:3px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;">
+                                <i class="fa fa-circle-pause" style="font-size:9px;"></i>
+                                {{ trim($pauseReason) }}
+                            </span>
+                            @endforeach
+                        </div>
                         @elseif($log->action === 'auto_paused' && isset($meta['paused_by_task_id']))
                         <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;">
                             <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
@@ -1084,9 +1156,9 @@
                         @if(isset($meta['rejection_reason']))
                         <p style="font-size:12px;color:#DC2626;background:#FEF2F2;padding:6px 10px;border-radius:8px;border-left:3px solid #EF4444;margin:5px 0 0;">"{{ $meta['rejection_reason'] }}"</p>
                         @endif
-                        @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','task_reassigned','task_transferred','deadline_updated','auto_paused','social_posted','social_post_edited','attachment_added','attachment_deleted']))
+                        @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','task_reassigned','task_transferred','deadline_updated','auto_paused','timer_paused','social_posted','social_post_edited','attachment_added','attachment_deleted']))
                         @php
-                            $noteHtml = e($log->note);
+                            $noteHtml = e(strip_tags($log->note));
                             $noteHtml = preg_replace_callback('/(https?:\/\/[^\s<>"\']+)/i', function($m) {
                                 $url   = $m[1];
                                 $label = preg_replace('/^https?:\/\/(www\.)?/', '', $url);
@@ -1177,9 +1249,18 @@
                                 </a>
                             @elseif($sub->file_path)
                                 @php
+                                    $subFileExists = \Illuminate\Support\Facades\Storage::disk('public')->exists($sub->file_path) || $sub->nas_path;
                                     $subItem = json_encode(['name'=>$sub->original_filename,'url'=>$subUrl,'isImage'=>$subIsImage,'isVideo'=>$subIsVideo,'version'=>$sub->version ?? 1]);
                                 @endphp
-                                @if($subIsImage)
+                                @if(!$subFileExists)
+                                <div style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#F9FAFB;border:1px dashed #D1D5DB;border-radius:8px;max-width:300px;margin-bottom:10px;">
+                                    <i class="fa fa-triangle-exclamation" style="color:#D97706;font-size:13px;flex-shrink:0;"></i>
+                                    <div style="min-width:0;">
+                                        <p style="font-size:12px;font-weight:600;color:#374151;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $sub->original_filename ?? 'File' }}</p>
+                                        <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">File no longer available</p>
+                                    </div>
+                                </div>
+                                @elseif($subIsImage)
                                 <button type="button" @click="showSub({{ $subItem }})"
                                         style="display:block;margin-bottom:10px;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:300px;width:100%;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;"
                                         onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
@@ -1333,12 +1414,37 @@
                 @php
                     $comment = $entry['comment'];
                     $isAdmin = $entry['isAdmin'];
-                    $cExt = strtolower(pathinfo($comment->original_filename ?? '', PATHINFO_EXTENSION));
-                    $cIsImage = in_array($cExt, ['jpg','jpeg','png','gif','webp','svg']);
-                    $cIsVideo = in_array($cExt, ['mp4','mov','avi','webm','mkv']);
-                    $cUrl = $comment->fileUrl();
                     $cIconMap = ['pdf'=>'fa-file-pdf','doc'=>'fa-file-word','docx'=>'fa-file-word','xls'=>'fa-file-excel','xlsx'=>'fa-file-excel','ppt'=>'fa-file-powerpoint','pptx'=>'fa-file-powerpoint','zip'=>'fa-file-zipper','rar'=>'fa-file-zipper','txt'=>'fa-file-lines'];
-                    $cIcon = $cIconMap[$cExt] ?? 'fa-file';
+                    $cFiles = [];
+                    if ($comment->files) {
+                        foreach ($comment->files as $f) {
+                            $ext = strtolower(pathinfo($f['original_filename'] ?? '', PATHINFO_EXTENSION));
+                            $url = \Illuminate\Support\Facades\Storage::url($f['path'] ?? '');
+                            $cFiles[] = [
+                                'name'    => $f['original_filename'] ?? 'file',
+                                'ext'     => $ext,
+                                'isImage' => in_array($ext, ['jpg','jpeg','png','gif','webp','svg','avif','avifs']),
+                                'isVideo' => in_array($ext, ['mp4','mov','avi','webm','mkv']),
+                                'icon'    => $cIconMap[$ext] ?? 'fa-file',
+                                'url'     => $url,
+                                'nasPath' => $f['nas_path'] ?? null,
+                                'exists'  => \Illuminate\Support\Facades\Storage::disk('public')->exists($f['path'] ?? '') || ($f['nas_path'] ?? null),
+                            ];
+                        }
+                    } elseif ($comment->file_path) {
+                        $ext = strtolower(pathinfo($comment->original_filename ?? '', PATHINFO_EXTENSION));
+                        $url = $comment->fileUrl();
+                        $cFiles[] = [
+                            'name'    => $comment->original_filename ?? 'file',
+                            'ext'     => $ext,
+                            'isImage' => in_array($ext, ['jpg','jpeg','png','gif','webp','svg']),
+                            'isVideo' => in_array($ext, ['mp4','mov','avi','webm','mkv']),
+                            'icon'    => $cIconMap[$ext] ?? 'fa-file',
+                            'url'     => $url,
+                            'nasPath' => $comment->nas_path,
+                            'exists'  => \Illuminate\Support\Facades\Storage::disk('public')->exists($comment->file_path) || $comment->nas_path,
+                        ];
+                    }
                     $isFirstWork = $firstWorkKey && $entry['at']->toDateTimeString() === $firstWorkKey;
                 @endphp
                 <div x-data="{
@@ -1364,7 +1470,7 @@
                         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
                             <span style="font-size:12px;font-weight:600;color:#111827;">{{ $comment->user->name ?? 'Unknown' }}</span>
                             @if($isAdmin)<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;background:#EEF2FF;color:#4F46E5;">Admin</span>@endif
-                            @if($comment->file_path)<span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:10px;background:#D1FAE5;color:#065F46;display:inline-flex;align-items:center;gap:3px;"><i class="fa fa-paperclip" style="font-size:9px;"></i> {{ $comment->original_filename }}</span>@endif
+                            @if(count($cFiles) > 0)<span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:10px;background:#D1FAE5;color:#065F46;display:inline-flex;align-items:center;gap:3px;"><i class="fa fa-paperclip" style="font-size:9px;"></i> {{ count($cFiles) }} {{ count($cFiles) === 1 ? 'file' : 'files' }}</span>@endif
                             @if($isFirstWork)<span style="font-size:10px;font-weight:700;padding:1px 8px;border-radius:10px;background:#D1FAE5;color:#059669;display:inline-flex;align-items:center;gap:3px;"><i class="fa fa-circle-play" style="font-size:9px;"></i> Started Working</span>@endif
                             @if($comment->edits->isNotEmpty())
                             <button @click="showHistory=!showHistory" style="font-size:10px;background:#F3F4F6;color:#9CA3AF;border:none;padding:1px 6px;border-radius:4px;cursor:pointer;">edited</button>
@@ -1378,66 +1484,100 @@
                         </div>
                         <div style="background:{{ $isAdmin ? '#F5F3FF' : '#F9FAFB' }};border:1px solid {{ $isAdmin ? '#EDE9FE' : '#E5E7EB' }};border-radius:10px;padding:10px 14px;{{ $isAdmin ? 'border-left:3px solid #8B5CF6;' : '' }}">
                             <div x-show="!editing">
-                                <div class="rte-field" style="font-size:13px;color:#374151;margin:0{{ $comment->file_path ? ' 0 10px' : '' }};line-height:1.6;padding:0;min-height:0;" x-html="linkifyHtml(body)"></div>
-                                @if($comment->file_path)
-                                    @php $cItem = json_encode(['name'=>$comment->original_filename,'url'=>$cUrl,'isImage'=>$cIsImage,'isVideo'=>$cIsVideo,'version'=>1]); @endphp
-                                    @if($cIsImage)
-                                    <button type="button" @click="showSub({{ $cItem }})"
-                                            style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;width:100%;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;"
-                                            onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
-                                        <img src="{{ $cUrl }}" alt="{{ $comment->original_filename }}" style="width:100%;max-height:140px;object-fit:cover;display:block;">
-                                        <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
-                                            <i class="fa fa-image" style="color:#6366F1;font-size:10px;"></i>
-                                            <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $comment->original_filename }}</span>
-                                            @if($comment->nas_path)
-                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;flex-shrink:0;letter-spacing:.3px;">NAS</span>
+                                <div class="rte-field" style="font-size:13px;color:#374151;margin:0{{ count($cFiles) > 0 ? ' 0 10px' : '' }};line-height:1.6;padding:0;min-height:0;" x-html="linkifyHtml(body)"></div>
+                                @if(count($cFiles) > 0)
+                                @php
+                                    $mediaCf   = array_values(array_filter($cFiles, fn($f) => $f['isImage'] || $f['isVideo']));
+                                    $docCf     = array_values(array_filter($cFiles, fn($f) => !$f['isImage'] && !$f['isVideo']));
+                                    $visMax    = 4;
+                                    $visMed    = array_slice($mediaCf, 0, $visMax);
+                                    $hiddenCnt = max(0, count($mediaCf) - $visMax);
+                                    $mc = count($visMed);
+                                    if ($mc === 1)     { $gCols='1fr';     $gRows='';            $gW='320px'; $cellH='220px'; }
+                                    elseif ($mc === 2) { $gCols='1fr 1fr'; $gRows='';            $gW='380px'; $cellH='145px'; }
+                                    elseif ($mc === 3) { $gCols='2fr 1fr'; $gRows='115px 115px'; $gW='380px'; $cellH='auto';  }
+                                    else               { $gCols='1fr 1fr'; $gRows='130px 130px'; $gW='380px'; $cellH='auto';  }
+                                @endphp
+                                <div style="margin-top:8px;">
+                                    @if($mc > 0)
+                                    <div style="display:grid;grid-template-columns:{{ $gCols }};{{ $gRows ? 'grid-template-rows:'.$gRows.';' : '' }}gap:3px;border-radius:10px;overflow:hidden;max-width:min({{ $gW }},100%);">
+                                        @foreach($visMed as $vIdx => $cf)
+                                        @php
+                                            $cfItem  = json_encode(['name'=>$cf['name'],'url'=>$cf['url'],'isImage'=>$cf['isImage'],'isVideo'=>$cf['isVideo'],'version'=>1]);
+                                            $isLV    = ($vIdx === $mc - 1) && $hiddenCnt > 0;
+                                            $spanRow = ($mc === 3 && $vIdx === 0) ? 'grid-row:span 2;' : '';
+                                            $hStyle  = $cellH !== 'auto' ? 'height:'.$cellH.';' : '';
+                                        @endphp
+                                        <button type="button" x-data="{hov:false}" @mouseenter="hov=true" @mouseleave="hov=false"
+                                                @click="showSub({{ $cfItem }})"
+                                                style="position:relative;display:block;overflow:hidden;cursor:pointer;border:none;padding:0;background:#E5E7EB;{{ $spanRow }}{{ $hStyle }}">
+                                            @if(!$cf['exists'])
+                                            <div style="width:100%;height:100%;min-height:80px;background:#F3F4F6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;">
+                                                <i class="fa fa-image" style="font-size:16px;color:#D1D5DB;"></i>
+                                                <span style="font-size:10px;color:#9CA3AF;">Not found</span>
+                                            </div>
+                                            @elseif($cf['isImage'])
+                                            <img src="{{ $cf['url'] }}" alt="{{ $cf['name'] }}"
+                                                 style="width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s ease;"
+                                                 :style="{transform: hov ? 'scale(1.04)' : 'scale(1)'}">
                                             @else
-                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;flex-shrink:0;letter-spacing:.3px;">LOCAL</span>
+                                            <div style="width:100%;height:100%;min-height:80px;background:#111827;display:flex;align-items:center;justify-content:center;">
+                                                <div style="width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;">
+                                                    <i class="fa fa-play" style="color:#fff;font-size:13px;margin-left:3px;"></i>
+                                                </div>
+                                            </div>
                                             @endif
-                                            <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
-                                        </div>
-                                    </button>
-                                    @elseif($cIsVideo)
-                                    <button type="button" @click="showSub({{ $cItem }})"
-                                            style="display:block;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;max-width:280px;width:100%;cursor:pointer;background:none;padding:0;text-align:left;transition:border-color .15s;"
-                                            onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
-                                        <div style="background:#1F2937;height:90px;display:flex;align-items:center;justify-content:center;">
-                                            <div style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;">
-                                                <i class="fa fa-play" style="color:#fff;font-size:13px;margin-left:2px;"></i>
+                                            <div :style="{opacity: hov ? '1' : '0'}"
+                                                 style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.62) 0%,transparent 55%);transition:opacity .2s ease;display:flex;flex-direction:column;justify-content:flex-end;padding:7px 8px;pointer-events:none;opacity:0;">
+                                                <span style="font-size:10px;font-weight:500;color:rgba(255,255,255,.9);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;">{{ $cf['name'] }}</span>
+                                                @if($cf['nasPath'])<span style="font-size:9px;font-weight:700;color:#6EE7B7;letter-spacing:.4px;">NAS</span>@endif
+                                            </div>
+                                            <div :style="{opacity: hov ? '1' : '0'}"
+                                                 style="position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:6px;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;transition:opacity .2s ease;pointer-events:none;opacity:0;">
+                                                <i class="fa fa-expand" style="font-size:8px;color:#fff;"></i>
+                                            </div>
+                                            @if($isLV)
+                                            <div style="position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;pointer-events:none;">
+                                                <span style="font-size:22px;font-weight:700;color:#fff;letter-spacing:-1px;">+{{ $hiddenCnt }}</span>
+                                            </div>
+                                            @endif
+                                        </button>
+                                        @endforeach
+                                    </div>
+                                    @endif
+                                    @if(count($docCf) > 0)
+                                    <div style="display:flex;flex-wrap:wrap;gap:6px;{{ $mc > 0 ? 'margin-top:8px;' : '' }}">
+                                        @foreach($docCf as $cf)
+                                        @if(!$cf['exists'])
+                                        <div style="display:inline-flex;align-items:center;gap:7px;padding:6px 10px;background:#FFFBEB;border:1px dashed #FCD34D;border-radius:8px;max-width:240px;">
+                                            <i class="fa fa-triangle-exclamation" style="color:#D97706;font-size:11px;flex-shrink:0;"></i>
+                                            <div style="min-width:0;">
+                                                <p style="font-size:11px;font-weight:600;color:#92400E;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $cf['name'] }}</p>
+                                                <p style="font-size:10px;color:#B45309;margin:1px 0 0;">Not available</p>
                                             </div>
                                         </div>
-                                        <div style="padding:5px 10px;background:#F3F4F6;display:flex;align-items:center;gap:6px;">
-                                            <i class="fa fa-video" style="color:#6366F1;font-size:10px;"></i>
-                                            <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $comment->original_filename }}</span>
-                                            @if($comment->nas_path)
-                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;flex-shrink:0;letter-spacing:.3px;">NAS</span>
-                                            @else
-                                                <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;flex-shrink:0;letter-spacing:.3px;">LOCAL</span>
-                                            @endif
-                                            <i class="fa fa-expand" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
-                                        </div>
-                                    </button>
-                                    @else
-                                    <button type="button" @click="showSub({{ $cItem }})"
-                                            style="display:inline-flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;cursor:pointer;max-width:280px;transition:border-color .15s;"
-                                            onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
-                                        <div style="width:30px;height:30px;border-radius:7px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                            <i class="fa {{ $cIcon }}" style="color:#6366F1;font-size:13px;"></i>
-                                        </div>
-                                        <div style="flex:1;min-width:0;text-align:left;">
-                                            <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $comment->original_filename }}</p>
-                                            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;text-transform:uppercase;display:flex;align-items:center;gap:5px;">
-                                                {{ $cExt ?: 'file' }}
-                                                @if($comment->nas_path)
-                                                    <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#D1FAE5;color:#065F46;letter-spacing:.3px;">NAS</span>
-                                                @else
-                                                    <span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#F3F4F6;color:#9CA3AF;letter-spacing:.3px;">LOCAL</span>
-                                                @endif
-                                            </p>
-                                        </div>
-                                        <i class="fa fa-eye" style="font-size:10px;color:#9CA3AF;flex-shrink:0;"></i>
-                                    </button>
+                                        @else
+                                        <a href="{{ $cf['url'] }}" target="_blank"
+                                           style="display:inline-flex;align-items:center;gap:7px;padding:6px 10px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;text-decoration:none;max-width:240px;transition:all .15s;"
+                                           onmouseover="this.style.borderColor='#6366F1';this.style.background='#F5F3FF'"
+                                           onmouseout="this.style.borderColor='#E5E7EB';this.style.background='#fff'">
+                                            <div style="width:28px;height:28px;border-radius:7px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                                <i class="fa {{ $cf['icon'] }}" style="color:#6366F1;font-size:12px;"></i>
+                                            </div>
+                                            <div style="flex:1;min-width:0;">
+                                                <p style="font-size:11px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $cf['name'] }}</p>
+                                                <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:4px;">
+                                                    {{ $cf['ext'] ?: 'file' }}
+                                                    @if($cf['nasPath'])<span style="background:#D1FAE5;color:#065F46;padding:0 4px;border-radius:3px;font-weight:700;font-size:9px;letter-spacing:.3px;">NAS</span>@endif
+                                                </p>
+                                            </div>
+                                            <i class="fa fa-arrow-down-to-line" style="font-size:9px;color:#9CA3AF;flex-shrink:0;"></i>
+                                        </a>
+                                        @endif
+                                        @endforeach
+                                    </div>
                                     @endif
+                                </div>
                                 @endif
                             </div>
                             <div x-show="editing">
@@ -1682,16 +1822,17 @@
             </p>
             @if(!in_array($task->status, $timerDoneStatuses) && !in_array($task->status, ['submitted', 'revision_requested', 'pending_customer']))
                 @if($timerRunning)
-                <form method="POST" action="{{ route('user.tasks.timer.pause', $task) }}" style="display:inline;">
+                <form id="_sidebarPauseForm" method="POST" action="{{ route('user.tasks.timer.pause', $task) }}" style="display:inline;">
                     @csrf
-                    <button type="submit" style="background:#F3F4F6;color:#374151;border:none;padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                    <input type="hidden" name="pause_reason" id="_sidebarPauseReasonInput">
+                    <button type="button" onclick="openPauseModal('_sidebarPauseForm','_sidebarPauseReasonInput')" style="background:#F3F4F6;color:#374151;border:none;padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
                         <i class="fa fa-circle-pause"></i> Pause Timer
                     </button>
                 </form>
                 @elseif(in_array($task->status, ['in_progress', 'paused', 'viewed']))
-                <form method="POST" action="{{ route('user.tasks.timer.start', $task) }}" style="display:inline;">
+                <form id="_sidebarStartTimerForm" method="POST" action="{{ route('user.tasks.timer.start', $task) }}" style="display:inline;">
                     @csrf
-                    <button type="submit" style="background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(99,102,241,.3);">
+                    <button type="button" onclick="confirmStart('_sidebarStartTimerForm')" style="background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(99,102,241,.3);">
                         <i class="fa fa-circle-play"></i> {{ $task->status === 'viewed' ? 'Start Timer' : ($completedTimerSeconds > 0 ? 'Resume Timer' : 'Start Timer') }}
                     </button>
                 </form>
@@ -1700,6 +1841,51 @@
             @if($completedTimerSeconds > 0 && $timerRunning)
             <p style="font-size:10px;color:#D1D5DB;margin:10px 0 0;">includes previous sessions</p>
             @endif
+        </div>
+        @endif
+
+        {{-- Manual Time Log --}}
+        @if(\App\Models\Setting::get('show_time_tracking','1') === '1' && !in_array($task->status, ['draft','assigned']))
+        <div x-data="{ open: false }" style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
+            <button type="button" @click="open=!open"
+                    style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:none;border:none;cursor:pointer;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <i class="fas fa-pen-to-square" style="color:#059669;font-size:12px;"></i>
+                    <span style="font-size:12px;font-weight:600;color:#374151;">Log Time Manually</span>
+                </div>
+                <i class="fas" :class="open ? 'fa-chevron-up' : 'fa-chevron-down'" style="font-size:10px;color:#9CA3AF;"></i>
+            </button>
+            <div x-show="open" x-collapse style="padding:0 20px 16px;">
+                <form method="POST" action="{{ route('user.tasks.timer.manual', $task) }}">
+                    @csrf
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+                        <div>
+                            <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:5px;">Hours</label>
+                            <input type="number" name="hours" value="0" min="0" max="23"
+                                   style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;text-align:center;">
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:5px;">Minutes</label>
+                            <input type="number" name="minutes" value="30" min="0" max="59"
+                                   style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;text-align:center;">
+                        </div>
+                    </div>
+                    <div style="margin-bottom:10px;">
+                        <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:5px;">Date <span style="font-weight:400;color:#9CA3AF;">— optional</span></label>
+                        <input type="date" name="log_date" value="{{ now()->toDateString() }}" max="{{ now()->toDateString() }}"
+                               style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:12px;color:#111827;box-sizing:border-box;outline:none;">
+                    </div>
+                    <div style="margin-bottom:12px;">
+                        <label style="display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:5px;">Note <span style="font-weight:400;color:#9CA3AF;">— optional</span></label>
+                        <input type="text" name="note" placeholder="What did you work on?"
+                               style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:12px;color:#111827;box-sizing:border-box;outline:none;">
+                    </div>
+                    <button type="submit"
+                            style="width:100%;background:#059669;color:#fff;border:none;padding:9px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;">
+                        <i class="fas fa-plus" style="margin-right:5px;"></i>Add Time
+                    </button>
+                </form>
+            </div>
         </div>
         @endif
 
@@ -1768,6 +1954,36 @@
             a.setAttribute('target', '_blank');
             a.setAttribute('rel', 'noopener');
         });
+
+        var _pauseTargetForm  = null;
+        var _pauseTargetInput = null;
+        function openPauseModal(formId, inputId) {
+            _pauseTargetForm  = document.getElementById(formId);
+            _pauseTargetInput = document.getElementById(inputId);
+            document.getElementById('_pauseModal').style.display = 'flex';
+            window.dispatchEvent(new CustomEvent('pause-modal-open'));
+        }
+        function _closePauseModal() {
+            document.getElementById('_pauseModal').style.display = 'none';
+        }
+
+        function confirmStart(formId) {
+            @if($otherInProgressTask)
+            var modal = document.getElementById('_inProgressConfirmModal');
+            modal.dataset.target = formId;
+            modal.style.display = 'flex';
+            @else
+            document.getElementById(formId).submit();
+            @endif
+        }
+        function _doConfirmedStart() {
+            var modal = document.getElementById('_inProgressConfirmModal');
+            modal.style.display = 'none';
+            document.getElementById(modal.dataset.target).submit();
+        }
+        function _cancelConfirmedStart() {
+            document.getElementById('_inProgressConfirmModal').style.display = 'none';
+        }
         </script>
 
         {{-- Time remaining --}}
@@ -1818,4 +2034,109 @@
     </div>{{-- /right --}}
 
 </div>
+
+{{-- Pause reason modal --}}
+<div id="_pauseModal"
+     style="display:none;position:fixed;inset:0;background:rgba(17,24,39,.55);backdrop-filter:blur(4px);z-index:10000;align-items:center;justify-content:center;padding:20px;"
+     onclick="if(event.target===this) _closePauseModal()">
+    <div x-data="{
+            selected: [],
+            otherText: '',
+            error: false,
+            options: [
+                {key:'feedback',  label:'Waiting for feedback',    icon:'fa-comments',        color:'#D97706', bg:'#FEF3C7'},
+                {key:'blocked',   label:'Blocked by another task', icon:'fa-link-slash',      color:'#EA580C', bg:'#FFF7ED'},
+                {key:'info',      label:'Need more information',   icon:'fa-circle-question', color:'#0369A1', bg:'#E0F2FE'},
+                {key:'technical', label:'Technical issue',         icon:'fa-wrench',          color:'#DC2626', bg:'#FEF2F2'},
+                {key:'assets',    label:'Waiting for assets',      icon:'fa-file-arrow-down', color:'#7C3AED', bg:'#F5F3FF'},
+                {key:'endofday',  label:'End of work day',         icon:'fa-moon',            color:'#4F46E5', bg:'#EEF2FF'},
+                {key:'other',     label:'Other',                   icon:'fa-ellipsis',        color:'#6B7280', bg:'#F3F4F6'},
+            ]
+         }"
+         @pause-modal-open.window="selected=[]; otherText=''; error=false;"
+         style="background:#fff;border-radius:20px;padding:28px 24px;max-width:460px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.18);">
+
+        <div style="text-align:center;margin-bottom:20px;">
+            <div style="width:52px;height:52px;border-radius:50%;background:#FFFBEB;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+                <i class="fa fa-circle-pause" style="color:#D97706;font-size:22px;"></i>
+            </div>
+            <h3 style="font-size:16px;font-weight:700;color:#111827;margin:0 0 5px;">Why are you pausing?</h3>
+            <p style="font-size:13px;color:#6B7280;margin:0;">Select one or more reasons</p>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+            <template x-for="opt in options" :key="opt.key">
+                <button type="button"
+                        @click="let i=selected.indexOf(opt.key); i>-1?selected.splice(i,1):selected.push(opt.key); error=false;"
+                        :style="'display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;cursor:pointer;text-align:left;transition:all .15s;font-size:12px;font-weight:600;width:100%;border:2px solid;' + (selected.includes(opt.key) ? 'background:'+opt.bg+';border-color:'+opt.color+';color:'+opt.color+';' : 'background:#F9FAFB;border-color:#E5E7EB;color:#374151;')">
+                    <i class="fas" :class="opt.icon" :style="'font-size:12px;flex-shrink:0;color:'+opt.color"></i>
+                    <span x-text="opt.label" style="line-height:1.3;"></span>
+                </button>
+            </template>
+        </div>
+
+        <div x-show="selected.includes('other')" x-transition style="margin-bottom:12px;">
+            <textarea x-model="otherText"
+                      placeholder="Describe your reason…"
+                      rows="2"
+                      style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;resize:none;outline:none;box-sizing:border-box;font-family:inherit;line-height:1.5;"
+                      onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"></textarea>
+        </div>
+
+        <p x-show="error" style="font-size:12px;color:#DC2626;margin:0 0 10px;">
+            <span x-text="selected.includes('other') && selected.length > 0 ? 'Please describe your other reason.' : 'Please select at least one reason.'"></span>
+        </p>
+
+        <div style="display:flex;flex-direction:column;gap:10px;">
+            <button type="button"
+                    @click="
+                        if(selected.length===0){error=true;return;}
+                        if(selected.includes('other')&&!otherText.trim()){error=true;return;}
+                        var labels=options.filter(o=>selected.includes(o.key)&&o.key!=='other').map(o=>o.label);
+                        if(selected.includes('other')&&otherText.trim()) labels.push(otherText.trim());
+                        _pauseTargetInput.value=labels.join(', ');
+                        document.getElementById('_pauseModal').style.display='none';
+                        _pauseTargetForm.submit();
+                        selected=[];otherText='';
+                    "
+                    style="width:100%;padding:12px;border-radius:10px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(245,158,11,.3);">
+                <i class="fa fa-circle-pause" style="margin-right:6px;"></i> Pause Task
+            </button>
+            <button type="button" onclick="_closePauseModal()"
+                    style="width:100%;padding:12px;border-radius:10px;background:#F3F4F6;color:#374151;border:none;font-size:14px;font-weight:600;cursor:pointer;">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+@if($otherInProgressTask)
+<div id="_inProgressConfirmModal"
+     style="display:none;position:fixed;inset:0;background:rgba(17,24,39,.55);backdrop-filter:blur(4px);z-index:10000;align-items:center;justify-content:center;padding:20px;"
+     onclick="if(event.target===this) _cancelConfirmedStart()">
+    <div style="background:#fff;border-radius:20px;padding:28px 24px;max-width:400px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.18);">
+        <div style="text-align:center;margin-bottom:22px;">
+            <div style="width:56px;height:56px;border-radius:50%;background:#FEF3C7;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                <i class="fa fa-triangle-exclamation" style="color:#D97706;font-size:22px;"></i>
+            </div>
+            <h3 style="font-size:16px;font-weight:700;color:#111827;margin:0 0 10px;">You Have a Task In Progress</h3>
+            <p style="font-size:13px;color:#6B7280;margin:0;line-height:1.65;">
+                <strong style="color:#111827;">{{ Str::limit($otherInProgressTask->title, 65) }}</strong>
+                is currently in progress.<br><br>
+                Starting this task will automatically pause that task's timer. Do you want to continue?
+            </p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+            <button onclick="_doConfirmedStart()"
+                    style="width:100%;padding:12px;border-radius:10px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(99,102,241,.3);">
+                <i class="fa fa-play" style="margin-right:6px;font-size:12px;"></i> Yes, Start This Task
+            </button>
+            <button onclick="_cancelConfirmedStart()"
+                    style="width:100%;padding:12px;border-radius:10px;background:#F3F4F6;color:#374151;border:none;font-size:14px;font-weight:600;cursor:pointer;">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+@endif
 @endsection

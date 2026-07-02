@@ -322,7 +322,7 @@ class DashboardController extends Controller
     public function refresh()
     {
         $doneStatuses     = ['approved', 'delivered', 'archived'];
-        $analyticsNonDone = ['draft', 'assigned', 'viewed', 'in_progress', 'submitted', 'revision_requested'];
+        $analyticsNonDone = ['draft', 'assigned', 'viewed', 'in_progress', 'paused', 'pending_customer', 'submitted', 'revision_requested'];
 
         $totalTasks     = Task::count();
         $activeProjects = Project::where('status', 'active')->where('is_quick', false)->count();
@@ -416,7 +416,7 @@ class DashboardController extends Controller
         $activeProjects = Project::where('status', 'active')->where('is_quick', false)->count();
 
         // --- Task Analytics ---
-        $analyticsNonDone = ['draft', 'assigned', 'viewed', 'in_progress', 'submitted', 'revision_requested'];
+        $analyticsNonDone = ['draft', 'assigned', 'viewed', 'in_progress', 'paused', 'pending_customer', 'submitted', 'revision_requested'];
 
         $taskOverview = [
             'total'              => $totalTasks,

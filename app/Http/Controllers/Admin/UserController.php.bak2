@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\Setting;
+use App\Models\Subscription;
 use App\Models\Task;
 use App\Models\TaskLog;
 use App\Models\TaskTransfer;
@@ -14,6 +15,7 @@ use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
@@ -48,8 +50,9 @@ class UserController extends Controller
         ];
 
         $allRoles = Role::ordered();
+        $forceMfa = Setting::get('force_mfa', '0') === '1';
 
-        return view('admin.users.index', compact('users', 'stats', 'allRoles'));
+        return view('admin.users.index', compact('users', 'stats', 'allRoles', 'forceMfa'));
     }
 
     public function create()
@@ -77,7 +80,7 @@ class UserController extends Controller
                     }
                 },
             ],
-            'password'    => 'required|string|min:8|confirmed',
+            'password'    => ['required', 'confirmed', Password::defaults()],
             'role'        => ['required', Rule::in(Role::pluck('name'))],
             'phone'       => 'nullable|string|max:30',
             'job_title'   => 'nullable|string|max:80',
@@ -96,16 +99,17 @@ class UserController extends Controller
         }
 
         $data = [
-            'name'        => $request->name,
-            'username'    => $request->username ?: null,
-            'email'       => strtolower($request->email),
-            'password'    => $request->password,
-            'role'        => $request->role,
-            'phone'       => $request->phone,
-            'job_title'   => $request->job_title,
-            'nationality' => $request->nationality,
-            'status'      => $request->status ?? 'active',
-            'permissions' => $perms,
+            'name'         => $request->name,
+            'username'     => $request->username ?: null,
+            'email'        => strtolower($request->email),
+            'password'     => $request->password,
+            'role'         => $request->role,
+            'phone'        => $request->phone,
+            'job_title'    => $request->job_title,
+            'nationality'  => $request->nationality,
+            'status'       => $request->status ?? 'active',
+            'permissions'  => $perms,
+            'mfa_required' => $request->boolean('mfa_required'),
         ];
 
         if ($request->hasFile('avatar')) {
@@ -141,7 +145,7 @@ class UserController extends Controller
             return back()->with('error', 'Managers cannot edit administrator accounts.');
         }
 
-        $request->validate([
+        $request->validateWithBag('userEdit', [
             'name' => [
                 'required', 'string', 'max:255',
                 function ($attribute, $value, $fail) use ($user) {
@@ -160,7 +164,7 @@ class UserController extends Controller
                 },
             ],
             'role'        => ['required', Rule::in(Role::pluck('name'))],
-            'password'    => 'nullable|string|min:8|confirmed',
+            'password'    => ['nullable', 'sometimes', 'confirmed', Password::defaults()],
             'phone'       => 'nullable|string|max:30',
             'job_title'   => 'nullable|string|max:80',
             'nationality' => 'nullable|string|max:80',
@@ -369,6 +373,108 @@ class UserController extends Controller
         $user->delete();
 
         return redirect()->route('team.index')->with('success', $name . ' has been permanently deleted from the system.');
+    }
+
+    public function requireMfa(User $user)
+    {
+        if ($user->mfa_enabled) {
+            if (request()->expectsJson()) {
+                return response()->json(['ok' => false, 'message' => "{$user->name} already has MFA enabled."]);
+            }
+            return back()->with('info', "{$user->name} already has MFA enabled.");
+        }
+
+        $user->update(['mfa_required' => true]);
+
+        AuditLogger::log(
+            'user.mfa_required',
+            $user,
+            "MFA setup required for {$user->name} by admin",
+            ['admin_id' => auth()->id()]
+        );
+
+        if (request()->expectsJson()) {
+            return response()->json(['ok' => true, 'message' => "MFA setup required — {$user->name} will be prompted on next login.", 'mfa_enabled' => false, 'mfa_required' => true]);
+        }
+        return back()->with('success', "MFA setup is now required for {$user->name}. They will be prompted on next login.");
+    }
+
+    public function cancelMfaRequirement(User $user)
+    {
+        $user->update(['mfa_required' => null]);
+
+        AuditLogger::log(
+            'user.mfa_requirement_cancelled',
+            $user,
+            "MFA requirement removed for {$user->name} by admin",
+            ['admin_id' => auth()->id()]
+        );
+
+        if (request()->expectsJson()) {
+            return response()->json(['ok' => true, 'message' => "MFA requirement removed for {$user->name}.", 'mfa_enabled' => false, 'mfa_required' => false]);
+        }
+        return back()->with('success', "MFA requirement removed for {$user->name}.");
+    }
+
+    public function resetMfa(User $user)
+    {
+        $user->update([
+            'mfa_enabled'        => false,
+            'mfa_secret'         => null,
+            'mfa_recovery_codes' => null,
+            'mfa_required'       => true,
+        ]);
+
+        AuditLogger::log(
+            'user.mfa_reset',
+            $user,
+            "MFA reset for {$user->name} — required to re-enroll",
+            ['admin_id' => auth()->id()]
+        );
+
+        if (request()->expectsJson()) {
+            return response()->json(['ok' => true, 'message' => "MFA reset — {$user->name} must re-enroll on next login.", 'mfa_enabled' => false, 'mfa_required' => true]);
+        }
+        return back()->with('success', "MFA has been reset for {$user->name}. They must re-enroll on next login.");
+    }
+
+    public function disableMfa(User $user)
+    {
+        if (! $user->mfa_enabled) {
+            // User never had MFA — just exempt them from the global force_mfa requirement
+            $user->update(['mfa_required' => false]);
+
+            AuditLogger::log(
+                'user.mfa_exempted',
+                $user,
+                "MFA requirement exempted for {$user->name} by admin",
+                ['admin_id' => auth()->id()]
+            );
+
+            if (request()->expectsJson()) {
+                return response()->json(['ok' => true, 'message' => "{$user->name} has been exempted from MFA requirement.", 'mfa_enabled' => false, 'mfa_required' => false]);
+            }
+            return back()->with('success', "{$user->name} has been exempted from the MFA requirement.");
+        }
+
+        $user->update([
+            'mfa_enabled'        => false,
+            'mfa_secret'         => null,
+            'mfa_recovery_codes' => null,
+            'mfa_required'       => false,  // explicitly exempt from force_mfa
+        ]);
+
+        AuditLogger::log(
+            'user.mfa_disabled',
+            $user,
+            "MFA disabled for {$user->name} by admin",
+            ['admin_id' => auth()->id()]
+        );
+
+        if (request()->expectsJson()) {
+            return response()->json(['ok' => true, 'message' => "MFA disabled for {$user->name}. They can now log in with password only.", 'mfa_enabled' => false, 'mfa_required' => false]);
+        }
+        return back()->with('success', "MFA has been disabled for {$user->name}. They can now log in with their password only.");
     }
 
     public function hold(User $user)
@@ -757,13 +863,17 @@ class UserController extends Controller
         $pendingSocialPosts   = $socialTasks->whereNull('social_posted_at')->count();
         $completedSocialPosts = $socialTasks->whereNotNull('social_posted_at')->count();
 
+        $myLicenses = Subscription::whereHas('users', fn($q) => $q->where('user_id', $user->id))
+            ->orderBy('renewal_date')
+            ->get();
+
         return view('user.dashboard', compact(
             'total', 'completed', 'inProgress', 'pending', 'pendingApproval', 'overdue', 'rate',
             'cardTotal', 'cardCompleted', 'cardInProgress', 'cardInReview', 'cardOverdue',
             'tasks', 'completedTasks', 'upcomingTasks', 'recentActivity', 'weekActivity',
             'teamTasks', 'myProjects', 'myProjectStats', 'socialTasks',
             'inheritedCount', 'nativeTotal', 'nativeCompleted', 'pendingSocialPosts', 'completedSocialPosts',
-            'receivedTotal', 'receivedCompleted',
+            'receivedTotal', 'receivedCompleted', 'myLicenses',
             'previewUser'
         ));
     }
@@ -771,7 +881,7 @@ class UserController extends Controller
     public function taskModal(User $user, Request $request)
     {
         $doneStatuses    = ['approved', 'delivered', 'archived'];
-        $nonDoneStatuses = ['draft', 'assigned', 'viewed', 'in_progress', 'submitted', 'revision_requested'];
+        $nonDoneStatuses = ['draft', 'assigned', 'viewed', 'in_progress', 'paused', 'submitted', 'revision_requested'];
         $isAdminOrManager = in_array($user->role, ['admin', 'manager']);
 
         $filter = $request->input('filter', 'total');
@@ -820,31 +930,23 @@ class UserController extends Controller
                     ->pluck('task_id')->unique();
                 $base = Task::whereIn('id', $taskIds)->with(['project:id,name']);
             } elseif ($filter === 'total') {
-                $base = Task::where(function ($q) use ($user, $nonDoneStatuses) {
-                    $q->where(function ($q2) use ($user) {
-                        $q2->where('assigned_to', $user->id)
-                           ->orWhereExists(fn($sub) => $sub->selectRaw('1')
-                               ->from('task_assignees')
-                               ->whereColumn('task_assignees.task_id', 'tasks.id')
-                               ->where('task_assignees.user_id', $user->id));
-                    })->whereIn('status', $nonDoneStatuses)
-                      ->orWhere(fn($q3) => $q3
-                          ->where('social_assigned_to', $user->id)
-                          ->whereNull('social_posted_at'));
-                })->with(['project:id,name']);
+                $base = Task::where(function ($q) use ($user) {
+                    $q->where('assigned_to', $user->id)
+                      ->orWhere('social_assigned_to', $user->id)
+                      ->orWhereExists(fn($sub) => $sub->selectRaw('1')
+                          ->from('task_assignees')
+                          ->whereColumn('task_assignees.task_id', 'tasks.id')
+                          ->where('task_assignees.user_id', $user->id));
+                })->whereIn('status', $nonDoneStatuses)->with(['project:id,name']);
             } elseif ($filter === 'completed') {
-                $base = Task::where(function ($q) use ($user, $doneStatuses) {
-                    $q->where(function ($q2) use ($user) {
-                        $q2->where('assigned_to', $user->id)
-                           ->orWhereExists(fn($sub) => $sub->selectRaw('1')
-                               ->from('task_assignees')
-                               ->whereColumn('task_assignees.task_id', 'tasks.id')
-                               ->where('task_assignees.user_id', $user->id));
-                    })->whereIn('status', $doneStatuses)
-                      ->orWhere(fn($q3) => $q3
-                          ->where('social_assigned_to', $user->id)
-                          ->whereNotNull('social_posted_at'));
-                })->with(['project:id,name']);
+                $base = Task::where(function ($q) use ($user) {
+                    $q->where('assigned_to', $user->id)
+                      ->orWhere('social_assigned_to', $user->id)
+                      ->orWhereExists(fn($sub) => $sub->selectRaw('1')
+                          ->from('task_assignees')
+                          ->whereColumn('task_assignees.task_id', 'tasks.id')
+                          ->where('task_assignees.user_id', $user->id));
+                })->whereIn('status', $doneStatuses)->with(['project:id,name']);
             } elseif ($filter === 'received') {
                 $inheritedIds  = \App\Models\TaskTransfer::where('to_user_id', $user->id)->pluck('task_id');
                 $reassignedIds = TaskLog::where('action', 'task_reassigned')
@@ -861,7 +963,7 @@ class UserController extends Controller
                 $base->whereIn('id', $inheritedIds->merge($reassignedIds)->unique());
             } else {
                 match ($filter) {
-                    'in_progress' => $base->where('status', 'in_progress'),
+                    'in_progress' => $base->whereIn('status', ['in_progress', 'paused']),
                     'in_review'   => $base->whereIn('status', ['submitted', 'revision_requested']),
                     'overdue'     => $base->where('deadline', '<', now())->whereIn('status', $nonDoneStatuses),
                     default       => $base->whereIn('status', $nonDoneStatuses),
@@ -874,6 +976,7 @@ class UserController extends Controller
             'assigned'           => ['label' => 'Assigned',    'color' => '#4F46E5', 'bg' => '#EEF2FF'],
             'viewed'             => ['label' => 'Viewed',      'color' => '#0369A1', 'bg' => '#E0F2FE'],
             'in_progress'        => ['label' => 'In Progress', 'color' => '#D97706', 'bg' => '#FEF3C7'],
+            'paused'             => ['label' => 'Paused',      'color' => '#92400E', 'bg' => '#FEF3C7'],
             'submitted'          => ['label' => 'In Review',   'color' => '#7C3AED', 'bg' => '#EDE9FE'],
             'revision_requested' => ['label' => 'Revision',    'color' => '#DC2626', 'bg' => '#FEE2E2'],
             'approved'           => ['label' => 'Approved',    'color' => '#059669', 'bg' => '#D1FAE5'],
@@ -885,6 +988,8 @@ class UserController extends Controller
             'medium' => ['label' => 'Med',  'color' => '#F59E0B'],
             'low'    => ['label' => 'Low',  'color' => '#10B981'],
         ];
+
+        $totalCount = $base->count();
 
         $tasks = $base->orderByRaw('CASE WHEN deadline IS NULL THEN 1 ELSE 0 END')
             ->orderBy('deadline')
@@ -909,7 +1014,7 @@ class UserController extends Controller
                 ];
             });
 
-        return response()->json(['tasks' => $tasks, 'filter' => $filter]);
+        return response()->json(['tasks' => $tasks, 'filter' => $filter, 'total' => $totalCount]);
     }
 
     public function taskHistory(User $user, Request $request)
@@ -922,12 +1027,20 @@ class UserController extends Controller
 
         $isAdminOrManager = in_array($user->role, ['admin', 'manager']);
 
-        // Admin/manager: tasks they created. Regular users: tasks assigned to them.
-        $baseQuery = $isAdminOrManager
-            ? Task::where('created_by', $user->id)
-            : $user->tasks();
+        if ($isAdminOrManager) {
+            $freshBase = fn() => Task::where('created_by', $user->id);
+        } else {
+            // Match the dashboard scope: assigned_to + social_assigned_to + task_assignees pivot
+            $userScope = fn($q) => $q->where('assigned_to', $user->id)
+                ->orWhere('social_assigned_to', $user->id)
+                ->orWhereExists(fn($sub) => $sub->selectRaw('1')
+                    ->from('task_assignees')
+                    ->whereColumn('task_assignees.task_id', 'tasks.id')
+                    ->where('task_assignees.user_id', $user->id));
+            $freshBase = fn() => Task::where($userScope);
+        }
 
-        $base = $baseQuery->with('project');
+        $base = $freshBase()->with('project');
 
         match ($filter) {
             'pending'     => $base->whereIn('status', $pendingStatuses),
@@ -937,10 +1050,6 @@ class UserController extends Controller
         };
 
         $tasks = $base->latest()->paginate(15)->withQueryString();
-
-        $freshBase = fn() => $isAdminOrManager
-            ? Task::where('created_by', $user->id)
-            : $user->tasks();
 
         $counts = [
             'all'         => $freshBase()->count(),
@@ -994,5 +1103,52 @@ class UserController extends Controller
                 'created_at' => $t->created_at?->format(config('app.date_format', 'M d, Y')) ?? '—',
             ])->values(),
         ]);
+    }
+
+    public function cloneUser(Request $request, User $user)
+    {
+        $request->validate([
+            'name'     => [
+                'required', 'string', 'max:255',
+                function ($attribute, $value, $fail) {
+                    if (User::whereRaw('LOWER(name) = ?', [strtolower($value)])->exists()) {
+                        $fail('A user with this name already exists.');
+                    }
+                },
+            ],
+            'email'    => [
+                'required', 'email', 'max:255',
+                function ($attribute, $value, $fail) {
+                    if (User::whereRaw('LOWER(email) = ?', [strtolower($value)])->exists()) {
+                        $fail('A user with this email address already exists.');
+                    }
+                },
+            ],
+            'username' => 'nullable|string|max:60|unique:users|alpha_dash',
+            'password' => ['required', 'confirmed', Password::defaults()],
+        ]);
+
+        $clone = User::create([
+            'name'        => $request->name,
+            'email'       => strtolower($request->email),
+            'username'    => $request->username ?: null,
+            'password'    => $request->password,
+            'role'        => $user->role,
+            'phone'       => $user->phone,
+            'job_title'   => $user->job_title,
+            'nationality' => $user->nationality,
+            'hourly_rate' => $user->hourly_rate,
+            'permissions' => $user->permissions,
+            'status'      => 'active',
+        ]);
+
+        AuditLogger::log(
+            'user.cloned',
+            $clone,
+            'Account cloned from ' . $user->name . ' → ' . $clone->name . ' (no tasks transferred)',
+            ['source_user_id' => $user->id, 'source_name' => $user->name, 'role' => $clone->role]
+        );
+
+        return redirect()->route('team.index')->with('success', '"' . $clone->name . '" created as a clone of ' . $user->name . ' (no tasks assigned).');
     }
 }

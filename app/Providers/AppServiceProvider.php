@@ -106,8 +106,8 @@ class AppServiceProvider extends ServiceProvider
         // Share global app settings with all views
         View::composer('*', function ($view) {
             try {
-                $appSettings = Setting::getMany(['app_name','app_tagline','company_name','primary_color','department_name','logo_path','favicon_path','login_bg_type','login_bg_color','login_bg_image','copyright','developer_mode','hidden_elements','shown_extras','nav_hidden','maintenance_mode','hide_approval_customer_notify','hide_hourly_rate','hide_wa_web_button','notif_sound_type','notif_sound_volume','agent_name','agent_subtitle','agent_welcome','agent_color','agent_icon','hide_agent','support_user_id','hide_summarize_button','hide_features_tab']);
-                $view->with('appSettings', array_merge([
+                $appSettings = Setting::getMany(['app_name','app_tagline','company_name','primary_color','department_name','logo_path','favicon_path','login_bg_type','login_bg_color','login_bg_image','login_team_artwork','login_bg_position','login_bg_size','login_bg_attachment','login_bg_overlay','login_deco_color','login_show_doodles','login_hero_tagline','login_pill_text','login_pill_accent','copyright','developer_mode','hidden_elements','shown_extras','nav_hidden','maintenance_mode','hide_approval_customer_notify','hide_hourly_rate','hide_wa_web_button','notif_sound_type','notif_sound_volume','agent_name','agent_subtitle','agent_welcome','agent_color','agent_icon','hide_agent','support_user_id','hide_summarize_button','hide_features_tab','about_page_enabled','about_page_intro','about_page_cta_enabled','about_page_cta_text','about_page_cta_link','about_page_services_heading','about_page_service1_title','about_page_service1_desc','about_page_service2_title','about_page_service2_desc','about_page_service3_title','about_page_service3_desc','about_page_service4_title','about_page_service4_desc','about_page_service5_title','about_page_service5_desc','about_page_service6_title','about_page_service6_desc','about_page_who_text','about_page_mission','about_page_vision','about_page_value1_title','about_page_value1_desc','about_page_value2_title','about_page_value2_desc','about_page_value3_title','about_page_value3_desc','about_page_value4_title','about_page_value4_desc','about_page_value5_title','about_page_value5_desc','about_page_value6_title','about_page_value6_desc']);
+                $merged = array_merge([
                     'app_name'        => 'Dash',
                     'app_tagline'     => '',
                     'company_name'    => 'Product Co.',
@@ -115,10 +115,20 @@ class AppServiceProvider extends ServiceProvider
                     'department_name' => 'Product Department',
                     'logo_path'       => '',
                     'favicon_path'    => '',
-                    'login_bg_type'   => 'gradient',
-                    'login_bg_color'  => '#e8eaf6',
-                    'login_bg_image'  => '',
-                    'copyright'       => '',
+                    'login_bg_type'       => 'gradient',
+                    'login_bg_color'      => '#e8eaf6',
+                    'login_bg_image'      => '',
+                    'login_team_artwork'  => '',
+                    'login_bg_position'   => 'center center',
+                    'login_bg_size'       => 'cover',
+                    'login_bg_attachment' => 'fixed',
+                    'login_bg_overlay'    => '0',
+                    'login_deco_color'    => '#4F46E5',
+                    'login_show_doodles'  => '1',
+                    'login_hero_tagline'  => 'Together we build. Together we achieve.',
+                    'login_pill_text'     => 'One Team. One Goal.',
+                    'login_pill_accent'   => 'Unlimited Impact.',
+                    'copyright'           => '',
                     'developer_mode'   => '0',
                     'hidden_elements'  => '[]',
                     'shown_extras'     => '[]',
@@ -136,7 +146,43 @@ class AppServiceProvider extends ServiceProvider
                     'hide_agent'             => '0',
                     'support_user_id'        => '',
                     'hide_summarize_button'  => '0',
-                ], $appSettings));
+                    'about_page_enabled'     => '1',
+                    'about_page_intro'       => '',
+                    'about_page_cta_enabled' => '1',
+                    'about_page_cta_text'    => 'Get in Touch',
+                    'about_page_cta_link'    => '',
+                    'about_page_services_heading' => 'What We Do',
+                    'about_page_service1_title'   => '',
+                    'about_page_service1_desc'    => '',
+                    'about_page_service2_title'   => '',
+                    'about_page_service2_desc'    => '',
+                    'about_page_service3_title'   => '',
+                    'about_page_service3_desc'    => '',
+                    'about_page_service4_title'   => '',
+                    'about_page_service4_desc'    => '',
+                    'about_page_service5_title'   => '',
+                    'about_page_service5_desc'    => '',
+                    'about_page_service6_title'   => '',
+                    'about_page_service6_desc'    => '',
+                    'about_page_who_text' => '',
+                    'about_page_mission'  => '',
+                    'about_page_vision'   => '',
+                    'about_page_value1_title' => '', 'about_page_value1_desc' => '',
+                    'about_page_value2_title' => '', 'about_page_value2_desc' => '',
+                    'about_page_value3_title' => '', 'about_page_value3_desc' => '',
+                    'about_page_value4_title' => '', 'about_page_value4_desc' => '',
+                    'about_page_value5_title' => '', 'about_page_value5_desc' => '',
+                    'about_page_value6_title' => '', 'about_page_value6_desc' => '',
+                ], $appSettings);
+
+                $artworkRaw = $merged['login_team_artwork'] ?? '';
+                $artworkList = json_decode($artworkRaw, true);
+                if (!is_array($artworkList)) {
+                    $artworkList = $artworkRaw !== '' ? [$artworkRaw] : [];
+                }
+                $merged['login_team_artwork'] = array_values($artworkList);
+
+                $view->with('appSettings', $merged);
             } catch (\Throwable) {
                 $view->with('appSettings', [
                     'app_name'         => 'Dash',
@@ -146,10 +192,20 @@ class AppServiceProvider extends ServiceProvider
                     'department_name'  => 'Product Department',
                     'logo_path'        => '',
                     'favicon_path'     => '',
-                    'login_bg_type'    => 'gradient',
-                    'login_bg_color'   => '#e8eaf6',
-                    'login_bg_image'   => '',
-                    'copyright'        => '',
+                    'login_bg_type'       => 'gradient',
+                    'login_bg_color'      => '#e8eaf6',
+                    'login_bg_image'      => '',
+                    'login_team_artwork'  => [],
+                    'login_bg_position'   => 'center center',
+                    'login_bg_size'       => 'cover',
+                    'login_bg_attachment' => 'fixed',
+                    'login_bg_overlay'    => '0',
+                    'login_deco_color'    => '#4F46E5',
+                    'login_show_doodles'  => '1',
+                    'login_hero_tagline'  => 'Together we build. Together we achieve.',
+                    'login_pill_text'     => 'One Team. One Goal.',
+                    'login_pill_accent'   => 'Unlimited Impact.',
+                    'copyright'           => '',
                     'developer_mode'   => '0',
                     'hidden_elements'  => '[]',
                     'shown_extras'     => '[]',
@@ -167,6 +223,33 @@ class AppServiceProvider extends ServiceProvider
                     'hide_agent'            => '0',
                     'support_user_id'       => '',
                     'hide_summarize_button' => '0',
+                    'about_page_enabled'    => '1',
+                    'about_page_intro'      => '',
+                    'about_page_cta_enabled' => '1',
+                    'about_page_cta_text'    => 'Get in Touch',
+                    'about_page_cta_link'    => '',
+                    'about_page_services_heading' => 'What We Do',
+                    'about_page_service1_title'   => '',
+                    'about_page_service1_desc'    => '',
+                    'about_page_service2_title'   => '',
+                    'about_page_service2_desc'    => '',
+                    'about_page_service3_title'   => '',
+                    'about_page_service3_desc'    => '',
+                    'about_page_service4_title'   => '',
+                    'about_page_service4_desc'    => '',
+                    'about_page_service5_title'   => '',
+                    'about_page_service5_desc'    => '',
+                    'about_page_service6_title'   => '',
+                    'about_page_service6_desc'    => '',
+                    'about_page_who_text' => '',
+                    'about_page_mission'  => '',
+                    'about_page_vision'   => '',
+                    'about_page_value1_title' => '', 'about_page_value1_desc' => '',
+                    'about_page_value2_title' => '', 'about_page_value2_desc' => '',
+                    'about_page_value3_title' => '', 'about_page_value3_desc' => '',
+                    'about_page_value4_title' => '', 'about_page_value4_desc' => '',
+                    'about_page_value5_title' => '', 'about_page_value5_desc' => '',
+                    'about_page_value6_title' => '', 'about_page_value6_desc' => '',
                 ]);
             }
         });

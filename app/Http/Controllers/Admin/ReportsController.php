@@ -337,7 +337,7 @@ class ReportsController extends Controller
                     ->distinct('task_id')
                     ->count('task_id');
 
-                $projectsCreated = Project::where('created_by', $user->id)->count();
+                $projectsCreated = Project::where('created_by', $user->id)->where('is_quick', false)->count();
 
                 $tasksReopened = TaskLog::where('user_id', $user->id)
                     ->where('action', 'status_updated_reopened')
@@ -649,7 +649,7 @@ class ReportsController extends Controller
             ->get();
 
         // ── Project list for filter dropdown ─────────────────────────────────
-        $allProjects = Project::orderBy('name')->get(['id', 'name']);
+        $allProjects = Project::where('is_quick', false)->orderBy('name')->get(['id', 'name']);
 
         // ── Customer list for filter dropdown ────────────────────────────────
         $allCustomers = Customer::orderBy('name')->get(['id', 'name', 'company']);

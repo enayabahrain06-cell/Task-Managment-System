@@ -1,8 +1,25 @@
 @extends('layouts.app')
 @section('title', 'Add Task — ' . $project->name)
 
+@push('styles')
+<style>
+.tc-wrap { max-width:660px; width:100%; }
+.tc-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px; }
+.tc-grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:16px; }
+.tc-assignee-row { display:grid; grid-template-columns:1fr 1fr auto; gap:10px; align-items:center; }
+@media(max-width:480px){
+    .tc-wrap { padding:0; }
+    .tc-wrap > div { padding:16px !important; }
+    .tc-grid2 { grid-template-columns:1fr !important; gap:10px !important; }
+    .tc-grid3 { grid-template-columns:1fr !important; gap:10px !important; }
+    .tc-assignee-row { grid-template-columns:1fr auto !important; }
+    .tc-assignee-row > *:nth-child(2) { grid-column:1; }
+}
+</style>
+@endpush
+
 @section('content')
-<div style="max-width:660px;">
+<div class="tc-wrap" style="max-width:660px;">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
         <a href="{{ route('admin.projects.show', $project) }}"
            style="width:34px;height:34px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;color:#6B7280;text-decoration:none;">
@@ -34,7 +51,7 @@
             </div>
 
             {{-- Task Type + Tags --}}
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+            <div class="tc-grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Task Type</label>
                     <input type="text" name="task_type" value="{{ old('task_type') }}"
@@ -60,7 +77,7 @@
                 </div>
                 <div style="display:flex;flex-direction:column;gap:8px;">
                     <template x-for="(assignee, i) in assignees" :key="i">
-                        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:center;">
+                        <div class="tc-assignee-row" style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:center;">
                             <select :name="'assignees['+i+'][user_id]'" x-model="assignee.user_id"
                                     style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;background:#fff;outline:none;box-sizing:border-box;">
                                 <option value="">— Select person —</option>
@@ -83,7 +100,7 @@
             </div>
 
             {{-- Reviewer + Priority + Deadline --}}
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px;">
+            <div class="tc-grid3" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px;">
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Reviewer</label>
                     <select name="reviewer_id"

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\Subscription;
 use App\Models\Task;
 use App\Models\TaskLog;
 use App\Models\TaskTransfer;
@@ -237,13 +238,17 @@ class DashboardController extends Controller
         $pendingSocialPosts   = $socialTasks->whereNull('social_posted_at')->count();
         $completedSocialPosts = $socialTasks->whereNotNull('social_posted_at')->count();
 
+        $myLicenses = Subscription::whereHas('users', fn($q) => $q->where('user_id', $user->id))
+            ->orderBy('renewal_date')
+            ->get();
+
         return view('user.dashboard', compact(
             'total', 'completed', 'inProgress', 'pending', 'pendingApproval', 'overdue', 'rate',
             'cardTotal', 'cardCompleted', 'cardInProgress', 'cardInReview', 'cardOverdue',
             'tasks', 'completedTasks', 'upcomingTasks', 'recentActivity', 'weekActivity',
             'teamTasks', 'myProjects', 'myProjectStats', 'socialTasks',
             'inheritedCount', 'nativeTotal', 'nativeCompleted', 'pendingSocialPosts', 'completedSocialPosts',
-            'receivedTotal', 'receivedCompleted'
+            'receivedTotal', 'receivedCompleted', 'myLicenses'
         ));
     }
 

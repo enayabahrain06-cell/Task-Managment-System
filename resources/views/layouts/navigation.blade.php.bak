@@ -162,6 +162,19 @@
         </a>
         @endif
 
+        {{-- User-only: My Domains --}}
+        @php $myDomainCount = \App\Models\Domain::where('responsible_user_id', auth()->id())->count(); @endphp
+        @if($myDomainCount > 0 && !in_array('nav_my_domains', $navHidden))
+        <a href="{{ route('user.domains.index') }}"
+           class="nav-item {{ request()->routeIs('user.domains.*') ? 'active' : '' }}">
+            <div class="nav-left">
+                <i class="fas fa-globe nav-icon"></i>
+                My Domains
+            </div>
+            <span class="nav-badge nav-badge-blue">{{ $myDomainCount }}</span>
+        </a>
+        @endif
+
         {{-- User-only: My Licenses --}}
         @if($role === 'user' && !in_array('nav_licenses', $navHidden))
         @php $myLicenseCount = \App\Models\Subscription::whereHas('users', fn($q) => $q->where('user_id', auth()->id()))->count(); @endphp
@@ -189,8 +202,26 @@
         @endif
 
         {{-- Admin & Manager section --}}
-        @php $hasAnyAdminPerm = in_array($role, ['admin', 'manager']); @endphp
-        @if($hasAnyAdminPerm)
+        @php
+            $hasAnyAdminPerm = in_array($role, ['admin', 'manager']);
+            // Permissions that grant access to admin sections for regular users
+            // Only include permissions that are NOT in the default 'user' role.
+            // view_reports is a user-level permission ("My Reports"), not an admin section gate.
+            $userAdminPerms = !$hasAnyAdminPerm ? [
+                'manage_projects'        => auth()->user()->hasPermission('manage_projects'),
+                'manage_tasks'           => auth()->user()->hasPermission('manage_tasks'),
+                'manage_customers'       => auth()->user()->hasPermission('manage_customers'),
+                'view_approvals'         => auth()->user()->hasPermission('view_approvals'),
+                'view_audit_log'         => auth()->user()->hasPermission('view_audit_log'),
+                'view_social_budget'     => auth()->user()->hasPermission('view_social_budget'),
+                'manage_social_accounts' => auth()->user()->hasPermission('manage_social_accounts'),
+                'manage_domains'         => auth()->user()->hasPermission('manage_domains'),
+                'manage_subscriptions'   => auth()->user()->hasPermission('manage_subscriptions'),
+            ] : [];
+            $hasGrantedAdminPerm = !$hasAnyAdminPerm && in_array(true, $userAdminPerms, true);
+            $showAdminSection    = $hasAnyAdminPerm || $hasGrantedAdminPerm;
+        @endphp
+        @if($showAdminSection)
         <div class="sidebar-section">Admin</div>
 
         @if(auth()->user()->hasPermission('manage_projects') && !in_array('nav_projects', $navHidden))
@@ -246,7 +277,7 @@
         </a>
         @endif
 
-        @if((auth()->user()->hasPermission('view_social_budget') || auth()->user()->hasPermission('view_reports')) && !in_array('nav_social_budget', $navHidden))
+        @if(auth()->user()->hasPermission('view_social_budget') && !in_array('nav_social_budget', $navHidden))
         @php $socialPendingNav = \App\Models\Task::where('social_required', true)->whereNull('social_posted_at')->count(); @endphp
         <a href="{{ route('admin.social-budget.index') }}"
            class="nav-item {{ request()->routeIs('admin.social-budget.*') ? 'active' : '' }}">
@@ -302,7 +333,7 @@
         </a>
         @endif
 
-        @if(auth()->user()->hasPermission('view_reports') && !in_array('nav_reports', $navHidden))
+        @if($hasAnyAdminPerm && auth()->user()->hasPermission('view_reports') && !in_array('nav_reports', $navHidden))
         <a href="{{ route('admin.reports.index') }}"
            class="nav-item {{ request()->routeIs('admin.reports.*') ? 'active' : '' }}">
             <div class="nav-left">

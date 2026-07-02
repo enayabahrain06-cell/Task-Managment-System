@@ -18,6 +18,7 @@ use App\Notifications\TaskCommentPosted;
 use App\Notifications\TaskDelivered;
 use App\Notifications\TaskReassigned;
 use App\Services\AuditLogger;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -120,12 +121,17 @@ class TaskController extends Controller
             'comments.user', 'comments.edits.editor',
             'transfers.fromUser', 'transfers.toUser', 'transfers.transferredBy',
             'attachments',
+            'dependencies.project',
         ]);
         $users       = User::whereIn('role', ['user', 'manager'])->orderBy('name')->get();
         $socialUsers = User::where('role', 'user')->orderBy('name')->get();
         $projects    = Project::where('is_quick', false)->orderBy('name')->get();
         $customers   = Customer::orderBy('name')->get();
-        return view('admin.tasks.show', compact('task', 'users', 'socialUsers', 'projects', 'customers'));
+        $depsFeatureOn  = \App\Models\Setting::get('show_task_dependencies', '1') === '1';
+        $timeFeatureOn  = \App\Models\Setting::get('show_time_tracking', '1') === '1';
+        $timeByUser     = $timeFeatureOn ? $task->timerSecondsByUser() : collect();
+        $totalSeconds   = $timeFeatureOn ? $task->totalTimerSeconds() : 0;
+        return view('admin.tasks.show', compact('task', 'users', 'socialUsers', 'projects', 'customers', 'depsFeatureOn', 'timeFeatureOn', 'timeByUser', 'totalSeconds'));
     }
 
     public function update(Request $request, Task $task)
@@ -143,7 +149,7 @@ class TaskController extends Controller
             'deadline'             => 'nullable|date',
             'description'          => 'nullable|string',
             'new_attachments'      => 'nullable|array',
-            'new_attachments.*'    => 'file|max:10485760',
+            'new_attachments.*'    => 'file',
             'delete_attachments'   => 'nullable|array',
             'delete_attachments.*' => 'integer|exists:project_attachments,id',
         ]);
@@ -230,29 +236,36 @@ class TaskController extends Controller
     public function comment(Request $request, Task $task)
     {
         $request->validate([
-            'body' => 'required|string',
-            'file' => 'nullable|file',
+            'body'            => 'required|string',
+            'comment_files'   => 'nullable|array',
+            'comment_files.*' => 'file',
         ]);
 
-        $filePath = null;
-        $originalFilename = null;
-        if ($request->hasFile('file')) {
-            $file = $request->file('file');
-            $originalFilename = $file->getClientOriginalName();
-            $nas      = app(\App\Services\NasService::class);
-            $filePath = $file->store("task-comment-files/{$task->id}", 'public');
-            $nasPath  = $nas->copyToNas($task, $filePath, $originalFilename, '03_Working');
-            $nas->copyToNasReference($task, $filePath, $originalFilename);
+        $nas = app(\App\Services\NasService::class);
+        $storedFiles = [];
+
+        if ($request->hasFile('comment_files')) {
+            foreach ($request->file('comment_files') as $file) {
+                $name    = $file->getClientOriginalName();
+                $path    = $file->store("task-comment-files/{$task->id}", 'public');
+                $nasPath = $nas->copyToNas($task, $path, $name, '03_Working');
+                $nas->copyToNasReference($task, $path, $name);
+                $storedFiles[] = [
+                    'path'              => $path,
+                    'original_filename' => $name,
+                    'nas_path'          => $nasPath,
+                ];
+            }
         }
 
         $comment = TaskComment::create([
-            'task_id'           => $task->id,
-            'user_id'           => auth()->id(),
-            'body'              => $request->body,
-            'file_path'         => $filePath,
-            'nas_path'          => $nasPath ?? null,
-            'original_filename' => $originalFilename,
+            'task_id' => $task->id,
+            'user_id' => auth()->id(),
+            'body'    => $request->body,
+            'files'   => $storedFiles ?: null,
         ]);
+
+        $filenames = array_column($storedFiles, 'original_filename');
 
         TaskLog::create([
             'task_id'  => $task->id,
@@ -262,7 +275,7 @@ class TaskController extends Controller
             'metadata' => array_filter([
                 'comment_id'  => $comment->id,
                 'author_role' => 'admin',
-                'filename'    => $originalFilename,
+                'filenames'   => $filenames ?: null,
             ]),
         ]);
 
@@ -307,6 +320,77 @@ class TaskController extends Controller
         ]);
         $submission->update(['note' => $request->note]);
         return back()->with('success', 'Submission note updated.');
+    }
+
+    // ── Task Dependencies ────────────────────────────────────────────────────
+
+    public function storeDependency(Request $request, Task $task)
+    {
+        $request->validate([
+            'depends_on_task_id' => 'required|integer|exists:tasks,id',
+        ]);
+
+        $dependsOnId = (int) $request->depends_on_task_id;
+
+        if ($dependsOnId === $task->id) {
+            return response()->json(['error' => 'A task cannot depend on itself.'], 422);
+        }
+
+        // Prevent circular: check that the target doesn't already depend on $task
+        $circular = \DB::table('task_dependencies')
+            ->where('task_id', $dependsOnId)
+            ->where('depends_on_task_id', $task->id)
+            ->exists();
+        if ($circular) {
+            return response()->json(['error' => 'Circular dependency detected.'], 422);
+        }
+
+        $task->dependencies()->syncWithoutDetaching([
+            $dependsOnId => ['created_by' => auth()->id()],
+        ]);
+
+        $dep = Task::with('project:id,name,is_quick')->find($dependsOnId);
+        AuditLogger::log('task.dependency_added', $task, "Dependency added: #{$dep->id} {$dep->title}", ['depends_on_id' => $dependsOnId]);
+
+        return response()->json([
+            'ok'  => true,
+            'dep' => [
+                'id'      => $dep->id,
+                'title'   => $dep->title,
+                'status'  => $dep->status,
+                'project' => ($dep->project && !$dep->project->is_quick) ? $dep->project->name : null,
+            ],
+        ]);
+    }
+
+    public function destroyDependency(Task $task, int $dependsOnId)
+    {
+        $task->dependencies()->detach($dependsOnId);
+        AuditLogger::log('task.dependency_removed', $task, "Dependency removed: #{$dependsOnId}", ['depends_on_id' => $dependsOnId]);
+        return response()->json(['ok' => true]);
+    }
+
+    public function searchTasksForDependency(Request $request, Task $task)
+    {
+        $q = $request->input('q', '');
+        $alreadyIds = $task->dependencies()->pluck('depends_on_task_id')->push($task->id);
+
+        $results = Task::where('id', '!=', $task->id)
+            ->whereNotIn('id', $alreadyIds)
+            ->where(function ($query) use ($q) {
+                $query->where('title', 'like', "%{$q}%")
+                      ->orWhere('id', 'like', "%{$q}%");
+            })
+            ->with('project:id,name,is_quick')
+            ->limit(10)
+            ->get(['id', 'title', 'status', 'project_id']);
+
+        return response()->json($results->map(fn($t) => [
+            'id'      => $t->id,
+            'title'   => $t->title,
+            'status'  => $t->status,
+            'project' => ($t->project && !$t->project->is_quick) ? $t->project->name : null,
+        ]));
     }
 
     public function deliver(Request $request, Task $task)
@@ -766,7 +850,7 @@ class TaskController extends Controller
 
         $request->validate([
             'attachments'   => 'required|array|min:1',
-            'attachments.*' => 'file|max:10485760',
+            'attachments.*' => 'file',
         ]);
 
         $names = [];

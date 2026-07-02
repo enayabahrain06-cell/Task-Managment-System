@@ -1041,6 +1041,134 @@
         </div>
         @endif
 
+        {{-- Pending Deadline Extension Request --}}
+        @php
+            $pendingExt = $task->deadlineExtensionRequests()->where('status','pending')->latest()->first();
+        @endphp
+        @if($pendingExt)
+        <div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:14px;padding:20px 24px;">
+            <div style="display:flex;align-items:flex-start;gap:14px;">
+                <div style="width:42px;height:42px;border-radius:11px;background:#FFEDD5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fa fa-calendar-plus" style="color:#EA580C;font-size:17px;"></i>
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+                        <h2 style="font-size:15px;font-weight:700;color:#9A3412;margin:0;">Deadline Extension Requested</h2>
+                        <span style="font-size:11px;background:#FEF3C7;color:#D97706;font-weight:600;padding:2px 10px;border-radius:20px;">{{ $pendingExt->created_at->diffForHumans() }}</span>
+                    </div>
+                    <p style="font-size:13px;color:#C2410C;margin:0 0 6px;">
+                        <strong>{{ $pendingExt->user->name }}</strong> is requesting a deadline extension to
+                        <strong>{{ $pendingExt->requested_deadline->format('M d, Y') }}</strong>
+                        <span style="color:#9CA3AF;">({{ $pendingExt->requested_deadline->diffForHumans() }})</span>
+                    </p>
+                    <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;padding:10px 14px;margin-bottom:14px;">
+                        <p style="font-size:11px;font-weight:700;color:#B45309;margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em;">Reason:</p>
+                        <p style="font-size:13px;color:#92400E;margin:0;line-height:1.6;">{{ $pendingExt->reason }}</p>
+                    </div>
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                        <form method="POST" action="{{ route('admin.tasks.deadline-extension.approve', [$task, $pendingExt]) }}" style="display:inline;">
+                            @csrf
+                            <button type="submit"
+                                    style="display:inline-flex;align-items:center;gap:6px;padding:9px 20px;border-radius:9px;background:linear-gradient(135deg,#16A34A,#15803D);color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(22,163,74,.3);"
+                                    onclick="return confirm('Approve this extension? Deadline will be updated to {{ $pendingExt->requested_deadline->format('M d, Y') }}.')">
+                                <i class="fa fa-circle-check"></i> Approve Extension
+                            </button>
+                        </form>
+                        <button type="button" onclick="document.getElementById('_rejectExtModal').style.display='flex'"
+                                style="display:inline-flex;align-items:center;gap:6px;padding:9px 20px;border-radius:9px;background:#FEE2E2;color:#DC2626;border:1.5px solid #FECACA;font-size:13px;font-weight:600;cursor:pointer;">
+                            <i class="fa fa-circle-xmark"></i> Reject
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Reject modal --}}
+        <div id="_rejectExtModal"
+             style="display:none;position:fixed;inset:0;background:rgba(17,24,39,.55);backdrop-filter:blur(4px);z-index:10000;align-items:center;justify-content:center;padding:20px;"
+             onclick="if(event.target===this)this.style.display='none'">
+            <div style="background:#fff;border-radius:20px;padding:28px 24px;max-width:400px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.18);">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                    <div style="width:42px;height:42px;border-radius:11px;background:#FEE2E2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="fa fa-circle-xmark" style="color:#DC2626;font-size:18px;"></i>
+                    </div>
+                    <div>
+                        <h3 style="font-size:16px;font-weight:700;color:#111827;margin:0 0 2px;">Reject Extension Request</h3>
+                        <p style="font-size:13px;color:#6B7280;margin:0;">You must provide a reason so the user understands why.</p>
+                    </div>
+                </div>
+                <form method="POST" action="{{ route('admin.tasks.deadline-extension.reject', [$task, $pendingExt]) }}"
+                      onsubmit="
+                          var ta = this.querySelector('textarea[name=admin_note]');
+                          if(!ta.value.trim()){
+                              ta.style.borderColor='#DC2626';
+                              ta.focus();
+                              ta.placeholder='Please write a reason before rejecting…';
+                              return false;
+                          }
+                      ">
+                    @csrf
+                    <div style="margin-bottom:14px;">
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">
+                            Rejection Reason <span style="color:#DC2626;">*</span>
+                        </label>
+                        <textarea name="admin_note" rows="3" required placeholder="Explain why the extension was denied…"
+                                  style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;resize:none;outline:none;box-sizing:border-box;font-family:inherit;line-height:1.5;"
+                                  onfocus="this.style.borderColor='#DC2626'" onblur="this.style.borderColor='#E5E7EB'"></textarea>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+                        <button type="submit"
+                                style="width:100%;padding:12px;border-radius:10px;background:linear-gradient(135deg,#DC2626,#B91C1C);color:#fff;border:none;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(220,38,38,.25);">
+                            <i class="fa fa-circle-xmark" style="margin-right:6px;"></i> Confirm Rejection
+                        </button>
+                        <button type="button" onclick="document.getElementById('_rejectExtModal').style.display='none'"
+                                style="width:100%;padding:12px;border-radius:10px;background:#F3F4F6;color:#374151;border:none;font-size:14px;font-weight:600;cursor:pointer;">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        @endif
+
+        {{-- Paused — show reason to admin --}}
+        @if($task->status === 'paused')
+        @php
+            $adminPauseLog     = $task->logs->where('action','timer_paused')->sortByDesc('created_at')->first();
+            $adminPauseReasons = ($adminPauseLog && !empty($adminPauseLog->metadata['reason']))
+                ? array_filter(array_map('trim', explode(', ', $adminPauseLog->metadata['reason'])))
+                : [];
+            $adminPausedAt     = $adminPauseLog?->created_at;
+        @endphp
+        <div style="background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:14px;padding:20px 24px;">
+            <div style="display:flex;align-items:flex-start;gap:14px;">
+                <div style="width:42px;height:42px;border-radius:11px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fa fa-circle-pause" style="color:#D97706;font-size:18px;"></i>
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">
+                        <h2 style="font-size:15px;font-weight:700;color:#92400E;margin:0;">Task Paused by {{ $task->assignee?->name ?? 'User' }}</h2>
+                        @if($adminPausedAt)
+                        <span style="font-size:11px;color:#B45309;background:#FEF9C3;padding:2px 8px;border-radius:20px;">{{ $adminPausedAt->diffForHumans() }}</span>
+                        @endif
+                    </div>
+                    @if($adminPauseReasons)
+                    <p style="font-size:11px;font-weight:700;color:#B45309;margin:0 0 10px;text-transform:uppercase;letter-spacing:.05em;">Reason for pausing:</p>
+                    <div style="display:flex;flex-wrap:wrap;gap:7px;">
+                        @foreach($adminPauseReasons as $apr)
+                        <span style="font-size:12px;font-weight:600;background:#FEF3C7;color:#D97706;border:1.5px solid #FDE68A;padding:5px 14px;border-radius:20px;display:inline-flex;align-items:center;gap:6px;">
+                            <i class="fa fa-circle-pause" style="font-size:10px;"></i> {{ $apr }}
+                        </span>
+                        @endforeach
+                    </div>
+                    @else
+                    <p style="font-size:13px;color:#B45309;margin:0;">No reason provided — the user paused their timer manually.</p>
+                    @endif
+                </div>
+            </div>
+        </div>
+        @endif
+
         {{-- Reopen (when approved, delivered, or archived) --}}
         @if(in_array($task->status, ['approved','delivered','archived']))
         <div style="background:#fff;border-radius:14px;border:1.5px solid #FCD34D;box-shadow:0 4px 16px rgba(217,119,6,.06);padding:24px;">
@@ -1350,6 +1478,16 @@
                                 deleted by <strong>{{ $meta['deleted_by'] }}</strong>
                             </span>
                             <span style="font-size:11px;background:#F3F4F6;color:#374151;padding:2px 8px;border-radius:6px;text-decoration:line-through;opacity:.7;">{{ $meta['filename'] }}</span>
+                            @elseif($log->action === 'timer_paused' && !empty($meta['reason']))
+                            <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center;">
+                                <span style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.04em;">Reason:</span>
+                                @foreach(explode(', ', $meta['reason']) as $pauseReason)
+                                <span style="font-size:11px;font-weight:600;background:#FEF3C7;color:#D97706;padding:3px 10px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;">
+                                    <i class="fa fa-circle-pause" style="font-size:9px;"></i>
+                                    {{ trim($pauseReason) }}
+                                </span>
+                                @endforeach
+                            </div>
                             @elseif($log->action === 'auto_paused' && isset($meta['paused_by_task_id']))
                             <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;display:inline-flex;align-items:center;gap:4px;">
                                 <i class="fa fa-circle-pause" style="font-size:9px;"></i>
@@ -1517,7 +1655,7 @@
                             @endif
                         </div>
                         @endif
-                        @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','deadline_updated','auto_paused','social_posted','social_post_edited','attachment_added','attachment_deleted']))
+                        @if($log->note && !in_array($log->action, ['comment_added','task_created','first_viewed','deadline_updated','auto_paused','timer_paused','social_posted','social_post_edited','attachment_added','attachment_deleted']))
                         <p style="font-size:12px;color:#6B7280;background:#F9FAFB;padding:6px 10px;border-radius:8px;border-left:3px solid #E5E7EB;margin:6px 0 0;">"{{ strip_tags($log->note) }}"</p>
                         @endif
                     </div>

@@ -12,8 +12,10 @@ use App\Models\TaskLog;
 use App\Models\TaskSubmission;
 use App\Models\TaskSubmissionEdit;
 use App\Models\TaskTimerSegment;
+use App\Models\DeadlineExtensionRequest;
 use App\Models\TaskTransfer;
 use App\Models\User;
+use App\Notifications\DeadlineExtensionRequested;
 use App\Notifications\TaskAutoPaused;
 use App\Notifications\TaskCommentPosted;
 use App\Notifications\TaskCompleted;
@@ -118,6 +120,15 @@ class TaskController extends Controller
         }
     }
 
+    /** Return true if the current user is assigned to this task (any assignment type). */
+    private function isAssigned(Task $task): bool
+    {
+        $uid = auth()->id();
+        return $task->assigned_to == $uid
+            || $task->social_assigned_to == $uid
+            || $task->assignees()->where('user_id', $uid)->exists();
+    }
+
     // ── Timer endpoints ──────────────────────────────────────────────────────
 
     /** Check work hours; returns a warning string if outside, null if inside. */
@@ -146,13 +157,24 @@ class TaskController extends Controller
 
     public function startTimer(Request $request, Task $task)
     {
-        if ($task->assigned_to != auth()->id()) {
+        if (!$this->isAssigned($task)) {
             abort(403);
         }
 
         $startable = ['viewed', 'in_progress', 'paused'];
         if (!in_array($task->status, $startable)) {
             return back()->with('error', 'Timer cannot be started at this stage.');
+        }
+
+        // Block start if unresolved dependencies exist (and feature is enabled)
+        if (\App\Models\Setting::get('show_task_dependencies', '1') === '1'
+            && $task->status === 'viewed'
+            && !$task->dependenciesResolved()) {
+            $blocking = $task->dependencies()
+                ->whereNotIn('status', ['approved', 'delivered', 'archived'])
+                ->get(['id', 'title', 'status']);
+            $list = $blocking->map(fn($t) => "#{$t->id} {$t->title} ({$t->status})")->join(', ');
+            return back()->with('error', "Cannot start — waiting for: {$list}");
         }
 
         $userId = auth()->id();
@@ -207,7 +229,7 @@ class TaskController extends Controller
 
     public function pauseTimer(Request $request, Task $task)
     {
-        if ($task->assigned_to != auth()->id()) {
+        if (!$this->isAssigned($task)) {
             abort(403);
         }
 
@@ -219,12 +241,14 @@ class TaskController extends Controller
 
         $task->update(['status' => 'paused']);
 
+        $reason = trim($request->input('pause_reason', ''));
+
         TaskLog::create([
             'task_id'  => $task->id,
             'user_id'  => auth()->id(),
             'action'   => 'timer_paused',
-            'note'     => 'Timer paused manually.',
-            'metadata' => ['old_status' => 'in_progress', 'new_status' => 'paused'],
+            'note'     => $reason ? 'Timer paused: ' . $reason : 'Timer paused manually.',
+            'metadata' => ['old_status' => 'in_progress', 'new_status' => 'paused', 'reason' => $reason],
         ]);
 
         return back()->with('success', 'Timer paused.');
@@ -232,7 +256,7 @@ class TaskController extends Controller
 
     public function acknowledgeRevision(Request $request, Task $task)
     {
-        if ($task->assigned_to != auth()->id()) {
+        if (!$this->isAssigned($task)) {
             abort(403);
         }
 
@@ -285,18 +309,67 @@ class TaskController extends Controller
         return $response;
     }
 
+    public function logTimeManually(Request $request, Task $task)
+    {
+        if (!$this->isAssigned($task)) abort(403);
+
+        if (\App\Models\Setting::get('show_time_tracking', '1') !== '1') abort(404);
+
+        $request->validate([
+            'hours'   => 'required|integer|min:0|max:23',
+            'minutes' => 'required|integer|min:0|max:59',
+            'note'    => 'nullable|string|max:500',
+            'log_date'=> 'nullable|date|before_or_equal:today',
+        ]);
+
+        $hours   = (int) $request->hours;
+        $minutes = (int) $request->minutes;
+        $seconds = ($hours * 3600) + ($minutes * 60);
+
+        if ($seconds === 0) {
+            return back()->with('error', 'Please enter at least 1 minute.');
+        }
+
+        $logDate  = $request->filled('log_date') ? $request->log_date : now()->toDateString();
+        $startedAt = \Carbon\Carbon::parse($logDate . ' 09:00:00');
+        $endedAt   = $startedAt->copy()->addSeconds($seconds);
+
+        TaskTimerSegment::create([
+            'task_id'          => $task->id,
+            'user_id'          => auth()->id(),
+            'phase'            => 'manual',
+            'started_at'       => $startedAt,
+            'ended_at'         => $endedAt,
+            'duration_seconds' => $seconds,
+            'pause_reason'     => $request->note ?: null,
+        ]);
+
+        TaskLog::create([
+            'task_id'  => $task->id,
+            'user_id'  => auth()->id(),
+            'action'   => 'time_logged_manually',
+            'note'     => "Manual time log: {$hours}h {$minutes}m" . ($request->note ? " — {$request->note}" : ''),
+            'metadata' => ['hours' => $hours, 'minutes' => $minutes, 'seconds' => $seconds, 'note' => $request->note],
+        ]);
+
+        $formatted = ($hours > 0 ? "{$hours}h " : '') . "{$minutes}m";
+        return back()->with('success', "{$formatted} logged successfully.");
+    }
+
     // ── Main CRUD ────────────────────────────────────────────────────────────
 
     public function show(Task $task)
     {
         $uid = auth()->id();
-        $isSocialAssignee = $task->social_assigned_to == $uid;
-        if ($task->assigned_to != $uid && !$isSocialAssignee) {
+        $isSocialAssignee  = $task->social_assigned_to == $uid;
+        $isPivotAssignee   = $task->assignees()->where('user_id', $uid)->exists();
+        if ($task->assigned_to != $uid && !$isSocialAssignee && !$isPivotAssignee) {
             abort(403);
         }
 
         // Social-only viewers (social_assigned_to) don't trigger first_viewed or modify task state
-        if ($isSocialAssignee && $task->assigned_to != $uid) {
+        // Pivot assignees always get the full view even if not the primary assigned_to
+        if ($isSocialAssignee && $task->assigned_to != $uid && !$isPivotAssignee) {
             $task->load([
                 'project.attachments' => fn($q) => $q->whereNull('task_id')->whereHas('project', fn($p) => $p->where('is_quick', false)),
                 'project.customer', 'assignee', 'assignees', 'reviewer', 'creator', 'customer',
@@ -339,7 +412,7 @@ class TaskController extends Controller
         }
 
         $task->load([
-            'project.attachments' => fn($q) => $q->whereNull('task_id'),
+            'project.attachments' => fn($q) => $q->whereNull('task_id')->whereHas('project', fn($p) => $p->where('is_quick', false)),
             'project.customer', 'assignee', 'assignees', 'reviewer', 'creator', 'customer',
             'socialAssignee', 'socialPosts', 'logs.user',
             'submissions.user', 'submissions.reviewer', 'submissions.noteEdits.editor',
@@ -366,12 +439,69 @@ class TaskController extends Controller
             ->sortByDesc('started_at')
             ->first();
 
-        return view('user.tasks.show', compact('task', 'incomingTransfer', 'completedTimerSeconds', 'activeSegment', 'isSocialAssignee'));
+        // Warn if user already has another task in progress
+        $otherInProgressTask = Task::where('id', '!=', $task->id)
+            ->where(function ($q) use ($uid) {
+                $q->where('assigned_to', $uid)
+                  ->orWhere('social_assigned_to', $uid)
+                  ->orWhereExists(fn($sub) => $sub->selectRaw('1')
+                      ->from('task_assignees')
+                      ->whereColumn('task_assignees.task_id', 'tasks.id')
+                      ->where('task_assignees.user_id', $uid));
+            })
+            ->where('status', 'in_progress')
+            ->first(['id', 'title']);
+
+        $pendingExtension = $task->deadlineExtensionRequests()
+            ->where('status', 'pending')
+            ->latest()
+            ->first();
+
+        return view('user.tasks.show', compact('task', 'incomingTransfer', 'completedTimerSeconds', 'activeSegment', 'isSocialAssignee', 'otherInProgressTask', 'pendingExtension'));
+    }
+
+    public function requestDeadlineExtension(Request $request, Task $task)
+    {
+        if (!$this->isAssigned($task)) {
+            abort(403);
+        }
+
+        $request->validate([
+            'reason'             => 'required|string|max:1000',
+            'requested_deadline' => 'required|date|after:today',
+        ]);
+
+        // Cancel any existing pending request for this task
+        $task->deadlineExtensionRequests()->where('status', 'pending')->update(['status' => 'rejected']);
+
+        $extension = $task->deadlineExtensionRequests()->create([
+            'user_id'            => auth()->id(),
+            'reason'             => $request->reason,
+            'requested_deadline' => $request->requested_deadline,
+            'status'             => 'pending',
+        ]);
+
+        TaskLog::create([
+            'task_id'  => $task->id,
+            'user_id'  => auth()->id(),
+            'action'   => 'deadline_extension_requested',
+            'note'     => 'Deadline extension requested until ' . \Carbon\Carbon::parse($request->requested_deadline)->format('M d, Y') . '. Reason: ' . $request->reason,
+            'metadata' => [
+                'requested_deadline' => $request->requested_deadline,
+                'reason'             => $request->reason,
+            ],
+        ]);
+
+        User::where('role', 'admin')->each(
+            fn($admin) => $admin->notify(new DeadlineExtensionRequested($task, $extension, auth()->user()))
+        );
+
+        return back()->with('success', 'Extension request submitted — admin will review it shortly.');
     }
 
     public function updateStatus(Request $request, Task $task)
     {
-        if ($task->assigned_to != auth()->id()) {
+        if (!$this->isAssigned($task)) {
             abort(403);
         }
 
@@ -409,7 +539,7 @@ class TaskController extends Controller
 
     public function submitVersion(Request $request, Task $task)
     {
-        if ($task->assigned_to != auth()->id()) {
+        if (!$this->isAssigned($task)) {
             abort(403);
         }
 
@@ -462,15 +592,18 @@ class TaskController extends Controller
             $filePath         = null;
             $originalFilename = null;
         } else {
+            $nas = app(\App\Services\NasService::class);
             foreach ($files as $i => $file) {
-                $fp = $file->store('task-submissions/' . $task->id, 'public');
-                $fn = $file->getClientOriginalName();
+                $fp      = $file->store('task-submissions/' . $task->id, 'public');
+                $fn      = $file->getClientOriginalName();
+                $nasPath = $nas->copyToNas($task, $fp, $fn, '04_Review', $version);
                 TaskSubmission::create([
                     'task_id'           => $task->id,
                     'user_id'           => auth()->id(),
                     'version'           => $version,
                     'note'              => $i === 0 ? $note : null,
                     'file_path'         => $fp,
+                    'nas_path'          => $nasPath,
                     'original_filename' => $fn,
                     'status'            => 'submitted',
                 ]);
@@ -484,18 +617,20 @@ class TaskController extends Controller
         $oldStatus = $task->status;
         $task->update(['status' => 'submitted']);
 
+        $cleanNote = $note ? trim(strip_tags($note)) : null;
+
         TaskLog::create([
             'task_id'  => $task->id,
             'user_id'  => auth()->id(),
             'action'   => 'status_updated_submitted',
-            'note'     => 'Submitted version ' . $version . ($note ? ': ' . $note : ''),
+            'note'     => 'Submitted version ' . $version . ($cleanNote ? ': ' . $cleanNote : ''),
             'metadata' => [
                 'old_status'      => $oldStatus,
                 'new_status'      => 'submitted',
                 'version'         => $version,
                 'has_file'        => !is_null($filePath),
                 'filename'        => $originalFilename,
-                'submission_note' => $note,
+                'submission_note' => $cleanNote,
             ],
         ]);
 
@@ -510,7 +645,7 @@ class TaskController extends Controller
 
     public function addComment(Request $request, Task $task)
     {
-        if ($task->assigned_to != auth()->id()) {
+        if (!$this->isAssigned($task)) {
             abort(403);
         }
 
@@ -520,13 +655,18 @@ class TaskController extends Controller
             'files.*' => 'nullable|file',
         ]);
 
-        $filePath = null;
-        $originalFilename = null;
-        $uploadedFiles = array_filter((array) $request->file('files'));
-        if (!empty($uploadedFiles)) {
-            $file             = reset($uploadedFiles);
-            $originalFilename = $file->getClientOriginalName();
-            $filePath         = $file->store("task-comment-files/{$task->id}", 'public');
+        $nas = app(\App\Services\NasService::class);
+        $storedFiles = [];
+        foreach (array_filter((array) $request->file('files')) as $file) {
+            $name    = $file->getClientOriginalName();
+            $path    = $file->store("task-comment-files/{$task->id}", 'public');
+            $nasPath = $nas->copyToNas($task, $path, $name, '03_Working');
+            $nas->copyToNasReference($task, $path, $name);
+            $storedFiles[] = [
+                'path'              => $path,
+                'original_filename' => $name,
+                'nas_path'          => $nasPath,
+            ];
         }
 
         // Auto-advance from viewed → in_progress on first comment
@@ -542,19 +682,24 @@ class TaskController extends Controller
         }
 
         $comment = TaskComment::create([
-            'task_id'           => $task->id,
-            'user_id'           => auth()->id(),
-            'body'              => $request->body,
-            'file_path'         => $filePath,
-            'original_filename' => $originalFilename,
+            'task_id' => $task->id,
+            'user_id' => auth()->id(),
+            'body'    => $request->body,
+            'files'   => $storedFiles ?: null,
         ]);
+
+        $filenames = array_column($storedFiles, 'original_filename');
 
         TaskLog::create([
             'task_id'  => $task->id,
             'user_id'  => auth()->id(),
             'action'   => 'comment_added',
             'note'     => \Illuminate\Support\Str::limit($request->body, 120),
-            'metadata' => ['comment_id' => $comment->id, 'author_role' => 'user'],
+            'metadata' => array_filter([
+                'comment_id'  => $comment->id,
+                'author_role' => 'user',
+                'filenames'   => $filenames ?: null,
+            ]),
         ]);
 
         $comment->load('user');

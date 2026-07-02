@@ -243,6 +243,11 @@ class Task extends Model
         return $this->hasOne(TaskTimerSegment::class)->whereNull('ended_at')->latestOfMany('started_at');
     }
 
+    public function deadlineExtensionRequests(): HasMany
+    {
+        return $this->hasMany(\App\Models\DeadlineExtensionRequest::class);
+    }
+
     /** Total completed seconds for a user (or all users) across all phases. */
     public function totalTimerSeconds(?int $userId = null, ?string $phase = null): int
     {

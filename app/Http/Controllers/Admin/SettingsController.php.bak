@@ -12,6 +12,7 @@ use App\Models\TaskSubmission;
 use App\Models\User;
 use App\Services\AuditLogger;
 use App\Services\NasService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -38,6 +39,10 @@ class SettingsController extends Controller
         'login_bg_type'         => 'gradient',
         'login_bg_color'        => '#e8eaf6',
         'login_bg_image'        => '',
+        'login_bg_position'     => 'center center',
+        'login_bg_size'         => 'cover',
+        'login_bg_attachment'   => 'fixed',
+        'login_bg_overlay'      => '0',
         // Team & Files
         'default_role'          => 'user',
         'allow_registration'       => '0',
@@ -152,7 +157,7 @@ class SettingsController extends Controller
         $dbBytes = file_exists(database_path('database.sqlite')) ? filesize(database_path('database.sqlite')) : 0;
         $stats = [
             'users'      => User::count(),
-            'projects'   => Project::count(),
+            'projects'   => Project::where('is_quick', false)->count(),
             'tasks'      => Task::count(),
             'db_size'    => $dbBytes >= 1048576
                                 ? round($dbBytes / 1048576, 1) . ' MB'
@@ -223,6 +228,14 @@ class SettingsController extends Controller
         $new     = $current === '1' ? '0' : '1';
         Setting::set('hide_summarize_button', $new);
         return response()->json(['hide_summarize_button' => $new === '1']);
+    }
+
+    public function toggleHideFeaturesTab()
+    {
+        $current = Setting::get('hide_features_tab', '0');
+        $new     = $current === '1' ? '0' : '1';
+        Setting::set('hide_features_tab', $new);
+        return response()->json(['hide_features_tab' => $new === '1']);
     }
 
     public function toggleManagerRolesAccess()
@@ -305,6 +318,8 @@ class SettingsController extends Controller
 
     public function updateBranding(Request $request)
     {
+        $bgMaxKb = max(1024, (int)(Setting::get('max_upload_mb', '0') ?: '10') * 1024);
+
         $request->validate([
             'company_name'     => 'required|string|max:60',
             'copyright'        => 'nullable|string|max:160',
@@ -312,9 +327,18 @@ class SettingsController extends Controller
             'accent_color'     => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
             'logo'             => 'nullable|image|mimes:png,jpg,jpeg,svg,webp|max:2048',
             'favicon'          => 'nullable|image|mimes:png,jpg,jpeg,ico,svg|max:512',
-            'login_bg_type'    => 'nullable|in:gradient,color,image',
-            'login_bg_color'   => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
-            'login_bg_image'   => 'nullable|image|mimes:png,jpg,jpeg,webp|max:5120',
+            'login_bg_type'       => 'nullable|in:gradient,color,image',
+            'login_bg_color'      => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'login_bg_image'      => "nullable|image|mimes:png,jpg,jpeg,webp|max:{$bgMaxKb}",
+            'login_team_artwork'  => "nullable|image|mimes:png,jpg,jpeg,webp|max:{$bgMaxKb}",
+            'login_deco_color'    => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'login_bg_position'   => 'nullable|string|in:top left,top center,top right,center left,center center,center right,bottom left,bottom center,bottom right',
+            'login_bg_size'       => 'nullable|in:cover,contain,auto',
+            'login_bg_attachment' => 'nullable|in:fixed,scroll',
+            'login_bg_overlay'    => 'nullable|integer|min:0|max:80',
+            'login_hero_tagline'  => 'nullable|string|max:120',
+            'login_pill_text'     => 'nullable|string|max:60',
+            'login_pill_accent'   => 'nullable|string|max:60',
         ]);
 
         Setting::setMany($request->only('company_name', 'copyright', 'primary_color', 'accent_color'));
@@ -326,6 +350,23 @@ class SettingsController extends Controller
         if ($request->filled('login_bg_color')) {
             Setting::set('login_bg_color', $request->login_bg_color);
         }
+        if ($request->filled('login_deco_color')) {
+            Setting::set('login_deco_color', $request->login_deco_color);
+        }
+        if ($request->filled('login_bg_position')) {
+            Setting::set('login_bg_position', $request->login_bg_position);
+        }
+        if ($request->filled('login_bg_size')) {
+            Setting::set('login_bg_size', $request->login_bg_size);
+        }
+        if ($request->filled('login_bg_attachment')) {
+            Setting::set('login_bg_attachment', $request->login_bg_attachment);
+        }
+        Setting::set('login_bg_overlay', (int) $request->input('login_bg_overlay', 0));
+        Setting::set('login_show_doodles', $request->has('login_show_doodles') ? '1' : '0');
+        Setting::set('login_hero_tagline', $request->input('login_hero_tagline', 'Together we build. Together we achieve.'));
+        Setting::set('login_pill_text', $request->input('login_pill_text', 'One Team. One Goal.'));
+        Setting::set('login_pill_accent', $request->input('login_pill_accent', 'Unlimited Impact.'));
 
         if ($request->hasFile('logo')) {
             $old = Setting::get('logo_path');
@@ -348,6 +389,13 @@ class SettingsController extends Controller
             Setting::set('login_bg_image', $path);
         }
 
+        if ($request->hasFile('login_team_artwork')) {
+            $old = Setting::get('login_team_artwork');
+            if ($old) Storage::disk('public')->delete($old);
+            $path = $request->file('login_team_artwork')->store('branding', 'public');
+            Setting::set('login_team_artwork', $path);
+        }
+
         if ($request->input('remove_logo') === '1') {
             $old = Setting::get('logo_path');
             if ($old) Storage::disk('public')->delete($old);
@@ -364,6 +412,12 @@ class SettingsController extends Controller
             $old = Setting::get('login_bg_image');
             if ($old) Storage::disk('public')->delete($old);
             Setting::set('login_bg_image', '');
+        }
+
+        if ($request->input('remove_login_team_artwork') === '1') {
+            $old = Setting::get('login_team_artwork');
+            if ($old) Storage::disk('public')->delete($old);
+            Setting::set('login_team_artwork', '');
         }
 
         AuditLogger::log('settings.updated', null, 'Branding settings updated', ['section' => 'branding']);
@@ -528,6 +582,7 @@ class SettingsController extends Controller
             'session_timeout'          => $request->session_timeout,
             'require_strong_password'  => $request->boolean('require_strong_password') ? '1' : '0',
             'max_login_attempts'       => $request->max_login_attempts,
+            'force_mfa'                => $request->boolean('force_mfa') ? '1' : '0',
         ]);
 
         AuditLogger::log('settings.updated', null, 'Security settings updated', ['section' => 'security']);
@@ -1291,18 +1346,17 @@ class SettingsController extends Controller
         $dbPath      = database_path('database.sqlite');
         $storageBase = storage_path('app/public');
 
-        // Stream the ZIP directly to the browser using the system zip command.
-        // -0 = store only (no compression) so it starts instantly even for large files.
-        // We pipe: database file + all storage files, with path prefixes via -j/-r tricks.
-        // Strategy: create a tmp dir with symlinks so paths inside the ZIP are clean.
         $tmpDir = sys_get_temp_dir() . '/bk_' . $stamp;
         mkdir($tmpDir);
         mkdir($tmpDir . '/database');
+        mkdir($tmpDir . '/reports');
         symlink($dbPath, $tmpDir . '/database/database.sqlite');
         symlink($storageBase, $tmpDir . '/storage');
 
-        // Run zip from inside tmpDir so archive paths are relative (database/... storage/...)
-        $zipCmd = 'cd ' . escapeshellarg($tmpDir) . ' && zip -0 -r - database storage 2>/dev/null';
+        // Generate snapshot PDFs into the reports/ folder
+        $this->generateBackupPdfs($tmpDir . '/reports');
+
+        $zipCmd = 'cd ' . escapeshellarg($tmpDir) . ' && zip -0 -r - database storage reports 2>/dev/null';
 
         return response()->stream(function () use ($zipCmd, $tmpDir) {
             $proc = popen($zipCmd, 'r');
@@ -1311,16 +1365,151 @@ class SettingsController extends Controller
                 flush();
             }
             pclose($proc);
-            // Cleanup symlinks and tmp dir
             @unlink($tmpDir . '/database/database.sqlite');
             @unlink($tmpDir . '/storage');
+            @unlink($tmpDir . '/reports/system-summary.pdf');
+            @unlink($tmpDir . '/reports/user-performance.pdf');
+            foreach (glob($tmpDir . '/reports/users/*.pdf') ?: [] as $f) @unlink($f);
+            @rmdir($tmpDir . '/reports/users');
             @rmdir($tmpDir . '/database');
+            @rmdir($tmpDir . '/reports');
             @rmdir($tmpDir);
         }, 200, [
             'Content-Type'        => 'application/zip',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
             'X-Accel-Buffering'   => 'no',
         ]);
+    }
+
+    private function imageToBase64(string $storagePath): string
+    {
+        $full = storage_path('app/public/' . ltrim($storagePath, '/'));
+        if (!file_exists($full)) return '';
+        $ext  = strtolower(pathinfo($full, PATHINFO_EXTENSION));
+        $mime = match($ext) { 'png' => 'png', 'gif' => 'gif', 'webp' => 'webp', default => 'jpeg' };
+        return 'data:image/' . $mime . ';base64,' . base64_encode(file_get_contents($full));
+    }
+
+    private function generateBackupPdfs(string $dir): void
+    {
+        $appName     = Setting::get('app_name', config('app.name', 'TaskMS'));
+        $generatedAt = now()->format('F j, Y  H:i');
+        $doneStatuses = ['approved', 'delivered'];
+
+        // Embed logo as base64 so DomPDF can render it without HTTP requests
+        $logoPath   = Setting::get('logo_path', '');
+        $logoBase64 = $logoPath ? $this->imageToBase64($logoPath) : '';
+
+        // ── Summary PDF data ────────────────────────────────────────────────
+        $totalTasks     = Task::count();
+        $completedTasks = Task::whereIn('status', $doneStatuses)->count();
+        $pendingTasks   = Task::whereIn('status', ['draft','assigned','viewed','in_progress','paused'])->count();
+        $totalUsers     = User::where('status', 'active')->count();
+        $totalProjects  = Project::where('is_quick', false)->count();
+        $completionRate = $totalTasks > 0 ? round($completedTasks / $totalTasks * 100) : 0;
+
+        $tasksByStatus = Task::select('status', DB::raw('count(*) as cnt'))
+            ->groupBy('status')
+            ->orderByDesc('cnt')
+            ->get();
+
+        $projects = Project::where('is_quick', false)
+            ->withCount(['tasks as task_count', 'tasks as done_count' => fn($q) => $q->whereIn('status', $doneStatuses)])
+            ->orderByDesc('task_count')
+            ->get();
+
+        $summaryPdf = Pdf::loadView('admin.backup.pdf-summary', compact(
+            'appName', 'generatedAt', 'totalTasks', 'completedTasks',
+            'pendingTasks', 'totalUsers', 'totalProjects', 'completionRate',
+            'tasksByStatus', 'projects', 'logoBase64'
+        ))->setPaper('a4', 'portrait');
+
+        file_put_contents($dir . '/system-summary.pdf', $summaryPdf->output());
+
+        // ── User performance PDF data ───────────────────────────────────────
+        $allUsers   = User::orderByRaw("CASE role WHEN 'admin' THEN 1 WHEN 'manager' THEN 2 ELSE 3 END")
+                          ->orderBy('name')
+                          ->get();
+
+        $userData = $allUsers->map(function ($u) use ($doneStatuses) {
+            $scope = fn($q) => $q->where('assigned_to', $u->id)
+                ->orWhereExists(fn($x) => $x->selectRaw('1')
+                    ->from('task_assignees')
+                    ->whereColumn('task_assignees.task_id', 'tasks.id')
+                    ->where('task_assignees.user_id', $u->id));
+
+            $total     = Task::where($scope)->count();
+            $completed = Task::where($scope)->whereIn('status', $doneStatuses)->count();
+            $pending   = Task::where($scope)->whereIn('status', ['assigned','viewed','in_progress','paused'])->count();
+            $inReview  = Task::where($scope)->whereIn('status', ['submitted','revision_requested'])->count();
+
+            return (object) [
+                'name'      => $u->name,
+                'role'      => $u->role,
+                'total'     => $total,
+                'completed' => $completed,
+                'pending'   => $pending,
+                'in_review' => $inReview,
+                'last_seen' => $u->last_seen_at ? $u->last_seen_at->format('d M Y') : 'Never',
+            ];
+        });
+
+        $totalAssigned  = $userData->sum('total');
+        $totalCompleted = $userData->sum('completed');
+        $overallRate    = $totalAssigned > 0 ? round($totalCompleted / $totalAssigned * 100) : 0;
+        $totalUsersAll  = $allUsers->count();
+        $activeUsers    = $allUsers->where('status', 'active')->count();
+
+        $perfPdf = Pdf::loadView('admin.backup.pdf-performance', [
+            'appName'        => $appName,
+            'generatedAt'    => $generatedAt,
+            'users'          => $userData,
+            'totalUsers'     => $totalUsersAll,
+            'activeUsers'    => $activeUsers,
+            'totalAssigned'  => $totalAssigned,
+            'totalCompleted' => $totalCompleted,
+            'overallRate'    => $overallRate,
+            'logoBase64'     => $logoBase64,
+        ])->setPaper('a4', 'landscape');
+
+        file_put_contents($dir . '/user-performance.pdf', $perfPdf->output());
+
+        // ── Per-user individual PDFs ────────────────────────────────────────
+        $usersDir = $dir . '/users';
+        mkdir($usersDir, 0755, true);
+
+        foreach ($allUsers as $u) {
+            $scope = fn($q) => $q->where('assigned_to', $u->id)
+                ->orWhereExists(fn($x) => $x->selectRaw('1')
+                    ->from('task_assignees')
+                    ->whereColumn('task_assignees.task_id', 'tasks.id')
+                    ->where('task_assignees.user_id', $u->id));
+
+            $tasks          = Task::where($scope)->with('project')->orderByDesc('created_at')->get();
+            $totalTasks     = $tasks->count();
+            $completedTasks = $tasks->whereIn('status', $doneStatuses)->count();
+            $pendingTasks   = $tasks->whereIn('status', ['assigned','viewed','in_progress','paused'])->count();
+            $inReviewTasks  = $tasks->whereIn('status', ['submitted','revision_requested'])->count();
+            $completionRate = $totalTasks > 0 ? round($completedTasks / $totalTasks * 100) : 0;
+            $avatarBase64   = $u->avatar ? $this->imageToBase64($u->avatar) : '';
+
+            $userPdf = Pdf::loadView('admin.backup.pdf-user-report', [
+                'appName'        => $appName,
+                'generatedAt'    => $generatedAt,
+                'user'           => $u,
+                'tasks'          => $tasks,
+                'totalTasks'     => $totalTasks,
+                'completedTasks' => $completedTasks,
+                'pendingTasks'   => $pendingTasks,
+                'inReviewTasks'  => $inReviewTasks,
+                'completionRate' => $completionRate,
+                'logoBase64'     => $logoBase64,
+                'avatarBase64'   => $avatarBase64,
+            ])->setPaper('a4', 'portrait');
+
+            $slug = preg_replace('/[^a-z0-9]+/', '-', strtolower($u->name));
+            file_put_contents($usersDir . '/' . $slug . '.pdf', $userPdf->output());
+        }
     }
 
     public function downloadBackupSqlite()
@@ -1368,14 +1557,21 @@ class SettingsController extends Controller
         $tmpDir = sys_get_temp_dir() . '/bk_' . $stamp;
         mkdir($tmpDir);
         mkdir($tmpDir . '/database');
+        mkdir($tmpDir . '/reports');
         symlink($dbPath, $tmpDir . '/database/database.sqlite');
         symlink($storageBase, $tmpDir . '/storage');
+        $this->generateBackupPdfs($tmpDir . '/reports');
 
-        exec('cd ' . escapeshellarg($tmpDir) . ' && zip -0 -r ' . escapeshellarg($zipPath) . ' database storage 2>/dev/null', $out, $code);
+        exec('cd ' . escapeshellarg($tmpDir) . ' && zip -0 -r ' . escapeshellarg($zipPath) . ' database storage reports 2>/dev/null', $out, $code);
 
         @unlink($tmpDir . '/database/database.sqlite');
         @unlink($tmpDir . '/storage');
+        @unlink($tmpDir . '/reports/system-summary.pdf');
+        @unlink($tmpDir . '/reports/user-performance.pdf');
+        foreach (glob($tmpDir . '/reports/users/*.pdf') ?: [] as $f) @unlink($f);
+        @rmdir($tmpDir . '/reports/users');
         @rmdir($tmpDir . '/database');
+        @rmdir($tmpDir . '/reports');
         @rmdir($tmpDir);
 
         if ($code !== 0 || !file_exists($zipPath)) {
@@ -1807,4 +2003,34 @@ class SettingsController extends Controller
 
         file_put_contents($path, $content);
     }
+
+    // ── Feature toggles ────────────────────────────────────────────────────────
+
+    private function featureToggle(string $key): \Illuminate\Http\JsonResponse
+    {
+        $new = Setting::get($key, '1') === '1' ? '0' : '1';
+        Setting::set($key, $new);
+        return response()->json([$key => $new === '1']);
+    }
+
+    public function disableAllFeatures()
+    {
+        $keys = [
+            'show_gantt_chart', 'show_excel_export', 'show_workload_view',
+            'show_task_dependencies', 'show_recurring_tasks',
+            'show_time_tracking', 'show_task_templates',
+        ];
+        foreach ($keys as $key) {
+            Setting::set($key, '0');
+        }
+        return response()->json(['ok' => true]);
+    }
+
+    public function toggleGanttChart()          { return $this->featureToggle('show_gantt_chart'); }
+    public function toggleExcelExport()         { return $this->featureToggle('show_excel_export'); }
+    public function toggleWorkloadView()        { return $this->featureToggle('show_workload_view'); }
+    public function toggleTaskDependencies()    { return $this->featureToggle('show_task_dependencies'); }
+    public function toggleRecurringTasks()      { return $this->featureToggle('show_recurring_tasks'); }
+    public function toggleTimeTracking()        { return $this->featureToggle('show_time_tracking'); }
+    public function toggleTaskTemplates()       { return $this->featureToggle('show_task_templates'); }
 }

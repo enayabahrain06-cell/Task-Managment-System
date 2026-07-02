@@ -22,14 +22,18 @@ use App\Http\Controllers\Admin\OffboardingController as AdminOffboardingControll
 use App\Http\Controllers\Admin\RoleController as AdminRoleController;
 use App\Http\Controllers\Admin\ReportsController as AdminReportsController;
 use App\Http\Controllers\Admin\SocialBudgetController as AdminSocialBudgetController;
+use App\Http\Controllers\Admin\SocialAccountController as AdminSocialAccountController;
 use App\Http\Controllers\Admin\CustomerController as AdminCustomerController;
 use App\Http\Controllers\Admin\SubscriptionController as AdminSubscriptionController;
+use App\Http\Controllers\Admin\DomainController as AdminDomainController;
 use App\Http\Controllers\User\LicensesController as UserLicensesController;
 use App\Http\Controllers\User\ProjectController as UserProjectController;
+use App\Http\Controllers\User\DomainsController as UserDomainsController;
 use App\Http\Controllers\User\ReportsController as UserReportsController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\ManagerMiddleware;
 use App\Http\Middleware\UserMiddleware;
+use App\Http\Middleware\MfaMiddleware;
 
 // Home: redirect authenticated users to their dashboard, guests to login
 Route::get('/', function () {
@@ -132,6 +136,20 @@ Route::middleware(['auth'])->group(function () {
     // Submission file download — shared across all roles (add ?inline=1 for browser preview)
     Route::get('/submissions/{submission}/file', function (\App\Models\TaskSubmission $submission) {
         abort_unless($submission->file_path, 404);
+        $user = auth()->user();
+        if (!in_array($user->role, ['admin', 'manager'])) {
+            $uid     = $user->id;
+            $task    = $submission->task;
+            $allowed = $task &&
+                ($task->assigned_to == $uid
+                 || $task->social_assigned_to == $uid
+                 || \App\Models\Task::where('id', $task->id)
+                     ->whereExists(fn ($x) => $x->selectRaw('1')->from('task_assignees')
+                         ->whereColumn('task_assignees.task_id', 'tasks.id')
+                         ->where('task_assignees.user_id', $uid))
+                     ->exists());
+            abort_unless($allowed, 403);
+        }
         $inline = request()->boolean('inline');
         if (\Illuminate\Support\Facades\Storage::disk('public')->exists($submission->file_path)) {
             $fullPath = storage_path('app/public/' . $submission->file_path);
@@ -147,7 +165,7 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Admin routes
-Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware([AdminMiddleware::class, MfaMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', fn() => redirect()->route('admin.dashboard'))->name('index');
     Route::get('/dashboard', [AdminDashboard::class, 'index'])->name('dashboard');
     Route::get('/dashboard/refresh', [AdminDashboard::class, 'refresh'])->name('dashboard.refresh');
@@ -157,6 +175,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::get('/dashboard/social-posts',    [AdminDashboard::class, 'socialPosts'])->name('dashboard.social-posts');
     Route::get('/dashboard/analytics-tasks',[AdminDashboard::class, 'analyticsTasks'])->name('dashboard.analytics-tasks');
     Route::get('/reports',                     [AdminReportsController::class, 'index'])->name('reports.index');
+    Route::get('/reports/summary-data',        [AdminReportsController::class, 'summaryData'])->name('reports.summary-data');
     Route::get('/reports/export-users',        [AdminReportsController::class, 'exportUsers'])->name('reports.export-users');
     Route::get('/reports/user-detail',         [AdminReportsController::class, 'userDetail'])->name('reports.user-detail');
     Route::post('/reports/defer-customer-approval', [AdminReportsController::class, 'deferCustomerApproval'])->name('reports.defer-customer-approval');
@@ -172,8 +191,10 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('projects/{project}/tasks', [AdminProjectController::class, 'tasksStore'])->name('projects.tasks.store');
     Route::post('tasks/quick', [AdminProjectController::class, 'quickTaskStore'])->name('tasks.quick');
     Route::post('tasks/quick-sm', [AdminProjectController::class, 'quickSMPostStore'])->name('tasks.quick-sm');
+    Route::get('customers/summary-data', [AdminCustomerController::class, 'summaryData'])->name('customers.summary-data');
     Route::resource('customers', AdminCustomerController::class);
     Route::get('customers/{customer}/report', [AdminCustomerController::class, 'report'])->name('customers.report');
+    Route::post('customers/{customer}/report/ai-brief', [AdminCustomerController::class, 'aiBrief'])->name('customers.report.ai-brief');
     Route::get('customers-summary', [AdminCustomerController::class, 'summary'])->name('customers.summary');
 
     // Settings
@@ -194,8 +215,12 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('settings/approval-customer-notify', [AdminSettingsController::class, 'toggleApprovalCustomerNotify'])->name('settings.approval-customer-notify');
     Route::post('settings/hourly-rate',              [AdminSettingsController::class, 'toggleHourlyRate'])->name('settings.hourly-rate');
     Route::post('settings/hide-wa-web',              [AdminSettingsController::class, 'toggleHideWaWeb'])->name('settings.hide-wa-web');
+    Route::post('settings/hide-summarize',           [AdminSettingsController::class, 'toggleHideSummarize'])->name('settings.hide-summarize');
     Route::post('settings/clear-cache',              [AdminSettingsController::class, 'clearCache'])->name('settings.clear-cache');
     Route::get('social-budget',                      [AdminSocialBudgetController::class, 'index'])->name('social-budget.index');
+    Route::get('social-accounts/export/pdf', [AdminSocialAccountController::class, 'exportPdf'])->name('social-accounts.export.pdf');
+    Route::resource('social-accounts', AdminSocialAccountController::class)->except(['create','edit','show']);
+    Route::get('social-accounts/{socialAccount}/password', [AdminSocialAccountController::class, 'revealPassword'])->name('social-accounts.password');
     Route::post('settings/elements/toggle',       [AdminSettingsController::class, 'toggleElement'])->name('settings.elements.toggle');
     Route::post('settings/nav/toggle',            [AdminSettingsController::class, 'toggleNavItem'])->name('settings.nav.toggle');
     Route::post('meetings',                        [AdminMeetingController::class, 'store'])->name('meetings.store');
@@ -210,12 +235,14 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('settings/restore/projects',      [AdminSettingsController::class, 'restoreProjects'])->name('settings.restore.projects');
     Route::get('settings/backup/download',        [AdminSettingsController::class, 'downloadBackup'])->name('settings.backup.download');
     Route::get('settings/backup/download/sqlite', [AdminSettingsController::class, 'downloadBackupSqlite'])->name('settings.backup.download.sqlite');
-    Route::post('settings/backup/restore',        [AdminSettingsController::class, 'restoreBackup'])->name('settings.backup.restore');
+    Route::post('settings/backup/restore',             [AdminSettingsController::class, 'restoreBackup'])->name('settings.backup.restore');
+    Route::post('settings/backup/verify-password',     [AdminSettingsController::class, 'verifyRestorePassword'])->name('settings.backup.verify.password');
     Route::get('settings/backup/server-files',    [AdminSettingsController::class, 'listServerBackups'])->name('settings.backup.server.list');
     Route::post('settings/backup/restore-server', [AdminSettingsController::class, 'restoreFromServer'])->name('settings.backup.restore.server');
-    Route::post('settings/backup/save-to-nas',    [AdminSettingsController::class, 'saveBackupToNas'])->name('settings.backup.save.nas');
-    Route::get('settings/backup/nas-files',       [AdminSettingsController::class, 'listNasBackups'])->name('settings.backup.nas.list');
-    Route::post('settings/backup/restore-from-nas', [AdminSettingsController::class, 'restoreFromNas'])->name('settings.backup.restore.nas');
+    Route::post('settings/backup/save-to-nas',        [AdminSettingsController::class, 'saveBackupToNas'])->name('settings.backup.save.nas');
+    Route::post('settings/backup/save-to-nas/sqlite', [AdminSettingsController::class, 'saveBackupSqliteToNas'])->name('settings.backup.save.nas.sqlite');
+    Route::get('settings/backup/nas-files',           [AdminSettingsController::class, 'listNasBackups'])->name('settings.backup.nas.list');
+    Route::post('settings/backup/restore-from-nas',   [AdminSettingsController::class, 'restoreFromNas'])->name('settings.backup.restore.nas');
     Route::post('settings/clear',                 [AdminSettingsController::class, 'clearData'])->name('settings.clear');
     Route::post('settings/storage',                    [AdminSettingsController::class, 'updateStorage'])->name('settings.storage');
     Route::post('settings/storage/test/gdrive',        [AdminSettingsController::class, 'testStorageGdrive'])->name('settings.storage.test.gdrive');
@@ -267,6 +294,10 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('users/{user}/transfer-tasks',     [AdminUserController::class, 'transferTasks'])->name('users.transfer-tasks');
     // Hold / release account
     Route::post('users/{user}/hold',               [AdminUserController::class, 'hold'])->name('users.hold');
+    Route::post('users/{user}/disable-mfa',           [AdminUserController::class, 'disableMfa'])->name('users.disable-mfa');
+    Route::post('users/{user}/require-mfa',           [AdminUserController::class, 'requireMfa'])->name('users.require-mfa');
+    Route::post('users/{user}/cancel-mfa-requirement',[AdminUserController::class, 'cancelMfaRequirement'])->name('users.cancel-mfa-requirement');
+    Route::post('users/{user}/reset-mfa',             [AdminUserController::class, 'resetMfa'])->name('users.reset-mfa');
     Route::post('users/{user}/clone',              [AdminUserController::class, 'cloneUser'])->name('users.clone');
     // Restore archived user
     Route::post('users/{user}/restore',            [AdminUserController::class, 'restore'])->name('users.restore');
@@ -287,8 +318,18 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::get('audit',                            [AdminAuditLogController::class, 'index'])->name('audit.index');
     Route::post('audit/clear-logs',               [AdminAuditLogController::class, 'clearLogs'])->name('audit.clear-logs');
 
+    // Domains
+    Route::get('domains/export/pdf', [AdminDomainController::class, 'exportPdf'])->name('domains.export.pdf');
+    Route::post('domains/{domain}/reveal-password', [AdminDomainController::class, 'revealPassword'])->name('domains.reveal-password');
+    Route::resource('domains', AdminDomainController::class);
+    Route::post('domains/{domain}/attachments',                               [AdminDomainController::class, 'storeAttachment'])->name('domains.attachments.store');
+    Route::get('domains/{domain}/attachments/{attachment}/download',          [AdminDomainController::class, 'downloadAttachment'])->name('domains.attachments.download');
+    Route::delete('domains/{domain}/attachments/{attachment}',                [AdminDomainController::class, 'destroyAttachment'])->name('domains.attachments.destroy');
+
     // Subscriptions & Licenses
+    Route::get('subscriptions/export/pdf', [AdminSubscriptionController::class, 'exportPdf'])->name('subscriptions.export.pdf');
     Route::resource('subscriptions', AdminSubscriptionController::class);
+    Route::post('subscriptions/{subscription}/reveal-password',              [AdminSubscriptionController::class, 'revealPassword'])->name('subscriptions.reveal-password');
     Route::post('subscriptions/{subscription}/assign-user',                  [AdminSubscriptionController::class, 'assignUser'])->name('subscriptions.assign-user');
     Route::delete('subscriptions/{subscription}/remove-user/{user}',         [AdminSubscriptionController::class, 'removeUser'])->name('subscriptions.remove-user');
     Route::post('subscriptions/{subscription}/attachments',                  [AdminSubscriptionController::class, 'uploadAttachment'])->name('subscriptions.attachments.upload');
@@ -330,10 +371,31 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
         abort(404, 'File not found. It may have been removed from local storage.');
     })->name('submissions.download');
 
-    // Task comment file download (add ?inline=1 to serve inline for browser preview)
+    // Task comment file download (add ?inline=1 to serve inline; ?file_index=N for multi-file comments)
     Route::get('task-comments/{comment}/file', function (\App\Models\TaskComment $comment) {
+        $inline = request()->boolean('inline');
+        $idx    = (int) request()->input('file_index', -1);
+
+        // New multi-file format stored in `files` JSON column
+        if ($comment->files && $idx >= 0 && isset($comment->files[$idx])) {
+            $f        = $comment->files[$idx];
+            $filePath = $f['path'];
+            $filename = $f['original_filename'] ?? 'file';
+            $nasPath  = $f['nas_path'] ?? null;
+            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($filePath)) {
+                $fullPath = storage_path('app/public/' . $filePath);
+                return $inline
+                    ? response()->file($fullPath)
+                    : \Illuminate\Support\Facades\Storage::disk('public')->download($filePath, $filename);
+            }
+            if ($nasPath) {
+                return app(\App\Services\NasService::class)->downloadFromNas($nasPath, $filename, $inline);
+            }
+            abort(404, 'File not found.');
+        }
+
+        // Legacy single-file format
         abort_unless($comment->file_path, 404);
-        $inline   = request()->boolean('inline');
         $filename = $comment->original_filename ?? 'file';
         if (\Illuminate\Support\Facades\Storage::disk('public')->exists($comment->file_path)) {
             $fullPath = storage_path('app/public/' . $comment->file_path);
@@ -349,7 +411,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
 });
 
 // Manager routes
-Route::middleware([ManagerMiddleware::class])->prefix('manager')->name('manager.')->group(function () {
+Route::middleware([ManagerMiddleware::class, MfaMiddleware::class])->prefix('manager')->name('manager.')->group(function () {
     Route::get('/dashboard',         [ManagerDashboard::class, 'index'])->name('dashboard');
     Route::get('/dashboard/refresh', [ManagerDashboard::class, 'refresh'])->name('dashboard.refresh');
     Route::resource('projects', AdminProjectController::class)->only(['index', 'store']);
@@ -361,9 +423,11 @@ Route::middleware([ManagerMiddleware::class])->prefix('manager')->name('manager.
 });
 
 // User routes
-Route::middleware([UserMiddleware::class])->prefix('user')->name('user.')->group(function () {
+Route::middleware([UserMiddleware::class, MfaMiddleware::class])->prefix('user')->name('user.')->group(function () {
     Route::get('/dashboard', [UserDashboard::class, 'index'])->name('dashboard');
     Route::get('/licenses',  [UserLicensesController::class, 'index'])->name('licenses.index');
+    Route::get('/domains',   [UserDomainsController::class, 'index'])->name('domains.index');
+    Route::post('/licenses/{subscription}/reveal-password', [UserLicensesController::class, 'revealPassword'])->name('licenses.reveal-password');
     Route::post('/report',   [UserDashboard::class, 'submitReport'])->name('report');
     Route::get('/tasks-modal', [UserDashboard::class, 'taskModal'])->name('tasks.modal');
     Route::get('/tasks', [UserTaskController::class, 'index'])->name('tasks.index');
@@ -380,9 +444,16 @@ Route::middleware([UserMiddleware::class])->prefix('user')->name('user.')->group
     Route::get('/projects/{project}', [UserProjectController::class, 'show'])->name('projects.show');
     Route::get('/reports', [UserReportsController::class, 'index'])->name('reports.index');
     Route::get('/reports/export', [UserReportsController::class, 'exportTasks'])->name('reports.export');
+    Route::get('/reports/export-pdf', [UserReportsController::class, 'exportPdf'])->name('reports.export.pdf');
     Route::get('/attachments/{attachment}/download', function (\App\Models\ProjectAttachment $attachment) {
-        $allowed = auth()->user()->tasks()
-            ->where('project_id', $attachment->project_id)
+        $userId = auth()->id();
+        $allowed = \App\Models\Task::where('project_id', $attachment->project_id)
+            ->where(function ($q) use ($userId) {
+                $q->where('assigned_to', $userId)
+                  ->orWhereExists(fn ($x) => $x->selectRaw('1')->from('task_assignees')
+                      ->whereColumn('task_assignees.task_id', 'tasks.id')
+                      ->where('task_assignees.user_id', $userId));
+            })
             ->exists();
         abort_unless($allowed, 403);
         abort_unless($attachment->isFile(), 404);

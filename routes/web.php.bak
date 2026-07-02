@@ -26,6 +26,7 @@ use App\Http\Controllers\Admin\SocialAccountController as AdminSocialAccountCont
 use App\Http\Controllers\Admin\CustomerController as AdminCustomerController;
 use App\Http\Controllers\Admin\SubscriptionController as AdminSubscriptionController;
 use App\Http\Controllers\Admin\DomainController as AdminDomainController;
+use App\Http\Controllers\Admin\GanttController as AdminGanttController;
 use App\Http\Controllers\User\LicensesController as UserLicensesController;
 use App\Http\Controllers\User\ProjectController as UserProjectController;
 use App\Http\Controllers\User\DomainsController as UserDomainsController;
@@ -33,6 +34,7 @@ use App\Http\Controllers\User\ReportsController as UserReportsController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\ManagerMiddleware;
 use App\Http\Middleware\UserMiddleware;
+use App\Http\Middleware\MfaMiddleware;
 
 // Home: redirect authenticated users to their dashboard, guests to login
 Route::get('/', function () {
@@ -58,7 +60,17 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Shared authenticated routes (accessible by all roles)
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', MfaMiddleware::class])->group(function () {
+    // MQTT credentials endpoint — served per-session to avoid embedding in HTML source
+    Route::get('/mqtt/credentials', function () {
+        return response()->json([
+            'wsUrl'    => env('MQTT_WS_URL', '/mqtt'),
+            'username' => env('MQTT_BROWSER_USER', 'tm_browser'),
+            'password' => env('MQTT_BROWSER_PASS', ''),
+            'userId'   => auth()->id(),
+        ])->header('Cache-Control', 'no-store');
+    })->name('mqtt.credentials');
+
     // Profile update (all roles)
     Route::post('/profile/update', [UserDashboard::class, 'updateProfile'])->name('user.profile.update');
 
@@ -164,7 +176,7 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Admin routes
-Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware([AdminMiddleware::class, MfaMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', fn() => redirect()->route('admin.dashboard'))->name('index');
     Route::get('/dashboard', [AdminDashboard::class, 'index'])->name('dashboard');
     Route::get('/dashboard/refresh', [AdminDashboard::class, 'refresh'])->name('dashboard.refresh');
@@ -174,6 +186,10 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::get('/dashboard/social-posts',    [AdminDashboard::class, 'socialPosts'])->name('dashboard.social-posts');
     Route::get('/dashboard/analytics-tasks',[AdminDashboard::class, 'analyticsTasks'])->name('dashboard.analytics-tasks');
     Route::get('/reports',                     [AdminReportsController::class, 'index'])->name('reports.index');
+    Route::get('/gantt',                       [AdminGanttController::class, 'index'])->name('gantt.index');
+    Route::get('/gantt/export/pdf',            [AdminGanttController::class, 'exportPdf'])->name('gantt.export.pdf');
+    Route::get('/gantt/export/csv',            [AdminGanttController::class, 'exportCsv'])->name('gantt.export.csv');
+    Route::get('/gantt/export/png',            [AdminGanttController::class, 'exportPng'])->name('gantt.export.png');
     Route::get('/reports/summary-data',        [AdminReportsController::class, 'summaryData'])->name('reports.summary-data');
     Route::get('/reports/export-users',        [AdminReportsController::class, 'exportUsers'])->name('reports.export-users');
     Route::get('/reports/user-detail',         [AdminReportsController::class, 'userDetail'])->name('reports.user-detail');
@@ -215,11 +231,20 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('settings/hourly-rate',              [AdminSettingsController::class, 'toggleHourlyRate'])->name('settings.hourly-rate');
     Route::post('settings/hide-wa-web',              [AdminSettingsController::class, 'toggleHideWaWeb'])->name('settings.hide-wa-web');
     Route::post('settings/hide-summarize',           [AdminSettingsController::class, 'toggleHideSummarize'])->name('settings.hide-summarize');
+    Route::post('settings/hide-features-tab',        [AdminSettingsController::class, 'toggleHideFeaturesTab'])->name('settings.hide-features-tab');
+    Route::post('settings/features/disable-all',        [AdminSettingsController::class, 'disableAllFeatures'])->name('settings.features.disable-all');
+    Route::post('settings/features/gantt-chart',        [AdminSettingsController::class, 'toggleGanttChart'])->name('settings.features.gantt-chart');
+    Route::post('settings/features/excel-export',       [AdminSettingsController::class, 'toggleExcelExport'])->name('settings.features.excel-export');
+    Route::post('settings/features/workload-view',      [AdminSettingsController::class, 'toggleWorkloadView'])->name('settings.features.workload-view');
+    Route::post('settings/features/task-dependencies',  [AdminSettingsController::class, 'toggleTaskDependencies'])->name('settings.features.task-dependencies');
+    Route::post('settings/features/recurring-tasks',    [AdminSettingsController::class, 'toggleRecurringTasks'])->name('settings.features.recurring-tasks');
+    Route::post('settings/features/time-tracking',      [AdminSettingsController::class, 'toggleTimeTracking'])->name('settings.features.time-tracking');
+    Route::post('settings/features/task-templates',     [AdminSettingsController::class, 'toggleTaskTemplates'])->name('settings.features.task-templates');
     Route::post('settings/clear-cache',              [AdminSettingsController::class, 'clearCache'])->name('settings.clear-cache');
     Route::get('social-budget',                      [AdminSocialBudgetController::class, 'index'])->name('social-budget.index');
     Route::get('social-accounts/export/pdf', [AdminSocialAccountController::class, 'exportPdf'])->name('social-accounts.export.pdf');
     Route::resource('social-accounts', AdminSocialAccountController::class)->except(['create','edit','show']);
-    Route::get('social-accounts/{socialAccount}/password', [AdminSocialAccountController::class, 'revealPassword'])->name('social-accounts.password');
+    Route::post('social-accounts/{socialAccount}/reveal-password', [AdminSocialAccountController::class, 'revealPassword'])->name('social-accounts.reveal-password');
     Route::post('settings/elements/toggle',       [AdminSettingsController::class, 'toggleElement'])->name('settings.elements.toggle');
     Route::post('settings/nav/toggle',            [AdminSettingsController::class, 'toggleNavItem'])->name('settings.nav.toggle');
     Route::post('meetings',                        [AdminMeetingController::class, 'store'])->name('meetings.store');
@@ -282,17 +307,26 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::patch('tasks/{task}/submissions/{submission}/note',   [AdminTaskController::class, 'editSubmissionNote'])->name('tasks.submissions.note');
     Route::post('tasks/{task}/deliver',            [AdminTaskController::class, 'deliver'])->name('tasks.deliver');
     Route::post('tasks/{task}/reassign',           [AdminTaskController::class, 'reassign'])->name('tasks.reassign');
+    Route::post('tasks/{task}/dependencies',               [AdminTaskController::class, 'storeDependency'])->name('tasks.dependencies.store');
+    Route::delete('tasks/{task}/dependencies/{dependsOnId}', [AdminTaskController::class, 'destroyDependency'])->name('tasks.dependencies.destroy');
+    Route::get('tasks/{task}/dependencies/search',         [AdminTaskController::class, 'searchTasksForDependency'])->name('tasks.dependencies.search');
     Route::patch('tasks/{task}/deadline',          [AdminTaskController::class, 'updateDeadline'])->name('tasks.deadline');
     Route::post('tasks/{task}/archive',            [AdminTaskController::class, 'archive'])->name('tasks.archive');
     Route::post('tasks/{task}/reopen',             [AdminTaskController::class, 'reopen'])->name('tasks.reopen');
     Route::post('tasks/{task}/force-close',        [AdminTaskController::class, 'forceClose'])->name('tasks.forceClose');
     Route::patch('tasks/{task}',                   [AdminTaskController::class, 'update'])->name('tasks.update');
     Route::delete('tasks/{task}',                  [AdminTaskController::class, 'destroy'])->name('tasks.destroy');
+    Route::post('tasks/{task}/deadline-extension/{extensionRequest}/approve', [AdminTaskController::class, 'approveDeadlineExtension'])->name('tasks.deadline-extension.approve');
+    Route::post('tasks/{task}/deadline-extension/{extensionRequest}/reject',  [AdminTaskController::class, 'rejectDeadlineExtension'])->name('tasks.deadline-extension.reject');
 
     // User task transfer
     Route::post('users/{user}/transfer-tasks',     [AdminUserController::class, 'transferTasks'])->name('users.transfer-tasks');
     // Hold / release account
     Route::post('users/{user}/hold',               [AdminUserController::class, 'hold'])->name('users.hold');
+    Route::post('users/{user}/disable-mfa',           [AdminUserController::class, 'disableMfa'])->name('users.disable-mfa');
+    Route::post('users/{user}/require-mfa',           [AdminUserController::class, 'requireMfa'])->name('users.require-mfa');
+    Route::post('users/{user}/cancel-mfa-requirement',[AdminUserController::class, 'cancelMfaRequirement'])->name('users.cancel-mfa-requirement');
+    Route::post('users/{user}/reset-mfa',             [AdminUserController::class, 'resetMfa'])->name('users.reset-mfa');
     Route::post('users/{user}/clone',              [AdminUserController::class, 'cloneUser'])->name('users.clone');
     // Restore archived user
     Route::post('users/{user}/restore',            [AdminUserController::class, 'restore'])->name('users.restore');
@@ -368,6 +402,20 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
 
     // Task comment file download (add ?inline=1 to serve inline; ?file_index=N for multi-file comments)
     Route::get('task-comments/{comment}/file', function (\App\Models\TaskComment $comment) {
+        $authUser = auth()->user();
+        $isAdminOrManager = in_array($authUser->role, ['admin', 'manager']);
+        $isCommentAuthor  = $comment->user_id === $authUser->id;
+        $isTaskParticipant = false;
+        if (! $isAdminOrManager && ! $isCommentAuthor) {
+            $task = \App\Models\Task::find($comment->task_id);
+            if ($task) {
+                $isTaskParticipant = $task->assigned_to === $authUser->id
+                    || $task->social_assigned_to === $authUser->id
+                    || $task->assignees()->where('user_id', $authUser->id)->exists();
+            }
+        }
+        abort_unless($isAdminOrManager || $isCommentAuthor || $isTaskParticipant, 403);
+
         $inline = request()->boolean('inline');
         $idx    = (int) request()->input('file_index', -1);
 
@@ -406,7 +454,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
 });
 
 // Manager routes
-Route::middleware([ManagerMiddleware::class])->prefix('manager')->name('manager.')->group(function () {
+Route::middleware([ManagerMiddleware::class, MfaMiddleware::class])->prefix('manager')->name('manager.')->group(function () {
     Route::get('/dashboard',         [ManagerDashboard::class, 'index'])->name('dashboard');
     Route::get('/dashboard/refresh', [ManagerDashboard::class, 'refresh'])->name('dashboard.refresh');
     Route::resource('projects', AdminProjectController::class)->only(['index', 'store']);
@@ -418,7 +466,7 @@ Route::middleware([ManagerMiddleware::class])->prefix('manager')->name('manager.
 });
 
 // User routes
-Route::middleware([UserMiddleware::class])->prefix('user')->name('user.')->group(function () {
+Route::middleware([UserMiddleware::class, MfaMiddleware::class])->prefix('user')->name('user.')->group(function () {
     Route::get('/dashboard', [UserDashboard::class, 'index'])->name('dashboard');
     Route::get('/licenses',  [UserLicensesController::class, 'index'])->name('licenses.index');
     Route::get('/domains',   [UserDomainsController::class, 'index'])->name('domains.index');
@@ -434,11 +482,14 @@ Route::middleware([UserMiddleware::class])->prefix('user')->name('user.')->group
     Route::patch('/tasks/{task}/submissions/{submission}/note',  [UserTaskController::class, 'editSubmissionNote'])->name('tasks.submissions.note');
     Route::post('/tasks/{task}/timer/start',             [UserTaskController::class, 'startTimer'])->name('tasks.timer.start');
     Route::post('/tasks/{task}/timer/pause',             [UserTaskController::class, 'pauseTimer'])->name('tasks.timer.pause');
+    Route::post('/tasks/{task}/timer/manual',            [UserTaskController::class, 'logTimeManually'])->name('tasks.timer.manual');
     Route::post('/tasks/{task}/acknowledge-revision',    [UserTaskController::class, 'acknowledgeRevision'])->name('tasks.acknowledge-revision');
+    Route::post('/tasks/{task}/deadline-extension', [UserTaskController::class, 'requestDeadlineExtension'])->name('tasks.deadline-extension.request');
     Route::get('/projects', [UserProjectController::class, 'index'])->name('projects.index');
     Route::get('/projects/{project}', [UserProjectController::class, 'show'])->name('projects.show');
     Route::get('/reports', [UserReportsController::class, 'index'])->name('reports.index');
     Route::get('/reports/export', [UserReportsController::class, 'exportTasks'])->name('reports.export');
+    Route::get('/reports/export-pdf', [UserReportsController::class, 'exportPdf'])->name('reports.export.pdf');
     Route::get('/attachments/{attachment}/download', function (\App\Models\ProjectAttachment $attachment) {
         $userId = auth()->id();
         $allowed = \App\Models\Task::where('project_id', $attachment->project_id)

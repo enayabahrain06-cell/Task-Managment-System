@@ -110,7 +110,7 @@ foreach($licenses as $l) {
         'since'        => $l->purchase_date ? $l->purchase_date->format('M Y') : '',
         'website'      => $l->website ?? '',
         'username'     => $l->username ?? '',
-        'password'     => $l->decrypted_password ?? '',
+        'hasPassword'  => !empty($l->password),
         'notes'        => $l->notes ?? '',
         'logoUrl'      => $l->logo_url ?? '',
         'cost'         => $l->cost > 0 ? number_format((float)$l->cost, 3).' '.$l->currency : '',
@@ -314,7 +314,6 @@ const LIC_DATA = @json($licData);
             $statusLabel    = $status === 'expired' ? 'Expired' : ($status === 'expiring_soon' ? 'Expiring Soon' : 'Active');
             $statusIcon     = $status === 'expired' ? 'fa-triangle-exclamation' : ($status === 'expiring_soon' ? 'fa-clock' : 'fa-circle-check');
             $hasCredentials = $lic->username || $lic->password;
-            $decryptedPw    = $lic->decrypted_password;
         @endphp
         <div class="lic-card" x-show="matches({{ $lic->id }})">
 
@@ -399,13 +398,13 @@ const LIC_DATA = @json($licData);
                         </div>
                     </div>
                     @endif
-                    @if($decryptedPw)
+                    @if($lic->password)
                     <div>
                         <p style="font-size:10px;color:#9CA3AF;margin:0 0 3px;font-weight:500;">Password</p>
                         <div style="display:flex;gap:5px;align-items:center;">
-                            <span class="cred-val" id="pw-c-{{ $lic->id }}" data-pw="{{ $decryptedPw }}" style="letter-spacing:.12em;">••••••••</span>
-                            <button class="cred-reveal" onclick="licReveal('pw-c-{{ $lic->id }}','reveal-icon-c-{{ $lic->id }}')" title="Show/hide"><i class="fas fa-eye" id="reveal-icon-c-{{ $lic->id }}"></i></button>
-                            <button class="cred-copy" onclick="licCopy(this, document.getElementById('pw-c-{{ $lic->id }}').dataset.pw)" title="Copy"><i class="fas fa-copy"></i></button>
+                            <span class="cred-val" id="pw-c-{{ $lic->id }}" style="letter-spacing:.12em;">••••••••</span>
+                            <button class="cred-reveal" onclick="openLicReveal({{ $lic->id }},'pw-c-{{ $lic->id }}')" title="Reveal (requires account password)" style="background:#FEF3C7;color:#D97706;"><i class="fas fa-lock"></i></button>
+                            <button class="cred-copy" id="copy-c-{{ $lic->id }}" style="display:none;" onclick="licCopyById('pw-c-{{ $lic->id }}',this)" title="Copy"><i class="fas fa-copy"></i></button>
                         </div>
                     </div>
                     @endif
@@ -495,7 +494,6 @@ const LIC_DATA = @json($licData);
                 $statusBg    = $status === 'expired' ? '#FEE2E2' : ($status === 'expiring_soon' ? '#FEF3C7' : '#ECFDF5');
                 $statusColor = $status === 'expired' ? '#DC2626' : ($status === 'expiring_soon' ? '#D97706' : '#16A34A');
                 $statusLabel = $status === 'expired' ? 'Expired' : ($status === 'expiring_soon' ? 'Expiring Soon' : 'Active');
-                $decryptedPw = $lic->decrypted_password;
                 $statusOrder = $status === 'expired' ? 2 : ($status === 'expiring_soon' ? 1 : 0);
             @endphp
             <tr data-name="{{ strtolower($lic->name) }}"
@@ -558,11 +556,11 @@ const LIC_DATA = @json($licData);
                     @endif
                 </td>
                 <td>
-                    @if($decryptedPw)
+                    @if($lic->password)
                     <div style="display:flex;align-items:center;gap:5px;">
-                        <span id="pw-t-{{ $lic->id }}" data-pw="{{ $decryptedPw }}" style="font-size:12px;font-weight:600;color:#111827;font-family:monospace;letter-spacing:.1em;">••••••••</span>
-                        <button class="cred-reveal" style="padding:4px 8px;" onclick="event.stopPropagation();licReveal('pw-t-{{ $lic->id }}','reveal-icon-t-{{ $lic->id }}')" title="Show/hide"><i class="fas fa-eye" id="reveal-icon-t-{{ $lic->id }}"></i></button>
-                        <button class="cred-copy" style="padding:4px 8px;" onclick="event.stopPropagation();licCopy(this,document.getElementById('pw-t-{{ $lic->id }}').dataset.pw)" title="Copy"><i class="fas fa-copy"></i></button>
+                        <span id="pw-t-{{ $lic->id }}" style="font-size:12px;font-weight:600;color:#111827;font-family:monospace;letter-spacing:.1em;">••••••••</span>
+                        <button class="cred-reveal" style="padding:4px 8px;background:#FEF3C7;color:#D97706;" onclick="event.stopPropagation();openLicReveal({{ $lic->id }},'pw-t-{{ $lic->id }}')" title="Reveal (requires account password)"><i class="fas fa-lock"></i></button>
+                        <button class="cred-copy" id="copy-t-{{ $lic->id }}" style="display:none;padding:4px 8px;" onclick="event.stopPropagation();licCopyById('pw-t-{{ $lic->id }}',this)" title="Copy"><i class="fas fa-copy"></i></button>
                     </div>
                     @else
                     <span style="color:#D1D5DB;font-size:12px;">—</span>
@@ -875,8 +873,8 @@ const LIC_DATA = @json($licData);
                     <p style="font-size:10px;color:#9CA3AF;margin:0 0 4px;font-weight:500;">Password</p>
                     <div style="display:flex;gap:6px;align-items:center;">
                         <span id="lm-pw" class="cred-val" style="letter-spacing:.12em;">••••••••</span>
-                        <button class="cred-reveal" onclick="licReveal('lm-pw','lm-pw-icon')" title="Show/hide"><i class="fas fa-eye" id="lm-pw-icon"></i></button>
-                        <button class="cred-copy" onclick="licCopy(this,document.getElementById('lm-pw').dataset.pw)" title="Copy"><i class="fas fa-copy"></i></button>
+                        <button class="cred-reveal" onclick="openLicReveal(_lmCurrentId,'lm-pw')" title="Reveal (requires account password)" style="background:#FEF3C7;color:#D97706;"><i class="fas fa-lock" id="lm-pw-icon"></i></button>
+                        <button class="cred-copy" id="lm-pw-copy" style="display:none;" onclick="licCopyById('lm-pw',this)" title="Copy"><i class="fas fa-copy"></i></button>
                     </div>
                 </div>
             </div>
@@ -905,6 +903,7 @@ const LIC_DATA = @json($licData);
 function openLicModal(id) {
     const d = LIC_DATA[id];
     if (!d) return;
+    _lmCurrentId = id;
 
     // Logo
     const logoEl = document.getElementById('lm-logo');
@@ -973,15 +972,16 @@ function openLicModal(id) {
 
     // Credentials
     const credsWrap=document.getElementById('lm-creds-wrap'), userWrap=document.getElementById('lm-user-wrap'), pwWrap=document.getElementById('lm-pw-wrap');
-    if (d.username||d.password) {
+    if (d.username||d.hasPassword) {
         credsWrap.style.display='';
         if (d.username) { userWrap.style.display=''; document.getElementById('lm-username').textContent=d.username; }
         else { userWrap.style.display='none'; }
-        if (d.password) {
+        if (d.hasPassword) {
             pwWrap.style.display='';
             const pwEl=document.getElementById('lm-pw');
-            pwEl.dataset.pw=d.password; pwEl.textContent='••••••••';
-            document.getElementById('lm-pw-icon').className='fas fa-eye';
+            pwEl.textContent='••••••••'; pwEl.style.letterSpacing='.12em';
+            document.getElementById('lm-pw-icon').className='fas fa-lock';
+            document.getElementById('lm-pw-copy').style.display='none';
         } else { pwWrap.style.display='none'; }
     } else { credsWrap.style.display='none'; }
 
@@ -1057,10 +1057,95 @@ function licCopy(btn, text) {
     });
 }
 
-function licReveal(elId, iconId) {
-    const el=document.getElementById(elId), icon=document.getElementById(iconId);
-    if (el.textContent.includes('•')) { el.textContent=el.dataset.pw; icon.className='fas fa-eye-slash'; }
-    else { el.textContent='••••••••'; icon.className='fas fa-eye'; }
+var _lmCurrentId = null;
+var _licRevealTimers = {};
+
+function openLicReveal(subId, targetElId) {
+    _licRevealTarget = targetElId;
+    _licRevealSubId  = subId;
+    document.getElementById('lic-reveal-input').value = '';
+    document.getElementById('lic-reveal-error').style.display = 'none';
+    document.getElementById('lic-reveal-modal').style.display = 'flex';
+    setTimeout(() => document.getElementById('lic-reveal-input').focus(), 50);
+}
+
+function closeLicReveal() {
+    document.getElementById('lic-reveal-modal').style.display = 'none';
+}
+
+function submitLicReveal() {
+    const pwd = document.getElementById('lic-reveal-input').value;
+    const btn = document.getElementById('lic-reveal-btn');
+    const err = document.getElementById('lic-reveal-error');
+    if (!pwd) { err.textContent = 'Please enter your password.'; err.style.display='block'; return; }
+    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:11px;margin-right:4px;"></i> Checking...';
+    fetch(`/user/licenses/${_licRevealSubId}/reveal-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+        body: JSON.stringify({ password: pwd })
+    }).then(r => r.json()).then(data => {
+        btn.disabled = false; btn.innerHTML = '<i class="fas fa-unlock" style="font-size:11px;margin-right:4px;"></i> Reveal';
+        if (data.error) { err.textContent = data.error; err.style.display='block'; return; }
+        closeLicReveal();
+        const el = document.getElementById(_licRevealTarget);
+        el.textContent = data.secret;
+        el.style.letterSpacing = 'normal';
+        // Show copy button(s) for this element
+        ['copy-c-','copy-t-'].forEach(pfx => {
+            const cb = document.getElementById(pfx + _licRevealSubId);
+            if (cb) cb.style.display = 'inline-flex';
+        });
+        if (document.getElementById('lm-pw') === el) {
+            document.getElementById('lm-pw-copy').style.display = 'inline-flex';
+        }
+        if (_licRevealTimers[_licRevealTarget]) clearTimeout(_licRevealTimers[_licRevealTarget]);
+        _licRevealTimers[_licRevealTarget] = setTimeout(() => {
+            el.textContent = '••••••••'; el.style.letterSpacing = '.12em';
+            ['copy-c-','copy-t-'].forEach(pfx => { const cb=document.getElementById(pfx+_licRevealSubId); if(cb) cb.style.display='none'; });
+            if (document.getElementById('lm-pw') === el) document.getElementById('lm-pw-copy').style.display='none';
+        }, 30000);
+    }).catch(() => {
+        btn.disabled = false; btn.innerHTML = '<i class="fas fa-unlock" style="font-size:11px;margin-right:4px;"></i> Reveal';
+        err.textContent = 'Request failed. Try again.'; err.style.display='block';
+    });
+}
+
+function licCopyById(elId, btn) {
+    const text = document.getElementById(elId).textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        const icon = btn.querySelector('i');
+        icon.className = 'fas fa-check'; icon.style.color = '#16A34A';
+        setTimeout(() => { icon.className = 'fas fa-copy'; icon.style.color = ''; }, 1500);
+    });
 }
 </script>
+
+{{-- Secure reveal modal --}}
+<div id="lic-reveal-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)closeLicReveal()">
+    <div style="background:#fff;border-radius:16px;padding:28px;width:380px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+            <div style="width:40px;height:40px;border-radius:10px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-lock" style="color:#D97706;font-size:16px;"></i>
+            </div>
+            <div>
+                <div style="font-size:15px;font-weight:700;color:#111827;">Reveal Password</div>
+                <div style="font-size:12px;color:#6B7280;">Enter your account password to continue</div>
+            </div>
+        </div>
+        <input type="password" id="lic-reveal-input" placeholder="Your account password"
+               style="width:100%;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:6px;"
+               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"
+               onkeydown="if(event.key==='Enter')submitLicReveal()">
+        <div id="lic-reveal-error" style="display:none;font-size:12px;color:#DC2626;margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+            <button onclick="closeLicReveal()" style="flex:1;padding:9px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;font-size:13px;cursor:pointer;color:#374151;">Cancel</button>
+            <button onclick="submitLicReveal()" id="lic-reveal-btn" style="flex:1;padding:9px;border:none;border-radius:8px;background:#4F46E5;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">
+                <i class="fas fa-unlock" style="font-size:11px;margin-right:4px;"></i> Reveal
+            </button>
+        </div>
+        <div style="margin-top:12px;font-size:11px;color:#9CA3AF;text-align:center;">
+            <i class="fas fa-shield-halved" style="font-size:9px;color:#D97706;"></i> Access is logged for security
+        </div>
+    </div>
+</div>
 @endsection

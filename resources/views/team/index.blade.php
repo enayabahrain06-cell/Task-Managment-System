@@ -1518,6 +1518,7 @@ function rolesTab() {
                 @method('PUT')
 
                 {{-- Avatar upload --}}
+                <input type="hidden" name="remove_avatar" :value="removeAvatar ? '1' : '0'">
                 <div style="display:flex;align-items:center;gap:16px;padding:16px;background:#F9FAFB;border-radius:12px;border:1px solid #F3F4F6;margin-bottom:16px;">
                     <div style="position:relative;flex-shrink:0;">
                         <template x-if="avatarPreview">
@@ -1533,12 +1534,20 @@ function rolesTab() {
                         <label style="position:absolute;bottom:-2px;right:-2px;width:24px;height:24px;background:#6366F1;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid #fff;">
                             <i class="fa fa-camera" style="color:#fff;font-size:9px;"></i>
                             <input type="file" name="avatar" accept="image/*" class="hidden"
-                                   x-on:change="avatarPreview = $event.target.files[0] ? URL.createObjectURL($event.target.files[0]) : avatarPreview">
+                                   x-on:change="if($event.target.files[0]){ avatarPreview=URL.createObjectURL($event.target.files[0]); removeAvatar=false; }">
                         </label>
                     </div>
-                    <div>
+                    <div style="flex:1;min-width:0;">
                         <p style="font-size:13px;font-weight:600;color:#374151;margin:0;">Profile Photo</p>
-                        <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">JPG, PNG or WebP · Max 2MB. Leave blank to keep current.</p>
+                        <p style="font-size:11px;color:#9CA3AF;margin:3px 0 8px;">JPG, PNG or WebP · Max 2MB.</p>
+                        <button type="button" x-show="avatarPreview && !removeAvatar"
+                                @click="avatarPreview=null; removeAvatar=true;"
+                                style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#EF4444;background:#FEF2F2;border:1px solid #FECACA;border-radius:7px;padding:4px 10px;cursor:pointer;">
+                            <i class="fa fa-trash" style="font-size:10px;"></i> Remove Photo
+                        </button>
+                        <span x-show="removeAvatar" style="font-size:11px;color:#EF4444;font-weight:600;">
+                            <i class="fa fa-info-circle"></i> Photo will be removed on save
+                        </span>
                     </div>
                 </div>
 
@@ -2103,6 +2112,7 @@ function editUserModal() {
         status:       '',
         hourlyRate:   '',
         avatarPreview: null,
+        removeAvatar: false,
         mfaEnabled:   false,
         mfaRequired:  false,
         mfaLoading:   false,
@@ -2176,6 +2186,7 @@ function editUserModal() {
             this.role          = u.role;
             this.status        = u.status;
             this.avatarPreview = u.avatar || null;
+            this.removeAvatar  = false;
             this.hourlyRate    = u.hourly_rate || '';
             this.mfaEnabled    = !!u.mfa_enabled;
             this.mfaRequired   = !!u.mfa_required;

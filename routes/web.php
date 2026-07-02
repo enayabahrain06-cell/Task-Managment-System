@@ -34,7 +34,11 @@ use App\Http\Controllers\User\ReportsController as UserReportsController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\ManagerMiddleware;
 use App\Http\Middleware\UserMiddleware;
+use App\Http\Controllers\PublicController;
 use App\Http\Middleware\MfaMiddleware;
+
+// Public — visitor-facing page showcasing the team and company artwork, no auth required
+Route::get('/about', [PublicController::class, 'about'])->name('about');
 
 // Home: redirect authenticated users to their dashboard, guests to login
 Route::get('/', function () {
@@ -187,6 +191,9 @@ Route::middleware([AdminMiddleware::class, MfaMiddleware::class])->prefix('admin
     Route::get('/dashboard/analytics-tasks',[AdminDashboard::class, 'analyticsTasks'])->name('dashboard.analytics-tasks');
     Route::get('/reports',                     [AdminReportsController::class, 'index'])->name('reports.index');
     Route::get('/gantt',                       [AdminGanttController::class, 'index'])->name('gantt.index');
+    Route::get('/gantt/export/pdf',            [AdminGanttController::class, 'exportPdf'])->name('gantt.export.pdf');
+    Route::get('/gantt/export/csv',            [AdminGanttController::class, 'exportCsv'])->name('gantt.export.csv');
+    Route::get('/gantt/export/png',            [AdminGanttController::class, 'exportPng'])->name('gantt.export.png');
     Route::get('/reports/summary-data',        [AdminReportsController::class, 'summaryData'])->name('reports.summary-data');
     Route::get('/reports/export-users',        [AdminReportsController::class, 'exportUsers'])->name('reports.export-users');
     Route::get('/reports/user-detail',         [AdminReportsController::class, 'userDetail'])->name('reports.user-detail');
@@ -213,6 +220,8 @@ Route::middleware([AdminMiddleware::class, MfaMiddleware::class])->prefix('admin
     Route::get('settings',                        [AdminSettingsController::class, 'index'])->name('settings.index');
     Route::post('settings/general',               [AdminSettingsController::class, 'updateGeneral'])->name('settings.general');
     Route::post('settings/branding',              [AdminSettingsController::class, 'updateBranding'])->name('settings.branding');
+    Route::post('settings/about-page',            [AdminSettingsController::class, 'updateAboutPage'])->name('settings.about-page');
+    Route::post('settings/about-page/team-photo/{user}', [AdminSettingsController::class, 'updateAboutPageTeamPhoto'])->name('settings.about-page.team-photo');
     Route::post('settings/team',                  [AdminSettingsController::class, 'updateTeam'])->name('settings.team');
     Route::post('settings/notifications',         [AdminSettingsController::class, 'updateNotifications'])->name('settings.notifications');
     Route::post('settings/security',              [AdminSettingsController::class, 'updateSecurity'])->name('settings.security');
@@ -313,6 +322,8 @@ Route::middleware([AdminMiddleware::class, MfaMiddleware::class])->prefix('admin
     Route::post('tasks/{task}/force-close',        [AdminTaskController::class, 'forceClose'])->name('tasks.forceClose');
     Route::patch('tasks/{task}',                   [AdminTaskController::class, 'update'])->name('tasks.update');
     Route::delete('tasks/{task}',                  [AdminTaskController::class, 'destroy'])->name('tasks.destroy');
+    Route::post('tasks/{task}/deadline-extension/{extensionRequest}/approve', [AdminTaskController::class, 'approveDeadlineExtension'])->name('tasks.deadline-extension.approve');
+    Route::post('tasks/{task}/deadline-extension/{extensionRequest}/reject',  [AdminTaskController::class, 'rejectDeadlineExtension'])->name('tasks.deadline-extension.reject');
 
     // User task transfer
     Route::post('users/{user}/transfer-tasks',     [AdminUserController::class, 'transferTasks'])->name('users.transfer-tasks');
@@ -479,6 +490,7 @@ Route::middleware([UserMiddleware::class, MfaMiddleware::class])->prefix('user')
     Route::post('/tasks/{task}/timer/pause',             [UserTaskController::class, 'pauseTimer'])->name('tasks.timer.pause');
     Route::post('/tasks/{task}/timer/manual',            [UserTaskController::class, 'logTimeManually'])->name('tasks.timer.manual');
     Route::post('/tasks/{task}/acknowledge-revision',    [UserTaskController::class, 'acknowledgeRevision'])->name('tasks.acknowledge-revision');
+    Route::post('/tasks/{task}/deadline-extension', [UserTaskController::class, 'requestDeadlineExtension'])->name('tasks.deadline-extension.request');
     Route::get('/projects', [UserProjectController::class, 'index'])->name('projects.index');
     Route::get('/projects/{project}', [UserProjectController::class, 'show'])->name('projects.show');
     Route::get('/reports', [UserReportsController::class, 'index'])->name('reports.index');
