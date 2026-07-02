@@ -205,7 +205,10 @@
       "Bash(curl -sk -o /tmp/about_reset.html -w \"HTTP %{http_code}\\\\n\" https://stagms.p7h.me/about)",
       "Bash(curl -sk https://stagms.p7h.me/about)",
       "Bash(grep -iE \"\\\\.env|credential|secret|\\\\.key$|\\\\.pem$\")",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Bash(git merge task-features -m ' *)",
+      "Bash(git stash *)",
+      "Bash(php -r \"json_decode\\(file_get_contents\\('.claude/settings.local.json'\\)\\); echo json_last_error_msg\\(\\);\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory",
