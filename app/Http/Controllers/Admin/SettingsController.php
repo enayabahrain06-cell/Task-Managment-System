@@ -462,6 +462,10 @@ class SettingsController extends Controller
             $rules["about_page_value{$i}_title"]   = 'nullable|string|max:40';
             $rules["about_page_value{$i}_desc"]    = 'nullable|string|max:160';
         }
+        foreach ([1, 2, 3, 4] as $i) {
+            $rules["login_frame{$i}_title"] = 'nullable|string|max:40';
+            $rules["login_frame{$i}_desc"]  = 'nullable|string|max:60';
+        }
         $request->validate($rules);
 
         Setting::set('about_page_enabled', $request->has('about_page_enabled') ? '1' : '0');
@@ -478,6 +482,10 @@ class SettingsController extends Controller
             Setting::set("about_page_service{$i}_desc", $request->input("about_page_service{$i}_desc", ''));
             Setting::set("about_page_value{$i}_title", $request->input("about_page_value{$i}_title", ''));
             Setting::set("about_page_value{$i}_desc", $request->input("about_page_value{$i}_desc", ''));
+        }
+        foreach ([1, 2, 3, 4] as $i) {
+            Setting::set("login_frame{$i}_title", $request->input("login_frame{$i}_title", ''));
+            Setting::set("login_frame{$i}_desc", $request->input("login_frame{$i}_desc", ''));
         }
 
         AuditLogger::log('settings.updated', null, 'About page settings updated', ['section' => 'about_page']);

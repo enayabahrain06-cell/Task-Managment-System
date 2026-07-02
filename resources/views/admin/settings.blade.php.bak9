@@ -980,6 +980,37 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </div>
                         </div>
 
+                        <div style="margin-top:20px;padding-top:20px;border-top:1px solid #F3F4F6;">
+                            <label class="sf-label" style="margin-bottom:4px;">Corner Role Cards</label>
+                            <p class="sf-hint" style="margin-bottom:10px;">
+                                The 4 role labels shown next to team photos in the corners of the login page.
+                                Slot 1 = top-left, Slot 2 = top-right, Slot 3 = bottom-left, Slot 4 = bottom-right —
+                                swap the text between slots to change which corner shows which role.
+                            </p>
+                            @php $frameDefaultLabels = [
+                                1 => ['Project Lead', 'Leads with vision'],
+                                2 => ['Creative Designer', 'Designs the future'],
+                                3 => ['Developer', 'Builds with code'],
+                                4 => ['Strategist', 'Plans for success'],
+                            ]; @endphp
+                            @for ($i = 1; $i <= 4; $i++)
+                            <div class="sf-row" style="margin-top:8px;">
+                                <div class="sf-group">
+                                    <label class="sf-label" style="font-weight:400;color:#9CA3AF;">Slot {{ $i }} Title</label>
+                                    <input type="text" name="login_frame{{ $i }}_title" class="sf-input" maxlength="40"
+                                           value="{{ $settings["login_frame{$i}_title"] ?? $frameDefaultLabels[$i][0] }}"
+                                           placeholder="{{ $frameDefaultLabels[$i][0] }}">
+                                </div>
+                                <div class="sf-group">
+                                    <label class="sf-label" style="font-weight:400;color:#9CA3AF;">Slot {{ $i }} Description</label>
+                                    <input type="text" name="login_frame{{ $i }}_desc" class="sf-input" maxlength="60"
+                                           value="{{ $settings["login_frame{$i}_desc"] ?? $frameDefaultLabels[$i][1] }}"
+                                           placeholder="{{ $frameDefaultLabels[$i][1] }}">
+                                </div>
+                            </div>
+                            @endfor
+                        </div>
+
                         <div style="margin-top:24px;padding-top:20px;border-top:1px solid #F3F4F6;">
                             <label class="sf-label" style="margin-bottom:4px;">Login Panel Color</label>
                             <p class="sf-hint" style="margin-bottom:12px;">Gradient tint for the right illustration panel on the login page.</p>
@@ -1014,7 +1045,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">A public, no-login page at <code>/about</code> showing your team and artwork to visitors</p>
                     </div>
                 </div>
-                <form method="POST" action="{{ route('admin.settings.about-page') }}" id="about-page-form">
+                <form method="POST" action="{{ route('admin.settings.about-page') }}">
                     @csrf
                     <div class="scard-body">
                         <div class="sf-toggle-row">
@@ -1109,71 +1140,40 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                     <div class="scard-icon" style="background:#F0FDF4;color:#16A34A;"><i class="fas fa-camera"></i></div>
                     <div>
                         <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Team Photos</p>
-                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">
-                            Upload a real photo for each person — shown on the About page instead of their initials, and used everywhere in the app.
-                            The first 4 people <strong>with a photo</strong> also appear in the login page's 4 corners — edit their role label there too.
-                        </p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Upload a real photo for each person — shown on the About page instead of their initials. This is their actual profile photo, used everywhere in the app.</p>
                     </div>
                 </div>
                 <div class="scard-body" style="padding-top:4px;">
-                    @php $frameDefaultLabels = [
-                        1 => ['Project Lead', 'Leads with vision'],
-                        2 => ['Creative Designer', 'Designs the future'],
-                        3 => ['Developer', 'Builds with code'],
-                        4 => ['Strategist', 'Plans for success'],
-                    ]; @endphp
                     @forelse($aboutPageTeamMembers as $member)
-                    @php $slot = $loop->index + 1; @endphp
-                    <div style="display:flex;align-items:center;gap:16px;padding:14px 0;{{ !$loop->last ? 'border-bottom:1px solid #F3F4F6;' : '' }}">
-                        <form method="POST" action="{{ route('admin.settings.about-page.team-photo', $member) }}" enctype="multipart/form-data"
-                              style="display:flex;align-items:center;gap:16px;flex-shrink:0;"
-                              x-data="{ preview: @js($member->avatarUrl()) }">
-                            @csrf
-                            <div style="position:relative;flex-shrink:0;">
-                                <div style="width:60px;height:60px;border-radius:50%;overflow:hidden;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
-                                    <template x-if="preview">
-                                        <img :src="preview" style="width:100%;height:100%;object-fit:cover;">
-                                    </template>
-                                    <template x-if="!preview">
-                                        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#A5B4FC,#6366F1);color:#fff;font-weight:800;font-size:20px;">
-                                            {{ strtoupper(mb_substr($member->name, 0, 1)) }}
-                                        </div>
-                                    </template>
-                                </div>
-                                <label style="position:absolute;bottom:-2px;right:-2px;width:24px;height:24px;background:#6366F1;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.2);">
-                                    <i class="fa fa-camera" style="color:#fff;font-size:10px;"></i>
-                                    <input type="file" name="avatar" accept="image/*" style="display:none;"
-                                           @change="if ($event.target.files[0]) { preview = URL.createObjectURL($event.target.files[0]); $el.closest('form').submit(); }">
-                                </label>
+                    <form method="POST" action="{{ route('admin.settings.about-page.team-photo', $member) }}" enctype="multipart/form-data"
+                          style="display:flex;align-items:center;gap:16px;padding:14px 0;{{ !$loop->last ? 'border-bottom:1px solid #F3F4F6;' : '' }}"
+                          x-data="{ preview: @js($member->avatarUrl()) }">
+                        @csrf
+                        <div style="position:relative;flex-shrink:0;">
+                            <div style="width:60px;height:60px;border-radius:50%;overflow:hidden;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                                <template x-if="preview">
+                                    <img :src="preview" style="width:100%;height:100%;object-fit:cover;">
+                                </template>
+                                <template x-if="!preview">
+                                    <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#A5B4FC,#6366F1);color:#fff;font-weight:800;font-size:20px;">
+                                        {{ strtoupper(mb_substr($member->name, 0, 1)) }}
+                                    </div>
+                                </template>
                             </div>
-                            <div style="min-width:130px;">
-                                <p style="font-weight:700;font-size:13.5px;color:#111827;margin:0;">{{ $member->name }}</p>
-                                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">{{ $member->job_title ?: ucfirst($member->role) }}</p>
-                            </div>
-                        </form>
-                        @if($slot <= 4 && $member->avatar)
-                        <div style="display:flex;gap:8px;flex:1;min-width:0;padding-left:16px;border-left:1px solid #F3F4F6;">
-                            <div style="flex:1;min-width:0;">
-                                <label class="sf-label" style="font-weight:400;color:#9CA3AF;font-size:10.5px;">Login corner card — title</label>
-                                <input type="text" form="about-page-form" name="login_frame{{ $slot }}_title" class="sf-input" maxlength="40"
-                                       value="{{ $appSettings["login_frame{$slot}_title"] ?? $frameDefaultLabels[$slot][0] }}"
-                                       placeholder="{{ $frameDefaultLabels[$slot][0] }}">
-                            </div>
-                            <div style="flex:1;min-width:0;">
-                                <label class="sf-label" style="font-weight:400;color:#9CA3AF;font-size:10.5px;">Login corner card — description</label>
-                                <input type="text" form="about-page-form" name="login_frame{{ $slot }}_desc" class="sf-input" maxlength="60"
-                                       value="{{ $appSettings["login_frame{$slot}_desc"] ?? $frameDefaultLabels[$slot][1] }}"
-                                       placeholder="{{ $frameDefaultLabels[$slot][1] }}">
-                            </div>
+                            <label style="position:absolute;bottom:-2px;right:-2px;width:24px;height:24px;background:#6366F1;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.2);">
+                                <i class="fa fa-camera" style="color:#fff;font-size:10px;"></i>
+                                <input type="file" name="avatar" accept="image/*" style="display:none;"
+                                       @change="if ($event.target.files[0]) { preview = URL.createObjectURL($event.target.files[0]); $el.closest('form').submit(); }">
+                            </label>
                         </div>
-                        @elseif($slot <= 4)
-                        <p class="sf-hint" style="flex:1;padding-left:16px;border-left:1px solid #F3F4F6;">Upload a photo to give this person a login-page corner card.</p>
-                        @endif
-                    </div>
+                        <div style="flex:1;min-width:0;">
+                            <p style="font-weight:700;font-size:13.5px;color:#111827;margin:0;">{{ $member->name }}</p>
+                            <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">{{ $member->job_title ?: ucfirst($member->role) }}</p>
+                        </div>
+                    </form>
                     @empty
                     <p class="sf-hint">No active team members to show yet.</p>
                     @endforelse
-                    <p class="sf-hint" style="margin-top:10px;">Corner card fields save with the <strong>Save About Page</strong> button above.</p>
                 </div>
             </div>
         </div>

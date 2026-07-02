@@ -18,19 +18,30 @@
         $showTeamLayout = request()->routeIs('login')
             && ($appSettings['login_show_doodles'] ?? '1') === '1';
 
-        /* Pull up to 4 active users that have a real profile photo */
+        /* Pull up to 4 active, non-admin users that have a real profile photo —
+           same ordering as the Team Photos admin list, so "slot N" there matches "corner N" here */
         $teamFrameUsers = $showTeamLayout
             ? \App\Models\User::where('status', 'active')
+                ->where('role', '!=', 'admin')
                 ->whereNotNull('avatar')->where('avatar', '!=', '')
+                ->orderBy('role')->orderBy('name')
                 ->take(4)->get(['id','name','avatar','job_title'])
             : collect();
 
-        $frameMeta = [
-            ['icon' => 'fa-briefcase',    'title' => 'Project Lead',     'desc' => 'Leads with vision',  'color' => '#6366F1'],
-            ['icon' => 'fa-palette',      'title' => 'Creative Designer','desc' => 'Designs the future', 'color' => '#8B5CF6'],
-            ['icon' => 'fa-code',         'title' => 'Developer',        'desc' => 'Builds with code',   'color' => '#6366F1'],
-            ['icon' => 'fa-chart-simple', 'title' => 'Strategist',       'desc' => 'Plans for success',  'color' => '#8B5CF6'],
+        $frameIcons  = ['fa-briefcase', 'fa-palette', 'fa-code', 'fa-chart-simple'];
+        $frameColors = ['#6366F1', '#8B5CF6', '#6366F1', '#8B5CF6'];
+        $frameDefaults = [
+            ['title' => 'Project Lead',      'desc' => 'Leads with vision'],
+            ['title' => 'Creative Designer', 'desc' => 'Designs the future'],
+            ['title' => 'Developer',         'desc' => 'Builds with code'],
+            ['title' => 'Strategist',        'desc' => 'Plans for success'],
         ];
+        $frameMeta = collect(range(1, 4))->map(fn ($i) => [
+            'icon'  => $frameIcons[$i - 1],
+            'color' => $frameColors[$i - 1],
+            'title' => $appSettings["login_frame{$i}_title"] ?: $frameDefaults[$i - 1]['title'],
+            'desc'  => $appSettings["login_frame{$i}_desc"] ?: $frameDefaults[$i - 1]['desc'],
+        ])->all();
         $teamName = strtoupper($appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name','Our'));
     @endphp
 

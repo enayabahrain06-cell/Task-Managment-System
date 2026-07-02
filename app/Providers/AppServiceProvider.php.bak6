@@ -106,7 +106,7 @@ class AppServiceProvider extends ServiceProvider
         // Share global app settings with all views
         View::composer('*', function ($view) {
             try {
-                $appSettings = Setting::getMany(['app_name','app_tagline','company_name','primary_color','department_name','logo_path','favicon_path','login_bg_type','login_bg_color','login_bg_image','login_team_artwork','login_bg_position','login_bg_size','login_bg_attachment','login_bg_overlay','login_deco_color','login_show_doodles','login_hero_tagline','login_pill_text','login_pill_accent','copyright','developer_mode','hidden_elements','shown_extras','nav_hidden','maintenance_mode','hide_approval_customer_notify','hide_hourly_rate','hide_wa_web_button','notif_sound_type','notif_sound_volume','agent_name','agent_subtitle','agent_welcome','agent_color','agent_icon','hide_agent','support_user_id','hide_summarize_button','hide_features_tab','about_page_enabled','about_page_intro','about_page_cta_enabled','about_page_cta_text','about_page_cta_link','about_page_services_heading','about_page_service1_title','about_page_service1_desc','about_page_service2_title','about_page_service2_desc','about_page_service3_title','about_page_service3_desc','about_page_service4_title','about_page_service4_desc','about_page_service5_title','about_page_service5_desc','about_page_service6_title','about_page_service6_desc','about_page_who_text','about_page_mission','about_page_vision','about_page_value1_title','about_page_value1_desc','about_page_value2_title','about_page_value2_desc','about_page_value3_title','about_page_value3_desc','about_page_value4_title','about_page_value4_desc','about_page_value5_title','about_page_value5_desc','about_page_value6_title','about_page_value6_desc','login_frame1_title','login_frame1_desc','login_frame2_title','login_frame2_desc','login_frame3_title','login_frame3_desc','login_frame4_title','login_frame4_desc']);
+                $appSettings = Setting::getMany(['app_name','app_tagline','company_name','primary_color','department_name','logo_path','favicon_path','login_bg_type','login_bg_color','login_bg_image','login_team_artwork','login_bg_position','login_bg_size','login_bg_attachment','login_bg_overlay','login_deco_color','login_show_doodles','login_hero_tagline','login_pill_text','login_pill_accent','copyright','developer_mode','hidden_elements','shown_extras','nav_hidden','maintenance_mode','hide_approval_customer_notify','hide_hourly_rate','hide_wa_web_button','notif_sound_type','notif_sound_volume','agent_name','agent_subtitle','agent_welcome','agent_color','agent_icon','hide_agent','support_user_id','hide_summarize_button','hide_features_tab','about_page_enabled','about_page_intro','about_page_cta_enabled','about_page_cta_text','about_page_cta_link','about_page_services_heading','about_page_service1_title','about_page_service1_desc','about_page_service2_title','about_page_service2_desc','about_page_service3_title','about_page_service3_desc','about_page_service4_title','about_page_service4_desc','about_page_service5_title','about_page_service5_desc','about_page_service6_title','about_page_service6_desc','about_page_who_text','about_page_mission','about_page_vision','about_page_value1_title','about_page_value1_desc','about_page_value2_title','about_page_value2_desc','about_page_value3_title','about_page_value3_desc','about_page_value4_title','about_page_value4_desc','about_page_value5_title','about_page_value5_desc','about_page_value6_title','about_page_value6_desc']);
                 $merged = array_merge([
                     'app_name'        => 'Dash',
                     'app_tagline'     => '',
@@ -173,10 +173,6 @@ class AppServiceProvider extends ServiceProvider
                     'about_page_value4_title' => '', 'about_page_value4_desc' => '',
                     'about_page_value5_title' => '', 'about_page_value5_desc' => '',
                     'about_page_value6_title' => '', 'about_page_value6_desc' => '',
-                    'login_frame1_title' => 'Project Lead',      'login_frame1_desc' => 'Leads with vision',
-                    'login_frame2_title' => 'Creative Designer', 'login_frame2_desc' => 'Designs the future',
-                    'login_frame3_title' => 'Developer',         'login_frame3_desc' => 'Builds with code',
-                    'login_frame4_title' => 'Strategist',        'login_frame4_desc' => 'Plans for success',
                 ], $appSettings);
 
                 $artworkRaw = $merged['login_team_artwork'] ?? '';
@@ -254,10 +250,6 @@ class AppServiceProvider extends ServiceProvider
                     'about_page_value4_title' => '', 'about_page_value4_desc' => '',
                     'about_page_value5_title' => '', 'about_page_value5_desc' => '',
                     'about_page_value6_title' => '', 'about_page_value6_desc' => '',
-                    'login_frame1_title' => 'Project Lead',      'login_frame1_desc' => 'Leads with vision',
-                    'login_frame2_title' => 'Creative Designer', 'login_frame2_desc' => 'Designs the future',
-                    'login_frame3_title' => 'Developer',         'login_frame3_desc' => 'Builds with code',
-                    'login_frame4_title' => 'Strategist',        'login_frame4_desc' => 'Plans for success',
                 ]);
             }
         });
