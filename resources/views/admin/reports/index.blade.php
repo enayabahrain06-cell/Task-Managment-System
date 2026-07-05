@@ -3819,6 +3819,20 @@ function printRptSummSelection(sections) {
         var thLeftTL  = 'text-align:left;padding:8px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #E5E7EB;';
         var thCtrTL   = 'text-align:center;padding:8px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #E5E7EB;';
 
+        // Group tasks by customer — one table per customer
+        var tlGroups = {};
+        var tlOrder  = [];
+        d.taskList.forEach(function(t) {
+            var key = t.customer || 'No Customer';
+            if (!tlGroups[key]) { tlGroups[key] = []; tlOrder.push(key); }
+            tlGroups[key].push(t);
+        });
+        tlOrder.sort(function(a, b) {
+            if (a === 'No Customer') return 1;
+            if (b === 'No Customer') return -1;
+            return tlGroups[b].length - tlGroups[a].length;
+        });
+
         bodyHtml += '<div style="margin-top:18px;">'
             + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #0EA5E9;">'
             + '<div>'
@@ -3829,34 +3843,45 @@ function printRptSummSelection(sections) {
             + '<p style="font-size:11px;color:#9CA3AF;margin:0;">Tasks Listed</p>'
             + '<p style="font-size:28px;font-weight:900;color:#0EA5E9;margin:0;line-height:1.1;">' + d.taskList.length + '</p>'
             + '</div>'
-            + '</div>'
-            + '<table style="width:100%;border-collapse:collapse;">'
-            + '<thead><tr style="background:#F8FAFC;">'
-            + '<th style="' + thLeftTL + 'width:28px;">#</th>'
-            + '<th style="' + thLeftTL + '">Task</th>'
-            + '<th style="' + thLeftTL + '">Project / Customer</th>'
-            + '<th style="' + thLeftTL + '">Assignee</th>'
-            + '<th style="' + thCtrTL  + '">Status</th>'
-            + '<th style="' + thCtrTL  + '">Deadline</th>'
-            + '</tr></thead><tbody>';
+            + '</div>';
 
-        d.taskList.forEach(function(t, i) {
-            var rowBg  = i % 2 === 0 ? '#fff' : '#FAFAFA';
-            var td     = 'padding:9px 10px;border-bottom:1px solid #F3F4F6;';
-            var scLbl  = escHtml((t.status || '').replace(/_/g, ' '));
-            var scCol  = taskStatusColor(t.status);
-            var projCust = escHtml([t.project, t.customer].filter(Boolean).join(' · ') || '—');
-            bodyHtml += '<tr style="background:' + rowBg + ';">'
-                + '<td style="' + td + 'font-size:11px;color:#9CA3AF;">' + (i + 1) + '</td>'
-                + '<td style="' + td + 'font-size:12.5px;font-weight:600;color:#111827;">' + escHtml(t.title) + '</td>'
-                + '<td style="' + td + 'font-size:11.5px;color:#4B5563;">' + projCust + '</td>'
-                + '<td style="' + td + 'font-size:11.5px;color:#4B5563;">' + escHtml(t.assignee || '—') + '</td>'
-                + '<td style="' + td + 'text-align:center;"><span style="background:' + scCol + '22;color:' + scCol + ';font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:capitalize;">' + scLbl + '</span></td>'
-                + '<td style="' + td + 'font-size:11.5px;color:#4B5563;text-align:center;">' + escHtml(t.deadline || '—') + '</td>'
-                + '</tr>';
+        tlOrder.forEach(function(custName, gi) {
+            var rows = tlGroups[custName];
+            bodyHtml += '<div style="margin-top:' + (gi === 0 ? '0' : '20px') + ';page-break-inside:avoid;break-inside:avoid;">'
+                + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;page-break-after:avoid;break-after:avoid;">'
+                + '<i class="fas fa-building" style="color:#4F46E5;font-size:11px;"></i>'
+                + '<p style="font-size:12.5px;font-weight:700;color:#111827;margin:0;">' + escHtml(custName) + '</p>'
+                + '<span style="font-size:10px;font-weight:600;color:#4F46E5;background:#EEF2FF;padding:2px 9px;border-radius:20px;">' + rows.length + ' task' + (rows.length === 1 ? '' : 's') + '</span>'
+                + '</div>'
+                + '<table style="width:100%;border-collapse:collapse;">'
+                + '<thead><tr style="background:#F8FAFC;">'
+                + '<th style="' + thLeftTL + 'width:28px;">#</th>'
+                + '<th style="' + thLeftTL + '">Task</th>'
+                + '<th style="' + thLeftTL + '">Project</th>'
+                + '<th style="' + thLeftTL + '">Assignee</th>'
+                + '<th style="' + thCtrTL  + '">Status</th>'
+                + '<th style="' + thCtrTL  + '">Deadline</th>'
+                + '</tr></thead><tbody>';
+
+            rows.forEach(function(t, i) {
+                var rowBg  = i % 2 === 0 ? '#fff' : '#FAFAFA';
+                var td     = 'padding:9px 10px;border-bottom:1px solid #F3F4F6;';
+                var scLbl  = escHtml((t.status || '').replace(/_/g, ' '));
+                var scCol  = taskStatusColor(t.status);
+                bodyHtml += '<tr style="background:' + rowBg + ';">'
+                    + '<td style="' + td + 'font-size:11px;color:#9CA3AF;">' + (i + 1) + '</td>'
+                    + '<td style="' + td + 'font-size:12.5px;font-weight:600;color:#111827;">' + escHtml(t.title) + '</td>'
+                    + '<td style="' + td + 'font-size:11.5px;color:#4B5563;">' + escHtml(t.project || '—') + '</td>'
+                    + '<td style="' + td + 'font-size:11.5px;color:#4B5563;">' + escHtml(t.assignee || '—') + '</td>'
+                    + '<td style="' + td + 'text-align:center;"><span style="background:' + scCol + '22;color:' + scCol + ';font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:capitalize;">' + scLbl + '</span></td>'
+                    + '<td style="' + td + 'font-size:11.5px;color:#4B5563;text-align:center;">' + escHtml(t.deadline || '—') + '</td>'
+                    + '</tr>';
+            });
+
+            bodyHtml += '</tbody></table></div>';
         });
 
-        bodyHtml += '</tbody></table></div>';
+        bodyHtml += '</div>';
     }
 
     var logoEl = logoSrc
