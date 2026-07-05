@@ -3,6 +3,28 @@
 
 @section('content')
 <style>
+/* Editable text directly inside a live-preview card (Values/Services) */
+.sf-editable { outline:none; cursor:text; border-radius:4px; transition:box-shadow .15s; }
+.sf-editable:hover { box-shadow:0 0 0 2px #E0E7FF; }
+.sf-editable:focus { box-shadow:0 0 0 2px #6366F1; }
+.sf-editable:empty:before { content:attr(data-placeholder); color:#9CA3AF; }
+.sf-editable-on-brand:hover { box-shadow:0 0 0 2px rgba(255,255,255,0.35); }
+.sf-editable-on-brand:focus { box-shadow:0 0 0 2px rgba(255,255,255,0.7); }
+.sf-editable-on-brand:empty:before { content:attr(data-placeholder); color:rgba(255,255,255,0.6); }
+
+/* Device preview toggle (Mobile/Tablet/Desktop) for the live /about editor */
+.devprev-btn {
+    width:32px; height:32px; border-radius:8px; border:1px solid #E5E7EB; background:#fff;
+    color:#6B7280; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    font-size:13px; transition:all .15s;
+}
+.devprev-btn:hover { background:#F9FAFB; }
+.devprev-btn.active { background:#EEF2FF; color:#4F46E5; border-color:#C7D2FE; }
+.devprev-frame {
+    margin:0 auto; border:1px solid #E5E7EB; border-radius:16px; overflow:hidden;
+    box-shadow:0 8px 24px rgba(0,0,0,0.08); background:#fff; transition:width .25s ease;
+}
+
 /* ── Settings Layout ── */
 .settings-wrap  { display:grid; grid-template-columns:220px 1fr; gap:24px; align-items:start; }
 .settings-nav   { background:#fff; border-radius:14px; border:1px solid #F0F0F0; box-shadow:0 1px 4px rgba(0,0,0,0.05); padding:10px; position:sticky; top:24px; }
@@ -75,6 +97,20 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 .upload-preview { width:100%; height:80px; object-fit:contain; border-radius:8px; margin-bottom:8px; }
 .upload-preview-favicon { width:48px; height:48px; object-fit:contain; border-radius:8px; margin-bottom:8px; }
 .remove-btn { display:inline-flex; align-items:center; gap:5px; font-size:11px; color:#EF4444; background:#FEF2F2; border:1px solid #FECACA; border-radius:6px; padding:4px 10px; cursor:pointer; text-decoration:none; margin-top:6px; }
+/* ── BG image adjustment controls ── */
+.ctrl-lbl{font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.07em;margin:0 0 8px;}
+.pos-cell{display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s;}
+.pos-cell:hover{background:#F5F3FF;}
+.pos-cell.pos-active{background:#EEF2FF;}
+.pos-dot{width:7px;height:7px;border-radius:50%;background:#D1D5DB;transition:all .2s;flex-shrink:0;}
+.pos-dot.pos-dot-on{background:#4F46E5;box-shadow:0 0 0 3px rgba(99,102,241,.25);transform:scale(1.3);}
+.sz-card{display:block;border:1.5px solid #E5E7EB;border-radius:10px;padding:9px 4px;text-align:center;transition:all .18s;background:#fff;color:#9CA3AF;cursor:pointer;}
+.sz-card:hover{border-color:#A5B4FC;background:#F5F3FF;color:#6366F1;}
+.sz-card.sz-on{border-color:#4F46E5;background:#EEF2FF;color:#4F46E5;}
+.sz-lbl{display:block;font-size:10px;font-weight:700;margin-top:5px;color:inherit;}
+.sz-hint{display:block;font-size:9px;margin-top:1px;opacity:.65;color:inherit;}
+.bg-live-preview{position:relative;overflow:hidden;height:150px;border-radius:12px;border:1.5px solid #E5E7EB;}
+.bg-preview-overlay{position:absolute;inset:0;transition:background 0.2s;}
 
 @media(max-width:900px){
     .settings-wrap { grid-template-columns:1fr; }
@@ -99,7 +135,9 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
     [style*="grid-template-columns:repeat(3,1fr)"] { grid-template-columns:1fr !important; }
     /* SMTP connection row: host + port + encryption → stack */
     [style*="grid-template-columns:1fr 120px 160px"] { grid-template-columns:1fr !important; }
-    /* Data/backup inline-stats strip: 4-col → 2-col */
+    /* Data/backup inline-stats strip: 6-col → 3-col */
+    [style*="grid-template-columns:repeat(6,1fr)"][style*="padding:14px 20px"] { grid-template-columns:repeat(3,1fr) !important; }
+    /* Data/backup inline-stats strip: 4-col → 2-col (legacy) */
     [style*="grid-template-columns:repeat(4,1fr)"][style*="padding:14px 20px"] { grid-template-columns:repeat(2,1fr) !important; }
     /* CSV export rows: auto 1fr auto auto → stack label+buttons */
     [style*="grid-template-columns:auto 1fr auto auto"] { grid-template-columns:1fr 1fr !important; }
@@ -113,7 +151,8 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
     [style*="grid-template-columns:1fr 340px"] { grid-template-columns:1fr !important; }
 }
 @media(max-width:480px){
-    /* Stat strip in backup section → 1-col */
+    /* Stat strip in backup section → 2-col */
+    [style*="grid-template-columns:repeat(6,1fr)"] { grid-template-columns:repeat(2,1fr) !important; }
     [style*="grid-template-columns:repeat(4,1fr)"] { grid-template-columns:repeat(2,1fr) !important; }
     /* Any remaining 2-col grids */
     [style*="grid-template-columns:1fr 120px"] { grid-template-columns:1fr !important; }
@@ -173,6 +212,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
         $navItems = [
             ['id'=>'general',       'icon'=>'fa-sliders',        'label'=>'General'],
             ['id'=>'branding',      'icon'=>'fa-palette',        'label'=>'Branding'],
+            ['id'=>'about_page',    'icon'=>'fa-address-card',   'label'=>'About Page'],
             ['id'=>'agent',         'icon'=>'fa-robot',          'label'=>'Chat Agent'],
             ['id'=>'team',          'icon'=>'fa-users',          'label'=>'Team'],
             ['id'=>'notifications', 'icon'=>'fa-bell',           'label'=>'Notifications'],
@@ -402,6 +442,13 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 
         {{-- ════ BRANDING ════ --}}
         <div x-show="tab === 'branding'" x-cloak>
+            @php
+                $teamArtworkRaw = $settings['login_team_artwork'] ?? '';
+                $teamArtworkList = json_decode($teamArtworkRaw, true);
+                if (!is_array($teamArtworkList)) {
+                    $teamArtworkList = $teamArtworkRaw !== '' ? [$teamArtworkRaw] : [];
+                }
+            @endphp
             <div class="scard" x-data="{
                 primary:          '{{ $settings['primary_color'] }}',
                 accent:           '{{ $settings['accent_color'] }}',
@@ -412,11 +459,50 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                 removeFavicon:    false,
                 loginBgType:      '{{ $settings['login_bg_type']  ?? 'gradient' }}',
                 loginBgColor:     '{{ $settings['login_bg_color'] ?? '#e8eaf6' }}',
-                loginBgPreview:   '{{ isset($settings['login_bg_image']) && $settings['login_bg_image'] ? Storage::url($settings['login_bg_image']) : '' }}',
-                removeBgImage:    false,
-                setLogo(e)    { const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=ev=>{ this.logoPreview=ev.target.result; this.removeLogo=false; }; r.readAsDataURL(f); } },
-                setFavicon(e) { const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=ev=>{ this.faviconPreview=ev.target.result; this.removeFavicon=false; }; r.readAsDataURL(f); } },
-                setBgImage(e) { const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=ev=>{ this.loginBgPreview=ev.target.result; this.removeBgImage=false; }; r.readAsDataURL(f); } },
+                loginBgPreview:    '{{ isset($settings['login_bg_image']) && $settings['login_bg_image'] ? Storage::url($settings['login_bg_image']) : '' }}',
+                loginBgIsVideo:    {{ isset($settings['login_bg_image']) && preg_match('/\.(mp4|webm|mov|m4v)$/i', $settings['login_bg_image']) ? 'true' : 'false' }},
+                removeBgImage:     false,
+                loginBgPosition:   '{{ $settings['login_bg_position']   ?? 'center center' }}',
+                loginBgSize:       '{{ $settings['login_bg_size']        ?? 'cover' }}',
+                loginBgAttachment: '{{ $settings['login_bg_attachment']  ?? 'fixed' }}',
+                loginBgOverlay:    {{ (int)($settings['login_bg_overlay'] ?? 0) }},
+                loginDecoColor:    '{{ $settings['login_deco_color'] ?? '#4F46E5' }}',
+                showBgPreviewModal: false,
+                artworkExisting:  {{ json_encode(array_values(array_map(fn($p) => ['path' => $p, 'url' => Storage::url($p)], $teamArtworkList))) }},
+                artworkRemoved:   [],
+                artworkFiles:     [],
+                setLogo(e)    { const f=e.target.files[0]; if(f){ this.logoPreview=URL.createObjectURL(f); this.removeLogo=false; } },
+                setFavicon(e) { const f=e.target.files[0]; if(f){ this.faviconPreview=URL.createObjectURL(f); this.removeFavicon=false; } },
+                setBgImage(e) {
+                    const f=e.files?e.files[0]:e.target.files[0];
+                    if(f){
+                        this.loginBgPreview=URL.createObjectURL(f);
+                        this.loginBgIsVideo=/\.(mp4|webm|mov|m4v)$/i.test(f.name) || f.type.startsWith('video/');
+                        this.removeBgImage=false;
+                    }
+                },
+                bgObjectFit() { return this.loginBgSize === 'contain' ? 'contain' : (this.loginBgSize === 'auto' ? 'none' : 'cover'); },
+                artworkHandleFiles(e) {
+                    const incoming = e.files ? e.files : e.target.files;
+                    const dt = new DataTransfer();
+                    for (let f of this.artworkFiles) dt.items.add(f);
+                    for (let f of incoming) dt.items.add(f);
+                    this.artworkFiles = Array.from(dt.files);
+                    this.$refs.artworkFileInput.files = dt.files;
+                },
+                artworkRemoveNew(i) {
+                    const dt = new DataTransfer();
+                    this.artworkFiles.forEach((f, idx) => { if (idx !== i) dt.items.add(f); });
+                    this.artworkFiles = Array.from(dt.files);
+                    this.$refs.artworkFileInput.files = dt.files;
+                },
+                artworkRemoveExisting(i) {
+                    this.artworkRemoved.push(this.artworkExisting[i].path);
+                    this.artworkExisting.splice(i, 1);
+                },
+                artworkIsVideo(nameOrPath) {
+                    return /\.(mp4|webm|mov|m4v)$/i.test(nameOrPath);
+                },
             }">
                 <div class="scard-header">
                     <div class="scard-icon" style="background:#FDF2F8;color:#EC4899;"><i class="fas fa-palette"></i></div>
@@ -604,17 +690,23 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             <div x-show="loginBgType === 'image'">
                                 <label class="sf-label">
                                     Background Image
-                                    <span style="font-size:10px;color:#9CA3AF;font-weight:400;margin-left:4px;">PNG, JPG, WEBP · max 5 MB</span>
+                                    <span style="font-size:10px;color:#9CA3AF;font-weight:400;margin-left:4px;">PNG, JPG, WEBP, MP4, WEBM · any size</span>
                                 </label>
+                                <input type="hidden" name="remove_login_bg_image" :value="removeBgImage ? '1' : '0'">
+
                                 <div class="upload-zone" @dragover.prevent @drop.prevent="setBgImage($event.dataTransfer)"
                                      style="min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;">
-                                    <input type="file" name="login_bg_image" accept="image/png,image/jpeg,image/webp" @change="setBgImage($event)">
-                                    <input type="hidden" name="remove_login_bg_image" :value="removeBgImage ? '1' : '0'">
+                                    {{-- Positioned transparent overlay — natural click, no JS forwarding --}}
+                                    <input type="file" name="login_bg_image" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime"
+                                           @change="setBgImage($event)"
+                                           :style="(loginBgPreview && !removeBgImage) ? 'pointer-events:none' : ''">
 
                                     <template x-if="loginBgPreview && !removeBgImage">
                                         <div style="display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;">
-                                            <img :src="loginBgPreview" class="upload-preview" alt="Background preview"
-                                                 style="height:80px;object-fit:cover;border-radius:8px;">
+                                            <video x-show="loginBgIsVideo" :src="loginBgPreview" muted playsinline preload="metadata"
+                                                   style="height:80px;object-fit:cover;border-radius:8px;pointer-events:none;"></video>
+                                            <img x-show="!loginBgIsVideo" :src="loginBgPreview" class="upload-preview" alt="Background preview"
+                                                 style="height:80px;object-fit:cover;border-radius:8px;pointer-events:none;">
                                             <button type="button" class="remove-btn"
                                                     @click.stop="removeBgImage=true;loginBgPreview=''">
                                                 <i class="fas fa-trash-can"></i> Remove
@@ -627,11 +719,303 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                                 <i class="fas fa-panorama" style="color:#0EA5E9;font-size:16px;"></i>
                                             </div>
                                             <p style="font-size:12px;font-weight:500;color:#374151;margin:0;">Click or drag to upload</p>
-                                            <p style="font-size:11px;color:#9CA3AF;margin:0;">Used as the full-page background</p>
+                                            <p style="font-size:11px;color:#9CA3AF;margin:0;">Used as the full-page background — image or video</p>
                                         </div>
                                     </template>
                                 </div>
+
+                                {{-- ── Live Preview (click to adjust) ── --}}
+                                <div x-show="loginBgPreview && !removeBgImage" style="margin-top:14px;">
+                                    <label class="sf-label" style="margin-bottom:6px;">Live Preview</label>
+                                    <div class="bg-live-preview" role="button" tabindex="0" @click="showBgPreviewModal=true" @keydown.enter="showBgPreviewModal=true"
+                                         style="cursor:pointer;background-color:#f3f4f6;"
+                                         @mouseover="$refs.bgPreviewHint.style.opacity=1" @mouseleave="$refs.bgPreviewHint.style.opacity=0"
+                                         :style="!loginBgIsVideo ? `background-image:url('${loginBgPreview}');background-position:${loginBgPosition};background-size:${loginBgSize};background-repeat:no-repeat;background-color:#f3f4f6;cursor:pointer;` : 'cursor:pointer;'">
+                                        <video x-show="loginBgIsVideo" :src="loginBgPreview" muted playsinline autoplay loop preload="metadata"
+                                               :style="`position:absolute;inset:0;width:100%;height:100%;object-fit:${bgObjectFit()};object-position:${loginBgPosition};`"></video>
+                                        {{-- Dark overlay --}}
+                                        <div class="bg-preview-overlay"
+                                             :style="`background:rgba(0,0,0,${loginBgOverlay/100});`"></div>
+                                        {{-- Settings badges --}}
+                                        <div style="position:absolute;bottom:7px;left:8px;display:flex;gap:4px;flex-wrap:wrap;z-index:1;">
+                                            <span x-text="loginBgPosition" style="font-size:9px;color:rgba(255,255,255,0.9);background:rgba(0,0,0,0.5);padding:2px 6px;border-radius:4px;"></span>
+                                            <span x-text="loginBgSize" style="font-size:9px;color:rgba(255,255,255,0.9);background:rgba(0,0,0,0.5);padding:2px 6px;border-radius:4px;"></span>
+                                        </div>
+                                        <div x-show="loginBgOverlay > 0" style="position:absolute;bottom:7px;right:8px;z-index:1;">
+                                            <span x-text="loginBgOverlay+'% overlay'" style="font-size:9px;color:rgba(255,255,255,0.9);background:rgba(0,0,0,0.5);padding:2px 6px;border-radius:4px;"></span>
+                                        </div>
+                                        {{-- Hover hint --}}
+                                        <div x-ref="bgPreviewHint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(17,24,39,0.35);opacity:0;transition:opacity .15s;z-index:2;">
+                                            <span style="font-size:11px;font-weight:700;color:#fff;background:rgba(0,0,0,0.55);padding:6px 12px;border-radius:20px;display:flex;align-items:center;gap:6px;">
+                                                <i class="fas fa-sliders"></i> Click to adjust
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <input type="hidden" name="login_bg_position" x-bind:value="loginBgPosition">
+                                    <input type="hidden" name="login_bg_attachment" x-bind:value="loginBgAttachment">
+                                </div>
                             </div>
+                        </div>
+
+                        {{-- ── Background adjustment popup modal ── --}}
+                        @php $bgPositions=['top left','top center','top right','center left','center center','center right','bottom left','bottom center','bottom right']; @endphp
+                        <div x-show="showBgPreviewModal" x-cloak
+                             style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);"
+                             @click.self="showBgPreviewModal=false">
+                            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:24px;padding:24px;width:100%;max-width:680px;max-height:92vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,0.22);">
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                                    <div>
+                                        <p style="font-size:15px;font-weight:700;color:#111827;margin:0;">Adjust Background Image</p>
+                                        <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Position, size, scroll behaviour and overlay darkness</p>
+                                    </div>
+                                    <button type="button" @click="showBgPreviewModal=false"
+                                            style="width:28px;height:28px;border:none;background:#F3F4F6;border-radius:8px;color:#6B7280;cursor:pointer;flex-shrink:0;">
+                                        <i class="fas fa-xmark"></i>
+                                    </button>
+                                </div>
+
+                                {{-- Preview inside modal --}}
+                                <div class="bg-live-preview" style="margin-bottom:16px;background-color:#f3f4f6;"
+                                     :style="!loginBgIsVideo ? `background-image:url('${loginBgPreview}');background-position:${loginBgPosition};background-size:${loginBgSize};background-repeat:no-repeat;background-color:#f3f4f6;` : ''">
+                                    <video x-show="loginBgIsVideo" :src="loginBgPreview" muted playsinline autoplay loop preload="metadata"
+                                           :style="`position:absolute;inset:0;width:100%;height:100%;object-fit:${bgObjectFit()};object-position:${loginBgPosition};`"></video>
+                                    <div class="bg-preview-overlay"
+                                         :style="`background:rgba(0,0,0,${loginBgOverlay/100});`"></div>
+                                    <div style="position:absolute;bottom:7px;left:8px;display:flex;gap:4px;flex-wrap:wrap;z-index:1;">
+                                        <span x-text="loginBgPosition" style="font-size:9px;color:rgba(255,255,255,0.9);background:rgba(0,0,0,0.5);padding:2px 6px;border-radius:4px;"></span>
+                                        <span x-text="loginBgSize" style="font-size:9px;color:rgba(255,255,255,0.9);background:rgba(0,0,0,0.5);padding:2px 6px;border-radius:4px;"></span>
+                                    </div>
+                                    <div x-show="loginBgOverlay > 0" style="position:absolute;bottom:7px;right:8px;z-index:1;">
+                                        <span x-text="loginBgOverlay+'% overlay'" style="font-size:9px;color:rgba(255,255,255,0.9);background:rgba(0,0,0,0.5);padding:2px 6px;border-radius:4px;"></span>
+                                    </div>
+                                </div>
+
+                                {{-- ── Image adjustment controls ── --}}
+                                <div style="background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:14px;padding:16px 18px;">
+
+                                    {{-- Row 1: Position compass + Size cards --}}
+                                    <div style="display:grid;grid-template-columns:auto 1fr;gap:20px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #F3F4F6;align-items:start;">
+
+                                        {{-- Position compass --}}
+                                        <div>
+                                            <p class="ctrl-lbl">Position</p>
+                                            <div style="width:84px;height:84px;background:#fff;border:1.5px solid #E5E7EB;border-radius:10px;overflow:hidden;position:relative;">
+                                                <div style="position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);">
+                                                    @foreach($bgPositions as $bgPos)
+                                                    <div class="pos-cell"
+                                                         x-on:click="loginBgPosition='{{ $bgPos }}'"
+                                                         :class="loginBgPosition==='{{ $bgPos }}' ? 'pos-active' : ''"
+                                                         title="{{ $bgPos }}">
+                                                        <div class="pos-dot" :class="loginBgPosition==='{{ $bgPos }}' ? 'pos-dot-on' : ''"></div>
+                                                    </div>
+                                                    @endforeach
+                                                </div>
+                                                <div style="position:absolute;top:33.3%;left:0;right:0;height:1px;background:#F0F0F0;pointer-events:none;"></div>
+                                                <div style="position:absolute;top:66.6%;left:0;right:0;height:1px;background:#F0F0F0;pointer-events:none;"></div>
+                                                <div style="position:absolute;top:0;bottom:0;left:33.3%;width:1px;background:#F0F0F0;pointer-events:none;"></div>
+                                                <div style="position:absolute;top:0;bottom:0;left:66.6%;width:1px;background:#F0F0F0;pointer-events:none;"></div>
+                                            </div>
+                                            <p x-text="loginBgPosition" style="font-size:9.5px;color:#9CA3AF;margin:5px 0 0;text-align:center;font-weight:500;"></p>
+                                        </div>
+
+                                        {{-- Size visual cards --}}
+                                        <div>
+                                            <p class="ctrl-lbl">Size</p>
+                                            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+                                                <label>
+                                                    <input type="radio" name="login_bg_size" value="cover" x-model="loginBgSize" style="display:none;">
+                                                    <div class="sz-card" :class="loginBgSize==='cover' ? 'sz-on' : ''">
+                                                        <svg width="26" height="20" viewBox="0 0 26 20" fill="none" style="display:block;margin:0 auto;"><rect x="0" y="0" width="26" height="20" rx="2.5" fill="currentColor" opacity=".12"/><rect x="-3" y="-2" width="32" height="24" rx="2" fill="currentColor" opacity=".45"/></svg>
+                                                        <span class="sz-lbl">Cover</span>
+                                                        <span class="sz-hint">fills, crops</span>
+                                                    </div>
+                                                </label>
+                                                <label>
+                                                    <input type="radio" name="login_bg_size" value="contain" x-model="loginBgSize" style="display:none;">
+                                                    <div class="sz-card" :class="loginBgSize==='contain' ? 'sz-on' : ''">
+                                                        <svg width="26" height="20" viewBox="0 0 26 20" fill="none" style="display:block;margin:0 auto;"><rect x="0" y="0" width="26" height="20" rx="2.5" stroke="currentColor" stroke-width="1.5" fill="currentColor" opacity=".06"/><rect x="5" y="3" width="16" height="14" rx="2" fill="currentColor" opacity=".45"/></svg>
+                                                        <span class="sz-lbl">Contain</span>
+                                                        <span class="sz-hint">full visible</span>
+                                                    </div>
+                                                </label>
+                                                <label>
+                                                    <input type="radio" name="login_bg_size" value="auto" x-model="loginBgSize" style="display:none;">
+                                                    <div class="sz-card" :class="loginBgSize==='auto' ? 'sz-on' : ''">
+                                                        <svg width="26" height="20" viewBox="0 0 26 20" fill="none" style="display:block;margin:0 auto;"><rect x="0" y="0" width="26" height="20" rx="2.5" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2" fill="none"/><rect x="3" y="3" width="12" height="9" rx="2" fill="currentColor" opacity=".45"/></svg>
+                                                        <span class="sz-lbl">Original</span>
+                                                        <span class="sz-hint">natural size</span>
+                                                    </div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {{-- Row 2: Scroll pill + Overlay gradient slider --}}
+                                    <div style="display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:start;">
+
+                                        {{-- Scroll segmented pill --}}
+                                        <div>
+                                            <p class="ctrl-lbl">Scroll</p>
+                                            <div style="display:inline-flex;background:#F3F4F6;border-radius:8px;padding:2px;">
+                                                <button type="button" x-on:click="loginBgAttachment='fixed'"
+                                                        :style="loginBgAttachment==='fixed' ? 'background:#fff;color:#4F46E5;box-shadow:0 1px 3px rgba(0,0,0,.10);' : 'color:#9CA3AF;background:transparent;'"
+                                                        style="font-size:11px;font-weight:600;padding:5px 10px;border:none;border-radius:6px;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:3px;white-space:nowrap;">
+                                                    <i class="fas fa-thumbtack" style="font-size:9px;"></i> Fixed
+                                                </button>
+                                                <button type="button" x-on:click="loginBgAttachment='scroll'"
+                                                        :style="loginBgAttachment==='scroll' ? 'background:#fff;color:#4F46E5;box-shadow:0 1px 3px rgba(0,0,0,.10);' : 'color:#9CA3AF;background:transparent;'"
+                                                        style="font-size:11px;font-weight:600;padding:5px 10px;border:none;border-radius:6px;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:3px;white-space:nowrap;">
+                                                    <i class="fas fa-arrows-up-down" style="font-size:9px;"></i> Scroll
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {{-- Overlay: gradient bar + native slider --}}
+                                        <div>
+                                            <p class="ctrl-lbl" style="display:flex;align-items:center;gap:6px;">
+                                                Dark Overlay
+                                                <span x-text="loginBgOverlay + '%'" style="color:#4F46E5;font-size:11px;font-weight:800;"></span>
+                                            </p>
+                                            <div style="height:6px;border-radius:3px;background:linear-gradient(to right,#F3F4F6,rgba(0,0,0,0.78));border:1px solid #E5E7EB;margin-bottom:6px;"></div>
+                                            <input type="range" name="login_bg_overlay" x-model.number="loginBgOverlay"
+                                                   min="0" max="80" step="5"
+                                                   style="width:100%;accent-color:#4F46E5;height:4px;display:block;margin-bottom:4px;cursor:pointer;">
+                                            <div style="display:flex;justify-content:space-between;font-size:9px;color:#CBD5E1;font-weight:600;letter-spacing:.04em;text-transform:uppercase;">
+                                                <span>None</span><span>Dark</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button type="button" @click="showBgPreviewModal=false"
+                                        style="width:100%;margin-top:16px;padding:10px;background:#4F46E5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">
+                                    Done
+                                </button>
+                            </div>
+                        </div>
+
+                        {{-- ── Login Panel (deco column) colour ── --}}
+                        {{-- Doodles toggle --}}
+                        <div style="margin-top:20px;padding-top:20px;border-top:1px solid #F3F4F6;"
+                             x-data="{ showDoodles: {{ ($settings['login_show_doodles'] ?? '1') === '1' ? 'true' : 'false' }} }">
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+                                <div>
+                                    <p style="font-size:13px;font-weight:600;color:#111827;margin:0;">Decorative Doodles &amp; Team Frames</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">Show the animated team banner, photo frames and bottom pill on the login page — layers on top of any background (gradient, color, or image).</p>
+                                </div>
+                                <label style="position:relative;display:inline-flex;align-items:center;cursor:pointer;flex-shrink:0;">
+                                    <input type="checkbox" name="login_show_doodles" value="1"
+                                           x-model="showDoodles"
+                                           style="width:0;height:0;opacity:0;position:absolute;">
+                                    <div :style="showDoodles ? 'background:#4F46E5;' : 'background:#D1D5DB;'"
+                                         style="width:40px;height:22px;border-radius:11px;transition:background 0.2s;position:relative;">
+                                        <div :style="showDoodles ? 'transform:translateX(18px);' : 'transform:translateX(2px);'"
+                                             style="position:absolute;top:3px;width:16px;height:16px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform 0.2s;"></div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        {{-- Team artwork — shown in a popup gallery when the banner on the login page is clicked --}}
+                        <div style="margin-top:20px;padding-top:20px;border-top:1px solid #F3F4F6;">
+                            <label class="sf-label">
+                                Team Artwork
+                                <span style="font-size:10px;color:#9CA3AF;font-weight:400;margin-left:4px;">PNG, JPG, WEBP, MP4, WEBM · any size · multiple allowed</span>
+                            </label>
+                            <p class="sf-hint" style="margin-bottom:8px;">Shown as a gallery popup when visitors click the team banner on the login page.</p>
+
+                            <template x-for="(path, i) in artworkRemoved" :key="'artrm'+i">
+                                <input type="hidden" name="remove_login_team_artwork[]" :value="path">
+                            </template>
+
+                            <div class="upload-zone" @dragover.prevent @drop.prevent="artworkHandleFiles($event.dataTransfer)"
+                                 style="min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;">
+                                <input type="file" name="login_team_artwork[]" multiple x-ref="artworkFileInput"
+                                       accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime"
+                                       @change="artworkHandleFiles($event)">
+
+                                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;">
+                                    <div style="width:40px;height:40px;background:#F5F3FF;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                                        <i class="fas fa-users" style="color:#7C3AED;font-size:16px;"></i>
+                                    </div>
+                                    <p style="font-size:12px;font-weight:500;color:#374151;margin:0;">Click or drag to upload</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:0;">Add images or short video clips — shown as a swipeable gallery when the login banner is clicked</p>
+                                </div>
+                            </div>
+
+                            <template x-if="artworkExisting.length > 0 || artworkFiles.length > 0">
+                                <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
+                                    <template x-for="(img, i) in artworkExisting" :key="'artex'+i">
+                                        <div style="position:relative;width:84px;height:84px;border-radius:8px;overflow:hidden;border:1px solid #E5E7EB;background:#111827;">
+                                            <template x-if="artworkIsVideo(img.path)">
+                                                <video :src="img.url" muted playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover;display:block;"></video>
+                                            </template>
+                                            <template x-if="!artworkIsVideo(img.path)">
+                                                <img :src="img.url" style="width:100%;height:100%;object-fit:cover;display:block;" alt="Team artwork">
+                                            </template>
+                                            <template x-if="artworkIsVideo(img.path)">
+                                                <span style="position:absolute;bottom:3px;left:3px;background:rgba(17,24,39,.75);color:#fff;border-radius:4px;padding:1px 5px;font-size:9px;"><i class="fas fa-video"></i></span>
+                                            </template>
+                                            <button type="button" @click="artworkRemoveExisting(i)"
+                                                    style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(17,24,39,.75);border:none;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;padding:0;">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </template>
+                                    <template x-for="(file, i) in artworkFiles" :key="'artnew'+i">
+                                        <div style="position:relative;width:84px;height:84px;border-radius:8px;overflow:hidden;border:1px solid #C7D2FE;background:#111827;">
+                                            <template x-if="artworkIsVideo(file.name)">
+                                                <video :src="URL.createObjectURL(file)" muted playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover;display:block;"></video>
+                                            </template>
+                                            <template x-if="!artworkIsVideo(file.name)">
+                                                <img :src="URL.createObjectURL(file)" style="width:100%;height:100%;object-fit:cover;display:block;" alt="New team artwork">
+                                            </template>
+                                            <template x-if="artworkIsVideo(file.name)">
+                                                <span style="position:absolute;bottom:3px;left:3px;background:rgba(17,24,39,.75);color:#fff;border-radius:4px;padding:1px 5px;font-size:9px;"><i class="fas fa-video"></i></span>
+                                            </template>
+                                            <button type="button" @click="artworkRemoveNew(i)"
+                                                    style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(17,24,39,.75);border:none;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;padding:0;">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+
+                        {{-- Hero title + tagline --}}
+                        <div style="margin-top:20px;padding-top:20px;border-top:1px solid #F3F4F6;">
+                            <label class="sf-label" style="margin-bottom:4px;">Team Banner Title</label>
+                            <p class="sf-hint" style="margin-bottom:8px;">Reads as "THE <strong>{{ strtoupper($settings['company_name'] ?? 'Company') }}</strong> TEAM" — edit the <strong>Company Name</strong> field above to change it.</p>
+
+                            <label class="sf-label" style="margin-bottom:4px;margin-top:14px;">Team Banner Tagline</label>
+                            <input type="text" name="login_hero_tagline" class="sf-input" maxlength="120"
+                                   value="{{ $settings['login_hero_tagline'] ?? 'Together we build. Together we achieve.' }}"
+                                   placeholder="Together we build. Together we achieve.">
+
+                            <label class="sf-label" style="margin-bottom:4px;margin-top:14px;">Bottom Pill Text</label>
+                            <p class="sf-hint" style="margin-bottom:8px;">Shown in the small pill at the bottom of the login page. Two parts: plain text, then a bold accent-colored phrase.</p>
+                            <div class="team-form-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                <input type="text" name="login_pill_text" class="sf-input" maxlength="60"
+                                       value="{{ $settings['login_pill_text'] ?? 'One Team. One Goal.' }}"
+                                       placeholder="One Team. One Goal.">
+                                <input type="text" name="login_pill_accent" class="sf-input" maxlength="60"
+                                       value="{{ $settings['login_pill_accent'] ?? 'Unlimited Impact.' }}"
+                                       placeholder="Unlimited Impact.">
+                            </div>
+                        </div>
+
+                        <div style="margin-top:24px;padding-top:20px;border-top:1px solid #F3F4F6;">
+                            <label class="sf-label" style="margin-bottom:4px;">Login Panel Color</label>
+                            <p class="sf-hint" style="margin-bottom:12px;">Gradient tint for the right illustration panel on the login page.</p>
+                            <div class="color-wrap">
+                                <input type="color" x-model="loginDecoColor" class="color-swatch"
+                                       :style="`background:${loginDecoColor};border-color:${loginDecoColor}`">
+                                <input type="text" name="login_deco_color" class="sf-input"
+                                       x-model="loginDecoColor" pattern="^#[0-9A-Fa-f]{6}$">
+                            </div>
+                            {{-- Live gradient preview --}}
+                            <div :style="`margin-top:10px;height:28px;border-radius:8px;background:linear-gradient(145deg,${loginDecoColor}99 0%,${loginDecoColor} 45%,${loginDecoColor}cc 100%);`"></div>
                         </div>
 
                     </div>
@@ -643,6 +1027,579 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                     </div>
                 </form>
             </div>
+        </div>
+
+        {{-- ════ ABOUT PAGE ════ --}}
+        <div x-show="tab === 'about_page'" x-cloak>
+            <div class="scard" x-data="{ device: 'desktop' }">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#EEF2FF;color:#6366F1;"><i class="fas fa-tv"></i></div>
+                    <div style="flex:1;">
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Live Preview & Editor</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">
+                            See <code>/about</code> at each screen size. Turn on <strong>Developer Mode</strong> (Developer tab) to edit directly inside it.
+                        </p>
+                    </div>
+                    <div style="display:flex;gap:6px;flex-shrink:0;">
+                        <button type="button" class="devprev-btn" :class="{ active: device === 'mobile' }" @click="device = 'mobile'" title="Mobile (390px)">
+                            <i class="fa-solid fa-mobile-screen"></i>
+                        </button>
+                        <button type="button" class="devprev-btn" :class="{ active: device === 'tablet' }" @click="device = 'tablet'" title="Tablet (834px)">
+                            <i class="fa-solid fa-tablet-screen-button"></i>
+                        </button>
+                        <button type="button" class="devprev-btn" :class="{ active: device === 'desktop' }" @click="device = 'desktop'" title="Desktop">
+                            <i class="fa-solid fa-desktop"></i>
+                        </button>
+                        <a href="{{ route('about') }}" target="_blank" class="devprev-btn" title="Open in new tab" style="text-decoration:none;">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                        </a>
+                    </div>
+                </div>
+                <div class="scard-body" style="display:flex;justify-content:center;background:#F3F4F6;padding:20px;">
+                    <div class="devprev-frame"
+                         :style="'width:' + (device === 'mobile' ? '390px' : device === 'tablet' ? '834px' : '100%') + '; max-width:100%;'">
+                        <iframe src="{{ route('about') }}" style="width:100%;height:760px;border:0;display:block;"></iframe>
+                    </div>
+                </div>
+            </div>
+
+            <div class="scard" style="margin-top:16px;">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#EEF2FF;color:#6366F1;"><i class="fas fa-address-card"></i></div>
+                    <div>
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">About Page</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">A public, no-login page at <code>/about</code> showing your team and artwork to visitors</p>
+                    </div>
+                </div>
+                <form method="POST" action="{{ route('admin.settings.about-page') }}" id="about-page-form" enctype="multipart/form-data"
+                      @php $heroBgIsVideoAdmin = !empty($appSettings['about_page_bg_image']) && preg_match('/\.(mp4|webm|mov|m4v)$/i', $appSettings['about_page_bg_image']); @endphp
+                      x-data="{
+                          heroBgPreview: '{{ !empty($appSettings['about_page_bg_image']) ? Storage::url($appSettings['about_page_bg_image']) : '' }}',
+                          heroBgIsVideo: {{ $heroBgIsVideoAdmin ? 'true' : 'false' }},
+                          removeHeroBg: false,
+                          heroBgOverlay: {{ (int) ($appSettings['about_page_bg_overlay'] ?? 0) }},
+                          setHeroBg(e) {
+                              const f = e.files ? e.files[0] : e.target.files[0];
+                              if (f) {
+                                  this.heroBgPreview = URL.createObjectURL(f);
+                                  this.heroBgIsVideo = /\.(mp4|webm|mov|m4v)$/i.test(f.name) || f.type.startsWith('video/');
+                                  this.removeHeroBg = false;
+                              }
+                          },
+                      }">
+                    @csrf
+                    <div class="scard-body">
+                        <div class="sf-toggle-row">
+                            <div>
+                                <p class="sf-toggle-label">Enable Public About Page</p>
+                                <p class="sf-toggle-hint">When off, <code>/about</code> returns a 404 to visitors</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" name="about_page_enabled" value="1"
+                                       {{ ($appSettings['about_page_enabled'] ?? '1') === '1' ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="sf-group" style="margin-top:14px;">
+                            <label class="sf-label">Intro Text</label>
+                            <textarea name="about_page_intro" class="sf-input" rows="2" maxlength="200"
+                                      placeholder="Together we build. Together we achieve.">{{ $appSettings['about_page_intro'] ?? '' }}</textarea>
+                            <p class="sf-hint">Shown under the page heading. Leave blank to reuse the Login Hero Tagline from the Branding tab.</p>
+                        </div>
+
+                        <p class="sf-hint" style="margin-top:4px;">
+                            Company name, logo, team artwork gallery and the "One Team, One Goal" pill text are shared with the login page —
+                            edit those in the <a href="#branding" @click="setTab('branding')" style="color:#6366F1;font-weight:600;">Branding tab</a>.
+                            The team grid always shows every active user automatically.
+                        </p>
+
+                        <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
+
+                        <label class="sf-label">
+                            Hero Background
+                            <span style="font-size:10px;color:#9CA3AF;font-weight:400;margin-left:4px;">PNG, JPG, WEBP, MP4, WEBM · any size · optional</span>
+                        </label>
+                        <p class="sf-hint" style="margin-bottom:8px;">Replaces the default gradient behind the "About {{ $appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name') }}" heading with a photo or video.</p>
+                        <input type="hidden" name="remove_about_page_bg_image" :value="removeHeroBg ? '1' : '0'">
+
+                        <div class="upload-zone" @dragover.prevent @drop.prevent="setHeroBg($event.dataTransfer)"
+                             style="min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;">
+                            <input type="file" name="about_page_bg_image" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime"
+                                   @change="setHeroBg($event)"
+                                   :style="(heroBgPreview && !removeHeroBg) ? 'pointer-events:none' : ''">
+
+                            <template x-if="heroBgPreview && !removeHeroBg">
+                                <div style="display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;">
+                                    <video x-show="heroBgIsVideo" :src="heroBgPreview" muted playsinline preload="metadata"
+                                           style="height:80px;object-fit:cover;border-radius:8px;pointer-events:none;"></video>
+                                    <img x-show="!heroBgIsVideo" :src="heroBgPreview" class="upload-preview" alt="Hero background preview"
+                                         style="height:80px;object-fit:cover;border-radius:8px;pointer-events:none;">
+                                    <button type="button" class="remove-btn" @click.stop="removeHeroBg=true;heroBgPreview=''">
+                                        <i class="fas fa-trash-can"></i> Remove
+                                    </button>
+                                </div>
+                            </template>
+                            <template x-if="!heroBgPreview || removeHeroBg">
+                                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;">
+                                    <div style="width:40px;height:40px;background:#EEF2FF;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                                        <i class="fas fa-panorama" style="color:#6366F1;font-size:16px;"></i>
+                                    </div>
+                                    <p style="font-size:12px;font-weight:500;color:#374151;margin:0;">Click or drag to upload</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:0;">Leave empty to keep the default brand-color gradient</p>
+                                </div>
+                            </template>
+                        </div>
+
+                        <div x-show="heroBgPreview && !removeHeroBg" style="margin-top:12px;">
+                            <p class="ctrl-lbl" style="display:flex;align-items:center;gap:6px;">
+                                Dark Overlay
+                                <span x-text="heroBgOverlay + '%'" style="color:#4F46E5;font-size:11px;font-weight:800;"></span>
+                            </p>
+                            <div style="height:6px;border-radius:3px;background:linear-gradient(to right,#F3F4F6,rgba(0,0,0,0.78));border:1px solid #E5E7EB;margin-bottom:6px;"></div>
+                            <input type="range" name="about_page_bg_overlay" x-model.number="heroBgOverlay"
+                                   min="0" max="80" step="5"
+                                   style="width:100%;accent-color:#4F46E5;height:4px;display:block;margin-bottom:4px;cursor:pointer;">
+                            <p class="sf-hint">Darkens the photo/video so the heading text stays readable. A minimum of 40% is always applied.</p>
+                        </div>
+
+                        <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
+
+                        @php
+                            $sectionToggle = fn($key) => ($appSettings[$key] ?? '1') === '1';
+                            $hiddenFlag = fn($key) => ($appSettings[$key] ?? '0') === '1';
+                        @endphp
+
+                        <div class="sf-toggle-row">
+                            <div>
+                                <p class="sf-toggle-label">Show "Who We Are" Section</p>
+                                <p class="sf-toggle-hint">The text block right below the hero</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" name="about_page_show_who" value="1" {{ $sectionToggle('about_page_show_who') ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="sf-group" style="margin-top:10px;" x-data="{ whoText: @js($appSettings['about_page_who_text'] ?? '') }">
+                            <label class="sf-label">"Who We Are" Text</label>
+                            <textarea name="about_page_who_text" class="sf-input" rows="3" maxlength="600" x-model="whoText"
+                                      placeholder="{{ $appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name') }} is a team of builders, designers, and strategists dedicated to turning ambitious ideas into products people love."></textarea>
+                            <p class="sf-hint">Leave blank for a sensible default.</p>
+
+                            <p class="sf-hint" style="margin-top:12px;font-weight:600;color:#374151;">Live preview</p>
+                            <div style="max-width:420px;margin-top:6px;">
+                                <p style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:{{ $appSettings['primary_color'] ?? '#4F46E5' }};margin:0 0 6px;">Our Story</p>
+                                <h4 style="font-size:16px;font-weight:800;color:#111827;margin:0 0 8px;">Who We Are</h4>
+                                <p style="font-size:12.5px;color:#6B7280;line-height:1.6;margin:0;"
+                                   x-text="whoText || '{{ addslashes($appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name')) }} is a team of builders, designers, and strategists dedicated to turning ambitious ideas into products people love.'"></p>
+                            </div>
+                        </div>
+                        <div class="sf-group" style="margin-top:10px;" x-data="{ quote: @js($appSettings['about_page_quote_text'] ?? '') }">
+                            <label class="sf-label">Testimonial / Team Quote</label>
+                            <textarea name="about_page_quote_text" class="sf-input" rows="2" maxlength="200" x-model="quote"
+                                      placeholder="Great work isn't an accident — it's a team that genuinely cares, showing up every day."></textarea>
+                            <p class="sf-hint">Shown in the glass card next to "Who We Are", attributed to "The {{ $appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name') }} Team". Leave blank for a sensible default.</p>
+
+                            <p class="sf-hint" style="margin-top:12px;font-weight:600;color:#374151;">Live preview</p>
+                            <div style="background:#fff;border-radius:20px;padding:20px;box-shadow:0 10px 30px -14px rgba(22,19,43,0.15);border:1px solid rgba(0,0,0,0.04);max-width:420px;margin-top:6px;">
+                                <div style="display:flex;margin-bottom:14px;">
+                                    @forelse($aboutPageTeamMembers->take(5) as $person)
+                                        @php $avatarUrl = $person->avatar ? Storage::url($person->avatar) : null; @endphp
+                                        @if($avatarUrl)
+                                        <img src="{{ $avatarUrl }}" alt="{{ $person->name }}"
+                                             style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.15);{{ $loop->first ? '' : 'margin-left:-10px;' }}">
+                                        @else
+                                        <div style="width:34px;height:34px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;background:linear-gradient(135deg,{{ $appSettings['primary_color'] ?? '#4F46E5' }},{{ \App\Models\Setting::get('accent_color','#9163aa') }});box-shadow:0 1px 3px rgba(0,0,0,0.15);{{ $loop->first ? '' : 'margin-left:-10px;' }}">
+                                            {{ strtoupper(mb_substr($person->name, 0, 1)) }}
+                                        </div>
+                                        @endif
+                                    @empty
+                                    <p class="sf-hint" style="margin:0;">No team members yet</p>
+                                    @endforelse
+                                </div>
+                                <p style="font-weight:700;font-size:14px;color:#16132B;margin:0;line-height:1.4;"
+                                   x-text="'“' + (quote || 'Great work isn\'t an accident — it\'s a team that genuinely cares, showing up every day.') + '”'"></p>
+                                <p style="font-size:10.5px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em;margin-top:8px;">
+                                    — The {{ $appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name') }} Team
+                                </p>
+                            </div>
+                        </div>
+
+                        <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
+
+                        <div class="sf-toggle-row">
+                            <div>
+                                <p class="sf-toggle-label">Show Statistics Section</p>
+                                <p class="sf-toggle-hint">Projects Completed, Team Members, Years of Experience, Client Satisfaction</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" name="about_page_show_stats" value="1" {{ $sectionToggle('about_page_show_stats') ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        @php $realStatLabels = [1 => 'Projects Completed', 2 => 'Team Members']; @endphp
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:10px;">
+                            @foreach ($realStatLabels as $i => $label)
+                            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#374151;font-weight:500;cursor:pointer;">
+                                <input type="checkbox" name="about_page_stat{{ $i }}_hidden" value="1" {{ $hiddenFlag("about_page_stat{$i}_hidden") ? 'checked' : '' }}>
+                                Hide "{{ $label }}"
+                            </label>
+                            @endforeach
+                        </div>
+                        <p class="sf-hint" style="margin-top:6px;">These 2 numbers are calculated automatically from real data — you can only hide the card, not edit its value.</p>
+
+                        <p class="sf-hint" style="margin-top:14px;">
+                            "Years of Experience" and "Client Satisfaction" have no automatic source — enter a real number
+                            you're prepared to stand behind, or leave blank to hide that card entirely (no placeholder is shown).
+                        </p>
+                        <div x-data="{ stat3: @js($appSettings['about_page_stat3_value'] ?? ''), stat4: @js($appSettings['about_page_stat4_value'] ?? '') }">
+                            <div class="sf-row" style="margin-top:6px;">
+                                <div class="sf-group">
+                                    <label class="sf-label" style="display:flex;align-items:center;justify-content:space-between;">
+                                        <span>Years of Experience</span>
+                                        <span style="display:inline-flex;align-items:center;gap:4px;font-weight:400;font-size:10.5px;color:#9CA3AF;">
+                                            <input type="checkbox" name="about_page_stat3_hidden" value="1" {{ $hiddenFlag('about_page_stat3_hidden') ? 'checked' : '' }}> Hide
+                                        </span>
+                                    </label>
+                                    <input type="number" name="about_page_stat3_value" class="sf-input" min="0" max="999" x-model="stat3"
+                                           placeholder="e.g. 5 (shown as “5+”)">
+                                </div>
+                                <div class="sf-group">
+                                    <label class="sf-label" style="display:flex;align-items:center;justify-content:space-between;">
+                                        <span>Client Satisfaction (%)</span>
+                                        <span style="display:inline-flex;align-items:center;gap:4px;font-weight:400;font-size:10.5px;color:#9CA3AF;">
+                                            <input type="checkbox" name="about_page_stat4_hidden" value="1" {{ $hiddenFlag('about_page_stat4_hidden') ? 'checked' : '' }}> Hide
+                                        </span>
+                                    </label>
+                                    <input type="number" name="about_page_stat4_value" class="sf-input" min="0" max="100" x-model="stat4"
+                                           placeholder="e.g. 98 (shown as “98%”)">
+                                </div>
+                            </div>
+
+                            <p class="sf-hint" style="margin-top:14px;font-weight:600;color:#374151;">Live preview</p>
+                            @php $statCardStyle = 'background:#fff;border-radius:16px;padding:16px 10px;text-align:center;box-shadow:0 6px 18px -10px rgba(22,19,43,0.18);border:1px solid rgba(0,0,0,0.04);'; @endphp
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;max-width:560px;margin-top:6px;">
+                                <div style="{{ $statCardStyle }}">
+                                    <p style="font-size:24px;font-weight:800;color:#16132B;margin:0;">{{ $aboutPageRealStats['completedProjectCount'] }}+</p>
+                                    <p style="font-size:10.5px;color:#9CA3AF;font-weight:600;margin-top:3px;">Projects Completed</p>
+                                </div>
+                                <div style="{{ $statCardStyle }}">
+                                    <p style="font-size:24px;font-weight:800;color:#16132B;margin:0;">{{ $aboutPageRealStats['activeMemberCount'] }}+</p>
+                                    <p style="font-size:10.5px;color:#9CA3AF;font-weight:600;margin-top:3px;">Team Members</p>
+                                </div>
+                                <div style="{{ $statCardStyle }}" x-show="stat3">
+                                    <p style="font-size:24px;font-weight:800;color:#16132B;margin:0;"><span x-text="stat3"></span>+</p>
+                                    <p style="font-size:10.5px;color:#9CA3AF;font-weight:600;margin-top:3px;">Years of Experience</p>
+                                </div>
+                                <div style="{{ $statCardStyle }}" x-show="stat4">
+                                    <p style="font-size:24px;font-weight:800;color:#16132B;margin:0;"><span x-text="stat4"></span>%</p>
+                                    <p style="font-size:10.5px;color:#9CA3AF;font-weight:600;margin-top:3px;">Client Satisfaction</p>
+                                </div>
+                                <template x-if="!stat3">
+                                    <div style="{{ $statCardStyle }}opacity:0.45;">
+                                        <p style="font-size:11px;color:#9CA3AF;margin:0;">Hidden — no value set</p>
+                                    </div>
+                                </template>
+                                <template x-if="!stat4">
+                                    <div style="{{ $statCardStyle }}opacity:0.45;">
+                                        <p style="font-size:11px;color:#9CA3AF;margin:0;">Hidden — no value set</p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
+
+                        <div class="sf-toggle-row">
+                            <div>
+                                <p class="sf-toggle-label">Show Mission &amp; Vision Section</p>
+                                <p class="sf-toggle-hint">Two gradient cards below the statistics</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" name="about_page_show_mission_vision" value="1" {{ $sectionToggle('about_page_show_mission_vision') ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div x-data="{
+                                mission: @js($appSettings['about_page_mission'] ?? ''),
+                                vision: @js($appSettings['about_page_vision'] ?? ''),
+                                missionHidden: {{ $hiddenFlag('about_page_mission_hidden') ? 'true' : 'false' }},
+                                visionHidden: {{ $hiddenFlag('about_page_vision_hidden') ? 'true' : 'false' }},
+                            }">
+                            <p class="sf-hint" style="margin-top:10px;">Click a card's text to edit it. Use the eye icon to hide a card — leave blank for a sensible default.</p>
+                            @php
+                                $brand  = $appSettings['primary_color'] ?? '#4F46E5';
+                                $brand2 = \App\Models\Setting::get('accent_color', '#9163aa');
+                            @endphp
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;max-width:640px;margin-top:10px;">
+                                <div :style="missionHidden ? 'opacity:0.45;' : ''" style="position:relative;border-radius:22px;padding:22px;color:#fff;box-shadow:0 16px 40px -18px rgba(79,70,229,0.5);background:linear-gradient(150deg,{{ $brand }},color-mix(in srgb,{{ $brand }} 60%,black));">
+                                    <input type="checkbox" name="about_page_mission_hidden" value="1" x-model="missionHidden" style="display:none;">
+                                    <button type="button" @click="missionHidden = !missionHidden" :title="missionHidden ? 'Show this card' : 'Hide this card'"
+                                            style="position:absolute;top:14px;right:14px;width:24px;height:24px;border-radius:50%;border:none;background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                                        <i class="fa-solid" :class="missionHidden ? 'fa-eye-slash' : 'fa-eye'" style="font-size:10.5px;"></i>
+                                    </button>
+                                    <div style="width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+                                        <i class="fa-solid fa-bullseye" style="font-size:15px;"></i>
+                                    </div>
+                                    <h3 style="font-size:15px;font-weight:800;margin:0 0 8px;">Our Mission</h3>
+                                    <p class="sf-editable sf-editable-on-brand" style="font-size:12.5px;line-height:1.5;color:rgba(255,255,255,0.85);margin:0;"
+                                       contenteditable="true" x-model="mission" data-placeholder="To empower teams everywhere with tools that make ambitious work feel effortless."></p>
+                                </div>
+                                <div :style="visionHidden ? 'opacity:0.45;' : ''" style="position:relative;border-radius:22px;padding:22px;color:#fff;box-shadow:0 16px 40px -18px rgba(145,99,170,0.5);background:linear-gradient(150deg,{{ $brand2 }},color-mix(in srgb,{{ $brand2 }} 55%,black));">
+                                    <input type="checkbox" name="about_page_vision_hidden" value="1" x-model="visionHidden" style="display:none;">
+                                    <button type="button" @click="visionHidden = !visionHidden" :title="visionHidden ? 'Show this card' : 'Hide this card'"
+                                            style="position:absolute;top:14px;right:14px;width:24px;height:24px;border-radius:50%;border:none;background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                                        <i class="fa-solid" :class="visionHidden ? 'fa-eye-slash' : 'fa-eye'" style="font-size:10.5px;"></i>
+                                    </button>
+                                    <div style="width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+                                        <i class="fa-solid fa-binoculars" style="font-size:15px;"></i>
+                                    </div>
+                                    <h3 style="font-size:15px;font-weight:800;margin:0 0 8px;">Our Vision</h3>
+                                    <p class="sf-editable sf-editable-on-brand" style="font-size:12.5px;line-height:1.5;color:rgba(255,255,255,0.85);margin:0;"
+                                       contenteditable="true" x-model="vision" data-placeholder="A future where every team has access to tools that adapt to how they actually work."></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
+
+                        <div class="sf-toggle-row">
+                            <div>
+                                <p class="sf-toggle-label">Show Core Values Section</p>
+                                <p class="sf-toggle-hint">6-card grid</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" name="about_page_show_values" value="1" {{ $sectionToggle('about_page_show_values') ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        @php $valueDefaultLabels = [
+                            1 => ['Innovation', "We embrace new ideas and aren't afraid to challenge the status quo.", 'fa-lightbulb'],
+                            2 => ['Integrity', 'We do what\'s right, even when no one is watching.', 'fa-shield-halved'],
+                            3 => ['Collaboration', 'Great work happens when diverse minds build together.', 'fa-people-group'],
+                            4 => ['Excellence', 'We sweat the details that others skip.', 'fa-medal'],
+                            5 => ['Customer Success', 'Our success is measured by the success of the people we serve.', 'fa-heart'],
+                            6 => ['Growth', 'We invest in learning, iterating, and getting better every single day.', 'fa-seedling'],
+                        ]; @endphp
+                        @php
+                            $valueDefaultsForJs = collect($valueDefaultLabels)->map(fn ($d) => ['title' => $d[0], 'desc' => $d[1], 'icon' => $d[2]])->values();
+                        @endphp
+                        <div x-data="{
+                                values: [
+                                    @for ($i = 1; $i <= 6; $i++)
+                                    { title: @js($appSettings["about_page_value{$i}_title"] ?? ''), desc: @js($appSettings["about_page_value{$i}_desc"] ?? ''), hidden: {{ $hiddenFlag("about_page_value{$i}_hidden") ? 'true' : 'false' }} },
+                                    @endfor
+                                ],
+                                defaults: @js($valueDefaultsForJs),
+                            }">
+                            <p class="sf-hint">Click a title or description on a card to edit it. Use the eye icon to hide a card — leave a pair blank to fall back to the suggested default.</p>
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;max-width:760px;margin-top:10px;">
+                                <template x-for="(v, i) in values" :key="i">
+                                    <div :style="v.hidden ? 'opacity:0.45;' : ''" style="position:relative;background:#fff;border-radius:20px;padding:18px;box-shadow:0 8px 24px -14px rgba(22,19,43,0.18);border:1px solid rgba(0,0,0,0.04);">
+                                        <input type="checkbox" :name="'about_page_value' + (i + 1) + '_hidden'" value="1" x-model="v.hidden" style="display:none;">
+                                        <button type="button" @click="v.hidden = !v.hidden" :title="v.hidden ? 'Show this card' : 'Hide this card'"
+                                                style="position:absolute;top:10px;right:10px;width:24px;height:24px;border-radius:50%;border:none;background:#F3F4F6;color:#6B7280;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                                            <i class="fa-solid" :class="v.hidden ? 'fa-eye-slash' : 'fa-eye'" style="font-size:10.5px;"></i>
+                                        </button>
+                                        <div style="width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;color:{{ $appSettings['primary_color'] ?? '#4F46E5' }};background:color-mix(in srgb,{{ $appSettings['primary_color'] ?? '#4F46E5' }} 12%,white);">
+                                            <i class="fa-solid" :class="defaults[i].icon" style="font-size:14px;"></i>
+                                        </div>
+                                        <h4 class="sf-editable" style="font-size:13.5px;font-weight:800;margin:0 24px 4px 0;"
+                                            contenteditable="true" x-model="v.title" :data-placeholder="defaults[i].title"></h4>
+                                        <p class="sf-editable" style="font-size:11.5px;color:#9CA3AF;line-height:1.5;margin:0;"
+                                           contenteditable="true" x-model="v.desc" :data-placeholder="defaults[i].desc"></p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
+
+                        <div class="sf-toggle-row">
+                            <div>
+                                <p class="sf-toggle-label">Show "Meet Our Team" Section</p>
+                                <p class="sf-toggle-hint">Full team grid — always reflects every active user automatically</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" name="about_page_show_team" value="1" {{ $sectionToggle('about_page_show_team') ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
+
+                        <div class="sf-toggle-row">
+                            <div>
+                                <p class="sf-toggle-label">Show "Our Journey" Section</p>
+                                <p class="sf-toggle-hint">Undated narrative timeline — 4 fixed milestones</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" name="about_page_show_journey" value="1" {{ $sectionToggle('about_page_show_journey') ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        @php $journeyDefaults = [
+                            1 => ['title' => 'The Beginning',       'desc' => "It started with a small team and a big idea: work shouldn't feel this hard.", 'icon' => 'fa-flag'],
+                            2 => ['title' => 'Building the Team',   'desc' => 'We brought together builders, designers, and strategists who share the same obsession with quality.', 'icon' => 'fa-people-group'],
+                            3 => ['title' => 'Expanding Our Craft', 'desc' => 'New services, new challenges, and a growing list of projects we\'re proud of.', 'icon' => 'fa-arrow-trend-up'],
+                            4 => ['title' => 'Today',               'desc' => 'We keep shipping, learning, and raising the bar for ourselves — every single day.', 'icon' => 'fa-star'],
+                        ]; @endphp
+                        <div x-data="{
+                                journeyHidden: [
+                                    @for ($i = 1; $i <= 4; $i++)
+                                    {{ $hiddenFlag("about_page_journey{$i}_hidden") ? 'true' : 'false' }},
+                                    @endfor
+                                ],
+                                journey: @js(collect($journeyDefaults)->values()),
+                            }">
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:10px;">
+                                @foreach ($journeyDefaults as $i => $milestone)
+                                <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#374151;font-weight:500;cursor:pointer;">
+                                    <input type="checkbox" name="about_page_journey{{ $i }}_hidden" value="1" x-model="journeyHidden[{{ $i - 1 }}]">
+                                    Hide "{{ $milestone['title'] }}"
+                                </label>
+                                @endforeach
+                            </div>
+
+                            <p class="sf-hint" style="margin-top:14px;font-weight:600;color:#374151;">Live preview</p>
+                            <div style="display:flex;flex-direction:column;gap:10px;max-width:420px;margin-top:6px;">
+                                <template x-for="(m, i) in journey" :key="i">
+                                    <div x-show="!journeyHidden[i]" style="display:flex;align-items:flex-start;gap:12px;">
+                                        <div style="width:32px;height:32px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(135deg,{{ $appSettings['primary_color'] ?? '#4F46E5' }},{{ \App\Models\Setting::get('accent_color','#9163aa') }});">
+                                            <i class="fa-solid" :class="m.icon" style="font-size:12px;"></i>
+                                        </div>
+                                        <div>
+                                            <p style="font-size:12.5px;font-weight:800;color:#111827;margin:0;" x-text="m.title"></p>
+                                            <p style="font-size:11px;color:#9CA3AF;line-height:1.5;margin:2px 0 0;" x-text="m.desc"></p>
+                                        </div>
+                                    </div>
+                                </template>
+                                <template x-if="journeyHidden.every(h => h)">
+                                    <p class="sf-hint" style="margin:0;">All 4 milestones hidden — nothing will show on the About page.</p>
+                                </template>
+                            </div>
+                        </div>
+
+                        <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
+
+                        <div x-data="{
+                                ctaEnabled: {{ ($appSettings['about_page_cta_enabled'] ?? '1') === '1' ? 'true' : 'false' }},
+                                ctaText: @js($appSettings['about_page_cta_text'] ?? 'Get in Touch'),
+                                ctaLink: @js($appSettings['about_page_cta_link'] ?? ''),
+                            }">
+                            <div class="sf-toggle-row">
+                                <div>
+                                    <p class="sf-toggle-label">Show "Get in Touch" Button</p>
+                                    <p class="sf-toggle-hint">A call-to-action button shown under the tagline</p>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" name="about_page_cta_enabled" value="1" x-model="ctaEnabled">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="sf-row" style="margin-top:2px;">
+                                <div class="sf-group">
+                                    <label class="sf-label">Button Text</label>
+                                    <input type="text" name="about_page_cta_text" class="sf-input" maxlength="40" x-model="ctaText">
+                                </div>
+                                <div class="sf-group">
+                                    <label class="sf-label">Button Link</label>
+                                    <input type="text" name="about_page_cta_link" class="sf-input" maxlength="255"
+                                           placeholder="mailto:hello@company.com or https://..." x-model="ctaLink">
+                                    <p class="sf-hint">Blank hides the button even if enabled above.</p>
+                                </div>
+                            </div>
+
+                            <p class="sf-hint" style="margin-top:14px;font-weight:600;color:#374151;">Live preview</p>
+                            <div style="margin-top:6px;">
+                                <span x-show="ctaEnabled && ctaLink" style="display:inline-flex;align-items:center;gap:8px;padding:12px 26px;border-radius:999px;background:#16132B;color:#fff;font-weight:700;font-size:13px;box-shadow:0 8px 22px rgba(22,19,43,0.28);">
+                                    <span x-text="ctaText || 'Get in Touch'"></span> <i class="fa-solid fa-arrow-right"></i>
+                                </span>
+                                <p class="sf-hint" x-show="!(ctaEnabled && ctaLink)" style="margin:0;">Hidden — <span x-text="!ctaEnabled ? 'toggle is off.' : 'no link set.'"></span></p>
+                            </div>
+                        </div>
+
+                        <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
+
+                        <div class="sf-toggle-row">
+                            <div>
+                                <p class="sf-toggle-label">Show "Products &amp; Services" Section</p>
+                                <p class="sf-toggle-hint">6-card grid</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" name="about_page_show_services" value="1" {{ $sectionToggle('about_page_show_services') ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        @php $serviceDefaultLabels = [
+                            1 => ['Brand Strategy', 'Positioning and messaging that make your brand impossible to ignore.', 'fa-diagram-project'],
+                            2 => ['Creative Design', 'Visual identity and design systems built to scale.', 'fa-palette'],
+                            3 => ['Digital Marketing', 'Campaigns that reach the right people, at the right moment.', 'fa-bullhorn'],
+                            4 => ['Web & App Development', 'Fast, reliable products built with modern engineering.', 'fa-laptop-code'],
+                            5 => ['Content Production', 'Photo, video, and copy that tells your story well.', 'fa-video'],
+                            6 => ['Project Management', 'Clear timelines and transparent communication — work that ships on time.', 'fa-list-check'],
+                        ];
+                        $serviceDefaultsForJs = collect($serviceDefaultLabels)->map(fn ($d) => ['title' => $d[0], 'desc' => $d[1], 'icon' => $d[2]])->values();
+                        @endphp
+                        <div x-data="{
+                                heading: @js($appSettings['about_page_services_heading'] ?? ''),
+                                services: [
+                                    @for ($i = 1; $i <= 6; $i++)
+                                    { title: @js($appSettings["about_page_service{$i}_title"] ?? ''), desc: @js($appSettings["about_page_service{$i}_desc"] ?? ''), hidden: {{ $hiddenFlag("about_page_service{$i}_hidden") ? 'true' : 'false' }} },
+                                    @endfor
+                                ],
+                                defaults: @js($serviceDefaultsForJs),
+                            }">
+                            <div class="sf-group" style="margin-top:10px;">
+                                <label class="sf-label">Services Section Heading</label>
+                                <input type="text" name="about_page_services_heading" class="sf-input" maxlength="60" x-model="heading" placeholder="What We Do">
+                            </div>
+                            <p class="sf-hint">Click a title or description on a card to edit it. Use the eye icon to hide a card — leave one blank to fall back to the suggested default.</p>
+                            <p style="text-align:center;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:{{ $appSettings['primary_color'] ?? '#4F46E5' }};margin:10px 0 10px;" x-text="heading || 'What We Do'"></p>
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;max-width:760px;">
+                                <template x-for="(s, i) in services" :key="i">
+                                    <div :style="s.hidden ? 'opacity:0.45;' : ''" style="position:relative;background:#fff;border-radius:20px;padding:20px 16px;text-align:center;box-shadow:0 10px 26px -14px rgba(22,19,43,0.2);border:1px solid rgba(0,0,0,0.04);">
+                                        <input type="checkbox" :name="'about_page_service' + (i + 1) + '_hidden'" value="1" x-model="s.hidden" style="display:none;">
+                                        <button type="button" @click="s.hidden = !s.hidden" :title="s.hidden ? 'Show this card' : 'Hide this card'"
+                                                style="position:absolute;top:10px;right:10px;width:24px;height:24px;border-radius:50%;border:none;background:#F3F4F6;color:#6B7280;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                                            <i class="fa-solid" :class="s.hidden ? 'fa-eye-slash' : 'fa-eye'" style="font-size:10.5px;"></i>
+                                        </button>
+                                        <div style="width:44px;height:44px;border-radius:50%;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(135deg,{{ $appSettings['primary_color'] ?? '#4F46E5' }},{{ \App\Models\Setting::get('accent_color','#9163aa') }});box-shadow:0 8px 16px -6px rgba(79,70,229,0.5);">
+                                            <i class="fa-solid" :class="defaults[i].icon" style="font-size:15px;"></i>
+                                        </div>
+                                        <h4 class="sf-editable" style="font-size:13.5px;font-weight:800;margin:0 0 4px;"
+                                            contenteditable="true" x-model="s.title" :data-placeholder="defaults[i].title"></h4>
+                                        <p class="sf-editable" style="font-size:11.5px;color:#9CA3AF;line-height:1.5;margin:0;"
+                                           contenteditable="true" x-model="s.desc" :data-placeholder="defaults[i].desc"></p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
+
+                        <div class="sf-toggle-row">
+                            <div>
+                                <p class="sf-toggle-label">Show "Life at {{ $appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name') }}" Gallery</p>
+                                <p class="sf-toggle-hint">Uses the same Team Artwork gallery as the login page — edit photos/videos in the Branding tab</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" name="about_page_show_gallery" value="1" {{ $sectionToggle('about_page_show_gallery') ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="scard-footer" style="display:flex;align-items:center;gap:12px;">
+                        <button type="submit" class="btn-save">
+                            <i class="fas fa-check" style="font-size:11px;margin-right:5px;"></i>Save About Page
+                        </button>
+                        <a href="{{ route('about') }}" target="_blank" style="font-size:12.5px;font-weight:600;color:#6366F1;text-decoration:none;">
+                            <i class="fa fa-arrow-up-right-from-square" style="margin-right:4px;"></i>Preview /about
+                        </a>
+                    </div>
+                </form>
+            </div>
+
         </div>
 
         {{-- ════ CHAT AGENT ════ --}}
@@ -921,6 +1878,102 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         <button type="submit" class="btn-save"><i class="fas fa-check" style="font-size:11px;margin-right:5px;"></i>Save Team Settings</button>
                     </div>
                 </form>
+            </div>
+
+            <div class="scard" style="margin-top:16px;">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#F0FDF4;color:#16A34A;"><i class="fas fa-camera"></i></div>
+                    <div style="flex:1;">
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Team Photos</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">
+                            Upload a real photo for each person — shown on the About page instead of their initials, and used everywhere in the app.
+                            The first 5 people <strong>with a photo</strong> also appear on the login page (4 corners + 1 middle slot) — edit their role label there too, or drag them into place on the login page itself.
+                        </p>
+                    </div>
+                    <a href="{{ route('login') }}" target="_blank" style="font-size:12.5px;font-weight:600;color:#6366F1;text-decoration:none;white-space:nowrap;">
+                        <i class="fa fa-arrow-up-right-from-square" style="margin-right:4px;"></i>Open login page
+                    </a>
+                </div>
+                @if(($appSettings['developer_mode'] ?? '0') !== '1')
+                <div style="padding:10px 24px;background:#FFFBEB;border-bottom:1px solid #FDE68A;font-size:12px;color:#92400E;">
+                    <i class="fa fa-circle-info" style="margin-right:5px;"></i>
+                    Turn on <strong>Developer Mode</strong> (Developer tab → System Controls), then open the login page above — while it's on, you can drag each card anywhere on the page to reposition it.
+                </div>
+                @endif
+                <div class="scard-body" style="padding-top:4px;">
+                    @php
+                        $frameDefaultLabels = [
+                            1 => ['Project Lead', 'Leads with vision'],
+                            2 => ['Creative Designer', 'Designs the future'],
+                            3 => ['Developer', 'Builds with code'],
+                            4 => ['Strategist', 'Plans for success'],
+                            5 => ['Team Member', 'Gets things done'],
+                        ];
+                        // The login page only looks at members WITH a photo (see layouts/auth.blade.php
+                        // $teamFrameUsers) and numbers slots among those — so slot numbers here must be
+                        // computed the same way, or the label fields edit a slot nobody is actually in.
+                        $photoOrder = $aboutPageTeamMembers->filter(fn ($m) => $m->avatar)->values();
+                    @endphp
+                    @forelse($aboutPageTeamMembers as $member)
+                    @php
+                        $photoIndex = $member->avatar ? $photoOrder->search(fn ($m) => $m->id === $member->id) : false;
+                        $slot = $photoIndex !== false ? $photoIndex + 1 : null;
+                    @endphp
+                    <div style="display:flex;align-items:center;gap:16px;padding:14px 0;{{ !$loop->last ? 'border-bottom:1px solid #F3F4F6;' : '' }}">
+                        <form method="POST" action="{{ route('admin.settings.about-page.team-photo', $member) }}" enctype="multipart/form-data"
+                              style="display:flex;align-items:center;gap:16px;flex-shrink:0;"
+                              x-data="{ preview: @js($member->avatarUrl()) }">
+                            @csrf
+                            <div style="position:relative;flex-shrink:0;">
+                                <div style="width:60px;height:60px;border-radius:50%;overflow:hidden;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                                    <template x-if="preview">
+                                        <img :src="preview" style="width:100%;height:100%;object-fit:cover;">
+                                    </template>
+                                    <template x-if="!preview">
+                                        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#A5B4FC,#6366F1);color:#fff;font-weight:800;font-size:20px;">
+                                            {{ strtoupper(mb_substr($member->name, 0, 1)) }}
+                                        </div>
+                                    </template>
+                                </div>
+                                <label style="position:absolute;bottom:-2px;right:-2px;width:24px;height:24px;background:#6366F1;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.2);">
+                                    <i class="fa fa-camera" style="color:#fff;font-size:10px;"></i>
+                                    <input type="file" name="avatar" accept="image/*" style="display:none;"
+                                           @change="if ($event.target.files[0]) { preview = URL.createObjectURL($event.target.files[0]); $el.closest('form').submit(); }">
+                                </label>
+                            </div>
+                            <div style="min-width:130px;">
+                                <p style="font-weight:700;font-size:13.5px;color:#111827;margin:0;">{{ $member->name }}</p>
+                                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">{{ $member->job_title ?: ucfirst($member->role) }}</p>
+                            </div>
+                        </form>
+                        @if($slot && $slot <= 5)
+                        <div style="display:flex;gap:8px;flex:1;min-width:0;padding-left:16px;border-left:1px solid #F3F4F6;">
+                            <div style="flex:1;min-width:0;">
+                                <label class="sf-label" style="font-weight:400;color:#9CA3AF;font-size:10.5px;">Login corner card — title</label>
+                                <input type="text" form="about-page-form" name="login_frame{{ $slot }}_title" class="sf-input" maxlength="40"
+                                       value="{{ $appSettings["login_frame{$slot}_title"] ?? $frameDefaultLabels[$slot][0] }}"
+                                       placeholder="{{ $frameDefaultLabels[$slot][0] }}">
+                            </div>
+                            <div style="flex:1;min-width:0;">
+                                <label class="sf-label" style="font-weight:400;color:#9CA3AF;font-size:10.5px;">Login corner card — description</label>
+                                <input type="text" form="about-page-form" name="login_frame{{ $slot }}_desc" class="sf-input" maxlength="60"
+                                       value="{{ $appSettings["login_frame{$slot}_desc"] ?? $frameDefaultLabels[$slot][1] }}"
+                                       placeholder="{{ $frameDefaultLabels[$slot][1] }}">
+                            </div>
+                        </div>
+                        @elseif(!$member->avatar && $photoOrder->count() < 5)
+                        <p class="sf-hint" style="flex:1;padding-left:16px;border-left:1px solid #F3F4F6;">Upload a photo to give this person a login-page slot.</p>
+                        @else
+                        <p class="sf-hint" style="flex:1;padding-left:16px;border-left:1px solid #F3F4F6;">The login page only has 5 slots (already filled by the 5 people with photos) — this person can't get one too.</p>
+                        @endif
+                    </div>
+                    @empty
+                    <p class="sf-hint">No active team members to show yet.</p>
+                    @endforelse
+                </div>
+                <div class="scard-footer">
+                    <button type="submit" form="about-page-form" class="btn-save"><i class="fas fa-check" style="font-size:11px;margin-right:5px;"></i>Save Team Photos</button>
+                </div>
             </div>
         </div>
 
@@ -2190,7 +3243,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                 </div>
 
                 {{-- Stats strip (horizontal) --}}
-                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px 20px;">
+                <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;padding:14px 20px;">
                     @foreach([['users','#4F46E5','Users'],['projects','#10B981','Projects'],['tasks','#F59E0B','Tasks']] as [$sk,$sc,$sl])
                     <div style="background:#F9FAFB;border:1.5px solid #F0F0F0;border-radius:10px;padding:10px 14px;text-align:center;">
                         <p style="font-size:20px;font-weight:700;color:{{ $sc }};margin:0;line-height:1.1;">{{ $stats[$sk] }}</p>
@@ -2200,6 +3253,18 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                     <div style="background:#F9FAFB;border:1.5px solid #F0F0F0;border-radius:10px;padding:10px 14px;text-align:center;">
                         <p style="font-size:18px;font-weight:700;color:#6366F1;margin:0;line-height:1.1;">{{ $stats['db_size'] }}</p>
                         <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;text-transform:uppercase;letter-spacing:.04em;">DB Size</p>
+                    </div>
+                    <div style="background:#F9FAFB;border:1.5px solid #F0F0F0;border-radius:10px;padding:10px 14px;text-align:center;">
+                        <p style="font-size:18px;font-weight:700;color:#0EA5E9;margin:0;line-height:1.1;">{{ $stats['disk_total'] }}</p>
+                        <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;text-transform:uppercase;letter-spacing:.04em;">Disk Total</p>
+                    </div>
+                    <div style="background:#F9FAFB;border:1.5px solid #F0F0F0;border-radius:10px;padding:10px 14px;text-align:center;">
+                        <p style="font-size:18px;font-weight:700;color:{{ $stats['disk_pct'] >= 90 ? '#EF4444' : ($stats['disk_pct'] >= 70 ? '#F59E0B' : '#10B981') }};margin:0;line-height:1.1;">{{ $stats['disk_free'] }}</p>
+                        <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;text-transform:uppercase;letter-spacing:.04em;">Disk Free</p>
+                        <div style="margin-top:5px;background:#E5E7EB;border-radius:99px;height:4px;overflow:hidden;">
+                            <div style="height:100%;border-radius:99px;width:{{ $stats['disk_pct'] }}%;background:{{ $stats['disk_pct'] >= 90 ? '#EF4444' : ($stats['disk_pct'] >= 70 ? '#F59E0B' : '#10B981') }};transition:width .3s;"></div>
+                        </div>
+                        <p style="font-size:9px;color:#9CA3AF;margin:2px 0 0;">{{ $stats['disk_pct'] }}% used</p>
                     </div>
                 </div>
 

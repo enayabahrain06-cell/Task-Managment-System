@@ -9,8 +9,12 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // SQLite is dynamically typed — existing rows with 0 (= "never explicitly set")
-        // become null to mean "follow global force_mfa policy".
+        // Make the column nullable before setting NULL values (SQLite enforces NOT NULL otherwise)
+        Schema::table('users', function (Blueprint $table) {
+            $table->tinyInteger('mfa_required')->nullable()->default(null)->change();
+        });
+
+        // Rows with 0 (= "never explicitly set") become null to mean "follow global force_mfa policy".
         // New semantics: null = follow global, 1 = always required, 0 = admin-exempted.
         DB::statement('UPDATE users SET mfa_required = NULL WHERE mfa_required = 0');
     }

@@ -52,6 +52,13 @@
 .sf-input:focus { border-color:#6366F1; box-shadow:0 0 0 3px rgba(99,102,241,0.1); }
 .sf-select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:32px; }
 .sf-row    { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.icon-picker-popover { position:absolute; z-index:40; background:#fff; border:1px solid #E5E7EB; border-radius:12px; box-shadow:0 10px 28px rgba(0,0,0,.14); padding:8px; width:196px; display:grid; grid-template-columns:repeat(4,1fr); gap:5px; }
+.icon-swatch-btn { width:38px; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; border:1.5px solid transparent; background:#F9FAFB; transition:background .1s; }
+.icon-swatch-btn:hover { background:#F3F4F6; }
+.icon-swatch-btn i { font-size:14px; color:#6B7280; }
+.icon-swatch-btn.is-active { background:#EEF2FF; border-color:#6366F1; }
+.icon-swatch-btn.is-active:hover { background:#EEF2FF; }
+.icon-swatch-btn.is-active i { color:#6366F1; }
 .sf-toggle-row { display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid #F3F4F6; }
 .sf-toggle-row:last-child { border-bottom:none; padding-bottom:0; }
 .sf-toggle-label { font-size:13px; font-weight:500; color:#111827; }
@@ -135,7 +142,9 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
     [style*="grid-template-columns:repeat(3,1fr)"] { grid-template-columns:1fr !important; }
     /* SMTP connection row: host + port + encryption → stack */
     [style*="grid-template-columns:1fr 120px 160px"] { grid-template-columns:1fr !important; }
-    /* Data/backup inline-stats strip: 4-col → 2-col */
+    /* Data/backup inline-stats strip: 6-col → 3-col */
+    [style*="grid-template-columns:repeat(6,1fr)"][style*="padding:14px 20px"] { grid-template-columns:repeat(3,1fr) !important; }
+    /* Data/backup inline-stats strip: 4-col → 2-col (legacy) */
     [style*="grid-template-columns:repeat(4,1fr)"][style*="padding:14px 20px"] { grid-template-columns:repeat(2,1fr) !important; }
     /* CSV export rows: auto 1fr auto auto → stack label+buttons */
     [style*="grid-template-columns:auto 1fr auto auto"] { grid-template-columns:1fr 1fr !important; }
@@ -149,7 +158,8 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
     [style*="grid-template-columns:1fr 340px"] { grid-template-columns:1fr !important; }
 }
 @media(max-width:480px){
-    /* Stat strip in backup section → 1-col */
+    /* Stat strip in backup section → 2-col */
+    [style*="grid-template-columns:repeat(6,1fr)"] { grid-template-columns:repeat(2,1fr) !important; }
     [style*="grid-template-columns:repeat(4,1fr)"] { grid-template-columns:repeat(2,1fr) !important; }
     /* Any remaining 2-col grids */
     [style*="grid-template-columns:1fr 120px"] { grid-template-columns:1fr !important; }
@@ -1898,15 +1908,28 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                 </div>
                 @endif
                 <div class="scard-body" style="padding-top:4px;">
-                    @php $frameDefaultLabels = [
-                        1 => ['Project Lead', 'Leads with vision'],
-                        2 => ['Creative Designer', 'Designs the future'],
-                        3 => ['Developer', 'Builds with code'],
-                        4 => ['Strategist', 'Plans for success'],
-                        5 => ['Team Member', 'Gets things done'],
-                    ]; @endphp
+                    @php
+                        $frameDefaultLabels = [
+                            1 => ['Project Lead', 'Leads with vision'],
+                            2 => ['Creative Designer', 'Designs the future'],
+                            3 => ['Developer', 'Builds with code'],
+                            4 => ['Strategist', 'Plans for success'],
+                            5 => ['Team Member', 'Gets things done'],
+                        ];
+                        $frameDefaultIcons = [
+                            1 => 'fa-briefcase', 2 => 'fa-palette', 3 => 'fa-code',
+                            4 => 'fa-chart-simple', 5 => 'fa-headset',
+                        ];
+                        // The login page only looks at members WITH a photo (see layouts/auth.blade.php
+                        // $teamFrameUsers) and numbers slots among those — so slot numbers here must be
+                        // computed the same way, or the label fields edit a slot nobody is actually in.
+                        $photoOrder = $aboutPageTeamMembers->filter(fn ($m) => $m->avatar)->values();
+                    @endphp
                     @forelse($aboutPageTeamMembers as $member)
-                    @php $slot = $loop->index + 1; @endphp
+                    @php
+                        $photoIndex = $member->avatar ? $photoOrder->search(fn ($m) => $m->id === $member->id) : false;
+                        $slot = $photoIndex !== false ? $photoIndex + 1 : null;
+                    @endphp
                     <div style="display:flex;align-items:center;gap:16px;padding:14px 0;{{ !$loop->last ? 'border-bottom:1px solid #F3F4F6;' : '' }}">
                         <form method="POST" action="{{ route('admin.settings.about-page.team-photo', $member) }}" enctype="multipart/form-data"
                               style="display:flex;align-items:center;gap:16px;flex-shrink:0;"
@@ -1934,7 +1957,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">{{ $member->job_title ?: ucfirst($member->role) }}</p>
                             </div>
                         </form>
-                        @if($slot <= 5 && $member->avatar)
+                        @if($slot && $slot <= 5)
                         <div style="display:flex;gap:8px;flex:1;min-width:0;padding-left:16px;border-left:1px solid #F3F4F6;">
                             <div style="flex:1;min-width:0;">
                                 <label class="sf-label" style="font-weight:400;color:#9CA3AF;font-size:10.5px;">Login corner card — title</label>
@@ -1948,11 +1971,35 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                        value="{{ $appSettings["login_frame{$slot}_desc"] ?? $frameDefaultLabels[$slot][1] }}"
                                        placeholder="{{ $frameDefaultLabels[$slot][1] }}">
                             </div>
+                            <div style="flex:0 0 170px;position:relative;"
+                                 x-data="{ icon: '{{ ($appSettings["login_frame{$slot}_icon"] ?? '') ?: $frameDefaultIcons[$slot] }}', open: false, labels: @js(\App\Http\Controllers\Admin\SettingsController::LOGIN_FRAME_ICONS) }"
+                                 @keydown.escape.window="open=false" @click.outside="open=false">
+                                <label class="sf-label" style="font-weight:400;color:#9CA3AF;font-size:10.5px;">Login corner card — icon</label>
+                                <input type="hidden" form="about-page-form" name="login_frame{{ $slot }}_icon" :value="icon">
+                                <button type="button" @click="open=!open" class="sf-input"
+                                        style="display:flex;align-items:center;gap:8px;cursor:pointer;width:100%;text-align:left;background:#fff;">
+                                    <span style="width:24px;height:24px;border-radius:6px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                        <i class="fas" :class="icon" style="color:#6366F1;font-size:11px;"></i>
+                                    </span>
+                                    <span style="flex:1;min-width:0;font-size:12.5px;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="labels[icon] || icon"></span>
+                                    <i class="fa fa-chevron-down" style="font-size:9px;color:#9CA3AF;flex-shrink:0;transition:transform .15s;" :style="open ? 'transform:rotate(180deg)' : ''"></i>
+                                </button>
+                                <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                                     class="icon-picker-popover"
+                                     style="top:calc(100% + 6px);left:0;">
+                                    @foreach(\App\Http\Controllers\Admin\SettingsController::LOGIN_FRAME_ICONS as $iconClass => $iconLabel)
+                                    <button type="button" @click="icon='{{ $iconClass }}'; open=false" title="{{ $iconLabel }}"
+                                            class="icon-swatch-btn" :class="icon === '{{ $iconClass }}' ? 'is-active' : ''">
+                                        <i class="fas {{ $iconClass }}"></i>
+                                    </button>
+                                    @endforeach
+                                </div>
+                            </div>
                         </div>
-                        @elseif($slot <= 5)
+                        @elseif(!$member->avatar && $photoOrder->count() < 5)
                         <p class="sf-hint" style="flex:1;padding-left:16px;border-left:1px solid #F3F4F6;">Upload a photo to give this person a login-page slot.</p>
                         @else
-                        <p class="sf-hint" style="flex:1;padding-left:16px;border-left:1px solid #F3F4F6;">The login page only has 5 slots (already filled by the 5 people above) — this person can't get one too.</p>
+                        <p class="sf-hint" style="flex:1;padding-left:16px;border-left:1px solid #F3F4F6;">The login page only has 5 slots (already filled by the 5 people with photos) — this person can't get one too.</p>
                         @endif
                     </div>
                     @empty
@@ -3231,7 +3278,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                 </div>
 
                 {{-- Stats strip (horizontal) --}}
-                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px 20px;">
+                <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;padding:14px 20px;">
                     @foreach([['users','#4F46E5','Users'],['projects','#10B981','Projects'],['tasks','#F59E0B','Tasks']] as [$sk,$sc,$sl])
                     <div style="background:#F9FAFB;border:1.5px solid #F0F0F0;border-radius:10px;padding:10px 14px;text-align:center;">
                         <p style="font-size:20px;font-weight:700;color:{{ $sc }};margin:0;line-height:1.1;">{{ $stats[$sk] }}</p>
@@ -3241,6 +3288,18 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                     <div style="background:#F9FAFB;border:1.5px solid #F0F0F0;border-radius:10px;padding:10px 14px;text-align:center;">
                         <p style="font-size:18px;font-weight:700;color:#6366F1;margin:0;line-height:1.1;">{{ $stats['db_size'] }}</p>
                         <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;text-transform:uppercase;letter-spacing:.04em;">DB Size</p>
+                    </div>
+                    <div style="background:#F9FAFB;border:1.5px solid #F0F0F0;border-radius:10px;padding:10px 14px;text-align:center;">
+                        <p style="font-size:18px;font-weight:700;color:#0EA5E9;margin:0;line-height:1.1;">{{ $stats['disk_total'] }}</p>
+                        <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;text-transform:uppercase;letter-spacing:.04em;">Disk Total</p>
+                    </div>
+                    <div style="background:#F9FAFB;border:1.5px solid #F0F0F0;border-radius:10px;padding:10px 14px;text-align:center;">
+                        <p style="font-size:18px;font-weight:700;color:{{ $stats['disk_pct'] >= 90 ? '#EF4444' : ($stats['disk_pct'] >= 70 ? '#F59E0B' : '#10B981') }};margin:0;line-height:1.1;">{{ $stats['disk_free'] }}</p>
+                        <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;text-transform:uppercase;letter-spacing:.04em;">Disk Free</p>
+                        <div style="margin-top:5px;background:#E5E7EB;border-radius:99px;height:4px;overflow:hidden;">
+                            <div style="height:100%;border-radius:99px;width:{{ $stats['disk_pct'] }}%;background:{{ $stats['disk_pct'] >= 90 ? '#EF4444' : ($stats['disk_pct'] >= 70 ? '#F59E0B' : '#10B981') }};transition:width .3s;"></div>
+                        </div>
+                        <p style="font-size:9px;color:#9CA3AF;margin:2px 0 0;">{{ $stats['disk_pct'] }}% used</p>
                     </div>
                 </div>
 

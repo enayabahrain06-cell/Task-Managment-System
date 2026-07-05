@@ -75,19 +75,6 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 .upload-preview { width:100%; height:80px; object-fit:contain; border-radius:8px; margin-bottom:8px; }
 .upload-preview-favicon { width:48px; height:48px; object-fit:contain; border-radius:8px; margin-bottom:8px; }
 .remove-btn { display:inline-flex; align-items:center; gap:5px; font-size:11px; color:#EF4444; background:#FEF2F2; border:1px solid #FECACA; border-radius:6px; padding:4px 10px; cursor:pointer; text-decoration:none; margin-top:6px; }
-/* ── BG image adjustment controls ── */
-.ctrl-lbl{font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.07em;margin:0 0 8px;}
-.pos-cell{display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .12s;}
-.pos-cell:hover{background:#F5F3FF;}
-.pos-cell.pos-active{background:#EEF2FF;}
-.pos-dot{width:7px;height:7px;border-radius:50%;background:#D1D5DB;transition:all .2s;flex-shrink:0;}
-.pos-dot.pos-dot-on{background:#4F46E5;box-shadow:0 0 0 3px rgba(99,102,241,.25);transform:scale(1.3);}
-.sz-card{display:block;border:1.5px solid #E5E7EB;border-radius:10px;padding:9px 4px;text-align:center;transition:all .18s;background:#fff;color:#9CA3AF;cursor:pointer;}
-.sz-card:hover{border-color:#A5B4FC;background:#F5F3FF;color:#6366F1;}
-.sz-card.sz-on{border-color:#4F46E5;background:#EEF2FF;color:#4F46E5;}
-.sz-lbl{display:block;font-size:10px;font-weight:700;margin-top:5px;color:inherit;}
-.sz-hint{display:block;font-size:9px;margin-top:1px;opacity:.65;color:inherit;}
-.bg-live-preview{position:relative;overflow:hidden;height:150px;border-radius:12px;border:1.5px solid #E5E7EB;}
 
 @media(max-width:900px){
     .settings-wrap { grid-template-columns:1fr; }
@@ -146,37 +133,11 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 
 <div class="settings-wrap"
      x-data="{
-         tab: (function(){ var h = window.location.hash.slice(1) || '{{ session('_fragment') ?? 'general' }}'; return (h === 'features' && {{ ($appSettings['hide_features_tab'] ?? '0') === '1' ? 'true' : 'false' }}) ? 'general' : h; })(),
+         tab: (window.location.hash.slice(1) || '{{ session('_fragment') ?? 'general' }}'),
          confirm: null, phrase: '',
          setTab(t) { this.tab = t; window.location.hash = t; },
          openClear(type){ this.confirm = type; this.phrase = ''; },
-         closeClear(){ this.confirm = null; },
-
-         showFullReset: false,
-         frStep: 1,
-         frPassword: '', frPasswordError: '', frPasswordChecking: false,
-         frAgree: false, frSignature: '', frPhrase: '',
-         openFullReset() {
-             this.frStep=1; this.frPassword=''; this.frPasswordError='';
-             this.frPasswordChecking=false; this.frAgree=false;
-             this.frSignature=''; this.frPhrase='';
-             this.showFullReset=true;
-             this.$nextTick(()=>document.getElementById('fr-pwd-input')?.focus());
-         },
-         closeFullReset() { this.showFullReset=false; },
-         verifyFrPassword() {
-             this.frPasswordChecking=true; this.frPasswordError='';
-             fetch('{{ route('admin.settings.backup.verify.password') }}', {
-                 method:'POST',
-                 headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Content-Type':'application/json','Accept':'application/json'},
-                 body: JSON.stringify({password: this.frPassword})
-             }).then(r=>r.json()).then(d=>{
-                 this.frPasswordChecking=false;
-                 if (d.ok) { this.frStep=2; this.$nextTick(()=>document.getElementById('fr-sig-input')?.focus()); }
-                 else { this.frPasswordError='Incorrect password. Please try again.'; }
-             }).catch(()=>{ this.frPasswordChecking=false; this.frPasswordError='Request failed. Try again.'; });
-         },
-         get frCanSubmit() { return this.frAgree && this.frSignature.trim().length >= 2 && this.frPhrase === 'DELETE'; }
+         closeClear(){ this.confirm = null; }
      }"
      x-init="window.addEventListener('hashchange', () => { tab = window.location.hash.slice(1) || 'general'; })">
 
@@ -194,15 +155,11 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
             ['id'=>'security',      'icon'=>'fa-shield-halved',  'label'=>'Security'],
             ['id'=>'storage',        'icon'=>'fa-hard-drive',      'label'=>'Storage / NAS'],
             ['id'=>'backup',        'icon'=>'fa-database',       'label'=>'Backup & Export'],
-            ['id'=>'features',      'icon'=>'fa-puzzle-piece',   'label'=>'Features'],
             ['id'=>'developer',     'icon'=>'fa-code',           'label'=>'Developer'],
             ['id'=>'danger',        'icon'=>'fa-trash-can',      'label'=>'Clear Data'],
         ];
         @endphp
         @foreach($navItems as $nav)
-        @if($nav['id'] === 'features' && ($appSettings['hide_features_tab'] ?? '0') === '1')
-            @continue
-        @endif
         @if($nav['id'] === 'danger')
         <button class="snav-item"
                 :class="tab === 'danger' ? 'active' : ''"
@@ -425,16 +382,11 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                 removeFavicon:    false,
                 loginBgType:      '{{ $settings['login_bg_type']  ?? 'gradient' }}',
                 loginBgColor:     '{{ $settings['login_bg_color'] ?? '#e8eaf6' }}',
-                loginBgPreview:    '{{ isset($settings['login_bg_image']) && $settings['login_bg_image'] ? Storage::url($settings['login_bg_image']) : '' }}',
-                removeBgImage:     false,
-                loginBgPosition:   '{{ $settings['login_bg_position']   ?? 'center center' }}',
-                loginBgSize:       '{{ $settings['login_bg_size']        ?? 'cover' }}',
-                loginBgAttachment: '{{ $settings['login_bg_attachment']  ?? 'fixed' }}',
-                loginBgOverlay:    {{ (int)($settings['login_bg_overlay'] ?? 0) }},
-                loginDecoColor:    '{{ $settings['login_deco_color'] ?? '#4F46E5' }}',
-                setLogo(e)    { const f=e.target.files[0]; if(f){ this.logoPreview=URL.createObjectURL(f); this.removeLogo=false; } },
-                setFavicon(e) { const f=e.target.files[0]; if(f){ this.faviconPreview=URL.createObjectURL(f); this.removeFavicon=false; } },
-                setBgImage(e) { const f=e.files?e.files[0]:e.target.files[0]; if(f){ this.loginBgPreview=URL.createObjectURL(f); this.removeBgImage=false; } },
+                loginBgPreview:   '{{ isset($settings['login_bg_image']) && $settings['login_bg_image'] ? Storage::url($settings['login_bg_image']) : '' }}',
+                removeBgImage:    false,
+                setLogo(e)    { const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=ev=>{ this.logoPreview=ev.target.result; this.removeLogo=false; }; r.readAsDataURL(f); } },
+                setFavicon(e) { const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=ev=>{ this.faviconPreview=ev.target.result; this.removeFavicon=false; }; r.readAsDataURL(f); } },
+                setBgImage(e) { const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=ev=>{ this.loginBgPreview=ev.target.result; this.removeBgImage=false; }; r.readAsDataURL(f); } },
             }">
                 <div class="scard-header">
                     <div class="scard-icon" style="background:#FDF2F8;color:#EC4899;"><i class="fas fa-palette"></i></div>
@@ -619,25 +571,20 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </div>
 
                             {{-- Image upload --}}
-                            @php $bgMaxMb = max(1, (int)($settings['max_upload_mb'] ?? 0) ?: 10); @endphp
                             <div x-show="loginBgType === 'image'">
                                 <label class="sf-label">
                                     Background Image
-                                    <span style="font-size:10px;color:#9CA3AF;font-weight:400;margin-left:4px;">PNG, JPG, WEBP · max {{ $bgMaxMb }} MB</span>
+                                    <span style="font-size:10px;color:#9CA3AF;font-weight:400;margin-left:4px;">PNG, JPG, WEBP · max 5 MB</span>
                                 </label>
-                                <input type="hidden" name="remove_login_bg_image" :value="removeBgImage ? '1' : '0'">
-
                                 <div class="upload-zone" @dragover.prevent @drop.prevent="setBgImage($event.dataTransfer)"
                                      style="min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;">
-                                    {{-- Positioned transparent overlay — natural click, no JS forwarding --}}
-                                    <input type="file" name="login_bg_image" accept="image/png,image/jpeg,image/webp"
-                                           @change="setBgImage($event)"
-                                           :style="(loginBgPreview && !removeBgImage) ? 'pointer-events:none' : ''">
+                                    <input type="file" name="login_bg_image" accept="image/png,image/jpeg,image/webp" @change="setBgImage($event)">
+                                    <input type="hidden" name="remove_login_bg_image" :value="removeBgImage ? '1' : '0'">
 
                                     <template x-if="loginBgPreview && !removeBgImage">
                                         <div style="display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;">
                                             <img :src="loginBgPreview" class="upload-preview" alt="Background preview"
-                                                 style="height:80px;object-fit:cover;border-radius:8px;pointer-events:none;">
+                                                 style="height:80px;object-fit:cover;border-radius:8px;">
                                             <button type="button" class="remove-btn"
                                                     @click.stop="removeBgImage=true;loginBgPreview=''">
                                                 <i class="fas fa-trash-can"></i> Remove
@@ -654,183 +601,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                         </div>
                                     </template>
                                 </div>
-
-                                {{-- ── Live Preview ── --}}
-                                <div x-show="loginBgPreview && !removeBgImage" style="margin-top:14px;">
-                                    <label class="sf-label" style="margin-bottom:6px;">Live Preview</label>
-                                    <div class="bg-live-preview"
-                                         :style="`background-image:url('${loginBgPreview}');background-position:${loginBgPosition};background-size:${loginBgSize};background-repeat:no-repeat;background-color:#f3f4f6;`">
-                                        {{-- Dark overlay --}}
-                                        <div style="position:absolute;inset:0;transition:background 0.2s;"
-                                             :style="`background:rgba(0,0,0,${loginBgOverlay/100});`"></div>
-                                        {{-- Settings badges --}}
-                                        <div style="position:absolute;bottom:7px;left:8px;display:flex;gap:4px;flex-wrap:wrap;z-index:1;">
-                                            <span x-text="loginBgPosition" style="font-size:9px;color:rgba(255,255,255,0.9);background:rgba(0,0,0,0.5);padding:2px 6px;border-radius:4px;"></span>
-                                            <span x-text="loginBgSize" style="font-size:9px;color:rgba(255,255,255,0.9);background:rgba(0,0,0,0.5);padding:2px 6px;border-radius:4px;"></span>
-                                        </div>
-                                        <div x-show="loginBgOverlay > 0" style="position:absolute;bottom:7px;right:8px;z-index:1;">
-                                            <span x-text="loginBgOverlay+'% overlay'" style="font-size:9px;color:rgba(255,255,255,0.9);background:rgba(0,0,0,0.5);padding:2px 6px;border-radius:4px;"></span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {{-- ── Image adjustment controls ── --}}
-                                @php $bgPositions=['top left','top center','top right','center left','center center','center right','bottom left','bottom center','bottom right']; @endphp
-                                <div style="margin-top:16px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:14px;padding:16px 18px;">
-
-                                    {{-- Row 1: Position compass + Size cards --}}
-                                    <div style="display:grid;grid-template-columns:auto 1fr;gap:20px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #F3F4F6;align-items:start;">
-
-                                        {{-- Position compass --}}
-                                        <div>
-                                            <p class="ctrl-lbl">Position</p>
-                                            <div style="width:84px;height:84px;background:#fff;border:1.5px solid #E5E7EB;border-radius:10px;overflow:hidden;position:relative;">
-                                                <div style="position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);">
-                                                    @foreach($bgPositions as $bgPos)
-                                                    <div class="pos-cell"
-                                                         x-on:click="loginBgPosition='{{ $bgPos }}'"
-                                                         :class="loginBgPosition==='{{ $bgPos }}' ? 'pos-active' : ''"
-                                                         title="{{ $bgPos }}">
-                                                        <div class="pos-dot" :class="loginBgPosition==='{{ $bgPos }}' ? 'pos-dot-on' : ''"></div>
-                                                    </div>
-                                                    @endforeach
-                                                </div>
-                                                <div style="position:absolute;top:33.3%;left:0;right:0;height:1px;background:#F0F0F0;pointer-events:none;"></div>
-                                                <div style="position:absolute;top:66.6%;left:0;right:0;height:1px;background:#F0F0F0;pointer-events:none;"></div>
-                                                <div style="position:absolute;top:0;bottom:0;left:33.3%;width:1px;background:#F0F0F0;pointer-events:none;"></div>
-                                                <div style="position:absolute;top:0;bottom:0;left:66.6%;width:1px;background:#F0F0F0;pointer-events:none;"></div>
-                                            </div>
-                                            <p x-text="loginBgPosition" style="font-size:9.5px;color:#9CA3AF;margin:5px 0 0;text-align:center;font-weight:500;"></p>
-                                            <input type="hidden" name="login_bg_position" x-bind:value="loginBgPosition">
-                                        </div>
-
-                                        {{-- Size visual cards --}}
-                                        <div>
-                                            <p class="ctrl-lbl">Size</p>
-                                            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
-                                                <label>
-                                                    <input type="radio" name="login_bg_size" value="cover" x-model="loginBgSize" style="display:none;">
-                                                    <div class="sz-card" :class="loginBgSize==='cover' ? 'sz-on' : ''">
-                                                        <svg width="26" height="20" viewBox="0 0 26 20" fill="none" style="display:block;margin:0 auto;"><rect x="0" y="0" width="26" height="20" rx="2.5" fill="currentColor" opacity=".12"/><rect x="-3" y="-2" width="32" height="24" rx="2" fill="currentColor" opacity=".45"/></svg>
-                                                        <span class="sz-lbl">Cover</span>
-                                                        <span class="sz-hint">fills, crops</span>
-                                                    </div>
-                                                </label>
-                                                <label>
-                                                    <input type="radio" name="login_bg_size" value="contain" x-model="loginBgSize" style="display:none;">
-                                                    <div class="sz-card" :class="loginBgSize==='contain' ? 'sz-on' : ''">
-                                                        <svg width="26" height="20" viewBox="0 0 26 20" fill="none" style="display:block;margin:0 auto;"><rect x="0" y="0" width="26" height="20" rx="2.5" stroke="currentColor" stroke-width="1.5" fill="currentColor" opacity=".06"/><rect x="5" y="3" width="16" height="14" rx="2" fill="currentColor" opacity=".45"/></svg>
-                                                        <span class="sz-lbl">Contain</span>
-                                                        <span class="sz-hint">full visible</span>
-                                                    </div>
-                                                </label>
-                                                <label>
-                                                    <input type="radio" name="login_bg_size" value="auto" x-model="loginBgSize" style="display:none;">
-                                                    <div class="sz-card" :class="loginBgSize==='auto' ? 'sz-on' : ''">
-                                                        <svg width="26" height="20" viewBox="0 0 26 20" fill="none" style="display:block;margin:0 auto;"><rect x="0" y="0" width="26" height="20" rx="2.5" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.5 2" fill="none"/><rect x="3" y="3" width="12" height="9" rx="2" fill="currentColor" opacity=".45"/></svg>
-                                                        <span class="sz-lbl">Original</span>
-                                                        <span class="sz-hint">natural size</span>
-                                                    </div>
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {{-- Row 2: Scroll pill + Overlay gradient slider --}}
-                                    <div style="display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:start;">
-
-                                        {{-- Scroll segmented pill --}}
-                                        <div>
-                                            <p class="ctrl-lbl">Scroll</p>
-                                            <div style="display:inline-flex;background:#F3F4F6;border-radius:8px;padding:2px;">
-                                                <button type="button" x-on:click="loginBgAttachment='fixed'"
-                                                        :style="loginBgAttachment==='fixed' ? 'background:#fff;color:#4F46E5;box-shadow:0 1px 3px rgba(0,0,0,.10);' : 'color:#9CA3AF;background:transparent;'"
-                                                        style="font-size:11px;font-weight:600;padding:5px 10px;border:none;border-radius:6px;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:3px;white-space:nowrap;">
-                                                    <i class="fas fa-thumbtack" style="font-size:9px;"></i> Fixed
-                                                </button>
-                                                <button type="button" x-on:click="loginBgAttachment='scroll'"
-                                                        :style="loginBgAttachment==='scroll' ? 'background:#fff;color:#4F46E5;box-shadow:0 1px 3px rgba(0,0,0,.10);' : 'color:#9CA3AF;background:transparent;'"
-                                                        style="font-size:11px;font-weight:600;padding:5px 10px;border:none;border-radius:6px;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:3px;white-space:nowrap;">
-                                                    <i class="fas fa-arrows-up-down" style="font-size:9px;"></i> Scroll
-                                                </button>
-                                            </div>
-                                            <input type="hidden" name="login_bg_attachment" x-bind:value="loginBgAttachment">
-                                        </div>
-
-                                        {{-- Overlay: gradient bar + native slider --}}
-                                        <div>
-                                            <p class="ctrl-lbl" style="display:flex;align-items:center;gap:6px;">
-                                                Dark Overlay
-                                                <span x-text="loginBgOverlay + '%'" style="color:#4F46E5;font-size:11px;font-weight:800;"></span>
-                                            </p>
-                                            <div style="height:6px;border-radius:3px;background:linear-gradient(to right,#F3F4F6,rgba(0,0,0,0.78));border:1px solid #E5E7EB;margin-bottom:6px;"></div>
-                                            <input type="range" name="login_bg_overlay" x-model.number="loginBgOverlay"
-                                                   min="0" max="80" step="5"
-                                                   style="width:100%;accent-color:#4F46E5;height:4px;display:block;margin-bottom:4px;cursor:pointer;">
-                                            <div style="display:flex;justify-content:space-between;font-size:9px;color:#CBD5E1;font-weight:600;letter-spacing:.04em;text-transform:uppercase;">
-                                                <span>None</span><span>Dark</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
-                        </div>
-
-                        {{-- ── Login Panel (deco column) colour ── --}}
-                        {{-- Doodles toggle --}}
-                        <div style="margin-top:20px;padding-top:20px;border-top:1px solid #F3F4F6;"
-                             x-data="{ showDoodles: {{ ($settings['login_show_doodles'] ?? '1') === '1' ? 'true' : 'false' }} }">
-                            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
-                                <div>
-                                    <p style="font-size:13px;font-weight:600;color:#111827;margin:0;">Decorative Doodles &amp; Team Frames</p>
-                                    <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">Show the animated team banner, photo frames and bottom pill on the login page — layers on top of any background (gradient, color, or image).</p>
-                                </div>
-                                <label style="position:relative;display:inline-flex;align-items:center;cursor:pointer;flex-shrink:0;">
-                                    <input type="checkbox" name="login_show_doodles" value="1"
-                                           x-model="showDoodles"
-                                           style="width:0;height:0;opacity:0;position:absolute;">
-                                    <div :style="showDoodles ? 'background:#4F46E5;' : 'background:#D1D5DB;'"
-                                         style="width:40px;height:22px;border-radius:11px;transition:background 0.2s;position:relative;">
-                                        <div :style="showDoodles ? 'transform:translateX(18px);' : 'transform:translateX(2px);'"
-                                             style="position:absolute;top:3px;width:16px;height:16px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform 0.2s;"></div>
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-
-                        {{-- Hero title + tagline --}}
-                        <div style="margin-top:20px;padding-top:20px;border-top:1px solid #F3F4F6;">
-                            <label class="sf-label" style="margin-bottom:4px;">Team Banner Title</label>
-                            <p class="sf-hint" style="margin-bottom:8px;">Reads as "THE <strong>{{ strtoupper($settings['company_name'] ?? 'Company') }}</strong> TEAM" — edit the <strong>Company Name</strong> field above to change it.</p>
-
-                            <label class="sf-label" style="margin-bottom:4px;margin-top:14px;">Team Banner Tagline</label>
-                            <input type="text" name="login_hero_tagline" class="sf-input" maxlength="120"
-                                   value="{{ $settings['login_hero_tagline'] ?? 'Together we build. Together we achieve.' }}"
-                                   placeholder="Together we build. Together we achieve.">
-
-                            <label class="sf-label" style="margin-bottom:4px;margin-top:14px;">Bottom Pill Text</label>
-                            <p class="sf-hint" style="margin-bottom:8px;">Shown in the small pill at the bottom of the login page. Two parts: plain text, then a bold accent-colored phrase.</p>
-                            <div class="team-form-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                                <input type="text" name="login_pill_text" class="sf-input" maxlength="60"
-                                       value="{{ $settings['login_pill_text'] ?? 'One Team. One Goal.' }}"
-                                       placeholder="One Team. One Goal.">
-                                <input type="text" name="login_pill_accent" class="sf-input" maxlength="60"
-                                       value="{{ $settings['login_pill_accent'] ?? 'Unlimited Impact.' }}"
-                                       placeholder="Unlimited Impact.">
-                            </div>
-                        </div>
-
-                        <div style="margin-top:24px;padding-top:20px;border-top:1px solid #F3F4F6;">
-                            <label class="sf-label" style="margin-bottom:4px;">Login Panel Color</label>
-                            <p class="sf-hint" style="margin-bottom:12px;">Gradient tint for the right illustration panel on the login page.</p>
-                            <div class="color-wrap">
-                                <input type="color" x-model="loginDecoColor" class="color-swatch"
-                                       :style="`background:${loginDecoColor};border-color:${loginDecoColor}`">
-                                <input type="text" name="login_deco_color" class="sf-input"
-                                       x-model="loginDecoColor" pattern="^#[0-9A-Fa-f]{6}$">
-                            </div>
-                            {{-- Live gradient preview --}}
-                            <div :style="`margin-top:10px;height:28px;border-radius:8px;background:linear-gradient(145deg,${loginDecoColor}99 0%,${loginDecoColor} 45%,${loginDecoColor}cc 100%);`"></div>
                         </div>
 
                     </div>
@@ -1548,17 +1319,6 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             <label class="toggle">
                                 <input type="checkbox" name="require_strong_password" value="1"
                                        {{ $settings['require_strong_password'] === '1' ? 'checked' : '' }}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        <div class="sf-toggle-row">
-                            <div>
-                                <p class="sf-toggle-label">Require Two-Factor Authentication (MFA)</p>
-                                <p class="sf-toggle-hint">Force all users to set up an authenticator app before accessing their account</p>
-                            </div>
-                            <label class="toggle">
-                                <input type="checkbox" name="force_mfa" value="1"
-                                       {{ ($settings['force_mfa'] ?? '0') === '1' ? 'checked' : '' }}>
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
@@ -2647,257 +2407,6 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 
         </div>
 
-        {{-- ════ FEATURES ════ --}}
-        <div x-show="tab === 'features'" x-cloak>
-
-            {{-- Intro banner --}}
-            <div x-data="{ disabling: false }"
-                 style="background:#F8FAFF;border:1px solid #E0E7FF;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;gap:14px;align-items:flex-start;justify-content:space-between;">
-                <div style="display:flex;gap:14px;align-items:flex-start;">
-                    <div style="width:36px;height:36px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
-                        <i class="fas fa-circle-info" style="color:#4F46E5;font-size:15px;"></i>
-                    </div>
-                    <div>
-                        <p style="font-size:13px;font-weight:700;color:#1E1B4B;margin:0 0 4px;">About this page</p>
-                        <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.7;">
-                            Each toggle below controls whether a feature is visible and accessible across the system.
-                            Disabling a feature hides it from all pages — no data is deleted.
-                            You can re-enable any feature at any time and everything will reappear exactly as before.
-                        </p>
-                    </div>
-                </div>
-                <button type="button" :disabled="disabling"
-                        @click="if(!window.confirm('Disable all features?')) return;
-                                disabling=true;
-                                fetch('{{ route('admin.settings.features.disable-all') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}})
-                                .then(r=>r.json()).then(()=>{
-                                    document.querySelectorAll('[data-feature-toggle]').forEach(el=>{ el.__x && (el.__x.$data.enabled=false) });
-                                    Alpine.store && Alpine.store('features') && (Alpine.store('features').allDisabled=true);
-                                    window.location.reload();
-                                }).finally(()=>{ disabling=false })"
-                        style="flex-shrink:0;display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:9px;font-size:12px;font-weight:600;border:1.5px solid #FCA5A5;background:#FEF2F2;color:#DC2626;cursor:pointer;white-space:nowrap;transition:all .2s;"
-                        onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
-                    <i class="fas fa-toggle-off" style="font-size:13px;"></i>
-                    <span x-text="disabling ? 'Disabling…' : 'Disable All'"></span>
-                </button>
-            </div>
-
-            {{-- Task Features --}}
-            <div class="scard" style="margin-bottom:20px;">
-                <div class="scard-header">
-                    <div class="scard-icon" style="background:#EEF2FF;color:#4F46E5;"><i class="fas fa-list-check"></i></div>
-                    <div>
-                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Task Features</p>
-                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Advanced task capabilities — enable what your team needs</p>
-                    </div>
-                </div>
-
-                @php
-                $taskFeatures = [
-                    [
-                        'key'   => 'show_task_dependencies',
-                        'route' => route('admin.settings.features.task-dependencies'),
-                        'icon'  => 'fa-diagram-project', 'color' => '#4F46E5', 'bg' => '#EEF2FF',
-                        'label' => 'Task Dependencies',
-                        'hint'  => 'Block a task from starting until another one is finished',
-                        'status' => 'coming-soon',
-                        'what'  => 'Links two tasks together so that Task B cannot move to "In Progress" until Task A is marked as completed.',
-                        'how'   => 'When creating or editing a task, a "Depends on" field will appear where you can pick another task. The blocked task will show a warning and prevent progress until the dependency is resolved.',
-                        'best'  => 'Use this when you have sequential work — e.g. the design must be approved before development begins.',
-                    ],
-                    [
-                        'key'   => 'show_recurring_tasks',
-                        'route' => route('admin.settings.features.recurring-tasks'),
-                        'icon'  => 'fa-rotate', 'color' => '#0891B2', 'bg' => '#ECFEFF',
-                        'label' => 'Recurring Tasks',
-                        'hint'  => 'Auto-create tasks on a schedule — daily, weekly, or monthly',
-                        'status' => 'coming-soon',
-                        'what'  => 'A task can be set to repeat on a fixed schedule. When the current task is completed, a fresh copy is automatically created and assigned to the same person.',
-                        'how'   => 'When creating a task, a "Repeat" section will appear with options: Daily, Weekly (pick days), Monthly (pick date), or Custom interval. You can also set an end date or a max number of repeats.',
-                        'best'  => 'Ideal for routine work like weekly reports, monthly invoices, or daily stand-up summaries.',
-                    ],
-                    [
-                        'key'   => 'show_time_tracking',
-                        'route' => route('admin.settings.features.time-tracking'),
-                        'icon'  => 'fa-clock', 'color' => '#059669', 'bg' => '#ECFDF5',
-                        'label' => 'Time Tracking',
-                        'hint'  => 'Let users log the hours they spend working on a task',
-                        'status' => 'coming-soon',
-                        'what'  => 'Users can start a timer when they begin work on a task, or manually enter the hours spent. All logs are stored per task and visible to admins.',
-                        'how'   => 'A "Log Time" button will appear on each task. Users can start/stop a live timer or type in hours and minutes with an optional note. Admins see a time summary per task and per user in the reports section.',
-                        'best'  => 'Useful for billing clients by the hour, estimating future tasks, and understanding where team time is going.',
-                    ],
-                    [
-                        'key'   => 'show_task_templates',
-                        'route' => route('admin.settings.features.task-templates'),
-                        'icon'  => 'fa-clone', 'color' => '#D97706', 'bg' => '#FFFBEB',
-                        'label' => 'Task Templates',
-                        'hint'  => 'Save a task setup as a template to reuse it quickly',
-                        'status' => 'coming-soon',
-                        'what'  => 'Admins can save any task (title, description, checklist, assignee, priority, deadline offset) as a named template. New tasks can then be created from a template in one click.',
-                        'how'   => 'A "Save as Template" button will appear on any task. When creating a new task, a "Use Template" option will pre-fill all fields from the saved template.',
-                        'best'  => 'Perfect for project onboarding checklists, recurring project types, or any task your team creates repeatedly with the same structure.',
-                    ],
-                ];
-                @endphp
-
-                @foreach($taskFeatures as $f)
-                <div style="border-bottom:1px solid #F3F4F6;" x-data="{ enabled: {{ ($appSettings[$f['key']] ?? '1') === '1' ? 'true' : 'false' }}, open: false }">
-                    {{-- Toggle row --}}
-                    <div style="padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                        <div style="display:flex;align-items:center;gap:10px;min-width:0;">
-                            <div style="width:28px;height:28px;border-radius:8px;background:{{ $f['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                <i class="fas {{ $f['icon'] }}" style="font-size:11px;color:{{ $f['color'] }};"></i>
-                            </div>
-                            <div style="min-width:0;">
-                                <div style="display:flex;align-items:center;gap:7px;">
-                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">{{ $f['label'] }}</p>
-                                </div>
-                                <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">{{ $f['hint'] }}</p>
-                            </div>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-                            <button type="button" @click="open=!open"
-                                    style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:7px;font-size:11px;font-weight:600;border:1px solid #E5E7EB;background:#fff;color:#6B7280;cursor:pointer;">
-                                <i class="fas" :class="open ? 'fa-chevron-up' : 'fa-circle-info'" style="font-size:10px;"></i>
-                                <span x-text="open ? 'Hide' : 'How it works'"></span>
-                            </button>
-                            <button type="button"
-                                    @click="fetch('{{ $f['route'] }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{ enabled=d['{{ $f['key'] }}'] })"
-                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;"
-                                    :style="enabled ? 'background:#10B981;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
-                                <i class="fas" :class="enabled ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
-                                <span x-text="enabled ? 'Enabled' : 'Disabled'"></span>
-                            </button>
-                        </div>
-                    </div>
-                    {{-- Info panel --}}
-                    <div x-show="open" x-collapse style="padding:0 24px 16px;">
-                        <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
-                            <div style="display:flex;gap:10px;">
-                                <div style="flex:1;">
-                                    <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 3px;text-transform:uppercase;letter-spacing:.5px;">What it does</p>
-                                    <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.6;">{{ $f['what'] }}</p>
-                                </div>
-                            </div>
-                            <div style="height:1px;background:#E5E7EB;"></div>
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                                <div>
-                                    <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 3px;text-transform:uppercase;letter-spacing:.5px;">How to use</p>
-                                    <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.6;">{{ $f['how'] }}</p>
-                                </div>
-                                <div>
-                                    <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 3px;text-transform:uppercase;letter-spacing:.5px;">Best for</p>
-                                    <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.6;">{{ $f['best'] }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                @endforeach
-            </div>
-
-            {{-- Views & Reports --}}
-            <div class="scard">
-                <div class="scard-header">
-                    <div class="scard-icon" style="background:#F0FDF4;color:#16A34A;"><i class="fas fa-chart-bar"></i></div>
-                    <div>
-                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Views & Reports</p>
-                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Show or hide reporting and visualisation tools</p>
-                    </div>
-                </div>
-
-                @php
-                $reportFeatures = [
-                    [
-                        'key'   => 'show_gantt_chart',
-                        'route' => route('admin.settings.features.gantt-chart'),
-                        'icon'  => 'fa-bars-progress', 'color' => '#7C3AED', 'bg' => '#F5F3FF',
-                        'label' => 'Gantt Chart',
-                        'hint'  => 'Timeline bar chart showing task schedule and progress',
-                        'status' => 'coming-soon',
-                        'what'  => 'A horizontal timeline where each task is shown as a bar spanning its start and deadline dates. Bars are colour-coded by status and grouped by project.',
-                        'how'   => 'A "Gantt" tab or link will appear in the Projects section. Admins and managers can view the full team timeline; users see only their own tasks. You can drag bars to adjust deadlines directly on the chart.',
-                        'best'  => 'Best for project planning meetings, showing stakeholders the schedule at a glance, and spotting deadline conflicts before they happen.',
-                    ],
-                    [
-                        'key'   => 'show_excel_export',
-                        'route' => route('admin.settings.features.excel-export'),
-                        'icon'  => 'fa-file-excel', 'color' => '#16A34A', 'bg' => '#F0FDF4',
-                        'label' => 'Export to Excel / CSV',
-                        'hint'  => 'Download task and project data as a spreadsheet',
-                        'status' => 'coming-soon',
-                        'what'  => 'Adds an "Export" button to the tasks list, project reports, and user performance pages. Exports all visible rows as an .xlsx or .csv file.',
-                        'how'   => 'Click the Export button, choose Excel or CSV format, and the file downloads immediately. Filters applied on the page (date range, status, user) are respected in the export.',
-                        'best'  => 'Useful for sharing reports with clients or management outside the system, importing into accounting tools, or doing custom analysis in Excel.',
-                    ],
-                    [
-                        'key'   => 'show_workload_view',
-                        'route' => route('admin.settings.features.workload-view'),
-                        'icon'  => 'fa-people-arrows', 'color' => '#0284C7', 'bg' => '#F0F9FF',
-                        'label' => 'Team Workload View',
-                        'hint'  => 'See how many active tasks each team member currently has',
-                        'status' => 'coming-soon',
-                        'what'  => 'A visual grid showing every team member alongside their current open task count, a load bar (light / moderate / heavy), and upcoming deadlines this week.',
-                        'how'   => 'Accessible from the admin dashboard or the Team section. Clicking a member expands their task list. Managers use it during sprint planning to balance who gets the next task.',
-                        'best'  => 'Use before assigning a new task to check who is available. Prevents overloading one person while others have capacity.',
-                    ],
-                ];
-                @endphp
-
-                @foreach($reportFeatures as $f)
-                <div style="border-bottom:1px solid #F3F4F6;" x-data="{ enabled: {{ ($appSettings[$f['key']] ?? '1') === '1' ? 'true' : 'false' }}, open: false }">
-                    <div style="padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-                        <div style="display:flex;align-items:center;gap:10px;min-width:0;">
-                            <div style="width:28px;height:28px;border-radius:8px;background:{{ $f['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                <i class="fas {{ $f['icon'] }}" style="font-size:11px;color:{{ $f['color'] }};"></i>
-                            </div>
-                            <div style="min-width:0;">
-                                <div style="display:flex;align-items:center;gap:7px;">
-                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">{{ $f['label'] }}</p>
-                                </div>
-                                <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">{{ $f['hint'] }}</p>
-                            </div>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-                            <button type="button" @click="open=!open"
-                                    style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:7px;font-size:11px;font-weight:600;border:1px solid #E5E7EB;background:#fff;color:#6B7280;cursor:pointer;">
-                                <i class="fas" :class="open ? 'fa-chevron-up' : 'fa-circle-info'" style="font-size:10px;"></i>
-                                <span x-text="open ? 'Hide' : 'How it works'"></span>
-                            </button>
-                            <button type="button"
-                                    @click="fetch('{{ $f['route'] }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{ enabled=d['{{ $f['key'] }}'] })"
-                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;"
-                                    :style="enabled ? 'background:#10B981;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
-                                <i class="fas" :class="enabled ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
-                                <span x-text="enabled ? 'Enabled' : 'Disabled'"></span>
-                            </button>
-                        </div>
-                    </div>
-                    <div x-show="open" x-collapse style="padding:0 24px 16px;">
-                        <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
-                            <div>
-                                <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 3px;text-transform:uppercase;letter-spacing:.5px;">What it does</p>
-                                <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.6;">{{ $f['what'] }}</p>
-                            </div>
-                            <div style="height:1px;background:#E5E7EB;"></div>
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                                <div>
-                                    <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 3px;text-transform:uppercase;letter-spacing:.5px;">How to use</p>
-                                    <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.6;">{{ $f['how'] }}</p>
-                                </div>
-                                <div>
-                                    <p style="font-size:11px;font-weight:700;color:#374151;margin:0 0 3px;text-transform:uppercase;letter-spacing:.5px;">Best for</p>
-                                    <p style="font-size:12px;color:#4B5563;margin:0;line-height:1.6;">{{ $f['best'] }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                @endforeach
-            </div>
-        </div>
-
         {{-- ════ DEVELOPER ════ --}}
         <div x-show="tab === 'developer'" x-cloak>
 
@@ -2915,38 +2424,44 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                     </div>
                     <div style="padding:0 20px 16px;display:flex;flex-direction:column;gap:0;">
                         {{-- Maintenance Mode --}}
-                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
-                             x-data="{ maintenanceOn: {{ ($appSettings['maintenance_mode'] ?? '0') === '1' ? 'true' : 'false' }} }">
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;">
                             <div style="display:flex;align-items:center;gap:10px;">
                                 <div style="width:28px;height:28px;border-radius:8px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                     <i class="fas fa-triangle-exclamation" style="font-size:11px;color:#D97706;"></i>
                                 </div>
                                 <div>
                                     <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Maintenance Mode</p>
-                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;" x-text="maintenanceOn ? 'Active — admins only' : 'Inactive'"></p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;" id="maintenance-status">
+                                        {{ ($appSettings['maintenance_mode'] ?? '0') === '1' ? 'Active — admins only' : 'Inactive' }}
+                                    </p>
                                 </div>
                             </div>
-                            <div @click="fetch(_maintenanceToggleUrl,{method:'POST',headers:{'X-CSRF-TOKEN':_csrfToken,'Content-Type':'application/json'}}).then(r=>r.json()).then(d=>{maintenanceOn=d.maintenance_mode;if(d.maintenance_mode)_unlockCard('manager-access-card');else _lockCard('manager-access-card','Enable Maintenance Mode to edit manager access');})"
-                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (maintenanceOn ? 'background:#D97706;' : 'background:#D1D5DB;')">
-                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (maintenanceOn ? 'left:23px;' : 'left:3px;')"></div>
-                            </div>
+                            <button id="maintenance-toggle" onclick="toggleMaintenance(this)"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;
+                                           {{ ($appSettings['maintenance_mode'] ?? '0') === '1' ? 'background:#D97706;color:#fff;' : 'background:#F3F4F6;color:#374151;' }}">
+                                <i class="fas {{ ($appSettings['maintenance_mode'] ?? '0') === '1' ? 'fa-toggle-on' : 'fa-toggle-off' }}" id="maintenance-icon"></i>
+                                <span id="maintenance-label">{{ ($appSettings['maintenance_mode'] ?? '0') === '1' ? 'On' : 'Off' }}</span>
+                            </button>
                         </div>
                         {{-- Developer Mode --}}
-                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
-                             x-data="{ devModeOn: {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'true' : 'false' }} }">
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;">
                             <div style="display:flex;align-items:center;gap:10px;">
                                 <div style="width:28px;height:28px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                     <i class="fas fa-code" style="font-size:11px;color:#6366F1;"></i>
                                 </div>
                                 <div>
                                     <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Developer Mode</p>
-                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;" x-text="devModeOn ? 'Active — click to hide sections' : 'Inactive'"></p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;" id="dev-mode-status">
+                                        {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'Active — click to hide sections' : 'Inactive' }}
+                                    </p>
                                 </div>
                             </div>
-                            <div @click="fetch(_devToggleUrl,{method:'POST',headers:{'X-CSRF-TOKEN':_csrfToken,'Content-Type':'application/json'}}).then(r=>r.json()).then(d=>{devModeOn=d.developer_mode;if(d.developer_mode){_unlockCard('sidebar-nav-card');_unlockCard('header-elements-card');_unlockCard('dashboard-sections-card');}else{_lockCard('sidebar-nav-card','Enable Developer Mode to edit navigation');_lockCard('header-elements-card','Enable Developer Mode to edit navigation');_lockCard('dashboard-sections-card','Enable Developer Mode to edit dashboard sections');}if(typeof window._devModeChanged==='function')window._devModeChanged(d.developer_mode);})"
-                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (devModeOn ? 'background:#6366F1;' : 'background:#D1D5DB;')">
-                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (devModeOn ? 'left:23px;' : 'left:3px;')"></div>
-                            </div>
+                            <button id="dev-mode-toggle" onclick="toggleDevMode(this)"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;
+                                           {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'background:#6366F1;color:#fff;' : 'background:#F3F4F6;color:#374151;' }}">
+                                <i class="fas {{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'fa-toggle-on' : 'fa-toggle-off' }}" id="dev-mode-icon"></i>
+                                <span id="dev-mode-label">{{ ($appSettings['developer_mode'] ?? '0') === '1' ? 'On' : 'Off' }}</span>
+                            </button>
                         </div>
                         {{-- Hide Approval Customer Notify --}}
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
@@ -2960,10 +2475,13 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Remove the customer notification section from the approval modal</p>
                                 </div>
                             </div>
-                            <div @click="fetch('{{ route('admin.settings.approval-customer-notify') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{hideNotify=d.hide_approval_customer_notify})"
-                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (hideNotify ? 'background:#D97706;' : 'background:#D1D5DB;')">
-                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (hideNotify ? 'left:23px;' : 'left:3px;')"></div>
-                            </div>
+                            <button type="button"
+                                    @click="fetch('{{ route('admin.settings.approval-customer-notify') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ hideNotify = d.hide_approval_customer_notify })"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                    :style="hideNotify ? 'background:#D97706;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                                <i class="fas" :class="hideNotify ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                                <span x-text="hideNotify ? 'On' : 'Off'"></span>
+                            </button>
                         </div>
                         {{-- Hide WhatsApp Web Button --}}
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
@@ -2977,10 +2495,13 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Remove the WhatsApp Web button from the approvals page (keeps API button only)</p>
                                 </div>
                             </div>
-                            <div @click="fetch('{{ route('admin.settings.hide-wa-web') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{hideWaWeb=d.hide_wa_web_button})"
-                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (hideWaWeb ? 'background:#25D366;' : 'background:#D1D5DB;')">
-                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (hideWaWeb ? 'left:23px;' : 'left:3px;')"></div>
-                            </div>
+                            <button type="button"
+                                    @click="fetch('{{ route('admin.settings.hide-wa-web') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ hideWaWeb = d.hide_wa_web_button })"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                    :style="hideWaWeb ? 'background:#25D366;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                                <i class="fas" :class="hideWaWeb ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                                <span x-text="hideWaWeb ? 'On' : 'Off'"></span>
+                            </button>
                         </div>
                         {{-- Hide Hourly Rate --}}
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
@@ -2994,10 +2515,13 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Hide hourly rate field in user edit &amp; billing columns in reports</p>
                                 </div>
                             </div>
-                            <div @click="fetch('{{ route('admin.settings.hourly-rate') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{hideHourly=d.hide_hourly_rate})"
-                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (hideHourly ? 'background:#059669;' : 'background:#D1D5DB;')">
-                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (hideHourly ? 'left:23px;' : 'left:3px;')"></div>
-                            </div>
+                            <button type="button"
+                                    @click="fetch('{{ route('admin.settings.hourly-rate') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ hideHourly = d.hide_hourly_rate })"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                    :style="hideHourly ? 'background:#059669;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                                <i class="fas" :class="hideHourly ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                                <span x-text="hideHourly ? 'On' : 'Off'"></span>
+                            </button>
                         </div>
                         {{-- Hide Summarize Button --}}
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
@@ -3011,27 +2535,13 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Remove the Summarize button from the customers list header</p>
                                 </div>
                             </div>
-                            <div @click="fetch('{{ route('admin.settings.hide-summarize') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{hideSummarize=d.hide_summarize_button})"
-                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (hideSummarize ? 'background:#4F46E5;' : 'background:#D1D5DB;')">
-                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (hideSummarize ? 'left:23px;' : 'left:3px;')"></div>
-                            </div>
-                        </div>
-                        {{-- Hide Features Tab --}}
-                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
-                             x-data="{ hideFeaturesTab: {{ ($appSettings['hide_features_tab'] ?? '0') === '1' ? 'true' : 'false' }} }">
-                            <div style="display:flex;align-items:center;gap:10px;">
-                                <div style="width:28px;height:28px;border-radius:8px;background:#F0FDF4;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                    <i class="fas fa-puzzle-piece" style="font-size:11px;color:#16A34A;"></i>
-                                </div>
-                                <div>
-                                    <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Hide Features Tab</p>
-                                    <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Remove the Features tab from settings — existing feature states are preserved</p>
-                                </div>
-                            </div>
-                            <div @click="fetch('{{ route('admin.settings.hide-features-tab') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{hideFeaturesTab=d.hide_features_tab;if(d.hide_features_tab&&window.location.hash==='#features'){window.location.hash='developer';}})"
-                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (hideFeaturesTab ? 'background:#16A34A;' : 'background:#D1D5DB;')">
-                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (hideFeaturesTab ? 'left:23px;' : 'left:3px;')"></div>
-                            </div>
+                            <button type="button"
+                                    @click="fetch('{{ route('admin.settings.hide-summarize') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ hideSummarize = d.hide_summarize_button })"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                    :style="hideSummarize ? 'background:#4F46E5;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                                <i class="fas" :class="hideSummarize ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                                <span x-text="hideSummarize ? 'On' : 'Off'"></span>
+                            </button>
                         </div>
                         {{-- Clear Cache --}}
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;"
@@ -3047,8 +2557,11 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </div>
                             <button type="button"
                                     :disabled="clearing"
-                                    @click="clearing=true;done=false;fetch('{{ route('admin.settings.clear-cache') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{clearing=false;done=true;setTimeout(()=>done=false,4000);})"
-                                    :style="'display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;transition:all .2s;flex-shrink:0;' + (done ? 'background:#059669;color:#fff;cursor:pointer;' : (clearing ? 'background:#E5E7EB;color:#9CA3AF;cursor:not-allowed;' : 'background:#F3F4F6;color:#374151;cursor:pointer;'))">
+                                    @click="clearing=true; done=false;
+                                        fetch('{{ route('admin.settings.clear-cache') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} })
+                                        .then(r=>r.json()).then(d=>{ clearing=false; done=true; setTimeout(()=>done=false,4000); })"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                    :style="done ? 'background:#059669;color:#fff;' : (clearing ? 'background:#E5E7EB;color:#9CA3AF;cursor:not-allowed;' : 'background:#F3F4F6;color:#374151;')">
                                 <i class="fas" :class="clearing ? 'fa-spinner fa-spin' : (done ? 'fa-check' : 'fa-broom')"></i>
                                 <span x-text="clearing ? 'Clearing…' : (done ? 'Done!' : 'Clear Cache')"></span>
                             </button>
@@ -3078,10 +2591,13 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Roles tab in Team page</p>
                                 </div>
                             </div>
-                            <div @click="fetch('{{ route('admin.settings.manager-roles-access') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{rolesOn=d.manager_can_view_roles})"
-                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (rolesOn ? 'background:#6366F1;' : 'background:#D1D5DB;')">
-                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (rolesOn ? 'left:23px;' : 'left:3px;')"></div>
-                            </div>
+                            <button type="button"
+                                    @click="fetch('{{ route('admin.settings.manager-roles-access') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ rolesOn = d.manager_can_view_roles })"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                    :style="rolesOn ? 'background:#6366F1;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                                <i class="fas" :class="rolesOn ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                                <span x-text="rolesOn ? 'On' : 'Off'"></span>
+                            </button>
                         </div>
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid #F3F4F6;">
                             <div style="display:flex;align-items:center;gap:10px;">
@@ -3093,10 +2609,13 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Edit, reset & deactivate admins</p>
                                 </div>
                             </div>
-                            <div @click="fetch('{{ route('admin.settings.manager-admin-access') }}',{method:'POST',headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'}}).then(r=>r.json()).then(d=>{adminOn=d.manager_can_edit_admin})"
-                                 :style="'position:relative;flex-shrink:0;cursor:pointer;width:44px;height:24px;border-radius:12px;transition:background .25s;' + (adminOn ? 'background:#EF4444;' : 'background:#D1D5DB;')">
-                                <div :style="'position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .25s;' + (adminOn ? 'left:23px;' : 'left:3px;')"></div>
-                            </div>
+                            <button type="button"
+                                    @click="fetch('{{ route('admin.settings.manager-admin-access') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ adminOn = d.manager_can_edit_admin })"
+                                    style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                    :style="adminOn ? 'background:#EF4444;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                                <i class="fas" :class="adminOn ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                                <span x-text="adminOn ? 'On' : 'Off'"></span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -3716,7 +3235,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </div>
                         </div>
                         <button type="button"
-                                @click="openFullReset()"
+                                @click="openClear('full_reset')"
                                 style="padding:7px 16px;font-size:12px;font-weight:700;background:#DC2626;color:#fff;border:none;border-radius:8px;cursor:pointer;white-space:nowrap;flex-shrink:0;"
                                 onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
                             <i class="fas fa-bomb" style="font-size:10px;margin-right:5px;"></i>Full Reset
@@ -3776,155 +3295,6 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     :disabled="phrase !== 'DELETE'">
                                 <i class="fas fa-trash" style="font-size:11px;margin-right:6px;"></i>Yes, Delete
                             </button>
-                        </form>
-                    </div>
-
-                </div>
-                </div>
-            </div>
-        </template>
-
-        {{-- Full Data Reset — password + agreement modal --}}
-        <template x-teleport="body">
-            <div x-show="showFullReset"
-                 x-cloak
-                 x-transition:enter="transition ease-out duration-150"
-                 x-transition:enter-start="opacity-0"
-                 x-transition:enter-end="opacity-100"
-                 @keydown.escape.window="closeFullReset()"
-                 style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:99999;">
-                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;">
-                <div style="background:#fff;border-radius:16px;width:100%;max-width:460px;box-shadow:0 25px 60px rgba(0,0,0,0.3);overflow:hidden;" @click.stop>
-
-                    {{-- Step indicator --}}
-                    <div style="background:#FEF2F2;border-bottom:1px solid #FECACA;padding:14px 24px;display:flex;align-items:center;gap:10px;">
-                        <div style="width:44px;height:44px;background:#DC2626;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                            <i class="fas fa-bomb" style="color:#fff;font-size:18px;"></i>
-                        </div>
-                        <div style="flex:1;">
-                            <p style="font-size:14px;font-weight:700;color:#7F1D1D;margin:0;">Full Data Reset</p>
-                            <div style="display:flex;gap:6px;margin-top:5px;align-items:center;">
-                                <div :style="frStep >= 1 ? 'background:#DC2626;' : 'background:#FECACA;'"
-                                     style="height:4px;border-radius:2px;flex:1;transition:background .3s;"></div>
-                                <div :style="frStep >= 2 ? 'background:#DC2626;' : 'background:#FECACA;'"
-                                     style="height:4px;border-radius:2px;flex:1;transition:background .3s;"></div>
-                            </div>
-                            <p style="font-size:10px;color:#B91C1C;margin:3px 0 0;" x-text="frStep === 1 ? 'Step 1 of 2 — Verify identity' : 'Step 2 of 2 — Sign responsibility agreement'"></p>
-                        </div>
-                        <button type="button" @click="closeFullReset()"
-                                style="width:28px;height:28px;background:#FECACA;border:none;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#B91C1C;">
-                            <i class="fas fa-xmark" style="font-size:12px;"></i>
-                        </button>
-                    </div>
-
-                    {{-- Step 1: Password --}}
-                    <div x-show="frStep === 1" style="padding:24px;">
-                        <p style="font-size:13px;font-weight:600;color:#111827;margin:0 0 6px;">Enter your account password</p>
-                        <p style="font-size:12px;color:#6B7280;margin:0 0 16px;line-height:1.5;">
-                            This destructive action requires identity confirmation before proceeding.
-                        </p>
-
-                        <div style="position:relative;margin-bottom:10px;">
-                            <input id="fr-pwd-input" type="password" x-model="frPassword"
-                                   @keyup.enter="if(frPassword.length) verifyFrPassword()"
-                                   style="width:100%;padding:10px 40px 10px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
-                                   :style="frPasswordError ? 'border-color:#DC2626;background:#FEF2F2;' : ''"
-                                   placeholder="Your account password"
-                                   autocomplete="current-password">
-                            <i class="fas fa-lock" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:13px;pointer-events:none;"></i>
-                        </div>
-                        <p x-show="frPasswordError !== ''" x-text="frPasswordError" x-cloak
-                           style="font-size:11px;color:#DC2626;margin:0 0 12px;"></p>
-
-                        <div style="display:flex;gap:8px;margin-top:16px;">
-                            <button type="button" @click="closeFullReset()"
-                                    style="flex:1;padding:10px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;">
-                                Cancel
-                            </button>
-                            <button type="button" @click="verifyFrPassword()"
-                                    :disabled="frPasswordChecking || frPassword.length === 0"
-                                    style="flex:2;padding:10px;background:#DC2626;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"
-                                    onmouseover="if(!this.disabled)this.style.background='#B91C1C'" onmouseout="if(!this.disabled)this.style.background='#DC2626'">
-                                <i class="fas" :class="frPasswordChecking ? 'fa-circle-notch fa-spin' : 'fa-arrow-right'" style="font-size:11px;"></i>
-                                <span x-text="frPasswordChecking ? 'Verifying…' : 'Continue'"></span>
-                            </button>
-                        </div>
-                    </div>
-
-                    {{-- Step 2: Agreement + Signature --}}
-                    <div x-show="frStep === 2" style="padding:24px;">
-                        {{-- Warning block --}}
-                        <div style="background:#FEF2F2;border:1.5px solid #FECACA;border-radius:10px;padding:14px;margin-bottom:18px;">
-                            <p style="font-size:12px;font-weight:700;color:#7F1D1D;margin:0 0 6px;">
-                                <i class="fas fa-triangle-exclamation" style="margin-right:5px;"></i>
-                                You are about to permanently destroy all system data
-                            </p>
-                            <ul style="font-size:11px;color:#B91C1C;margin:0;padding-left:18px;line-height:1.8;">
-                                <li>All tasks, projects and project files</li>
-                                <li>All messages and notifications</li>
-                                <li>All task activity, comments and submissions</li>
-                                <li>All audit logs and calendar events</li>
-                            </ul>
-                            <p style="font-size:11px;color:#7F1D1D;margin:8px 0 0;font-weight:600;">
-                                Users and system settings are kept. This action <u>cannot be undone</u>.
-                            </p>
-                        </div>
-
-                        {{-- Responsibility agreement checkbox --}}
-                        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;margin-bottom:16px;">
-                            <input type="checkbox" x-model="frAgree"
-                                   style="width:16px;height:16px;margin-top:2px;accent-color:#DC2626;flex-shrink:0;cursor:pointer;">
-                            <span style="font-size:12px;color:#374151;line-height:1.6;">
-                                I understand that this action is <strong>irreversible</strong>. I accept full responsibility for this data reset and confirm I am authorised to perform it.
-                            </span>
-                        </label>
-
-                        {{-- Name signature --}}
-                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">
-                            Sign with your full name
-                        </label>
-                        <div style="position:relative;margin-bottom:14px;">
-                            <input id="fr-sig-input" type="text" x-model="frSignature"
-                                   style="width:100%;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;font-style:italic;outline:none;box-sizing:border-box;font-family:Georgia,serif;"
-                                   :style="frSignature.trim().length >= 2 ? 'border-color:#16A34A;background:#F0FDF4;' : ''"
-                                   placeholder="Your full name"
-                                   autocomplete="name">
-                        </div>
-
-                        {{-- DELETE phrase --}}
-                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">
-                            Type <span style="color:#DC2626;letter-spacing:.06em;font-family:monospace;">DELETE</span> to confirm
-                        </label>
-                        <input type="text" x-model="frPhrase"
-                               style="width:100%;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;margin-bottom:18px;"
-                               :style="frPhrase === 'DELETE' ? 'border-color:#16A34A;background:#F0FDF4;' : ''"
-                               placeholder="DELETE"
-                               autocomplete="off"
-                               @keydown.enter="if(frCanSubmit) $refs.frSubmitBtn.click()">
-
-                        {{-- Submit form --}}
-                        <form method="POST" action="{{ route('admin.settings.clear') }}" id="fr-submit-form" style="margin:0;">
-                            @csrf
-                            <input type="hidden" name="type" value="full_reset">
-                            <input type="hidden" name="password" :value="frPassword">
-                            <input type="hidden" name="signatory_name" :value="frSignature">
-                            <input type="hidden" name="agreed" value="1">
-
-                            <div style="display:flex;gap:8px;">
-                                <button type="button" @click="frStep=1"
-                                        style="flex:1;padding:10px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;">
-                                    <i class="fas fa-arrow-left" style="font-size:11px;margin-right:4px;"></i>Back
-                                </button>
-                                <button type="submit" x-ref="frSubmitBtn"
-                                        :disabled="!frCanSubmit"
-                                        style="flex:2;padding:10px;background:#DC2626;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;"
-                                        :style="!frCanSubmit ? 'opacity:.45;cursor:not-allowed;' : ''"
-                                        onmouseover="if(!this.disabled)this.style.background='#B91C1C'" onmouseout="if(!this.disabled)this.style.background='#DC2626'"
-                                        onclick="return window.confirm('FINAL CONFIRMATION: This will permanently delete all data. There is no undo. Proceed?')">
-                                    <i class="fas fa-bomb" style="font-size:11px;"></i>
-                                    Execute Full Reset
-                                </button>
-                            </div>
                         </form>
                     </div>
 

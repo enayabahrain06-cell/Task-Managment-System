@@ -30,6 +30,26 @@ use Symfony\Component\Mime\Email;
 
 class SettingsController extends Controller
 {
+    /** Curated icon choices for the login page's team corner cards — key is the stored value, label is shown in the picker. */
+    public const LOGIN_FRAME_ICONS = [
+        'fa-briefcase' => 'Briefcase',
+        'fa-palette' => 'Palette',
+        'fa-code' => 'Code',
+        'fa-chart-simple' => 'Chart',
+        'fa-headset' => 'Headset',
+        'fa-user' => 'User',
+        'fa-star' => 'Star',
+        'fa-rocket' => 'Rocket',
+        'fa-lightbulb' => 'Lightbulb',
+        'fa-camera' => 'Camera',
+        'fa-pen' => 'Pen',
+        'fa-bullhorn' => 'Bullhorn',
+        'fa-wrench' => 'Wrench',
+        'fa-shield-halved' => 'Shield',
+        'fa-heart' => 'Heart',
+        'fa-gem' => 'Gem',
+    ];
+
     /** Default values for every setting key. */
     private array $defaults = [
         // General
@@ -163,14 +183,25 @@ class SettingsController extends Controller
             ]
         );
 
-        $dbBytes = file_exists(database_path('database.sqlite')) ? filesize(database_path('database.sqlite')) : 0;
+        $dbBytes   = file_exists(database_path('database.sqlite')) ? filesize(database_path('database.sqlite')) : 0;
+        $diskTotal = (int) disk_total_space(base_path());
+        $diskFree  = (int) disk_free_space(base_path());
+        $diskUsed  = $diskTotal - $diskFree;
+        $diskPct   = $diskTotal > 0 ? round($diskUsed / $diskTotal * 100) : 0;
+        $fmtGb = fn(int $b): string => $b >= 1073741824
+            ? round($b / 1073741824, 1) . ' GB'
+            : ($b >= 1048576 ? round($b / 1048576) . ' MB' : round($b / 1024) . ' KB');
         $stats = [
-            'users' => User::count(),
-            'projects' => Project::where('is_quick', false)->count(),
-            'tasks' => Task::count(),
-            'db_size' => $dbBytes >= 1048576
-                                ? round($dbBytes / 1048576, 1).' MB'
-                                : round($dbBytes / 1024).' KB',
+            'users'      => User::count(),
+            'projects'   => Project::where('is_quick', false)->count(),
+            'tasks'      => Task::count(),
+            'db_size'    => $dbBytes >= 1048576
+                                ? round($dbBytes / 1048576, 1) . ' MB'
+                                : round($dbBytes / 1024) . ' KB',
+            'disk_total' => $fmtGb($diskTotal),
+            'disk_used'  => $fmtGb($diskUsed),
+            'disk_free'  => $fmtGb($diskFree),
+            'disk_pct'   => $diskPct,
         ];
 
         $supportUsers = User::whereIn('role', ['admin', 'manager'])
@@ -633,6 +664,7 @@ class SettingsController extends Controller
         foreach ([1, 2, 3, 4, 5] as $i) {
             $rules["login_frame{$i}_title"] = 'nullable|string|max:40';
             $rules["login_frame{$i}_desc"] = 'nullable|string|max:60';
+            $rules["login_frame{$i}_icon"] = 'nullable|string|in:' . implode(',', array_keys(self::LOGIN_FRAME_ICONS));
         }
         $request->validate($rules);
 
@@ -695,6 +727,7 @@ class SettingsController extends Controller
         foreach ([1, 2, 3, 4, 5] as $i) {
             Setting::set("login_frame{$i}_title", $request->input("login_frame{$i}_title", ''));
             Setting::set("login_frame{$i}_desc", $request->input("login_frame{$i}_desc", ''));
+            Setting::set("login_frame{$i}_icon", $request->input("login_frame{$i}_icon", ''));
         }
 
         AuditLogger::log('settings.updated', null, 'About page settings updated', ['section' => 'about_page']);
