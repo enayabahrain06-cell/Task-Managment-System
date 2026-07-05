@@ -279,7 +279,8 @@
       "Bash(cp /var/www/Task-Managment-System/resources/views/public/about.blade.php /var/www/Task-Managment-System/resources/views/public/about.blade.php.bak2)",
       "Bash(curl -sk https://stagms.p7h.me/about -o /tmp/about_pill_check.html -w \"HTTP %{http_code}\\\\n\")",
       "Bash(curl -sk -I https://stagms.p7h.me/about)",
-      "Bash(curl -sk https://stagms.p7h.me/admin/dashboard -o /dev/null -w \"dashboard \\(logged out\\) HTTP %{http_code}\\\\n\")"
+      "Bash(curl -sk https://stagms.p7h.me/admin/dashboard -o /dev/null -w \"dashboard \\(logged out\\) HTTP %{http_code}\\\\n\")",
+      "Bash(curl -sk https://stagms.p7h.me/login -o /tmp/login_orbit_check.html -w \"HTTP %{http_code}\\\\n\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory",

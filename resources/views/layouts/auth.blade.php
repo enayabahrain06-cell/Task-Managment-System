@@ -96,6 +96,7 @@
         @keyframes orbit3 { 0%{transform:rotate(120deg) translateX(75px) rotate(-120deg)} 100%{transform:rotate(480deg) translateX(75px) rotate(-480deg)} }
         @keyframes orbit4 { 0%{transform:rotate(200deg) translateX(100px) rotate(-200deg)} 100%{transform:rotate(560deg) translateX(100px) rotate(-560deg)} }
         @keyframes orbit5 { 0%{transform:rotate(280deg) translateX(120px) rotate(-280deg)} 100%{transform:rotate(640deg) translateX(120px) rotate(-640deg)} }
+        @keyframes orbit6 { 0%{transform:rotate(320deg) translateX(85px) rotate(-320deg)} 100%{transform:rotate(680deg) translateX(85px) rotate(-680deg)} }
         @keyframes float  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
         @keyframes pulse-ring { 0%{transform:scale(1);opacity:0.4} 100%{transform:scale(1.6);opacity:0} }
 
@@ -105,6 +106,7 @@
         .o3 { animation:orbit3 9s linear infinite reverse; }
         .o4 { animation:orbit4 11s linear infinite; }
         .o5 { animation:orbit5 10s linear infinite reverse; }
+        .o6 { animation:orbit6 10.5s linear infinite; }
 
         .pulse-ring { position:absolute; width:100%; height:100%; border-radius:50%; border:2px solid rgba(255,255,255,0.3); animation: pulse-ring 2.5s ease-out infinite; }
         .pulse-ring2 { animation-delay:0.8s; }

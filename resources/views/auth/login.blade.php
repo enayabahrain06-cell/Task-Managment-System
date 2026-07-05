@@ -17,12 +17,6 @@
 @media(max-width:400px) {
     .login-form-col  { padding:28px 16px; }
 }
-/* Orbit avatars — locked group rotation keeps even spacing forever (no independent-timer drift/clumping) */
-@keyframes orbitGroupSpin        { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-@keyframes orbitGroupSpinReverse { from{transform:rotate(0deg)} to{transform:rotate(-360deg)} }
-.orbit-group { position:absolute; inset:0; animation:orbitGroupSpin 30s linear infinite; }
-.orbit-slot  { position:absolute; top:50%; left:50%; width:38px; height:38px; margin:-19px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 15px rgba(0,0,0,0.15); }
-.orbit-label { display:inline-block; font-size:13px; font-weight:700; color:#fff; line-height:1; animation:orbitGroupSpinReverse 30s linear infinite; }
 </style>
 {{-- Main card --}}
 <div class="login-card">
@@ -145,10 +139,6 @@
         $darkDeco  = sprintf('#%02x%02x%02x', round($dr*0.55), round($dg*0.55), round($db*0.55));
         $decoGradient = "linear-gradient(145deg,{$lightDeco} 0%,#{$dh} 42%,{$darkDeco} 100%)";
 
-        /* Orbit users — shown as colored initial badges */
-        $orbitUsers = \App\Models\User::where('status','active')
-            ->orderBy('id')->take(5)->get(['id','name']);
-        $orbitPalette = ['#F59E0B','#EF4444','#10B981','#3B82F6','#8B5CF6'];
     @endphp
     <div class="login-deco-col" style="background:{!! $decoGradient !!};display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 32px;position:relative;overflow:hidden;">
 
@@ -180,15 +170,24 @@
                 <i class="fa fa-diagram-project" style="color:#fff;font-size:22px;"></i>
             </div>
 
-            {{-- Orbiting icons — colored initial badges, locked to an even circular spread --}}
-            <div class="orbit-group">
-                @php $orbitCount = max($orbitUsers->count(), 1); @endphp
-                @foreach($orbitUsers as $slot => $u)
-                @php $angle = $slot * (360 / $orbitCount); @endphp
-                <div class="orbit-slot" style="transform:rotate({{ $angle }}deg) translateX(95px) rotate(-{{ $angle }}deg);background:{{ $orbitPalette[$slot % 5] }};">
-                    <span class="orbit-label">{{ mb_strtoupper(mb_substr($u->name,0,1)) }}</span>
-                </div>
-                @endforeach
+            {{-- Orbiting feature icons --}}
+            <div class="orbit-icon o1" style="background:#fff;">
+                <i class="fa fa-check-circle" style="color:#10B981;font-size:16px;"></i>
+            </div>
+            <div class="orbit-icon o2" style="background:#EFF6FF;">
+                <i class="fa fa-calendar" style="color:#3B82F6;font-size:15px;"></i>
+            </div>
+            <div class="orbit-icon o3" style="background:#FFF7ED;">
+                <i class="fa fa-comment-dots" style="color:#F59E0B;font-size:15px;"></i>
+            </div>
+            <div class="orbit-icon o4" style="background:#F0FDF4;">
+                <i class="fa fa-users" style="color:#10B981;font-size:14px;"></i>
+            </div>
+            <div class="orbit-icon o5" style="background:#FDF4FF;">
+                <i class="fa fa-chart-bar" style="color:#8B5CF6;font-size:15px;"></i>
+            </div>
+            <div class="orbit-icon o6" style="background:#FEF2F2;">
+                <i class="fa fa-bell" style="color:#EF4444;font-size:14px;"></i>
             </div>
         </div>
 
