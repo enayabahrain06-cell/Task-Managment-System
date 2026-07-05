@@ -18,29 +18,51 @@
         $showTeamLayout = request()->routeIs('login')
             && ($appSettings['login_show_doodles'] ?? '1') === '1';
 
-        /* Pull up to 4 active, non-admin users that have a real profile photo —
+        // Drag-and-drop editing happens on the real /login page itself: an authenticated
+        // admin is allowed through to this route (see RedirectIfAuthenticatedForLogin)
+        // instead of being bounced to their dashboard, but only while Developer Mode is
+        // on — and only for them, never for a logged-out visitor.
+        $devDragOn = request()->routeIs('login')
+            && auth()->check()
+            && auth()->user()->role === 'admin'
+            && ($appSettings['developer_mode'] ?? '0') === '1';
+
+        /* Pull up to 5 active, non-admin users that have a real profile photo —
            same ordering as the Team Photos admin list, so "slot N" there matches "corner N" here */
         $teamFrameUsers = $showTeamLayout
             ? \App\Models\User::where('status', 'active')
                 ->where('role', '!=', 'admin')
                 ->whereNotNull('avatar')->where('avatar', '!=', '')
                 ->orderBy('role')->orderBy('name')
-                ->take(4)->get(['id','name','avatar','job_title'])
+                ->take(5)->get(['id','name','avatar','job_title'])
             : collect();
 
-        $frameIcons  = ['fa-briefcase', 'fa-palette', 'fa-code', 'fa-chart-simple'];
-        $frameColors = ['#6366F1', '#8B5CF6', '#6366F1', '#8B5CF6'];
+        $frameIcons  = ['fa-briefcase', 'fa-palette', 'fa-code', 'fa-chart-simple', 'fa-headset'];
+        $frameColors = ['#6366F1', '#8B5CF6', '#6366F1', '#8B5CF6', '#F59E0B'];
         $frameDefaults = [
             ['title' => 'Project Lead',      'desc' => 'Leads with vision'],
             ['title' => 'Creative Designer', 'desc' => 'Designs the future'],
             ['title' => 'Developer',         'desc' => 'Builds with code'],
             ['title' => 'Strategist',        'desc' => 'Plans for success'],
+            ['title' => 'Team Member',       'desc' => 'Gets things done'],
         ];
-        $frameMeta = collect(range(1, 4))->map(fn ($i) => [
+        // Free-form default spot for each of the 5 slots (% of viewport), used until an
+        // admin drags a card somewhere else — roughly the old 4-corners + middle layout.
+        $frameDefaultPos = [
+            ['x' => 2,  'y' => 6],
+            ['x' => 84, 'y' => 6],
+            ['x' => 2,  'y' => 66],
+            ['x' => 84, 'y' => 66],
+            ['x' => 84, 'y' => 36],
+        ];
+        $frameMeta = collect(range(1, 5))->map(fn ($i) => [
             'icon'  => $frameIcons[$i - 1],
             'color' => $frameColors[$i - 1],
-            'title' => $appSettings["login_frame{$i}_title"] ?: $frameDefaults[$i - 1]['title'],
-            'desc'  => $appSettings["login_frame{$i}_desc"] ?: $frameDefaults[$i - 1]['desc'],
+            'title' => ($appSettings["login_frame{$i}_title"] ?? '') ?: $frameDefaults[$i - 1]['title'],
+            'desc'  => ($appSettings["login_frame{$i}_desc"] ?? '') ?: $frameDefaults[$i - 1]['desc'],
+            'x'     => (($appSettings["login_frame{$i}_x"] ?? '') !== '') ? (float) $appSettings["login_frame{$i}_x"] : $frameDefaultPos[$i - 1]['x'],
+            'y'     => (($appSettings["login_frame{$i}_y"] ?? '') !== '') ? (float) $appSettings["login_frame{$i}_y"] : $frameDefaultPos[$i - 1]['y'],
+            'scale' => (($appSettings["login_frame{$i}_scale"] ?? '') !== '') ? (float) $appSettings["login_frame{$i}_scale"] : 1.0,
         ])->all();
         $teamName = strtoupper($appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name','Our'));
     @endphp
@@ -63,6 +85,9 @@
 
         @if($showTeamLayout)
         body { background: linear-gradient(135deg,#F5F3FE 0%,#ECE9FB 45%,#E8ECFC 100%) !important; padding: 96px 16px 96px !important; }
+        @endif
+        @if($devDragOn)
+        body { padding-top: 140px !important; }
         @endif
 
         /* ── Orbit animations (login deco column) ── */
@@ -106,6 +131,10 @@
         @keyframes frameFloat3 {
             0%,100% { transform:rotate(-5deg) translateY(0px); }
             50%      { transform:rotate(-5deg) translateY(-10px); }
+        }
+        @keyframes frameFloat4 {
+            0%,100% { transform:rotate(5deg) translateY(0px); }
+            50%      { transform:rotate(5deg) translateY(-10px); }
         }
         @keyframes blobPulse {
             0%,100% { transform:translate(-50%,-50%) scale(1);   opacity:0.65; }
@@ -269,12 +298,65 @@
             to   { background-position: 200% 0; }
         }
 
-        /* ── Team frames ── */
-        .team-frame {
+        /* ── Team frames ──
+           Each person's photo + role card live together in one fixed-position group,
+           placed via inline top/left (%) so an admin can drag it anywhere on the page —
+           not just the old 4 fixed corners. */
+        .team-frame-group {
             position: fixed;
             z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
             pointer-events: none;
         }
+        /* Developer Mode preview only — makes the group grabbable and draggable anywhere */
+        .team-frame-group.tfg-editable {
+            pointer-events: auto;
+            cursor: grab;
+            touch-action: none;
+        }
+        .team-frame-group.tfg-editable .team-frame-inner {
+            outline: 3px dashed transparent;
+            outline-offset: 4px;
+            transition: outline-color .15s;
+        }
+        .team-frame-group.tfg-editable:hover .team-frame-inner {
+            outline-color: #6366F1;
+        }
+        .team-frame-group.tfg-editable.tfg-dragging {
+            cursor: grabbing;
+            opacity: 0.75;
+            transition: none !important;
+        }
+        .team-frame-group.tfg-editable.tfg-dragging .team-frame {
+            animation-play-state: paused;
+        }
+        .tfg-resize-handle {
+            position: absolute;
+            right: -8px; bottom: -8px;
+            width: 24px; height: 24px;
+            background: #6366F1;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; font-size: 10px;
+            cursor: nwse-resize;
+            pointer-events: auto;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+            z-index: 10;
+        }
+        .tfg-resize-handle:active { background: #4338CA; }
+        .team-frame {
+            width: 150px; height: 186px;
+            position: relative;
+        }
+        .team-frame.tff-0 { animation: frameFloat0 4.2s ease-in-out infinite; }
+        .team-frame.tff-1 { animation: frameFloat1 4.2s ease-in-out infinite; }
+        .team-frame.tff-2 { animation: frameFloat2 4.2s ease-in-out infinite; }
+        .team-frame.tff-3 { animation: frameFloat3 4.2s ease-in-out infinite; }
+        .team-frame.tff-4 { animation: frameFloat4 4.2s ease-in-out infinite; }
         /* Inner wrapper handles the one-shot pop-in entrance so it doesn't fight the
            outer element's continuous float/tilt animation over the shared `transform` property
            (two animations on one element targeting the same property: the later one — with
@@ -306,15 +388,9 @@
             display: flex; align-items: center; justify-content: center;
             font-size: 40px; font-weight: 800; color: #fff;
         }
-        .tf-0 { top:60px;    left:36px;  width:150px; height:186px; animation: frameFloat0 4.2s ease-in-out infinite; }
-        .tf-1 { top:60px;    right:36px; width:150px; height:186px; animation: frameFloat1 4.2s ease-in-out infinite; }
-        .tf-2 { bottom:104px; left:36px;  width:150px; height:186px; animation: frameFloat2 4.2s ease-in-out infinite; }
-        .tf-3 { bottom:104px; right:36px; width:150px; height:186px; animation: frameFloat3 4.2s ease-in-out infinite; }
 
-        /* ── Role cards (below/above each frame) ── */
+        /* ── Role card (always below its frame, inside the same group) ── */
         .team-role-card {
-            position: fixed;
-            z-index: 100;
             width: 186px;
             background: #fff;
             border-radius: 14px;
@@ -323,7 +399,6 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            pointer-events: none;
         }
         .team-role-icon {
             width: 34px; height: 34px; border-radius: 10px;
@@ -332,10 +407,6 @@
         }
         .team-role-title { font-size: 12.5px; font-weight: 700; color: #111827; margin: 0; line-height: 1.25; }
         .team-role-desc  { font-size: 10.5px; color: #9CA3AF; margin: 1px 0 0; line-height: 1.2; }
-        .team-role-0 { top:260px;  left:36px; }
-        .team-role-1 { top:260px;  right:36px; }
-        .team-role-2 { bottom:26px; left:36px; }
-        .team-role-3 { bottom:26px; right:36px; }
 
         /* ── Bottom pill — fixed footer bar, centered horizontally ── */
         .team-bottom-pill {
@@ -357,7 +428,7 @@
         .team-bottom-pill i { color: #F59E0B; flex-shrink: 0; }
         .team-bottom-pill .accent { color: #6366F1; font-weight: 700; }
 
-        @media (max-width: 1160px) { .team-frame, .team-role-card { display:none !important; } }
+        @media (max-width: 1160px) { .team-frame-group { display:none !important; } }
         @media (max-height: 760px)  { .team-bottom-pill { display:none !important; } }
         @media (max-width: 600px)   {
             .team-hero       { padding:16px 22px 15px; border-radius:20px; }
@@ -510,47 +581,52 @@
     @endif
 </div>
 
-{{-- ── Team member frames + role cards (4 corners) ── --}}
-@php
-    $posClasses = ['tf-0','tf-1','tf-2','tf-3'];
-    $popDelays  = [0.2, 0.4, 0.3, 0.5];
-@endphp
+{{-- ── Team member frames + role cards — freely positioned, draggable in Developer Mode ── --}}
+@php $popDelays = [0.2, 0.4, 0.3, 0.5, 0.6]; @endphp
 @foreach($teamFrameUsers as $fi => $fuser)
 @php $meta = $frameMeta[$fi] ?? $frameMeta[0]; @endphp
-<div class="team-frame {{ $posClasses[$fi] ?? '' }}">
-    {{-- Inner wrapper: one-shot pop-in entrance, kept off the outer element so it
-         doesn't clobber the outer's continuous float/tilt animation --}}
-    <div class="team-frame-pop"
-         style="animation:popIn 0.6s {{ $popDelays[$fi] ?? 0.2 }}s cubic-bezier(.22,.68,0,1.15) both;">
-        {{-- Colored blob behind --}}
-        <div class="team-frame-blob"
-             style="width:200px;height:200px;
-                    top:50%;left:50%;
-                    background:{{ $meta['color'] }};
-                    animation-delay:{{ $fi * 0.7 }}s;">
-        </div>
-        {{-- Photo or initials --}}
-        <div class="team-frame-inner">
-            @if($fuser->avatar)
-                <img src="{{ Storage::url($fuser->avatar) }}" alt="{{ $fuser->name }}">
-            @else
-                <div class="team-frame-initials" style="background:{{ $meta['color'] }};">
-                    {{ mb_strtoupper(mb_substr($fuser->name, 0, 1)) }}
-                </div>
-            @endif
+<div class="team-frame-group {{ $devDragOn ? 'tfg-editable' : '' }}"
+     style="top:{{ $meta['y'] }}%; left:{{ $meta['x'] }}%; transform: scale({{ $meta['scale'] }}); transform-origin: top left;"
+     @if($devDragOn) data-slot="{{ $fi + 1 }}" data-scale="{{ $meta['scale'] }}" @endif>
+    <div class="team-frame tff-{{ $fi }}">
+        {{-- Inner wrapper: one-shot pop-in entrance, kept off the outer element so it
+             doesn't clobber the outer's continuous float/tilt animation --}}
+        <div class="team-frame-pop"
+             style="animation:popIn 0.6s {{ $popDelays[$fi] ?? 0.2 }}s cubic-bezier(.22,.68,0,1.15) both;">
+            {{-- Colored blob behind --}}
+            <div class="team-frame-blob"
+                 style="width:200px;height:200px;
+                        top:50%;left:50%;
+                        background:{{ $meta['color'] }};
+                        animation-delay:{{ $fi * 0.7 }}s;">
+            </div>
+            {{-- Photo or initials --}}
+            <div class="team-frame-inner">
+                @if($fuser->avatar)
+                    <img src="{{ Storage::url($fuser->avatar) }}" alt="{{ $fuser->name }}">
+                @else
+                    <div class="team-frame-initials" style="background:{{ $meta['color'] }};">
+                        {{ mb_strtoupper(mb_substr($fuser->name, 0, 1)) }}
+                    </div>
+                @endif
+            </div>
         </div>
     </div>
-</div>
 
-<div class="team-role-card team-role-{{ $fi }}"
-     style="animation:popIn 0.6s {{ 0.4 + $fi * 0.15 }}s cubic-bezier(.22,.68,0,1.15) both;">
-    <div class="team-role-icon" style="background:{{ $meta['color'] }};">
-        <i class="fa {{ $meta['icon'] }}"></i>
+    <div class="team-role-card"
+         style="animation:popIn 0.6s {{ 0.4 + $fi * 0.15 }}s cubic-bezier(.22,.68,0,1.15) both;">
+        <div class="team-role-icon" style="background:{{ $meta['color'] }};">
+            <i class="fa {{ $meta['icon'] }}"></i>
+        </div>
+        <div>
+            <p class="team-role-title">{{ $fuser->job_title ?: $meta['title'] }}</p>
+            <p class="team-role-desc">{{ $meta['desc'] }}</p>
+        </div>
     </div>
-    <div>
-        <p class="team-role-title">{{ $fuser->job_title ?: $meta['title'] }}</p>
-        <p class="team-role-desc">{{ $meta['desc'] }}</p>
-    </div>
+
+    @if($devDragOn)
+    <div class="tfg-resize-handle" title="Drag to resize"><i class="fa fa-up-right-and-down-left-from-center"></i></div>
+    @endif
 </div>
 @endforeach
 
@@ -558,6 +634,94 @@
 <div class="team-bottom-pill">
     <i class="fa fa-star"></i> {{ $appSettings['login_pill_text'] ?? 'One Team. One Goal.' }} <span class="accent">{{ $appSettings['login_pill_accent'] ?? 'Unlimited Impact.' }}</span>
 </div>
+
+@if($devDragOn)
+<div style="position:fixed;top:0;left:0;right:0;z-index:500;background:linear-gradient(90deg,#4F46E5,#7C3AED);
+            color:#fff;padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:14px;
+            font-size:13px;font-weight:600;flex-wrap:wrap;text-align:center;">
+    <span><i class="fa fa-arrows-up-down-left-right"></i> Developer Mode preview — drag a card anywhere on the page to reposition it.</span>
+    <a href="{{ route('admin.settings.index') }}#about_page" style="color:#fff;text-decoration:underline;">Done — back to Settings</a>
+</div>
+<script>
+(function () {
+    var csrf = document.querySelector('meta[name="csrf-token"]').content;
+    var moveUrl = @json(route('admin.settings.login-preview.move'));
+
+    document.querySelectorAll('.team-frame-group[data-slot]').forEach(function (group) {
+        var dragging = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
+
+        group.addEventListener('pointerdown', function (e) {
+            dragging = true;
+            group.setPointerCapture(e.pointerId);
+            group.classList.add('tfg-dragging');
+            var rect = group.getBoundingClientRect();
+            startX = e.clientX;
+            startY = e.clientY;
+            startLeft = rect.left;
+            startTop = rect.top;
+            e.preventDefault();
+        });
+
+        group.addEventListener('pointermove', function (e) {
+            if (!dragging) return;
+            var newLeft = startLeft + (e.clientX - startX);
+            var newTop = startTop + (e.clientY - startY);
+            group.style.left = newLeft + 'px';
+            group.style.top = newTop + 'px';
+        });
+
+        group.addEventListener('pointerup', function (e) {
+            if (!dragging) return;
+            dragging = false;
+            group.classList.remove('tfg-dragging');
+            var rect = group.getBoundingClientRect();
+            var xPct = Math.max(0, Math.min(100, (rect.left / window.innerWidth) * 100));
+            var yPct = Math.max(0, Math.min(100, (rect.top / window.innerHeight) * 100));
+            fetch(moveUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                body: JSON.stringify({ slot: group.dataset.slot, x: xPct, y: yPct }),
+            });
+        });
+
+        var handle = group.querySelector('.tfg-resize-handle');
+        if (handle) {
+            var resizing = false, startScale = 1, startDist = 1, originX = 0, originY = 0;
+
+            handle.addEventListener('pointerdown', function (e) {
+                e.stopPropagation();
+                resizing = true;
+                handle.setPointerCapture(e.pointerId);
+                startScale = parseFloat(group.dataset.scale || '1');
+                var rect = group.getBoundingClientRect();
+                originX = rect.left;
+                originY = rect.top;
+                startDist = Math.max(1, Math.hypot(e.clientX - originX, e.clientY - originY));
+                e.preventDefault();
+            });
+
+            handle.addEventListener('pointermove', function (e) {
+                if (!resizing) return;
+                var dist = Math.hypot(e.clientX - originX, e.clientY - originY);
+                var newScale = Math.max(0.5, Math.min(2, startScale * (dist / startDist)));
+                group.style.transform = 'scale(' + newScale + ')';
+                group.dataset.scale = newScale;
+            });
+
+            handle.addEventListener('pointerup', function (e) {
+                if (!resizing) return;
+                resizing = false;
+                fetch(moveUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    body: JSON.stringify({ slot: group.dataset.slot, scale: parseFloat(group.dataset.scale) }),
+                });
+            });
+        }
+    });
+})();
+</script>
+@endif
 
 @endif {{-- end showTeamLayout --}}
 

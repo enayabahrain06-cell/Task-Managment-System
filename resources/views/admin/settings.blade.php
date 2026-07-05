@@ -3,6 +3,28 @@
 
 @section('content')
 <style>
+/* Editable text directly inside a live-preview card (Values/Services) */
+.sf-editable { outline:none; cursor:text; border-radius:4px; transition:box-shadow .15s; }
+.sf-editable:hover { box-shadow:0 0 0 2px #E0E7FF; }
+.sf-editable:focus { box-shadow:0 0 0 2px #6366F1; }
+.sf-editable:empty:before { content:attr(data-placeholder); color:#9CA3AF; }
+.sf-editable-on-brand:hover { box-shadow:0 0 0 2px rgba(255,255,255,0.35); }
+.sf-editable-on-brand:focus { box-shadow:0 0 0 2px rgba(255,255,255,0.7); }
+.sf-editable-on-brand:empty:before { content:attr(data-placeholder); color:rgba(255,255,255,0.6); }
+
+/* Device preview toggle (Mobile/Tablet/Desktop) for the live /about editor */
+.devprev-btn {
+    width:32px; height:32px; border-radius:8px; border:1px solid #E5E7EB; background:#fff;
+    color:#6B7280; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    font-size:13px; transition:all .15s;
+}
+.devprev-btn:hover { background:#F9FAFB; }
+.devprev-btn.active { background:#EEF2FF; color:#4F46E5; border-color:#C7D2FE; }
+.devprev-frame {
+    margin:0 auto; border:1px solid #E5E7EB; border-radius:16px; overflow:hidden;
+    box-shadow:0 8px 24px rgba(0,0,0,0.08); background:#fff; transition:width .25s ease;
+}
+
 /* ── Settings Layout ── */
 .settings-wrap  { display:grid; grid-template-columns:220px 1fr; gap:24px; align-items:start; }
 .settings-nav   { background:#fff; border-radius:14px; border:1px solid #F0F0F0; box-shadow:0 1px 4px rgba(0,0,0,0.05); padding:10px; position:sticky; top:24px; }
@@ -1006,7 +1028,39 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 
         {{-- ════ ABOUT PAGE ════ --}}
         <div x-show="tab === 'about_page'" x-cloak>
-            <div class="scard">
+            <div class="scard" x-data="{ device: 'desktop' }">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#EEF2FF;color:#6366F1;"><i class="fas fa-tv"></i></div>
+                    <div style="flex:1;">
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Live Preview & Editor</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">
+                            See <code>/about</code> at each screen size. Turn on <strong>Developer Mode</strong> (Developer tab) to edit directly inside it.
+                        </p>
+                    </div>
+                    <div style="display:flex;gap:6px;flex-shrink:0;">
+                        <button type="button" class="devprev-btn" :class="{ active: device === 'mobile' }" @click="device = 'mobile'" title="Mobile (390px)">
+                            <i class="fa-solid fa-mobile-screen"></i>
+                        </button>
+                        <button type="button" class="devprev-btn" :class="{ active: device === 'tablet' }" @click="device = 'tablet'" title="Tablet (834px)">
+                            <i class="fa-solid fa-tablet-screen-button"></i>
+                        </button>
+                        <button type="button" class="devprev-btn" :class="{ active: device === 'desktop' }" @click="device = 'desktop'" title="Desktop">
+                            <i class="fa-solid fa-desktop"></i>
+                        </button>
+                        <a href="{{ route('about') }}" target="_blank" class="devprev-btn" title="Open in new tab" style="text-decoration:none;">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                        </a>
+                    </div>
+                </div>
+                <div class="scard-body" style="display:flex;justify-content:center;background:#F3F4F6;padding:20px;">
+                    <div class="devprev-frame"
+                         :style="'width:' + (device === 'mobile' ? '390px' : device === 'tablet' ? '834px' : '100%') + '; max-width:100%;'">
+                        <iframe src="{{ route('about') }}" style="width:100%;height:760px;border:0;display:block;"></iframe>
+                    </div>
+                </div>
+            </div>
+
+            <div class="scard" style="margin-top:16px;">
                 <div class="scard-header">
                     <div class="scard-icon" style="background:#EEF2FF;color:#6366F1;"><i class="fas fa-address-card"></i></div>
                     <div>
@@ -1014,7 +1068,22 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">A public, no-login page at <code>/about</code> showing your team and artwork to visitors</p>
                     </div>
                 </div>
-                <form method="POST" action="{{ route('admin.settings.about-page') }}" id="about-page-form">
+                <form method="POST" action="{{ route('admin.settings.about-page') }}" id="about-page-form" enctype="multipart/form-data"
+                      @php $heroBgIsVideoAdmin = !empty($appSettings['about_page_bg_image']) && preg_match('/\.(mp4|webm|mov|m4v)$/i', $appSettings['about_page_bg_image']); @endphp
+                      x-data="{
+                          heroBgPreview: '{{ !empty($appSettings['about_page_bg_image']) ? Storage::url($appSettings['about_page_bg_image']) : '' }}',
+                          heroBgIsVideo: {{ $heroBgIsVideoAdmin ? 'true' : 'false' }},
+                          removeHeroBg: false,
+                          heroBgOverlay: {{ (int) ($appSettings['about_page_bg_overlay'] ?? 0) }},
+                          setHeroBg(e) {
+                              const f = e.files ? e.files[0] : e.target.files[0];
+                              if (f) {
+                                  this.heroBgPreview = URL.createObjectURL(f);
+                                  this.heroBgIsVideo = /\.(mp4|webm|mov|m4v)$/i.test(f.name) || f.type.startsWith('video/');
+                                  this.removeHeroBg = false;
+                              }
+                          },
+                      }">
                     @csrf
                     <div class="scard-body">
                         <div class="sf-toggle-row">
@@ -1044,54 +1113,478 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 
                         <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
 
+                        <label class="sf-label">
+                            Hero Background
+                            <span style="font-size:10px;color:#9CA3AF;font-weight:400;margin-left:4px;">PNG, JPG, WEBP, MP4, WEBM · any size · optional</span>
+                        </label>
+                        <p class="sf-hint" style="margin-bottom:8px;">Replaces the default gradient behind the "About {{ $appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name') }}" heading with a photo or video.</p>
+                        <input type="hidden" name="remove_about_page_bg_image" :value="removeHeroBg ? '1' : '0'">
+
+                        <div class="upload-zone" @dragover.prevent @drop.prevent="setHeroBg($event.dataTransfer)"
+                             style="min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;">
+                            <input type="file" name="about_page_bg_image" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime"
+                                   @change="setHeroBg($event)"
+                                   :style="(heroBgPreview && !removeHeroBg) ? 'pointer-events:none' : ''">
+
+                            <template x-if="heroBgPreview && !removeHeroBg">
+                                <div style="display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;">
+                                    <video x-show="heroBgIsVideo" :src="heroBgPreview" muted playsinline preload="metadata"
+                                           style="height:80px;object-fit:cover;border-radius:8px;pointer-events:none;"></video>
+                                    <img x-show="!heroBgIsVideo" :src="heroBgPreview" class="upload-preview" alt="Hero background preview"
+                                         style="height:80px;object-fit:cover;border-radius:8px;pointer-events:none;">
+                                    <button type="button" class="remove-btn" @click.stop="removeHeroBg=true;heroBgPreview=''">
+                                        <i class="fas fa-trash-can"></i> Remove
+                                    </button>
+                                </div>
+                            </template>
+                            <template x-if="!heroBgPreview || removeHeroBg">
+                                <div style="display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;">
+                                    <div style="width:40px;height:40px;background:#EEF2FF;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                                        <i class="fas fa-panorama" style="color:#6366F1;font-size:16px;"></i>
+                                    </div>
+                                    <p style="font-size:12px;font-weight:500;color:#374151;margin:0;">Click or drag to upload</p>
+                                    <p style="font-size:11px;color:#9CA3AF;margin:0;">Leave empty to keep the default brand-color gradient</p>
+                                </div>
+                            </template>
+                        </div>
+
+                        <div x-show="heroBgPreview && !removeHeroBg" style="margin-top:12px;">
+                            <p class="ctrl-lbl" style="display:flex;align-items:center;gap:6px;">
+                                Dark Overlay
+                                <span x-text="heroBgOverlay + '%'" style="color:#4F46E5;font-size:11px;font-weight:800;"></span>
+                            </p>
+                            <div style="height:6px;border-radius:3px;background:linear-gradient(to right,#F3F4F6,rgba(0,0,0,0.78));border:1px solid #E5E7EB;margin-bottom:6px;"></div>
+                            <input type="range" name="about_page_bg_overlay" x-model.number="heroBgOverlay"
+                                   min="0" max="80" step="5"
+                                   style="width:100%;accent-color:#4F46E5;height:4px;display:block;margin-bottom:4px;cursor:pointer;">
+                            <p class="sf-hint">Darkens the photo/video so the heading text stays readable. A minimum of 40% is always applied.</p>
+                        </div>
+
+                        <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
+
+                        @php
+                            $sectionToggle = fn($key) => ($appSettings[$key] ?? '1') === '1';
+                            $hiddenFlag = fn($key) => ($appSettings[$key] ?? '0') === '1';
+                        @endphp
+
                         <div class="sf-toggle-row">
                             <div>
-                                <p class="sf-toggle-label">Show "Get in Touch" Button</p>
-                                <p class="sf-toggle-hint">A call-to-action button shown under the tagline</p>
+                                <p class="sf-toggle-label">Show "Who We Are" Section</p>
+                                <p class="sf-toggle-hint">The text block right below the hero</p>
                             </div>
                             <label class="toggle">
-                                <input type="checkbox" name="about_page_cta_enabled" value="1"
-                                       {{ ($appSettings['about_page_cta_enabled'] ?? '1') === '1' ? 'checked' : '' }}>
+                                <input type="checkbox" name="about_page_show_who" value="1" {{ $sectionToggle('about_page_show_who') ? 'checked' : '' }}>
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
-                        <div class="sf-row" style="margin-top:2px;">
-                            <div class="sf-group">
-                                <label class="sf-label">Button Text</label>
-                                <input type="text" name="about_page_cta_text" class="sf-input" maxlength="40"
-                                       value="{{ $appSettings['about_page_cta_text'] ?? 'Get in Touch' }}">
+                        <div class="sf-group" style="margin-top:10px;" x-data="{ whoText: @js($appSettings['about_page_who_text'] ?? '') }">
+                            <label class="sf-label">"Who We Are" Text</label>
+                            <textarea name="about_page_who_text" class="sf-input" rows="3" maxlength="600" x-model="whoText"
+                                      placeholder="{{ $appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name') }} is a team of builders, designers, and strategists dedicated to turning ambitious ideas into products people love."></textarea>
+                            <p class="sf-hint">Leave blank for a sensible default.</p>
+
+                            <p class="sf-hint" style="margin-top:12px;font-weight:600;color:#374151;">Live preview</p>
+                            <div style="max-width:420px;margin-top:6px;">
+                                <p style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:{{ $appSettings['primary_color'] ?? '#4F46E5' }};margin:0 0 6px;">Our Story</p>
+                                <h4 style="font-size:16px;font-weight:800;color:#111827;margin:0 0 8px;">Who We Are</h4>
+                                <p style="font-size:12.5px;color:#6B7280;line-height:1.6;margin:0;"
+                                   x-text="whoText || '{{ addslashes($appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name')) }} is a team of builders, designers, and strategists dedicated to turning ambitious ideas into products people love.'"></p>
                             </div>
-                            <div class="sf-group">
-                                <label class="sf-label">Button Link</label>
-                                <input type="text" name="about_page_cta_link" class="sf-input" maxlength="255"
-                                       placeholder="mailto:hello@company.com or https://..."
-                                       value="{{ $appSettings['about_page_cta_link'] ?? '' }}">
-                                <p class="sf-hint">Blank hides the button even if enabled above.</p>
+                        </div>
+                        <div class="sf-group" style="margin-top:10px;" x-data="{ quote: @js($appSettings['about_page_quote_text'] ?? '') }">
+                            <label class="sf-label">Testimonial / Team Quote</label>
+                            <textarea name="about_page_quote_text" class="sf-input" rows="2" maxlength="200" x-model="quote"
+                                      placeholder="Great work isn't an accident — it's a team that genuinely cares, showing up every day."></textarea>
+                            <p class="sf-hint">Shown in the glass card next to "Who We Are", attributed to "The {{ $appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name') }} Team". Leave blank for a sensible default.</p>
+
+                            <p class="sf-hint" style="margin-top:12px;font-weight:600;color:#374151;">Live preview</p>
+                            <div style="background:#fff;border-radius:20px;padding:20px;box-shadow:0 10px 30px -14px rgba(22,19,43,0.15);border:1px solid rgba(0,0,0,0.04);max-width:420px;margin-top:6px;">
+                                <div style="display:flex;margin-bottom:14px;">
+                                    @forelse($aboutPageTeamMembers->take(5) as $person)
+                                        @php $avatarUrl = $person->avatar ? Storage::url($person->avatar) : null; @endphp
+                                        @if($avatarUrl)
+                                        <img src="{{ $avatarUrl }}" alt="{{ $person->name }}"
+                                             style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.15);{{ $loop->first ? '' : 'margin-left:-10px;' }}">
+                                        @else
+                                        <div style="width:34px;height:34px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;background:linear-gradient(135deg,{{ $appSettings['primary_color'] ?? '#4F46E5' }},{{ \App\Models\Setting::get('accent_color','#9163aa') }});box-shadow:0 1px 3px rgba(0,0,0,0.15);{{ $loop->first ? '' : 'margin-left:-10px;' }}">
+                                            {{ strtoupper(mb_substr($person->name, 0, 1)) }}
+                                        </div>
+                                        @endif
+                                    @empty
+                                    <p class="sf-hint" style="margin:0;">No team members yet</p>
+                                    @endforelse
+                                </div>
+                                <p style="font-weight:700;font-size:14px;color:#16132B;margin:0;line-height:1.4;"
+                                   x-text="'“' + (quote || 'Great work isn\'t an accident — it\'s a team that genuinely cares, showing up every day.') + '”'"></p>
+                                <p style="font-size:10.5px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.05em;margin-top:8px;">
+                                    — The {{ $appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name') }} Team
+                                </p>
                             </div>
                         </div>
 
                         <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
 
-                        <div class="sf-group">
-                            <label class="sf-label">Services Section Heading</label>
-                            <input type="text" name="about_page_services_heading" class="sf-input" maxlength="60"
-                                   value="{{ $appSettings['about_page_services_heading'] ?? 'What We Do' }}">
-                        </div>
-                        @for ($i = 1; $i <= 3; $i++)
-                        <div class="sf-row" style="margin-top:2px;">
-                            <div class="sf-group">
-                                <label class="sf-label">Service {{ $i }} Title</label>
-                                <input type="text" name="about_page_service{{ $i }}_title" class="sf-input" maxlength="60"
-                                       value="{{ $appSettings["about_page_service{$i}_title"] ?? '' }}">
+                        <div class="sf-toggle-row">
+                            <div>
+                                <p class="sf-toggle-label">Show Statistics Section</p>
+                                <p class="sf-toggle-hint">Projects Completed, Team Members, Years of Experience, Client Satisfaction</p>
                             </div>
-                            <div class="sf-group">
-                                <label class="sf-label">Service {{ $i }} Description</label>
-                                <input type="text" name="about_page_service{{ $i }}_desc" class="sf-input" maxlength="160"
-                                       value="{{ $appSettings["about_page_service{$i}_desc"] ?? '' }}">
+                            <label class="toggle">
+                                <input type="checkbox" name="about_page_show_stats" value="1" {{ $sectionToggle('about_page_show_stats') ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        @php $realStatLabels = [1 => 'Projects Completed', 2 => 'Team Members']; @endphp
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:10px;">
+                            @foreach ($realStatLabels as $i => $label)
+                            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#374151;font-weight:500;cursor:pointer;">
+                                <input type="checkbox" name="about_page_stat{{ $i }}_hidden" value="1" {{ $hiddenFlag("about_page_stat{$i}_hidden") ? 'checked' : '' }}>
+                                Hide "{{ $label }}"
+                            </label>
+                            @endforeach
+                        </div>
+                        <p class="sf-hint" style="margin-top:6px;">These 2 numbers are calculated automatically from real data — you can only hide the card, not edit its value.</p>
+
+                        <p class="sf-hint" style="margin-top:14px;">
+                            "Years of Experience" and "Client Satisfaction" have no automatic source — enter a real number
+                            you're prepared to stand behind, or leave blank to hide that card entirely (no placeholder is shown).
+                        </p>
+                        <div x-data="{ stat3: @js($appSettings['about_page_stat3_value'] ?? ''), stat4: @js($appSettings['about_page_stat4_value'] ?? '') }">
+                            <div class="sf-row" style="margin-top:6px;">
+                                <div class="sf-group">
+                                    <label class="sf-label" style="display:flex;align-items:center;justify-content:space-between;">
+                                        <span>Years of Experience</span>
+                                        <span style="display:inline-flex;align-items:center;gap:4px;font-weight:400;font-size:10.5px;color:#9CA3AF;">
+                                            <input type="checkbox" name="about_page_stat3_hidden" value="1" {{ $hiddenFlag('about_page_stat3_hidden') ? 'checked' : '' }}> Hide
+                                        </span>
+                                    </label>
+                                    <input type="number" name="about_page_stat3_value" class="sf-input" min="0" max="999" x-model="stat3"
+                                           placeholder="e.g. 5 (shown as “5+”)">
+                                </div>
+                                <div class="sf-group">
+                                    <label class="sf-label" style="display:flex;align-items:center;justify-content:space-between;">
+                                        <span>Client Satisfaction (%)</span>
+                                        <span style="display:inline-flex;align-items:center;gap:4px;font-weight:400;font-size:10.5px;color:#9CA3AF;">
+                                            <input type="checkbox" name="about_page_stat4_hidden" value="1" {{ $hiddenFlag('about_page_stat4_hidden') ? 'checked' : '' }}> Hide
+                                        </span>
+                                    </label>
+                                    <input type="number" name="about_page_stat4_value" class="sf-input" min="0" max="100" x-model="stat4"
+                                           placeholder="e.g. 98 (shown as “98%”)">
+                                </div>
+                            </div>
+
+                            <p class="sf-hint" style="margin-top:14px;font-weight:600;color:#374151;">Live preview</p>
+                            @php $statCardStyle = 'background:#fff;border-radius:16px;padding:16px 10px;text-align:center;box-shadow:0 6px 18px -10px rgba(22,19,43,0.18);border:1px solid rgba(0,0,0,0.04);'; @endphp
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;max-width:560px;margin-top:6px;">
+                                <div style="{{ $statCardStyle }}">
+                                    <p style="font-size:24px;font-weight:800;color:#16132B;margin:0;">{{ $aboutPageRealStats['completedProjectCount'] }}+</p>
+                                    <p style="font-size:10.5px;color:#9CA3AF;font-weight:600;margin-top:3px;">Projects Completed</p>
+                                </div>
+                                <div style="{{ $statCardStyle }}">
+                                    <p style="font-size:24px;font-weight:800;color:#16132B;margin:0;">{{ $aboutPageRealStats['activeMemberCount'] }}+</p>
+                                    <p style="font-size:10.5px;color:#9CA3AF;font-weight:600;margin-top:3px;">Team Members</p>
+                                </div>
+                                <div style="{{ $statCardStyle }}" x-show="stat3">
+                                    <p style="font-size:24px;font-weight:800;color:#16132B;margin:0;"><span x-text="stat3"></span>+</p>
+                                    <p style="font-size:10.5px;color:#9CA3AF;font-weight:600;margin-top:3px;">Years of Experience</p>
+                                </div>
+                                <div style="{{ $statCardStyle }}" x-show="stat4">
+                                    <p style="font-size:24px;font-weight:800;color:#16132B;margin:0;"><span x-text="stat4"></span>%</p>
+                                    <p style="font-size:10.5px;color:#9CA3AF;font-weight:600;margin-top:3px;">Client Satisfaction</p>
+                                </div>
+                                <template x-if="!stat3">
+                                    <div style="{{ $statCardStyle }}opacity:0.45;">
+                                        <p style="font-size:11px;color:#9CA3AF;margin:0;">Hidden — no value set</p>
+                                    </div>
+                                </template>
+                                <template x-if="!stat4">
+                                    <div style="{{ $statCardStyle }}opacity:0.45;">
+                                        <p style="font-size:11px;color:#9CA3AF;margin:0;">Hidden — no value set</p>
+                                    </div>
+                                </template>
                             </div>
                         </div>
-                        @endfor
-                        <p class="sf-hint">Leave a service's title blank to hide that card. Shown between the hero and the team grid.</p>
+
+                        <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
+
+                        <div class="sf-toggle-row">
+                            <div>
+                                <p class="sf-toggle-label">Show Mission &amp; Vision Section</p>
+                                <p class="sf-toggle-hint">Two gradient cards below the statistics</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" name="about_page_show_mission_vision" value="1" {{ $sectionToggle('about_page_show_mission_vision') ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div x-data="{
+                                mission: @js($appSettings['about_page_mission'] ?? ''),
+                                vision: @js($appSettings['about_page_vision'] ?? ''),
+                                missionHidden: {{ $hiddenFlag('about_page_mission_hidden') ? 'true' : 'false' }},
+                                visionHidden: {{ $hiddenFlag('about_page_vision_hidden') ? 'true' : 'false' }},
+                            }">
+                            <p class="sf-hint" style="margin-top:10px;">Click a card's text to edit it. Use the eye icon to hide a card — leave blank for a sensible default.</p>
+                            @php
+                                $brand  = $appSettings['primary_color'] ?? '#4F46E5';
+                                $brand2 = \App\Models\Setting::get('accent_color', '#9163aa');
+                            @endphp
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;max-width:640px;margin-top:10px;">
+                                <div :style="missionHidden ? 'opacity:0.45;' : ''" style="position:relative;border-radius:22px;padding:22px;color:#fff;box-shadow:0 16px 40px -18px rgba(79,70,229,0.5);background:linear-gradient(150deg,{{ $brand }},color-mix(in srgb,{{ $brand }} 60%,black));">
+                                    <input type="checkbox" name="about_page_mission_hidden" value="1" x-model="missionHidden" style="display:none;">
+                                    <button type="button" @click="missionHidden = !missionHidden" :title="missionHidden ? 'Show this card' : 'Hide this card'"
+                                            style="position:absolute;top:14px;right:14px;width:24px;height:24px;border-radius:50%;border:none;background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                                        <i class="fa-solid" :class="missionHidden ? 'fa-eye-slash' : 'fa-eye'" style="font-size:10.5px;"></i>
+                                    </button>
+                                    <div style="width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+                                        <i class="fa-solid fa-bullseye" style="font-size:15px;"></i>
+                                    </div>
+                                    <h3 style="font-size:15px;font-weight:800;margin:0 0 8px;">Our Mission</h3>
+                                    <p class="sf-editable sf-editable-on-brand" style="font-size:12.5px;line-height:1.5;color:rgba(255,255,255,0.85);margin:0;"
+                                       contenteditable="true" x-model="mission" data-placeholder="To empower teams everywhere with tools that make ambitious work feel effortless."></p>
+                                </div>
+                                <div :style="visionHidden ? 'opacity:0.45;' : ''" style="position:relative;border-radius:22px;padding:22px;color:#fff;box-shadow:0 16px 40px -18px rgba(145,99,170,0.5);background:linear-gradient(150deg,{{ $brand2 }},color-mix(in srgb,{{ $brand2 }} 55%,black));">
+                                    <input type="checkbox" name="about_page_vision_hidden" value="1" x-model="visionHidden" style="display:none;">
+                                    <button type="button" @click="visionHidden = !visionHidden" :title="visionHidden ? 'Show this card' : 'Hide this card'"
+                                            style="position:absolute;top:14px;right:14px;width:24px;height:24px;border-radius:50%;border:none;background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                                        <i class="fa-solid" :class="visionHidden ? 'fa-eye-slash' : 'fa-eye'" style="font-size:10.5px;"></i>
+                                    </button>
+                                    <div style="width:38px;height:38px;border-radius:12px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+                                        <i class="fa-solid fa-binoculars" style="font-size:15px;"></i>
+                                    </div>
+                                    <h3 style="font-size:15px;font-weight:800;margin:0 0 8px;">Our Vision</h3>
+                                    <p class="sf-editable sf-editable-on-brand" style="font-size:12.5px;line-height:1.5;color:rgba(255,255,255,0.85);margin:0;"
+                                       contenteditable="true" x-model="vision" data-placeholder="A future where every team has access to tools that adapt to how they actually work."></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
+
+                        <div class="sf-toggle-row">
+                            <div>
+                                <p class="sf-toggle-label">Show Core Values Section</p>
+                                <p class="sf-toggle-hint">6-card grid</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" name="about_page_show_values" value="1" {{ $sectionToggle('about_page_show_values') ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        @php $valueDefaultLabels = [
+                            1 => ['Innovation', "We embrace new ideas and aren't afraid to challenge the status quo.", 'fa-lightbulb'],
+                            2 => ['Integrity', 'We do what\'s right, even when no one is watching.', 'fa-shield-halved'],
+                            3 => ['Collaboration', 'Great work happens when diverse minds build together.', 'fa-people-group'],
+                            4 => ['Excellence', 'We sweat the details that others skip.', 'fa-medal'],
+                            5 => ['Customer Success', 'Our success is measured by the success of the people we serve.', 'fa-heart'],
+                            6 => ['Growth', 'We invest in learning, iterating, and getting better every single day.', 'fa-seedling'],
+                        ]; @endphp
+                        @php
+                            $valueDefaultsForJs = collect($valueDefaultLabels)->map(fn ($d) => ['title' => $d[0], 'desc' => $d[1], 'icon' => $d[2]])->values();
+                        @endphp
+                        <div x-data="{
+                                values: [
+                                    @for ($i = 1; $i <= 6; $i++)
+                                    { title: @js($appSettings["about_page_value{$i}_title"] ?? ''), desc: @js($appSettings["about_page_value{$i}_desc"] ?? ''), hidden: {{ $hiddenFlag("about_page_value{$i}_hidden") ? 'true' : 'false' }} },
+                                    @endfor
+                                ],
+                                defaults: @js($valueDefaultsForJs),
+                            }">
+                            <p class="sf-hint">Click a title or description on a card to edit it. Use the eye icon to hide a card — leave a pair blank to fall back to the suggested default.</p>
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;max-width:760px;margin-top:10px;">
+                                <template x-for="(v, i) in values" :key="i">
+                                    <div :style="v.hidden ? 'opacity:0.45;' : ''" style="position:relative;background:#fff;border-radius:20px;padding:18px;box-shadow:0 8px 24px -14px rgba(22,19,43,0.18);border:1px solid rgba(0,0,0,0.04);">
+                                        <input type="checkbox" :name="'about_page_value' + (i + 1) + '_hidden'" value="1" x-model="v.hidden" style="display:none;">
+                                        <button type="button" @click="v.hidden = !v.hidden" :title="v.hidden ? 'Show this card' : 'Hide this card'"
+                                                style="position:absolute;top:10px;right:10px;width:24px;height:24px;border-radius:50%;border:none;background:#F3F4F6;color:#6B7280;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                                            <i class="fa-solid" :class="v.hidden ? 'fa-eye-slash' : 'fa-eye'" style="font-size:10.5px;"></i>
+                                        </button>
+                                        <div style="width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;color:{{ $appSettings['primary_color'] ?? '#4F46E5' }};background:color-mix(in srgb,{{ $appSettings['primary_color'] ?? '#4F46E5' }} 12%,white);">
+                                            <i class="fa-solid" :class="defaults[i].icon" style="font-size:14px;"></i>
+                                        </div>
+                                        <h4 class="sf-editable" style="font-size:13.5px;font-weight:800;margin:0 24px 4px 0;"
+                                            contenteditable="true" x-model="v.title" :data-placeholder="defaults[i].title"></h4>
+                                        <p class="sf-editable" style="font-size:11.5px;color:#9CA3AF;line-height:1.5;margin:0;"
+                                           contenteditable="true" x-model="v.desc" :data-placeholder="defaults[i].desc"></p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
+
+                        <div class="sf-toggle-row">
+                            <div>
+                                <p class="sf-toggle-label">Show "Meet Our Team" Section</p>
+                                <p class="sf-toggle-hint">Full team grid — always reflects every active user automatically</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" name="about_page_show_team" value="1" {{ $sectionToggle('about_page_show_team') ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
+
+                        <div class="sf-toggle-row">
+                            <div>
+                                <p class="sf-toggle-label">Show "Our Journey" Section</p>
+                                <p class="sf-toggle-hint">Undated narrative timeline — 4 fixed milestones</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" name="about_page_show_journey" value="1" {{ $sectionToggle('about_page_show_journey') ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        @php $journeyDefaults = [
+                            1 => ['title' => 'The Beginning',       'desc' => "It started with a small team and a big idea: work shouldn't feel this hard.", 'icon' => 'fa-flag'],
+                            2 => ['title' => 'Building the Team',   'desc' => 'We brought together builders, designers, and strategists who share the same obsession with quality.', 'icon' => 'fa-people-group'],
+                            3 => ['title' => 'Expanding Our Craft', 'desc' => 'New services, new challenges, and a growing list of projects we\'re proud of.', 'icon' => 'fa-arrow-trend-up'],
+                            4 => ['title' => 'Today',               'desc' => 'We keep shipping, learning, and raising the bar for ourselves — every single day.', 'icon' => 'fa-star'],
+                        ]; @endphp
+                        <div x-data="{
+                                journeyHidden: [
+                                    @for ($i = 1; $i <= 4; $i++)
+                                    {{ $hiddenFlag("about_page_journey{$i}_hidden") ? 'true' : 'false' }},
+                                    @endfor
+                                ],
+                                journey: @js(collect($journeyDefaults)->values()),
+                            }">
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:10px;">
+                                @foreach ($journeyDefaults as $i => $milestone)
+                                <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#374151;font-weight:500;cursor:pointer;">
+                                    <input type="checkbox" name="about_page_journey{{ $i }}_hidden" value="1" x-model="journeyHidden[{{ $i - 1 }}]">
+                                    Hide "{{ $milestone['title'] }}"
+                                </label>
+                                @endforeach
+                            </div>
+
+                            <p class="sf-hint" style="margin-top:14px;font-weight:600;color:#374151;">Live preview</p>
+                            <div style="display:flex;flex-direction:column;gap:10px;max-width:420px;margin-top:6px;">
+                                <template x-for="(m, i) in journey" :key="i">
+                                    <div x-show="!journeyHidden[i]" style="display:flex;align-items:flex-start;gap:12px;">
+                                        <div style="width:32px;height:32px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(135deg,{{ $appSettings['primary_color'] ?? '#4F46E5' }},{{ \App\Models\Setting::get('accent_color','#9163aa') }});">
+                                            <i class="fa-solid" :class="m.icon" style="font-size:12px;"></i>
+                                        </div>
+                                        <div>
+                                            <p style="font-size:12.5px;font-weight:800;color:#111827;margin:0;" x-text="m.title"></p>
+                                            <p style="font-size:11px;color:#9CA3AF;line-height:1.5;margin:2px 0 0;" x-text="m.desc"></p>
+                                        </div>
+                                    </div>
+                                </template>
+                                <template x-if="journeyHidden.every(h => h)">
+                                    <p class="sf-hint" style="margin:0;">All 4 milestones hidden — nothing will show on the About page.</p>
+                                </template>
+                            </div>
+                        </div>
+
+                        <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
+
+                        <div x-data="{
+                                ctaEnabled: {{ ($appSettings['about_page_cta_enabled'] ?? '1') === '1' ? 'true' : 'false' }},
+                                ctaText: @js($appSettings['about_page_cta_text'] ?? 'Get in Touch'),
+                                ctaLink: @js($appSettings['about_page_cta_link'] ?? ''),
+                            }">
+                            <div class="sf-toggle-row">
+                                <div>
+                                    <p class="sf-toggle-label">Show "Get in Touch" Button</p>
+                                    <p class="sf-toggle-hint">A call-to-action button shown under the tagline</p>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" name="about_page_cta_enabled" value="1" x-model="ctaEnabled">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="sf-row" style="margin-top:2px;">
+                                <div class="sf-group">
+                                    <label class="sf-label">Button Text</label>
+                                    <input type="text" name="about_page_cta_text" class="sf-input" maxlength="40" x-model="ctaText">
+                                </div>
+                                <div class="sf-group">
+                                    <label class="sf-label">Button Link</label>
+                                    <input type="text" name="about_page_cta_link" class="sf-input" maxlength="255"
+                                           placeholder="mailto:hello@company.com or https://..." x-model="ctaLink">
+                                    <p class="sf-hint">Blank hides the button even if enabled above.</p>
+                                </div>
+                            </div>
+
+                            <p class="sf-hint" style="margin-top:14px;font-weight:600;color:#374151;">Live preview</p>
+                            <div style="margin-top:6px;">
+                                <span x-show="ctaEnabled && ctaLink" style="display:inline-flex;align-items:center;gap:8px;padding:12px 26px;border-radius:999px;background:#16132B;color:#fff;font-weight:700;font-size:13px;box-shadow:0 8px 22px rgba(22,19,43,0.28);">
+                                    <span x-text="ctaText || 'Get in Touch'"></span> <i class="fa-solid fa-arrow-right"></i>
+                                </span>
+                                <p class="sf-hint" x-show="!(ctaEnabled && ctaLink)" style="margin:0;">Hidden — <span x-text="!ctaEnabled ? 'toggle is off.' : 'no link set.'"></span></p>
+                            </div>
+                        </div>
+
+                        <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
+
+                        <div class="sf-toggle-row">
+                            <div>
+                                <p class="sf-toggle-label">Show "Products &amp; Services" Section</p>
+                                <p class="sf-toggle-hint">6-card grid</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" name="about_page_show_services" value="1" {{ $sectionToggle('about_page_show_services') ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        @php $serviceDefaultLabels = [
+                            1 => ['Brand Strategy', 'Positioning and messaging that make your brand impossible to ignore.', 'fa-diagram-project'],
+                            2 => ['Creative Design', 'Visual identity and design systems built to scale.', 'fa-palette'],
+                            3 => ['Digital Marketing', 'Campaigns that reach the right people, at the right moment.', 'fa-bullhorn'],
+                            4 => ['Web & App Development', 'Fast, reliable products built with modern engineering.', 'fa-laptop-code'],
+                            5 => ['Content Production', 'Photo, video, and copy that tells your story well.', 'fa-video'],
+                            6 => ['Project Management', 'Clear timelines and transparent communication — work that ships on time.', 'fa-list-check'],
+                        ];
+                        $serviceDefaultsForJs = collect($serviceDefaultLabels)->map(fn ($d) => ['title' => $d[0], 'desc' => $d[1], 'icon' => $d[2]])->values();
+                        @endphp
+                        <div x-data="{
+                                heading: @js($appSettings['about_page_services_heading'] ?? ''),
+                                services: [
+                                    @for ($i = 1; $i <= 6; $i++)
+                                    { title: @js($appSettings["about_page_service{$i}_title"] ?? ''), desc: @js($appSettings["about_page_service{$i}_desc"] ?? ''), hidden: {{ $hiddenFlag("about_page_service{$i}_hidden") ? 'true' : 'false' }} },
+                                    @endfor
+                                ],
+                                defaults: @js($serviceDefaultsForJs),
+                            }">
+                            <div class="sf-group" style="margin-top:10px;">
+                                <label class="sf-label">Services Section Heading</label>
+                                <input type="text" name="about_page_services_heading" class="sf-input" maxlength="60" x-model="heading" placeholder="What We Do">
+                            </div>
+                            <p class="sf-hint">Click a title or description on a card to edit it. Use the eye icon to hide a card — leave one blank to fall back to the suggested default.</p>
+                            <p style="text-align:center;font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:{{ $appSettings['primary_color'] ?? '#4F46E5' }};margin:10px 0 10px;" x-text="heading || 'What We Do'"></p>
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;max-width:760px;">
+                                <template x-for="(s, i) in services" :key="i">
+                                    <div :style="s.hidden ? 'opacity:0.45;' : ''" style="position:relative;background:#fff;border-radius:20px;padding:20px 16px;text-align:center;box-shadow:0 10px 26px -14px rgba(22,19,43,0.2);border:1px solid rgba(0,0,0,0.04);">
+                                        <input type="checkbox" :name="'about_page_service' + (i + 1) + '_hidden'" value="1" x-model="s.hidden" style="display:none;">
+                                        <button type="button" @click="s.hidden = !s.hidden" :title="s.hidden ? 'Show this card' : 'Hide this card'"
+                                                style="position:absolute;top:10px;right:10px;width:24px;height:24px;border-radius:50%;border:none;background:#F3F4F6;color:#6B7280;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                                            <i class="fa-solid" :class="s.hidden ? 'fa-eye-slash' : 'fa-eye'" style="font-size:10.5px;"></i>
+                                        </button>
+                                        <div style="width:44px;height:44px;border-radius:50%;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(135deg,{{ $appSettings['primary_color'] ?? '#4F46E5' }},{{ \App\Models\Setting::get('accent_color','#9163aa') }});box-shadow:0 8px 16px -6px rgba(79,70,229,0.5);">
+                                            <i class="fa-solid" :class="defaults[i].icon" style="font-size:15px;"></i>
+                                        </div>
+                                        <h4 class="sf-editable" style="font-size:13.5px;font-weight:800;margin:0 0 4px;"
+                                            contenteditable="true" x-model="s.title" :data-placeholder="defaults[i].title"></h4>
+                                        <p class="sf-editable" style="font-size:11.5px;color:#9CA3AF;line-height:1.5;margin:0;"
+                                           contenteditable="true" x-model="s.desc" :data-placeholder="defaults[i].desc"></p>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
+
+                        <div class="sf-toggle-row">
+                            <div>
+                                <p class="sf-toggle-label">Show "Life at {{ $appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name') }}" Gallery</p>
+                                <p class="sf-toggle-hint">Uses the same Team Artwork gallery as the login page — edit photos/videos in the Branding tab</p>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" name="about_page_show_gallery" value="1" {{ $sectionToggle('about_page_show_gallery') ? 'checked' : '' }}>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
                     </div>
                     <div class="scard-footer" style="display:flex;align-items:center;gap:12px;">
                         <button type="submit" class="btn-save">
@@ -1104,78 +1597,6 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                 </form>
             </div>
 
-            <div class="scard" style="margin-top:16px;">
-                <div class="scard-header">
-                    <div class="scard-icon" style="background:#F0FDF4;color:#16A34A;"><i class="fas fa-camera"></i></div>
-                    <div>
-                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Team Photos</p>
-                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">
-                            Upload a real photo for each person — shown on the About page instead of their initials, and used everywhere in the app.
-                            The first 4 people <strong>with a photo</strong> also appear in the login page's 4 corners — edit their role label there too.
-                        </p>
-                    </div>
-                </div>
-                <div class="scard-body" style="padding-top:4px;">
-                    @php $frameDefaultLabels = [
-                        1 => ['Project Lead', 'Leads with vision'],
-                        2 => ['Creative Designer', 'Designs the future'],
-                        3 => ['Developer', 'Builds with code'],
-                        4 => ['Strategist', 'Plans for success'],
-                    ]; @endphp
-                    @forelse($aboutPageTeamMembers as $member)
-                    @php $slot = $loop->index + 1; @endphp
-                    <div style="display:flex;align-items:center;gap:16px;padding:14px 0;{{ !$loop->last ? 'border-bottom:1px solid #F3F4F6;' : '' }}">
-                        <form method="POST" action="{{ route('admin.settings.about-page.team-photo', $member) }}" enctype="multipart/form-data"
-                              style="display:flex;align-items:center;gap:16px;flex-shrink:0;"
-                              x-data="{ preview: @js($member->avatarUrl()) }">
-                            @csrf
-                            <div style="position:relative;flex-shrink:0;">
-                                <div style="width:60px;height:60px;border-radius:50%;overflow:hidden;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
-                                    <template x-if="preview">
-                                        <img :src="preview" style="width:100%;height:100%;object-fit:cover;">
-                                    </template>
-                                    <template x-if="!preview">
-                                        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#A5B4FC,#6366F1);color:#fff;font-weight:800;font-size:20px;">
-                                            {{ strtoupper(mb_substr($member->name, 0, 1)) }}
-                                        </div>
-                                    </template>
-                                </div>
-                                <label style="position:absolute;bottom:-2px;right:-2px;width:24px;height:24px;background:#6366F1;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.2);">
-                                    <i class="fa fa-camera" style="color:#fff;font-size:10px;"></i>
-                                    <input type="file" name="avatar" accept="image/*" style="display:none;"
-                                           @change="if ($event.target.files[0]) { preview = URL.createObjectURL($event.target.files[0]); $el.closest('form').submit(); }">
-                                </label>
-                            </div>
-                            <div style="min-width:130px;">
-                                <p style="font-weight:700;font-size:13.5px;color:#111827;margin:0;">{{ $member->name }}</p>
-                                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">{{ $member->job_title ?: ucfirst($member->role) }}</p>
-                            </div>
-                        </form>
-                        @if($slot <= 4 && $member->avatar)
-                        <div style="display:flex;gap:8px;flex:1;min-width:0;padding-left:16px;border-left:1px solid #F3F4F6;">
-                            <div style="flex:1;min-width:0;">
-                                <label class="sf-label" style="font-weight:400;color:#9CA3AF;font-size:10.5px;">Login corner card — title</label>
-                                <input type="text" form="about-page-form" name="login_frame{{ $slot }}_title" class="sf-input" maxlength="40"
-                                       value="{{ $appSettings["login_frame{$slot}_title"] ?? $frameDefaultLabels[$slot][0] }}"
-                                       placeholder="{{ $frameDefaultLabels[$slot][0] }}">
-                            </div>
-                            <div style="flex:1;min-width:0;">
-                                <label class="sf-label" style="font-weight:400;color:#9CA3AF;font-size:10.5px;">Login corner card — description</label>
-                                <input type="text" form="about-page-form" name="login_frame{{ $slot }}_desc" class="sf-input" maxlength="60"
-                                       value="{{ $appSettings["login_frame{$slot}_desc"] ?? $frameDefaultLabels[$slot][1] }}"
-                                       placeholder="{{ $frameDefaultLabels[$slot][1] }}">
-                            </div>
-                        </div>
-                        @elseif($slot <= 4)
-                        <p class="sf-hint" style="flex:1;padding-left:16px;border-left:1px solid #F3F4F6;">Upload a photo to give this person a login-page corner card.</p>
-                        @endif
-                    </div>
-                    @empty
-                    <p class="sf-hint">No active team members to show yet.</p>
-                    @endforelse
-                    <p class="sf-hint" style="margin-top:10px;">Corner card fields save with the <strong>Save About Page</strong> button above.</p>
-                </div>
-            </div>
         </div>
 
         {{-- ════ CHAT AGENT ════ --}}
@@ -1454,6 +1875,93 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         <button type="submit" class="btn-save"><i class="fas fa-check" style="font-size:11px;margin-right:5px;"></i>Save Team Settings</button>
                     </div>
                 </form>
+            </div>
+
+            <div class="scard" style="margin-top:16px;">
+                <div class="scard-header">
+                    <div class="scard-icon" style="background:#F0FDF4;color:#16A34A;"><i class="fas fa-camera"></i></div>
+                    <div style="flex:1;">
+                        <p style="font-size:14px;font-weight:700;color:#111827;margin:0;">Team Photos</p>
+                        <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">
+                            Upload a real photo for each person — shown on the About page instead of their initials, and used everywhere in the app.
+                            The first 5 people <strong>with a photo</strong> also appear on the login page (4 corners + 1 middle slot) — edit their role label there too, or drag them into place on the login page itself.
+                        </p>
+                    </div>
+                    <a href="{{ route('login') }}" target="_blank" style="font-size:12.5px;font-weight:600;color:#6366F1;text-decoration:none;white-space:nowrap;">
+                        <i class="fa fa-arrow-up-right-from-square" style="margin-right:4px;"></i>Open login page
+                    </a>
+                </div>
+                @if(($appSettings['developer_mode'] ?? '0') !== '1')
+                <div style="padding:10px 24px;background:#FFFBEB;border-bottom:1px solid #FDE68A;font-size:12px;color:#92400E;">
+                    <i class="fa fa-circle-info" style="margin-right:5px;"></i>
+                    Turn on <strong>Developer Mode</strong> (Developer tab → System Controls), then open the login page above — while it's on, you can drag each card anywhere on the page to reposition it.
+                </div>
+                @endif
+                <div class="scard-body" style="padding-top:4px;">
+                    @php $frameDefaultLabels = [
+                        1 => ['Project Lead', 'Leads with vision'],
+                        2 => ['Creative Designer', 'Designs the future'],
+                        3 => ['Developer', 'Builds with code'],
+                        4 => ['Strategist', 'Plans for success'],
+                        5 => ['Team Member', 'Gets things done'],
+                    ]; @endphp
+                    @forelse($aboutPageTeamMembers as $member)
+                    @php $slot = $loop->index + 1; @endphp
+                    <div style="display:flex;align-items:center;gap:16px;padding:14px 0;{{ !$loop->last ? 'border-bottom:1px solid #F3F4F6;' : '' }}">
+                        <form method="POST" action="{{ route('admin.settings.about-page.team-photo', $member) }}" enctype="multipart/form-data"
+                              style="display:flex;align-items:center;gap:16px;flex-shrink:0;"
+                              x-data="{ preview: @js($member->avatarUrl()) }">
+                            @csrf
+                            <div style="position:relative;flex-shrink:0;">
+                                <div style="width:60px;height:60px;border-radius:50%;overflow:hidden;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                                    <template x-if="preview">
+                                        <img :src="preview" style="width:100%;height:100%;object-fit:cover;">
+                                    </template>
+                                    <template x-if="!preview">
+                                        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#A5B4FC,#6366F1);color:#fff;font-weight:800;font-size:20px;">
+                                            {{ strtoupper(mb_substr($member->name, 0, 1)) }}
+                                        </div>
+                                    </template>
+                                </div>
+                                <label style="position:absolute;bottom:-2px;right:-2px;width:24px;height:24px;background:#6366F1;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.2);">
+                                    <i class="fa fa-camera" style="color:#fff;font-size:10px;"></i>
+                                    <input type="file" name="avatar" accept="image/*" style="display:none;"
+                                           @change="if ($event.target.files[0]) { preview = URL.createObjectURL($event.target.files[0]); $el.closest('form').submit(); }">
+                                </label>
+                            </div>
+                            <div style="min-width:130px;">
+                                <p style="font-weight:700;font-size:13.5px;color:#111827;margin:0;">{{ $member->name }}</p>
+                                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">{{ $member->job_title ?: ucfirst($member->role) }}</p>
+                            </div>
+                        </form>
+                        @if($slot <= 5 && $member->avatar)
+                        <div style="display:flex;gap:8px;flex:1;min-width:0;padding-left:16px;border-left:1px solid #F3F4F6;">
+                            <div style="flex:1;min-width:0;">
+                                <label class="sf-label" style="font-weight:400;color:#9CA3AF;font-size:10.5px;">Login corner card — title</label>
+                                <input type="text" form="about-page-form" name="login_frame{{ $slot }}_title" class="sf-input" maxlength="40"
+                                       value="{{ $appSettings["login_frame{$slot}_title"] ?? $frameDefaultLabels[$slot][0] }}"
+                                       placeholder="{{ $frameDefaultLabels[$slot][0] }}">
+                            </div>
+                            <div style="flex:1;min-width:0;">
+                                <label class="sf-label" style="font-weight:400;color:#9CA3AF;font-size:10.5px;">Login corner card — description</label>
+                                <input type="text" form="about-page-form" name="login_frame{{ $slot }}_desc" class="sf-input" maxlength="60"
+                                       value="{{ $appSettings["login_frame{$slot}_desc"] ?? $frameDefaultLabels[$slot][1] }}"
+                                       placeholder="{{ $frameDefaultLabels[$slot][1] }}">
+                            </div>
+                        </div>
+                        @elseif($slot <= 5)
+                        <p class="sf-hint" style="flex:1;padding-left:16px;border-left:1px solid #F3F4F6;">Upload a photo to give this person a login-page slot.</p>
+                        @else
+                        <p class="sf-hint" style="flex:1;padding-left:16px;border-left:1px solid #F3F4F6;">The login page only has 5 slots (already filled by the 5 people above) — this person can't get one too.</p>
+                        @endif
+                    </div>
+                    @empty
+                    <p class="sf-hint">No active team members to show yet.</p>
+                    @endforelse
+                </div>
+                <div class="scard-footer">
+                    <button type="submit" form="about-page-form" class="btn-save"><i class="fas fa-check" style="font-size:11px;margin-right:5px;"></i>Save Team Photos</button>
+                </div>
             </div>
         </div>
 

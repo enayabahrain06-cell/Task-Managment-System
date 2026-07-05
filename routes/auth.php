@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 
 // Basic Laravel auth routes using built-in controllers
-Route::get('/login', '\App\Http\Controllers\Auth\AuthenticatedSessionController@create')->middleware('guest')->name('login');
+Route::get('/login', '\App\Http\Controllers\Auth\AuthenticatedSessionController@create')->middleware(\App\Http\Middleware\RedirectIfAuthenticatedForLogin::class)->name('login');
 Route::post('/login', '\App\Http\Controllers\Auth\AuthenticatedSessionController@store')->middleware('guest');
 Route::post('/logout', '\App\Http\Controllers\Auth\AuthenticatedSessionController@destroy')->name('logout');
 

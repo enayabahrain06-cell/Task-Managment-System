@@ -49,14 +49,32 @@
 .adash-modal-3col     { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:center; }
 .adash-assignee-row   { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:12px; }
 
+/* ── Quick action buttons (title row) — one primary action, the rest as lighter chips ── */
+.qa-btn {
+    display:flex; align-items:center; gap:7px; flex-shrink:0; white-space:nowrap;
+    font-size:13px; font-weight:600; padding:9px 16px; border-radius:9px; cursor:pointer;
+    border:1.5px solid transparent;
+}
+.qa-btn-primary   { background:#F59E0B; color:#fff; box-shadow:0 2px 10px rgba(245,158,11,0.4); }
+.qa-btn-secondary { background:#F3F4F6; color:#374151; border-color:#E5E7EB; }
+.qa-btn-secondary:hover { background:#EEF2FF; color:#4F46E5; border-color:#C7D2FE; }
+.qa-btn-icon {
+    width:38px; height:38px; flex-shrink:0; background:#F3F4F6; border:1.5px solid #E5E7EB; border-radius:9px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; color:#6B7280;
+}
+
 @media(max-width:768px){
     .adash-pipeline-grid  { grid-template-columns:repeat(2,1fr); }
     .adash-attention-grid { grid-template-columns:repeat(3,1fr); }
     .adash-rate-grid      { grid-template-columns:1fr; gap:8px; }
     .stat-card-value      { font-size:26px; }
-    /* Page title row: stack on mobile */
+    /* Page title row: stack on mobile, actions become one scrollable row instead of wrapping */
     .adash-title-row      { flex-direction:column; align-items:flex-start !important; }
-    .adash-title-btns     { width:100%; }
+    .adash-title-btns     {
+        width:100%; flex-wrap:nowrap !important; overflow-x:auto; padding-bottom:4px;
+        -ms-overflow-style:none; scrollbar-width:none;
+    }
+    .adash-title-btns::-webkit-scrollbar { display:none; }
 }
 @media(max-width:480px){
     .adash-pipeline-grid  { grid-template-columns:repeat(2,1fr); }
@@ -220,24 +238,21 @@
             </p>
         </div>
         <div class="adash-title-btns" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            {{-- NEW PROJECT BUTTON --}}
-            <button @click="projectOpen = true"
-                    style="display:flex;align-items:center;gap:7px;background:#fff;color:#4F46E5;font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;border:1.5px solid #C7D2FE;cursor:pointer;">
-                <i class="fas fa-folder-plus" style="font-size:11px;"></i> New Project
-            </button>
-            {{-- QUICK TASK BUTTON --}}
+            {{-- QUICK TASK BUTTON — primary action, leads the row --}}
             @if(auth()->user()->hasPermission('manage_tasks'))
-            <button @click="taskOpen = true"
-                    style="display:flex;align-items:center;gap:7px;background:#F59E0B;color:#fff;font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;border:none;cursor:pointer;box-shadow:0 2px 10px rgba(245,158,11,0.4);">
+            <button @click="taskOpen = true" class="qa-btn qa-btn-primary">
                 <i class="fas fa-bolt" style="font-size:11px;"></i> Quick Task
             </button>
+            @endif
+            {{-- NEW PROJECT BUTTON --}}
+            <button @click="projectOpen = true" class="qa-btn qa-btn-secondary">
+                <i class="fas fa-folder-plus" style="font-size:11px;"></i> New Project
+            </button>
             {{-- QUICK SM POST BUTTON --}}
-            <button @click="smPostOpen = true"
-                    style="display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;border:none;cursor:pointer;box-shadow:0 2px 10px rgba(99,102,241,0.4);">
+            <button @click="smPostOpen = true" class="qa-btn qa-btn-secondary">
                 <i class="fas fa-share-alt" style="font-size:11px;"></i> Quick SM Post
             </button>
-            @endif
-            <button style="width:36px;height:36px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#9CA3AF;">
+            <button class="qa-btn-icon">
                 <i class="fas fa-ellipsis-h"></i>
             </button>
         </div>

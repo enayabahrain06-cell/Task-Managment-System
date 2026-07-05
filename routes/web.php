@@ -221,7 +221,10 @@ Route::middleware([AdminMiddleware::class, MfaMiddleware::class])->prefix('admin
     Route::post('settings/general',               [AdminSettingsController::class, 'updateGeneral'])->name('settings.general');
     Route::post('settings/branding',              [AdminSettingsController::class, 'updateBranding'])->name('settings.branding');
     Route::post('settings/about-page',            [AdminSettingsController::class, 'updateAboutPage'])->name('settings.about-page');
+    Route::post('settings/about-page/field',      [AdminSettingsController::class, 'updateAboutPageField'])->name('settings.about-page.field');
+    Route::post('settings/about-page/hero-bg',    [AdminSettingsController::class, 'updateAboutPageHeroBg'])->name('settings.about-page.hero-bg');
     Route::post('settings/about-page/team-photo/{user}', [AdminSettingsController::class, 'updateAboutPageTeamPhoto'])->name('settings.about-page.team-photo');
+    Route::post('settings/login-preview/move',    [AdminSettingsController::class, 'moveLoginFrame'])->name('settings.login-preview.move');
     Route::post('settings/team',                  [AdminSettingsController::class, 'updateTeam'])->name('settings.team');
     Route::post('settings/notifications',         [AdminSettingsController::class, 'updateNotifications'])->name('settings.notifications');
     Route::post('settings/security',              [AdminSettingsController::class, 'updateSecurity'])->name('settings.security');
