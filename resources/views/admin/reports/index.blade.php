@@ -437,6 +437,10 @@
                     <input type="checkbox" id="rpt-sec-task-as-pct" style="accent-color:#F59E0B;width:14px;height:14px;cursor:pointer;">
                     <i class="fas fa-hashtag" style="color:#F59E0B;font-size:11px;"></i> Show tasks as %
                 </label>
+                <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;font-weight:600;color:#374151;background:#fff;border:1.5px solid #D1FAE5;border-radius:8px;padding:6px 12px;">
+                    <input type="checkbox" id="rpt-sec-task-list" style="accent-color:#10B981;width:14px;height:14px;cursor:pointer;">
+                    <i class="fas fa-list" style="color:#0EA5E9;font-size:11px;"></i> Task List (this period)
+                </label>
             </div>
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
                 <div style="flex:1;height:1px;background:#E5E7EB;"></div>
@@ -3624,6 +3628,7 @@ function doRptSummPrint() {
         customers:  chk('rpt-sec-customers',  true),
         taskDist:   chk('rpt-sec-task-dist',  false),
         taskAsPct:  chk('rpt-sec-task-as-pct',false),
+        taskList:   chk('rpt-sec-task-list',  false),
         narrative:  chk('rpt-sec-narrative',  true),
         notes:      chk('rpt-sec-notes',      true),
         signature:  chk('rpt-sec-signature',  true),
@@ -3794,6 +3799,62 @@ function printRptSummSelection(sections) {
             + '<td></td>'
             + (sections.taskAsPct ? '' : '<td style="padding:10px;font-size:13px;font-weight:800;color:#4F46E5;text-align:right;">100%</td>')
             + '</tr>';
+
+        bodyHtml += '</tbody></table></div>';
+    }
+
+    // Task List (this period)
+    if (sections && sections.taskList && d && d.taskList && d.taskList.length) {
+        function escHtml(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+                return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+            });
+        }
+        function taskStatusColor(s) {
+            var map = { in_progress:'#F59E0B', paused:'#F59E0B', submitted:'#8B5CF6', revision_requested:'#8B5CF6',
+                        approved:'#10B981', delivered:'#047857', archived:'#047857', pending_customer:'#0EA5E9',
+                        assigned:'#6B7280', viewed:'#6B7280', draft:'#6B7280' };
+            return map[s] || '#6B7280';
+        }
+        var thLeftTL  = 'text-align:left;padding:8px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #E5E7EB;';
+        var thCtrTL   = 'text-align:center;padding:8px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #E5E7EB;';
+
+        bodyHtml += '<div style="margin-top:18px;">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #0EA5E9;">'
+            + '<div>'
+            + '<p style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.06em;margin:0;">Task List</p>'
+            + '<p style="font-size:11px;color:#6B7280;margin:3px 0 0;">' + period + '</p>'
+            + '</div>'
+            + '<div style="text-align:right;">'
+            + '<p style="font-size:11px;color:#9CA3AF;margin:0;">Tasks Listed</p>'
+            + '<p style="font-size:28px;font-weight:900;color:#0EA5E9;margin:0;line-height:1.1;">' + d.taskList.length + '</p>'
+            + '</div>'
+            + '</div>'
+            + '<table style="width:100%;border-collapse:collapse;">'
+            + '<thead><tr style="background:#F8FAFC;">'
+            + '<th style="' + thLeftTL + 'width:28px;">#</th>'
+            + '<th style="' + thLeftTL + '">Task</th>'
+            + '<th style="' + thLeftTL + '">Project / Customer</th>'
+            + '<th style="' + thLeftTL + '">Assignee</th>'
+            + '<th style="' + thCtrTL  + '">Status</th>'
+            + '<th style="' + thCtrTL  + '">Deadline</th>'
+            + '</tr></thead><tbody>';
+
+        d.taskList.forEach(function(t, i) {
+            var rowBg  = i % 2 === 0 ? '#fff' : '#FAFAFA';
+            var td     = 'padding:9px 10px;border-bottom:1px solid #F3F4F6;';
+            var scLbl  = escHtml((t.status || '').replace(/_/g, ' '));
+            var scCol  = taskStatusColor(t.status);
+            var projCust = escHtml([t.project, t.customer].filter(Boolean).join(' · ') || '—');
+            bodyHtml += '<tr style="background:' + rowBg + ';">'
+                + '<td style="' + td + 'font-size:11px;color:#9CA3AF;">' + (i + 1) + '</td>'
+                + '<td style="' + td + 'font-size:12.5px;font-weight:600;color:#111827;">' + escHtml(t.title) + '</td>'
+                + '<td style="' + td + 'font-size:11.5px;color:#4B5563;">' + projCust + '</td>'
+                + '<td style="' + td + 'font-size:11.5px;color:#4B5563;">' + escHtml(t.assignee || '—') + '</td>'
+                + '<td style="' + td + 'text-align:center;"><span style="background:' + scCol + '22;color:' + scCol + ';font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:capitalize;">' + scLbl + '</span></td>'
+                + '<td style="' + td + 'font-size:11.5px;color:#4B5563;text-align:center;">' + escHtml(t.deadline || '—') + '</td>'
+                + '</tr>';
+        });
 
         bodyHtml += '</tbody></table></div>';
     }

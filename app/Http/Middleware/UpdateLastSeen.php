@@ -22,7 +22,7 @@ class UpdateLastSeen
 
             if ($needsUpdate) {
                 $user->timestamps = false;
-                $user->presence_status = $user->presence_status === 'offline' ? 'online' : $user->presence_status;
+                $user->presence_status = in_array($user->presence_status, [null, 'offline'], true) ? 'online' : $user->presence_status;
                 $user->last_seen_at    = now();
                 $user->save();
             }

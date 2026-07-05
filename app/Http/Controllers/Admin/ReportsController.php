@@ -984,6 +984,21 @@ class ReportsController extends Controller
             ? collect()
             : $this->buildCustomerDistStats($dateFrom, $dateTo, $doneStatuses, $customerId)->take(8)->values();
 
+        // Task list for the selected period (created_at-scoped, same as totalTasks)
+        $taskList = $scoped()
+            ->with(['project:id,name', 'customer:id,name', 'assignee:id,name'])
+            ->orderByDesc('tasks.created_at')
+            ->get(['id', 'title', 'status', 'deadline', 'created_at', 'project_id', 'customer_id', 'assigned_to'])
+            ->map(fn ($t) => [
+                'title'    => $t->title,
+                'status'   => $t->status,
+                'deadline' => optional($t->deadline)->format(config('app.date_format', 'M d, Y')),
+                'project'  => optional($t->project)->name,
+                'customer' => optional($t->customer)->name,
+                'assignee' => optional($t->assignee)->name,
+            ])
+            ->values();
+
         // Period label
         if ($dateFrom && $dateTo) {
             $fmt = config('app.date_format', 'M d, Y');
@@ -1004,6 +1019,7 @@ class ReportsController extends Controller
             'adBudgetCount'  => $adBudgetCount,
             'teamMembers'    => $teamMembers,
             'customerStats'  => $customerStats,
+            'taskList'       => $taskList,
             'periodLabel'    => $periodLabel,
             'hasUser'        => (bool) $userId,
         ]);
