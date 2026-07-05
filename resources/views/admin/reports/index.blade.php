@@ -3853,9 +3853,10 @@ function printRptSummSelection(sections) {
                 + '<p style="font-size:12.5px;font-weight:700;color:#111827;margin:0;">' + escHtml(custName) + '</p>'
                 + '<span style="font-size:10px;font-weight:600;color:#4F46E5;background:#EEF2FF;padding:2px 9px;border-radius:20px;">' + rows.length + ' task' + (rows.length === 1 ? '' : 's') + '</span>'
                 + '</div>'
-                + '<table style="width:100%;border-collapse:collapse;">'
+                + '<table style="width:100%;border-collapse:collapse;table-layout:fixed;">'
+                + '<colgroup><col style="width:5%;"><col style="width:27%;"><col style="width:20%;"><col style="width:17%;"><col style="width:16%;"><col style="width:15%;"></colgroup>'
                 + '<thead><tr style="background:#F8FAFC;">'
-                + '<th style="' + thLeftTL + 'width:28px;">#</th>'
+                + '<th style="' + thLeftTL + '">#</th>'
                 + '<th style="' + thLeftTL + '">Task</th>'
                 + '<th style="' + thLeftTL + '">Project</th>'
                 + '<th style="' + thLeftTL + '">Assignee</th>'
@@ -3865,7 +3866,7 @@ function printRptSummSelection(sections) {
 
             rows.forEach(function(t, i) {
                 var rowBg  = i % 2 === 0 ? '#fff' : '#FAFAFA';
-                var td     = 'padding:9px 10px;border-bottom:1px solid #F3F4F6;';
+                var td     = 'padding:9px 10px;border-bottom:1px solid #F3F4F6;overflow-wrap:break-word;word-break:break-word;';
                 var scLbl  = escHtml((t.status || '').replace(/_/g, ' '));
                 var scCol  = taskStatusColor(t.status);
                 bodyHtml += '<tr style="background:' + rowBg + ';">'
@@ -3873,7 +3874,7 @@ function printRptSummSelection(sections) {
                     + '<td style="' + td + 'font-size:12.5px;font-weight:600;color:#111827;">' + escHtml(t.title) + '</td>'
                     + '<td style="' + td + 'font-size:11.5px;color:#4B5563;">' + escHtml(t.project || '—') + '</td>'
                     + '<td style="' + td + 'font-size:11.5px;color:#4B5563;">' + escHtml(t.assignee || '—') + '</td>'
-                    + '<td style="' + td + 'text-align:center;"><span style="background:' + scCol + '22;color:' + scCol + ';font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:capitalize;">' + scLbl + '</span></td>'
+                    + '<td style="' + td + 'text-align:center;"><span style="display:inline-block;min-width:74px;background:' + scCol + '22;color:' + scCol + ';font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;text-transform:capitalize;">' + scLbl + '</span></td>'
                     + '<td style="' + td + 'font-size:11.5px;color:#4B5563;text-align:center;">' + escHtml(t.deadline || '—') + '</td>'
                     + '</tr>';
             });
