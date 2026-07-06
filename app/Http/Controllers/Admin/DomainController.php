@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\GroupsCostsByCurrency;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Domain;
@@ -17,9 +18,11 @@ use Illuminate\Support\Facades\Storage;
 
 class DomainController extends Controller
 {
+    use GroupsCostsByCurrency;
+
     public function index(Request $request)
     {
-        $query = Domain::with(['customer:id,name,company', 'responsibleUser:id,name', 'creator:id,name']);
+        $query = Domain::with(['customer:id,name,company', 'responsibleUser:id,name', 'responsibleUsers:id,name', 'creator:id,name']);
 
         if ($request->filled('search')) {
             $s = $request->search;
@@ -47,9 +50,11 @@ class DomainController extends Controller
         $expiringSoonCount = $all->filter(fn($d) => $d->status === 'expiring_soon')->count();
         $expiredCount      = $all->filter(fn($d) => $d->status === 'expired')->count();
         $weekCount         = $all->filter(fn($d) => $d->days_until_expiry !== null && $d->days_until_expiry >= 0 && $d->days_until_expiry <= 7)->count();
-        $annualTotal       = $all->sum(fn($d) => $d->annual_cost);
+        $annualTotalsByCurrency = $this->totalsByCurrency($all, fn($d) => $d->annual_cost);
 
         $expiringThisWeek = $all->filter(fn($d) => $d->days_until_expiry !== null && $d->days_until_expiry >= 0 && $d->days_until_expiry <= 7)->values();
+        $expiringDomains  = $all->filter(fn($d) => $d->status === 'expiring_soon')->values();
+        $showExpiringPopup = $expiringDomains->isNotEmpty() && !session('domains_expiry_popup_dismissed', false);
 
         $statusFilter = $request->get('status', 'all');
         $domains = match ($statusFilter) {
@@ -66,31 +71,33 @@ class DomainController extends Controller
 
         return view('admin.domains.index', compact(
             'domains', 'totalCount', 'activeCount', 'expiringSoonCount',
-            'expiredCount', 'weekCount', 'annualTotal', 'expiringThisWeek',
+            'expiredCount', 'weekCount', 'annualTotalsByCurrency', 'expiringThisWeek', 'expiringDomains', 'showExpiringPopup',
             'customers', 'staffUsers', 'registrars', 'billingCycles', 'statusFilter'
         ));
     }
 
     public function exportPdf()
     {
-        $all = Domain::with(['customer:id,name,company', 'responsibleUser:id,name'])
+        $all = Domain::with(['customer:id,name,company', 'responsibleUser:id,name', 'responsibleUsers:id,name'])
             ->orderBy('expires_at')
             ->get();
 
         $cycleAnnualMap = ['annual' => 1, 'biennial' => 2, 'triennial' => 3, 'one_time' => 0];
+        $annualTotalsByCurrency = $this->totalsByCurrency($all, fn($d) => $d->annual_cost);
         $summary = [
             'total'            => $all->count(),
             'active'           => $all->filter(fn($d) => $d->status === 'active')->count(),
             'expiring_soon'    => $all->filter(fn($d) => $d->status === 'expiring_soon')->count(),
             'expired'          => $all->filter(fn($d) => $d->status === 'expired')->count(),
             'auto_renew_count' => $all->filter(fn($d) => $d->auto_renew)->count(),
-            'annual_total'     => $all->sum(fn($d) => $d->annual_cost),
-            'monthly_total'    => round($all->sum(fn($d) => $d->annual_cost) / 12, 3),
+            'annual_total_by_currency'  => $annualTotalsByCurrency,
+            'monthly_total_by_currency' => $annualTotalsByCurrency->map(fn($amt) => round($amt / 12, 3)),
             'generated_at'     => now()->format('d M Y, H:i'),
             'by_billing_cycle' => $all->groupBy('billing_cycle')->map(fn($g, $k) => [
-                'label'  => ucfirst(str_replace('_', ' ', $k ?: 'unknown')),
-                'count'  => $g->count(),
-                'annual' => $g->sum(fn($d) => $d->annual_cost),
+                'label'             => ucfirst(str_replace('_', ' ', $k ?: 'unknown')),
+                'count'             => $g->count(),
+                'annual'            => $g->sum(fn($d) => $d->annual_cost),
+                'annual_by_currency'=> $this->totalsByCurrency($g, fn($d) => $d->annual_cost),
             ])->sortByDesc('annual')->values(),
             'by_registrar'     => $all->groupBy('registrar')->map(fn($g, $k) => [
                 'label' => $k ?: 'Unknown',
@@ -127,7 +134,8 @@ class DomainController extends Controller
             'domain'              => 'required|string|max:255',
             'registrar'          => 'nullable|string|max:255',
             'customer_id'        => 'nullable|exists:customers,id',
-            'responsible_user_id'=> 'nullable|exists:users,id',
+            'responsible_user_ids'   => 'nullable|array',
+            'responsible_user_ids.*' => 'integer|exists:users,id',
             'billing_to'         => 'nullable|string|max:255',
             'cost'               => 'required|numeric|min:0',
             'currency'           => 'required|string|max:10',
@@ -144,6 +152,10 @@ class DomainController extends Controller
             'password'           => 'nullable|string|max:1000',
             'notes'              => 'nullable|string|max:2000',
         ]);
+
+        $responsibleIds = array_values(array_unique(array_filter($data['responsible_user_ids'] ?? [])));
+        unset($data['responsible_user_ids']);
+        $data['responsible_user_id'] = $responsibleIds[0] ?? null;
 
         $data['auto_renew']  = $request->boolean('auto_renew');
         $data['notify_days'] = $data['notify_days'] ?? [60, 30, 14, 7, 1];
@@ -162,19 +174,17 @@ class DomainController extends Controller
         }
 
         $domain = Domain::create($data);
+        $domain->responsibleUsers()->sync($responsibleIds);
 
-        // Notify responsible user
-        if (!empty($data['responsible_user_id'])) {
-            $responsible = User::find($data['responsible_user_id']);
-            if ($responsible) {
-                $responsible->notify(new DomainAssigned($domain, auth()->user()));
-                MqttService::notifyUser($responsible->id, [
-                    'notif_type'   => 'domain_assigned',
-                    'unread_count' => $responsible->unreadNotifications()->count(),
-                    'title'        => 'Domain Responsibility Assigned',
-                    'message'      => "You are now responsible for: {$domain->domain}",
-                ]);
-            }
+        // Notify responsible users
+        foreach (User::whereIn('id', $responsibleIds)->get() as $responsible) {
+            $responsible->notify(new DomainAssigned($domain, auth()->user()));
+            MqttService::notifyUser($responsible->id, [
+                'notif_type'   => 'domain_assigned',
+                'unread_count' => $responsible->unreadNotifications()->count(),
+                'title'        => 'Domain Responsibility Assigned',
+                'message'      => "You are now responsible for: {$domain->domain}",
+            ]);
         }
 
         AuditLogger::log('created', $domain, "Created domain: {$domain->domain}");
@@ -185,7 +195,7 @@ class DomainController extends Controller
 
     public function show(Domain $domain)
     {
-        $domain->load(['customer', 'responsibleUser', 'creator', 'attachments.uploader']);
+        $domain->load(['customer', 'responsibleUser', 'responsibleUsers', 'creator', 'attachments.uploader']);
         return view('admin.domains.show', compact('domain'));
     }
 
@@ -229,13 +239,30 @@ class DomainController extends Controller
         return back()->with('success', 'Attachment deleted.');
     }
 
+    public function quickRenew(Domain $domain)
+    {
+        $years = ['annual' => 1, 'biennial' => 2, 'triennial' => 3, 'one_time' => 0][$domain->billing_cycle] ?? 0;
+        abort_if($years === 0, 422, 'This domain\'s billing cycle does not support quick renewal.');
+
+        $base = ($domain->expires_at && $domain->expires_at->isFuture()) ? $domain->expires_at : now();
+        $oldExpiry = $domain->expires_at?->format('d M Y') ?? '—';
+        $newExpiry = $base->copy()->addYears($years);
+
+        $domain->update(['expires_at' => $newExpiry]);
+
+        AuditLogger::log('renewed', $domain, "Renewed {$domain->domain} — expiry moved from {$oldExpiry} to {$newExpiry->format('d M Y')}");
+
+        return back()->with('success', "Domain renewed. New expiry date: {$newExpiry->format('d M Y')}.");
+    }
+
     public function update(Request $request, Domain $domain)
     {
         $data = $request->validate([
             'domain'              => 'required|string|max:255',
             'registrar'          => 'nullable|string|max:255',
             'customer_id'        => 'nullable|exists:customers,id',
-            'responsible_user_id'=> 'nullable|exists:users,id',
+            'responsible_user_ids'   => 'nullable|array',
+            'responsible_user_ids.*' => 'integer|exists:users,id',
             'billing_to'         => 'nullable|string|max:255',
             'cost'               => 'required|numeric|min:0',
             'currency'           => 'required|string|max:10',
@@ -253,6 +280,10 @@ class DomainController extends Controller
             'notes'              => 'nullable|string|max:2000',
         ]);
 
+        $responsibleIds = array_values(array_unique(array_filter($data['responsible_user_ids'] ?? [])));
+        unset($data['responsible_user_ids']);
+        $data['responsible_user_id'] = $responsibleIds[0] ?? null;
+
         $data['auto_renew']  = $request->boolean('auto_renew');
         $data['notify_days'] = $data['notify_days'] ?? [60, 30, 14, 7, 1];
 
@@ -269,22 +300,20 @@ class DomainController extends Controller
             $data['nameservers'] = null;
         }
 
-        $oldResponsibleId = $domain->responsible_user_id;
+        $oldResponsibleIds = $domain->responsibleUsers()->pluck('user_id')->all();
         $domain->update($data);
+        $domain->responsibleUsers()->sync($responsibleIds);
 
-        // Notify new responsible user if they changed
-        $newResponsibleId = $domain->fresh()->responsible_user_id;
-        if ($newResponsibleId && $newResponsibleId !== $oldResponsibleId) {
-            $responsible = User::find($newResponsibleId);
-            if ($responsible) {
-                $responsible->notify(new DomainAssigned($domain, auth()->user()));
-                MqttService::notifyUser($responsible->id, [
-                    'notif_type'   => 'domain_assigned',
-                    'unread_count' => $responsible->unreadNotifications()->count(),
-                    'title'        => 'Domain Responsibility Assigned',
-                    'message'      => "You are now responsible for: {$domain->domain}",
-                ]);
-            }
+        // Notify newly-added responsible users only
+        $newlyAdded = array_diff($responsibleIds, $oldResponsibleIds);
+        foreach (User::whereIn('id', $newlyAdded)->get() as $responsible) {
+            $responsible->notify(new DomainAssigned($domain, auth()->user()));
+            MqttService::notifyUser($responsible->id, [
+                'notif_type'   => 'domain_assigned',
+                'unread_count' => $responsible->unreadNotifications()->count(),
+                'title'        => 'Domain Responsibility Assigned',
+                'message'      => "You are now responsible for: {$domain->domain}",
+            ]);
         }
 
         AuditLogger::log('updated', $domain, "Updated domain: {$domain->domain}");

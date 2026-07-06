@@ -38,15 +38,22 @@
         </select>
     </div>
     <div style="flex:1;min-width:200px;">
-        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Responsible Person</label>
-        <select name="responsible_user_id" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;">
-            <option value="">— Not assigned —</option>
+        <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Responsible Person(s)</label>
+        @php
+            $selectedResponsibleIds = old('responsible_user_ids')
+                ?? ($domain ? $domain->responsibleUsers->pluck('id')->push($domain->responsible_user_id)->filter()->unique()->values()->all() : []);
+        @endphp
+        <div style="max-height:150px;overflow-y:auto;border:1.5px solid #E5E7EB;border-radius:9px;padding:8px;display:flex;flex-direction:column;gap:2px;">
             @foreach($staffUsers as $u)
-            <option value="{{ $u->id }}" {{ old('responsible_user_id', $domain?->responsible_user_id) == $u->id ? 'selected' : '' }}>
+            <label style="display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:6px;cursor:pointer;font-size:13px;color:#374151;"
+                   onmouseover="this.style.background='#F5F3FF'" onmouseout="this.style.background=''">
+                <input type="checkbox" name="responsible_user_ids[]" value="{{ $u->id }}"
+                       {{ in_array($u->id, $selectedResponsibleIds) ? 'checked' : '' }}
+                       style="width:15px;height:15px;accent-color:#6366F1;cursor:pointer;flex-shrink:0;">
                 {{ $u->name }}
-            </option>
+            </label>
             @endforeach
-        </select>
+        </div>
     </div>
 </div>
 

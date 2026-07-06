@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CalendarEvent;
 use App\Models\Customer;
+use App\Models\Domain;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskSocialPost;
@@ -626,6 +627,10 @@ class DashboardController extends Controller
             ->take(6)
             ->get();
 
+        $expiringDomains   = Domain::with('responsibleUser:id,name')->whereNotNull('expires_at')->get()
+            ->filter(fn($d) => $d->status === 'expiring_soon')->values();
+        $showExpiringPopup = $expiringDomains->isNotEmpty() && !session('domains_expiry_popup_dismissed', false);
+
         return view('admin.dashboard', compact(
             'users', 'projects', 'allUsers', 'allProjects', 'customers', 'recentTasks', 'customerTaskDist', 'unassignedTaskCount',
             'overdueTasks', 'completedTasks', 'totalTasks', 'activeProjects',
@@ -640,7 +645,8 @@ class DashboardController extends Controller
             'priorityData', 'teamPerfData', 'projectProgressData',
             'socialPostsTotal', 'socialPostsMonth', 'socialPending', 'socialRequired', 'socialPlatformStats',
             'smPendingTasks', 'smRecentCompleted',
-            'dashRefreshUrl', 'dashHomeUrl', 'dashProjectsUrl', 'dashProjectStoreUrl', 'dashQuickTaskUrl'
+            'dashRefreshUrl', 'dashHomeUrl', 'dashProjectsUrl', 'dashProjectStoreUrl', 'dashQuickTaskUrl',
+            'expiringDomains', 'showExpiringPopup'
         ));
     }
 }

@@ -237,14 +237,22 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
         <td width="50%" style="padding:0; vertical-align:top;">
             <div class="spend-card" style="border-left:4px solid {{ $primaryColor }};">
                 <div class="spend-lbl">Monthly Spend</div>
-                <div class="spend-val" style="color:{{ $primaryColor }};">BHD&nbsp;{{ number_format($summary['monthly_total'],3) }}</div>
+                @forelse($summary['monthly_total_by_currency'] as $currency => $amount)
+                <div class="spend-val" style="color:{{ $primaryColor }};font-size:{{ $summary['monthly_total_by_currency']->count() > 1 ? '13px' : '18px' }};">{{ format_money($amount, $currency) }}</div>
+                @empty
+                <div class="spend-val" style="color:{{ $primaryColor }};">BHD&nbsp;0.000</div>
+                @endforelse
                 <div class="spend-sub">All billing cycles</div>
             </div>
         </td>
         <td width="50%" style="padding:0; vertical-align:top;">
             <div class="spend-card" style="border-left:4px solid #059669;">
                 <div class="spend-lbl">Annual Spend</div>
-                <div class="spend-val" style="color:#059669;">BHD&nbsp;{{ number_format($summary['annual_total'],3) }}</div>
+                @forelse($summary['annual_total_by_currency'] as $currency => $amount)
+                <div class="spend-val" style="color:#059669;font-size:{{ $summary['annual_total_by_currency']->count() > 1 ? '13px' : '18px' }};">{{ format_money($amount, $currency) }}</div>
+                @empty
+                <div class="spend-val" style="color:#059669;">BHD&nbsp;0.000</div>
+                @endforelse
                 <div class="spend-sub">Projected yearly</div>
             </div>
         </td>
@@ -285,7 +293,8 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
     foreach($activeCycles as $g){
         $amt=$g['col']->sum(fn($s)=>$s->annual_cost);
         $sw=($amt/$totalCycleAmt)*360;
-        $segs[]=['path'=>$donutPath(44,44,38,24,$angle,$angle+$sw),'color'=>$g['color'],'label'=>$g['label'],'count'=>$g['col']->count(),'amt'=>$amt];
+        $amtByCurrency = $g['col']->groupBy('currency')->map(fn($c)=>$c->sum(fn($s)=>$s->annual_cost))->sortDesc();
+        $segs[]=['path'=>$donutPath(44,44,38,24,$angle,$angle+$sw),'color'=>$g['color'],'label'=>$g['label'],'count'=>$g['col']->count(),'amt'=>$amt,'amt_by_currency'=>$amtByCurrency];
         $angle+=$sw;
     }
 @endphp
@@ -318,12 +327,12 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
                     <div class="cy-item">
                         <div class="cy-dot-c"><span style="background:{{ $seg['color'] }};"></span></div>
                         <div class="cy-lbl-c">{{ $seg['label'] }}<span class="cy-cnt-c">({{ $seg['count'] }})</span></div>
-                        <div class="cy-amt-c">BHD {{ number_format($seg['amt'],3) }} <span class="cy-sub-c">/yr</span></div>
+                        <div class="cy-amt-c">{{ $seg['amt_by_currency']->map(fn($a,$c) => format_money($a,$c))->implode(' + ') }} <span class="cy-sub-c">/yr</span></div>
                     </div>
                 @endforeach
                 <table class="total-row" style="margin-top:8px;"><tr>
                     <td><div class="tot-l">Total Annual</div><div class="tot-sl">Monthly equiv.</div></td>
-                    <td class="tot-r"><div class="tot-rv">BHD {{ number_format($summary['annual_total'],3) }}</div><div class="tot-rs">BHD {{ number_format($summary['monthly_total'],3) }}/mo</div></td>
+                    <td class="tot-r"><div class="tot-rv">{{ $summary['annual_total_by_currency']->map(fn($a,$c) => format_money($a,$c))->implode(' + ') ?: 'BHD 0.000' }}</div><div class="tot-rs">{{ $summary['monthly_total_by_currency']->map(fn($a,$c) => format_money($a,$c))->implode(' + ') ?: 'BHD 0.000' }}/mo</div></td>
                 </tr></table>
             </div>
         </div>
@@ -337,7 +346,7 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
         <div class="cat-item">
             <div class="cat-top">
                 <div class="cat-name">{{ $cat['label'] }}<span class="cat-cnt-s">({{ $cat['count'] }})</span></div>
-                <div class="cat-val" style="color:{{ $cc }};">BHD {{ number_format($cat['annual'],3) }}<span style="font-size:6px;font-weight:400;color:#94A3B8;"> /yr</span></div>
+                <div class="cat-val" style="color:{{ $cc }};">{{ $cat['annual_by_currency']->map(fn($a,$c) => "{$c} ".number_format($a,3))->implode(' + ') }}<span style="font-size:6px;font-weight:400;color:#94A3B8;"> /yr</span></div>
             </div>
             <table class="bar-wrap"><tr>
                 <td class="bar-fill" style="width:{{ $cp }}%;background:{{ $cc }};"></td>
@@ -369,7 +378,7 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
             <th>Category</th>
             <th>Type</th>
             <th>Cost</th>
-            <th>Annual (BHD)</th>
+            <th>Annual Cost</th>
             <th>Renewal</th>
             <th>Status</th>
         </tr>
@@ -397,10 +406,10 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
                 @else Shared @endif
             </td>
             <td>
-                <div class="cst-main">{{ $sub->currency }}&nbsp;{{ number_format($sub->cost,3) }}</div>
+                <div class="cst-main">{{ format_money($sub->cost, $sub->currency) }}</div>
                 <div class="cst-sub">{{ ucfirst(str_replace('_',' ',$sub->billing_cycle)) }}</div>
             </td>
-            <td class="cst-main">{{ number_format($sub->annual_cost,3) }}</td>
+            <td class="cst-main">{{ format_money($sub->annual_cost, $sub->currency) }}</td>
             <td style="font-size:8px;color:#334155;">
                 {{ $rl }}
                 @if($dl)<div style="font-size:6.5px;color:{{ $dlColor }};margin-top:1px;">{{ $dl }}</div>@endif

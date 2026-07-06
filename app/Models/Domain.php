@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Crypt;
 
 class Domain extends Model
@@ -38,6 +39,21 @@ class Domain extends Model
     public function responsibleUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'responsible_user_id');
+    }
+
+    public function responsibleUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'domain_responsible_users')->withTimestamps();
+    }
+
+    public function isResponsibleUser(?int $userId): bool
+    {
+        if (! $userId) return false;
+        if ($this->responsible_user_id === $userId) return true;
+
+        return $this->relationLoaded('responsibleUsers')
+            ? $this->responsibleUsers->contains('id', $userId)
+            : $this->responsibleUsers()->where('user_id', $userId)->exists();
     }
 
     public function attachments()

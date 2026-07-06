@@ -163,7 +163,9 @@
         @endif
 
         {{-- User-only: My Domains --}}
-        @php $myDomainCount = \App\Models\Domain::where('responsible_user_id', auth()->id())->count(); @endphp
+        @php $myDomainCount = \App\Models\Domain::where('responsible_user_id', auth()->id())
+            ->orWhereHas('responsibleUsers', fn($q) => $q->where('user_id', auth()->id()))
+            ->count(); @endphp
         @if($myDomainCount > 0 && !in_array('nav_my_domains', $navHidden))
         <a href="{{ route('user.domains.index') }}"
            class="nav-item {{ request()->routeIs('user.domains.*') ? 'active' : '' }}">

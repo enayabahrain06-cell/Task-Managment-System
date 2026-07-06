@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\GroupsCostsByCurrency;
 use App\Http\Controllers\Controller;
 use App\Models\Subscription;
 use App\Models\SubscriptionAttachment;
@@ -17,6 +18,8 @@ use Illuminate\Support\Facades\Storage;
 
 class SubscriptionController extends Controller
 {
+    use GroupsCostsByCurrency;
+
     public function index(Request $request)
     {
         $query = Subscription::with(['creator:id,name', 'users:id,name,email'])
@@ -42,8 +45,8 @@ class SubscriptionController extends Controller
         $expiredCount      = $all->filter(fn($s) => $s->status === 'expired')->count();
         $weekCount         = $all->filter(fn($s) => $s->days_until_renewal !== null && $s->days_until_renewal >= 0 && $s->days_until_renewal <= 7)->count();
 
-        $monthlyTotal = $all->sum(fn($s) => $s->monthly_cost);
-        $annualTotal  = $all->sum(fn($s) => $s->annual_cost);
+        $monthlyTotalsByCurrency = $this->totalsByCurrency($all, fn($s) => $s->monthly_cost);
+        $annualTotalsByCurrency  = $this->totalsByCurrency($all, fn($s) => $s->annual_cost);
 
         $expiringThisWeek = $all->filter(fn($s) => $s->days_until_renewal !== null && $s->days_until_renewal >= 0 && $s->days_until_renewal <= 7)->values();
 
@@ -60,7 +63,7 @@ class SubscriptionController extends Controller
 
         return view('admin.subscriptions.index', compact(
             'subscriptions', 'totalCount', 'activeCount', 'expiringSoonCount',
-            'expiredCount', 'weekCount', 'monthlyTotal', 'annualTotal',
+            'expiredCount', 'weekCount', 'monthlyTotalsByCurrency', 'annualTotalsByCurrency',
             'expiringThisWeek', 'users', 'categories', 'statusFilter'
         ));
     }
@@ -80,13 +83,14 @@ class SubscriptionController extends Controller
             'active'         => $all->filter(fn($s) => $s->status === 'active')->count(),
             'expiring_soon'  => $all->filter(fn($s) => $s->status === 'expiring_soon')->count(),
             'expired'        => $all->filter(fn($s) => $s->status === 'expired')->count(),
-            'monthly_total'  => $all->sum(fn($s) => $s->monthly_cost),
-            'annual_total'   => $all->sum(fn($s) => $s->annual_cost),
+            'monthly_total_by_currency' => $this->totalsByCurrency($all, fn($s) => $s->monthly_cost),
+            'annual_total_by_currency'  => $this->totalsByCurrency($all, fn($s) => $s->annual_cost),
             'generated_at'   => now()->format('d M Y, H:i'),
             'by_category'    => $all->groupBy('category')->map(fn($g, $k) => [
-                'label'   => $catNames[$k] ?? $k,
-                'count'   => $g->count(),
-                'annual'  => $g->sum(fn($s) => $s->annual_cost),
+                'label'             => $catNames[$k] ?? $k,
+                'count'             => $g->count(),
+                'annual'            => $g->sum(fn($s) => $s->annual_cost),
+                'annual_by_currency'=> $this->totalsByCurrency($g, fn($s) => $s->annual_cost),
             ])->sortByDesc('annual')->values(),
         ];
 

@@ -233,7 +233,11 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
         <td width="50%" style="padding:0; vertical-align:top;">
             <div class="spend-card" style="border-left:4px solid {{ $primaryColor }};">
                 <div class="spend-lbl">Annual Spend</div>
-                <div class="spend-val" style="color:{{ $primaryColor }};">BHD&nbsp;{{ number_format($summary['annual_total'],3) }}</div>
+                @forelse($summary['annual_total_by_currency'] as $currency => $amount)
+                <div class="spend-val" style="color:{{ $primaryColor }};font-size:{{ $summary['annual_total_by_currency']->count() > 1 ? '13px' : '18px' }};">{{ format_money($amount, $currency) }}</div>
+                @empty
+                <div class="spend-val" style="color:{{ $primaryColor }};">BHD&nbsp;0.000</div>
+                @endforelse
                 <div class="spend-sub">Total yearly cost</div>
             </div>
         </td>
@@ -279,7 +283,7 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
         $amt = max($g['annual'], 1);
         $sw = ($amt/$totalCycleAmt)*360;
         if($totalCycleAmt <= 1) $sw = ($g['count'] / max($activeCycles->sum('count'),1)) * 360;
-        $donutSegs[]=['path'=>$donutPath(44,44,38,24,$angle,$angle+$sw),'color'=>$color,'label'=>$g['label'],'count'=>$g['count'],'amt'=>$g['annual']];
+        $donutSegs[]=['path'=>$donutPath(44,44,38,24,$angle,$angle+$sw),'color'=>$color,'label'=>$g['label'],'count'=>$g['count'],'amt'=>$g['annual'],'amt_by_currency'=>$g['annual_by_currency']];
         $angle+=$sw;
     }
 @endphp
@@ -322,14 +326,14 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
                     <div class="cy-item">
                         <div class="cy-dot-c"><span style="background:{{ $seg['color'] }};"></span></div>
                         <div class="cy-lbl-c">{{ $seg['label'] }}<span class="cy-cnt-c">({{ $seg['count'] }})</span></div>
-                        <div class="cy-amt-c">BHD {{ number_format($seg['amt'],3) }} <span class="cy-sub-c">/yr</span></div>
+                        <div class="cy-amt-c">{{ $seg['amt_by_currency']->map(fn($a,$c) => format_money($a,$c))->implode(' + ') }} <span class="cy-sub-c">/yr</span></div>
                     </div>
                 @empty
                     <div style="font-size:8px;color:#94A3B8;">No data</div>
                 @endforelse
                 <table class="total-row" style="margin-top:8px;"><tr>
                     <td><div class="tot-l">Total Annual</div><div class="tot-sl">Monthly equiv.</div></td>
-                    <td class="tot-r"><div class="tot-rv">BHD {{ number_format($summary['annual_total'],3) }}</div><div class="tot-rs">BHD {{ number_format($summary['monthly_total'],3) }}/mo</div></td>
+                    <td class="tot-r"><div class="tot-rv">{{ $summary['annual_total_by_currency']->map(fn($a,$c) => format_money($a,$c))->implode(' + ') ?: 'BHD 0.000' }}</div><div class="tot-rs">{{ $summary['monthly_total_by_currency']->map(fn($a,$c) => format_money($a,$c))->implode(' + ') ?: 'BHD 0.000' }}/mo</div></td>
                 </tr></table>
             </div>
         </div>
@@ -379,7 +383,7 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
             <th>Registrar</th>
             <th>Responsible</th>
             <th>Expires</th>
-            <th>Cost (BHD/yr)</th>
+            <th>Annual Cost</th>
             <th>Auto</th>
             <th>Status</th>
         </tr>
@@ -401,12 +405,12 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
             </td>
             <td style="font-size:8px;">{{ $d->customer?->name ?? '—' }}</td>
             <td style="font-size:8px;">{{ $d->registrar ?? '—' }}</td>
-            <td style="font-size:8px;">{{ $d->responsibleUser?->name ?? '—' }}</td>
+            <td style="font-size:8px;">{{ $d->responsibleUsers->pluck('name')->implode(', ') ?: '—' }}</td>
             <td style="font-size:8px;">
                 {{ $d->expires_at ? $d->expires_at->format('d M Y') : '—' }}
                 @if($daysLabel)<div style="font-size:6.5px;color:{{ $dlColor }};margin-top:1px;">{{ $daysLabel }}</div>@endif
             </td>
-            <td class="cst-main">{{ number_format($d->annual_cost,3) }}</td>
+            <td class="cst-main">{{ format_money($d->annual_cost, $d->currency) }}</td>
             <td class="{{ $d->auto_renew ? 'chk-yes' : 'chk-no' }}">{{ $d->auto_renew ? '&#10003;' : '&mdash;' }}</td>
             <td>
                 @if($d->status==='active')<span class="badge b-active">Active</span>

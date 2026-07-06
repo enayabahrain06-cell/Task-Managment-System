@@ -132,7 +132,11 @@
             </div>
             <div>
                 <div style="font-size:12px;color:#6B7280;font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Monthly Spend</div>
-                <div style="font-size:24px;font-weight:800;color:#4F46E5;">BHD {{ number_format($monthlyTotal, 3) }}</div>
+                @forelse($monthlyTotalsByCurrency as $currency => $amount)
+                <div style="font-size:{{ $monthlyTotalsByCurrency->count() > 1 ? '16px' : '24px' }};font-weight:800;color:#4F46E5;">{{ format_money($amount, $currency) }}</div>
+                @empty
+                <div style="font-size:24px;font-weight:800;color:#4F46E5;">BHD 0.000</div>
+                @endforelse
                 <div style="font-size:11px;color:#9CA3AF;">Across all active cycles</div>
             </div>
         </div>
@@ -142,7 +146,11 @@
             </div>
             <div>
                 <div style="font-size:12px;color:#6B7280;font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Annual Spend</div>
-                <div style="font-size:24px;font-weight:800;color:#16A34A;">BHD {{ number_format($annualTotal, 3) }}</div>
+                @forelse($annualTotalsByCurrency as $currency => $amount)
+                <div style="font-size:{{ $annualTotalsByCurrency->count() > 1 ? '16px' : '24px' }};font-weight:800;color:#16A34A;">{{ format_money($amount, $currency) }}</div>
+                @empty
+                <div style="font-size:24px;font-weight:800;color:#16A34A;">BHD 0.000</div>
+                @endforelse
                 <div style="font-size:11px;color:#9CA3AF;">Projected yearly total</div>
             </div>
         </div>
@@ -251,7 +259,7 @@
                         @endif
                     </td>
                     <td style="padding:14px 16px;">
-                        <div style="font-size:14px;font-weight:600;color:#111827;">{{ $sub->currency }} {{ number_format($sub->cost, 3) }}</div>
+                        <div style="font-size:14px;font-weight:600;color:#111827;">{{ format_money($sub->cost, $sub->currency) }}</div>
                         <div style="font-size:11px;color:#9CA3AF;">/ {{ $sub->billing_cycle }}</div>
                     </td>
                     <td style="padding:14px 16px;">

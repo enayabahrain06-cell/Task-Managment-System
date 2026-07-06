@@ -92,6 +92,12 @@ Route::middleware(['auth', MfaMiddleware::class])->group(function () {
         return response()->json(['ok' => true]);
     })->name('user.presence');
 
+    // Dismiss the "domains expiring soon" popup for the rest of this session
+    Route::post('/domains/expiring-dismiss', function () {
+        session(['domains_expiry_popup_dismissed' => true]);
+        return response()->json(['ok' => true]);
+    })->name('domains.expiring.dismiss');
+
     // Who is online (for admin/manager)
     Route::get('/online-users', function () {
         if (!in_array(auth()->user()->role, ['admin', 'manager'])) abort(403);
@@ -359,6 +365,7 @@ Route::middleware([AdminMiddleware::class, MfaMiddleware::class])->prefix('admin
     // Domains
     Route::get('domains/export/pdf', [AdminDomainController::class, 'exportPdf'])->name('domains.export.pdf');
     Route::post('domains/{domain}/reveal-password', [AdminDomainController::class, 'revealPassword'])->name('domains.reveal-password');
+    Route::post('domains/{domain}/quick-renew',     [AdminDomainController::class, 'quickRenew'])->name('domains.quick-renew');
     Route::resource('domains', AdminDomainController::class);
     Route::post('domains/{domain}/attachments',                               [AdminDomainController::class, 'storeAttachment'])->name('domains.attachments.store');
     Route::get('domains/{domain}/attachments/{attachment}/download',          [AdminDomainController::class, 'downloadAttachment'])->name('domains.attachments.download');
@@ -479,6 +486,10 @@ Route::middleware([UserMiddleware::class, MfaMiddleware::class])->prefix('user')
     Route::get('/dashboard', [UserDashboard::class, 'index'])->name('dashboard');
     Route::get('/licenses',  [UserLicensesController::class, 'index'])->name('licenses.index');
     Route::get('/domains',   [UserDomainsController::class, 'index'])->name('domains.index');
+    Route::get('/domains/{domain}',                     [UserDomainsController::class, 'show'])->name('domains.show');
+    Route::post('/domains/{domain}/reveal-password',     [UserDomainsController::class, 'revealPassword'])->name('domains.reveal-password');
+    Route::post('/domains/{domain}/attachments',         [UserDomainsController::class, 'storeAttachment'])->name('domains.attachments.store');
+    Route::get('/domains/{domain}/attachments/{attachment}/download', [UserDomainsController::class, 'downloadAttachment'])->name('domains.attachments.download');
     Route::post('/licenses/{subscription}/reveal-password', [UserLicensesController::class, 'revealPassword'])->name('licenses.reveal-password');
     Route::post('/report',   [UserDashboard::class, 'submitReport'])->name('report');
     Route::get('/tasks-modal', [UserDashboard::class, 'taskModal'])->name('tasks.modal');

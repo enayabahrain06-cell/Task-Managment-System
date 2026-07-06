@@ -232,13 +232,13 @@
     <div class="stats-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
         <div class="info-card">
             <div class="info-label">Cost</div>
-            <div class="info-value" style="color:#4F46E5;">{{ $subscription->currency }} {{ number_format($subscription->cost, 3) }}</div>
+            <div class="info-value" style="color:#4F46E5;">{{ format_money($subscription->cost, $subscription->currency) }}</div>
             <div style="font-size:12px;color:#9CA3AF;margin-top:2px;">per {{ $subscription->billing_cycle }}</div>
         </div>
         <div class="info-card">
             <div class="info-label">Monthly Equivalent</div>
-            <div class="info-value">{{ $subscription->currency }} {{ number_format($subscription->monthly_cost, 3) }}</div>
-            <div style="font-size:12px;color:#9CA3AF;margin-top:2px;">{{ $subscription->currency }} {{ number_format($subscription->annual_cost, 3) }} / year</div>
+            <div class="info-value">{{ format_money($subscription->monthly_cost, $subscription->currency) }}</div>
+            <div style="font-size:12px;color:#9CA3AF;margin-top:2px;">{{ format_money($subscription->annual_cost, $subscription->currency) }} / year</div>
         </div>
         <div class="info-card">
             <div class="info-label">Seats</div>

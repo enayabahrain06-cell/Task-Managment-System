@@ -101,21 +101,16 @@
 </style>
 
 @php
-    $status = $domain->status;
-    $days   = $domain->days_until_expiry;
-    $billingCycles = \App\Models\Domain::billingCycleOptions();
-    $renewYears = ['annual' => 1, 'biennial' => 2, 'triennial' => 3, 'one_time' => 0][$domain->billing_cycle] ?? 0;
-    $renewBase  = ($domain->expires_at && $domain->expires_at->isFuture()) ? $domain->expires_at : now();
-    $renewNewExpiry = $renewBase->copy()->addYears($renewYears);
+    $billingCycleLabel = $billingCycles[$domain->billing_cycle] ?? $domain->billing_cycle;
 @endphp
 
-<div x-data="{ editModal: false, deleteModal: false, renewModal: false }">
+<div>
 
     {{-- Back --}}
-    <a href="{{ route('admin.domains.index') }}"
+    <a href="{{ route('user.domains.index') }}"
        style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#6B7280;text-decoration:none;margin-bottom:20px;"
        onmouseover="this.style.color='#374151'" onmouseout="this.style.color='#6B7280'">
-        <i class="fas fa-arrow-left" style="font-size:11px;"></i> Back to Domains
+        <i class="fas fa-arrow-left" style="font-size:11px;"></i> Back to My Domains
     </a>
 
     {{-- Flash --}}
@@ -143,11 +138,10 @@
                             @endif
                         </span>
                         @if($domain->customer)
-                        <a href="{{ route('admin.customers.show', $domain->customer_id) }}"
-                           style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#EEF2FF;color:#4F46E5;text-decoration:none;">
+                        <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#EEF2FF;color:#4F46E5;">
                             <i class="fas fa-building" style="font-size:9px;"></i>
                             {{ $domain->customer->name }}
-                        </a>
+                        </span>
                         @endif
                         @if($domain->registrar)
                         <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:#F3F4F6;color:#374151;">
@@ -167,22 +161,6 @@
                     </div>
                 </div>
             </div>
-            <div style="display:flex;gap:8px;">
-                @if($domain->billing_cycle !== 'one_time')
-                <button @click="renewModal = true"
-                        style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:#ECFDF5;color:#16A34A;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
-                    <i class="fas fa-rotate" style="font-size:11px;"></i> Quick Renew
-                </button>
-                @endif
-                <button @click="editModal = true"
-                        style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
-                    <i class="fas fa-pen" style="font-size:11px;"></i> Edit
-                </button>
-                <button @click="deleteModal = true"
-                        style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:#FEE2E2;color:#DC2626;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
-                    <i class="fas fa-trash" style="font-size:11px;"></i> Delete
-                </button>
-            </div>
         </div>
     </div>
 
@@ -194,7 +172,7 @@
         $bannerColor = $status==='expired'      ? '#DC2626' : ($status==='expiring_soon' ? '#EA580C' : '#16A34A');
         $bannerIcon  = $status==='expired'      ? 'fa-triangle-exclamation' : ($status==='expiring_soon' ? 'fa-clock' : 'fa-circle-check');
         $bannerMsg   = $status==='expired'
-            ? 'This domain expired ' . abs($days) . ' day' . (abs($days)!==1?'s':'') . ' ago — renewal required'
+            ? 'This domain expired ' . abs($days) . ' day' . (abs($days)!==1?'s':'') . ' ago — contact your admin to renew'
             : ($days === 0 ? 'This domain expires TODAY' : ($days === 1 ? 'This domain expires tomorrow' : 'This domain expires in ' . $days . ' day' . ($days!==1?'s':'')));
     @endphp
     <div style="background:{{ $bannerBg }};border:1.5px solid {{ $bannerBrd }};border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
@@ -211,10 +189,10 @@
         <div class="info-card" style="text-align:center;">
             <div style="font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;margin-bottom:4px;">Annual Cost</div>
             @if($domain->cost > 0)
-            <div style="font-size:26px;font-weight:800;color:#4F46E5;">{{ format_money($domain->annual_cost, $domain->currency) }}</div>
-            <div style="font-size:12px;color:#9CA3AF;">per year</div>
+            <div style="font-size:26px;font-weight:800;color:#4F46E5;">{{ number_format($domain->annual_cost, 3) }}</div>
+            <div style="font-size:12px;color:#9CA3AF;">{{ $domain->currency }} / year</div>
             @if($domain->billing_cycle !== 'annual')
-            <div style="font-size:11px;color:#9CA3AF;margin-top:2px;">{{ format_money($domain->cost, $domain->currency) }} / {{ $billingCycles[$domain->billing_cycle] ?? $domain->billing_cycle }}</div>
+            <div style="font-size:11px;color:#9CA3AF;margin-top:2px;">{{ number_format($domain->cost, 3) }} {{ $domain->currency }} / {{ $billingCycleLabel }}</div>
             @endif
             @else
             <div style="font-size:18px;font-weight:700;color:#9CA3AF;">—</div>
@@ -263,10 +241,7 @@
                     <div>
                         <div class="info-label">Customer</div>
                         @if($domain->customer)
-                        <a href="{{ route('admin.customers.show', $domain->customer_id) }}"
-                           style="font-size:15px;font-weight:600;color:#4F46E5;text-decoration:none;">
-                            {{ $domain->customer->name }}
-                        </a>
+                        <div class="info-value">{{ $domain->customer->name }}</div>
                         @if($domain->customer->company)
                         <div style="font-size:12px;color:#9CA3AF;">{{ $domain->customer->company }}</div>
                         @endif
@@ -290,39 +265,24 @@
                     </div>
                     <div>
                         <div class="info-label">Billing Cycle</div>
-                        <div class="info-value">{{ $billingCycles[$domain->billing_cycle] ?? $domain->billing_cycle }}</div>
+                        <div class="info-value">{{ $billingCycleLabel }}</div>
                     </div>
                     <div>
                         <div class="info-label">Hosting Provider</div>
                         <div class="info-value">{{ $domain->hosting_provider ?: '—' }}</div>
                     </div>
                     <div>
-                        <div class="info-label">Responsible Person{{ $domain->responsibleUsers->count() > 1 ? 's' : '' }}</div>
-                        @if($domain->responsibleUsers->isNotEmpty())
-                        <div style="display:flex;flex-direction:column;gap:6px;">
-                            @foreach($domain->responsibleUsers as $ru)
-                            <div style="display:flex;align-items:center;gap:8px;">
-                                <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#4F46E5);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                    <span style="font-size:11px;font-weight:700;color:#fff;">{{ strtoupper(substr($ru->name,0,1)) }}</span>
-                                </div>
-                                <span class="info-value">{{ $ru->name }}</span>
-                            </div>
-                            @endforeach
-                        </div>
-                        @else
-                        <div class="info-value" style="color:#9CA3AF;">Not assigned</div>
-                        @endif
-                    </div>
-                    <div>
                         <div class="info-label">Bill To</div>
                         <div class="info-value">{{ $domain->billing_to ?: '—' }}</div>
                     </div>
+                    @php $coResponsible = $domain->responsibleUsers->where('id', '!=', auth()->id()); @endphp
+                    @if($coResponsible->isNotEmpty())
+                    <div>
+                        <div class="info-label">Also Responsible</div>
+                        <div class="info-value">{{ $coResponsible->pluck('name')->implode(', ') }}</div>
+                    </div>
+                    @endif
                 </div>
-                @if($domain->creator)
-                <div style="margin-top:16px;padding-top:16px;border-top:1px solid #F3F4F6;font-size:12px;color:#9CA3AF;">
-                    Added by <strong style="color:#6B7280;">{{ $domain->creator->name }}</strong> on {{ $domain->created_at->format('d M Y') }}
-                </div>
-                @endif
             </div>
 
             {{-- Nameservers --}}
@@ -364,13 +324,13 @@
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div style="background:#fff;border-radius:10px;padding:12px;border:1px solid #E0E7FF;">
                         <div style="font-size:11px;color:#6B7280;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Total Cost</div>
-                        <div style="font-size:20px;font-weight:800;color:#4F46E5;">{{ format_money($domain->cost, $domain->currency) }}</div>
-                        <div style="font-size:11px;color:#6B7280;">/ {{ $billingCycles[$domain->billing_cycle] ?? $domain->billing_cycle }}</div>
+                        <div style="font-size:20px;font-weight:800;color:#4F46E5;">{{ number_format($domain->cost, 3) }}</div>
+                        <div style="font-size:11px;color:#6B7280;">{{ $domain->currency }} / {{ $billingCycleLabel }}</div>
                     </div>
                     <div style="background:#fff;border-radius:10px;padding:12px;border:1px solid #E0E7FF;">
                         <div style="font-size:11px;color:#6B7280;font-weight:600;text-transform:uppercase;margin-bottom:4px;">Annual Equivalent</div>
-                        <div style="font-size:20px;font-weight:800;color:#4F46E5;">{{ format_money($domain->annual_cost, $domain->currency) }}</div>
-                        <div style="font-size:11px;color:#6B7280;">per year</div>
+                        <div style="font-size:20px;font-weight:800;color:#4F46E5;">{{ number_format($domain->annual_cost, 3) }}</div>
+                        <div style="font-size:11px;color:#6B7280;">{{ $domain->currency }} / year</div>
                     </div>
                 </div>
                 @if($domain->billing_to)
@@ -475,7 +435,7 @@
                             if (!pwd) { err.textContent = 'Please enter your password.'; err.style.display='block'; return; }
                             btn.disabled = true;
                             btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:11px;margin-right:4px;"></i> Checking...';
-                            fetch('{{ route('admin.domains.reveal-password', $domain) }}', {
+                            fetch('{{ route('user.domains.reveal-password', $domain) }}', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
                                 body: JSON.stringify({ password: pwd })
@@ -520,35 +480,21 @@
             @endif
 
             {{-- Quick Actions --}}
+            @if($domain->login_url)
             <div class="info-card">
                 <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:14px;display:flex;align-items:center;gap:8px;">
                     <i class="fas fa-bolt" style="color:#6366F1;font-size:13px;"></i> Quick Actions
                 </div>
                 <div style="display:flex;flex-direction:column;gap:8px;">
-                    @if($domain->login_url)
                     <a href="{{ $domain->login_url }}" target="_blank" rel="noopener"
                        style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:10px;text-decoration:none;color:#374151;font-size:13px;font-weight:600;"
                        onmouseover="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE';this.style.color='#4F46E5'" onmouseout="this.style.background='#F9FAFB';this.style.borderColor='#E5E7EB';this.style.color='#374151'">
                         <i class="fas fa-arrow-up-right-from-square" style="font-size:12px;"></i>
                         Open Registrar Panel
                     </a>
-                    @endif
-                    @if($domain->customer)
-                    <a href="{{ route('admin.customers.show', $domain->customer_id) }}"
-                       style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:10px;text-decoration:none;color:#374151;font-size:13px;font-weight:600;"
-                       onmouseover="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE';this.style.color='#4F46E5'" onmouseout="this.style.background='#F9FAFB';this.style.borderColor='#E5E7EB';this.style.color='#374151'">
-                        <i class="fas fa-building" style="font-size:12px;"></i>
-                        View Customer: {{ $domain->customer->name }}
-                    </a>
-                    @endif
-                    <button @click="editModal = true"
-                            style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:10px;text-decoration:none;color:#374151;font-size:13px;font-weight:600;cursor:pointer;width:100%;text-align:left;"
-                            onmouseover="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE';this.style.color='#4F46E5'" onmouseout="this.style.background='#F9FAFB';this.style.borderColor='#E5E7EB';this.style.color='#374151'">
-                        <i class="fas fa-pen" style="font-size:12px;"></i>
-                        Edit Domain
-                    </button>
                 </div>
             </div>
+            @endif
         </div>
     </div>
 
@@ -584,25 +530,18 @@
                    onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
                     <i class="fas fa-eye" style="font-size:10px;"></i> View
                 </a>
-                <a href="{{ route('admin.domains.attachments.download', [$domain, $att]) }}"
+                <a href="{{ route('user.domains.attachments.download', [$domain, $att]) }}"
                    style="padding:6px 12px;background:#EEF2FF;color:#4F46E5;border-radius:7px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;display:flex;align-items:center;gap:5px;"
                    onmouseover="this.style.background='#C7D2FE'" onmouseout="this.style.background='#EEF2FF'">
                     <i class="fas fa-download" style="font-size:10px;"></i> Download
                 </a>
-                <form method="POST" action="{{ route('admin.domains.attachments.destroy', [$domain, $att]) }}" onsubmit="return confirm('Delete this attachment?')">
-                    @csrf @method('DELETE')
-                    <button type="submit" style="padding:6px 10px;background:#FEE2E2;color:#DC2626;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;"
-                            onmouseover="this.style.background='#FECACA'" onmouseout="this.style.background='#FEE2E2'">
-                        <i class="fas fa-trash" style="font-size:10px;"></i>
-                    </button>
-                </form>
             </div>
             @endforeach
         </div>
         @endif
 
         {{-- Upload form --}}
-        <form method="POST" action="{{ route('admin.domains.attachments.store', $domain) }}" enctype="multipart/form-data" id="attForm">
+        <form method="POST" action="{{ route('user.domains.attachments.store', $domain) }}" enctype="multipart/form-data" id="attForm">
             @csrf
             <input type="file" id="attFileInput" name="files[]" multiple style="display:none;" @change="onFiles($event.target.files)">
             <div class="dz-zone"
@@ -649,90 +588,6 @@
                 </button>
             </div>
         </form>
-    </div>
-
-    {{-- Edit Modal --}}
-    <div x-show="editModal" x-cloak style="position:fixed;inset:0;z-index:9000;">
-        <div style="position:absolute;inset:0;background:rgba(0,0,0,.4);" @click="editModal=false"></div>
-        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px 16px;overflow-y:auto;pointer-events:none;">
-        <div style="position:relative;background:#fff;border-radius:16px;padding:28px;width:640px;max-width:100%;z-index:1;max-height:90vh;overflow-y:auto;pointer-events:all;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
-                <h3 style="font-size:18px;font-weight:700;color:#111827;margin:0;">Edit Domain</h3>
-                <button @click="editModal=false" style="width:32px;height:32px;background:#F3F4F6;border:none;border-radius:8px;cursor:pointer;font-size:16px;color:#6B7280;">✕</button>
-            </div>
-            <form method="POST" action="{{ route('admin.domains.update', $domain) }}">
-                @csrf @method('PUT')
-                @php
-                    $customers  = \App\Models\Customer::orderBy('name')->get(['id','name','company']);
-                    $staffUsers = \App\Models\User::whereIn('role',['admin','manager','user'])->where('status','active')->orderBy('name')->get(['id','name','email','role']);
-                @endphp
-                @include('admin.domains._form', ['domain' => $domain])
-                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px;">
-                    <button type="button" @click="editModal=false" style="padding:10px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
-                    <button type="submit" style="padding:10px 24px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
-                        Save Changes
-                    </button>
-                </div>
-            </form>
-        </div>
-        </div>
-    </div>
-
-    {{-- Quick Renew Modal --}}
-    <div x-show="renewModal" x-cloak style="position:fixed;inset:0;z-index:9000;">
-        <div style="position:absolute;inset:0;background:rgba(0,0,0,.4);" @click="renewModal=false"></div>
-        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
-        <div style="position:relative;background:#fff;border-radius:16px;padding:28px;width:420px;max-width:90vw;z-index:1;pointer-events:all;">
-            <div style="width:48px;height:48px;background:#ECFDF5;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
-                <i class="fas fa-rotate" style="color:#16A34A;font-size:20px;"></i>
-            </div>
-            <h3 style="font-size:17px;font-weight:700;color:#111827;text-align:center;margin:0 0 8px;">Quick Renew</h3>
-            <p style="font-size:13px;color:#6B7280;text-align:center;margin:0 0 16px;">
-                Extend <strong>{{ $domain->domain }}</strong> by one {{ strtolower($billingCycles[$domain->billing_cycle] ?? $domain->billing_cycle) }} cycle.
-            </p>
-            <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-                <div>
-                    <div style="font-size:10.5px;font-weight:700;color:#9CA3AF;text-transform:uppercase;">Current Expiry</div>
-                    <div style="font-size:13px;font-weight:600;color:#374151;margin-top:2px;">{{ $domain->expires_at ? $domain->expires_at->format('d M Y') : '—' }}</div>
-                </div>
-                <i class="fas fa-arrow-right" style="color:#9CA3AF;font-size:13px;"></i>
-                <div style="text-align:right;">
-                    <div style="font-size:10.5px;font-weight:700;color:#16A34A;text-transform:uppercase;">New Expiry</div>
-                    <div style="font-size:13px;font-weight:700;color:#16A34A;margin-top:2px;">{{ $renewNewExpiry->format('d M Y') }}</div>
-                </div>
-            </div>
-            <form method="POST" action="{{ route('admin.domains.quick-renew', $domain) }}">
-                @csrf
-                <div style="display:flex;gap:8px;justify-content:center;">
-                    <button type="button" @click="renewModal=false" style="padding:10px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
-                    <button type="submit" style="padding:10px 20px;background:#16A34A;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Confirm Renewal</button>
-                </div>
-            </form>
-        </div>
-        </div>
-    </div>
-
-    {{-- Delete Modal --}}
-    <div x-show="deleteModal" x-cloak style="position:fixed;inset:0;z-index:9000;">
-        <div style="position:absolute;inset:0;background:rgba(0,0,0,.4);" @click="deleteModal=false"></div>
-        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
-        <div style="position:relative;background:#fff;border-radius:16px;padding:28px;width:420px;max-width:90vw;z-index:1;pointer-events:all;">
-            <div style="width:48px;height:48px;background:#FEE2E2;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
-                <i class="fas fa-trash" style="color:#DC2626;font-size:20px;"></i>
-            </div>
-            <h3 style="font-size:17px;font-weight:700;color:#111827;text-align:center;margin:0 0 8px;">Delete Domain</h3>
-            <p style="font-size:13px;color:#6B7280;text-align:center;margin:0 0 20px;">
-                This will permanently delete <strong>{{ $domain->domain }}</strong>. This cannot be undone.
-            </p>
-            <form method="POST" action="{{ route('admin.domains.destroy', $domain) }}">
-                @csrf @method('DELETE')
-                <div style="display:flex;gap:8px;justify-content:center;">
-                    <button type="button" @click="deleteModal=false" style="padding:10px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
-                    <button type="submit" style="padding:10px 20px;background:#DC2626;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Delete</button>
-                </div>
-            </form>
-        </div>
-        </div>
     </div>
 
 </div>

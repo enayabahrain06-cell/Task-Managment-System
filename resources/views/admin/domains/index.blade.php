@@ -18,6 +18,7 @@
 
 <div x-data="{
     createModal: {{ $errors->any() ? 'true' : 'false' }},
+    expiringModal: {{ $showExpiringPopup ? 'true' : 'false' }},
     deleteModal: false,
     deleteId: null,
     deleteName: '',
@@ -25,8 +26,35 @@
     openDelete(id, name) { this.deleteId = id; this.deleteName = name; this.deleteConfirmInput = ''; this.deleteModal = true; },
     get deleteConfirmed() { return this.deleteConfirmInput.trim() === this.deleteName.trim(); },
     submitDelete() { if (!this.deleteConfirmed) return; this.$refs.deleteForm.submit(); },
+    dismissExpiring() {
+        this.expiringModal = false;
+        fetch('{{ route('domains.expiring.dismiss') }}', {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=\'csrf-token\']')?.content || '', 'Accept': 'application/json' },
+        });
+    },
+    renewModal: false,
+    renewId: null,
+    renewName: '',
+    renewOldExpiry: '—',
+    renewNewExpiry: '—',
+    openRenew(id, name, expiresAt, billingCycle) {
+        const years = { annual: 1, biennial: 2, triennial: 3 }[billingCycle] || 0;
+        if (years === 0) return;
+        const base = (expiresAt && new Date(expiresAt) > new Date()) ? new Date(expiresAt) : new Date();
+        const next = new Date(base);
+        next.setFullYear(next.getFullYear() + years);
+        const fmt = d => d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        this.renewId = id;
+        this.renewName = name;
+        this.renewOldExpiry = expiresAt ? fmt(new Date(expiresAt)) : '—';
+        this.renewNewExpiry = fmt(next);
+        this.renewModal = true;
+    },
+    submitRenew() { this.$refs.renewForm.submit(); },
 }"
-    @dom-open-delete.window="openDelete($event.detail.id, $event.detail.name)">
+    @dom-open-delete.window="openDelete($event.detail.id, $event.detail.name)"
+    @dom-open-renew.window="openRenew($event.detail.id, $event.detail.name, $event.detail.expiresAt, $event.detail.billingCycle)">
 
     {{-- Header --}}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
@@ -126,8 +154,12 @@
                 <i class="fas fa-coins" style="color:#2563EB;"></i>
             </div>
             <div>
-                <p style="font-size:22px;font-weight:800;color:#2563EB;margin:0;">{{ number_format($annualTotal, 3) }}</p>
-                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Annual Spend (BHD)</p>
+                @forelse($annualTotalsByCurrency as $currency => $amount)
+                <p style="font-size:{{ $annualTotalsByCurrency->count() > 1 ? '16px' : '22px' }};font-weight:800;color:#2563EB;margin:0;">{{ format_money($amount, $currency) }}</p>
+                @empty
+                <p style="font-size:22px;font-weight:800;color:#2563EB;margin:0;">BHD 0.000</p>
+                @endforelse
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Annual Spend</p>
             </div>
         </div>
     </div>
@@ -268,12 +300,16 @@
                         @endif
                     </td>
                     <td style="padding:14px 16px;">
-                        @if($domain->responsibleUser)
-                        <div style="display:flex;align-items:center;gap:7px;">
-                            <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#4F46E5);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                                <span style="font-size:11px;font-weight:700;color:#fff;">{{ strtoupper(substr($domain->responsibleUser->name,0,1)) }}</span>
+                        @if($domain->responsibleUsers->isNotEmpty())
+                        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
+                            @foreach($domain->responsibleUsers as $ru)
+                            <div style="display:flex;align-items:center;gap:5px;background:#F5F3FF;padding:3px 8px 3px 3px;border-radius:20px;">
+                                <div style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#4F46E5);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <span style="font-size:9px;font-weight:700;color:#fff;">{{ strtoupper(substr($ru->name,0,1)) }}</span>
+                                </div>
+                                <span style="font-size:12px;color:#374151;font-weight:500;">{{ $ru->name }}</span>
                             </div>
-                            <span style="font-size:13px;color:#374151;font-weight:500;">{{ $domain->responsibleUser->name }}</span>
+                            @endforeach
                         </div>
                         @else
                         <span style="color:#D1D5DB;font-size:13px;">—</span>
@@ -305,8 +341,7 @@
                     </td>
                     <td style="padding:14px 16px;">
                         @if($domain->cost > 0)
-                        <span style="font-size:13px;font-weight:600;color:#111827;">{{ number_format($domain->cost, 3) }}</span>
-                        <span style="font-size:11.5px;color:#9CA3AF;"> {{ $domain->currency }}</span>
+                        <span style="font-size:13px;font-weight:600;color:#111827;">{{ format_money($domain->cost, $domain->currency) }}</span>
                         <div style="font-size:11px;color:#9CA3AF;">{{ $billingCycles[$domain->billing_cycle] ?? $domain->billing_cycle }}</div>
                         @else
                         <span style="color:#D1D5DB;font-size:13px;">—</span>
@@ -336,7 +371,7 @@
                             'domain'            => $domain->domain,
                             'registrar'         => $domain->registrar,
                             'customerId'        => $domain->customer_id,
-                            'responsibleUserId' => $domain->responsible_user_id,
+                            'responsibleUserIds'=> $domain->responsibleUsers->pluck('id')->push($domain->responsible_user_id)->filter()->unique()->values(),
                             'billingTo'         => $domain->billing_to,
                             'cost'              => $domain->cost,
                             'currency'          => $domain->currency,
@@ -376,6 +411,11 @@
                 onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
             <i class="fas fa-pen" style="width:14px;font-size:12px;color:#6B7280;"></i> Edit
         </button>
+        <button id="dram-renew"
+                style="display:flex;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#16A34A;background:none;border:none;cursor:pointer;width:100%;text-align:left;"
+                onmouseover="this.style.background='#F0FDF4'" onmouseout="this.style.background=''">
+            <i class="fas fa-rotate" style="width:14px;font-size:12px;"></i> Quick Renew
+        </button>
         <div style="border-top:1px solid #F3F4F6;margin:3px 0;"></div>
         <button id="dram-delete"
                 style="display:flex;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#DC2626;background:none;border:none;cursor:pointer;width:100%;text-align:left;"
@@ -389,6 +429,84 @@
         @csrf @method('DELETE')
         <input type="hidden" name="_method" value="DELETE">
     </form>
+
+    {{-- Renew Form --}}
+    <form x-ref="renewForm" method="POST" style="display:none;" :action="'/admin/domains/' + renewId + '/quick-renew'">
+        @csrf
+    </form>
+
+    {{-- Quick Renew Modal --}}
+    <div x-show="renewModal" x-cloak style="position:fixed;inset:0;z-index:9000;overflow-y:auto;">
+        <div style="position:fixed;inset:0;background:rgba(0,0,0,.4);" @click="renewModal=false"></div>
+        <div style="min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px 16px;position:relative;z-index:1;">
+        <div style="background:#fff;border-radius:16px;padding:28px;width:420px;max-width:100%;">
+            <div style="width:48px;height:48px;background:#ECFDF5;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <i class="fas fa-rotate" style="color:#16A34A;font-size:20px;"></i>
+            </div>
+            <h3 style="font-size:17px;font-weight:700;color:#111827;text-align:center;margin:0 0 8px;">Quick Renew</h3>
+            <p style="font-size:13px;color:#6B7280;text-align:center;margin:0 0 16px;">Extend <strong x-text="renewName"></strong> by one billing cycle.</p>
+            <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+                <div>
+                    <div style="font-size:10.5px;font-weight:700;color:#9CA3AF;text-transform:uppercase;">Current Expiry</div>
+                    <div style="font-size:13px;font-weight:600;color:#374151;margin-top:2px;" x-text="renewOldExpiry"></div>
+                </div>
+                <i class="fas fa-arrow-right" style="color:#9CA3AF;font-size:13px;"></i>
+                <div style="text-align:right;">
+                    <div style="font-size:10.5px;font-weight:700;color:#16A34A;text-transform:uppercase;">New Expiry</div>
+                    <div style="font-size:13px;font-weight:700;color:#16A34A;margin-top:2px;" x-text="renewNewExpiry"></div>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:center;">
+                <button @click="renewModal=false" style="padding:10px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
+                <button @click="submitRenew()" style="padding:10px 20px;background:#16A34A;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Confirm Renewal</button>
+            </div>
+        </div>
+        </div>
+    </div>
+
+    {{-- Expiring Soon Modal --}}
+    <div x-show="expiringModal" style="position:fixed;inset:0;z-index:9100;overflow-y:auto;" x-cloak>
+        <div style="position:fixed;inset:0;background:rgba(0,0,0,.45);" @click="dismissExpiring()"></div>
+        <div style="min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px 16px;position:relative;z-index:1;">
+        <div style="background:#fff;border-radius:16px;width:520px;max-width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.2);">
+            <div style="padding:20px 24px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:38px;height:38px;background:#FEF3C7;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-triangle-exclamation" style="color:#D97706;font-size:16px;"></i>
+                    </div>
+                    <div>
+                        <h3 style="font-size:16px;font-weight:700;color:#111827;margin:0;">Domains Expiring Soon</h3>
+                        <p style="font-size:12px;color:#9CA3AF;margin:0;">{{ $expiringDomains->count() }} domain{{ $expiringDomains->count() !== 1 ? 's' : '' }} within 30 days</p>
+                    </div>
+                </div>
+                <button @click="dismissExpiring()" style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:13px;flex-shrink:0;">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <div style="padding:8px 12px;overflow-y:auto;">
+                @foreach($expiringDomains as $ed)
+                <a href="{{ route('admin.domains.show', $ed->id) }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border-radius:10px;text-decoration:none;color:inherit;">
+                    <div style="min-width:0;">
+                        <div style="font-weight:700;color:#111827;font-size:13.5px;">{{ $ed->domain }}</div>
+                        <div style="font-size:11.5px;color:#9CA3AF;margin-top:1px;">
+                            {{ $ed->registrar ?: 'No registrar' }} &middot; Responsible: {{ $ed->responsibleUsers->pluck('name')->implode(', ') ?: '—' }}
+                        </div>
+                    </div>
+                    <div style="text-align:right;flex-shrink:0;">
+                        <div style="font-size:12.5px;font-weight:700;color:{{ $ed->days_until_expiry <= 7 ? '#DC2626' : '#D97706' }};">
+                            {{ $ed->days_until_expiry }} day{{ $ed->days_until_expiry !== 1 ? 's' : '' }} left
+                        </div>
+                        <div style="font-size:11px;color:#9CA3AF;">{{ $ed->expires_at->format('d M Y') }}</div>
+                    </div>
+                </a>
+                @endforeach
+            </div>
+            <div style="padding:14px 24px;border-top:1px solid #F3F4F6;flex-shrink:0;">
+                <button @click="dismissExpiring()" style="width:100%;padding:10px;background:#F3F4F6;color:#374151;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Dismiss</button>
+            </div>
+        </div>
+        </div>
+    </div>
 
     {{-- Delete Modal --}}
     <div x-show="deleteModal" style="position:fixed;inset:0;z-index:9000;overflow-y:auto;" x-cloak>
@@ -467,7 +585,7 @@ const domCustomers  = @json($customers);
 const domStaffUsers = @json($staffUsers);
 const domBillingCycles = @json($billingCycles);
 
-function openEditModal(id, domain, registrar, customerId, responsibleUserId, billingTo, cost, currency, billingCycle, autoRenew, registeredAt, expiresAt, hostingProvider, loginUrl, username, notes, nameservers) {
+function openEditModal(id, domain, registrar, customerId, responsibleUserIds, billingTo, cost, currency, billingCycle, autoRenew, registeredAt, expiresAt, hostingProvider, loginUrl, username, notes, nameservers) {
     const form = document.getElementById('editForm');
     form.action = '/admin/domains/' + id;
 
@@ -477,10 +595,15 @@ function openEditModal(id, domain, registrar, customerId, responsibleUserId, bil
         customerOptions += `<option value="${c.id}" ${c.id == customerId ? 'selected' : ''}>${label}</option>`;
     });
 
-    let userOptions = '<option value="">— Not assigned —</option>';
-    domStaffUsers.forEach(u => {
-        userOptions += `<option value="${u.id}" ${u.id == responsibleUserId ? 'selected' : ''}>${u.name}</option>`;
-    });
+    const respIds = responsibleUserIds || [];
+    let responsibleCheckboxes = domStaffUsers.map(u =>
+        `<label style="display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:6px;cursor:pointer;font-size:13px;color:#374151;"
+                onmouseover="this.style.background='#F5F3FF'" onmouseout="this.style.background=''">
+            <input type="checkbox" name="responsible_user_ids[]" value="${u.id}" ${respIds.includes(u.id) ? 'checked' : ''}
+                   style="width:15px;height:15px;accent-color:#6366F1;cursor:pointer;flex-shrink:0;">
+            ${u.name}
+        </label>`
+    ).join('');
 
     let cycleOptions = '';
     Object.entries(domBillingCycles).forEach(([k, v]) => {
@@ -507,7 +630,8 @@ function openEditModal(id, domain, registrar, customerId, responsibleUserId, bil
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;">
             ${sel('e_customer','Customer','customer_id',customerOptions)}
-            ${sel('e_responsible','Responsible Person','responsible_user_id',userOptions)}
+            <div style="flex:1;min-width:180px;"><label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Responsible Person(s)</label>
+            <div style="max-height:150px;overflow-y:auto;border:1.5px solid #E5E7EB;border-radius:9px;padding:8px;display:flex;flex-direction:column;gap:2px;">${responsibleCheckboxes}</div></div>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;">
             ${inp('e_billing_to','Bill To','billing_to',billingTo,'text','Client name, contact person…')}
@@ -566,7 +690,7 @@ function openDomRowMenu(evt, btn, id, name, viewUrl, ed) {
     document.getElementById('dram-view').href = viewUrl;
     document.getElementById('dram-edit').onclick = () => {
         closeDomRowMenu();
-        openEditModal(id, ed.domain, ed.registrar, ed.customerId, ed.responsibleUserId,
+        openEditModal(id, ed.domain, ed.registrar, ed.customerId, ed.responsibleUserIds,
             ed.billingTo, ed.cost, ed.currency, ed.billingCycle, ed.autoRenew,
             ed.registeredAt, ed.expiresAt, ed.hostingProvider, ed.loginUrl,
             ed.username, ed.notes, ed.nameservers);
@@ -574,6 +698,12 @@ function openDomRowMenu(evt, btn, id, name, viewUrl, ed) {
     document.getElementById('dram-delete').onclick = () => {
         closeDomRowMenu();
         window.dispatchEvent(new CustomEvent('dom-open-delete', { detail: { id, name } }));
+    };
+    const renewBtn = document.getElementById('dram-renew');
+    renewBtn.style.display = ed.billingCycle === 'one_time' ? 'none' : 'flex';
+    renewBtn.onclick = () => {
+        closeDomRowMenu();
+        window.dispatchEvent(new CustomEvent('dom-open-renew', { detail: { id, name, expiresAt: ed.expiresAt, billingCycle: ed.billingCycle } }));
     };
     menu.style.display = 'block';
     const rect    = btn.getBoundingClientRect();

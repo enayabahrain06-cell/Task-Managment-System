@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Domain;
 use App\Models\Role;
 use App\Models\Setting;
 use App\Models\Subscription;
@@ -871,6 +872,12 @@ class UserController extends Controller
             ->orderBy('renewal_date')
             ->get();
 
+        $expiringDomains   = Domain::where('responsible_user_id', $user->id)
+            ->orWhereHas('responsibleUsers', fn($q) => $q->where('user_id', $user->id))
+            ->whereNotNull('expires_at')->get()
+            ->filter(fn($d) => $d->status === 'expiring_soon')->values();
+        $showExpiringPopup = $expiringDomains->isNotEmpty() && !session('domains_expiry_popup_dismissed', false);
+
         return view('user.dashboard', compact(
             'total', 'completed', 'inProgress', 'pending', 'pendingApproval', 'overdue', 'rate',
             'cardTotal', 'cardCompleted', 'cardInProgress', 'cardInReview', 'cardOverdue',
@@ -878,7 +885,7 @@ class UserController extends Controller
             'teamTasks', 'myProjects', 'myProjectStats', 'socialTasks',
             'inheritedCount', 'nativeTotal', 'nativeCompleted', 'pendingSocialPosts', 'completedSocialPosts',
             'receivedTotal', 'receivedCompleted', 'myLicenses',
-            'previewUser'
+            'previewUser', 'expiringDomains', 'showExpiringPopup'
         ));
     }
 
