@@ -35,7 +35,8 @@ class DomainsController extends Controller
         $activeCount       = $domains->filter(fn($d) => $d->status === 'active')->count();
         $expiringSoonCount = $expiringDomains->count();
         $expiredCount      = $domains->filter(fn($d) => $d->status === 'expired')->count();
-        $weekCount         = $domains->filter(fn($d) => $d->days_until_expiry !== null && $d->days_until_expiry >= 0 && $d->days_until_expiry <= 7)->count();
+        $expiringThisWeek  = $domains->filter(fn($d) => $d->days_until_expiry !== null && $d->days_until_expiry >= 0 && $d->days_until_expiry <= 7)->values();
+        $weekCount         = $expiringThisWeek->count();
         $annualTotalsByCurrency = $this->totalsByCurrency($domains, fn($d) => $d->annual_cost);
 
         $customers  = Customer::orderBy('name')->get(['id', 'name', 'company']);
@@ -44,7 +45,7 @@ class DomainsController extends Controller
 
         return view('user.domains.index', compact(
             'domains', 'expiringDomains', 'showExpiringPopup', 'customers', 'staffUsers', 'billingCycles',
-            'totalCount', 'activeCount', 'expiringSoonCount', 'expiredCount', 'weekCount', 'annualTotalsByCurrency'
+            'totalCount', 'activeCount', 'expiringSoonCount', 'expiredCount', 'weekCount', 'expiringThisWeek', 'annualTotalsByCurrency'
         ));
     }
 
@@ -125,15 +126,23 @@ class DomainsController extends Controller
         $days   = $domain->days_until_expiry;
         $billingCycles = Domain::billingCycleOptions();
 
-        return view('user.domains.show', compact('domain', 'status', 'days', 'billingCycles'));
+        $renewalHistory = \App\Models\AuditLog::forSubject('Domain', $domain->id)
+            ->whereIn('action', ['created', 'renewed'])
+            ->with('actor:id,name')
+            ->orderByDesc('created_at')
+            ->get();
+
+        return view('user.domains.show', compact('domain', 'status', 'days', 'billingCycles', 'renewalHistory'));
     }
 
-    public function quickRenew(Domain $domain)
+    public function quickRenew(Request $request, Domain $domain)
     {
         abort_if(!$domain->isResponsibleUser(auth()->id()), 403);
 
         $years = ['annual' => 1, 'biennial' => 2, 'triennial' => 3, 'one_time' => 0][$domain->billing_cycle] ?? 0;
         abort_if($years === 0, 422, 'This domain\'s billing cycle does not support quick renewal.');
+
+        $request->validate(['files.*' => 'file|max:20480']);
 
         $base = ($domain->expires_at && $domain->expires_at->isFuture()) ? $domain->expires_at : now();
         $oldExpiry = $domain->expires_at?->format('d M Y') ?? '—';
@@ -141,7 +150,13 @@ class DomainsController extends Controller
 
         $domain->update(['expires_at' => $newExpiry]);
 
-        AuditLogger::log('renewed', $domain, "Renewed {$domain->domain} — expiry moved from {$oldExpiry} to {$newExpiry->format('d M Y')}");
+        $attachedCount = $request->hasFile('files') ? $this->storeDomainAttachments($request, $domain) : 0;
+
+        $description = "Renewed {$domain->domain} — expiry moved from {$oldExpiry} to {$newExpiry->format('d M Y')}";
+        if ($attachedCount) {
+            $description .= " ({$attachedCount} attachment(s) added)";
+        }
+        AuditLogger::log('renewed', $domain, $description);
 
         return back()->with('success', "Domain renewed. New expiry date: {$newExpiry->format('d M Y')}.");
     }
@@ -179,18 +194,9 @@ class DomainsController extends Controller
             'files.*' => 'required|file|max:20480',
         ]);
 
-        foreach ($request->file('files') as $file) {
-            $path = $file->store("domain-attachments/{$domain->id}", 'public');
-            $domain->attachments()->create([
-                'uploaded_by'   => auth()->id(),
-                'original_name' => $file->getClientOriginalName(),
-                'path'          => $path,
-                'size'          => $file->getSize(),
-                'mime_type'     => $file->getMimeType(),
-            ]);
-        }
+        $count = $this->storeDomainAttachments($request, $domain);
 
-        AuditLogger::log('uploaded', $domain, 'Uploaded ' . count($request->file('files')) . ' attachment(s) to ' . $domain->domain);
+        AuditLogger::log('uploaded', $domain, "Uploaded {$count} attachment(s) to {$domain->domain}");
 
         return back()->with('success', 'Attachment(s) uploaded successfully.');
     }
@@ -201,5 +207,23 @@ class DomainsController extends Controller
         abort_if($attachment->domain_id !== $domain->id, 404);
 
         return Storage::disk('public')->download($attachment->path, $attachment->original_name);
+    }
+
+    private function storeDomainAttachments(Request $request, Domain $domain): int
+    {
+        $files = $request->file('files');
+
+        foreach ($files as $file) {
+            $path = $file->store("domain-attachments/{$domain->id}", 'public');
+            $domain->attachments()->create([
+                'uploaded_by'   => auth()->id(),
+                'original_name' => $file->getClientOriginalName(),
+                'path'          => $path,
+                'size'          => $file->getSize(),
+                'mime_type'     => $file->getMimeType(),
+            ]);
+        }
+
+        return count($files);
     }
 }

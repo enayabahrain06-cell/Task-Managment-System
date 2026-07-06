@@ -72,6 +72,30 @@
         </div>
     </div>
 
+    {{-- Expiring Alert --}}
+    @if($expiringThisWeek->count())
+    <div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px;">
+        <i class="fas fa-triangle-exclamation" style="color:#EA580C;margin-top:2px;"></i>
+        <div>
+            <div style="font-size:13px;font-weight:700;color:#C2410C;margin-bottom:4px;">
+                ⚡ {{ $expiringThisWeek->count() }} domain{{ $expiringThisWeek->count()>1?'s':'' }} expiring within 7 days
+            </div>
+            <div style="font-size:12px;color:#9A3412;display:flex;flex-wrap:wrap;gap:6px;">
+                @foreach($expiringThisWeek as $d)
+                <a href="{{ route('user.domains.show', $d->id) }}"
+                   style="background:#FEE7D0;padding:3px 10px;border-radius:20px;color:#C2410C;font-weight:600;text-decoration:none;font-size:11.5px;">
+                    {{ $d->domain }}
+                    @if($d->days_until_expiry === 0) — Today!
+                    @elseif($d->days_until_expiry === 1) — Tomorrow
+                    @else — {{ $d->days_until_expiry }}d
+                    @endif
+                </a>
+                @endforeach
+            </div>
+        </div>
+    </div>
+    @endif
+
     {{-- Stats --}}
     <div class="dom-stats-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px;">
         <div class="dom-stat">

@@ -196,9 +196,34 @@
                     <div style="font-size:13px;font-weight:700;color:#16A34A;margin-top:2px;">{{ $renewNewExpiry->format('d M Y') }}</div>
                 </div>
             </div>
-            <form method="POST" action="{{ route('user.domains.quick-renew', $domain) }}">
+            <form method="POST" action="{{ route('user.domains.quick-renew', $domain) }}" enctype="multipart/form-data" x-data="domainAttach('renewFileInput')">
                 @csrf
-                <div style="display:flex;gap:8px;justify-content:center;">
+                <label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Attach invoice / receipt <span style="font-weight:400;color:#9CA3AF;">(optional)</span></label>
+                <input type="file" id="renewFileInput" name="files[]" multiple style="display:none;" @change="onFiles($event.target.files)">
+                <div class="dz-zone" style="padding:16px;"
+                     :class="dragover ? 'is-dragging' : ''"
+                     @dragover.prevent="dragover=true"
+                     @dragleave.prevent="dragover=false"
+                     @drop.prevent="onDrop($event);dragover=false"
+                     @click="document.getElementById('renewFileInput').click()">
+                    <div style="pointer-events:none;position:relative;z-index:1;">
+                        <i class="fas fa-cloud-arrow-up" style="font-size:18px;color:#6366F1;"></i>
+                        <p style="font-size:12px;font-weight:600;color:#374151;margin:6px 0 0;">
+                            <span x-show="!dragover">Drop files or click to browse</span>
+                            <span x-show="dragover" x-cloak>Release to upload</span>
+                        </p>
+                    </div>
+                </div>
+                <div x-show="staged.length" x-cloak style="margin-top:10px;flex-wrap:wrap;gap:6px;" :style="staged.length ? 'display:flex' : 'display:none'">
+                    <template x-for="(f,i) in staged" :key="i">
+                        <div style="display:flex;align-items:center;gap:6px;padding:4px 9px 4px 7px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:20px;">
+                            <i class="fas fa-file" style="color:#6366F1;font-size:10px;"></i>
+                            <span style="font-size:11px;font-weight:600;color:#374151;" x-text="f.name"></span>
+                            <button type="button" @click="remove(i)" style="width:14px;height:14px;border-radius:50%;background:#C7D2FE;border:none;cursor:pointer;font-size:9px;color:#4F46E5;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;">×</button>
+                        </div>
+                    </template>
+                </div>
+                <div style="display:flex;gap:8px;justify-content:center;margin-top:20px;">
                     <button type="button" @click="renewModal=false" style="padding:10px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
                     <button type="submit" style="padding:10px 20px;background:#16A34A;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Confirm Renewal</button>
                 </div>
@@ -633,9 +658,11 @@
         </form>
     </div>
 
+    @include('admin.domains._renewal_history')
+
 </div>
 <script>
-function domainAttach() {
+function domainAttach(inputId = 'attFileInput') {
     return {
         staged: [],
         dragover: false,
@@ -653,7 +680,7 @@ function domainAttach() {
         syncInput() {
             const dt = new DataTransfer();
             this.staged.forEach(f => dt.items.add(f));
-            document.getElementById('attFileInput').files = dt.files;
+            document.getElementById(inputId).files = dt.files;
         },
         fmtSize(b) {
             if (b >= 1048576) return (b/1048576).toFixed(1)+' MB';

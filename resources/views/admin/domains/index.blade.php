@@ -14,6 +14,9 @@
 .dom-tbl-scroll table { min-width:900px; width:100%; }
 @media (max-width:900px) { .dom-stats-grid { grid-template-columns:repeat(2,1fr) !important; } }
 @media (max-width:500px)  { .dom-stats-grid { gap:8px !important; } }
+.dz-zone { border:2px dashed #D1D5DB; border-radius:12px; padding:16px; text-align:center; cursor:pointer; background:#FAFAFA; transition:border-color .25s, background .25s; }
+.dz-zone:hover { border-color:#A5B4FC; background:#F5F3FF; }
+.dz-zone.is-dragging { border-color:#6366F1; background:#EEF2FF; }
 </style>
 
 <div x-data="{
@@ -431,7 +434,7 @@
     </form>
 
     {{-- Renew Form --}}
-    <form x-ref="renewForm" method="POST" style="display:none;" :action="'/admin/domains/' + renewId + '/quick-renew'">
+    <form id="renewFormEl" x-ref="renewForm" method="POST" enctype="multipart/form-data" style="display:none;" :action="'/admin/domains/' + renewId + '/quick-renew'">
         @csrf
     </form>
 
@@ -456,7 +459,32 @@
                     <div style="font-size:13px;font-weight:700;color:#16A34A;margin-top:2px;" x-text="renewNewExpiry"></div>
                 </div>
             </div>
-            <div style="display:flex;gap:8px;justify-content:center;">
+            <div x-data="domainAttach('renewFileInput')" @dom-open-renew.window="staged = []; syncInput()">
+                <label style="font-size:11px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Attach invoice / receipt <span style="font-weight:400;color:#9CA3AF;">(optional)</span></label>
+                <input type="file" id="renewFileInput" name="files[]" multiple form="renewFormEl" style="display:none;" @change="onFiles($event.target.files)">
+                <div class="dz-zone"
+                     :class="dragover ? 'is-dragging' : ''"
+                     @dragover.prevent="dragover=true"
+                     @dragleave.prevent="dragover=false"
+                     @drop.prevent="onDrop($event);dragover=false"
+                     @click="document.getElementById('renewFileInput').click()">
+                    <i class="fas fa-cloud-arrow-up" style="font-size:18px;color:#6366F1;"></i>
+                    <p style="font-size:12px;font-weight:600;color:#374151;margin:6px 0 0;">
+                        <span x-show="!dragover">Drop files or click to browse</span>
+                        <span x-show="dragover" x-cloak>Release to upload</span>
+                    </p>
+                </div>
+                <div x-show="staged.length" x-cloak style="margin-top:10px;flex-wrap:wrap;gap:6px;" :style="staged.length ? 'display:flex' : 'display:none'">
+                    <template x-for="(f,i) in staged" :key="i">
+                        <div style="display:flex;align-items:center;gap:6px;padding:4px 9px 4px 7px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:20px;">
+                            <i class="fas fa-file" style="color:#6366F1;font-size:10px;"></i>
+                            <span style="font-size:11px;font-weight:600;color:#374151;" x-text="f.name"></span>
+                            <button type="button" @click="remove(i)" style="width:14px;height:14px;border-radius:50%;background:#C7D2FE;border:none;cursor:pointer;font-size:9px;color:#4F46E5;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;">×</button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:center;margin-top:20px;">
                 <button @click="renewModal=false" style="padding:10px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
                 <button @click="submitRenew()" style="padding:10px 20px;background:#16A34A;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Confirm Renewal</button>
             </div>
@@ -722,5 +750,33 @@ document.addEventListener('click', function(e) {
     if (menu && !menu.contains(e.target)) closeDomRowMenu();
 });
 document.addEventListener('scroll', closeDomRowMenu, true);
+
+function domainAttach(inputId = 'attFileInput') {
+    return {
+        staged: [],
+        dragover: false,
+        onFiles(files) {
+            Array.from(files).forEach(f => this.staged.push(f));
+            this.syncInput();
+        },
+        onDrop(e) {
+            this.onFiles(e.dataTransfer.files);
+        },
+        remove(i) {
+            this.staged.splice(i, 1);
+            this.syncInput();
+        },
+        syncInput() {
+            const dt = new DataTransfer();
+            this.staged.forEach(f => dt.items.add(f));
+            document.getElementById(inputId).files = dt.files;
+        },
+        fmtSize(b) {
+            if (b >= 1048576) return (b/1048576).toFixed(1)+' MB';
+            if (b >= 1024)    return (b/1024).toFixed(1)+' KB';
+            return b+' B';
+        }
+    };
+}
 </script>
 @endsection

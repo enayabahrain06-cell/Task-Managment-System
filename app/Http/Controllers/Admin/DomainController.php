@@ -196,7 +196,14 @@ class DomainController extends Controller
     public function show(Domain $domain)
     {
         $domain->load(['customer', 'responsibleUser', 'responsibleUsers', 'creator', 'attachments.uploader']);
-        return view('admin.domains.show', compact('domain'));
+
+        $renewalHistory = \App\Models\AuditLog::forSubject('Domain', $domain->id)
+            ->whereIn('action', ['created', 'renewed'])
+            ->with('actor:id,name')
+            ->orderByDesc('created_at')
+            ->get();
+
+        return view('admin.domains.show', compact('domain', 'renewalHistory'));
     }
 
     public function storeAttachment(Request $request, Domain $domain)
@@ -206,18 +213,9 @@ class DomainController extends Controller
             'files.*' => 'required|file|max:20480',
         ]);
 
-        foreach ($request->file('files') as $file) {
-            $path = $file->store("domain-attachments/{$domain->id}", 'public');
-            $domain->attachments()->create([
-                'uploaded_by'   => auth()->id(),
-                'original_name' => $file->getClientOriginalName(),
-                'path'          => $path,
-                'size'          => $file->getSize(),
-                'mime_type'     => $file->getMimeType(),
-            ]);
-        }
+        $count = $this->storeDomainAttachments($request, $domain);
 
-        AuditLogger::log('uploaded', $domain, 'Uploaded ' . count($request->file('files')) . ' attachment(s) to ' . $domain->domain);
+        AuditLogger::log('uploaded', $domain, "Uploaded {$count} attachment(s) to {$domain->domain}");
 
         return back()->with('success', 'Attachment(s) uploaded successfully.');
     }
@@ -239,10 +237,12 @@ class DomainController extends Controller
         return back()->with('success', 'Attachment deleted.');
     }
 
-    public function quickRenew(Domain $domain)
+    public function quickRenew(Request $request, Domain $domain)
     {
         $years = ['annual' => 1, 'biennial' => 2, 'triennial' => 3, 'one_time' => 0][$domain->billing_cycle] ?? 0;
         abort_if($years === 0, 422, 'This domain\'s billing cycle does not support quick renewal.');
+
+        $request->validate(['files.*' => 'file|max:20480']);
 
         $base = ($domain->expires_at && $domain->expires_at->isFuture()) ? $domain->expires_at : now();
         $oldExpiry = $domain->expires_at?->format('d M Y') ?? '—';
@@ -250,9 +250,33 @@ class DomainController extends Controller
 
         $domain->update(['expires_at' => $newExpiry]);
 
-        AuditLogger::log('renewed', $domain, "Renewed {$domain->domain} — expiry moved from {$oldExpiry} to {$newExpiry->format('d M Y')}");
+        $attachedCount = $request->hasFile('files') ? $this->storeDomainAttachments($request, $domain) : 0;
+
+        $description = "Renewed {$domain->domain} — expiry moved from {$oldExpiry} to {$newExpiry->format('d M Y')}";
+        if ($attachedCount) {
+            $description .= " ({$attachedCount} attachment(s) added)";
+        }
+        AuditLogger::log('renewed', $domain, $description);
 
         return back()->with('success', "Domain renewed. New expiry date: {$newExpiry->format('d M Y')}.");
+    }
+
+    private function storeDomainAttachments(Request $request, Domain $domain): int
+    {
+        $files = $request->file('files');
+
+        foreach ($files as $file) {
+            $path = $file->store("domain-attachments/{$domain->id}", 'public');
+            $domain->attachments()->create([
+                'uploaded_by'   => auth()->id(),
+                'original_name' => $file->getClientOriginalName(),
+                'path'          => $path,
+                'size'          => $file->getSize(),
+                'mime_type'     => $file->getMimeType(),
+            ]);
+        }
+
+        return count($files);
     }
 
     public function update(Request $request, Domain $domain)
