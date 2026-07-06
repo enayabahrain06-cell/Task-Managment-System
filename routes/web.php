@@ -486,8 +486,10 @@ Route::middleware([UserMiddleware::class, MfaMiddleware::class])->prefix('user')
     Route::get('/dashboard', [UserDashboard::class, 'index'])->name('dashboard');
     Route::get('/licenses',  [UserLicensesController::class, 'index'])->name('licenses.index');
     Route::get('/domains',   [UserDomainsController::class, 'index'])->name('domains.index');
+    Route::post('/domains',  [UserDomainsController::class, 'store'])->name('domains.store');
     Route::get('/domains/{domain}',                     [UserDomainsController::class, 'show'])->name('domains.show');
     Route::post('/domains/{domain}/reveal-password',     [UserDomainsController::class, 'revealPassword'])->name('domains.reveal-password');
+    Route::post('/domains/{domain}/quick-renew',         [UserDomainsController::class, 'quickRenew'])->name('domains.quick-renew');
     Route::post('/domains/{domain}/attachments',         [UserDomainsController::class, 'storeAttachment'])->name('domains.attachments.store');
     Route::get('/domains/{domain}/attachments/{attachment}/download', [UserDomainsController::class, 'downloadAttachment'])->name('domains.attachments.download');
     Route::post('/licenses/{subscription}/reveal-password', [UserLicensesController::class, 'revealPassword'])->name('licenses.reveal-password');

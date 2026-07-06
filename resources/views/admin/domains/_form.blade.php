@@ -40,8 +40,9 @@
     <div style="flex:1;min-width:200px;">
         <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Responsible Person(s)</label>
         @php
-            $selectedResponsibleIds = old('responsible_user_ids')
-                ?? ($domain ? $domain->responsibleUsers->pluck('id')->push($domain->responsible_user_id)->filter()->unique()->values()->all() : []);
+            $selectedResponsibleIds = old('responsible_user_ids') ?? ($domain
+                ? $domain->responsibleUsers->pluck('id')->push($domain->responsible_user_id)->filter()->unique()->values()->all()
+                : (request()->routeIs('user.*') ? [auth()->id()] : []));
         @endphp
         <div style="max-height:150px;overflow-y:auto;border:1.5px solid #E5E7EB;border-radius:9px;padding:8px;display:flex;flex-direction:column;gap:2px;">
             @foreach($staffUsers as $u)

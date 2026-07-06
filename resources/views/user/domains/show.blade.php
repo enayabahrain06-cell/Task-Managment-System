@@ -102,9 +102,12 @@
 
 @php
     $billingCycleLabel = $billingCycles[$domain->billing_cycle] ?? $domain->billing_cycle;
+    $renewYears = ['annual' => 1, 'biennial' => 2, 'triennial' => 3, 'one_time' => 0][$domain->billing_cycle] ?? 0;
+    $renewBase  = ($domain->expires_at && $domain->expires_at->isFuture()) ? $domain->expires_at : now();
+    $renewNewExpiry = $renewBase->copy()->addYears($renewYears);
 @endphp
 
-<div>
+<div x-data="{ renewModal: false }">
 
     {{-- Back --}}
     <a href="{{ route('user.domains.index') }}"
@@ -161,6 +164,46 @@
                     </div>
                 </div>
             </div>
+            @if($domain->billing_cycle !== 'one_time')
+            <button @click="renewModal = true"
+                    style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:#ECFDF5;color:#16A34A;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
+                <i class="fas fa-rotate" style="font-size:11px;"></i> Quick Renew
+            </button>
+            @endif
+        </div>
+    </div>
+
+    {{-- Quick Renew Modal --}}
+    <div x-show="renewModal" x-cloak style="position:fixed;inset:0;z-index:9000;">
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,.4);" @click="renewModal=false"></div>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+        <div style="position:relative;background:#fff;border-radius:16px;padding:28px;width:420px;max-width:90vw;z-index:1;pointer-events:all;">
+            <div style="width:48px;height:48px;background:#ECFDF5;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                <i class="fas fa-rotate" style="color:#16A34A;font-size:20px;"></i>
+            </div>
+            <h3 style="font-size:17px;font-weight:700;color:#111827;text-align:center;margin:0 0 8px;">Quick Renew</h3>
+            <p style="font-size:13px;color:#6B7280;text-align:center;margin:0 0 16px;">
+                Extend <strong>{{ $domain->domain }}</strong> by one {{ strtolower($billingCycleLabel) }} cycle.
+            </p>
+            <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;padding:14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+                <div>
+                    <div style="font-size:10.5px;font-weight:700;color:#9CA3AF;text-transform:uppercase;">Current Expiry</div>
+                    <div style="font-size:13px;font-weight:600;color:#374151;margin-top:2px;">{{ $domain->expires_at ? $domain->expires_at->format('d M Y') : '—' }}</div>
+                </div>
+                <i class="fas fa-arrow-right" style="color:#9CA3AF;font-size:13px;"></i>
+                <div style="text-align:right;">
+                    <div style="font-size:10.5px;font-weight:700;color:#16A34A;text-transform:uppercase;">New Expiry</div>
+                    <div style="font-size:13px;font-weight:700;color:#16A34A;margin-top:2px;">{{ $renewNewExpiry->format('d M Y') }}</div>
+                </div>
+            </div>
+            <form method="POST" action="{{ route('user.domains.quick-renew', $domain) }}">
+                @csrf
+                <div style="display:flex;gap:8px;justify-content:center;">
+                    <button type="button" @click="renewModal=false" style="padding:10px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
+                    <button type="submit" style="padding:10px 20px;background:#16A34A;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Confirm Renewal</button>
+                </div>
+            </form>
+        </div>
         </div>
     </div>
 

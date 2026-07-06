@@ -5,6 +5,10 @@
 <style>
 .dom-header { background:linear-gradient(135deg,#4F46E5 0%,#6366F1 50%,#818CF8 100%); border-radius:20px; padding:28px 32px; margin-bottom:24px; display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; box-shadow:0 8px 32px rgba(79,70,229,.25); }
 .dom-stat-chip { display:flex; align-items:center; gap:10px; padding:11px 18px; background:#fff; border:1.5px solid #E5E7EB; border-radius:12px; flex:1; min-width:110px; }
+.dom-stat { background:#fff; border-radius:12px; border:1px solid #F0F0F0; box-shadow:0 1px 4px rgba(0,0,0,.04); padding:16px 20px; display:flex; align-items:center; gap:14px; }
+.dom-stat-icon { width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:16px; }
+@media (max-width:900px) { .dom-stats-grid { grid-template-columns:repeat(2,1fr) !important; } }
+@media (max-width:500px)  { .dom-stats-grid { gap:8px !important; } }
 .dom-search { border:1.5px solid #E5E7EB; border-radius:10px; padding:8px 14px 8px 36px; font-size:13px; color:#111827; outline:none; width:220px; transition:border-color .15s; background:#fff; }
 .dom-search:focus { border-color:#4F46E5; }
 .dom-table { width:100%; border-collapse:separate; border-spacing:0; min-width:700px; }
@@ -40,6 +44,13 @@
 
 <div style="padding:0 0 32px;">
 
+    {{-- Flash --}}
+    @if(session('success'))
+    <div style="background:#ECFDF5;border:1px solid #A7F3D0;color:#16A34A;padding:12px 16px;border-radius:10px;margin-bottom:20px;font-size:13px;display:flex;align-items:center;gap:8px;">
+        <i class="fas fa-circle-check"></i> {{ session('success') }}
+    </div>
+    @endif
+
     {{-- Header --}}
     <div class="dom-header">
         <div>
@@ -53,43 +64,64 @@
                 </div>
             </div>
         </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            @php
-                $activeCount   = $domains->filter(fn($d) => $d->status === 'active')->count();
-                $expiringCount = $domains->filter(fn($d) => $d->status === 'expiring_soon')->count();
-                $expiredCount  = $domains->filter(fn($d) => $d->status === 'expired')->count();
-            @endphp
-            <div class="dom-stat-chip">
-                <span style="width:30px;height:30px;background:#D1FAE5;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <i class="fas fa-circle-check" style="font-size:13px;color:#059669;"></i>
-                </span>
-                <div>
-                    <div style="font-size:18px;font-weight:800;color:#111827;">{{ $activeCount }}</div>
-                    <div style="font-size:10px;color:#6B7280;font-weight:600;text-transform:uppercase;">Active</div>
-                </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <button onclick="document.getElementById('userAddDomainModal').style.display='block'"
+                    style="display:inline-flex;align-items:center;gap:7px;padding:10px 18px;background:#fff;color:#4F46E5;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.1);">
+                <i class="fas fa-plus" style="font-size:11px;"></i> Add Domain
+            </button>
+        </div>
+    </div>
+
+    {{-- Stats --}}
+    <div class="dom-stats-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px;">
+        <div class="dom-stat">
+            <div class="dom-stat-icon" style="background:#EEF2FF;">
+                <i class="fas fa-globe" style="color:#4F46E5;"></i>
             </div>
-            @if($expiringCount > 0)
-            <div class="dom-stat-chip" style="border-color:#FCD34D;">
-                <span style="width:30px;height:30px;background:#FEF3C7;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <i class="fas fa-triangle-exclamation" style="font-size:13px;color:#D97706;"></i>
-                </span>
-                <div>
-                    <div style="font-size:18px;font-weight:800;color:#92400E;">{{ $expiringCount }}</div>
-                    <div style="font-size:10px;color:#6B7280;font-weight:600;text-transform:uppercase;">Expiring Soon</div>
-                </div>
+            <div>
+                <p style="font-size:22px;font-weight:800;color:#111827;margin:0;">{{ $totalCount }}</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Total Domains</p>
             </div>
-            @endif
-            @if($expiredCount > 0)
-            <div class="dom-stat-chip" style="border-color:#FCA5A5;">
-                <span style="width:30px;height:30px;background:#FEE2E2;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <i class="fas fa-circle-xmark" style="font-size:13px;color:#DC2626;"></i>
-                </span>
-                <div>
-                    <div style="font-size:18px;font-weight:800;color:#991B1B;">{{ $expiredCount }}</div>
-                    <div style="font-size:10px;color:#6B7280;font-weight:600;text-transform:uppercase;">Expired</div>
-                </div>
+        </div>
+        <div class="dom-stat">
+            <div class="dom-stat-icon" style="background:#D1FAE5;">
+                <i class="fas fa-circle-check" style="color:#059669;"></i>
             </div>
-            @endif
+            <div>
+                <p style="font-size:22px;font-weight:800;color:#059669;margin:0;">{{ $activeCount }}</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Active</p>
+            </div>
+        </div>
+        <div class="dom-stat">
+            <div class="dom-stat-icon" style="background:#FEF3C7;">
+                <i class="fas fa-clock" style="color:#D97706;"></i>
+            </div>
+            <div>
+                <p style="font-size:22px;font-weight:800;color:#D97706;margin:0;">{{ $expiringSoonCount }}</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Expiring Soon <strong style="color:#EA580C;">· {{ $weekCount }} in 7d</strong></p>
+            </div>
+        </div>
+        <div class="dom-stat">
+            <div class="dom-stat-icon" style="background:#FEE2E2;">
+                <i class="fas fa-circle-xmark" style="color:#DC2626;"></i>
+            </div>
+            <div>
+                <p style="font-size:22px;font-weight:800;color:#DC2626;margin:0;">{{ $expiredCount }}</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Expired</p>
+            </div>
+        </div>
+        <div class="dom-stat">
+            <div class="dom-stat-icon" style="background:#EFF6FF;">
+                <i class="fas fa-coins" style="color:#2563EB;"></i>
+            </div>
+            <div>
+                @forelse($annualTotalsByCurrency as $currency => $amount)
+                <p style="font-size:{{ $annualTotalsByCurrency->count() > 1 ? '16px' : '22px' }};font-weight:800;color:#2563EB;margin:0;">{{ format_money($amount, $currency) }}</p>
+                @empty
+                <p style="font-size:22px;font-weight:800;color:#2563EB;margin:0;">BHD 0.000</p>
+                @endforelse
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Annual Spend</p>
+            </div>
         </div>
     </div>
 
@@ -99,7 +131,11 @@
             <i class="fas fa-globe" style="font-size:28px;color:#4F46E5;"></i>
         </div>
         <p style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">No domains assigned</p>
-        <p style="font-size:13px;color:#9CA3AF;margin:0;">You have not been assigned as responsible person for any domain yet.</p>
+        <p style="font-size:13px;color:#9CA3AF;margin:0 0 20px;">You have not been assigned as responsible person for any domain yet.</p>
+        <button onclick="document.getElementById('userAddDomainModal').style.display='block'"
+                style="display:inline-flex;align-items:center;gap:7px;padding:10px 20px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">
+            <i class="fas fa-plus" style="font-size:11px;"></i> Add Domain
+        </button>
     </div>
     @else
 
@@ -217,10 +253,33 @@
 
 </div>
 
+{{-- Add Domain Modal --}}
+<div id="userAddDomainModal" style="display:none;position:fixed;inset:0;z-index:9500;overflow-y:auto;background:rgba(0,0,0,.45);" onclick="if(event.target===this)document.getElementById('userAddDomainModal').style.display='none'">
+    <div style="min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px 16px;">
+        <div style="position:relative;background:#fff;border-radius:16px;padding:28px;width:640px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);" onclick="event.stopPropagation()">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+                <h3 style="font-size:18px;font-weight:700;color:#111827;margin:0;">Add Domain</h3>
+                <button onclick="document.getElementById('userAddDomainModal').style.display='none'" style="width:32px;height:32px;background:#F3F4F6;border:none;border-radius:8px;cursor:pointer;font-size:16px;color:#6B7280;">✕</button>
+            </div>
+            <p style="font-size:12.5px;color:#9CA3AF;margin:-14px 0 20px;">You'll automatically be set as a responsible person for this domain.</p>
+            <form method="POST" action="{{ route('user.domains.store') }}">
+                @csrf
+                @include('admin.domains._form', ['domain' => null])
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px;">
+                    <button type="button" onclick="document.getElementById('userAddDomainModal').style.display='none'" style="padding:10px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
+                    <button type="submit" style="padding:10px 24px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
+                        <i class="fas fa-plus" style="margin-right:6px;"></i>Add Domain
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 {{-- Expiring Soon Modal --}}
 <div id="dom-expiring-overlay" class="dom-detail-overlay" style="display:{{ $showExpiringPopup ? 'flex' : 'none' }};z-index:10000;" onclick="if(event.target===this)closeExpiringSummary()">
     <div class="dom-detail-panel" style="width:480px;">
-        <div class="dom-detail-header" style="background:linear-gradient(135deg,#D97706 0%,#F59E0B 100%);">
+        <div class="dom-detail-header" style="background:linear-gradient(135deg,#DC2626 0%,#EF4444 100%);">
             <div style="display:flex;align-items:center;gap:12px;">
                 <div style="width:42px;height:42px;background:rgba(255,255,255,.2);border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <i class="fas fa-triangle-exclamation" style="font-size:18px;color:#fff;"></i>

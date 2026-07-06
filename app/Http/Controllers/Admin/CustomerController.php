@@ -92,6 +92,7 @@ class CustomerController extends Controller
         $customer->load([
             'projects' => fn($q) => $q->where('is_quick', false)->withCount('tasks')->orderBy('created_at', 'desc'),
             'socialAccounts' => fn($q) => $q->with('users:id,name,email,avatar,role')->orderBy('platform')->orderBy('name'),
+            'domains' => fn($q) => $q->with('responsibleUsers:id,name')->orderBy('expires_at'),
         ]);
 
         // Load tasks from both direct customer_id and tasks inside the customer's projects
