@@ -56,7 +56,7 @@
             ['x' => 84, 'y' => 36],
         ];
         $frameMeta = collect(range(1, 5))->map(fn ($i) => [
-            'icon'  => $frameIcons[$i - 1],
+            'icon'  => ($appSettings["login_frame{$i}_icon"] ?? '') ?: $frameIcons[$i - 1],
             'color' => $frameColors[$i - 1],
             'title' => ($appSettings["login_frame{$i}_title"] ?? '') ?: $frameDefaults[$i - 1]['title'],
             'desc'  => ($appSettings["login_frame{$i}_desc"] ?? '') ?: $frameDefaults[$i - 1]['desc'],

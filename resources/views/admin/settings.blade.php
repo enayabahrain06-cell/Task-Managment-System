@@ -1433,6 +1433,42 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </label>
                         </div>
 
+                        <div>
+                            <p class="sf-toggle-label">Team Display Order</p>
+                            <p class="sf-toggle-hint" style="margin-bottom:10px;">Drag to reorder. This order drives both the wave row up top (whoever lands in the middle gets the tallest, centered card) and the "Meet Our Team" grid below. New team members are appended at the bottom automatically until you place them.</p>
+                            <div x-data="aboutTeamOrder(@js($aboutPageTeamMembers->map(fn ($m) => [
+                                    'id' => $m->id,
+                                    'name' => $m->name,
+                                    'role' => $m->job_title ?: ucfirst($m->role),
+                                    'avatar' => $m->avatarUrl(),
+                                    'initial' => mb_strtoupper(mb_substr($m->name, 0, 1)),
+                                ])->values()))"
+                                 style="display:flex;flex-direction:column;gap:6px;max-width:420px;">
+                                <template x-for="(member, idx) in members" :key="member.id">
+                                    <div draggable="true"
+                                         @dragstart="dragStart(idx)"
+                                         @dragover.prevent="dragOver(idx)"
+                                         @dragend="dragEnd()"
+                                         @drop.prevent
+                                         :style="dragging === idx ? 'opacity:.4;' : ''"
+                                         style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;cursor:grab;">
+                                        <i class="fas fa-grip-vertical" style="color:#D1D5DB;font-size:12px;"></i>
+                                        <template x-if="member.avatar">
+                                            <img :src="member.avatar" style="width:30px;height:30px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                                        </template>
+                                        <template x-if="!member.avatar">
+                                            <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#A5B4FC,#6366F1);color:#fff;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" x-text="member.initial"></div>
+                                        </template>
+                                        <div style="min-width:0;">
+                                            <p style="font-weight:600;font-size:12.5px;color:#111827;margin:0;" x-text="member.name"></p>
+                                            <p style="font-size:10.5px;color:#9CA3AF;margin:0;" x-text="member.role"></p>
+                                        </div>
+                                    </div>
+                                </template>
+                                <p style="font-size:11px;color:#059669;margin:4px 0 0;height:14px;" x-show="saved" x-transition><i class="fas fa-check"></i> Order saved</p>
+                            </div>
+                        </div>
+
                         <hr style="border:none;border-top:1px solid #F3F4F6;margin:20px 0;">
 
                         <div class="sf-toggle-row">
@@ -1900,6 +1936,29 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                     <a href="{{ route('login') }}" target="_blank" style="font-size:12.5px;font-weight:600;color:#6366F1;text-decoration:none;white-space:nowrap;">
                         <i class="fa fa-arrow-up-right-from-square" style="margin-right:4px;"></i>Open login page
                     </a>
+                </div>
+
+                {{-- Hide Team Photos toggle --}}
+                <div style="padding:14px 24px;border-bottom:1px solid #F3F4F6;"
+                     x-data="{ hideTeamPhotos: {{ ($appSettings['hide_team_photos'] ?? '0') === '1' ? 'true' : 'false' }} }">
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:28px;height:28px;border-radius:8px;background:#FEF2F2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-eye-slash" style="font-size:11px;color:#EF4444;"></i>
+                            </div>
+                            <div>
+                                <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Hide Team Photos</p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Remove the team photo cards from the login page (About page is unaffected)</p>
+                            </div>
+                        </div>
+                        <button type="button"
+                                @click="fetch('{{ route('admin.settings.hide-team-photos') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ hideTeamPhotos = d.hide_team_photos })"
+                                style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                :style="hideTeamPhotos ? 'background:#EF4444;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                            <i class="fas" :class="hideTeamPhotos ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                            <span x-text="hideTeamPhotos ? 'Hidden' : 'Visible'"></span>
+                        </button>
+                    </div>
                 </div>
                 @if(($appSettings['developer_mode'] ?? '0') !== '1')
                 <div style="padding:10px 24px;background:#FFFBEB;border-bottom:1px solid #FDE68A;font-size:12px;color:#92400E;">
@@ -4841,7 +4900,34 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 const _devToggleUrl         = '{{ route('admin.settings.dev-mode') }}';
 const _maintenanceToggleUrl = '{{ route('admin.settings.maintenance') }}';
 const _devElementsUrl       = '{{ route('admin.settings.elements.toggle') }}';
+const _aboutTeamOrderUrl    = '{{ route('admin.settings.about-page.team-order') }}';
 const _csrfToken            = '{{ csrf_token() }}';
+
+function aboutTeamOrder(members) {
+    return {
+        members: members,
+        dragging: null,
+        saved: false,
+        dragStart(idx) { this.dragging = idx; },
+        dragOver(idx) {
+            if (this.dragging === null || this.dragging === idx) return;
+            const moved = this.members.splice(this.dragging, 1)[0];
+            this.members.splice(idx, 0, moved);
+            this.dragging = idx;
+        },
+        dragEnd() {
+            this.dragging = null;
+            fetch(_aboutTeamOrderUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': _csrfToken, 'Accept': 'application/json' },
+                body: JSON.stringify({ order: this.members.map(m => m.id) }),
+            }).then(r => r.json()).then(() => {
+                this.saved = true;
+                setTimeout(() => { this.saved = false; }, 2000);
+            });
+        },
+    };
+}
 
 function _lockCard(id, message) {
     const card = document.getElementById(id);

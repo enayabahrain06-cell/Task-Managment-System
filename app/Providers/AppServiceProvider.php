@@ -146,6 +146,7 @@ class AppServiceProvider extends ServiceProvider
                     'nav_hidden', 'maintenance_mode', 'hide_approval_customer_notify', 'hide_hourly_rate', 'hide_wa_web_button',
                     'notif_sound_type', 'notif_sound_volume', 'agent_name', 'agent_subtitle', 'agent_welcome', 'agent_color',
                     'agent_icon', 'hide_agent', 'support_user_id', 'hide_summarize_button', 'hide_features_tab',
+                    'hide_team_photos',
                 ], $aboutPageKeys));
                 $merged = array_merge([
                     'app_name' => 'Dash',
@@ -186,6 +187,7 @@ class AppServiceProvider extends ServiceProvider
                     'hide_agent' => '0',
                     'support_user_id' => '',
                     'hide_summarize_button' => '0',
+                    'hide_team_photos' => '0',
                     'about_page_enabled' => '1',
                     'about_page_intro' => '',
                     'about_page_cta_enabled' => '1',
@@ -275,6 +277,7 @@ class AppServiceProvider extends ServiceProvider
                     'hide_agent' => '0',
                     'support_user_id' => '',
                     'hide_summarize_button' => '0',
+                    'hide_team_photos' => '0',
                     'about_page_enabled' => '1',
                     'about_page_intro' => '',
                     'about_page_cta_enabled' => '1',

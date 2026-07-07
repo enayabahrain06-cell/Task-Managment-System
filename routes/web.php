@@ -230,12 +230,14 @@ Route::middleware([AdminMiddleware::class, MfaMiddleware::class])->prefix('admin
     Route::post('settings/about-page/field',      [AdminSettingsController::class, 'updateAboutPageField'])->name('settings.about-page.field');
     Route::post('settings/about-page/hero-bg',    [AdminSettingsController::class, 'updateAboutPageHeroBg'])->name('settings.about-page.hero-bg');
     Route::post('settings/about-page/team-photo/{user}', [AdminSettingsController::class, 'updateAboutPageTeamPhoto'])->name('settings.about-page.team-photo');
+    Route::post('settings/about-page/team-order', [AdminSettingsController::class, 'updateAboutPageTeamOrder'])->name('settings.about-page.team-order');
     Route::post('settings/login-preview/move',    [AdminSettingsController::class, 'moveLoginFrame'])->name('settings.login-preview.move');
     Route::post('settings/team',                  [AdminSettingsController::class, 'updateTeam'])->name('settings.team');
     Route::post('settings/notifications',         [AdminSettingsController::class, 'updateNotifications'])->name('settings.notifications');
     Route::post('settings/security',              [AdminSettingsController::class, 'updateSecurity'])->name('settings.security');
     Route::post('settings/agent',                 [AdminSettingsController::class, 'updateAgent'])->name('settings.agent');
     Route::post('settings/hide-agent',            [AdminSettingsController::class, 'toggleHideAgent'])->name('settings.hide-agent');
+    Route::post('settings/hide-team-photos',      [AdminSettingsController::class, 'toggleHideTeamPhotos'])->name('settings.hide-team-photos');
     Route::post('settings/mail',                  [AdminSettingsController::class, 'updateMail'])->name('settings.mail');
     Route::post('settings/mail/test',             [AdminSettingsController::class, 'testMail'])->name('settings.mail.test');
     Route::post('settings/dev-mode',              [AdminSettingsController::class, 'toggleDevMode'])->name('settings.dev-mode');

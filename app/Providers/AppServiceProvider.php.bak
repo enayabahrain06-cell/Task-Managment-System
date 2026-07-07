@@ -132,6 +132,7 @@ class AppServiceProvider extends ServiceProvider
                 foreach ([1, 2, 3, 4, 5] as $i) {
                     $aboutPageKeys[] = "login_frame{$i}_title";
                     $aboutPageKeys[] = "login_frame{$i}_desc";
+                    $aboutPageKeys[] = "login_frame{$i}_icon";
                     $aboutPageKeys[] = "login_frame{$i}_x";
                     $aboutPageKeys[] = "login_frame{$i}_y";
                     $aboutPageKeys[] = "login_frame{$i}_scale";

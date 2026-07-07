@@ -299,7 +299,14 @@
       "Bash(curl -s https://ms.p7h.me/login -o /tmp/claude-0/-var-www-Task-Managment-System/dfeaa2c2-cbba-4b33-8258-91cbeec887e2/scratchpad/login_anon.html -w \"HTTP %{http_code}\\\\n\")",
       "Bash(cp app/Http/Controllers/Concerns/GroupsCostsByCurrency.php app/Http/Controllers/Concerns/GroupsCostsByCurrency.php.bak)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" https://ms.p7h.me/admin/domains)",
-      "Bash(grep -rn '\\\\$currency\\\\b' resources/views/admin/domains/ resources/views/admin/subscriptions/)"
+      "Bash(grep -rn '\\\\$currency\\\\b' resources/views/admin/domains/ resources/views/admin/subscriptions/)",
+      "Bash(awk 'NR==1081,NR==1425{ if \\($0 ~ /<\\\\/form>/\\) print NR\": \"$0 }' resources/views/admin/settings.blade.php)",
+      "Bash(grep -n 'rounded-\\\\[22px\\\\]\\\\|w-\\\\[72px\\\\]\\\\|teamMembers as $i' resources/views/public/about.blade.php)",
+      "Bash(php -l app/Http/Controllers/PublicController.php)",
+      "Bash(php -l app/Http/Controllers/Concerns/OrdersTeamMembers.php)",
+      "Bash(grep -n '@if\\($devEditOn\\)\\\\|@endif\\\\|<script>\\\\|</script>' resources/views/public/about.blade.php)",
+      "Bash(awk -F: '$1>=820 && $1<=990')",
+      "Bash(grep -n \"heroSection.addEventListener\\\\|^}\\)\\(\\);$\\\\|^</script>$\" resources/views/public/about.blade.php)"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory",

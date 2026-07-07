@@ -56,8 +56,6 @@
             ['#FBCFE8','#DB2777'], ['#BFDBFE','#2563EB'], ['#C7D2FE', $brand],
             ['#BBF7D0','#059669'], ['#FDE68A','#D97706'], ['#A5F3FC','#0891B2'], ['#DDD6FE', $brand2],
         ];
-        // $teamMembers is already in the admin's chosen display order (see PublicController::about),
-        // so whoever is in the middle of the first 7 lands in the wave's tallest, centered slot.
         $wavePeople = $teamMembers->take(7)->values();
         $waveCount  = max($wavePeople->count(), 1);
         $waveCards  = $wavePeople->map(function ($person, $i) use ($waveCount, $wavePalette) {
@@ -254,16 +252,6 @@
         .reveal.is-visible { opacity: 1; transform: none; }
         @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
 
-        /* ── Hero ambient background blobs ── */
-        .hero-blob { position: absolute; z-index: 0; border-radius: 50%; filter: blur(70px); pointer-events: none; }
-        .hero-blob-1 { width: 46%; height: 55%; left: -8%; top: -14%; background: color-mix(in srgb, var(--brand) 30%, transparent); animation: heroBlobDrift1 22s ease-in-out infinite alternate; }
-        .hero-blob-2 { width: 40%; height: 45%; right: -6%; top: -10%; background: rgba(6,182,212,0.22); animation: heroBlobDrift2 26s ease-in-out infinite alternate; }
-        .hero-blob-3 { width: 50%; height: 50%; left: 25%; bottom: -20%; background: rgba(219,39,119,0.16); animation: heroBlobDrift3 30s ease-in-out infinite alternate; }
-        @keyframes heroBlobDrift1 { from { transform: translate(0,0) scale(1); } to { transform: translate(4%,3%) scale(1.08); } }
-        @keyframes heroBlobDrift2 { from { transform: translate(0,0) scale(1); } to { transform: translate(-5%,4%) scale(0.94); } }
-        @keyframes heroBlobDrift3 { from { transform: translate(0,0) scale(1); } to { transform: translate(3%,-4%) scale(1.06); } }
-        @media (prefers-reduced-motion: reduce) { .hero-blob { animation: none; } }
-
         /* ── Wave-arc team row (hero signature element) ── */
         @keyframes wavePop { from { opacity: 0; transform: translateY(26px) scale(0.85); } to { opacity: 1; transform: translateY(0) scale(1); } }
         .wave-card { animation: wavePop 0.55s cubic-bezier(.22,.68,0,1.15) both; }
@@ -324,10 +312,6 @@
         }
         .dev-eye-btn:hover { background: rgba(17,24,39,0.8); }
         section.dev-hideable > .dev-eye-btn { top: 16px; right: 16px; }
-        .dev-draggable-card { cursor: grab; transition: box-shadow .15s, opacity .15s; }
-        .dev-draggable-card:active { cursor: grabbing; }
-        .dev-drag-dragging { opacity: 0.4; }
-        .dev-drag-over { box-shadow: 0 0 0 3px var(--brand) !important; }
         @endif
     </style>
 </head>
@@ -388,13 +372,11 @@
          @if($hasHeroBg)
          style="background:#0F0B24;"
          @else
-         style="background: linear-gradient(180deg, #FBFAFF 0%, #F3F1FC 100%);"
+         style="background: radial-gradient(60% 50% at 15% 10%, color-mix(in srgb, var(--brand) 16%, transparent), transparent 70%),
+                             radial-gradient(50% 45% at 88% 8%, rgba(6,182,212,0.14), transparent 70%),
+                             radial-gradient(55% 50% at 50% 95%, rgba(219,39,119,0.10), transparent 70%),
+                             linear-gradient(180deg, #FBFAFF 0%, #F3F1FC 100%);"
          @endif>
-        @if(!$hasHeroBg)
-        <div class="hero-blob hero-blob-1"></div>
-        <div class="hero-blob hero-blob-2"></div>
-        <div class="hero-blob hero-blob-3"></div>
-        @endif
         @if($hasHeroBg)
             @if($heroBgIsVideo)
             <video src="{{ $heroBgUrl }}" autoplay muted loop playsinline class="absolute inset-0 w-full h-full object-cover"></video>
@@ -463,8 +445,7 @@
         <div class="wave-row relative z-10 flex items-end justify-center gap-6 max-w-5xl mx-auto px-6 pt-16 pb-14 flex-wrap">
             @foreach($waveCards as $i => $card)
             @php $person = $card['person']; @endphp
-            <div class="wave-card relative flex flex-col items-center {{ $devEditOn ? 'dev-draggable-card' : '' }}" style="margin-top:-{{ $card['lift'] }}px; animation-delay:{{ 0.08 * $i }}s;"
-                 @if($devEditOn) draggable="true" data-member-id="{{ $person->id }}" @endif>
+            <div class="wave-card relative flex flex-col items-center" style="margin-top:-{{ $card['lift'] }}px; animation-delay:{{ 0.08 * $i }}s;">
                 <div class="wave-label absolute -top-[50px] left-1/2 -translate-x-1/2 bg-white rounded-xl px-3.5 py-1.5 text-center whitespace-nowrap">
                     <p class="text-[12.5px] font-extrabold m-0 text-[#16132B]">{{ $person->name }}</p>
                     <p class="text-[10.5px] font-semibold m-0 mt-0.5 text-[color:var(--brand)]">{{ $person->job_title ?: ucfirst($person->role) }}</p>
@@ -634,8 +615,7 @@
         @else
             <div class="reveal grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
                 @foreach($teamMembers as $i => $member)
-                <div class="bg-white rounded-[22px] p-6 text-center shadow-[0_4px_20px_rgba(99,102,241,0.08)] border border-black/[0.03] hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(99,102,241,0.16)] transition {{ $devEditOn ? 'dev-draggable-card' : '' }}" style="transition-delay:{{ $i * 30 }}ms;"
-                     @if($devEditOn) draggable="true" data-member-id="{{ $member->id }}" @endif>
+                <div class="bg-white rounded-[22px] p-6 text-center shadow-[0_4px_20px_rgba(99,102,241,0.08)] border border-black/[0.03] hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(99,102,241,0.16)] transition" style="transition-delay:{{ $i * 30 }}ms;">
                     @if($member->avatar)
                         <img src="{{ Storage::url($member->avatar) }}" alt="{{ $member->name }}" class="w-[72px] h-[72px] rounded-full mx-auto mb-3.5 object-cover shadow-[0_4px_14px_rgba(0,0,0,0.1)]">
                     @else
@@ -991,8 +971,7 @@
         var heroDropOverlay = document.getElementById('devHeroDropOverlay');
         heroSection.addEventListener('dragover', function (e) {
             e.preventDefault();
-            // Only show the background drop overlay for real OS file drags — not for wave-card reordering below
-            if (heroDropOverlay && e.dataTransfer.types.includes('Files')) heroDropOverlay.style.display = 'flex';
+            if (heroDropOverlay) heroDropOverlay.style.display = 'flex';
         });
         heroSection.addEventListener('dragleave', function (e) {
             if (e.target === heroSection && heroDropOverlay) heroDropOverlay.style.display = 'none';
@@ -1004,54 +983,6 @@
             if (file) uploadHeroBg(file);
         });
     }
-
-    // Team card reordering — drag a wave-row or "Meet Our Team" card onto another to swap their positions.
-    // Both sections render the same underlying order, so one array (synced with the server's current order)
-    // drives the save regardless of which section the drag happened in.
-    var teamOrder = @json($teamMembers->pluck('id'));
-    var teamOrderUrl = @json(route('admin.settings.about-page.team-order'));
-    var draggedMemberId = null;
-
-    document.querySelectorAll('[data-member-id]').forEach(function (card) {
-        card.addEventListener('dragstart', function (e) {
-            draggedMemberId = parseInt(card.dataset.memberId, 10);
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', String(draggedMemberId));
-            card.classList.add('dev-drag-dragging');
-        });
-        card.addEventListener('dragend', function () {
-            card.classList.remove('dev-drag-dragging');
-            document.querySelectorAll('.dev-drag-over').forEach(function (el) { el.classList.remove('dev-drag-over'); });
-        });
-        card.addEventListener('dragover', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            if (draggedMemberId !== null && parseInt(card.dataset.memberId, 10) !== draggedMemberId) {
-                card.classList.add('dev-drag-over');
-            }
-        });
-        card.addEventListener('dragleave', function () {
-            card.classList.remove('dev-drag-over');
-        });
-        card.addEventListener('drop', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            card.classList.remove('dev-drag-over');
-            var targetId = parseInt(card.dataset.memberId, 10);
-            if (draggedMemberId === null || targetId === draggedMemberId) return;
-
-            var from = teamOrder.indexOf(draggedMemberId);
-            var to = teamOrder.indexOf(targetId);
-            if (from === -1 || to === -1) return;
-            teamOrder.splice(to, 0, teamOrder.splice(from, 1)[0]);
-
-            fetch(teamOrderUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
-                body: JSON.stringify({ order: teamOrder }),
-            }).then(function () { location.reload(); });
-        });
-    });
 })();
 </script>
 @endif

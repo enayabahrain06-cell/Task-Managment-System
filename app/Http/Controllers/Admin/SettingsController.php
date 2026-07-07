@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\OrdersTeamMembers;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Project;
@@ -30,6 +31,8 @@ use Symfony\Component\Mime\Email;
 
 class SettingsController extends Controller
 {
+    use OrdersTeamMembers;
+
     /** Curated icon choices for the login page's team corner cards — key is the stored value, label is shown in the picker. */
     public const LOGIN_FRAME_ICONS = [
         'fa-briefcase' => 'Briefcase',
@@ -213,6 +216,7 @@ class SettingsController extends Controller
             ->orderBy('role')
             ->orderBy('name')
             ->get(['id', 'name', 'avatar', 'job_title', 'role']);
+        $aboutPageTeamMembers = $this->applyTeamOrder($aboutPageTeamMembers);
 
         // Same real counts the /about page's stat cards use — kept identical so the Settings preview matches live
         $aboutPageRealStats = [
@@ -752,6 +756,24 @@ class SettingsController extends Controller
         return back()->with('success', "{$user->name}'s photo updated.")->withFragment('about_page');
     }
 
+    public function updateAboutPageTeamOrder(Request $request)
+    {
+        $request->validate(['order' => 'required|array']);
+
+        $validIds = User::where('status', 'active')->where('role', '!=', 'admin')->pluck('id');
+
+        $order = collect($request->input('order'))
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $validIds->contains($id))
+            ->values();
+
+        Setting::set('about_page_team_order', $order->toJson());
+
+        AuditLogger::log('settings.updated', null, 'Reordered About page team members', ['section' => 'about_page']);
+
+        return response()->json(['ok' => true]);
+    }
+
     public function moveLoginFrame(Request $request)
     {
         $data = $request->validate([
@@ -948,6 +970,17 @@ class SettingsController extends Controller
         Setting::set('hide_agent', $new);
 
         return response()->json(['hide_agent' => $new === '1']);
+    }
+
+    // ── Team Photos ──────────────────────────────────────────────────────
+
+    public function toggleHideTeamPhotos()
+    {
+        $current = Setting::get('hide_team_photos', '0');
+        $new = $current === '1' ? '0' : '1';
+        Setting::set('hide_team_photos', $new);
+
+        return response()->json(['hide_team_photos' => $new === '1']);
     }
 
     public function updateAgent(Request $request)

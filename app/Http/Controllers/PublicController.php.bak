@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Concerns\OrdersTeamMembers;
 use App\Models\Project;
 use App\Models\Setting;
 use App\Models\Task;
@@ -10,8 +9,6 @@ use App\Models\User;
 
 class PublicController extends Controller
 {
-    use OrdersTeamMembers;
-
     // appSettings is shared with every view by the global composer in AppServiceProvider
     public function about()
     {
@@ -24,8 +21,6 @@ class PublicController extends Controller
             ->orderBy('role')
             ->orderBy('name')
             ->get(['id', 'name', 'avatar', 'job_title', 'role']);
-
-        $teamMembers = $this->applyTeamOrder($teamMembers);
 
         // Real counts for the stats section — never fabricate numbers that can be queried
         $activeMemberCount = User::where('status', 'active')->count();

@@ -29,7 +29,7 @@
 
         /* Pull up to 5 active, non-admin users that have a real profile photo —
            same ordering as the Team Photos admin list, so "slot N" there matches "corner N" here */
-        $teamFrameUsers = $showTeamLayout
+        $teamFrameUsers = ($showTeamLayout && ($appSettings['hide_team_photos'] ?? '0') !== '1')
             ? \App\Models\User::where('status', 'active')
                 ->where('role', '!=', 'admin')
                 ->whereNotNull('avatar')->where('avatar', '!=', '')

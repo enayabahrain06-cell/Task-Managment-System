@@ -52,6 +52,13 @@
 .sf-input:focus { border-color:#6366F1; box-shadow:0 0 0 3px rgba(99,102,241,0.1); }
 .sf-select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:32px; }
 .sf-row    { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.icon-picker-popover { position:absolute; z-index:40; background:#fff; border:1px solid #E5E7EB; border-radius:12px; box-shadow:0 10px 28px rgba(0,0,0,.14); padding:8px; width:196px; display:grid; grid-template-columns:repeat(4,1fr); gap:5px; }
+.icon-swatch-btn { width:38px; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; border:1.5px solid transparent; background:#F9FAFB; transition:background .1s; }
+.icon-swatch-btn:hover { background:#F3F4F6; }
+.icon-swatch-btn i { font-size:14px; color:#6B7280; }
+.icon-swatch-btn.is-active { background:#EEF2FF; border-color:#6366F1; }
+.icon-swatch-btn.is-active:hover { background:#EEF2FF; }
+.icon-swatch-btn.is-active i { color:#6366F1; }
 .sf-toggle-row { display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid #F3F4F6; }
 .sf-toggle-row:last-child { border-bottom:none; padding-bottom:0; }
 .sf-toggle-label { font-size:13px; font-weight:500; color:#111827; }
@@ -1894,6 +1901,29 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         <i class="fa fa-arrow-up-right-from-square" style="margin-right:4px;"></i>Open login page
                     </a>
                 </div>
+
+                {{-- Hide Team Photos toggle --}}
+                <div style="padding:14px 24px;border-bottom:1px solid #F3F4F6;"
+                     x-data="{ hideTeamPhotos: {{ ($appSettings['hide_team_photos'] ?? '0') === '1' ? 'true' : 'false' }} }">
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:28px;height:28px;border-radius:8px;background:#FEF2F2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-eye-slash" style="font-size:11px;color:#EF4444;"></i>
+                            </div>
+                            <div>
+                                <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Hide Team Photos</p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Remove the team photo cards from the login page (About page is unaffected)</p>
+                            </div>
+                        </div>
+                        <button type="button"
+                                @click="fetch('{{ route('admin.settings.hide-team-photos') }}', { method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json'} }).then(r=>r.json()).then(d=>{ hideTeamPhotos = d.hide_team_photos })"
+                                style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                :style="hideTeamPhotos ? 'background:#EF4444;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                            <i class="fas" :class="hideTeamPhotos ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                            <span x-text="hideTeamPhotos ? 'Hidden' : 'Visible'"></span>
+                        </button>
+                    </div>
+                </div>
                 @if(($appSettings['developer_mode'] ?? '0') !== '1')
                 <div style="padding:10px 24px;background:#FFFBEB;border-bottom:1px solid #FDE68A;font-size:12px;color:#92400E;">
                     <i class="fa fa-circle-info" style="margin-right:5px;"></i>
@@ -1908,6 +1938,10 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             3 => ['Developer', 'Builds with code'],
                             4 => ['Strategist', 'Plans for success'],
                             5 => ['Team Member', 'Gets things done'],
+                        ];
+                        $frameDefaultIcons = [
+                            1 => 'fa-briefcase', 2 => 'fa-palette', 3 => 'fa-code',
+                            4 => 'fa-chart-simple', 5 => 'fa-headset',
                         ];
                         // The login page only looks at members WITH a photo (see layouts/auth.blade.php
                         // $teamFrameUsers) and numbers slots among those — so slot numbers here must be
@@ -1959,6 +1993,30 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 <input type="text" form="about-page-form" name="login_frame{{ $slot }}_desc" class="sf-input" maxlength="60"
                                        value="{{ $appSettings["login_frame{$slot}_desc"] ?? $frameDefaultLabels[$slot][1] }}"
                                        placeholder="{{ $frameDefaultLabels[$slot][1] }}">
+                            </div>
+                            <div style="flex:0 0 170px;position:relative;"
+                                 x-data="{ icon: '{{ ($appSettings["login_frame{$slot}_icon"] ?? '') ?: $frameDefaultIcons[$slot] }}', open: false, labels: @js(\App\Http\Controllers\Admin\SettingsController::LOGIN_FRAME_ICONS) }"
+                                 @keydown.escape.window="open=false" @click.outside="open=false">
+                                <label class="sf-label" style="font-weight:400;color:#9CA3AF;font-size:10.5px;">Login corner card — icon</label>
+                                <input type="hidden" form="about-page-form" name="login_frame{{ $slot }}_icon" :value="icon">
+                                <button type="button" @click="open=!open" class="sf-input"
+                                        style="display:flex;align-items:center;gap:8px;cursor:pointer;width:100%;text-align:left;background:#fff;">
+                                    <span style="width:24px;height:24px;border-radius:6px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                        <i class="fas" :class="icon" style="color:#6366F1;font-size:11px;"></i>
+                                    </span>
+                                    <span style="flex:1;min-width:0;font-size:12.5px;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="labels[icon] || icon"></span>
+                                    <i class="fa fa-chevron-down" style="font-size:9px;color:#9CA3AF;flex-shrink:0;transition:transform .15s;" :style="open ? 'transform:rotate(180deg)' : ''"></i>
+                                </button>
+                                <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                                     class="icon-picker-popover"
+                                     style="top:calc(100% + 6px);left:0;">
+                                    @foreach(\App\Http\Controllers\Admin\SettingsController::LOGIN_FRAME_ICONS as $iconClass => $iconLabel)
+                                    <button type="button" @click="icon='{{ $iconClass }}'; open=false" title="{{ $iconLabel }}"
+                                            class="icon-swatch-btn" :class="icon === '{{ $iconClass }}' ? 'is-active' : ''">
+                                        <i class="fas {{ $iconClass }}"></i>
+                                    </button>
+                                    @endforeach
+                                </div>
                             </div>
                         </div>
                         @elseif(!$member->avatar && $photoOrder->count() < 5)
