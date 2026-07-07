@@ -107,7 +107,7 @@
     $renewNewExpiry = $renewBase->copy()->addYears($renewYears);
 @endphp
 
-<div x-data="{ renewModal: false, editModal: false }">
+<div x-data="{ renewModal: false }">
 
     {{-- Back --}}
     <a href="{{ route('user.domains.index') }}"
@@ -164,41 +164,12 @@
                     </div>
                 </div>
             </div>
-            <div style="display:flex;gap:8px;">
-                <button @click="editModal = true"
-                        style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
-                    <i class="fas fa-pen" style="font-size:11px;"></i> Edit
-                </button>
-                @if($domain->billing_cycle !== 'one_time')
-                <button @click="renewModal = true"
-                        style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:#ECFDF5;color:#16A34A;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
-                    <i class="fas fa-rotate" style="font-size:11px;"></i> Quick Renew
-                </button>
-                @endif
-            </div>
-        </div>
-    </div>
-
-    {{-- Edit Modal --}}
-    <div x-show="editModal" x-cloak style="position:fixed;inset:0;z-index:9000;">
-        <div style="position:absolute;inset:0;background:rgba(0,0,0,.4);" @click="editModal=false"></div>
-        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px 16px;overflow-y:auto;pointer-events:none;">
-        <div style="position:relative;background:#fff;border-radius:16px;padding:28px;width:640px;max-width:100%;z-index:1;max-height:90vh;overflow-y:auto;pointer-events:all;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
-                <h3 style="font-size:18px;font-weight:700;color:#111827;margin:0;">Edit Domain</h3>
-                <button @click="editModal=false" style="width:32px;height:32px;background:#F3F4F6;border:none;border-radius:8px;cursor:pointer;font-size:16px;color:#6B7280;">✕</button>
-            </div>
-            <form method="POST" action="{{ route('user.domains.update', $domain) }}">
-                @csrf @method('PUT')
-                @include('admin.domains._form', ['domain' => $domain])
-                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px;">
-                    <button type="button" @click="editModal=false" style="padding:10px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
-                    <button type="submit" style="padding:10px 24px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
-                        Save Changes
-                    </button>
-                </div>
-            </form>
-        </div>
+            @if($domain->billing_cycle !== 'one_time')
+            <button @click="renewModal = true"
+                    style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:#ECFDF5;color:#16A34A;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
+                <i class="fas fa-rotate" style="font-size:11px;"></i> Quick Renew
+            </button>
+            @endif
         </div>
     </div>
 

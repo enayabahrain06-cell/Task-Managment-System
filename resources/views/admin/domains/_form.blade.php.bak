@@ -130,13 +130,21 @@
                    onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
         </div>
     </div>
-    <div style="margin-top:10px;">
+    <div x-data="{showPwd:false}" style="margin-top:10px;">
         <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">
-            Password{{ $domain ? ' (leave blank to keep current)' : '' }}
+            Password @if($domain)<span style="font-weight:400;color:#9CA3AF;font-size:11px;"> — leave blank to keep</span>@endif
         </label>
-        <input name="password" type="password" placeholder="{{ $domain ? 'Enter new password to change' : 'Registrar account password' }}"
-               style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
-               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+        <div style="position:relative;">
+            <input name="password" :type="showPwd?'text':'password'"
+                   placeholder="{{ $domain ? 'Leave blank to keep current' : 'Registrar account password' }}"
+                   autocomplete="new-password"
+                   style="width:100%;padding:9px 40px 9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
+                   onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+            <button type="button" @click="showPwd=!showPwd"
+                    style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:0;color:#9CA3AF;">
+                <i :class="showPwd?'fas fa-eye-slash':'fas fa-eye'" style="font-size:13px;"></i>
+            </button>
+        </div>
     </div>
 </div>
 

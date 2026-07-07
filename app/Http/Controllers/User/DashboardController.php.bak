@@ -259,7 +259,7 @@ class DashboardController extends Controller
         $request->validate([
             'current_password' => 'required|string',
             'email'            => 'nullable|email|max:255|unique:users,email,' . $user->id,
-            'password'         => 'nullable|confirmed|min:8',
+            'password'         => ['nullable', 'sometimes', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
             'avatar'           => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 

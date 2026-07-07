@@ -16,38 +16,36 @@
 <style>
 @page { size:A4 portrait; margin:0; }
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; background:#F1F5F9; }
+body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; background:#fff; }
+
+/* ── Accent bar ── */
+.accent-bar { height:5px; background:linear-gradient(90deg,{{ $primaryColor }},{{ $primaryMid }},{{ $primaryLight }}); }
 
 /* ── White header ── */
-.hdr-white   { background:#fff; padding:12px 18px 11px; display:table; width:100%; border-bottom:1px solid #E2E8F0; }
+.hdr-white   { background:#fff; padding:14px 22px 12px; display:table; width:100%; }
 .hdr-white-l { display:table-cell; vertical-align:middle; }
 .hdr-white-r { display:table-cell; vertical-align:middle; text-align:right; width:52%; }
 .brand-row   { display:table; }
 .brand-logo  { display:table-cell; vertical-align:middle; padding-right:10px; }
-.brand-logo img { height:38px; max-width:52px; object-fit:contain; }
+.brand-logo img { height:40px; max-width:56px; object-fit:contain; }
 .brand-text  { display:table-cell; vertical-align:middle; }
-.brand-name  { font-size:14px; font-weight:800; color:#0F172A; }
-.brand-sub   { font-size:7.5px; color:#94A3B8; margin-top:2px; }
-.rep-title   { font-size:21px; font-weight:800; color:#0F172A; line-height:1.1; }
-.rep-conf    { font-size:7px; color:#94A3B8; margin-top:3px; }
+.brand-name  { font-size:15px; font-weight:800; color:#111827; line-height:1.2; }
+.brand-sub   { font-size:7.5px; color:#9CA3AF; margin-top:2px; }
+.rep-title   { font-size:20px; font-weight:800; color:{{ $primaryColor }}; line-height:1.2; }
+.rep-conf    { font-size:7px; color:#9CA3AF; margin-top:3px; }
 
-/* ── Colored band ── */
-.hdr-band    { background:{{ $primaryDeep }}; padding:7px 18px; display:table; width:100%; }
-.hdr-band-l  { display:table-cell; vertical-align:middle; }
-.hdr-band-r  { display:table-cell; vertical-align:middle; text-align:right; }
-.rep-badge   { display:inline-block; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); border-radius:3px; padding:1px 7px; }
-.rep-badge-txt { font-size:6px; font-weight:700; text-transform:uppercase; letter-spacing:.12em; color:rgba(255,255,255,.75); }
-.hdr-band-date { font-size:7.5px; color:rgba(255,255,255,.55); }
+/* ── Divider ── */
+.hdr-divider { border:none; border-top:1.5px solid #E5E7EB; margin:0 22px; }
 
 /* ── Meta strip ── */
-.meta-strip  { display:table; width:100%; background:#F8FAFC; border-bottom:2px solid {{ $primaryColor }}; }
-.meta-cell   { display:table-cell; padding:8px 16px; vertical-align:middle; border-right:1px solid #E2E8F0; }
-.meta-cell:last-child { border-right:none; }
-.meta-lbl    { font-size:6px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:#94A3B8; margin-bottom:3px; }
-.meta-val    { font-size:9.5px; font-weight:700; color:#0F172A; }
+.meta-strip  { display:table; width:100%; padding:10px 22px; }
+.meta-cell   { display:table-cell; padding:0 28px 0 0; vertical-align:middle; }
+.meta-cell:last-child { padding-right:0; }
+.meta-lbl    { font-size:7px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#9CA3AF; margin-bottom:3px; }
+.meta-val    { font-size:10px; font-weight:600; color:#374151; }
 
 /* ── Body ── */
-.body-wrap { padding:14px 18px; }
+.body-wrap { padding:14px 22px; }
 
 /* ── Section header ── */
 .sec-hdr   { display:table; width:100%; margin-bottom:9px; margin-top:2px; }
@@ -56,42 +54,25 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
 .sec-tag   { display:inline-block; background:{{ $primaryLight }}; color:{{ $primaryColor }}; border-radius:3px; padding:1px 6px; font-size:6px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; margin-bottom:3px; }
 .sec-title { font-size:11px; font-weight:800; color:#0F172A; }
 
-/* ── Stat cards ── */
-.cards-tbl { width:100%; border-collapse:separate; border-spacing:5px; margin-bottom:14px; }
-.cards-tbl td { padding:0; }
-.card      { border-radius:10px; padding:12px 13px; border:1px solid #E2E8F0; background:#fff; }
-.card-top  { display:table; width:100%; margin-bottom:6px; }
-.card-lbl  { display:table-cell; font-size:6.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#64748B; vertical-align:middle; }
-.card-ico  { display:table-cell; vertical-align:middle; text-align:right; }
-.card-ico-box { display:inline-block; width:22px; height:22px; border-radius:6px; text-align:center; line-height:22px; font-size:11px; }
-.card-val  { font-size:22px; font-weight:800; line-height:1; color:#0F172A; margin-bottom:3px; }
-.card-sub  { font-size:7px; color:#94A3B8; }
-.card-bar  { height:3px; border-radius:2px; margin-top:8px; background:#E2E8F0; }
+/* ── Hero strip ── */
+.hero-tbl  { width:100%; border-collapse:collapse; margin-bottom:6px; }
+.hero-left { background:{{ $primaryColor }}; padding:18px 18px 16px; vertical-align:middle; width:36%; }
+.hero-right{ background:{{ $primaryDark }};  padding:16px 10px; vertical-align:middle; }
+.hero-lbl  { font-size:6.5px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:rgba(255,255,255,.55); margin-bottom:8px; }
+.hero-num  { font-size:42px; font-weight:800; color:#fff; line-height:1; margin-bottom:10px; }
+.hero-pill { display:inline-block; border-radius:20px; padding:2px 9px; font-size:6.5px; font-weight:700; margin-right:4px; }
+.stat-cell { text-align:center; padding:0 12px; vertical-align:middle; border-right:1px solid rgba(255,255,255,.12); }
+.stat-cell:last-child { border-right:none; }
+.stat-lbl  { font-size:6px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:rgba(255,255,255,.5); margin-bottom:5px; }
+.stat-num  { font-size:26px; font-weight:800; color:#fff; line-height:1; margin-bottom:4px; }
+.stat-sub  { font-size:6.5px; color:rgba(255,255,255,.4); }
 
-.card-active   { background:{{ $primaryColor }}; border-color:{{ $primaryColor }}; }
-.card-active .card-lbl { color:rgba(255,255,255,.65); }
-.card-active .card-val { color:#fff; }
-.card-active .card-sub { color:rgba(255,255,255,.5); }
-.card-active .card-bar { background:rgba(255,255,255,.25); }
-
-.card-expiring { background:#FFFBEB; border-color:#FDE68A; }
-.card-expiring .card-lbl { color:#92400E; }
-.card-expiring .card-val { color:#B45309; }
-.card-expiring .card-sub { color:#D97706; opacity:.7; }
-
-.card-expired  { background:#FFF1F2; border-color:#FECDD3; }
-.card-expired .card-lbl { color:#9F1239; }
-.card-expired .card-val { color:#BE123C; }
-.card-expired .card-sub { color:#E11D48; opacity:.6; }
-
-.card-spend { background:#F8FAFF; border-color:#C7D2FE; }
-.card-spend .card-val { color:{{ $primaryColor }}; }
-.card-spend .card-sub { color:#6366F1; opacity:.6; }
-
-.card-auto  { background:#F0FDF4; border-color:#86EFAC; }
-.card-auto .card-lbl { color:#166534; }
-.card-auto .card-val { color:#15803D; }
-.card-auto .card-sub { color:#16A34A; opacity:.7; }
+/* ── Financial cards ── */
+.spend-tbl  { width:100%; border-collapse:separate; border-spacing:6px 0; margin-bottom:14px; }
+.spend-card { background:#fff; border:1px solid #E2E8F0; border-radius:10px; padding:14px 16px; }
+.spend-lbl  { font-size:6.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#64748B; margin-bottom:8px; }
+.spend-val  { font-size:18px; font-weight:800; line-height:1; margin-bottom:5px; }
+.spend-sub  { font-size:7px; color:#94A3B8; }
 
 /* ── Distribution panels ── */
 .fin-wrap   { display:table; width:100%; border-collapse:separate; border-spacing:6px 0; margin-bottom:14px; }
@@ -156,13 +137,16 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
 .sig-name  { font-size:8px; font-weight:700; color:#0F172A; margin-top:2px; }
 
 /* ── Footer ── */
-.footer-strip { background:{{ $primaryDeep }}; padding:7px 18px; display:table; width:100%; margin-top:14px; }
-.ft-l { display:table-cell; font-size:7.5px; font-weight:700; color:rgba(255,255,255,.8); }
-.ft-m { display:table-cell; text-align:center; font-size:7px; color:rgba(255,255,255,.45); }
-.ft-r { display:table-cell; text-align:right; font-size:7px; color:rgba(255,255,255,.35); font-style:italic; }
+.footer-strip { display:table; width:100%; margin-top:16px; padding:10px 22px 0; border-top:1.5px solid #E5E7EB; }
+.ft-l { display:table-cell; font-size:8px; font-weight:700; color:{{ $primaryColor }}; }
+.ft-m { display:table-cell; text-align:center; font-size:7.5px; color:#9CA3AF; }
+.ft-r { display:table-cell; text-align:right; font-size:7px; color:#CBD5E1; font-style:italic; }
 </style>
 </head>
 <body>
+
+{{-- ═══ ACCENT BAR ═══ --}}
+<div class="accent-bar"></div>
 
 {{-- ═══ WHITE HEADER ═══ --}}
 <div class="hdr-white">
@@ -183,15 +167,8 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
     </div>
 </div>
 
-{{-- ═══ COLORED BAND ═══ --}}
-<div class="hdr-band">
-    <div class="hdr-band-l">
-        <span class="rep-badge"><span class="rep-badge-txt">Official Report</span></span>
-    </div>
-    <div class="hdr-band-r">
-        <span class="hdr-band-date">Generated {{ $summary['generated_at'] }} &bull; Prepared by {{ auth()->user()->name }}</span>
-    </div>
-</div>
+{{-- ═══ DIVIDER ═══ --}}
+<hr class="hdr-divider">
 
 {{-- ═══ META STRIP ═══ --}}
 <div class="meta-strip">
@@ -200,6 +177,9 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
     <div class="meta-cell"><div class="meta-lbl">Prepared By</div><div class="meta-val">{{ auth()->user()->name }}</div></div>
     <div class="meta-cell"><div class="meta-lbl">Department</div><div class="meta-val">{{ $settings['department_name'] ?? ($settings['company_name'] ?? $appName) }}</div></div>
 </div>
+
+{{-- ═══ DIVIDER ═══ --}}
+<hr class="hdr-divider" style="margin-bottom:0;">
 
 <div class="body-wrap">
 
@@ -211,74 +191,61 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
     </div>
 </div>
 
-<table class="cards-tbl">
+{{-- ── Hero status strip ── --}}
+<table class="hero-tbl" style="margin-bottom:6px;">
     <tr>
-        <td width="33%">
-            <div class="card">
-                <div class="card-top">
-                    <div class="card-lbl">Total</div>
-                    <div class="card-ico"><div class="card-ico-box" style="background:{{ $primaryLight }};color:{{ $primaryColor }};">&#8734;</div></div>
-                </div>
-                <div class="card-val">{{ $summary['total'] }}</div>
-                <div class="card-sub">All domains</div>
-                <div class="card-bar"><div style="height:3px;border-radius:2px;background:{{ $primaryMid }};width:100%;"></div></div>
-            </div>
+        {{-- LEFT: Total --}}
+        <td class="hero-left">
+            <div class="hero-lbl">Total Domains</div>
+            <div class="hero-num">{{ $summary['total'] }}</div>
+            <span class="hero-pill" style="background:rgba(255,255,255,.18);color:rgba(255,255,255,.9);">{{ $summary['active'] }} active</span>
+            <span class="hero-pill" style="background:rgba(255,255,255,.13);color:rgba(255,255,255,.75);">{{ $summary['expiring_soon'] }} expiring</span>
+            <span class="hero-pill" style="background:rgba(255,255,255,.10);color:rgba(255,255,255,.6);">{{ $summary['expired'] }} expired</span>
         </td>
-        <td width="33%">
-            <div class="card card-active">
-                <div class="card-top">
-                    <div class="card-lbl">Active</div>
-                    <div class="card-ico"><div class="card-ico-box" style="background:rgba(255,255,255,.18);color:#fff;">&#10003;</div></div>
-                </div>
-                <div class="card-val">{{ $summary['active'] }}</div>
-                <div class="card-sub">Currently live</div>
-                <div class="card-bar"></div>
-            </div>
-        </td>
-        <td width="33%">
-            <div class="card card-expiring">
-                <div class="card-top">
-                    <div class="card-lbl">Expiring Soon</div>
-                    <div class="card-ico"><div class="card-ico-box" style="background:#FDE68A;color:#B45309;">&#9651;</div></div>
-                </div>
-                <div class="card-val">{{ $summary['expiring_soon'] }}</div>
-                <div class="card-sub">Within 30 days</div>
-                <div class="card-bar"><div style="height:3px;border-radius:2px;background:#FCD34D;width:{{ $summary['expiring_soon'] ? '60' : '0' }}%;"></div></div>
-            </div>
+        {{-- RIGHT: 3 status stats --}}
+        <td class="hero-right">
+            <table width="100%" style="border-collapse:collapse;">
+                <tr>
+                    <td class="stat-cell">
+                        <div class="stat-lbl">Active</div>
+                        <div class="stat-num">{{ $summary['active'] }}</div>
+                        <div class="stat-sub">Currently live</div>
+                    </td>
+                    <td class="stat-cell">
+                        <div class="stat-lbl">Expiring Soon</div>
+                        <div class="stat-num">{{ $summary['expiring_soon'] }}</div>
+                        <div class="stat-sub">Within 30 days</div>
+                    </td>
+                    <td class="stat-cell">
+                        <div class="stat-lbl">Expired</div>
+                        <div class="stat-num">{{ $summary['expired'] }}</div>
+                        <div class="stat-sub">Action needed</div>
+                    </td>
+                </tr>
+            </table>
         </td>
     </tr>
+</table>
+
+{{-- ── Financial + auto-renew cards ── --}}
+<table class="spend-tbl">
     <tr>
-        <td width="33%">
-            <div class="card card-expired">
-                <div class="card-top">
-                    <div class="card-lbl">Expired</div>
-                    <div class="card-ico"><div class="card-ico-box" style="background:#FFE4E6;color:#BE123C;">&#8856;</div></div>
-                </div>
-                <div class="card-val">{{ $summary['expired'] }}</div>
-                <div class="card-sub">Action needed</div>
-                <div class="card-bar"><div style="height:3px;border-radius:2px;background:#FDA4AF;width:{{ $summary['expired'] ? '60' : '0' }}%;"></div></div>
+        <td width="50%" style="padding:0; vertical-align:top;">
+            <div class="spend-card" style="border-left:4px solid {{ $primaryColor }};">
+                <div class="spend-lbl">Annual Spend</div>
+                @forelse($summary['annual_total_by_currency'] as $currency => $amount)
+                <div class="spend-val" style="color:{{ $primaryColor }};font-size:{{ $summary['annual_total_by_currency']->count() > 1 ? '13px' : '18px' }};">{{ $currency }}&nbsp;{{ number_format($amount,3) }}</div>
+                @empty
+                <div class="spend-val" style="color:{{ $primaryColor }};">BHD&nbsp;0.000</div>
+                @endforelse
+                <div class="spend-sub">Total yearly cost</div>
             </div>
         </td>
-        <td width="33%">
-            <div class="card card-spend">
-                <div class="card-top">
-                    <div class="card-lbl">Annual Spend</div>
-                    <div class="card-ico"><div class="card-ico-box" style="background:#E0E7FF;color:{{ $primaryColor }};">&#36;</div></div>
-                </div>
-                <div class="card-val" style="font-size:13px;">BHD&nbsp;{{ number_format($summary['annual_total'],3) }}</div>
-                <div class="card-sub">Total yearly cost</div>
-                <div class="card-bar"><div style="height:3px;border-radius:2px;background:{{ $primaryMid }};width:100%;"></div></div>
-            </div>
-        </td>
-        <td width="33%">
-            <div class="card card-auto">
-                <div class="card-top">
-                    <div class="card-lbl">Auto-Renew</div>
-                    <div class="card-ico"><div class="card-ico-box" style="background:#BBF7D0;color:#15803D;">&#8635;</div></div>
-                </div>
-                <div class="card-val">{{ $summary['auto_renew_count'] }}</div>
-                <div class="card-sub">Auto-renewal enabled</div>
-                <div class="card-bar"><div style="height:3px;border-radius:2px;background:#86EFAC;width:{{ $summary['total'] ? round($summary['auto_renew_count']/$summary['total']*100) : 0 }}%;"></div></div>
+        <td width="50%" style="padding:0; vertical-align:top;">
+            <div class="spend-card" style="border-left:4px solid #059669;">
+                <div class="spend-lbl">Auto-Renew Enabled</div>
+                <div class="spend-val" style="color:#059669;">{{ $summary['auto_renew_count'] }} <span style="font-size:10px;font-weight:600;color:#94A3B8;">/ {{ $summary['total'] }}</span></div>
+                <div class="spend-sub">Domains with auto-renewal on</div>
             </div>
         </td>
     </tr>
@@ -316,7 +283,7 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
         $amt = max($g['annual'], 1);
         $sw = ($amt/$totalCycleAmt)*360;
         if($totalCycleAmt <= 1) $sw = ($g['count'] / max($activeCycles->sum('count'),1)) * 360;
-        $donutSegs[]=['path'=>$donutPath(44,44,38,24,$angle,$angle+$sw),'color'=>$color,'label'=>$g['label'],'count'=>$g['count'],'amt'=>$g['annual']];
+        $donutSegs[]=['path'=>$donutPath(44,44,38,24,$angle,$angle+$sw),'color'=>$color,'label'=>$g['label'],'count'=>$g['count'],'amt'=>$g['annual'],'amt_by_currency'=>$g['annual_by_currency']];
         $angle+=$sw;
     }
 @endphp
@@ -359,14 +326,14 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
                     <div class="cy-item">
                         <div class="cy-dot-c"><span style="background:{{ $seg['color'] }};"></span></div>
                         <div class="cy-lbl-c">{{ $seg['label'] }}<span class="cy-cnt-c">({{ $seg['count'] }})</span></div>
-                        <div class="cy-amt-c">BHD {{ number_format($seg['amt'],3) }} <span class="cy-sub-c">/yr</span></div>
+                        <div class="cy-amt-c">{{ $seg['amt_by_currency']->map(fn($a,$c) => "{$c} " . number_format($a,3))->implode(' + ') }} <span class="cy-sub-c">/yr</span></div>
                     </div>
                 @empty
                     <div style="font-size:8px;color:#94A3B8;">No data</div>
                 @endforelse
                 <table class="total-row" style="margin-top:8px;"><tr>
                     <td><div class="tot-l">Total Annual</div><div class="tot-sl">Monthly equiv.</div></td>
-                    <td class="tot-r"><div class="tot-rv">BHD {{ number_format($summary['annual_total'],3) }}</div><div class="tot-rs">BHD {{ number_format($summary['monthly_total'],3) }}/mo</div></td>
+                    <td class="tot-r"><div class="tot-rv">{{ $summary['annual_total_by_currency']->map(fn($a,$c) => "{$c} ".number_format($a,3))->implode(' + ') ?: 'BHD 0.000' }}</div><div class="tot-rs">{{ $summary['monthly_total_by_currency']->map(fn($a,$c) => "{$c} ".number_format($a,3))->implode(' + ') ?: 'BHD 0.000' }}/mo</div></td>
                 </tr></table>
             </div>
         </div>
@@ -416,7 +383,7 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
             <th>Registrar</th>
             <th>Responsible</th>
             <th>Expires</th>
-            <th>Cost (BHD/yr)</th>
+            <th>Annual Cost</th>
             <th>Auto</th>
             <th>Status</th>
         </tr>
@@ -443,7 +410,7 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
                 {{ $d->expires_at ? $d->expires_at->format('d M Y') : '—' }}
                 @if($daysLabel)<div style="font-size:6.5px;color:{{ $dlColor }};margin-top:1px;">{{ $daysLabel }}</div>@endif
             </td>
-            <td class="cst-main">{{ number_format($d->annual_cost,3) }}</td>
+            <td class="cst-main">{{ $d->currency }} {{ number_format($d->annual_cost,3) }}</td>
             <td class="{{ $d->auto_renew ? 'chk-yes' : 'chk-no' }}">{{ $d->auto_renew ? '&#10003;' : '&mdash;' }}</td>
             <td>
                 @if($d->status==='active')<span class="badge b-active">Active</span>

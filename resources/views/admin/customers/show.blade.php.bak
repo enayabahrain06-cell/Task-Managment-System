@@ -493,14 +493,14 @@
 
             {{-- Header --}}
             <div style="padding:20px 24px 18px;border-bottom:1px solid #F0F2F8;display:flex;align-items:center;gap:12px;flex-shrink:0;background:linear-gradient(135deg,#F8F9FF,#fff);">
-                @if($customer->logo)
-                <img src="{{ Storage::url($customer->logo) }}" alt="{{ $customer->name }}"
-                     style="width:42px;height:42px;border-radius:11px;object-fit:cover;border:1.5px solid #E5E7EB;flex-shrink:0;">
-                @else
-                <div style="width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0;">
+                <div style="position:relative;width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;">
                     {{ strtoupper(substr($customer->name, 0, 1)) }}
+                    @if($customer->logo)
+                    <img src="{{ Storage::url($customer->logo) }}" alt="" decoding="async"
+                         style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;"
+                         onerror="this.remove()">
+                    @endif
                 </div>
-                @endif
                 <div style="flex:1;min-width:0;">
                     <h3 style="font-size:15px;font-weight:700;color:#111827;margin:0;">Send to {{ $customer->name }}</h3>
                     @if($customer->company)<p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">{{ $customer->company }}</p>@endif
@@ -769,14 +769,14 @@
         </a>
         <div style="flex:1;">
             <div style="display:flex;align-items:center;gap:10px;">
-                @if($customer->logo)
-                <img src="{{ Storage::url($customer->logo) }}" alt="{{ $customer->name }}"
-                     style="width:48px;height:48px;border-radius:12px;object-fit:cover;border:1.5px solid #E5E7EB;flex-shrink:0;">
-                @else
-                <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;">
+                <div style="position:relative;width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;">
                     {{ strtoupper(substr($customer->name, 0, 1)) }}
+                    @if($customer->logo)
+                    <img src="{{ Storage::url($customer->logo) }}" alt="" decoding="async"
+                         style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;"
+                         onerror="this.remove()">
+                    @endif
                 </div>
-                @endif
                 <div>
                     <h1 style="font-size:20px;font-weight:700;color:#111827;margin:0;">{{ $customer->name }}</h1>
                     @if($customer->company)
@@ -974,6 +974,32 @@
                     <i class="fas fa-paper-plane" style="font-size:12px;"></i> Email
                 </button>
             </div>
+
+            @if($customer->socialAccounts->isNotEmpty())
+            @php
+                $_saGroups    = $customer->socialAccounts->groupBy('platform');
+                $_saPlatforms = \App\Models\SocialAccount::platforms();
+            @endphp
+            <div style="margin-bottom:16px;padding:12px 14px;background:#FAFAFA;border-radius:10px;border:1px solid #F3F4F6;">
+                <p style="font-size:10px;color:#9CA3AF;margin:0 0 10px;text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:4px;">
+                    <i class="fas fa-share-nodes" style="font-size:9px;"></i> Social Accounts
+                </p>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                    @foreach($_saGroups as $_pKey => $_pAccounts)
+                    @php $_pi = $_saPlatforms[$_pKey] ?? ['icon'=>'fa-globe','color'=>'#6B7280','label'=>ucfirst($_pKey)]; @endphp
+                    <a href="{{ route('admin.social-accounts.index', ['customer' => $customer->id]) }}"
+                       title="{{ $_pi['label'] }}{{ $_pAccounts->count() > 1 ? ' ('.$_pAccounts->count().')' : '' }}"
+                       style="width:28px;height:28px;border-radius:7px;background:{{ $_pi['color'] }};display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;text-decoration:none;transition:opacity .15s;"
+                       onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+                        <i class="fab {{ $_pi['icon'] }}" style="font-size:13px;color:#fff;"></i>
+                        @if($_pAccounts->count() > 1)
+                        <span style="position:absolute;top:-4px;right:-5px;width:14px;height:14px;border-radius:50%;background:#fff;border:1.5px solid #e5e7eb;font-size:8px;font-weight:800;color:#374151;display:flex;align-items:center;justify-content:center;line-height:1;">{{ $_pAccounts->count() }}</span>
+                        @endif
+                    </a>
+                    @endforeach
+                </div>
+            </div>
+            @endif
 
             @if($customer->notes)
             <div style="margin-bottom:16px;padding:12px 14px;background:#FAFAFA;border-radius:10px;border:1px solid #F3F4F6;">
@@ -1668,8 +1694,8 @@
 </div>
 
 @push('scripts')
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="/js/xlsx.full.min.js"></script>
+<script src="/js/html2pdf.bundle.min.js"></script>
 @php
     $exportCustomerMeta = ['name'=>$customer->name,'company'=>$customer->company,'email'=>$customer->email,'phone'=>$customer->phone];
     $exportCustomerSlug = Str::slug($customer->name);
@@ -1871,7 +1897,8 @@ function buildCustomerShowHTML(immediate) {
     + '.foot-brand { font-size:10px; font-weight:700; color:#4F46E5; }'
     + '.foot-mid   { font-size:10px; color:#9CA3AF; }'
     + '.foot-conf  { font-size:10px; color:#9CA3AF; font-style:italic; }'
-    + '@@media print { .pbar{display:none !important;} body{background:#fff !important;} .doc{max-width:none;} *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;} tr{page-break-inside:avoid;} @@page{size:A4 landscape;margin:0;} }'
+    + 'tr { page-break-inside: avoid; -webkit-column-break-inside: avoid; }'
+    + '@@media print { .pbar{display:none !important;} body{background:#fff !important;} .doc{max-width:none;} *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;} @@page{size:A4 landscape;margin:0;} }'
     ;
 
     // ── Status badge map ─────────────────────────────────
@@ -2056,7 +2083,8 @@ function _pdfDownload(buildFn, filename) {
         filename: filename,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false, windowWidth: 1100 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', '.kcard'] }
     }).from(content, 'string').save().then(function() {
         document.body.removeChild(overlay);
     }).catch(function(e) {

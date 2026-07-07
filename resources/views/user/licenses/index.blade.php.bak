@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'My Vault')
+@section('title', 'My Access')
 
 @section('content')
 <style>
@@ -42,14 +42,29 @@
 .lic-table tbody tr.row-expiring:hover td { background:#FFFBEB; }
 /* ── New layout classes ── */
 .vault-header { background:linear-gradient(135deg,#4F46E5 0%,#6366F1 50%,#818CF8 100%); border-radius:20px; padding:28px 32px; margin-bottom:24px; display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; box-shadow:0 8px 32px rgba(79,70,229,.25); }
-.vault-seg { display:flex; gap:4px; background:rgba(255,255,255,.15); border-radius:14px; padding:5px; backdrop-filter:blur(8px); }
-.vault-seg-btn { display:inline-flex; align-items:center; gap:8px; padding:9px 20px; border-radius:10px; font-size:13px; font-weight:700; border:none; cursor:pointer; transition:all .2s; color:rgba(255,255,255,.7); background:transparent; white-space:nowrap; }
-.vault-seg-btn.active { background:#fff; color:#4F46E5; box-shadow:0 2px 8px rgba(0,0,0,.12); }
-.stat-strip { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
-.stat-chip { display:flex; align-items:center; gap:10px; padding:12px 18px; background:#fff; border:1.5px solid #E5E7EB; border-radius:12px; cursor:pointer; transition:all .15s; flex:1; min-width:120px; }
-.stat-chip:hover { border-color:#A5B4FC; box-shadow:0 2px 8px rgba(99,102,241,.1); }
-.stat-chip.active-filter { border-color:#4F46E5; box-shadow:0 0 0 3px rgba(99,102,241,.12); background:#FAFBFF; }
 .toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:20px; background:#fff; border:1.5px solid #E5E7EB; border-radius:14px; padding:10px 14px; box-shadow:0 1px 6px rgba(0,0,0,.04); }
+/* Stat cards */
+.stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+@media(max-width:800px){ .stats-grid { grid-template-columns:repeat(2,1fr); } }
+@media(max-width:440px){ .stats-grid { grid-template-columns:1fr; } }
+.stat-card { border-radius:14px; padding:18px 20px; position:relative; overflow:hidden; color:#fff; cursor:pointer; transition:transform .15s,box-shadow .15s; }
+.stat-card:hover { transform:translateY(-3px); }
+.stat-card-blob { position:absolute; top:-20px; right:-20px; width:80px; height:80px; border-radius:50%; background:rgba(255,255,255,.12); pointer-events:none; }
+.stat-card-label { font-size:12px; font-weight:600; color:rgba(255,255,255,.75); margin:0 0 8px; }
+.stat-card-value { font-size:34px; font-weight:800; line-height:1; margin:0; }
+.stat-card-sub { font-size:11px; color:rgba(255,255,255,.6); margin:6px 0 0; }
+.stat-card.sc-active { box-shadow:0 0 0 3px rgba(255,255,255,.55),0 8px 24px rgba(0,0,0,.2); transform:translateY(-3px); }
+/* Sticky tab nav */
+.vault-tab-bar { position:sticky; top:0; z-index:100; background:#F3F4F6; padding:8px 0 16px; margin-bottom:4px; }
+.vault-tab-inner { display:flex; gap:6px; background:#fff; border:1.5px solid #E5E7EB; border-radius:18px; padding:6px; box-shadow:0 2px 16px rgba(0,0,0,.07); }
+.vault-tab { flex:1; display:flex; align-items:center; justify-content:center; gap:10px; padding:14px 20px; border-radius:13px; border:none; cursor:pointer; font-size:14px; font-weight:700; transition:all .2s; background:transparent; color:#6B7280; white-space:nowrap; }
+.vault-tab:hover { background:#F9FAFB; color:#374151; }
+.vault-tab.tab-lic.active { background:linear-gradient(135deg,#4F46E5,#6366F1); color:#fff; box-shadow:0 4px 16px rgba(79,70,229,.3); }
+.vault-tab.tab-soc.active { background:linear-gradient(135deg,#059669,#10B981); color:#fff; box-shadow:0 4px 16px rgba(5,150,105,.3); }
+.vault-tab-count { font-size:11px; font-weight:800; padding:2px 8px; border-radius:20px; }
+.vault-tab.tab-lic.active .vault-tab-count { background:rgba(255,255,255,.25); color:#fff; }
+.vault-tab.tab-soc.active .vault-tab-count { background:rgba(255,255,255,.25); color:#fff; }
+.vault-tab:not(.active) .vault-tab-count { background:#F3F4F6; color:#6B7280; }
 /* Premium cards */
 .lic-card { background:#fff; border:1.5px solid #E5E7EB; border-radius:16px; overflow:hidden; display:flex; flex-direction:column; transition:box-shadow .2s,transform .2s; }
 .lic-card:hover { box-shadow:0 10px 32px rgba(0,0,0,.11); transform:translateY(-3px); }
@@ -158,43 +173,45 @@ const LIC_DATA = @json($licData);
 {{-- ══════════════════════════════════════════════ --}}
 {{-- VAULT HEADER BANNER                            --}}
 {{-- ══════════════════════════════════════════════ --}}
-<div class="vault-header">
-    {{-- Left: icon + title --}}
+<div class="vault-header" style="margin-bottom:0;border-radius:20px 20px 0 0;">
     <div style="display:flex;align-items:center;gap:18px;">
-        <div style="width:60px;height:60px;border-radius:18px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.3);flex-shrink:0;">
-            <i :class="section==='licenses' ? 'fas fa-layer-group' : 'fas fa-share-nodes'" style="color:#fff;font-size:24px;"></i>
+        <div style="width:56px;height:56px;border-radius:16px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.3);flex-shrink:0;">
+            <i class="fas fa-vault" style="color:#fff;font-size:22px;"></i>
         </div>
         <div>
-            <h1 style="font-size:24px;font-weight:800;color:#fff;margin:0;letter-spacing:-.3px;"
-                x-text="section==='licenses' ? 'My Licenses' : 'My Social Accounts'"></h1>
-            <p style="font-size:13px;color:rgba(255,255,255,.7);margin:4px 0 0;"
-               x-text="section==='licenses' ? '{{ $licSubtitle }}' : '{{ $saSubtitle }}'"></p>
+            <h1 style="font-size:22px;font-weight:800;color:#fff;margin:0;letter-spacing:-.3px;">My Access</h1>
+            <p style="font-size:13px;color:rgba(255,255,255,.7);margin:4px 0 0;">
+                {{ $licenses->count() }} {{ Str::plural('license', $licenses->count()) }}
+                &nbsp;·&nbsp;
+                {{ $socialAccounts->count() }} social {{ Str::plural('account', $socialAccounts->count()) }}
+            </p>
         </div>
     </div>
+</div>
 
-    {{-- Right: segmented tab control --}}
-    <div class="vault-seg">
-        <button class="vault-seg-btn" :class="section==='licenses' ? 'active' : ''" @click="setSection('licenses')">
-            <i class="fas fa-layer-group" style="font-size:12px;"></i>
-            Licenses
-            <span style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;"
-                  :style="section==='licenses' ? 'background:#EEF2FF;color:#4F46E5;' : 'background:rgba(255,255,255,.2);color:#fff;'">
-                {{ $licenses->count() }}
-            </span>
+{{-- ══════════════════════════════════════════════ --}}
+{{-- STICKY TAB BAR                                 --}}
+{{-- ══════════════════════════════════════════════ --}}
+<div class="vault-tab-bar" style="background:linear-gradient(to bottom,#4F46E5 0%,#F3F4F6 100%);padding-top:0;">
+    <div class="vault-tab-inner">
+        <button class="vault-tab tab-lic" :class="section==='licenses' ? 'active' : ''" @click="setSection('licenses')">
+            <i class="fas fa-layer-group" style="font-size:15px;"></i>
+            <span>Licenses</span>
+            <span class="vault-tab-count">{{ $licenses->count() }}</span>
         </button>
-        <button class="vault-seg-btn" :class="section==='social' ? 'active' : ''" @click="setSection('social')">
-            <i class="fas fa-share-nodes" style="font-size:12px;"></i>
-            Social Accounts
-            <span style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;"
-                  :style="section==='social' ? 'background:#F0FDF4;color:#16A34A;' : 'background:rgba(255,255,255,.2);color:#fff;'">
-                {{ $socialAccounts->count() }}
-            </span>
+        <button class="vault-tab tab-soc" :class="section==='social' ? 'active' : ''" @click="setSection('social')">
+            <i class="fas fa-share-nodes" style="font-size:15px;"></i>
+            <span>Social Accounts</span>
+            <span class="vault-tab-count">{{ $socialAccounts->count() }}</span>
         </button>
     </div>
 </div>
 
 {{-- ═══════════════ LICENSES SECTION ═══════════════ --}}
 <div x-show="section==='licenses'">
+
+{{-- Licenses section accent bar --}}
+<div style="height:4px;background:linear-gradient(90deg,#4F46E5,#6366F1,#818CF8);border-radius:4px;margin-bottom:20px;"></div>
 
 @if($licenses->isEmpty())
 <div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:16px;padding:72px 24px;text-align:center;">
@@ -209,42 +226,38 @@ const LIC_DATA = @json($licData);
 
 {{-- ── Stat strip (clickable filters) ── --}}
 @php $expiring7 = $licenses->filter(fn($l) => $l->days_until_renewal !== null && $l->days_until_renewal >= 0 && $l->days_until_renewal <= 7); @endphp
-<div class="stat-strip">
-    <div class="stat-chip" :class="statusFilter==='all' ? 'active-filter' : ''" @click="setStatus('all')">
-        <div style="width:36px;height:36px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <i class="fas fa-layer-group" style="color:#4F46E5;font-size:14px;"></i>
-        </div>
-        <div>
-            <p style="font-size:20px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $totalCount }}</p>
-            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">All Tools</p>
-        </div>
+<div class="stats-grid">
+    <div class="stat-card" :class="statusFilter==='all' ? 'sc-active' : ''" @click="setStatus('all')"
+         style="background:linear-gradient(135deg,#4F46E5,#6366F1);"
+         onmouseover="if(this.classList.contains('sc-active'))return;this.style.boxShadow='0 8px 24px rgba(79,70,229,.35)'" onmouseout="if(this.classList.contains('sc-active'))return;this.style.boxShadow=''">
+        <div class="stat-card-blob"></div>
+        <p class="stat-card-label"><i class="fas fa-layer-group" style="margin-right:5px;"></i>All Tools</p>
+        <p class="stat-card-value">{{ $totalCount }}</p>
+        <p class="stat-card-sub">Total licenses</p>
     </div>
-    <div class="stat-chip" :class="statusFilter==='active' ? 'active-filter' : ''" @click="setStatus('active')">
-        <div style="width:36px;height:36px;border-radius:10px;background:#ECFDF5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <i class="fas fa-circle-check" style="color:#16A34A;font-size:14px;"></i>
-        </div>
-        <div>
-            <p style="font-size:20px;font-weight:800;color:#16A34A;margin:0;line-height:1;">{{ $activeCount }}</p>
-            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Active</p>
-        </div>
+    <div class="stat-card" :class="statusFilter==='active' ? 'sc-active' : ''" @click="setStatus('active')"
+         style="background:linear-gradient(135deg,#059669,#10B981);"
+         onmouseover="if(this.classList.contains('sc-active'))return;this.style.boxShadow='0 8px 24px rgba(5,150,105,.35)'" onmouseout="if(this.classList.contains('sc-active'))return;this.style.boxShadow=''">
+        <div class="stat-card-blob"></div>
+        <p class="stat-card-label"><i class="fas fa-circle-check" style="margin-right:5px;"></i>Active</p>
+        <p class="stat-card-value">{{ $activeCount }}</p>
+        <p class="stat-card-sub">Ready to use</p>
     </div>
-    <div class="stat-chip" :class="statusFilter==='expiring_soon' ? 'active-filter' : ''" @click="setStatus('expiring_soon')">
-        <div style="width:36px;height:36px;border-radius:10px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <i class="fas fa-clock" style="color:#D97706;font-size:14px;"></i>
-        </div>
-        <div>
-            <p style="font-size:20px;font-weight:800;color:#D97706;margin:0;line-height:1;">{{ $expiringSoonCount }}</p>
-            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Expiring</p>
-        </div>
+    <div class="stat-card" :class="statusFilter==='expiring_soon' ? 'sc-active' : ''" @click="setStatus('expiring_soon')"
+         style="background:linear-gradient(135deg,#D97706,#F59E0B);"
+         onmouseover="if(this.classList.contains('sc-active'))return;this.style.boxShadow='0 8px 24px rgba(217,119,6,.35)'" onmouseout="if(this.classList.contains('sc-active'))return;this.style.boxShadow=''">
+        <div class="stat-card-blob"></div>
+        <p class="stat-card-label"><i class="fas fa-clock" style="margin-right:5px;"></i>Expiring Soon</p>
+        <p class="stat-card-value">{{ $expiringSoonCount }}</p>
+        <p class="stat-card-sub">Need attention</p>
     </div>
-    <div class="stat-chip" :class="statusFilter==='expired' ? 'active-filter' : ''" @click="setStatus('expired')">
-        <div style="width:36px;height:36px;border-radius:10px;background:#FEE2E2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <i class="fas fa-triangle-exclamation" style="color:#DC2626;font-size:14px;"></i>
-        </div>
-        <div>
-            <p style="font-size:20px;font-weight:800;color:#DC2626;margin:0;line-height:1;">{{ $expiredCount }}</p>
-            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Expired</p>
-        </div>
+    <div class="stat-card" :class="statusFilter==='expired' ? 'sc-active' : ''" @click="setStatus('expired')"
+         style="background:linear-gradient(135deg,#DC2626,#EF4444);"
+         onmouseover="if(this.classList.contains('sc-active'))return;this.style.boxShadow='0 8px 24px rgba(220,38,38,.35)'" onmouseout="if(this.classList.contains('sc-active'))return;this.style.boxShadow=''">
+        <div class="stat-card-blob"></div>
+        <p class="stat-card-label"><i class="fas fa-triangle-exclamation" style="margin-right:5px;"></i>Expired</p>
+        <p class="stat-card-value">{{ $expiredCount }}</p>
+        <p class="stat-card-sub">Need renewal</p>
     </div>
 </div>
 
@@ -614,6 +627,9 @@ const LIC_DATA = @json($licData);
 {{-- ═══════════════ SOCIAL ACCOUNTS SECTION ═══════════════ --}}
 <div x-show="section==='social'" x-cloak>
 
+{{-- Social section accent bar --}}
+<div style="height:4px;background:linear-gradient(90deg,#059669,#10B981,#34D399);border-radius:4px;margin-bottom:20px;"></div>
+
 @if($socialAccounts->isEmpty())
 <div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:16px;padding:72px 24px;text-align:center;">
     <div style="width:80px;height:80px;border-radius:24px;background:linear-gradient(135deg,#F0FDF4,#DCFCE7);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
@@ -631,46 +647,36 @@ const LIC_DATA = @json($licData);
     $saSuspended = $socialAccounts->where('status','suspended')->count();
     $saByPlat    = $socialAccounts->groupBy('platform')->count();
 @endphp
-<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
-    <div style="display:flex;align-items:center;gap:10px;padding:12px 18px;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;flex:1;min-width:120px;">
-        <div style="width:34px;height:34px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <i class="fas fa-share-nodes" style="color:#4F46E5;font-size:13px;"></i>
-        </div>
-        <div>
-            <p style="font-size:20px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $socialAccounts->count() }}</p>
-            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Total</p>
-        </div>
+<div class="stats-grid" style="grid-template-columns:repeat({{ $saSuspended ? 4 : 3 }},1fr);">
+    <div class="stat-card" style="background:linear-gradient(135deg,#059669,#10B981);"
+         onmouseover="this.style.boxShadow='0 8px 24px rgba(5,150,105,.35)'" onmouseout="this.style.boxShadow=''">
+        <div class="stat-card-blob"></div>
+        <p class="stat-card-label"><i class="fas fa-share-nodes" style="margin-right:5px;"></i>Total</p>
+        <p class="stat-card-value">{{ $socialAccounts->count() }}</p>
+        <p class="stat-card-sub">Social {{ Str::plural('account', $socialAccounts->count()) }}</p>
     </div>
-    @if($saActive)
-    <div style="display:flex;align-items:center;gap:10px;padding:12px 18px;background:#fff;border:1.5px solid #A7F3D0;border-radius:12px;flex:1;min-width:120px;">
-        <div style="width:34px;height:34px;border-radius:10px;background:#ECFDF5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <i class="fas fa-circle-check" style="color:#16A34A;font-size:13px;"></i>
-        </div>
-        <div>
-            <p style="font-size:20px;font-weight:800;color:#16A34A;margin:0;line-height:1;">{{ $saActive }}</p>
-            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Active</p>
-        </div>
+    <div class="stat-card" style="background:linear-gradient(135deg,#0E7490,#0891B2);"
+         onmouseover="this.style.boxShadow='0 8px 24px rgba(8,145,178,.35)'" onmouseout="this.style.boxShadow=''">
+        <div class="stat-card-blob"></div>
+        <p class="stat-card-label"><i class="fas fa-circle-check" style="margin-right:5px;"></i>Active</p>
+        <p class="stat-card-value">{{ $saActive }}</p>
+        <p class="stat-card-sub">Ready to post</p>
     </div>
-    @endif
     @if($saSuspended)
-    <div style="display:flex;align-items:center;gap:10px;padding:12px 18px;background:#fff;border:1.5px solid #FECACA;border-radius:12px;flex:1;min-width:120px;">
-        <div style="width:34px;height:34px;border-radius:10px;background:#FEE2E2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <i class="fas fa-triangle-exclamation" style="color:#DC2626;font-size:13px;"></i>
-        </div>
-        <div>
-            <p style="font-size:20px;font-weight:800;color:#DC2626;margin:0;line-height:1;">{{ $saSuspended }}</p>
-            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">Suspended</p>
-        </div>
+    <div class="stat-card" style="background:linear-gradient(135deg,#DC2626,#EF4444);"
+         onmouseover="this.style.boxShadow='0 8px 24px rgba(220,38,38,.35)'" onmouseout="this.style.boxShadow=''">
+        <div class="stat-card-blob"></div>
+        <p class="stat-card-label"><i class="fas fa-triangle-exclamation" style="margin-right:5px;"></i>Suspended</p>
+        <p class="stat-card-value">{{ $saSuspended }}</p>
+        <p class="stat-card-sub">Need attention</p>
     </div>
     @endif
-    <div style="display:flex;align-items:center;gap:10px;padding:12px 18px;background:#fff;border:1.5px solid #E5E7EB;border-radius:12px;flex:1;min-width:120px;">
-        <div style="width:34px;height:34px;border-radius:10px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <i class="fas fa-layer-group" style="color:#6B7280;font-size:13px;"></i>
-        </div>
-        <div>
-            <p style="font-size:20px;font-weight:800;color:#111827;margin:0;line-height:1;">{{ $saByPlat }}</p>
-            <p style="font-size:10px;color:#9CA3AF;margin:1px 0 0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;">{{ Str::plural('Platform', $saByPlat) }}</p>
-        </div>
+    <div class="stat-card" style="background:linear-gradient(135deg,#7C3AED,#8B5CF6);"
+         onmouseover="this.style.boxShadow='0 8px 24px rgba(124,58,237,.35)'" onmouseout="this.style.boxShadow=''">
+        <div class="stat-card-blob"></div>
+        <p class="stat-card-label"><i class="fas fa-layer-group" style="margin-right:5px;"></i>{{ Str::plural('Platform', $saByPlat) }}</p>
+        <p class="stat-card-value">{{ $saByPlat }}</p>
+        <p class="stat-card-sub">Different platforms</p>
     </div>
 </div>
 

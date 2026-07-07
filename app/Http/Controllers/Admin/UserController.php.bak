@@ -15,6 +15,7 @@ use App\Services\AuditLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
@@ -49,8 +50,9 @@ class UserController extends Controller
         ];
 
         $allRoles = Role::ordered();
+        $forceMfa = Setting::get('force_mfa', '0') === '1';
 
-        return view('admin.users.index', compact('users', 'stats', 'allRoles'));
+        return view('admin.users.index', compact('users', 'stats', 'allRoles', 'forceMfa'));
     }
 
     public function create()
@@ -78,7 +80,7 @@ class UserController extends Controller
                     }
                 },
             ],
-            'password'    => 'required|string|min:8|confirmed',
+            'password'    => ['required', 'confirmed', Password::defaults()],
             'role'        => ['required', Rule::in(Role::pluck('name'))],
             'phone'       => 'nullable|string|max:30',
             'job_title'   => 'nullable|string|max:80',
@@ -162,7 +164,7 @@ class UserController extends Controller
                 },
             ],
             'role'        => ['required', Rule::in(Role::pluck('name'))],
-            'password'    => 'nullable|string|min:8|confirmed',
+            'password'    => ['nullable', 'sometimes', 'confirmed', Password::defaults()],
             'phone'       => 'nullable|string|max:30',
             'job_title'   => 'nullable|string|max:80',
             'nationality' => 'nullable|string|max:80',
@@ -212,6 +214,10 @@ class UserController extends Controller
             if ($user->avatar) Storage::disk('public')->delete($user->avatar);
             $data['avatar'] = $request->file('avatar')->store('avatars', 'public');
             $changes['avatar'] = ['from' => 'previous', 'to' => 'updated'];
+        } elseif ($request->input('remove_avatar') === '1' && $user->avatar) {
+            Storage::disk('public')->delete($user->avatar);
+            $data['avatar'] = null;
+            $changes['avatar'] = ['from' => 'previous', 'to' => 'removed'];
         }
 
         $passwordChanged = false;
@@ -439,10 +445,20 @@ class UserController extends Controller
     public function disableMfa(User $user)
     {
         if (! $user->mfa_enabled) {
+            // User never had MFA — just exempt them from the global force_mfa requirement
+            $user->update(['mfa_required' => false]);
+
+            AuditLogger::log(
+                'user.mfa_exempted',
+                $user,
+                "MFA requirement exempted for {$user->name} by admin",
+                ['admin_id' => auth()->id()]
+            );
+
             if (request()->expectsJson()) {
-                return response()->json(['ok' => false, 'message' => "{$user->name} does not have MFA enabled."]);
+                return response()->json(['ok' => true, 'message' => "{$user->name} has been exempted from MFA requirement.", 'mfa_enabled' => false, 'mfa_required' => false]);
             }
-            return back()->with('info', "{$user->name} does not have MFA enabled.");
+            return back()->with('success', "{$user->name} has been exempted from the MFA requirement.");
         }
 
         $user->update([
@@ -1113,7 +1129,7 @@ class UserController extends Controller
                 },
             ],
             'username' => 'nullable|string|max:60|unique:users|alpha_dash',
-            'password' => 'required|string|min:8|confirmed',
+            'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
         $clone = User::create([

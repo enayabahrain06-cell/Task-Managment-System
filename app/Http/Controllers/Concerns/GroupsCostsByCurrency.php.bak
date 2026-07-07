@@ -1,0 +1,29 @@
+<?php
+
+namespace App\Http\Controllers\Concerns;
+
+use Closure;
+use Illuminate\Support\Collection;
+
+trait GroupsCostsByCurrency
+{
+    /**
+     * Sum a cost accessor per currency instead of blending different currencies into one number.
+     */
+    protected function totalsByCurrency(Collection $items, Closure $amount): Collection
+    {
+        return $items->groupBy('currency')
+            ->map(fn (Collection $group) => $group->sum($amount))
+            ->sortDesc();
+    }
+
+    protected function formatTotalsByCurrency(Collection $totals, int $decimals = 3): string
+    {
+        if ($totals->isEmpty()) {
+            return 'BHD ' . number_format(0, $decimals);
+        }
+
+        return $totals->map(fn ($amount, $currency) => "{$currency} " . number_format($amount, $decimals))
+            ->implode(' + ');
+    }
+}

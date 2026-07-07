@@ -339,24 +339,102 @@
                 </div>
                 @endif
                 @if($subscription->password)
-                @php $decrypted = $subscription->decrypted_password; @endphp
                 <div>
                     <div class="info-label">Password / License Key</div>
                     <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
-                        <code x-show="!showPassword" style="font-size:13px;color:#374151;background:#F3F4F6;padding:5px 10px;border-radius:6px;flex:1;letter-spacing:.15em;">••••••••••••</code>
-                        <code x-show="showPassword" style="font-size:13px;color:#374151;background:#F3F4F6;padding:5px 10px;border-radius:6px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;word-break:break-all;">{{ $decrypted }}</code>
-                        <button @click="showPassword = !showPassword" title="Show/hide"
-                                style="width:28px;height:28px;border:none;border-radius:6px;background:#F3F4F6;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;flex-shrink:0;">
-                            <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'" style="font-size:11px;"></i>
+                        <code id="sub-pwd-display" style="font-size:13px;color:#374151;background:#F3F4F6;padding:5px 10px;border-radius:6px;flex:1;letter-spacing:.15em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">••••••••••••</code>
+                        <button onclick="openRevealModal()" title="Reveal password"
+                                style="width:28px;height:28px;border:none;border-radius:6px;background:#FEF3C7;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#D97706;flex-shrink:0;" title="Requires account password">
+                            <i class="fas fa-lock" style="font-size:11px;"></i>
                         </button>
-                        @if($decrypted)
-                        <button onclick="copyToClipboard('{{ addslashes($decrypted) }}', this)" title="Copy"
-                                style="width:28px;height:28px;border:none;border-radius:6px;background:#F3F4F6;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;flex-shrink:0;">
+                        <button id="sub-pwd-copy" onclick="copyPwd(this)" title="Copy" style="display:none;width:28px;height:28px;border:none;border-radius:6px;background:#F3F4F6;cursor:pointer;display:none;align-items:center;justify-content:center;color:#6B7280;flex-shrink:0;">
                             <i class="fas fa-copy" style="font-size:11px;"></i>
                         </button>
-                        @endif
+                    </div>
+                    <div style="font-size:11px;color:#9CA3AF;margin-top:4px;display:flex;align-items:center;gap:4px;">
+                        <i class="fas fa-shield-halved" style="font-size:9px;color:#D97706;"></i>
+                        Account password required to reveal · Access is logged
                     </div>
                 </div>
+
+                {{-- Reveal password modal --}}
+                <div id="reveal-pwd-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+                    <div style="background:#fff;border-radius:16px;padding:28px;width:380px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+                        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+                            <div style="width:40px;height:40px;border-radius:10px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-lock" style="color:#D97706;font-size:16px;"></i>
+                            </div>
+                            <div>
+                                <div style="font-size:15px;font-weight:700;color:#111827;">Reveal Password</div>
+                                <div style="font-size:12px;color:#6B7280;">Enter your account password to continue</div>
+                            </div>
+                        </div>
+                        <input type="password" id="reveal-pwd-input" placeholder="Your account password"
+                               style="width:100%;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:6px;"
+                               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"
+                               onkeydown="if(event.key==='Enter')submitReveal()">
+                        <div id="reveal-pwd-error" style="display:none;font-size:12px;color:#DC2626;margin-bottom:8px;"></div>
+                        <div style="display:flex;gap:8px;margin-top:14px;">
+                            <button onclick="closeRevealModal()" style="flex:1;padding:9px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;font-size:13px;cursor:pointer;color:#374151;">Cancel</button>
+                            <button onclick="submitReveal()" id="reveal-pwd-btn" style="flex:1;padding:9px;border:none;border-radius:8px;background:#4F46E5;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">
+                                <i class="fas fa-unlock" style="font-size:11px;margin-right:4px;"></i> Reveal
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <script>
+                var _revealTimer = null;
+                function openRevealModal() {
+                    document.getElementById('reveal-pwd-input').value = '';
+                    document.getElementById('reveal-pwd-error').style.display = 'none';
+                    document.getElementById('reveal-pwd-modal').style.display = 'flex';
+                    setTimeout(() => document.getElementById('reveal-pwd-input').focus(), 50);
+                }
+                function closeRevealModal() {
+                    document.getElementById('reveal-pwd-modal').style.display = 'none';
+                }
+                function submitReveal() {
+                    var pwd = document.getElementById('reveal-pwd-input').value;
+                    var btn = document.getElementById('reveal-pwd-btn');
+                    var err = document.getElementById('reveal-pwd-error');
+                    if (!pwd) { err.textContent = 'Please enter your password.'; err.style.display='block'; return; }
+                    btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:11px;margin-right:4px;"></i> Checking...';
+                    fetch('{{ route('admin.subscriptions.reveal-password', $subscription->id) }}', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                        body: JSON.stringify({ password: pwd })
+                    }).then(r => r.json()).then(data => {
+                        btn.disabled = false; btn.innerHTML = '<i class="fas fa-unlock" style="font-size:11px;margin-right:4px;"></i> Reveal';
+                        if (data.error) { err.textContent = data.error; err.style.display='block'; return; }
+                        closeRevealModal();
+                        var display = document.getElementById('sub-pwd-display');
+                        var copyBtn = document.getElementById('sub-pwd-copy');
+                        display.textContent = data.secret;
+                        display.style.letterSpacing = 'normal';
+                        copyBtn.style.display = 'flex';
+                        copyBtn._secret = data.secret;
+                        if (_revealTimer) clearTimeout(_revealTimer);
+                        _revealTimer = setTimeout(() => {
+                            display.textContent = '••••••••••••';
+                            display.style.letterSpacing = '.15em';
+                            copyBtn.style.display = 'none';
+                        }, 30000);
+                    }).catch(() => {
+                        btn.disabled = false; btn.innerHTML = '<i class="fas fa-unlock" style="font-size:11px;margin-right:4px;"></i> Reveal';
+                        err.textContent = 'Request failed. Try again.'; err.style.display='block';
+                    });
+                }
+                function copyPwd(btn) {
+                    navigator.clipboard.writeText(btn._secret).then(() => {
+                        var icon = btn.querySelector('i');
+                        icon.className = 'fas fa-check'; icon.style.color = '#16A34A';
+                        setTimeout(() => { icon.className = 'fas fa-copy'; icon.style.color = ''; }, 1500);
+                    });
+                }
+                document.getElementById('reveal-pwd-modal').addEventListener('click', function(e) {
+                    if (e.target === this) closeRevealModal();
+                });
+                </script>
                 @endif
             </div>
             @endif

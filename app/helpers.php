@@ -25,3 +25,17 @@ if (! function_exists('app_datetime')) {
         return app_date($date, true);
     }
 }
+
+if (! function_exists('format_money')) {
+    /**
+     * Format an amount with its currency, using the $ symbol for USD and the ISO code otherwise.
+     */
+    function format_money(float|int|string $amount, ?string $currency, int $decimals = 3): string
+    {
+        $formatted = number_format((float) $amount, $decimals);
+
+        return strtoupper((string) $currency) === 'USD'
+            ? '$' . $formatted
+            : trim($currency) . ' ' . $formatted;
+    }
+}

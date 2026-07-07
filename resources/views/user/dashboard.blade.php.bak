@@ -358,6 +358,7 @@ document.addEventListener('keydown', function(e) {
                             'assigned'           => ['#EEF2FF','#4F46E5','Assigned'],
                             'viewed'             => ['#F0F9FF','#0369A1','Viewed'],
                             'in_progress'        => ['#FFFBEB','#D97706','In Progress'],
+                            'paused'             => ['#F3F4F6','#6B7280','Paused'],
                             'submitted'          => ['#F5F3FF','#7C3AED','In Review'],
                             'revision_requested' => ['#FFF7ED','#C2410C','Revision'],
                             'pending_customer'   => ['#FEF3C7','#D97706','Awaiting Client'],
@@ -865,7 +866,7 @@ document.addEventListener('keydown', function(e) {
             @php
                 $isDone2=in_array($task->status,['approved','delivered','archived']);
                 $isOv2=$task->deadline&&$task->deadline->isPast()&&!$isDone2&&$task->status!=='submitted';
-                $sm2=['draft'=>['#F3F4F6','#6B7280','Draft'],'assigned'=>['#EEF2FF','#4F46E5','Assigned'],'viewed'=>['#F0F9FF','#0369A1','Viewed'],'in_progress'=>['#FFFBEB','#D97706','In Progress'],'submitted'=>['#F5F3FF','#7C3AED','In Review'],'revision_requested'=>['#FFF7ED','#C2410C','Revision'],'approved'=>['#F0FDF4','#16A34A','Approved'],'delivered'=>['#ECFDF5','#047857','Delivered'],'archived'=>['#F3F4F6','#6B7280','Archived']];
+                $sm2=['draft'=>['#F3F4F6','#6B7280','Draft'],'assigned'=>['#EEF2FF','#4F46E5','Assigned'],'viewed'=>['#F0F9FF','#0369A1','Viewed'],'in_progress'=>['#FFFBEB','#D97706','In Progress'],'paused'=>['#F3F4F6','#6B7280','Paused'],'submitted'=>['#F5F3FF','#7C3AED','In Review'],'revision_requested'=>['#FFF7ED','#C2410C','Revision'],'approved'=>['#F0FDF4','#16A34A','Approved'],'delivered'=>['#ECFDF5','#047857','Delivered'],'archived'=>['#F3F4F6','#6B7280','Archived']];
                 [$sb,$sc,$sl]=$sm2[$task->status]??['#F8FAFC','#9CA3AF','Unknown'];
                 $pc2=['high'=>'#DC2626','medium'=>'#D97706','low'=>'#16A34A'][$task->priority]??'#9CA3AF';
             @endphp

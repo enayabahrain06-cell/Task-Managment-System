@@ -128,7 +128,7 @@ foreach($licenses as $l) {
         'hasPassword'  => !empty($l->password),
         'notes'        => $l->notes ?? '',
         'logoUrl'      => $l->logo_url ?? '',
-        'cost'         => $l->cost > 0 ? number_format((float)$l->cost, 3).' '.$l->currency : '',
+        'cost'         => $l->cost > 0 ? format_money($l->cost, $l->currency) : '',
         'billingCycle' => match($l->billing_cycle) { 'monthly'=>'Monthly','annual'=>'Annual','quarterly'=>'Quarterly',default=>ucfirst($l->billing_cycle) },
         'assignedAt'   => $assignedAt,
         'assignedBy'   => $assignedBy,

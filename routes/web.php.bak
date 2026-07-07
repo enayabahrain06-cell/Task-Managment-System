@@ -488,7 +488,6 @@ Route::middleware([UserMiddleware::class, MfaMiddleware::class])->prefix('user')
     Route::get('/domains',   [UserDomainsController::class, 'index'])->name('domains.index');
     Route::post('/domains',  [UserDomainsController::class, 'store'])->name('domains.store');
     Route::get('/domains/{domain}',                     [UserDomainsController::class, 'show'])->name('domains.show');
-    Route::put('/domains/{domain}',                     [UserDomainsController::class, 'update'])->name('domains.update');
     Route::post('/domains/{domain}/reveal-password',     [UserDomainsController::class, 'revealPassword'])->name('domains.reveal-password');
     Route::post('/domains/{domain}/quick-renew',         [UserDomainsController::class, 'quickRenew'])->name('domains.quick-renew');
     Route::post('/domains/{domain}/attachments',         [UserDomainsController::class, 'storeAttachment'])->name('domains.attachments.store');

@@ -5,6 +5,10 @@
 <style>
 .dom-header { background:linear-gradient(135deg,#4F46E5 0%,#6366F1 50%,#818CF8 100%); border-radius:20px; padding:28px 32px; margin-bottom:24px; display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; box-shadow:0 8px 32px rgba(79,70,229,.25); }
 .dom-stat-chip { display:flex; align-items:center; gap:10px; padding:11px 18px; background:#fff; border:1.5px solid #E5E7EB; border-radius:12px; flex:1; min-width:110px; }
+.dom-stat { background:#fff; border-radius:12px; border:1px solid #F0F0F0; box-shadow:0 1px 4px rgba(0,0,0,.04); padding:16px 20px; display:flex; align-items:center; gap:14px; }
+.dom-stat-icon { width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:16px; }
+@media (max-width:900px) { .dom-stats-grid { grid-template-columns:repeat(2,1fr) !important; } }
+@media (max-width:500px)  { .dom-stats-grid { gap:8px !important; } }
 .dom-search { border:1.5px solid #E5E7EB; border-radius:10px; padding:8px 14px 8px 36px; font-size:13px; color:#111827; outline:none; width:220px; transition:border-color .15s; background:#fff; }
 .dom-search:focus { border-color:#4F46E5; }
 .dom-table { width:100%; border-collapse:separate; border-spacing:0; min-width:700px; }
@@ -35,9 +39,17 @@
 .dom-detail-row:last-child { border-bottom:none; }
 .dom-detail-label { font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;width:130px;flex-shrink:0;padding-top:1px; }
 .dom-detail-val { font-size:13px;color:#111827;font-weight:500;flex:1;word-break:break-word; }
+.dom-expiring-row:hover { background:#FFFBEB; }
 </style>
 
 <div style="padding:0 0 32px;">
+
+    {{-- Flash --}}
+    @if(session('success'))
+    <div style="background:#ECFDF5;border:1px solid #A7F3D0;color:#16A34A;padding:12px 16px;border-radius:10px;margin-bottom:20px;font-size:13px;display:flex;align-items:center;gap:8px;">
+        <i class="fas fa-circle-check"></i> {{ session('success') }}
+    </div>
+    @endif
 
     {{-- Header --}}
     <div class="dom-header">
@@ -52,43 +64,64 @@
                 </div>
             </div>
         </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            @php
-                $activeCount   = $domains->filter(fn($d) => $d->status === 'active')->count();
-                $expiringCount = $domains->filter(fn($d) => $d->status === 'expiring_soon')->count();
-                $expiredCount  = $domains->filter(fn($d) => $d->status === 'expired')->count();
-            @endphp
-            <div class="dom-stat-chip">
-                <span style="width:30px;height:30px;background:#D1FAE5;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <i class="fas fa-circle-check" style="font-size:13px;color:#059669;"></i>
-                </span>
-                <div>
-                    <div style="font-size:18px;font-weight:800;color:#111827;">{{ $activeCount }}</div>
-                    <div style="font-size:10px;color:#6B7280;font-weight:600;text-transform:uppercase;">Active</div>
-                </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <button onclick="document.getElementById('userAddDomainModal').style.display='block'"
+                    style="display:inline-flex;align-items:center;gap:7px;padding:10px 18px;background:#fff;color:#4F46E5;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.1);">
+                <i class="fas fa-plus" style="font-size:11px;"></i> Add Domain
+            </button>
+        </div>
+    </div>
+
+    {{-- Stats --}}
+    <div class="dom-stats-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px;">
+        <div class="dom-stat">
+            <div class="dom-stat-icon" style="background:#EEF2FF;">
+                <i class="fas fa-globe" style="color:#4F46E5;"></i>
             </div>
-            @if($expiringCount > 0)
-            <div class="dom-stat-chip" style="border-color:#FCD34D;">
-                <span style="width:30px;height:30px;background:#FEF3C7;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <i class="fas fa-triangle-exclamation" style="font-size:13px;color:#D97706;"></i>
-                </span>
-                <div>
-                    <div style="font-size:18px;font-weight:800;color:#92400E;">{{ $expiringCount }}</div>
-                    <div style="font-size:10px;color:#6B7280;font-weight:600;text-transform:uppercase;">Expiring Soon</div>
-                </div>
+            <div>
+                <p style="font-size:22px;font-weight:800;color:#111827;margin:0;">{{ $totalCount }}</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Total Domains</p>
             </div>
-            @endif
-            @if($expiredCount > 0)
-            <div class="dom-stat-chip" style="border-color:#FCA5A5;">
-                <span style="width:30px;height:30px;background:#FEE2E2;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <i class="fas fa-circle-xmark" style="font-size:13px;color:#DC2626;"></i>
-                </span>
-                <div>
-                    <div style="font-size:18px;font-weight:800;color:#991B1B;">{{ $expiredCount }}</div>
-                    <div style="font-size:10px;color:#6B7280;font-weight:600;text-transform:uppercase;">Expired</div>
-                </div>
+        </div>
+        <div class="dom-stat">
+            <div class="dom-stat-icon" style="background:#D1FAE5;">
+                <i class="fas fa-circle-check" style="color:#059669;"></i>
             </div>
-            @endif
+            <div>
+                <p style="font-size:22px;font-weight:800;color:#059669;margin:0;">{{ $activeCount }}</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Active</p>
+            </div>
+        </div>
+        <div class="dom-stat">
+            <div class="dom-stat-icon" style="background:#FEF3C7;">
+                <i class="fas fa-clock" style="color:#D97706;"></i>
+            </div>
+            <div>
+                <p style="font-size:22px;font-weight:800;color:#D97706;margin:0;">{{ $expiringSoonCount }}</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Expiring Soon <strong style="color:#EA580C;">· {{ $weekCount }} in 7d</strong></p>
+            </div>
+        </div>
+        <div class="dom-stat">
+            <div class="dom-stat-icon" style="background:#FEE2E2;">
+                <i class="fas fa-circle-xmark" style="color:#DC2626;"></i>
+            </div>
+            <div>
+                <p style="font-size:22px;font-weight:800;color:#DC2626;margin:0;">{{ $expiredCount }}</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Expired</p>
+            </div>
+        </div>
+        <div class="dom-stat">
+            <div class="dom-stat-icon" style="background:#EFF6FF;">
+                <i class="fas fa-coins" style="color:#2563EB;"></i>
+            </div>
+            <div>
+                @forelse($annualTotalsByCurrency as $currency => $amount)
+                <p style="font-size:{{ $annualTotalsByCurrency->count() > 1 ? '16px' : '22px' }};font-weight:800;color:#2563EB;margin:0;">{{ format_money($amount, $currency) }}</p>
+                @empty
+                <p style="font-size:22px;font-weight:800;color:#2563EB;margin:0;">BHD 0.000</p>
+                @endforelse
+                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Annual Spend</p>
+            </div>
         </div>
     </div>
 
@@ -98,7 +131,11 @@
             <i class="fas fa-globe" style="font-size:28px;color:#4F46E5;"></i>
         </div>
         <p style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">No domains assigned</p>
-        <p style="font-size:13px;color:#9CA3AF;margin:0;">You have not been assigned as responsible person for any domain yet.</p>
+        <p style="font-size:13px;color:#9CA3AF;margin:0 0 20px;">You have not been assigned as responsible person for any domain yet.</p>
+        <button onclick="document.getElementById('userAddDomainModal').style.display='block'"
+                style="display:inline-flex;align-items:center;gap:7px;padding:10px 20px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">
+            <i class="fas fa-plus" style="font-size:11px;"></i> Add Domain
+        </button>
     </div>
     @else
 
@@ -145,23 +182,7 @@
                     data-domain="{{ strtolower($domain->domain) }}"
                     data-registrar="{{ strtolower($domain->registrar ?? '') }}"
                     data-status="{{ $domain->status }}"
-                    onclick="openDomDetail({{ json_encode([
-                        'domain'          => $domain->domain,
-                        'registrar'       => $domain->registrar,
-                        'customer'        => $domain->customer?->company ?: $domain->customer?->name,
-                        'billingTo'       => $domain->billing_to,
-                        'cost'            => $domain->cost ? number_format($domain->cost, 3) . ' ' . $domain->currency : null,
-                        'billingCycle'    => $domain->billing_cycle,
-                        'autoRenew'       => $domain->auto_renew,
-                        'registeredAt'    => $domain->registered_at?->format('d M Y'),
-                        'expiresAt'       => $domain->expires_at?->format('d M Y'),
-                        'daysLeft'        => $domain->days_until_expiry,
-                        'status'          => $domain->status,
-                        'hostingProvider' => $domain->hosting_provider,
-                        'loginUrl'        => $domain->login_url,
-                        'nameservers'     => $domain->nameservers,
-                        'notes'           => $domain->notes,
-                    ]) }})">
+                    onclick="window.location='{{ route('user.domains.show', $domain) }}'">
                     <td>
                         <div style="display:flex;align-items:center;gap:10px;">
                             <div style="width:34px;height:34px;border-radius:9px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -232,121 +253,84 @@
 
 </div>
 
-{{-- Detail Modal --}}
-<div id="dom-detail-overlay" class="dom-detail-overlay" style="display:none;" onclick="if(event.target===this)closeDomDetail()">
-    <div class="dom-detail-panel">
-        <div class="dom-detail-header">
+{{-- Add Domain Modal --}}
+<div id="userAddDomainModal" style="display:none;position:fixed;inset:0;z-index:9500;overflow-y:auto;background:rgba(0,0,0,.45);" onclick="if(event.target===this)document.getElementById('userAddDomainModal').style.display='none'">
+    <div style="min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px 16px;">
+        <div style="position:relative;background:#fff;border-radius:16px;padding:28px;width:640px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);" onclick="event.stopPropagation()">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+                <h3 style="font-size:18px;font-weight:700;color:#111827;margin:0;">Add Domain</h3>
+                <button onclick="document.getElementById('userAddDomainModal').style.display='none'" style="width:32px;height:32px;background:#F3F4F6;border:none;border-radius:8px;cursor:pointer;font-size:16px;color:#6B7280;">✕</button>
+            </div>
+            <p style="font-size:12.5px;color:#9CA3AF;margin:-14px 0 20px;">You'll automatically be set as a responsible person for this domain.</p>
+            <form method="POST" action="{{ route('user.domains.store') }}">
+                @csrf
+                @include('admin.domains._form', ['domain' => null])
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px;">
+                    <button type="button" onclick="document.getElementById('userAddDomainModal').style.display='none'" style="padding:10px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
+                    <button type="submit" style="padding:10px 24px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
+                        <i class="fas fa-plus" style="margin-right:6px;"></i>Add Domain
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Expiring Soon Modal --}}
+<div id="dom-expiring-overlay" class="dom-detail-overlay" style="display:{{ $showExpiringPopup ? 'flex' : 'none' }};z-index:10000;" onclick="if(event.target===this)closeExpiringSummary()">
+    <div class="dom-detail-panel" style="width:480px;">
+        <div class="dom-detail-header" style="background:linear-gradient(135deg,#DC2626 0%,#EF4444 100%);">
             <div style="display:flex;align-items:center;gap:12px;">
                 <div style="width:42px;height:42px;background:rgba(255,255,255,.2);border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                    <i class="fas fa-globe" style="font-size:18px;color:#fff;"></i>
+                    <i class="fas fa-triangle-exclamation" style="font-size:18px;color:#fff;"></i>
                 </div>
                 <div>
-                    <div id="dd-title" style="font-size:17px;font-weight:800;color:#fff;"></div>
-                    <div id="dd-subtitle" style="font-size:12px;color:rgba(255,255,255,.7);margin-top:2px;"></div>
+                    <div style="font-size:17px;font-weight:800;color:#fff;">Domains Expiring Soon</div>
+                    <div style="font-size:12px;color:rgba(255,255,255,.8);margin-top:2px;">{{ $expiringDomains->count() }} of your domain{{ $expiringDomains->count() !== 1 ? 's' : '' }} within 30 days</div>
                 </div>
             </div>
-            <button onclick="closeDomDetail()" style="width:32px;height:32px;background:rgba(255,255,255,.15);border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;">
+            <button onclick="closeExpiringSummary()" style="width:32px;height:32px;background:rgba(255,255,255,.15);border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;">
                 <i class="fas fa-times" style="font-size:13px;"></i>
             </button>
         </div>
-        <div class="dom-detail-body" id="dom-detail-body"></div>
+        <div class="dom-detail-body" style="padding:12px;">
+            @foreach($expiringDomains as $ed)
+            <a href="{{ route('user.domains.show', $ed) }}"
+                 class="dom-expiring-row"
+                 style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border-radius:10px;cursor:pointer;margin-bottom:4px;text-decoration:none;color:inherit;">
+                <div style="min-width:0;">
+                    <div style="font-weight:700;color:#111827;font-size:13.5px;">{{ $ed->domain }}</div>
+                    <div style="font-size:11.5px;color:#9CA3AF;margin-top:1px;">{{ $ed->registrar ?: 'No registrar' }}</div>
+                </div>
+                <div style="text-align:right;flex-shrink:0;">
+                    <div style="font-size:12.5px;font-weight:700;color:{{ $ed->days_until_expiry <= 7 ? '#DC2626' : '#D97706' }};">
+                        {{ $ed->days_until_expiry }} day{{ $ed->days_until_expiry !== 1 ? 's' : '' }} left
+                    </div>
+                    <div style="font-size:11px;color:#9CA3AF;">{{ $ed->expires_at->format('d M Y') }}</div>
+                </div>
+            </a>
+            @endforeach
+        </div>
     </div>
 </div>
 
 <script>
-const _billingCycleLabels = { annual:'Annual', biennial:'Biennial (2 yr)', triennial:'Triennial (3 yr)', one_time:'One-time' };
+function closeExpiringSummary() {
+    document.getElementById('dom-expiring-overlay').style.display = 'none';
+    document.body.style.overflow = '';
+    fetch('{{ route('domains.expiring.dismiss') }}', {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '', 'Accept': 'application/json' },
+    });
+}
 
-function openDomDetail(d) {
-    document.getElementById('dd-title').textContent = d.domain;
-
-    // Subtitle: status badge text
-    const statusMap = { active:'Active', expiring_soon:'Expiring Soon', expired:'Expired' };
-    document.getElementById('dd-subtitle').textContent = statusMap[d.status] || d.status;
-
-    const row = (label, val, opts = {}) => {
-        if (!val && val !== 0 && !opts.always) return '';
-        const display = val || '—';
-        const inner = opts.link
-            ? `<a href="${opts.link}" target="_blank" rel="noopener noreferrer" style="color:#4F46E5;text-decoration:none;font-weight:600;">${display} <i class="fas fa-external-link-alt" style="font-size:10px;"></i></a>`
-            : `<span class="dom-detail-val">${display}</span>`;
-        return `<div class="dom-detail-row">
-            <span class="dom-detail-label">${label}</span>
-            ${inner}
-        </div>`;
-    };
-
-    // Days left coloured
-    let daysHtml = '—';
-    if (d.daysLeft !== null && d.daysLeft !== undefined) {
-        if (d.daysLeft < 0)       daysHtml = `<span style="color:#DC2626;font-weight:700;">Expired ${Math.abs(d.daysLeft)} days ago</span>`;
-        else if (d.daysLeft === 0) daysHtml = `<span style="color:#DC2626;font-weight:700;">Today</span>`;
-        else if (d.daysLeft <= 30) daysHtml = `<span style="color:#D97706;font-weight:700;">${d.daysLeft} days</span>`;
-        else                       daysHtml = `<span style="font-weight:600;">${d.daysLeft} days</span>`;
-    }
-
-    // Nameservers
-    let nsHtml = '';
-    if (d.nameservers && d.nameservers.length) {
-        nsHtml = `<div class="dom-detail-row">
-            <span class="dom-detail-label">Nameservers</span>
-            <div style="font-size:13px;color:#111827;font-family:monospace;line-height:1.8;">
-                ${d.nameservers.map(ns => `<div>${ns}</div>`).join('')}
-            </div>
-        </div>`;
-    }
-
-    // Notes
-    let notesHtml = '';
-    if (d.notes) {
-        notesHtml = `<div class="dom-detail-row">
-            <span class="dom-detail-label">Notes</span>
-            <div style="font-size:13px;color:#374151;white-space:pre-wrap;line-height:1.6;">${d.notes}</div>
-        </div>`;
-    }
-
-    document.getElementById('dom-detail-body').innerHTML = `
-        ${row('Registrar',       d.registrar)}
-        ${row('Customer',        d.customer)}
-        ${row('Bill To',         d.billingTo)}
-        <div class="dom-detail-row">
-            <span class="dom-detail-label">Status</span>
-            <span class="status-badge ${d.status === 'active' ? 'badge-active' : d.status === 'expiring_soon' ? 'badge-expiring' : 'badge-expired'}">${statusMap[d.status] || d.status}</span>
-        </div>
-        ${row('Registered',      d.registeredAt)}
-        ${row('Expires',         d.expiresAt)}
-        <div class="dom-detail-row">
-            <span class="dom-detail-label">Days Left</span>
-            <span class="dom-detail-val">${daysHtml}</span>
-        </div>
-        ${row('Cost',            d.cost)}
-        ${row('Billing Cycle',   d.billingCycle ? (_billingCycleLabels[d.billingCycle] || d.billingCycle) : null)}
-        <div class="dom-detail-row">
-            <span class="dom-detail-label">Auto Renew</span>
-            <span class="dom-detail-val">${d.autoRenew
-                ? '<span style="color:#059669;font-weight:600;"><i class="fas fa-rotate" style="font-size:10px;margin-right:4px;"></i>Yes</span>'
-                : '<span style="color:#9CA3AF;">No</span>'}</span>
-        </div>
-        ${row('Hosting',         d.hostingProvider)}
-        ${d.loginUrl ? `<div class="dom-detail-row">
-            <span class="dom-detail-label">Registrar Panel</span>
-            <a href="${d.loginUrl}" target="_blank" rel="noopener noreferrer" style="color:#4F46E5;font-size:13px;font-weight:600;text-decoration:none;">
-                Open Panel <i class="fas fa-external-link-alt" style="font-size:10px;"></i>
-            </a>
-        </div>` : ''}
-        ${nsHtml}
-        ${notesHtml}
-    `;
-
-    document.getElementById('dom-detail-overlay').style.display = 'flex';
+if (document.getElementById('dom-expiring-overlay').style.display === 'flex') {
     document.body.style.overflow = 'hidden';
 }
 
-function closeDomDetail() {
-    document.getElementById('dom-detail-overlay').style.display = 'none';
-    document.body.style.overflow = '';
-}
-
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDomDetail(); });
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeExpiringSummary(); }
+});
 
 function filterDomains() {
     const search = document.getElementById('dom-search').value.toLowerCase().trim();
