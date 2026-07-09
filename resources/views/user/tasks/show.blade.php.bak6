@@ -31,7 +31,6 @@
 @php
     $isSocialAssignee = $isSocialAssignee ?? false;
     $pendingExtension = $pendingExtension ?? null;
-    $otherInProgressTask = $otherInProgressTask ?? null;
     $doneStatuses = ['approved', 'delivered', 'archived'];
     $deadlineEOD  = $task->deadline ? \App\Models\Setting::deadlineEOD($task->deadline) : null;
     $isOverdue    = $deadlineEOD && $deadlineEOD->isPast() && !in_array($task->status, $doneStatuses);

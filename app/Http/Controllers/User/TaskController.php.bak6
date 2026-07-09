@@ -382,10 +382,7 @@ class TaskController extends Controller
             $completedTimerSeconds = 0;
             $activeSegment         = null;
             $incomingTransfer      = null;
-            $otherInProgressTask   = null;
-            $pendingExtension      = null;
-            $latestExtension       = null;
-            return view('user.tasks.show', compact('task', 'incomingTransfer', 'completedTimerSeconds', 'activeSegment', 'isSocialAssignee', 'otherInProgressTask', 'pendingExtension', 'latestExtension'));
+            return view('user.tasks.show', compact('task', 'incomingTransfer', 'completedTimerSeconds', 'activeSegment', 'isSocialAssignee'));
         }
 
         // Auto-advance to "viewed" on first open

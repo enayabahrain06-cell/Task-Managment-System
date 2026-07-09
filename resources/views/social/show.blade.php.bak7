@@ -265,11 +265,8 @@ $pMeta = [
                     @endif
                 </p>
                 @foreach($latestSubFiles->pluck('note')->filter()->unique() as $subNote)
-                @php
-                    $subNoteText = trim(strip_tags(preg_replace('/<\/(div|p)>|<br\s*\/?>/i', "\n", $subNote)));
-                @endphp
                 <div style="background:#F8FAFC;border-radius:10px;padding:12px 16px;margin-bottom:14px;border:1px solid #EEF2F8;">
-                    <p dir="auto" style="font-size:13px;color:#374151;margin:0;line-height:1.65;font-style:italic;white-space:pre-line;">"{{ $subNoteText }}"</p>
+                    <p style="font-size:13px;color:#374151;margin:0;line-height:1.65;font-style:italic;">"{{ $subNote }}"</p>
                 </div>
                 @endforeach
                 <div style="display:flex;flex-direction:column;gap:12px;">
