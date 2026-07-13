@@ -411,7 +411,7 @@ body { font-family:DejaVu Sans,Arial,sans-serif; font-size:9px; color:#1F2937; b
                 @if($daysLabel)<div style="font-size:6.5px;color:{{ $dlColor }};margin-top:1px;">{{ $daysLabel }}</div>@endif
             </td>
             <td class="cst-main">{{ format_money($d->annual_cost, $d->currency) }}</td>
-            <td class="{{ $d->auto_renew ? 'chk-yes' : 'chk-no' }}">{{ $d->auto_renew ? '&#10003;' : '&mdash;' }}</td>
+            <td class="{{ $d->auto_renew ? 'chk-yes' : 'chk-no' }}">{{ $d->auto_renew ? '✓' : '—' }}</td>
             <td>
                 @if($d->status==='active')<span class="badge b-active">Active</span>
                 @elseif($d->status==='expiring_soon')<span class="badge b-expiring">Expiring</span>

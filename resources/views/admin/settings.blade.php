@@ -2499,16 +2499,29 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
-                        <div class="sf-toggle-row">
-                            <div>
-                                <p class="sf-toggle-label">Require Two-Factor Authentication (MFA)</p>
-                                <p class="sf-toggle-hint">Force all users to set up an authenticator app before accessing their account</p>
+                        <div x-data="{ forceMfa: {{ ($settings['force_mfa'] ?? '0') === '1' ? 'true' : 'false' }} }">
+                            <div class="sf-toggle-row">
+                                <div>
+                                    <p class="sf-toggle-label">Require Two-Factor Authentication (MFA)</p>
+                                    <p class="sf-toggle-hint">Force users to set up an authenticator app before accessing their account</p>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" name="force_mfa" value="1" x-model="forceMfa"
+                                           {{ ($settings['force_mfa'] ?? '0') === '1' ? 'checked' : '' }}>
+                                    <span class="toggle-slider"></span>
+                                </label>
                             </div>
-                            <label class="toggle">
-                                <input type="checkbox" name="force_mfa" value="1"
-                                       {{ ($settings['force_mfa'] ?? '0') === '1' ? 'checked' : '' }}>
-                                <span class="toggle-slider"></span>
-                            </label>
+                            <div class="sf-toggle-row" x-show="forceMfa" x-cloak style="padding-left:16px;">
+                                <div>
+                                    <p class="sf-toggle-label">Admins Only</p>
+                                    <p class="sf-toggle-hint">Only require MFA for admin accounts — managers and regular users are unaffected</p>
+                                </div>
+                                <label class="toggle">
+                                    <input type="checkbox" name="force_mfa_admin_only" value="1"
+                                           {{ ($settings['force_mfa_admin_only'] ?? '0') === '1' ? 'checked' : '' }}>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
                         </div>
                     </div>
                     <div class="scard-footer">
@@ -4300,6 +4313,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                     <option value="ultramsg">UltraMsg — Easiest setup</option>
                                     <option value="twilio">Twilio WhatsApp</option>
                                     <option value="meta">Meta Cloud API (Official)</option>
+                                    <option value="openwa">Open-WA — Self-hosted</option>
                                 </select>
                             </div>
 
@@ -4355,6 +4369,39 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                                value="{{ $settings['wa_waba_id'] ?? '' }}"
                                                placeholder="123456789012345">
                                         <p class="sf-hint">Found in Meta Business Settings → Accounts → WhatsApp Accounts.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Open-WA --}}
+                            <div x-show="provider === 'openwa'">
+                                <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:#115e59;line-height:1.6;">
+                                    <strong>Open-WA</strong> is a self-hosted WhatsApp gateway. Point this at its base URL and the ID of a connected session (find it under Sessions in your Open-WA dashboard). Messages are sent to <code>{base_url}/api/sessions/{session}/messages/send-text</code>.
+                                </div>
+                                <div class="sf-row">
+                                    <div class="sf-group">
+                                        <label class="sf-label">API Base URL</label>
+                                        <input type="text" name="wa_openwa_url" class="sf-input"
+                                               value="{{ $settings['wa_openwa_url'] ?? '' }}"
+                                               placeholder="http://192.168.1.208:2785">
+                                    </div>
+                                    <div class="sf-group" x-data="{ sessionLocked: {{ !empty($settings['wa_openwa_session']) ? 'true' : 'false' }} }">
+                                        <label class="sf-label" style="display:flex;align-items:center;justify-content:space-between;">
+                                            <span>Session ID</span>
+                                            <button type="button" x-show="sessionLocked" @click="sessionLocked=false"
+                                                    style="background:none;border:none;cursor:pointer;color:#6366F1;font-size:11px;font-weight:600;display:flex;align-items:center;gap:4px;">
+                                                <i class="fas fa-lock" style="font-size:10px;"></i> Unlock to edit
+                                            </button>
+                                        </label>
+                                        <input type="text" x-show="!sessionLocked" name="wa_openwa_session" class="sf-input"
+                                               placeholder="e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6">
+                                        @if(!empty($settings['wa_openwa_session']))
+                                        <input type="text" x-show="sessionLocked" class="sf-input" value="••••••••-••••-••••-••••-••••••••••••" disabled
+                                               style="background:#F3F4F6;color:#9CA3AF;cursor:not-allowed;">
+                                        @endif
+                                        <p class="sf-hint">The session's UUID, shown under Sessions in your Open-WA dashboard.
+                                            <span x-show="sessionLocked">Hidden and locked — click "Unlock to edit" above to change it.</span>
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -4431,6 +4478,11 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                    style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;font-weight:600;color:#374151;text-decoration:none;transition:border-color .15s;"
                                    onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
                                     <i class="fas fa-arrow-up-right-from-square" style="font-size:11px;color:#9CA3AF;"></i>Meta WhatsApp Docs
+                                </a>
+                                <a href="https://github.com/open-wa/wa-automate-nodejs" target="_blank" rel="noopener"
+                                   style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;font-weight:600;color:#374151;text-decoration:none;transition:border-color .15s;"
+                                   onmouseover="this.style.borderColor='#6366F1'" onmouseout="this.style.borderColor='#E5E7EB'">
+                                    <i class="fas fa-arrow-up-right-from-square" style="font-size:11px;color:#9CA3AF;"></i>Open-WA Docs
                                 </a>
                             </div>
                         </div>

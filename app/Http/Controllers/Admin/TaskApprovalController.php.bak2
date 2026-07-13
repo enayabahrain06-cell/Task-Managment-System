@@ -619,8 +619,12 @@ class TaskApprovalController extends Controller
             return response()->json(['ok' => false, 'message' => 'WhatsApp API token is not set.'], 422);
         }
         $provider = Setting::get('wa_provider', 'ultramsg');
-        if (!in_array($provider, ['ultramsg', 'openwa'])) {
-            return response()->json(['ok' => false, 'message' => 'File attachments are only supported with the UltraMsg and Open-WA providers.'], 422);
+        if ($provider !== 'ultramsg') {
+            return response()->json(['ok' => false, 'message' => 'File attachments are only supported with the UltraMsg provider.'], 422);
+        }
+        $instanceId = Setting::get('wa_instance_id', '');
+        if (!$instanceId) {
+            return response()->json(['ok' => false, 'message' => 'UltraMsg instance ID not set.'], 422);
         }
 
         $digits = preg_replace('/\D/', '', $request->phone);
@@ -632,15 +636,6 @@ class TaskApprovalController extends Controller
         $isImage = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
 
         try {
-            if ($provider === 'openwa') {
-                return response()->json($this->sendOpenwaMedia($token, $digits, $request->file_url, $request->filename, $request->caption ?? '', $isImage));
-            }
-
-            $instanceId = Setting::get('wa_instance_id', '');
-            if (!$instanceId) {
-                return response()->json(['ok' => false, 'message' => 'UltraMsg instance ID not set.'], 422);
-            }
-
             if ($isImage) {
                 $response = Http::asForm()->post(
                     "https://api.ultramsg.com/{$instanceId}/messages/image",
@@ -661,29 +656,6 @@ class TaskApprovalController extends Controller
         } catch (\Throwable $e) {
             return response()->json(['ok' => false, 'message' => $e->getMessage()], 422);
         }
-    }
-
-    private function sendOpenwaMedia(string $token, string $phone, string $url, string $filename, string $caption, bool $isImage): array
-    {
-        $baseUrl = Setting::get('wa_openwa_url', '');
-        if (!$baseUrl) return ['ok' => false, 'message' => 'Open-WA API base URL not set.'];
-        $session = Setting::get('wa_openwa_session', '');
-        if (!$session) return ['ok' => false, 'message' => 'Open-WA session ID not set.'];
-
-        $chatId = $phone.'@c.us';
-        $response = $isImage
-            ? Http::withHeaders(['X-API-Key' => $token])
-                ->post(rtrim($baseUrl, '/')."/api/sessions/{$session}/messages/send-image", [
-                    'chatId' => $chatId, 'url' => $url, 'caption' => $caption,
-                ])
-            : Http::withHeaders(['X-API-Key' => $token])
-                ->post(rtrim($baseUrl, '/')."/api/sessions/{$session}/messages/send-document", [
-                    'chatId' => $chatId, 'url' => $url, 'filename' => $filename,
-                ]);
-
-        return $response->successful()
-            ? ['ok' => true, 'message' => 'File sent via Open-WA.']
-            : ['ok' => false, 'message' => $this->waErrMsg($response->json('message'), 'Open-WA error.')];
     }
 
     private function waErrMsg(mixed $val, string $fallback = 'Unknown error.'): string

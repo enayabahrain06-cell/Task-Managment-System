@@ -2,11 +2,17 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Crypt;
 
 class Setting extends Model
 {
     protected $fillable = ['key', 'value'];
+
+    // Values under these keys are transparently encrypted at rest (Laravel APP_KEY).
+    // They still round-trip as plain strings through get()/set() — only the DB column is ciphertext.
+    private const ENCRYPTED_KEYS = ['wa_token', 'storage_omv_password'];
 
     // Request-scoped in-memory cache — avoids repeated DB hits for the same key within a single request.
     private static array $cache = [];
@@ -15,7 +21,7 @@ class Setting extends Model
     public static function get(string $key, mixed $default = null): mixed
     {
         if (!array_key_exists($key, static::$cache)) {
-            static::$cache[$key] = static::where('key', $key)->value('value');
+            static::$cache[$key] = static::decryptIfNeeded($key, static::where('key', $key)->value('value'));
         }
         return static::$cache[$key] ?? $default;
     }
@@ -23,7 +29,7 @@ class Setting extends Model
     /** Set (upsert) a setting value and invalidate the in-memory cache for that key. */
     public static function set(string $key, mixed $value): void
     {
-        static::updateOrCreate(['key' => $key], ['value' => $value]);
+        static::updateOrCreate(['key' => $key], ['value' => static::encryptIfNeeded($key, $value)]);
         static::$cache[$key] = $value;
     }
 
@@ -35,7 +41,7 @@ class Setting extends Model
         if ($missing) {
             $rows = static::whereIn('key', $missing)->pluck('value', 'key')->toArray();
             foreach ($missing as $k) {
-                static::$cache[$k] = $rows[$k] ?? null;
+                static::$cache[$k] = static::decryptIfNeeded($k, $rows[$k] ?? null);
             }
         }
 
@@ -53,6 +59,31 @@ class Setting extends Model
     {
         foreach ($data as $key => $value) {
             static::set($key, $value);
+        }
+    }
+
+    /** Encrypt a value before it hits the DB, only for keys flagged as secret. */
+    private static function encryptIfNeeded(string $key, mixed $value): mixed
+    {
+        if (!in_array($key, self::ENCRYPTED_KEYS, true) || $value === null || $value === '') {
+            return $value;
+        }
+        return Crypt::encryptString((string) $value);
+    }
+
+    /**
+     * Decrypt a value read from the DB, only for keys flagged as secret.
+     * Falls back to the raw value on failure — covers rows saved before encryption was added.
+     */
+    private static function decryptIfNeeded(string $key, mixed $value): mixed
+    {
+        if (!in_array($key, self::ENCRYPTED_KEYS, true) || $value === null || $value === '') {
+            return $value;
+        }
+        try {
+            return Crypt::decryptString($value);
+        } catch (DecryptException) {
+            return $value;
         }
     }
 

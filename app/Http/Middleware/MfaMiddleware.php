@@ -16,6 +16,9 @@ class MfaMiddleware
         }
 
         $forceMfa = Setting::get('force_mfa', '0') === '1';
+        if ($forceMfa && Setting::get('force_mfa_admin_only', '0') === '1' && $user->role !== 'admin') {
+            $forceMfa = false;
+        }
 
         // mfa_required tri-state: null = follow global policy, 1/true = always required, 0/false = admin-exempted
         $mfaRequired = $user->getRawOriginal('mfa_required');

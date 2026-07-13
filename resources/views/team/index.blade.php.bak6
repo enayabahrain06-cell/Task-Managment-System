@@ -2260,7 +2260,7 @@ function editUserModal() {
         {{-- Scrollable body --}}
         <div style="overflow-y:auto;flex:1;padding:20px 24px;">
             <form id="add-user-form" method="POST" action="{{ route('admin.users.store') }}"
-                  enctype="multipart/form-data" @submit="handleSubmit($event)">
+                  enctype="multipart/form-data" @submit="saving = true">
                 @csrf
 
                 {{-- Avatar --}}
@@ -2490,12 +2490,9 @@ function editUserModal() {
                         <span style="font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Password</span>
                         <span style="font-size:11px;color:#9CA3AF;font-weight:400;text-transform:none;letter-spacing:0;">— required</span>
                     </div>
-                    <p style="font-size:11px;color:#9CA3AF;margin:10px 14px 0;">
-                        <i class="fa fa-circle-info" style="margin-right:4px;"></i>{{ $passwordRequirementText }}
-                    </p>
                     <div class="team-form-grid-2" style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;" x-data="{s1:false,s2:false}">
                         <div style="position:relative;">
-                            <input :type="s1?'text':'password'" name="password" required placeholder="Min. {{ $minPasswordLength }} characters"
+                            <input :type="s1?'text':'password'" name="password" required placeholder="Min. 8 characters"
                                    style="width:100%;padding:9px 36px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;">
                             <button type="button" x-on:click="s1=!s1" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9CA3AF;">
                                 <i :class="s1?'fa fa-eye-slash':'fa fa-eye'" style="font-size:13px;"></i>
@@ -2509,7 +2506,6 @@ function editUserModal() {
                             </button>
                         </div>
                     </div>
-                    <p x-show="pwdError" x-text="pwdError" style="color:#DC2626;font-size:12px;font-weight:600;margin:0 14px 12px;"></p>
                 </div>
 
                 {{-- MFA Security --}}
@@ -2617,7 +2613,6 @@ function addUserModal() {
         perms:        [...defaultPerms],
         avatarPreview: null,
         nationality:   '',
-        pwdError:      '',
 
         open() {
             this.show          = true;
@@ -2627,33 +2622,7 @@ function addUserModal() {
             this.perms         = [...defaultPerms];
             this.avatarPreview = null;
             this.nationality   = '';
-            this.pwdError      = '';
             document.body.style.overflow = 'hidden';
-        },
-
-        handleSubmit(e) {
-            const form    = e.target;
-            const pwd     = form.password.value;
-            const confirm = form.password_confirmation.value;
-            const minLen  = {{ (int) $minPasswordLength }};
-            const strong  = {{ $requireStrongPassword ? 'true' : 'false' }};
-
-            this.pwdError = '';
-            if (pwd.length < minLen) {
-                this.pwdError = `Password must be at least ${minLen} characters.`;
-            } else if (strong && !(/[a-z]/.test(pwd) && /[A-Z]/.test(pwd) && /\d/.test(pwd) && /[^A-Za-z0-9]/.test(pwd))) {
-                this.pwdError = 'Password must contain an uppercase letter, a lowercase letter, a number, and a special character.';
-            } else if (pwd !== confirm) {
-                this.pwdError = 'Passwords do not match.';
-            }
-
-            if (this.pwdError) {
-                e.preventDefault();
-                this.saving = false;
-                return;
-            }
-
-            this.saving = true;
         },
 
         close() {

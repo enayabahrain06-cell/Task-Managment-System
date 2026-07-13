@@ -306,7 +306,9 @@
       "Bash(php -l app/Http/Controllers/Concerns/OrdersTeamMembers.php)",
       "Bash(grep -n '@if\\($devEditOn\\)\\\\|@endif\\\\|<script>\\\\|</script>' resources/views/public/about.blade.php)",
       "Bash(awk -F: '$1>=820 && $1<=990')",
-      "Bash(grep -n \"heroSection.addEventListener\\\\|^}\\)\\(\\);$\\\\|^</script>$\" resources/views/public/about.blade.php)"
+      "Bash(grep -n \"heroSection.addEventListener\\\\|^}\\)\\(\\);$\\\\|^</script>$\" resources/views/public/about.blade.php)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"https://ms.p7h.me/social/160\")",
+      "Bash(php -l resources/views/social/show.blade.php)"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory",

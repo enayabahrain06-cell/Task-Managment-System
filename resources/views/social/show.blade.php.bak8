@@ -256,7 +256,7 @@ $pMeta = [
 
             {{-- Submission files --}}
             @if($latestSub)
-            <div style="padding:18px 24px;" x-data="{ subLbOpen:false, subLbUrl:'', subLbName:'' }">
+            <div style="padding:18px 24px;">
                 <p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px;">
                     <i class="fas fa-paperclip" style="margin-right:5px;"></i>Submission Files
                     <span style="font-size:10px;background:#EEF2FF;color:#4F46E5;padding:2px 8px;border-radius:20px;margin-left:6px;font-weight:700;">v{{ $latestSub->version }}</span>
@@ -284,10 +284,9 @@ $pMeta = [
                     @endphp
                     @if($isImg)
                     <div>
-                        <button type="button" @click="subLbUrl='{{ $furl }}'; subLbName='{{ $fname }}'; subLbOpen=true"
-                                style="display:block;width:100%;padding:0;background:none;cursor:zoom-in;border-radius:12px;overflow:hidden;border:1.5px solid #DDE3F5;max-height:420px;">
+                        <div style="border-radius:12px;overflow:hidden;border:1.5px solid #DDE3F5;max-height:420px;">
                             <img src="{{ $furl }}" alt="{{ $fname }}" style="width:100%;max-height:420px;object-fit:contain;display:block;background:#F9FAFB;">
-                        </button>
+                        </div>
                         <a href="{{ $furl }}" download="{{ $fname }}"
                            style="display:inline-flex;align-items:center;gap:7px;margin-top:10px;padding:8px 16px;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:10px;font-size:12px;font-weight:600;text-decoration:none;"
                            onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'">
@@ -317,22 +316,6 @@ $pMeta = [
                     @endif
                     @endforeach
                 </div>
-
-                <template x-teleport="body">
-                    <div x-show="subLbOpen" x-cloak @keydown.escape.window="subLbOpen=false" style="position:fixed;inset:0;z-index:9999;">
-                        <div @click.self="subLbOpen=false" style="width:100%;height:100%;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:20px;">
-                            <div x-transition style="position:relative;max-width:90vw;max-height:90vh;">
-                                <img :src="subLbUrl" :alt="subLbName" style="max-width:90vw;max-height:90vh;border-radius:10px;display:block;object-fit:contain;">
-                                <button type="button" @click="subLbOpen=false" style="position:absolute;top:-14px;right:-14px;width:32px;height:32px;border-radius:50%;background:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.25);">
-                                    <i class="fa fa-xmark" style="color:#374151;font-size:14px;"></i>
-                                </button>
-                                <a :href="subLbUrl" :download="subLbName" style="position:absolute;bottom:-48px;left:50%;transform:translateX(-50%);display:inline-flex;align-items:center;gap:6px;padding:8px 20px;background:#6366F1;color:#fff;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;">
-                                    <i class="fa fa-download" style="font-size:11px;"></i> Download
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </template>
             </div>
             @endif
         </div>

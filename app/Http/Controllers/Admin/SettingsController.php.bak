@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\OrdersTeamMembers;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Project;
@@ -30,6 +31,8 @@ use Symfony\Component\Mime\Email;
 
 class SettingsController extends Controller
 {
+    use OrdersTeamMembers;
+
     /** Curated icon choices for the login page's team corner cards — key is the stored value, label is shown in the picker. */
     public const LOGIN_FRAME_ICONS = [
         'fa-briefcase' => 'Briefcase',
@@ -213,6 +216,7 @@ class SettingsController extends Controller
             ->orderBy('role')
             ->orderBy('name')
             ->get(['id', 'name', 'avatar', 'job_title', 'role']);
+        $aboutPageTeamMembers = $this->applyTeamOrder($aboutPageTeamMembers);
 
         // Same real counts the /about page's stat cards use — kept identical so the Settings preview matches live
         $aboutPageRealStats = [
@@ -654,7 +658,6 @@ class SettingsController extends Controller
             'about_page_quote_text' => 'nullable|string|max:200',
             'about_page_stat3_value' => 'nullable|integer|min:0|max:999',
             'about_page_stat4_value' => 'nullable|integer|min:0|max:100',
-            'about_page_wave_center_user_id' => 'nullable|integer|exists:users,id',
         ];
         foreach ([1, 2, 3, 4, 5, 6] as $i) {
             $rules["about_page_service{$i}_title"] = 'nullable|string|max:60';
@@ -699,7 +702,6 @@ class SettingsController extends Controller
         Setting::set('about_page_quote_text', $request->input('about_page_quote_text', ''));
         Setting::set('about_page_stat3_value', $request->input('about_page_stat3_value', ''));
         Setting::set('about_page_stat4_value', $request->input('about_page_stat4_value', ''));
-        Setting::set('about_page_wave_center_user_id', $request->input('about_page_wave_center_user_id', ''));
 
         if ($request->hasFile('about_page_bg_image')) {
             $old = Setting::get('about_page_bg_image');
@@ -752,6 +754,24 @@ class SettingsController extends Controller
         AuditLogger::log('settings.updated', $user, "Updated {$user->name}'s About Page photo", ['section' => 'about_page']);
 
         return back()->with('success', "{$user->name}'s photo updated.")->withFragment('about_page');
+    }
+
+    public function updateAboutPageTeamOrder(Request $request)
+    {
+        $request->validate(['order' => 'required|array']);
+
+        $validIds = User::where('status', 'active')->where('role', '!=', 'admin')->pluck('id');
+
+        $order = collect($request->input('order'))
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $validIds->contains($id))
+            ->values();
+
+        Setting::set('about_page_team_order', $order->toJson());
+
+        AuditLogger::log('settings.updated', null, 'Reordered About page team members', ['section' => 'about_page']);
+
+        return response()->json(['ok' => true]);
     }
 
     public function moveLoginFrame(Request $request)

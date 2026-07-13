@@ -31,7 +31,7 @@ class CustomerController extends Controller
             });
         }
 
-        $customers = $query->orderBy('name')->paginate(20)->withQueryString();
+        $customers = $query->orderBy('name')->paginate(10)->withQueryString();
 
         // Summary default date range — passed to view for the date picker defaults only.
         // The actual heavy summary query runs async via /admin/customers/summary-data.

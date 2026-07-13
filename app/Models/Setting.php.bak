@@ -8,22 +8,44 @@ class Setting extends Model
 {
     protected $fillable = ['key', 'value'];
 
+    // Request-scoped in-memory cache — avoids repeated DB hits for the same key within a single request.
+    private static array $cache = [];
+
     /** Get a setting value by key, with optional default. */
     public static function get(string $key, mixed $default = null): mixed
     {
-        return static::where('key', $key)->value('value') ?? $default;
+        if (!array_key_exists($key, static::$cache)) {
+            static::$cache[$key] = static::where('key', $key)->value('value');
+        }
+        return static::$cache[$key] ?? $default;
     }
 
-    /** Set (upsert) a setting value. */
+    /** Set (upsert) a setting value and invalidate the in-memory cache for that key. */
     public static function set(string $key, mixed $value): void
     {
         static::updateOrCreate(['key' => $key], ['value' => $value]);
+        static::$cache[$key] = $value;
     }
 
-    /** Get many settings at once as key→value array. */
+    /** Get many settings at once as key→value array (populates cache for each key). */
     public static function getMany(array $keys): array
     {
-        return static::whereIn('key', $keys)->pluck('value', 'key')->toArray();
+        $missing = array_values(array_filter($keys, fn($k) => !array_key_exists($k, static::$cache)));
+
+        if ($missing) {
+            $rows = static::whereIn('key', $missing)->pluck('value', 'key')->toArray();
+            foreach ($missing as $k) {
+                static::$cache[$k] = $rows[$k] ?? null;
+            }
+        }
+
+        $result = [];
+        foreach ($keys as $k) {
+            if (static::$cache[$k] !== null) {
+                $result[$k] = static::$cache[$k];
+            }
+        }
+        return $result;
     }
 
     /** Upsert multiple settings at once. */

@@ -106,6 +106,8 @@ class SettingsController extends Controller
         'session_timeout' => '120',
         'require_strong_password' => '0',
         'max_login_attempts' => '5',
+        'force_mfa' => '0',
+        'force_mfa_admin_only' => '0',
         // System
         'maintenance_mode' => '0',
         // WhatsApp
@@ -116,6 +118,8 @@ class SettingsController extends Controller
         'wa_from_number' => '',
         'wa_phone_number_id' => '',
         'wa_waba_id' => '',
+        'wa_openwa_url' => '',
+        'wa_openwa_session' => '',
         'wa_tpl_assigned' => "Hello {user_name}!\n\nYou have been assigned a new task:\n📋 {task_title}\n📁 Project: {project_name}\n👤 Customer: {customer_name}\n⏰ Deadline: {deadline}\n\n{company}",
         'wa_tpl_approved' => "Hi {user_name},\n\nYour task has been approved! ✅\n📋 {task_title}\n📁 {project_name}\n\nGreat work!\n{company}",
         'wa_tpl_reminder' => "Hi {user_name},\n\nReminder: your task deadline is in {days_left} day(s).\n📋 {task_title}\n⏰ Due: {deadline}\n\n{company}",
@@ -954,6 +958,7 @@ class SettingsController extends Controller
             'require_strong_password' => $request->boolean('require_strong_password') ? '1' : '0',
             'max_login_attempts' => $request->max_login_attempts,
             'force_mfa' => $request->boolean('force_mfa') ? '1' : '0',
+            'force_mfa_admin_only' => $request->boolean('force_mfa_admin_only') ? '1' : '0',
         ]);
 
         AuditLogger::log('settings.updated', null, 'Security settings updated', ['section' => 'security']);
@@ -1007,12 +1012,14 @@ class SettingsController extends Controller
     public function updateWhatsapp(Request $request)
     {
         $request->validate([
-            'wa_provider' => 'required|in:ultramsg,twilio,meta',
+            'wa_provider' => 'required|in:ultramsg,twilio,meta,openwa',
             'wa_instance_id' => 'nullable|string|max:80',
             'wa_account_sid' => 'nullable|string|max:120',
             'wa_from_number' => 'nullable|string|max:30',
             'wa_phone_number_id' => 'nullable|string|max:60',
             'wa_waba_id' => 'nullable|string|max:60',
+            'wa_openwa_url' => 'nullable|string|max:255',
+            'wa_openwa_session' => 'nullable|string|max:80',
             'wa_tpl_assigned' => 'nullable|string|max:2000',
             'wa_tpl_approved' => 'nullable|string|max:2000',
             'wa_tpl_reminder' => 'nullable|string|max:2000',
@@ -1030,6 +1037,7 @@ class SettingsController extends Controller
             'wa_from_number' => $request->input('wa_from_number', ''),
             'wa_phone_number_id' => $request->input('wa_phone_number_id', ''),
             'wa_waba_id' => $request->input('wa_waba_id', ''),
+            'wa_openwa_url' => rtrim($request->input('wa_openwa_url', ''), '/'),
             'wa_tpl_assigned' => $request->input('wa_tpl_assigned', ''),
             'wa_tpl_approved' => $request->input('wa_tpl_approved', ''),
             'wa_tpl_reminder' => $request->input('wa_tpl_reminder', ''),
@@ -1041,6 +1049,9 @@ class SettingsController extends Controller
 
         if ($request->filled('wa_token')) {
             $data['wa_token'] = $request->wa_token;
+        }
+        if ($request->filled('wa_openwa_session')) {
+            $data['wa_openwa_session'] = $request->wa_openwa_session;
         }
 
         Setting::setMany($data);
@@ -1659,6 +1670,7 @@ class SettingsController extends Controller
             'ultramsg' => $this->sendUltramsg($token, $phone, $body),
             'twilio' => $this->sendTwilio($token, $phone, $body),
             'meta' => $this->sendMeta($token, $phone, $body),
+            'openwa' => $this->sendOpenwa($token, $phone, $body),
             default => ['ok' => false, 'message' => 'Unknown provider.'],
         };
     }
@@ -1728,6 +1740,30 @@ class SettingsController extends Controller
         }
 
         return ['ok' => false, 'message' => $data['error']['message'] ?? 'Meta API error.'];
+    }
+
+    private function sendOpenwa(string $token, string $phone, string $body): array
+    {
+        $baseUrl = Setting::get('wa_openwa_url', '');
+        if (! $baseUrl) {
+            return ['ok' => false, 'message' => 'Open-WA API base URL not set.'];
+        }
+        $session = Setting::get('wa_openwa_session', '');
+        if (! $session) {
+            return ['ok' => false, 'message' => 'Open-WA session ID not set.'];
+        }
+
+        $response = Http::withHeaders(['X-API-Key' => $token])
+            ->post(rtrim($baseUrl, '/')."/api/sessions/{$session}/messages/send-text", [
+                'chatId' => $phone.'@c.us',
+                'text'   => $body,
+            ]);
+
+        if ($response->successful()) {
+            return ['ok' => true, 'message' => 'Message sent via Open-WA.'];
+        }
+
+        return ['ok' => false, 'message' => $response->json('message') ?? 'Open-WA error.'];
     }
 
     // ── Exports ──────────────────────────────────────────────────────────

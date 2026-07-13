@@ -66,7 +66,6 @@ class AssignmentNotifier
                 'ultramsg' => static::sendUltramsg($token, $phone, $body),
                 'twilio'   => static::sendTwilio($token, $phone, $body),
                 'meta'     => static::sendMeta($token, $phone, $body),
-                'openwa'   => static::sendOpenwa($token, $phone, $body),
                 default    => null,
             };
         } catch (\Throwable $e) {
@@ -131,21 +130,6 @@ class AssignmentNotifier
                 'to'                => $phone,
                 'type'              => 'text',
                 'text'              => ['body' => $body],
-            ]);
-    }
-
-    private static function sendOpenwa(string $token, string $phone, string $body): void
-    {
-        $baseUrl = Setting::get('wa_openwa_url', '');
-        if (!$baseUrl) return;
-
-        $session = Setting::get('wa_openwa_session', '');
-        if (!$session) return;
-
-        Http::withHeaders(['X-API-Key' => $token])
-            ->post(rtrim($baseUrl, '/')."/api/sessions/{$session}/messages/send-text", [
-                'chatId' => $phone.'@c.us',
-                'text'   => $body,
             ]);
     }
 }

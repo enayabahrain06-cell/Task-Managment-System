@@ -40,14 +40,15 @@ class TeamController extends Controller
         $query = User::selectRaw("users.*,
             (SELECT COUNT(DISTINCT t.id) FROM tasks t
              WHERE t.assigned_to = users.id
+                OR t.social_assigned_to = users.id
                 OR t.id IN (SELECT task_id FROM task_assignees WHERE user_id = users.id)
             ) as total_tasks,
             (SELECT COUNT(DISTINCT t.id) FROM tasks t
-             WHERE (t.assigned_to = users.id OR t.id IN (SELECT task_id FROM task_assignees WHERE user_id = users.id))
+             WHERE (t.assigned_to = users.id OR t.social_assigned_to = users.id OR t.id IN (SELECT task_id FROM task_assignees WHERE user_id = users.id))
                AND t.status IN ('{$doneIn}')
             ) as completed_tasks,
             (SELECT COUNT(DISTINCT t.id) FROM tasks t
-             WHERE (t.assigned_to = users.id OR t.id IN (SELECT task_id FROM task_assignees WHERE user_id = users.id))
+             WHERE (t.assigned_to = users.id OR t.social_assigned_to = users.id OR t.id IN (SELECT task_id FROM task_assignees WHERE user_id = users.id))
                AND t.status NOT IN ('{$doneIn}')
             ) as pending_tasks");
 
