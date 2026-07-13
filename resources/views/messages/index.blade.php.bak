@@ -96,7 +96,7 @@
 </style>
 
 @php
-$teamMembersJson = $teamMembers->map(fn($m) => ['id'=>$m->id,'name'=>$m->name,'role'=>ucfirst($m->role)])->values()->toJson();
+$teamMembersJson = $teamMembers->map(fn($m) => ['id'=>$m->id,'name'=>$m->name,'role'=>ucfirst($m->role),'avatar'=>$m->avatarUrl()])->values()->toJson();
 $groupsJson      = $groups->toJson();
 $colors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
 $lastMsgsJson = json_encode($lastMsgs);
@@ -119,9 +119,14 @@ $onlineMapJson = json_encode($onlineMap);
             <div class="space-y-1 max-h-64 overflow-y-auto">
                 <template x-for="m in filtered" :key="m.id">
                     <button @click="startChat(m)" class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-50 text-left transition">
-                        <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" :style="'background:'+colorFor(m.id)">
-                            <span x-text="m.name.charAt(0).toUpperCase()"></span>
-                        </div>
+                        <template x-if="m.avatar">
+                            <img :src="m.avatar" :alt="m.name" class="w-9 h-9 rounded-full object-cover flex-shrink-0">
+                        </template>
+                        <template x-if="!m.avatar">
+                            <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0" :style="'background:'+colorFor(m.id)">
+                                <span x-text="m.name.charAt(0).toUpperCase()"></span>
+                            </div>
+                        </template>
                         <div>
                             <p class="text-sm font-medium text-gray-900" x-text="m.name"></p>
                             <p class="text-xs text-gray-400" x-text="m.role"></p>
@@ -253,13 +258,21 @@ $onlineMapJson = json_encode($onlineMap);
                     $dotClass     = $memberOnline ? 'online' : 'offline';
                 @endphp
                 <button data-user-id="{{ $member->id }}"
-                        @click="selectUser({{ $member->id }},'{{ addslashes($member->name) }}','{{ $memberColor }}',{{ $memberOnline ? 'true' : 'false' }})"
+                        @click="selectUser({{ $member->id }},'{{ addslashes($member->name) }}','{{ $memberColor }}',{{ $memberOnline ? 'true' : 'false' }},'{{ $member->avatarUrl() }}')"
                         :class="activeUserId==={{ $member->id }} && !isGroup ? 'contact-active' : 'contact-item'"
                         class="w-full flex items-center gap-2.5 p-2 rounded-lg text-left transition"
                         x-show="search===''||'{{ strtolower($member->name) }}'.includes(search.toLowerCase())">
                     <div class="relative flex-shrink-0">
+                        @if($member->avatar)
+                        <img src="{{ $member->avatarUrl() }}" alt="{{ $member->name }}"
+                             class="w-9 h-9 rounded-full object-cover"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                        <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                             style="background:{{ $memberColor }};display:none;">{{ strtoupper(substr($member->name,0,1)) }}</div>
+                        @else
                         <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold"
                              style="background:{{ $memberColor }}">{{ strtoupper(substr($member->name,0,1)) }}</div>
+                        @endif
                         <span class="online-dot {{ $dotClass }}"></span>
                     </div>
                     <div class="flex-1 min-w-0">
@@ -367,7 +380,12 @@ $onlineMapJson = json_encode($onlineMap);
                 <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
                     <div class="flex items-center gap-3 min-w-0">
                         <div class="relative flex-shrink-0">
-                            <template x-if="!isGroup">
+                            <template x-if="!isGroup && activeUserAvatar">
+                                <img :src="activeUserAvatar" :alt="activeUserName"
+                                     class="w-9 h-9 rounded-full object-cover"
+                                     x-on:error="activeUserAvatar=null">
+                            </template>
+                            <template x-if="!isGroup && !activeUserAvatar">
                                 <div class="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm" :style="'background:'+activeUserColor">
                                     <span x-text="activeUserName.charAt(0).toUpperCase()"></span>
                                 </div>
@@ -472,7 +490,7 @@ $onlineMapJson = json_encode($onlineMap);
 
                     <template x-for="(msg,i) in filteredMessages" :key="msg.id">
                         <div>
-                            <template x-if="i===0||filteredMessages[i-1].date!==msg.date">
+                            <template x-if="i===0||filteredMessages[i-1]?.date!==msg.date">
                                 <p class="text-center text-xs text-gray-400 font-medium py-3" x-text="formatDate(msg.date)"></p>
                             </template>
 
@@ -755,35 +773,60 @@ $onlineMapJson = json_encode($onlineMap);
                         </div>
                     </template>
                     <template x-if="!recording">
-                        <div class="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-200 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100 transition">
-                            <label class="cursor-pointer flex-shrink-0" title="Attach file">
-                                <input type="file" x-ref="fileInput" class="hidden" multiple @change="onFileSelected($event)">
-                                <span class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 transition text-gray-400 hover:text-indigo-500">
-                                    <i class="fa fa-paperclip text-sm"></i>
-                                </span>
-                            </label>
-                            <button type="button" @click="startRecording()" title="Voice message"
-                                    class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 transition text-gray-400 hover:text-red-500 flex-shrink-0">
-                                <i class="fa fa-microphone text-sm"></i>
-                            </button>
-                            <textarea
-                                   x-model="newMessage"
-                                   x-ref="msgInput"
-                                   placeholder="Type something… Use @ to mention"
-                                   @keydown.enter.prevent="if($event.shiftKey){newMessage+='\n';$nextTick(()=>_autoResize($event.target))}else{sendMessage();$nextTick(()=>{$event.target.style.height='auto'})}"
-                                   @keydown.escape="replyingTo=null;mentionSearch=null;showEmoji=false;"
-                                   @input="onInput($event);_autoResize($event.target)"
-                                   @keydown.arrow-up.prevent="mentionSearch!==null?moveMention(-1):null"
-                                   @keydown.arrow-down.prevent="mentionSearch!==null?moveMention(1):null"
-                                   @keydown.tab.prevent="mentionSearch!==null&&mentionResults.length?insertMention(mentionResults[mentionIndex]):null"
-                                   rows="1"
-                                   style="resize:none;overflow:hidden;max-height:96px;line-height:1.5;"
-                                   class="flex-1 bg-transparent text-sm text-gray-700 focus:outline-none placeholder-gray-400 min-w-0 self-center"></textarea>
-                            <button type="button" @click.stop="showEmoji=!showEmoji" title="Emoji"
-                                    :class="showEmoji?'text-indigo-500 bg-indigo-50':'text-gray-400 hover:text-yellow-500'"
-                                    class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 transition flex-shrink-0">
-                                <span class="text-base leading-none">😊</span>
-                            </button>
+                        <div class="flex items-center gap-2 rounded-xl px-3 py-2 border-2 transition-all duration-150"
+                             :class="composeDrag
+                                 ? 'bg-indigo-50 border-dashed border-indigo-400 ring-2 ring-indigo-100'
+                                 : 'bg-gray-50 border-gray-200 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100'"
+                             @dragenter.prevent="composeDragCount++; composeDrag=true; dragCount++; dragOver=true;"
+                             @dragleave.prevent="composeDragCount--; if(composeDragCount<=0){composeDrag=false;composeDragCount=0;} dragCount--; if(dragCount<=0){dragOver=false;dragCount=0;}"
+                             @dragover.prevent
+                             @drop.prevent="composeDragCount=0;composeDrag=false;dragCount=0;dragOver=false;addFiles($event.dataTransfer.files)">
+
+                            {{-- Drop-hint overlay (replaces inner content visually while dragging) --}}
+                            <template x-if="composeDrag">
+                                <div class="flex-1 flex items-center justify-center gap-2 py-0.5 pointer-events-none select-none">
+                                    <i class="fa fa-cloud-upload-alt text-indigo-400 text-base"></i>
+                                    <span class="text-sm font-medium text-indigo-500">Drop files to attach</span>
+                                </div>
+                            </template>
+
+                            <template x-if="!composeDrag">
+                                <label class="cursor-pointer flex-shrink-0" title="Attach file">
+                                    <input type="file" x-ref="fileInput" class="hidden" multiple @change="onFileSelected($event)">
+                                    <span class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 transition text-gray-400 hover:text-indigo-500">
+                                        <i class="fa fa-paperclip text-sm"></i>
+                                    </span>
+                                </label>
+                            </template>
+                            <template x-if="!composeDrag">
+                                <button type="button" @click="startRecording()" title="Voice message"
+                                        class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 transition text-gray-400 hover:text-red-500 flex-shrink-0">
+                                    <i class="fa fa-microphone text-sm"></i>
+                                </button>
+                            </template>
+                            <template x-if="!composeDrag">
+                                <textarea
+                                       x-model="newMessage"
+                                       x-ref="msgInput"
+                                       placeholder="Type something… Use @ to mention"
+                                       @keydown.enter.prevent="if($event.shiftKey){newMessage+='\n';$nextTick(()=>_autoResize($event.target))}else{sendMessage();$nextTick(()=>{$event.target.style.height='auto'})}"
+                                       @keydown.escape="replyingTo=null;mentionSearch=null;showEmoji=false;"
+                                       @input="onInput($event);_autoResize($event.target)"
+                                       @keydown.arrow-up.prevent="mentionSearch!==null?moveMention(-1):null"
+                                       @keydown.arrow-down.prevent="mentionSearch!==null?moveMention(1):null"
+                                       @keydown.tab.prevent="mentionSearch!==null&&mentionResults.length?insertMention(mentionResults[mentionIndex]):null"
+                                       @paste="if($event.clipboardData.files.length){$event.preventDefault();addFiles($event.clipboardData.files)}"
+                                       rows="1"
+                                       style="resize:none;overflow:hidden;max-height:96px;line-height:1.5;"
+                                       class="flex-1 bg-transparent text-sm text-gray-700 focus:outline-none placeholder-gray-400 min-w-0 self-center"></textarea>
+                            </template>
+                            <template x-if="!composeDrag">
+                                <button type="button" @click.stop="showEmoji=!showEmoji" title="Emoji"
+                                        :class="showEmoji?'text-indigo-500 bg-indigo-50':'text-gray-400 hover:text-yellow-500'"
+                                        class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 transition flex-shrink-0">
+                                    <span class="text-base leading-none">😊</span>
+                                </button>
+                            </template>
                             <button type="button"
                                     :disabled="sending||(newMessage.trim()===''&&pendingFiles.length===0)"
                                     @click="sendMessage()"
@@ -911,9 +954,16 @@ $onlineMapJson = json_encode($onlineMap);
         <template x-if="!isGroup && activeUserId!==null">
             <div>
                 <div class="text-center mb-5">
-                    <div class="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-3" :style="'background:'+activeUserColor">
-                        <span x-text="activeUserName.charAt(0).toUpperCase()"></span>
-                    </div>
+                    <template x-if="activeUserAvatar">
+                        <img :src="activeUserAvatar" :alt="activeUserName"
+                             class="w-16 h-16 rounded-full object-cover mx-auto mb-3"
+                             x-on:error="activeUserAvatar=null">
+                    </template>
+                    <template x-if="!activeUserAvatar">
+                        <div class="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-3" :style="'background:'+activeUserColor">
+                            <span x-text="activeUserName.charAt(0).toUpperCase()"></span>
+                        </div>
+                    </template>
                     <h3 class="font-bold text-gray-900" x-text="activeUserName"></h3>
                     <p class="text-xs text-gray-400 mt-1" x-text="messages.length+' messages'"></p>
                 </div>
@@ -1037,12 +1087,12 @@ function createGroupModal() {
 function messageApp() {
     return {
         // Direct
-        activeUserId: null, activeUserName: '', activeUserColor: '#6366F1',
+        activeUserId: null, activeUserName: '', activeUserColor: '#6366F1', activeUserAvatar: null,
         // Group
         isGroup: false, activeGroupId: null, activeGroupName: '', groupMembers: [],
         showLeaveConfirm: false, canManageGroup: false,
         addMemberOpen: false, addMemberSearch: '', addMemberAdding: false, addMemberError: '',
-        allUsers: {!! json_encode($teamMembers->map(fn($u) => ['id'=>$u->id,'name'=>$u->name,'role'=>ucfirst($u->role)])) !!},
+        allUsers: {!! json_encode($teamMembers->map(fn($u) => ['id'=>$u->id,'name'=>$u->name,'role'=>ucfirst($u->role),'avatar'=>$u->avatarUrl()])) !!},
         // Shared
         messages: [], newMessage: '', loading: false, sending: false,
         search: '', unreadCounts: {}, pollTimer: null, replyingTo: null,
@@ -1055,7 +1105,7 @@ function messageApp() {
         showClearConfirm: false, clearingChat: false,
         groups: {!! $groupsJson !!},
         // File
-        pendingFiles: [], dragOver: false, dragCount: 0,
+        pendingFiles: [], dragOver: false, dragCount: 0, composeDrag: false, composeDragCount: 0,
         // Voice recording
         recording: false, recorder: null, audioChunks: [], recordingTime: 0, recordingTimer: null, mediaStream: null,
         // @mention
@@ -1089,11 +1139,12 @@ function messageApp() {
                 window._mqtt.onTopic('tm/user/{{ auth()->id() }}/messages/new', (payload) => {
                     if (payload.type === 'direct') {
                         if (!this.isGroup && this.activeUserId === payload.sender_id) {
-                            // Active conversation — append the pushed message directly
+                            // Active conversation — append the pushed message directly.
+                            // The server formats `mine` from the sender's perspective, so fix it here.
                             const already = this.messages.find(m => m.id === payload.message.id);
                             if (!already) {
                                 const wasAtBottom = this.isAtBottom();
-                                this.messages.push(payload.message);
+                                this.messages.push({ ...payload.message, mine: false });
                                 if (wasAtBottom) this.$nextTick(() => this.scrollToBottom());
                             }
                         } else {
@@ -1104,11 +1155,12 @@ function messageApp() {
                         }
                     } else if (payload.type === 'group') {
                         if (this.isGroup && this.activeGroupId === payload.group_id) {
-                            // Active group — append the pushed message directly
+                            // Active group — append the pushed message directly.
+                            // Fix mine: false for the same reason as direct messages.
                             const already = this.messages.find(m => m.id === payload.message.id);
                             if (!already) {
                                 const wasAtBottom = this.isAtBottom();
-                                this.messages.push(payload.message);
+                                this.messages.push({ ...payload.message, mine: false });
                                 if (wasAtBottom) this.$nextTick(() => this.scrollToBottom());
                             }
                         } else {
@@ -1165,9 +1217,10 @@ function messageApp() {
         },
 
         /* ── Direct conversation ── */
-        async selectUser(id, name, color, isOnline) {
+        async selectUser(id, name, color, isOnline, avatar) {
             this.isGroup = false; this.activeGroupId = null; this.showLeaveConfirm = false;
             this.activeUserId = id; this.activeUserName = name; this.activeUserColor = color;
+            this.activeUserAvatar = avatar || null;
             this.activeUserOnline = isOnline ?? (this.onlineMap[id] ?? false);
             const hadUnread = (this.unreadCounts?.direct?.[id] || 0) > 0;
             this.messages = []; this._lastMsgId = 0; this.replyingTo = null;
@@ -1527,6 +1580,9 @@ function messageApp() {
         /* ── Clear chat ── */
         async clearChat() {
             this.clearingChat = true;
+            // Stop the poll immediately so no in-flight response can re-fill messages
+            clearInterval(this.pollTimer);
+            this.pollTimer = null;
             const csrf = document.querySelector('meta[name="csrf-token"]').content;
             const url  = this.isGroup
                 ? `/messages/clear/group/${this.activeGroupId}`
@@ -1536,10 +1592,19 @@ function messageApp() {
                     method: 'DELETE',
                     headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest' },
                 });
-                if (res.ok) { this.messages = []; this._lastMsgId = 0; }
+                if (res.ok) {
+                    this.messages = [];
+                    this._lastMsgId = 0;
+                }
             } catch {}
             this.clearingChat = false;
             this.showClearConfirm = false;
+            // Restart poll — cleared_at is now committed so old messages are filtered out
+            if (!this.isGroup && this.activeUserId) {
+                this.pollTimer = setInterval(() => this._pollNewDirect(), 1000);
+            } else if (this.isGroup && this.activeGroupId) {
+                this.pollTimer = setInterval(() => this._pollNewGroup(), 1000);
+            }
         },
 
         _autoResize(el) {

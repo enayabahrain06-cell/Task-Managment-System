@@ -101,6 +101,7 @@ $groupsJson      = $groups->toJson();
 $colors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
 $lastMsgsJson = json_encode($lastMsgs);
 $onlineMapJson = json_encode($onlineMap);
+$lastSeenMapJson = json_encode($lastSeenMap);
 @endphp
 
 {{-- ══ New Direct Message Modal ══ --}}
@@ -401,9 +402,15 @@ $onlineMapJson = json_encode($onlineMap);
                         </div>
                         <div class="min-w-0">
                             <p class="text-sm font-semibold text-gray-900 truncate" x-text="isGroup ? activeGroupName : activeUserName"></p>
+                            <p class="text-xs mt-0.5 italic text-indigo-500"
+                               x-show="isGroup ? Object.keys(groupTypingUsers).length > 0 : isTypingOther"
+                               x-text="isGroup
+                                   ? (Object.values(groupTypingUsers).slice(0,2).join(', ') + (Object.keys(groupTypingUsers).length > 1 ? ' are typing…' : ' is typing…'))
+                                   : (activeUserName + ' is typing…')"></p>
                             <p class="text-xs mt-0.5"
+                               x-show="isGroup ? Object.keys(groupTypingUsers).length === 0 : !isTypingOther"
                                :class="isGroup ? 'text-gray-400' : (activeUserOnline ? 'text-emerald-500' : 'text-gray-400')"
-                               x-text="isGroup ? (groupMembers.length + ' members') : (activeUserOnline ? 'Online' : 'Offline')"></p>
+                               x-text="isGroup ? (groupMembers.length + ' members') : (activeUserOnline ? 'Online' : lastSeenText(activeUserLastSeen))"></p>
                         </div>
                     </div>
                     <div class="flex items-center gap-1 flex-shrink-0">
@@ -1100,6 +1107,11 @@ function messageApp() {
         // Online status
         activeUserOnline: false,
         onlineMap: {!! $onlineMapJson !!},
+        lastSeenMap: {!! $lastSeenMapJson !!},
+        activeUserLastSeen: null,
+        // Typing indicator
+        isTypingOther: false, _typingTimeout: null, _lastTypingPingAt: 0,
+        groupTypingUsers: {}, _groupTypingTimers: {},
         // Edit / delete / clear
         editingMsgId: null, editingBody: '',
         showClearConfirm: false, clearingChat: false,
@@ -1193,13 +1205,40 @@ function messageApp() {
                     if (!payload.user_id) return;
                     const isOnline = payload.status === 'online';
                     this.onlineMap = { ...this.onlineMap, [payload.user_id]: isOnline };
+                    if (!isOnline) this.lastSeenMap = { ...this.lastSeenMap, [payload.user_id]: Date.now() };
                     if (!this.isGroup && this.activeUserId === payload.user_id) {
                         this.activeUserOnline = isOnline;
+                        if (!isOnline) this.activeUserLastSeen = Date.now();
                     }
                 });
             };
             if (window._mqtt) { attachPresence(); }
             else { document.addEventListener('mqtt:ready', attachPresence, { once: true }); }
+
+            // MQTT: show a "typing…" indicator when the other side is composing a reply
+            const attachTyping = () => {
+                if (!window._mqtt) return;
+                window._mqtt.onTopic('tm/user/{{ auth()->id() }}/messages/typing', (payload) => {
+                    if (!payload.from) return;
+                    if (payload.group_id) {
+                        if (!this.isGroup || this.activeGroupId !== payload.group_id) return;
+                        this.groupTypingUsers = { ...this.groupTypingUsers, [payload.from]: payload.name || 'Someone' };
+                        clearTimeout(this._groupTypingTimers[payload.from]);
+                        this._groupTypingTimers[payload.from] = setTimeout(() => {
+                            const next = { ...this.groupTypingUsers };
+                            delete next[payload.from];
+                            this.groupTypingUsers = next;
+                        }, 3000);
+                    } else {
+                        if (this.isGroup || this.activeUserId !== payload.from) return;
+                        this.isTypingOther = true;
+                        clearTimeout(this._typingTimeout);
+                        this._typingTimeout = setTimeout(() => { this.isTypingOther = false; }, 3000);
+                    }
+                });
+            };
+            if (window._mqtt) { attachTyping(); }
+            else { document.addEventListener('mqtt:ready', attachTyping, { once: true }); }
 
             const params = new URLSearchParams(window.location.search);
             const uid = parseInt(params.get('user'));
@@ -1222,6 +1261,8 @@ function messageApp() {
             this.activeUserId = id; this.activeUserName = name; this.activeUserColor = color;
             this.activeUserAvatar = avatar || null;
             this.activeUserOnline = isOnline ?? (this.onlineMap[id] ?? false);
+            this.activeUserLastSeen = this.lastSeenMap[id] ?? null;
+            this.isTypingOther = false; clearTimeout(this._typingTimeout);
             const hadUnread = (this.unreadCounts?.direct?.[id] || 0) > 0;
             this.messages = []; this._lastMsgId = 0; this.replyingTo = null;
             this.msgSearch = null; this.reactionPickerMsgId = null;
@@ -1281,6 +1322,9 @@ function messageApp() {
             this.isGroup = true; this.activeUserId = null; this.showLeaveConfirm = false;
             this.activeGroupId = grp.id; this.activeGroupName = grp.name;
             this.activeUserColor = colorFor(grp.id * 3);
+            this.groupTypingUsers = {};
+            Object.values(this._groupTypingTimers).forEach(t => clearTimeout(t));
+            this._groupTypingTimers = {};
             const hadUnread = (grp.unread || 0) > 0;
             this.groupMembers = []; this.messages = []; this._lastMsgId = 0; this.replyingTo = null;
             this.clearFile(); this.cancelRecording();
@@ -1472,11 +1516,43 @@ function messageApp() {
         stopMediaTracks() { if (this.mediaStream) { this.mediaStream.getTracks().forEach(t => t.stop()); this.mediaStream = null; } },
         formatTime(secs) { return Math.floor(secs/60).toString().padStart(2,'0')+':'+(secs%60).toString().padStart(2,'0'); },
 
+        lastSeenText(ts) {
+            if (!ts) return 'Offline';
+            const s = Math.floor((Date.now() - ts) / 1000);
+            if (s < 60)   return 'Last seen just now';
+            const m = Math.floor(s / 60);
+            if (m < 60)   return 'Last seen ' + m + 'm ago';
+            const h = Math.floor(m / 60);
+            if (h < 24)   return 'Last seen ' + h + 'h ago';
+            const d = Math.floor(h / 24);
+            if (d < 7)    return 'Last seen ' + d + 'd ago';
+            return 'Last seen a while ago';
+        },
+
         onInput() {
             const val = this.newMessage; const el = this.$refs.msgInput; const pos = el?.selectionStart ?? val.length;
             const match = val.slice(0, pos).match(/@(\w*)$/);
             if (match) { this.mentionSearch = match[1].toLowerCase(); this.mentionStart = pos - match[0].length; this.mentionResults = TEAM_MEMBERS.filter(m => m.name.toLowerCase().includes(this.mentionSearch)); this.mentionIndex = 0; }
             else { this.mentionSearch = null; }
+            this.sendTypingPing();
+        },
+
+        sendTypingPing() {
+            if (this.newMessage.trim() === '') return;
+            if (!this.isGroup && !this.activeUserId) return;
+            if (this.isGroup && !this.activeGroupId) return;
+            const now = Date.now();
+            if (now - this._lastTypingPingAt < 2500) return; // throttle — one ping per ~2.5s while typing
+            this._lastTypingPingAt = now;
+            fetch('{{ route('messages.typing') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify(this.isGroup ? { group_id: this.activeGroupId } : { receiver_id: this.activeUserId }),
+            }).catch(() => {});
         },
         moveMention(dir) { this.mentionIndex = Math.max(0, Math.min(this.mentionResults.length - 1, this.mentionIndex + dir)); },
         insertMention(member) {

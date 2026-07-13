@@ -54,6 +54,11 @@ class MessagesController extends Controller
                       && $u->last_seen_at->gt(now()->subMinutes(3)),
         ])->toArray();
 
+        // Last-seen map: userId → epoch ms (or null if never seen) — client formats "X ago"
+        $lastSeenMap = $teamMembers->mapWithKeys(fn($u) => [
+            $u->id => $u->last_seen_at?->valueOf(),
+        ])->toArray();
+
         $groups = MessageGroup::whereHas('members', fn($q) => $q->where('user_id', $me))
             ->with(['members:users.id,users.name', 'creator:id,name'])
             ->get()
@@ -67,7 +72,7 @@ class MessagesController extends Controller
                 ];
             });
 
-        return view('messages.index', compact('teamMembers', 'groups', 'lastMsgs', 'onlineMap'));
+        return view('messages.index', compact('teamMembers', 'groups', 'lastMsgs', 'onlineMap', 'lastSeenMap'));
     }
 
     /** GET /messages/conversation/{user} */
@@ -148,6 +153,40 @@ class MessagesController extends Controller
         }
 
         return response()->json($formatted, 201);
+    }
+
+    /** POST /messages/typing — ephemeral typing-indicator ping, nothing persisted */
+    public function typing(Request $request)
+    {
+        $request->validate([
+            'receiver_id' => 'nullable|exists:users,id',
+            'group_id'    => 'nullable|exists:message_groups,id',
+        ]);
+
+        $me = auth()->user();
+
+        if ($request->filled('group_id')) {
+            $group = MessageGroup::find($request->group_id);
+            if (! $group || ! $group->members()->where('user_id', $me->id)->exists()) {
+                return response()->json(['ok' => false], 403);
+            }
+
+            $group->members()
+                ->where('user_id', '!=', $me->id)
+                ->pluck('user_id')
+                ->each(fn ($uid) => MqttService::publish("tm/user/{$uid}/messages/typing", [
+                    'from'     => $me->id,
+                    'name'     => $me->name,
+                    'group_id' => $group->id,
+                ]));
+        } elseif ($request->filled('receiver_id')) {
+            MqttService::publish("tm/user/{$request->receiver_id}/messages/typing", [
+                'from' => $me->id,
+                'name' => $me->name,
+            ]);
+        }
+
+        return response()->json(['ok' => true]);
     }
 
     /** GET /messages/unread */

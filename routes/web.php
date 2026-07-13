@@ -125,6 +125,7 @@ Route::middleware(['auth', MfaMiddleware::class])->group(function () {
     Route::get('/messages/poll/group/{group}',            [MessagesController::class, 'pollGroup'])->name('messages.poll.group');
     Route::get('/messages/conversation/{user}',           [MessagesController::class, 'conversation'])->name('messages.conversation');
     Route::post('/messages/send',                         [MessagesController::class, 'send'])->name('messages.send');
+    Route::post('/messages/typing',                       [MessagesController::class, 'typing'])->name('messages.typing');
     Route::post('/messages/{message}/react',               [MessagesController::class, 'react'])->name('messages.react');
     Route::patch('/messages/{message}',                   [MessagesController::class, 'editMessage'])->name('messages.edit');
     Route::delete('/messages/{message}',                  [MessagesController::class, 'deleteMessage'])->name('messages.delete');
