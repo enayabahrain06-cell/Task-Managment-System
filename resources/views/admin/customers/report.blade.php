@@ -1433,13 +1433,31 @@ function _pdfDownload(buildFn, filename) {
         html2canvas: { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false, windowWidth: 1100 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
         pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', '.kcard'] }
-    }).from(content, 'string').save().then(function() {
+    }).from(content, 'string').toPdf().output('blob').then(function(blob) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        _uploadCustomerReportPdf(blob, filename);
         document.body.removeChild(overlay);
     }).catch(function(e) {
         document.body.removeChild(overlay);
         alert('PDF generation failed — ' + (e && e.message ? e.message : 'please try again.'));
     });
     }); // end _loadHtml2Pdf
+}
+
+/* Best-effort background upload so a copy lands in Customers/{name}/Reports/ on the NAS.
+   Failures are silent — the browser download above already succeeded either way. */
+function _uploadCustomerReportPdf(blob, filename) {
+    var form = new FormData();
+    form.append('pdf', blob, filename);
+    fetch('{{ route('admin.customers.report.save-pdf', $customer) }}', {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+        body: form
+    }).catch(function() {});
 }
 </script>
 @endpush

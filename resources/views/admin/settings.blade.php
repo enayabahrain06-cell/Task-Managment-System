@@ -3350,7 +3350,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                 </div>
 
                 {{-- Stats strip (horizontal) --}}
-                <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;padding:14px 20px;">
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px 20px;">
                     @foreach([['users','#4F46E5','Users'],['projects','#10B981','Projects'],['tasks','#F59E0B','Tasks']] as [$sk,$sc,$sl])
                     <div style="background:#F9FAFB;border:1.5px solid #F0F0F0;border-radius:10px;padding:10px 14px;text-align:center;">
                         <p style="font-size:20px;font-weight:700;color:{{ $sc }};margin:0;line-height:1.1;">{{ $stats[$sk] }}</p>
@@ -3362,6 +3362,14 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;text-transform:uppercase;letter-spacing:.04em;">DB Size</p>
                     </div>
                     <div style="background:#F9FAFB;border:1.5px solid #F0F0F0;border-radius:10px;padding:10px 14px;text-align:center;">
+                        <p style="font-size:18px;font-weight:700;color:#8B5CF6;margin:0;line-height:1.1;">{{ $stats['files_size'] }}</p>
+                        <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;text-transform:uppercase;letter-spacing:.04em;">Files Size</p>
+                    </div>
+                    <div style="background:#F9FAFB;border:1.5px solid #F0F0F0;border-radius:10px;padding:10px 14px;text-align:center;">
+                        <p style="font-size:18px;font-weight:700;color:#EC4899;margin:0;line-height:1.1;">{{ $stats['backup_size'] }}</p>
+                        <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;text-transform:uppercase;letter-spacing:.04em;">Backup Size</p>
+                    </div>
+                    <div style="background:#F9FAFB;border:1.5px solid #F0F0F0;border-radius:10px;padding:10px 14px;text-align:center;">
                         <p style="font-size:18px;font-weight:700;color:#0EA5E9;margin:0;line-height:1.1;">{{ $stats['disk_total'] }}</p>
                         <p style="font-size:10px;color:#9CA3AF;margin:3px 0 0;text-transform:uppercase;letter-spacing:.04em;">Disk Total</p>
                     </div>
@@ -3371,12 +3379,68 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         <div style="margin-top:5px;background:#E5E7EB;border-radius:99px;height:4px;overflow:hidden;">
                             <div style="height:100%;border-radius:99px;width:{{ $stats['disk_pct'] }}%;background:{{ $stats['disk_pct'] >= 90 ? '#EF4444' : ($stats['disk_pct'] >= 70 ? '#F59E0B' : '#10B981') }};transition:width .3s;"></div>
                         </div>
-                        <p style="font-size:9px;color:#9CA3AF;margin:2px 0 0;">{{ $stats['disk_pct'] }}% used</p>
+                        <p style="font-size:9px;color:#9CA3AF;margin:2px 0 0;">{{ $stats['disk_pct'] }}% used ({{ $stats['disk_used'] }})</p>
                     </div>
                 </div>
 
-                {{-- Save to NAS (only shown when NAS is enabled) --}}
+                {{-- Automatic backup toggle (only shown when NAS is enabled) --}}
                 @php $nasEnabled = app(\App\Services\NasService::class)->isEnabled(); @endphp
+                @if($nasEnabled)
+                <div style="border-top:1px solid #F3F4F6;padding:14px 24px;"
+                     x-data="{
+                        autoBackup: {{ ($appSettings['auto_backup_enabled'] ?? '0') === '1' ? 'true' : 'false' }},
+                        retain: {{ (int) ($appSettings['auto_backup_retain'] ?? 14) }},
+                        runTime: '{{ $appSettings['auto_backup_time'] ?? '02:00' }}',
+                        saving: false,
+                        toggle() {
+                            this.saving = true;
+                            fetch('{{ route('admin.settings.backup.auto.toggle') }}', {
+                                method: 'POST',
+                                headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json'}
+                            }).then(r => r.json()).then(d => { this.autoBackup = d.auto_backup_enabled; this.saving = false; });
+                        },
+                        saveRetain() {
+                            fetch('{{ route('admin.settings.backup.auto.retain') }}', {
+                                method: 'POST',
+                                headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Content-Type': 'application/json', 'Accept': 'application/json'},
+                                body: JSON.stringify({retain: this.retain})
+                            });
+                        },
+                        saveTime() {
+                            fetch('{{ route('admin.settings.backup.auto.time') }}', {
+                                method: 'POST',
+                                headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Content-Type': 'application/json', 'Accept': 'application/json'},
+                                body: JSON.stringify({time: this.runTime})
+                            });
+                        }
+                     }">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:28px;height:28px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-clock-rotate-left" style="font-size:11px;color:#4F46E5;"></i>
+                            </div>
+                            <div>
+                                <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">Automatic Backup</p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">Runs daily at
+                                    <input type="time" x-model="runTime" @change="saveTime()"
+                                           style="padding:2px 4px;border:1px solid #E5E7EB;border-radius:5px;font-size:11px;">
+                                    , pushes a full backup to the NAS, keeps the last
+                                    <input type="number" min="1" max="365" x-model="retain" @change="saveRetain()"
+                                           style="width:44px;padding:2px 4px;border:1px solid #E5E7EB;border-radius:5px;font-size:11px;text-align:center;">
+                                    backups.</p>
+                            </div>
+                        </div>
+                        <button type="button" @click="toggle()" :disabled="saving"
+                                style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;transition:all .2s;flex-shrink:0;"
+                                :style="autoBackup ? 'background:#10B981;color:#fff;' : 'background:#F3F4F6;color:#374151;'">
+                            <i class="fas" :class="autoBackup ? 'fa-toggle-on' : 'fa-toggle-off'"></i>
+                            <span x-text="autoBackup ? 'Enabled' : 'Disabled'"></span>
+                        </button>
+                    </div>
+                </div>
+                @endif
+
+                {{-- Save to NAS (only shown when NAS is enabled) --}}
                 @if($nasEnabled)
                 <div style="border-top:1px solid #F3F4F6;padding:14px 20px 16px;"
                      x-data="{

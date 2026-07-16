@@ -5,6 +5,9 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\Setting;
 use App\Models\Task;
+use App\Models\User;
+use App\Notifications\NasSyncFailed;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -86,12 +89,14 @@ class NasService
 
         $this->ensureFolders($cfg, $nasDir);
 
-        $remote  = $this->uniqueRemoteName($cfg, $nasDir, preg_replace('/[\\\\\/\'"<>|*?()\s]/', '_', $originalFilename));
+        $remote  = $this->uniqueRemoteName($cfg, $nasDir, preg_replace('/[\\\\\/\'":<>|*?()\s]/', '_', $originalFilename));
         $nasPath = $nasDir . '/' . $remote;
         $ok      = $this->smbPut($cfg, $localFull, $nasDir, $remote);
 
         if ($ok && $this->isNetworkOnly()) {
             $this->deleteLocal($localPath);
+        } elseif (!$ok) {
+            $this->reportSyncFailure($task, $originalFilename, 'Reference');
         }
 
         return $ok ? $nasPath : null;
@@ -124,12 +129,14 @@ class NasService
 
         $this->ensureFolders($cfg, $nasDir);
 
-        $remote  = $this->uniqueRemoteName($cfg, $nasDir, preg_replace('/[\\\\\/\'"<>|*?()\s]/', '_', $originalFilename));
+        $remote  = $this->uniqueRemoteName($cfg, $nasDir, preg_replace('/[\\\\\/\'":<>|*?()\s]/', '_', $originalFilename));
         $nasPath = $nasDir . '/' . $remote;
         $ok      = $this->smbPut($cfg, $localFull, $nasDir, $remote);
 
         if ($ok && $this->isNetworkOnly()) {
             $this->deleteLocal($localPath);
+        } elseif (!$ok) {
+            $this->reportSyncFailure($task, $originalFilename, 'Deliverable');
         }
 
         return $ok ? $nasPath : null;
@@ -158,7 +165,7 @@ class NasService
         $ext       = pathinfo($localFull, PATHINFO_EXTENSION);
         $tmpDesign = 'nas_' . uniqid() . ($ext ? ".{$ext}" : '');
         copy($localFull, $tmpDir . '/' . $tmpDesign);
-        $remote = $this->uniqueRemoteName($cfg, $nasDir, preg_replace('/[\\\\\/\'"<>|*?()\s]/', '_', $originalFilename));
+        $remote = $this->uniqueRemoteName($cfg, $nasDir, preg_replace('/[\\\\\/\'":<>|*?()\s]/', '_', $originalFilename));
 
         exec("smbclient {$target} -U {$cred} -c " .
             escapeshellarg("lcd \"{$tmpDir}\"; cd \"{$nasDir}\"; put \"{$tmpDesign}\" \"{$remote}\"") .
@@ -200,6 +207,8 @@ class NasService
 
         if ($code === 0 && $this->isNetworkOnly()) {
             $this->deleteLocal($localPath);
+        } elseif ($code !== 0) {
+            $this->reportSyncFailure($task, $originalFilename, 'Social Media');
         }
 
         return $code === 0 ? $nasPath : null;
@@ -224,12 +233,88 @@ class NasService
 
         $this->ensureFolders($cfg, $nasDir);
 
-        $remote  = $this->uniqueRemoteName($cfg, $nasDir, preg_replace('/[\\\\\/\'"<>|*?()\s]/', '_', $originalFilename));
+        $remote  = $this->uniqueRemoteName($cfg, $nasDir, preg_replace('/[\\\\\/\'":<>|*?()\s]/', '_', $originalFilename));
         $nasPath = $nasDir . '/' . $remote;
         $ok      = $this->smbPut($cfg, $localFull, $nasDir, $remote);
 
         if ($ok && $this->isNetworkOnly()) {
             $this->deleteLocal($localPath);
+        } elseif (!$ok) {
+            $this->reportSyncFailure($task, $originalFilename, $stage);
+        }
+
+        return $ok ? $nasPath : null;
+    }
+
+    /**
+     * Copy a generated user task-report PDF (spans multiple customers, so it has no
+     * single customer folder) to Staff_Reports/{user}/ on the NAS.
+     */
+    public function copyToNasUserReport(User $user, string $localFull, string $originalFilename): ?string
+    {
+        if (!$this->isEnabled()) return null;
+        if (!file_exists($localFull)) return null;
+
+        $cfg    = $this->cfg();
+        $nasDir = "{$cfg['root']}/Staff_Reports/" . $this->slug($user->name);
+
+        $this->ensureFolders($cfg, $nasDir);
+
+        $remote  = $this->uniqueRemoteName($cfg, $nasDir, preg_replace('/[\\\\\/\'":<>|*?()\s]/', '_', $originalFilename));
+        $nasPath = $nasDir . '/' . $remote;
+        $ok      = $this->smbPut($cfg, $localFull, $nasDir, $remote);
+
+        if (!$ok) {
+            Log::warning('NAS sync failed', ['user_id' => $user->id, 'file' => $originalFilename, 'stage' => 'Staff Report']);
+        }
+
+        return $ok ? $nasPath : null;
+    }
+
+    /**
+     * Copy a generated company-wide summary report PDF to Reports/ at the NAS root
+     * (not tied to any single customer or user).
+     */
+    public function copyToNasCompanyReport(string $localFull, string $originalFilename): ?string
+    {
+        if (!$this->isEnabled()) return null;
+        if (!file_exists($localFull)) return null;
+
+        $cfg    = $this->cfg();
+        $nasDir = "{$cfg['root']}/Reports";
+
+        $this->ensureFolders($cfg, $nasDir);
+
+        $remote  = $this->uniqueRemoteName($cfg, $nasDir, preg_replace('/[\\\\\/\'":<>|*?()\s]/', '_', $originalFilename));
+        $nasPath = $nasDir . '/' . $remote;
+        $ok      = $this->smbPut($cfg, $localFull, $nasDir, $remote);
+
+        if (!$ok) {
+            Log::warning('NAS sync failed', ['file' => $originalFilename, 'stage' => 'Company Summary Report']);
+        }
+
+        return $ok ? $nasPath : null;
+    }
+
+    /**
+     * Copy a generated customer-report PDF to Customers/{name}/Reports/ on the NAS.
+     */
+    public function copyToNasCustomerReport(Customer $customer, string $localFull, string $originalFilename): ?string
+    {
+        if (!$this->isEnabled()) return null;
+        if (!file_exists($localFull)) return null;
+
+        $cfg    = $this->cfg();
+        $nasDir = "{$cfg['root']}/Customers/" . $this->slug($customer->name) . '/Reports';
+
+        $this->ensureFolders($cfg, $nasDir);
+
+        $remote  = $this->uniqueRemoteName($cfg, $nasDir, preg_replace('/[\\\\\/\'":<>|*?()\s]/', '_', $originalFilename));
+        $nasPath = $nasDir . '/' . $remote;
+        $ok      = $this->smbPut($cfg, $localFull, $nasDir, $remote);
+
+        if (!$ok) {
+            Log::warning('NAS sync failed', ['customer_id' => $customer->id, 'file' => $originalFilename, 'stage' => 'Customer Report']);
         }
 
         return $ok ? $nasPath : null;
@@ -270,7 +355,7 @@ class NasService
     /** Check a directory for a sanitized filename or its _1/_2/… variants. */
     private function findInDir(array $cfg, string $nasDir, string $originalFilename): ?string
     {
-        $sanitized = preg_replace('/[\\\\\/\'"<>|*?()\s]/', '_', $originalFilename);
+        $sanitized = preg_replace('/[\\\\\/\'":<>|*?()\s]/', '_', $originalFilename);
         $ext       = pathinfo($sanitized, PATHINFO_EXTENSION);
         $base      = $ext ? substr($sanitized, 0, -(strlen($ext) + 1)) : $sanitized;
 
@@ -375,6 +460,29 @@ class NasService
         return $code === 0;
     }
 
+    /**
+     * Log a sync failure and alert admins (throttled to one alert per task+stage per 15 min,
+     * so a burst of retries/re-uploads during a NAS outage doesn't flood notifications).
+     */
+    private function reportSyncFailure(Task $task, string $originalFilename, string $stage): void
+    {
+        Log::warning('NAS sync failed', [
+            'task_id'  => $task->id,
+            'file'     => $originalFilename,
+            'stage'    => $stage,
+        ]);
+
+        $cacheKey = "nas_sync_failed_alert:{$task->id}:{$stage}";
+        if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+            return;
+        }
+        \Illuminate\Support\Facades\Cache::put($cacheKey, true, now()->addMinutes(15));
+
+        User::where('role', 'admin')->each(
+            fn ($admin) => $admin->notify(new NasSyncFailed($task, $originalFilename, $stage))
+        );
+    }
+
     private function deleteLocal(string $localPath): void
     {
         Storage::disk('public')->delete($localPath);
@@ -477,6 +585,21 @@ class NasService
 
         $this->ensureFolders($cfg, $nasDir);
         return $this->smbPut($cfg, $localZipPath, $nasDir, $filename);
+    }
+
+    public function deleteNasFile(string $nasPath): bool
+    {
+        $cfg    = $this->cfg();
+        $target = escapeshellarg("//{$cfg['host']}/{$cfg['share']}");
+        $cred   = escapeshellarg("{$cfg['user']}%{$cfg['pass']}");
+        $dir    = dirname($nasPath);
+        $file   = basename($nasPath);
+
+        exec("smbclient {$target} -U {$cred} -c " .
+            escapeshellarg("cd \"{$dir}\"; rm \"{$file}\"") .
+            ' 2>&1', $out, $code);
+
+        return $code === 0;
     }
 
     public function listNasBackups(): array

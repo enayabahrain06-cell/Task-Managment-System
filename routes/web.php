@@ -221,6 +221,7 @@ Route::middleware([AdminMiddleware::class, MfaMiddleware::class])->prefix('admin
     Route::resource('customers', AdminCustomerController::class);
     Route::get('customers/{customer}/report', [AdminCustomerController::class, 'report'])->name('customers.report');
     Route::post('customers/{customer}/report/ai-brief', [AdminCustomerController::class, 'aiBrief'])->name('customers.report.ai-brief');
+    Route::post('customers/{customer}/report/save-pdf', [AdminCustomerController::class, 'savePdfReport'])->name('customers.report.save-pdf');
     Route::get('customers-summary', [AdminCustomerController::class, 'summary'])->name('customers.summary');
 
     // Settings
@@ -285,6 +286,9 @@ Route::middleware([AdminMiddleware::class, MfaMiddleware::class])->prefix('admin
     Route::post('settings/backup/save-to-nas/sqlite', [AdminSettingsController::class, 'saveBackupSqliteToNas'])->name('settings.backup.save.nas.sqlite');
     Route::get('settings/backup/nas-files',           [AdminSettingsController::class, 'listNasBackups'])->name('settings.backup.nas.list');
     Route::post('settings/backup/restore-from-nas',   [AdminSettingsController::class, 'restoreFromNas'])->name('settings.backup.restore.nas');
+    Route::post('settings/backup/auto-toggle',        [AdminSettingsController::class, 'toggleAutoBackup'])->name('settings.backup.auto.toggle');
+    Route::post('settings/backup/auto-retain',        [AdminSettingsController::class, 'updateAutoBackupRetain'])->name('settings.backup.auto.retain');
+    Route::post('settings/backup/auto-time',          [AdminSettingsController::class, 'updateAutoBackupTime'])->name('settings.backup.auto.time');
     Route::post('settings/clear',                 [AdminSettingsController::class, 'clearData'])->name('settings.clear');
     Route::post('settings/storage',                    [AdminSettingsController::class, 'updateStorage'])->name('settings.storage');
     Route::post('settings/storage/test/gdrive',        [AdminSettingsController::class, 'testStorageGdrive'])->name('settings.storage.test.gdrive');

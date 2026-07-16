@@ -7,7 +7,6 @@ use App\Models\Project;
 use App\Models\Setting;
 use App\Models\Task;
 use App\Models\TaskLog;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -414,7 +413,7 @@ class ReportsController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    public function exportPdf()
+    public function exportPdf(\App\Services\ReportPdfService $reportPdfService)
     {
         $user = auth()->user();
 
@@ -422,60 +421,20 @@ class ReportsController extends Controller
             abort(403);
         }
 
-        $doneStatuses    = ['approved', 'delivered', 'archived'];
-        $nonDoneStatuses = ['draft', 'assigned', 'viewed', 'in_progress', 'paused', 'submitted', 'revision_requested'];
+        $pdfContent = $reportPdfService->buildUserReportPdf($user);
+        $filename   = 'my-report-' . now()->format('Y-m-d') . '.pdf';
 
-        $base = function () use ($user) {
-            return Task::where(function ($q) use ($user) {
-                $q->where('assigned_to', $user->id)
-                  ->orWhere('social_assigned_to', $user->id)
-                  ->orWhereExists(fn($sub) => $sub->selectRaw('1')
-                      ->from('task_assignees')
-                      ->whereColumn('task_assignees.task_id', 'tasks.id')
-                      ->where('task_assignees.user_id', $user->id));
-            });
-        };
-
-        $totalTasks     = $base()->count();
-        $completedTasks = $base()->whereIn('status', $doneStatuses)->count();
-        $pendingTasks   = $base()->whereIn('status', ['in_progress', 'paused'])->count();
-        $inReviewTasks  = $base()->whereIn('status', ['submitted', 'revision_requested'])->count();
-        $completionRate = $totalTasks > 0 ? round($completedTasks / $totalTasks * 100) : 0;
-
-        $tasks = $base()
-            ->with(['project:id,name,is_quick'])
-            ->orderByRaw('CASE WHEN deadline IS NULL THEN 1 ELSE 0 END')
-            ->orderBy('deadline')
-            ->get();
-
-        $appName     = Setting::get('app_name', config('app.name'));
-        $companyName = Setting::get('company_name', '') ?: $appName;
-        $logoPath    = Setting::get('logo_path', '');
-        $logoBase64  = $this->imageBase64FromStorage($logoPath);
-
-        $avatarBase64 = '';
-        if ($user->avatar) {
-            $avatarBase64 = $this->imageBase64FromStorage($user->avatar);
+        $nas = app(\App\Services\NasService::class);
+        if ($nas->isEnabled()) {
+            $tmpPath = sys_get_temp_dir() . '/' . uniqid('user_report_') . '.pdf';
+            file_put_contents($tmpPath, $pdfContent);
+            $nas->copyToNasUserReport($user, $tmpPath, $filename);
+            @unlink($tmpPath);
         }
 
-        $generatedAt = now()->format('d M Y, H:i');
-
-        $pdf = Pdf::loadView('user.reports.pdf-export', compact(
-            'user', 'tasks', 'totalTasks', 'completedTasks', 'pendingTasks', 'inReviewTasks',
-            'completionRate', 'logoBase64', 'avatarBase64', 'appName', 'companyName', 'generatedAt'
-        ))->setPaper('a4', 'portrait');
-
-        $filename = 'my-report-' . now()->format('Y-m-d') . '.pdf';
-        return $pdf->download($filename);
-    }
-
-    private function imageBase64FromStorage(string $storagePath): string
-    {
-        if (empty($storagePath)) return '';
-        $full = storage_path('app/public/' . ltrim($storagePath, '/'));
-        if (!file_exists($full)) return '';
-        $ext  = strtolower(pathinfo($full, PATHINFO_EXTENSION));
-        $mime = match($ext) { 'png' => 'png', 'gif' => 'gif', 'webp' => 'webp', default => 'jpeg' };
-        return 'data:image/' . $mime . ';base64,' . base64_encode(file_get_contents($full));
+        return response($pdfContent, 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
     }
 }
