@@ -3718,89 +3718,79 @@ function printRptSummSelection(sections) {
         bodyHtml += '</div></div>';
     }
 
-    // Task % by Customer
-    if (sections && sections.taskDist && d && !d.hasUser && d.customerStats && d.customerStats.length) {
-        // Sort by tasks descending and include ALL customers from customerStats
-        var distRows = d.customerStats.slice().sort(function(a, b) {
-            return (b.total + (b.projects||0)) - (a.total + (a.projects||0));
-        });
-        // Denominator = sum of (tasks + projects) per customer → percentages add up to 100%
-        var grandWorkload = distRows.reduce(function(sum, c) { return sum + c.total + (c.projects||0); }, 0) || 0;
-        var grandTasks    = distRows.reduce(function(sum, c) { return sum + c.total; }, 0);
-        var grandProjects = distRows.reduce(function(sum, c) { return sum + (c.projects||0); }, 0);
-
-        // Largest-remainder method: ensures rounded percentages sum to exactly 100%
-        var _exactPcts = distRows.map(function(c) {
-            return grandWorkload > 0 ? ((c.total + (c.projects||0)) / grandWorkload * 100) : 0;
-        });
-        var _floors   = _exactPcts.map(function(p) { return Math.floor(p); });
-        var _remain   = _exactPcts.map(function(p, i) { return p - _floors[i]; });
-        var _deficit  = 100 - _floors.reduce(function(s, v) { return s + v; }, 0);
-        var _order    = _floors.map(function(_, i) { return i; }).sort(function(a, b) { return _remain[b] - _remain[a]; });
-        var _rounded  = _floors.slice();
-        for (var _ri = 0; _ri < _deficit; _ri++) { _rounded[_order[_ri]] += 1; }
-
+    // Task % by Customer — one table per month (last 6 calendar months)
+    if (sections && sections.taskDist && d && !d.hasUser && d.customerStatsMonthly && d.customerStatsMonthly.length) {
         var thStyle = 'text-align:center;padding:8px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #E5E7EB;';
         var thLeft  = 'text-align:left;padding:8px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #E5E7EB;';
         var thRight = 'text-align:right;padding:8px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #E5E7EB;';
 
         bodyHtml += '<div>'
-            + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #4F46E5;">'
-            + '<div>'
-            + '<p style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.06em;margin:0;">Work Distribution by Customer</p>'
-            + '<p style="font-size:11px;color:#6B7280;margin:3px 0 0;">' + period + ' &nbsp;·&nbsp; Tasks + Projects combined</p>'
-            + '</div>'
-            + '<div style="text-align:right;">'
-            + '<p style="font-size:11px;color:#9CA3AF;margin:0;">Total Work Units</p>'
-            + '<p style="font-size:28px;font-weight:900;color:#4F46E5;margin:0;line-height:1.1;">' + grandWorkload + '</p>'
-            + '<p style="font-size:10px;color:#9CA3AF;margin:2px 0 0;">' + grandTasks + ' tasks &nbsp;+&nbsp; ' + grandProjects + ' project' + (grandProjects !== 1 ? 's' : '') + '</p>'
-            + '</div>'
-            + '</div>'
-            + '<table style="width:100%;border-collapse:collapse;">'
-            + '<thead><tr style="background:#F8FAFC;">'
-            + '<th style="' + thLeft  + 'width:28px;">#</th>'
-            + '<th style="' + thLeft  + '">Customer</th>'
-            + '<th style="' + thStyle + '">' + (sections.taskAsPct ? '% Share' : 'Tasks') + '</th>'
-            + '<th style="' + thStyle + '">' + (sections.taskAsPct ? '' : 'Projects') + '</th>'
-            + '<th style="' + thStyle + 'min-width:110px;">Share</th>'
-            + (sections.taskAsPct ? '' : '<th style="' + thRight + '">% of Total</th>')
-            + '</tr></thead><tbody>';
+            + '<p style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.06em;margin:18px 0 4px;padding-bottom:8px;border-bottom:2px solid #4F46E5;">Work Distribution by Customer — Monthly</p>';
 
-        distRows.forEach(function(c, i) {
-            var pctInt   = _rounded[i];
-            var pctStr   = pctInt + '%';
-            var barW     = pctInt;
-            var rowBg    = i % 2 === 0 ? '#fff' : '#FAFAFA';
-            var td = 'padding:9px 10px;border-bottom:1px solid #F3F4F6;';
-            bodyHtml += '<tr style="background:' + rowBg + ';">'
-                + '<td style="' + td + 'font-size:11px;color:#9CA3AF;">' + (i + 1) + '</td>'
-                + '<td style="' + td + 'font-size:13px;font-weight:600;color:#111827;">' + c.name + '</td>'
+        d.customerStatsMonthly.forEach(function(month) {
+            var distRows = month.stats || [];
+            var grandTasks    = distRows.reduce(function(sum, c) { return sum + c.total; }, 0);
+            var grandProjects = distRows.reduce(function(sum, c) { return sum + (c.projects||0); }, 0);
+            var grandWorkload = grandTasks + grandProjects;
+
+            bodyHtml += '<div style="margin-top:14px;">'
+                + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
+                + '<p style="font-size:12px;font-weight:700;color:#111827;margin:0;">' + month.label + '</p>'
+                + '<p style="font-size:10px;color:#9CA3AF;margin:0;">' + grandTasks + ' tasks &nbsp;+&nbsp; ' + grandProjects + ' project' + (grandProjects !== 1 ? 's' : '') + ' &nbsp;=&nbsp; ' + grandWorkload + ' work units</p>'
+                + '</div>';
+
+            if (!distRows.length) {
+                bodyHtml += '<p style="text-align:center;padding:10px;color:#9CA3AF;font-size:11px;background:#FAFAFA;border-radius:8px;">No task activity this month.</p></div>';
+                return;
+            }
+
+            bodyHtml += '<table style="width:100%;border-collapse:collapse;">'
+                + '<thead><tr style="background:#F8FAFC;">'
+                + '<th style="' + thLeft  + 'width:28px;">#</th>'
+                + '<th style="' + thLeft  + '">Customer</th>'
+                + '<th style="' + thStyle + '">' + (sections.taskAsPct ? '% Share' : 'Tasks') + '</th>'
+                + '<th style="' + thStyle + '">' + (sections.taskAsPct ? '' : 'Projects') + '</th>'
+                + '<th style="' + thStyle + 'min-width:110px;">Share</th>'
+                + (sections.taskAsPct ? '' : '<th style="' + thRight + '">% of Total</th>')
+                + '</tr></thead><tbody>';
+
+            distRows.forEach(function(c, i) {
+                var pctInt = c.share_pct || 0;
+                var pctStr = pctInt + '%';
+                var rowBg  = i % 2 === 0 ? '#fff' : '#FAFAFA';
+                var td = 'padding:9px 10px;border-bottom:1px solid #F3F4F6;';
+                bodyHtml += '<tr style="background:' + rowBg + ';">'
+                    + '<td style="' + td + 'font-size:11px;color:#9CA3AF;">' + (i + 1) + '</td>'
+                    + '<td style="' + td + 'font-size:13px;font-weight:600;color:#111827;">' + c.name + '</td>'
+                    + (sections.taskAsPct
+                        ? '<td style="' + td + 'font-size:13px;font-weight:800;color:#4F46E5;text-align:center;">' + pctStr + '</td>'
+                        : '<td style="' + td + 'font-size:13px;font-weight:700;color:#4F46E5;text-align:center;">' + c.total + '</td>')
+                    + (sections.taskAsPct
+                        ? '<td></td>'
+                        : '<td style="' + td + 'font-size:13px;font-weight:700;color:#7C3AED;text-align:center;">' + (c.projects||0) + '</td>')
+                    + '<td style="' + td + '">'
+                    +   '<div style="flex:1;height:7px;background:#EEF2FF;border-radius:99px;overflow:hidden;">'
+                    +   '<div style="height:7px;width:' + pctInt + '%;background:#4F46E5;border-radius:99px;"></div>'
+                    +   '</div></td>'
+                    + (sections.taskAsPct ? '' : '<td style="' + td + 'font-size:13px;font-weight:800;color:#4F46E5;text-align:right;">' + pctStr + '</td>')
+                    + '</tr>';
+            });
+
+            // Totals row
+            bodyHtml += '<tr style="background:#EEF2FF;">'
+                + '<td colspan="2" style="padding:10px 10px;font-size:12px;font-weight:700;color:#374151;">Total</td>'
                 + (sections.taskAsPct
-                    ? '<td style="' + td + 'font-size:13px;font-weight:800;color:#4F46E5;text-align:center;">' + pctStr + '</td>'
-                    : '<td style="' + td + 'font-size:13px;font-weight:700;color:#4F46E5;text-align:center;">' + c.total + '</td>')
-                + (sections.taskAsPct
-                    ? '<td></td>'
-                    : '<td style="' + td + 'font-size:13px;font-weight:700;color:#7C3AED;text-align:center;">' + (c.projects||0) + '</td>')
-                + '<td style="' + td + '">'
-                +   '<div style="flex:1;height:7px;background:#EEF2FF;border-radius:99px;overflow:hidden;">'
-                +   '<div style="height:7px;width:' + barW + '%;background:#4F46E5;border-radius:99px;"></div>'
-                +   '</div></td>'
-                + (sections.taskAsPct ? '' : '<td style="' + td + 'font-size:13px;font-weight:800;color:#4F46E5;text-align:right;">' + pctStr + '</td>')
+                    ? '<td style="padding:10px;font-size:13px;font-weight:800;color:#4F46E5;text-align:center;">100%</td><td></td>'
+                    : '<td style="padding:10px;font-size:13px;font-weight:800;color:#4F46E5;text-align:center;">' + grandTasks + '</td>'
+                    + '<td style="padding:10px;font-size:13px;font-weight:800;color:#7C3AED;text-align:center;">' + grandProjects + '</td>')
+                + '<td></td>'
+                + (sections.taskAsPct ? '' : '<td style="padding:10px;font-size:13px;font-weight:800;color:#4F46E5;text-align:right;">100%</td>')
                 + '</tr>';
+
+            bodyHtml += '</tbody></table></div>';
         });
 
-        // Totals row
-        bodyHtml += '<tr style="background:#EEF2FF;">'
-            + '<td colspan="2" style="padding:10px 10px;font-size:12px;font-weight:700;color:#374151;">Total</td>'
-            + (sections.taskAsPct
-                ? '<td style="padding:10px;font-size:13px;font-weight:800;color:#4F46E5;text-align:center;">100%</td><td></td>'
-                : '<td style="padding:10px;font-size:13px;font-weight:800;color:#4F46E5;text-align:center;">' + grandTasks + '</td>'
-                + '<td style="padding:10px;font-size:13px;font-weight:800;color:#7C3AED;text-align:center;">' + grandProjects + '</td>')
-            + '<td></td>'
-            + (sections.taskAsPct ? '' : '<td style="padding:10px;font-size:13px;font-weight:800;color:#4F46E5;text-align:right;">100%</td>')
-            + '</tr>';
-
-        bodyHtml += '</tbody></table></div>';
+        bodyHtml += '</div>';
     }
 
     // Task List (this period)

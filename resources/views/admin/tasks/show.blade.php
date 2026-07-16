@@ -688,11 +688,19 @@
                         $spPlatforms = ['facebook'=>['fab fa-facebook','#1877F2'],'instagram'=>['fab fa-instagram','#E1306C'],'twitter'=>['fab fa-x-twitter','#000'],'tiktok'=>['fab fa-tiktok','#010101'],'youtube'=>['fab fa-youtube','#FF0000'],'snapchat'=>['fab fa-snapchat-ghost','#F7CA00'],'linkedin'=>['fab fa-linkedin','#0A66C2'],'other'=>['fas fa-share-nodes','#6366F1']];
                         $spIcon      = $spFirst ? ($spPlatforms[$spFirst->platform] ?? $spPlatforms['other']) : null;
                     @endphp
-                    <div style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:130px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
+                    <div x-data="{ reassigning: false }" style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:130px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
                         <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 6px;display:flex;align-items:center;gap:5px;">
                             <i class="fas fa-share-nodes" style="font-size:9px;"></i> Social
                         </p>
-                        <p style="font-size:13px;font-weight:700;color:#1c1917;margin:0 0 5px;">{{ $task->socialAssignee->name }}</p>
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:5px;">
+                            <p style="font-size:13px;font-weight:700;color:#1c1917;margin:0;">{{ $task->socialAssignee->name }}</p>
+                            @if(auth()->user()->hasPermission('manage_tasks'))
+                            <button type="button" @click="reassigning = !reassigning" title="Reassign"
+                                    style="background:none;border:none;color:#8B5CF6;cursor:pointer;padding:2px 4px;flex-shrink:0;">
+                                <i class="fas fa-user-pen" style="font-size:11px;"></i>
+                            </button>
+                            @endif
+                        </div>
                         @if($spPosted)
                         <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
                             @if($spIcon)
@@ -713,6 +721,34 @@
                         <span style="font-size:10px;font-weight:700;color:#D97706;background:#FEF3C7;padding:2px 7px;border-radius:4px;white-space:nowrap;">
                             <i class="fas fa-hourglass-half" style="font-size:8px;"></i> Pending post
                         </span>
+                        @endif
+
+                        @if(auth()->user()->hasPermission('manage_tasks'))
+                        <div x-show="reassigning" x-cloak x-transition style="margin-top:10px;padding-top:10px;border-top:1px dashed #E5E7EB;">
+                            <form method="POST" action="{{ route('admin.tasks.social.assign', $task->id) }}" style="display:flex;flex-direction:column;gap:6px;">
+                                @csrf
+                                <select name="social_user_id" required
+                                        style="font-size:12px;padding:6px 8px;border:1.5px solid #DDD6FE;border-radius:7px;background:#fff;color:#374151;outline:none;width:100%;box-sizing:border-box;">
+                                    <option value="">Select handler…</option>
+                                    @foreach($socialUsers as $su)
+                                    <option value="{{ $su->id }}" {{ $su->id == $task->social_assigned_to ? 'selected' : '' }}>{{ $su->name }}</option>
+                                    @endforeach
+                                </select>
+                                <input type="hidden" name="social_description" value="{{ $task->social_description }}">
+                                <input type="hidden" name="social_caption" value="{{ $task->social_caption }}">
+                                <input type="hidden" name="social_budget" value="{{ $task->social_budget }}">
+                                <div style="display:flex;gap:6px;">
+                                    <button type="submit"
+                                            style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:6px 10px;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;">
+                                        <i class="fas fa-check" style="font-size:10px;"></i> Save
+                                    </button>
+                                    <button type="button" @click="reassigning=false"
+                                            style="padding:6px 10px;background:#F3F4F6;color:#6B7280;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                         @endif
                     </div>
                     @endif
@@ -3050,6 +3086,24 @@ function taskApprovalPage() {
                                   onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"
                                   placeholder="Optional description…">{{ old('description', $task->description) }}</textarea>
                     </div>
+
+                    @if($task->social_required && $task->socialAssignee)
+                    <div>
+                        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
+                            <i class="fas fa-share-nodes" style="font-size:10px;margin-right:4px;color:#8B5CF6;"></i>Social Media Handler
+                        </label>
+                        <div style="position:relative;">
+                            <select name="social_assigned_to"
+                                    style="width:100%;padding:9px 32px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;appearance:none;background:#fff;cursor:pointer;outline:none;box-sizing:border-box;"
+                                    onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                                @foreach($socialUsers as $su)
+                                <option value="{{ $su->id }}" {{ old('social_assigned_to', $task->social_assigned_to) == $su->id ? 'selected' : '' }}>{{ $su->name }}</option>
+                                @endforeach
+                            </select>
+                            <div style="position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:#9CA3AF;font-size:10px;"><i class="fa fa-chevron-down"></i></div>
+                        </div>
+                    </div>
+                    @endif
 
                     {{-- Attachments --}}
                     <div x-data="{ editFiles: [], dragging: false,

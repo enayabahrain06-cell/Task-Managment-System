@@ -198,17 +198,32 @@ class SettingsController extends Controller
         $fmtGb = fn(int $b): string => $b >= 1073741824
             ? round($b / 1073741824, 1) . ' GB'
             : ($b >= 1048576 ? round($b / 1048576) . ' MB' : round($b / 1024) . ' KB');
+
+        // Local uploaded-files footprint (storage/app/public) — cached, since walking the
+        // tree is too slow to redo on every settings page load.
+        $filesBytes = \Illuminate\Support\Facades\Cache::remember('settings_local_files_bytes', 600, function () {
+            $dir = storage_path('app/public');
+            if (! is_dir($dir)) return 0;
+            $total = 0;
+            foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS)) as $file) {
+                $total += $file->getSize();
+            }
+            return $total;
+        });
+
         $stats = [
-            'users'      => User::count(),
-            'projects'   => Project::where('is_quick', false)->count(),
-            'tasks'      => Task::count(),
-            'db_size'    => $dbBytes >= 1048576
+            'users'       => User::count(),
+            'projects'    => Project::where('is_quick', false)->count(),
+            'tasks'       => Task::count(),
+            'db_size'     => $dbBytes >= 1048576
                                 ? round($dbBytes / 1048576, 1) . ' MB'
                                 : round($dbBytes / 1024) . ' KB',
-            'disk_total' => $fmtGb($diskTotal),
-            'disk_used'  => $fmtGb($diskUsed),
-            'disk_free'  => $fmtGb($diskFree),
-            'disk_pct'   => $diskPct,
+            'files_size'  => $fmtGb($filesBytes),
+            'backup_size' => $fmtGb($dbBytes + $filesBytes),
+            'disk_total'  => $fmtGb($diskTotal),
+            'disk_used'   => $fmtGb($diskUsed),
+            'disk_free'   => $fmtGb($diskFree),
+            'disk_pct'    => $diskPct,
         ];
 
         $supportUsers = User::whereIn('role', ['admin', 'manager'])
@@ -238,6 +253,37 @@ class SettingsController extends Controller
         Setting::set('developer_mode', $new);
 
         return response()->json(['developer_mode' => $new === '1']);
+    }
+
+    public function toggleAutoBackup(Request $request)
+    {
+        $current = Setting::get('auto_backup_enabled', '0');
+        $new = $current === '1' ? '0' : '1';
+        Setting::set('auto_backup_enabled', $new);
+
+        if ($request->filled('retain')) {
+            Setting::set('auto_backup_retain', (string) max(1, (int) $request->input('retain')));
+        }
+
+        AuditLogger::log('settings.updated', null, 'Automatic NAS backup '.($new === '1' ? 'enabled' : 'disabled'), []);
+
+        return response()->json(['auto_backup_enabled' => $new === '1']);
+    }
+
+    public function updateAutoBackupRetain(Request $request)
+    {
+        $request->validate(['retain' => 'required|integer|min:1|max:365']);
+        Setting::set('auto_backup_retain', (string) $request->input('retain'));
+
+        return response()->json(['ok' => true, 'retain' => (int) $request->input('retain')]);
+    }
+
+    public function updateAutoBackupTime(Request $request)
+    {
+        $request->validate(['time' => 'required|date_format:H:i']);
+        Setting::set('auto_backup_time', $request->input('time'));
+
+        return response()->json(['ok' => true, 'time' => $request->input('time')]);
     }
 
     public function clearCache()
@@ -1819,6 +1865,51 @@ class SettingsController extends Controller
         $ok = Hash::check($request->input('password'), auth()->user()->password);
 
         return response()->json(['ok' => $ok]);
+    }
+
+    /**
+     * Build a full backup ZIP (DB + uploaded files + snapshot PDFs) on disk and
+     * return its path, for non-HTTP consumers (e.g. the scheduled auto-backup command).
+     * Caller must call cleanupBackupTmp($tmpDir) afterward.
+     */
+    public function buildFullBackupZipFile(): array
+    {
+        $stamp = now()->format('Ymd_His');
+        $filename = 'backup_'.$stamp.'.zip';
+        $dbPath = database_path('database.sqlite');
+        $storageBase = storage_path('app/public');
+
+        $tmpDir = sys_get_temp_dir().'/bk_'.$stamp;
+        mkdir($tmpDir);
+        mkdir($tmpDir.'/database');
+        mkdir($tmpDir.'/reports');
+        symlink($dbPath, $tmpDir.'/database/database.sqlite');
+        symlink($storageBase, $tmpDir.'/storage');
+
+        $this->generateBackupPdfs($tmpDir.'/reports');
+
+        $zipPath = $tmpDir.'/'.$filename;
+        exec('cd '.escapeshellarg($tmpDir).' && zip -0 -r '.escapeshellarg($zipPath).' database storage reports 2>/dev/null');
+
+        return ['zipPath' => $zipPath, 'tmpDir' => $tmpDir, 'filename' => $filename];
+    }
+
+    public function cleanupBackupTmp(string $tmpDir): void
+    {
+        @unlink($tmpDir.'/database/database.sqlite');
+        @unlink($tmpDir.'/storage');
+        @unlink($tmpDir.'/reports/system-summary.pdf');
+        @unlink($tmpDir.'/reports/user-performance.pdf');
+        foreach (glob($tmpDir.'/reports/users/*.pdf') ?: [] as $f) {
+            @unlink($f);
+        }
+        @rmdir($tmpDir.'/reports/users');
+        @rmdir($tmpDir.'/database');
+        @rmdir($tmpDir.'/reports');
+        foreach (glob($tmpDir.'/*.zip') ?: [] as $z) {
+            @unlink($z);
+        }
+        @rmdir($tmpDir);
     }
 
     public function downloadBackup()

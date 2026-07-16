@@ -150,6 +150,7 @@ class TaskController extends Controller
             'priority'             => 'nullable|in:high,medium,low',
             'deadline'             => 'nullable|date',
             'description'          => 'nullable|string',
+            'social_assigned_to'   => 'nullable|exists:users,id',
             'new_attachments'      => 'nullable|array',
             'new_attachments.*'    => 'file',
             'delete_attachments'   => 'nullable|array',
@@ -192,6 +193,23 @@ class TaskController extends Controller
                 'note'     => 'Task details updated by ' . auth()->user()->name,
                 'metadata' => ['changes' => $changes, 'changed_by' => auth()->user()->name],
             ]);
+        }
+
+        if ($task->social_required && $request->filled('social_assigned_to')
+            && (int) $request->social_assigned_to !== (int) $task->social_assigned_to) {
+            $newSocialUser = User::findOrFail($request->social_assigned_to);
+            $task->update(['social_assigned_to' => $newSocialUser->id]);
+
+            TaskLog::create([
+                'task_id'  => $task->id,
+                'user_id'  => auth()->id(),
+                'action'   => 'social_assigned',
+                'note'     => 'Reassigned to ' . $newSocialUser->name . ' for social media posting',
+            ]);
+
+            if (Setting::get('notify_on_social', '1') === '1') {
+                $newSocialUser->notify(new \App\Notifications\SocialMediaAssigned($task, auth()->user()));
+            }
         }
 
         // Delete checked attachments (only task-specific ones belonging to this task)

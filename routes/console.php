@@ -21,6 +21,37 @@ Schedule::command('domains:check-renewals')
     ->withoutOverlapping()
     ->runInBackground();
 
+// Full system backup (DB + files) pushed to the NAS every night.
+// Gated by the "Enable Automatic Backup" toggle in Settings > Backup — checked
+// inside the command itself, so it can be turned off anytime without touching cron.
+// Runs every minute; the when() guard fires only when the current HH:MM matches
+// the configured auto_backup_time setting (default 02:00), so the time is
+// changeable from the UI without touching cron.
+Schedule::command('backup:auto-nas-sync')
+    ->everyMinute()
+    ->when(function () {
+        $timezone = Setting::get('timezone', 'UTC');
+        $runTime  = Setting::get('auto_backup_time', '02:00');
+        $now      = \Carbon\Carbon::now($timezone);
+        return $now->format('H:i') === $runTime;
+    })
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Generate weekly PDF reports for every active user and customer, and push them to the NAS.
+// Runs Sunday night so the report covers the just-finished work week.
+Schedule::command('reports:weekly-nas-sync')
+    ->weeklyOn(0, '23:00')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Generate the company-wide "Task % by Customer" summary (broken down by month)
+// and push it to the NAS. Runs once a month, on the 1st.
+Schedule::command('reports:monthly-company-summary')
+    ->monthlyOn(1, '23:00')
+    ->withoutOverlapping()
+    ->runInBackground();
+
 // Auto-pause all running timers at end of work day.
 // Runs every minute; the when() guard fires only when the current
 // HH:MM matches the configured work_end_time setting.

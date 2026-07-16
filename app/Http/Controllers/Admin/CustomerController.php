@@ -12,6 +12,7 @@ use App\Services\NasService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class CustomerController extends Controller
 {
@@ -252,6 +253,30 @@ class CustomerController extends Controller
             'adBudgetTasks', 'adBudgetPosted', 'adBudgetPending',
             'adBudgetNumericTotal', 'adBudgetHasNumeric'
         ));
+    }
+
+    /**
+     * Receive the browser-generated customer report PDF and push it to
+     * Customers/{name}/Reports/ on the NAS. Best-effort — the browser
+     * download already succeeded regardless of this call's outcome.
+     */
+    public function savePdfReport(Request $request, Customer $customer)
+    {
+        $request->validate(['pdf' => 'required|file|mimes:pdf|max:20480']);
+
+        $nas = app(NasService::class);
+        if (!$nas->isEnabled()) {
+            return response()->json(['ok' => false]);
+        }
+
+        $filename = Str::slug($customer->name) . '-report-' . now()->format('Y-m-d') . '.pdf';
+        $tmpPath  = sys_get_temp_dir() . '/' . uniqid('customer_report_') . '.pdf';
+        $request->file('pdf')->move(dirname($tmpPath), basename($tmpPath));
+
+        $nasPath = $nas->copyToNasCustomerReport($customer, $tmpPath, $filename);
+        @unlink($tmpPath);
+
+        return response()->json(['ok' => (bool) $nasPath]);
     }
 
     public function aiBrief(Customer $customer)
