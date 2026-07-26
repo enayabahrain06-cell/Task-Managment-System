@@ -358,6 +358,9 @@ class ProjectController extends Controller
             'assignees'              => 'nullable|array',
             'assignees.*.user_id'    => 'required|exists:users,id',
             'assignees.*.role'       => 'nullable|string|max:255',
+            'recurring_type'         => 'nullable|in:daily,weekly,monthly',
+            'recurring_end_date'     => 'nullable|date|after:deadline',
+            'recurring_max'          => 'nullable|integer|min:1|max:365',
         ]);
 
         $validAssignees = collect($request->input('assignees', []))
@@ -375,19 +378,25 @@ class ProjectController extends Controller
                 ->toArray();
         }
 
+        $recurringType = $request->filled('recurring_type') ? $request->recurring_type : null;
+
         $task = Task::create([
-            'title'       => $request->title,
-            'description' => $request->description,
-            'assigned_to' => $primaryAssigneeId,
-            'priority'    => $request->priority,
-            'deadline'    => $request->deadline,
-            'project_id'  => $project->id,
-            'customer_id' => $request->customer_id ?: null,
-            'status'      => $primaryAssigneeId ? 'assigned' : 'draft',
-            'created_by'  => auth()->id(),
-            'reviewer_id' => $request->reviewer_id,
-            'task_type'   => $request->task_type,
-            'tags'        => $tags,
+            'title'               => $request->title,
+            'description'         => $request->description,
+            'assigned_to'         => $primaryAssigneeId,
+            'priority'            => $request->priority,
+            'deadline'            => $request->deadline,
+            'project_id'          => $project->id,
+            'customer_id'         => $request->customer_id ?: null,
+            'status'              => $primaryAssigneeId ? 'assigned' : 'draft',
+            'created_by'          => auth()->id(),
+            'reviewer_id'         => $request->reviewer_id,
+            'task_type'           => $request->task_type,
+            'tags'                => $tags,
+            'is_recurring'        => (bool) $recurringType,
+            'recurring_type'      => $recurringType,
+            'recurring_end_date'  => $recurringType && $request->filled('recurring_end_date') ? $request->recurring_end_date : null,
+            'recurring_max'       => $recurringType && $request->filled('recurring_max') ? (int)$request->recurring_max : null,
         ]);
 
         $syncData = [];
@@ -496,6 +505,9 @@ class ProjectController extends Controller
             abort(403);
         }
 
+        // Fallback: never let max_upload_mb of 0 break uploads — treat 0 as 20 MB
+        $maxKb = max(1, (int) Setting::get('max_upload_mb', 20)) * 1024;
+
         $request->validate([
             'title'              => 'required|string|max:255',
             'social_assigned_to' => 'required|exists:users,id',
@@ -507,7 +519,7 @@ class ProjectController extends Controller
             'deadline'           => 'required|date',
             'customer_id'        => 'nullable|exists:customers,id',
             'attachments'        => 'nullable|array',
-            'attachments.*'      => 'file|max:' . ((int) Setting::get('max_upload_mb', 20) * 1024),
+            'attachments.*'      => 'nullable|file|max:' . $maxKb,
         ]);
 
         $quickProject = Project::firstOrCreate(
@@ -589,6 +601,7 @@ class ProjectController extends Controller
 
         AuditLogger::log('quick_sm_post_created', $task, "Quick SM Post created: {$task->title}");
 
-        return redirect()->route('admin.approvals.index', ['tab' => 'social'])->with('success', 'Social media post "' . $task->title . '" assigned to ' . ($assignee?->name ?? 'user') . '. It now appears in the Social Media pending list below.');
+        return redirect()->route('admin.dashboard')
+            ->with('success', '✓ SM Post "' . $task->title . '" assigned to ' . ($assignee?->name ?? 'user') . ' successfully.');
     }
 }

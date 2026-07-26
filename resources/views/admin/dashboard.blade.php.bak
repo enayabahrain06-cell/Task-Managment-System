@@ -995,12 +995,66 @@
     </div>
     </div>
 
+    {{-- Expiring Soon Modal --}}
+    <div x-show="expiringModal" style="position:fixed;inset:0;z-index:9100;overflow-y:auto;" x-cloak>
+        <div style="position:fixed;inset:0;background:rgba(0,0,0,.45);" @click="dismissExpiring()"></div>
+        <div style="min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px 16px;position:relative;z-index:1;">
+        <div style="background:#fff;border-radius:16px;width:520px;max-width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.2);">
+            <div style="padding:20px 24px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:38px;height:38px;background:#FEF3C7;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-triangle-exclamation" style="color:#D97706;font-size:16px;"></i>
+                    </div>
+                    <div>
+                        <h3 style="font-size:16px;font-weight:700;color:#111827;margin:0;">Domains Expiring Soon</h3>
+                        <p style="font-size:12px;color:#9CA3AF;margin:0;">{{ $expiringDomains->count() }} domain{{ $expiringDomains->count() !== 1 ? 's' : '' }} within 30 days</p>
+                    </div>
+                </div>
+                <button @click="dismissExpiring()" style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:13px;flex-shrink:0;">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <div style="padding:8px 12px;overflow-y:auto;">
+                @foreach($expiringDomains as $ed)
+                <a href="{{ route('admin.domains.show', $ed->id) }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border-radius:10px;text-decoration:none;color:inherit;">
+                    <div style="min-width:0;">
+                        <div style="font-weight:700;color:#111827;font-size:13.5px;">{{ $ed->domain }}</div>
+                        <div style="font-size:11.5px;color:#9CA3AF;margin-top:1px;">
+                            {{ $ed->registrar ?: 'No registrar' }} &middot; Responsible: {{ $ed->responsibleUsers->pluck('name')->implode(', ') ?: '—' }}
+                        </div>
+                    </div>
+                    <div style="text-align:right;flex-shrink:0;">
+                        <div style="font-size:12.5px;font-weight:700;color:{{ $ed->days_until_expiry <= 7 ? '#DC2626' : '#D97706' }};">
+                            {{ $ed->days_until_expiry }} day{{ $ed->days_until_expiry !== 1 ? 's' : '' }} left
+                        </div>
+                        <div style="font-size:11px;color:#9CA3AF;">{{ $ed->expires_at->format('d M Y') }}</div>
+                    </div>
+                </a>
+                @endforeach
+            </div>
+            <div style="padding:14px 24px;border-top:1px solid #F3F4F6;flex-shrink:0;">
+                <button @click="dismissExpiring()" style="width:100%;padding:10px;background:#F3F4F6;color:#374151;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Dismiss</button>
+            </div>
+        </div>
+        </div>
+    </div>
+
 </div>
 
 @push('scripts')
 <script>
 function dashModals() {
     return {
+        /* ── Expiring Domains ── */
+        expiringModal: {{ $showExpiringPopup ? 'true' : 'false' }},
+        dismissExpiring() {
+            this.expiringModal = false;
+            fetch('{{ route('domains.expiring.dismiss') }}', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=\'csrf-token\']')?.content || '', 'Accept': 'application/json' },
+            });
+        },
+
         /* ── Quick Task ── */
         taskOpen:       {{ (old('_form') === 'quick_task' && $errors->any()) ? 'true' : 'false' }},
         taskSubmitting: false,

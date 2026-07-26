@@ -475,17 +475,18 @@ class ProjectController extends Controller
         if ($request->hasFile('attachments')) {
             $nas = app(\App\Services\NasService::class);
             foreach ($request->file('attachments') as $file) {
-                $path = $file->store("task-attachments/{$task->id}", 'public');
+                $path    = $file->store("task-attachments/{$task->id}", 'public');
+                $nasPath = $nas->copyToNas($task, $path, $file->getClientOriginalName(), '03_Working');
                 ProjectAttachment::create([
                     'project_id'  => $task->project_id,
                     'task_id'     => $task->id,
                     'type'        => 'file',
                     'name'        => $file->getClientOriginalName(),
                     'path'        => $path,
+                    'nas_path'    => $nasPath,
                     'size'        => $file->getSize(),
                     'uploaded_by' => auth()->id(),
                 ]);
-                $nas->copyToNas($task, $path, $file->getClientOriginalName(), '03_Working');
             }
         }
 
@@ -557,17 +558,18 @@ class ProjectController extends Controller
         if ($request->hasFile('attachments')) {
             $nas = app(\App\Services\NasService::class);
             foreach ($request->file('attachments') as $file) {
-                $path = $file->store("task-attachments/{$task->id}", 'public');
+                $path    = $file->store("task-attachments/{$task->id}", 'public');
+                $nasPath = $nas->copyToNas($task, $path, $file->getClientOriginalName(), '03_Working');
                 ProjectAttachment::create([
                     'project_id'  => $task->project_id,
                     'task_id'     => $task->id,
                     'type'        => 'file',
                     'name'        => $file->getClientOriginalName(),
                     'path'        => $path,
+                    'nas_path'    => $nasPath,
                     'size'        => $file->getSize(),
                     'uploaded_by' => auth()->id(),
                 ]);
-                $nas->copyToNas($task, $path, $file->getClientOriginalName(), '03_Working');
             }
         }
 
