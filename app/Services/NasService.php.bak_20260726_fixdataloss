@@ -93,12 +93,9 @@ class NasService
         $nasPath = $nasDir . '/' . $remote;
         $ok      = $this->smbPut($cfg, $localFull, $nasDir, $remote);
 
-        // Note: this is a secondary/mirror copy — its result is not persisted per-record,
-        // so it must never delete the local file. Only copyToNas() (whose return value is
-        // stored as the record's nas_path) may do that; otherwise a failed primary copy
-        // combined with a successful mirror copy silently orphans the file with no
-        // recorded location at all.
-        if (!$ok) {
+        if ($ok && $this->isNetworkOnly()) {
+            $this->deleteLocal($localPath);
+        } elseif (!$ok) {
             $this->reportSyncFailure($task, $originalFilename, 'Reference');
         }
 
@@ -136,8 +133,9 @@ class NasService
         $nasPath = $nasDir . '/' . $remote;
         $ok      = $this->smbPut($cfg, $localFull, $nasDir, $remote);
 
-        // Secondary/mirror copy — see comment in copyToNasReference(). Must not delete local.
-        if (!$ok) {
+        if ($ok && $this->isNetworkOnly()) {
+            $this->deleteLocal($localPath);
+        } elseif (!$ok) {
             $this->reportSyncFailure($task, $originalFilename, 'Deliverable');
         }
 
@@ -207,8 +205,9 @@ class NasService
 
         $nasPath = $nasDir . '/' . $remote;
 
-        // Secondary/mirror copy — see comment in copyToNasReference(). Must not delete local.
-        if ($code !== 0) {
+        if ($code === 0 && $this->isNetworkOnly()) {
+            $this->deleteLocal($localPath);
+        } elseif ($code !== 0) {
             $this->reportSyncFailure($task, $originalFilename, 'Social Media');
         }
 

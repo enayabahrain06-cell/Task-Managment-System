@@ -284,7 +284,8 @@
             </div>
 
             {{-- Form --}}
-            <form method="POST" action="{{ $dashQuickTaskUrl }}" enctype="multipart/form-data" style="padding:20px 24px 24px;">
+            <form method="POST" action="{{ $dashQuickTaskUrl }}" enctype="multipart/form-data" style="padding:20px 24px 24px;"
+                  @submit="if (taskSubmitting) { $event.preventDefault(); return; } taskSubmitting = true">
                 @csrf
                 <input type="hidden" name="_form" value="quick_task">
 
@@ -395,9 +396,10 @@
                     </template>
                 </div>
 
-                <button type="submit"
-                        style="width:100%;padding:11px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(245,158,11,.35);">
-                    <i class="fa fa-bolt"></i> Assign Task
+                <button type="submit" :disabled="taskSubmitting"
+                        :style="taskSubmitting ? 'width:100%;padding:11px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(245,158,11,.35);opacity:0.8;' : 'width:100%;padding:11px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(245,158,11,.35);'">
+                    <i class="fa" :class="taskSubmitting ? 'fa-spinner fa-spin' : 'fa-bolt'"></i>
+                    <span x-text="taskSubmitting ? 'Assigning...' : 'Assign Task'"></span>
                 </button>
             </form>
 
