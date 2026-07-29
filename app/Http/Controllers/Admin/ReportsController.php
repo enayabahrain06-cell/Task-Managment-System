@@ -985,10 +985,11 @@ class ReportsController extends Controller
             ? collect()
             : $reportPdfService->customerDistStats($dateFrom, $dateTo, $doneStatuses, $customerId)->take(8)->values();
 
-        // Task % by Customer, broken down by month (last 6 calendar months, independent of the page filter)
+        // Task % by Customer, broken down by month within the selected period
+        // (falls back to the last 6 calendar months when no period is selected)
         $customerStatsMonthly = $userId
             ? []
-            : $reportPdfService->monthlyCustomerDistStats(6);
+            : $reportPdfService->monthlyCustomerDistStats(6, $dateFrom, $dateTo);
 
         // Task list for the selected period (created_at-scoped, same as totalTasks)
         $taskList = $scoped()

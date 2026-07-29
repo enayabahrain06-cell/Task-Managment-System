@@ -129,16 +129,42 @@ class ReportPdfService
     }
 
     /**
-     * Monthly customer task distribution for the last $months calendar months
-     * (oldest first). Each entry: ['label' => 'July 2026', 'stats' => Collection].
+     * Monthly customer task distribution, broken down by calendar month.
+     * When $dateFrom/$dateTo are given, only the calendar months overlapping that
+     * range are returned (each month's stats clipped to the selected range).
+     * Otherwise falls back to the last $months calendar months ending this month.
+     * Each entry: ['label' => 'July 2026', 'stats' => Collection].
      */
-    public function monthlyCustomerDistStats(int $months = 6): array
+    public function monthlyCustomerDistStats(int $months = 6, $dateFrom = null, $dateTo = null): array
     {
         $doneStatuses = ['approved', 'delivered'];
         $result = [];
+
+        if ($dateFrom && $dateTo) {
+            $cursor    = $dateFrom->copy()->startOfMonth();
+            $lastMonth = $dateTo->copy()->startOfMonth();
+            $guard     = 0;
+            while ($cursor->lte($lastMonth) && $guard < 36) {
+                $monthStart = $cursor->copy()->startOfMonth();
+                $monthEnd   = $cursor->copy()->endOfMonth();
+                $rangeStart = $monthStart->lt($dateFrom) ? $dateFrom->copy() : $monthStart;
+                $rangeEnd   = $monthEnd->gt($dateTo) ? $dateTo->copy() : $monthEnd;
+
+                $stats = $this->customerDistStats($rangeStart, $rangeEnd, $doneStatuses);
+                $result[] = [
+                    'label' => $cursor->format('F Y'),
+                    'stats' => $this->withSharePercentages($stats),
+                ];
+
+                $cursor->addMonth();
+                $guard++;
+            }
+            return $result;
+        }
+
         for ($i = $months - 1; $i >= 0; $i--) {
-            $monthStart = now()->subMonths($i)->startOfMonth();
-            $monthEnd   = now()->subMonths($i)->endOfMonth();
+            $monthStart = now()->startOfMonth()->subMonths($i);
+            $monthEnd   = $monthStart->copy()->endOfMonth();
             $stats = $this->customerDistStats($monthStart, $monthEnd, $doneStatuses);
             $result[] = [
                 'label' => $monthStart->format('F Y'),

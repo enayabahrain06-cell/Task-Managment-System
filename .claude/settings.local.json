@@ -308,7 +308,8 @@
       "Bash(awk -F: '$1>=820 && $1<=990')",
       "Bash(grep -n \"heroSection.addEventListener\\\\|^}\\)\\(\\);$\\\\|^</script>$\" resources/views/public/about.blade.php)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"https://ms.p7h.me/social/160\")",
-      "Bash(php -l resources/views/social/show.blade.php)"
+      "Bash(php -l resources/views/social/show.blade.php)",
+      "Bash(php -l app/Services/NasService.php)"
     ],
     "additionalDirectories": [
       "c:\\Users\\it\\.claude\\projects\\c--Users-it-Desktop-task-managment-system\\memory",
