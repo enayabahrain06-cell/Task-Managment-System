@@ -285,7 +285,7 @@
 
             {{-- Form --}}
             <form method="POST" action="{{ $dashQuickTaskUrl }}" enctype="multipart/form-data" style="padding:20px 24px 24px;"
-                  @submit="if (taskSubmitting) { $event.preventDefault(); return; } taskSubmitting = true">
+                  @submit="if (taskSubmitting || taskTitleDuplicate) { $event.preventDefault(); return; } taskSubmitting = true">
                 @csrf
                 <input type="hidden" name="_form" value="quick_task">
 
@@ -295,8 +295,8 @@
                            value="{{ old('title') }}"
                            onfocus="this.style.borderColor='#F59E0B';this.style.boxShadow='0 0 0 3px rgba(245,158,11,0.12)'"
                            onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''"
-                           oninput="checkTaskTitleDuplicate(this, document.getElementById('dqtTitleDupWarn'), document.getElementById('dqtCustomerSelect').value, document.getElementById('dqtProjectSelect').value)">
-                    <p id="dqtTitleDupWarn" style="display:none;font-size:11px;color:#D97706;margin:5px 0 0;"></p>
+                           @input="checkQtDuplicate()">
+                    <p id="dqtTitleDupWarn" style="display:none;font-size:11px;color:#DC2626;margin:5px 0 0;font-weight:600;"></p>
                 </div>
 
                 <div style="margin-bottom:14px;">
@@ -339,7 +339,7 @@
                     <div>
                         <label class="form-label">Link to Project <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
                         <select name="project_id" id="dqtProjectSelect" class="form-input form-select"
-                                onchange="checkTaskTitleDuplicate(document.getElementById('dqtTitleInput'), document.getElementById('dqtTitleDupWarn'), document.getElementById('dqtCustomerSelect').value, this.value)">
+                                @change="checkQtDuplicate()">
                             <option value="">— No project —</option>
                             @foreach($allProjects as $proj)
                             <option value="{{ $proj->id }}" {{ old('project_id') == $proj->id ? 'selected' : '' }}>
@@ -353,7 +353,7 @@
                         <select name="customer_id" id="dqtCustomerSelect" class="form-input form-select"
                                 onfocus="this.style.borderColor='#F59E0B';this.style.boxShadow='0 0 0 3px rgba(245,158,11,0.12)'"
                                 onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''"
-                                onchange="checkTaskTitleDuplicate(document.getElementById('dqtTitleInput'), document.getElementById('dqtTitleDupWarn'), this.value, document.getElementById('dqtProjectSelect').value)">
+                                @change="checkQtDuplicate()">
                             <option value="">— No customer —</option>
                             @foreach($customers as $c)
                             <option value="{{ $c->id }}" {{ old('customer_id') == $c->id ? 'selected' : '' }}>
@@ -400,10 +400,10 @@
                     </template>
                 </div>
 
-                <button type="submit" :disabled="taskSubmitting"
-                        :style="taskSubmitting ? 'width:100%;padding:11px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(245,158,11,.35);opacity:0.8;' : 'width:100%;padding:11px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(245,158,11,.35);'">
+                <button type="submit" :disabled="taskSubmitting || taskTitleDuplicate"
+                        :style="(taskSubmitting || taskTitleDuplicate) ? 'width:100%;padding:11px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(245,158,11,.35);opacity:0.8;' : 'width:100%;padding:11px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(245,158,11,.35);'">
                     <i class="fa" :class="taskSubmitting ? 'fa-spinner fa-spin' : 'fa-bolt'"></i>
-                    <span x-text="taskSubmitting ? 'Assigning...' : 'Assign Task'"></span>
+                    <span x-text="taskTitleDuplicate ? 'Duplicate Title' : (taskSubmitting ? 'Assigning...' : 'Assign Task')"></span>
                 </button>
             </form>
 
@@ -437,7 +437,8 @@
             </div>
 
             {{-- Form --}}
-            <form method="POST" action="{{ route('admin.tasks.quick-sm') }}" enctype="multipart/form-data" style="padding:20px 24px 24px;overflow-y:auto;flex:1;">
+            <form method="POST" action="{{ route('admin.tasks.quick-sm') }}" enctype="multipart/form-data" style="padding:20px 24px 24px;overflow-y:auto;flex:1;"
+                  @submit="if (smSubmitting || smTitleDuplicate) { $event.preventDefault(); return; } smSubmitting = true">
                 @csrf
                 <input type="hidden" name="_form" value="quick_sm_post">
 
@@ -458,8 +459,8 @@
                            value="{{ old('title') }}"
                            onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.12)'"
                            onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''"
-                           oninput="checkTaskTitleDuplicate(this, document.getElementById('smTitleDupWarn'), document.getElementById('smCustomerSelect').value, null)">
-                    <p id="smTitleDupWarn" style="display:none;font-size:11px;color:#D97706;margin:5px 0 0;"></p>
+                           @input="checkSmDuplicate()">
+                    <p id="smTitleDupWarn" style="display:none;font-size:11px;color:#DC2626;margin:5px 0 0;font-weight:600;"></p>
                 </div>
 
                 <div style="margin-bottom:14px;">
@@ -546,7 +547,7 @@
                     <select name="customer_id" id="smCustomerSelect" class="form-input form-select"
                             onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.12)'"
                             onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''"
-                            onchange="checkTaskTitleDuplicate(document.getElementById('smTitleInput'), document.getElementById('smTitleDupWarn'), this.value, null)">
+                            @change="checkSmDuplicate()">
                         <option value="">— No customer —</option>
                         @foreach($customers as $c)
                         <option value="{{ $c->id }}" {{ old('customer_id') == $c->id ? 'selected' : '' }}>
@@ -592,9 +593,10 @@
                     </template>
                 </div>
 
-                <button type="submit" id="smPostSubmitBtn"
-                        style="width:100%;padding:11px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(99,102,241,.35);">
-                    <i class="fas fa-share-alt"></i> Assign SM Post
+                <button type="submit" id="smPostSubmitBtn" :disabled="smSubmitting || smTitleDuplicate"
+                        :style="(smSubmitting || smTitleDuplicate) ? 'width:100%;padding:11px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(99,102,241,.35);opacity:0.8;' : 'width:100%;padding:11px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(99,102,241,.35);'">
+                    <i class="fas" :class="smSubmitting ? 'fa-spinner fa-spin' : 'fa-share-alt'"></i>
+                    <span x-text="smTitleDuplicate ? 'Duplicate Title' : (smSubmitting ? 'Assigning...' : 'Assign SM Post')"></span>
                 </button>
 
             </form>
@@ -1065,16 +1067,84 @@ function dashModals() {
         },
 
         /* ── Quick Task ── */
-        taskOpen:       {{ (old('_form') === 'quick_task' && $errors->any()) ? 'true' : 'false' }},
-        taskSubmitting: false,
+        taskOpen:           {{ (old('_form') === 'quick_task' && $errors->any()) ? 'true' : 'false' }},
+        taskSubmitting:     false,
+        taskTitleDuplicate: false,
+        qtDupTimer:         null,
         priority:       '{{ old('priority', 'medium') }}',
         qtFiles:        [],
         qtDragover:     false,
+        checkQtDuplicate() {
+            clearTimeout(this.qtDupTimer);
+            const titleEl    = document.getElementById('dqtTitleInput');
+            const warnEl     = document.getElementById('dqtTitleDupWarn');
+            const customerId = document.getElementById('dqtCustomerSelect').value;
+            const projectId  = document.getElementById('dqtProjectSelect').value;
+            const title      = titleEl.value.trim();
+            if (!title || (!customerId && !projectId)) {
+                warnEl.style.display = 'none';
+                this.taskTitleDuplicate = false;
+                return;
+            }
+            this.qtDupTimer = setTimeout(async () => {
+                const params = new URLSearchParams({ title });
+                if (customerId) params.set('customer_id', customerId);
+                if (projectId) params.set('project_id', projectId);
+                try {
+                    const res  = await fetch(`{{ route('admin.tasks.check-duplicate-title') }}?${params}`);
+                    const data = await res.json();
+                    this.taskTitleDuplicate = !!data.duplicate;
+                    if (data.duplicate) {
+                        warnEl.textContent = `A task named "${title}" already exists for this customer (${data.count}${data.count >= 5 ? '+' : ''}). Use a different title to continue.`;
+                        warnEl.style.color = '#DC2626';
+                        warnEl.style.display = 'block';
+                    } else {
+                        warnEl.style.display = 'none';
+                    }
+                } catch (e) {
+                    this.taskTitleDuplicate = false;
+                    warnEl.style.display = 'none';
+                }
+            }, 450);
+        },
 
         /* ── Quick SM Post ── */
-        smPostOpen:     {{ (old('_form') === 'quick_sm_post' && $errors->any()) ? 'true' : 'false' }},
+        smPostOpen:       {{ (old('_form') === 'quick_sm_post' && $errors->any()) ? 'true' : 'false' }},
+        smSubmitting:     false,
+        smTitleDuplicate: false,
+        smDupTimer:       null,
         smFiles:        [],
         smDragover:     false,
+        checkSmDuplicate() {
+            clearTimeout(this.smDupTimer);
+            const titleEl    = document.getElementById('smTitleInput');
+            const warnEl     = document.getElementById('smTitleDupWarn');
+            const customerId = document.getElementById('smCustomerSelect').value;
+            const title      = titleEl.value.trim();
+            if (!title || !customerId) {
+                warnEl.style.display = 'none';
+                this.smTitleDuplicate = false;
+                return;
+            }
+            this.smDupTimer = setTimeout(async () => {
+                const params = new URLSearchParams({ title, customer_id: customerId });
+                try {
+                    const res  = await fetch(`{{ route('admin.tasks.check-duplicate-title') }}?${params}`);
+                    const data = await res.json();
+                    this.smTitleDuplicate = !!data.duplicate;
+                    if (data.duplicate) {
+                        warnEl.textContent = `A task named "${title}" already exists for this customer (${data.count}${data.count >= 5 ? '+' : ''}). Use a different title to continue.`;
+                        warnEl.style.color = '#DC2626';
+                        warnEl.style.display = 'block';
+                    } else {
+                        warnEl.style.display = 'none';
+                    }
+                } catch (e) {
+                    this.smTitleDuplicate = false;
+                    warnEl.style.display = 'none';
+                }
+            }, 450);
+        },
 
         /* ── Project Wizard ── */
         projectOpen:    {{ (old('_form') === 'new_project' && ($errors->hasAny(['name','deadline','customer_id']) || $errors->has('tasks') || preg_grep('/^tasks\./', array_keys($errors->toArray())))) ? 'true' : 'false' }},
@@ -2470,7 +2540,6 @@ document.addEventListener('DOMContentLoaded', function () {
 @endsection
 
 @push('scripts')
-@include('admin.partials.duplicate-title-check')
 <script>
 // Count-up animation for stat numbers
 (function() {

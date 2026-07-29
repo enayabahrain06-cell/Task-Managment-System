@@ -25,8 +25,42 @@
     dragover: false,
     qtFiles: [],
     qtDragover: false,
+    qtSubmitting: false,
+    qtTitleDuplicate: false,
+    qtDupTimer: null,
     nameError: false,
     deadlineError: false,
+
+    checkQtDuplicate() {
+        clearTimeout(this.qtDupTimer);
+        const titleEl   = document.getElementById('qtTitleInput');
+        const warnEl    = document.getElementById('qtTitleDupWarn');
+        const projectId = document.getElementById('qtProjectSelect').value;
+        const title     = titleEl.value.trim();
+        if (!title || !projectId) {
+            warnEl.style.display = 'none';
+            this.qtTitleDuplicate = false;
+            return;
+        }
+        this.qtDupTimer = setTimeout(async () => {
+            const params = new URLSearchParams({ title, project_id: projectId });
+            try {
+                const res  = await fetch(`{{ route('admin.tasks.check-duplicate-title') }}?${params}`);
+                const data = await res.json();
+                this.qtTitleDuplicate = !!data.duplicate;
+                if (data.duplicate) {
+                    warnEl.textContent = `A task named '${title}' already exists for this customer (${data.count}${data.count >= 5 ? '+' : ''}). Use a different title to continue.`;
+                    warnEl.style.color = '#DC2626';
+                    warnEl.style.display = 'block';
+                } else {
+                    warnEl.style.display = 'none';
+                }
+            } catch (e) {
+                this.qtTitleDuplicate = false;
+                warnEl.style.display = 'none';
+            }
+        }, 450);
+    },
 
     init() { this.tasks = [this._blankTask()]; },
 
@@ -170,11 +204,6 @@
         @if(auth()->user()->hasPermission('manage_projects'))
         <button @click="openWizard()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm shadow-indigo-200">
             <i class="fa fa-plus"></i> New Project
-        </button>
-        @endif
-        @if(auth()->user()->hasPermission('manage_tasks'))
-        <button @click="quickOpen = true" class="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition border border-gray-200 shadow-sm">
-            <i class="fa fa-bolt text-amber-500"></i> Quick Task
         </button>
         @endif
     </div>
@@ -549,7 +578,8 @@ $statDefs = [
         </div>
 
         {{-- Form --}}
-        <form method="POST" action="{{ route('admin.tasks.quick') }}" enctype="multipart/form-data" style="padding:20px 24px 24px;">
+        <form method="POST" action="{{ route('admin.tasks.quick') }}" enctype="multipart/form-data" style="padding:20px 24px 24px;"
+              @submit="if (qtSubmitting || qtTitleDuplicate) { $event.preventDefault(); return; } qtSubmitting = true">
             @csrf
 
             <div style="margin-bottom:14px;">
@@ -559,8 +589,8 @@ $statDefs = [
                 <input type="text" name="title" id="qtTitleInput" required placeholder="e.g. Update hero banner image"
                        style="width:100%;padding:9px 13px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;"
                        onfocus="this.style.borderColor='#F59E0B'" onblur="this.style.borderColor='#E5E7EB'"
-                       oninput="checkTaskTitleDuplicate(this, document.getElementById('qtTitleDupWarn'), null, document.getElementById('qtProjectSelect').value)">
-                <p id="qtTitleDupWarn" style="display:none;font-size:11px;color:#D97706;margin:5px 0 0;"></p>
+                       @input="checkQtDuplicate()">
+                <p id="qtTitleDupWarn" style="display:none;font-size:11px;color:#DC2626;margin:5px 0 0;font-weight:600;"></p>
             </div>
 
             <div style="margin-bottom:14px;">
@@ -606,7 +636,7 @@ $statDefs = [
                 </label>
                 <select name="project_id" id="qtProjectSelect"
                         style="width:100%;padding:9px 13px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;background:#fff;box-sizing:border-box;outline:none;"
-                        onchange="checkTaskTitleDuplicate(document.getElementById('qtTitleInput'), document.getElementById('qtTitleDupWarn'), null, this.value)">
+                        @change="checkQtDuplicate()">
                     <option value="">— No project (standalone) —</option>
                     @foreach($projects as $p)
                     <option value="{{ $p->id }}">{{ $p->name }}</option>
@@ -650,9 +680,10 @@ $statDefs = [
                 </template>
             </div>
 
-            <button type="submit"
-                    style="width:100%;padding:11px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(245,158,11,.35);">
-                <i class="fa fa-bolt"></i> Assign Task
+            <button type="submit" :disabled="qtSubmitting || qtTitleDuplicate"
+                    :style="(qtSubmitting || qtTitleDuplicate) ? 'width:100%;padding:11px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(245,158,11,.35);opacity:0.8;' : 'width:100%;padding:11px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(245,158,11,.35);'">
+                <i class="fa" :class="qtSubmitting ? 'fa-spinner fa-spin' : 'fa-bolt'"></i>
+                <span x-text="qtTitleDuplicate ? 'Duplicate Title' : (qtSubmitting ? 'Assigning...' : 'Assign Task')"></span>
             </button>
         </form>
 
@@ -1155,5 +1186,4 @@ document.addEventListener('click', function(e) {
 });
 document.addEventListener('scroll', closeProjMenu, true);
 </script>
-@include('admin.partials.duplicate-title-check')
 @endsection

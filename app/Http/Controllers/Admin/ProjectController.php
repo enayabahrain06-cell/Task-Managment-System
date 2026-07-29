@@ -393,6 +393,19 @@ class ProjectController extends Controller
             'recurring_max'          => 'nullable|integer|min:1|max:365',
         ]);
 
+        $customerIdForDupCheck = $request->customer_id ?: $project->customer_id;
+        if ($customerIdForDupCheck) {
+            $isDuplicateTitle = Task::where('customer_id', $customerIdForDupCheck)
+                ->whereRaw('LOWER(title) = ?', [mb_strtolower(trim($request->title))])
+                ->exists();
+
+            if ($isDuplicateTitle) {
+                return back()->withErrors([
+                    'title' => 'A task with this title already exists for this customer. Please use a different title.',
+                ])->withInput();
+            }
+        }
+
         $validAssignees = collect($request->input('assignees', []))
             ->filter(fn($a) => !empty($a['user_id']))
             ->values();
@@ -474,6 +487,21 @@ class ProjectController extends Controller
             'attachments.*'  => 'file',
         ]);
 
+        $customerIdForDupCheck = $request->customer_id
+            ?: ($request->project_id ? Project::find($request->project_id)?->customer_id : null);
+
+        if ($customerIdForDupCheck) {
+            $isDuplicateTitle = Task::where('customer_id', $customerIdForDupCheck)
+                ->whereRaw('LOWER(title) = ?', [mb_strtolower(trim($request->title))])
+                ->exists();
+
+            if ($isDuplicateTitle) {
+                return back()->withErrors([
+                    'title' => 'A task with this title already exists for this customer. Please use a different title.',
+                ])->withInput();
+            }
+        }
+
         $projectId = $request->project_id;
         if (!$projectId) {
             $quickProject = Project::firstOrCreate(
@@ -552,6 +580,18 @@ class ProjectController extends Controller
             'attachments'        => 'nullable|array',
             'attachments.*'      => 'nullable|file|max:' . $maxKb,
         ]);
+
+        if ($request->customer_id) {
+            $isDuplicateTitle = Task::where('customer_id', $request->customer_id)
+                ->whereRaw('LOWER(title) = ?', [mb_strtolower(trim($request->title))])
+                ->exists();
+
+            if ($isDuplicateTitle) {
+                return back()->withErrors([
+                    'title' => 'A task with this title already exists for this customer. Please use a different title.',
+                ])->withInput();
+            }
+        }
 
         $quickProject = Project::firstOrCreate(
             ['name' => 'Quick Tasks'],

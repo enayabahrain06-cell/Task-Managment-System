@@ -35,11 +35,46 @@
         allUsers: {{ $members->map(fn($u) => ['id' => (string)$u->id, 'name' => $u->name, 'role' => ucfirst($u->role)])->toJson() }},
         assignees: [{ user_id: '', role: '' }],
         addAssignee() { this.assignees.push({ user_id: '', role: '' }); },
-        removeAssignee(i) { if (this.assignees.length > 1) this.assignees.splice(i, 1); }
+        removeAssignee(i) { if (this.assignees.length > 1) this.assignees.splice(i, 1); },
+        tcSubmitting: false,
+        tcTitleDuplicate: false,
+        tcDupTimer: null,
+        checkTcDuplicate() {
+            clearTimeout(this.tcDupTimer);
+            const titleEl    = document.getElementById('tcTitleInput');
+            const warnEl     = document.getElementById('tcTitleDupWarn');
+            const customerId = document.getElementById('tcCustomerSelect').value;
+            const title      = titleEl.value.trim();
+            if (!title) {
+                warnEl.style.display = 'none';
+                this.tcTitleDuplicate = false;
+                return;
+            }
+            this.tcDupTimer = setTimeout(async () => {
+                const params = new URLSearchParams({ title, project_id: '{{ $project->id }}' });
+                if (customerId) params.set('customer_id', customerId);
+                try {
+                    const res  = await fetch(`{{ route('admin.tasks.check-duplicate-title') }}?${params}`);
+                    const data = await res.json();
+                    this.tcTitleDuplicate = !!data.duplicate;
+                    if (data.duplicate) {
+                        warnEl.textContent = `A task named '${title}' already exists for this customer (${data.count}${data.count >= 5 ? '+' : ''}). Use a different title to continue.`;
+                        warnEl.style.color = '#DC2626';
+                        warnEl.style.display = 'block';
+                    } else {
+                        warnEl.style.display = 'none';
+                    }
+                } catch (e) {
+                    this.tcTitleDuplicate = false;
+                    warnEl.style.display = 'none';
+                }
+            }, 450);
+        }
     }"
     style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:28px;">
 
-        <form method="POST" action="{{ route('admin.projects.tasks.store', $project) }}">
+        <form method="POST" action="{{ route('admin.projects.tasks.store', $project) }}"
+              @submit="if (tcSubmitting || tcTitleDuplicate) { $event.preventDefault(); return; } tcSubmitting = true">
             @csrf
 
             {{-- Title --}}
@@ -47,9 +82,9 @@
                 <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Task Title <span style="color:#EF4444;">*</span></label>
                 <input type="text" name="title" id="tcTitleInput" value="{{ old('title') }}" required placeholder="e.g. Design landing page"
                        style="width:100%;padding:10px 14px;border:1.5px solid {{ $errors->has('title') ? '#EF4444' : '#E5E7EB' }};border-radius:10px;font-size:14px;color:#111827;box-sizing:border-box;outline:none;"
-                       oninput="checkTaskTitleDuplicate(this, document.getElementById('tcTitleDupWarn'), document.getElementById('tcCustomerSelect').value, {{ $project->id }})">
+                       @input="checkTcDuplicate()">
                 @error('title')<p style="font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</p>@enderror
-                <p id="tcTitleDupWarn" style="display:none;font-size:11px;color:#D97706;margin-top:5px;"></p>
+                <p id="tcTitleDupWarn" style="display:none;font-size:11px;color:#DC2626;margin-top:5px;font-weight:600;"></p>
             </div>
 
             {{-- Task Type + Tags --}}
@@ -135,7 +170,7 @@
                 <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Customer <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
                 <select name="customer_id" id="tcCustomerSelect"
                         style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;background:#fff;outline:none;box-sizing:border-box;"
-                        onchange="checkTaskTitleDuplicate(document.getElementById('tcTitleInput'), document.getElementById('tcTitleDupWarn'), this.value, {{ $project->id }})">
+                        @change="checkTcDuplicate()">
                     <option value="">— No customer —</option>
                     @foreach($customers as $c)
                     <option value="{{ $c->id }}" {{ old('customer_id', $project->customer_id) == $c->id ? 'selected' : '' }}>
@@ -190,9 +225,10 @@
             @endif
 
             <div style="display:flex;gap:10px;">
-                <button type="submit"
-                        style="flex:1;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:11px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
-                    <i class="fa fa-plus" style="margin-right:6px;"></i>Add Task
+                <button type="submit" :disabled="tcSubmitting || tcTitleDuplicate"
+                        :style="(tcSubmitting || tcTitleDuplicate) ? 'flex:1;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:11px;border-radius:10px;font-size:14px;font-weight:600;cursor:not-allowed;opacity:0.8;' : 'flex:1;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:11px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;'">
+                    <i class="fa" :class="tcSubmitting ? 'fa-spinner fa-spin' : 'fa-plus'" style="margin-right:6px;"></i>
+                    <span x-text="tcTitleDuplicate ? 'Duplicate Title' : (tcSubmitting ? 'Adding...' : 'Add Task')"></span>
                 </button>
                 <a href="{{ route('admin.projects.show', $project) }}"
                    style="flex:1;background:#F3F4F6;color:#374151;padding:11px;border-radius:10px;font-size:14px;font-weight:600;text-align:center;text-decoration:none;">
@@ -202,5 +238,4 @@
         </form>
     </div>
 </div>
-@include('admin.partials.duplicate-title-check')
 @endsection
