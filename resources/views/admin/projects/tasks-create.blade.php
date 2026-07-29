@@ -45,9 +45,11 @@
             {{-- Title --}}
             <div style="margin-bottom:16px;">
                 <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Task Title <span style="color:#EF4444;">*</span></label>
-                <input type="text" name="title" value="{{ old('title') }}" required placeholder="e.g. Design landing page"
-                       style="width:100%;padding:10px 14px;border:1.5px solid {{ $errors->has('title') ? '#EF4444' : '#E5E7EB' }};border-radius:10px;font-size:14px;color:#111827;box-sizing:border-box;outline:none;">
+                <input type="text" name="title" id="tcTitleInput" value="{{ old('title') }}" required placeholder="e.g. Design landing page"
+                       style="width:100%;padding:10px 14px;border:1.5px solid {{ $errors->has('title') ? '#EF4444' : '#E5E7EB' }};border-radius:10px;font-size:14px;color:#111827;box-sizing:border-box;outline:none;"
+                       oninput="checkTaskTitleDuplicate(this, document.getElementById('tcTitleDupWarn'), document.getElementById('tcCustomerSelect').value, {{ $project->id }})">
                 @error('title')<p style="font-size:11px;color:#DC2626;margin-top:4px;">{{ $message }}</p>@enderror
+                <p id="tcTitleDupWarn" style="display:none;font-size:11px;color:#D97706;margin-top:5px;"></p>
             </div>
 
             {{-- Task Type + Tags --}}
@@ -131,8 +133,9 @@
             {{-- Customer --}}
             <div style="margin-bottom:16px;">
                 <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Customer <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
-                <select name="customer_id"
-                        style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;background:#fff;outline:none;box-sizing:border-box;">
+                <select name="customer_id" id="tcCustomerSelect"
+                        style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;background:#fff;outline:none;box-sizing:border-box;"
+                        onchange="checkTaskTitleDuplicate(document.getElementById('tcTitleInput'), document.getElementById('tcTitleDupWarn'), this.value, {{ $project->id }})">
                     <option value="">— No customer —</option>
                     @foreach($customers as $c)
                     <option value="{{ $c->id }}" {{ old('customer_id', $project->customer_id) == $c->id ? 'selected' : '' }}>
@@ -199,4 +202,5 @@
         </form>
     </div>
 </div>
+@include('admin.partials.duplicate-title-check')
 @endsection

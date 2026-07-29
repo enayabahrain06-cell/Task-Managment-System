@@ -340,6 +340,36 @@ class ProjectController extends Controller
         return view('admin.projects.tasks-create', compact('project', 'members', 'customers'));
     }
 
+    public function checkDuplicateTitle(Request $request)
+    {
+        $title = trim((string) $request->input('title', ''));
+        $customerId = $request->input('customer_id');
+        if (!$customerId && $request->filled('project_id')) {
+            $customerId = Project::find($request->input('project_id'))?->customer_id;
+        }
+
+        if ($title === '' || !$customerId) {
+            return response()->json(['duplicate' => false]);
+        }
+
+        $matches = Task::where('customer_id', $customerId)
+            ->whereRaw('LOWER(title) = ?', [mb_strtolower($title)])
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get(['id', 'title', 'status', 'deadline']);
+
+        return response()->json([
+            'duplicate' => $matches->isNotEmpty(),
+            'count'     => $matches->count(),
+            'tasks'     => $matches->map(fn($t) => [
+                'id'       => $t->id,
+                'status'   => $t->status,
+                'deadline' => $t->deadline?->format('M d, Y'),
+                'url'      => route('admin.tasks.show', $t->id),
+            ]),
+        ]);
+    }
+
     public function tasksStore(Request $request, Project $project)
     {
         if (!auth()->user()->hasPermission('manage_tasks')) {

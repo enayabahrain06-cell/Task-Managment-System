@@ -291,10 +291,12 @@
 
                 <div style="margin-bottom:14px;">
                     <label class="form-label">Task Title <span style="color:#EF4444;">*</span></label>
-                    <input type="text" name="title" class="form-input" placeholder="e.g. Update hero banner image" required
+                    <input type="text" name="title" id="dqtTitleInput" class="form-input" placeholder="e.g. Update hero banner image" required
                            value="{{ old('title') }}"
                            onfocus="this.style.borderColor='#F59E0B';this.style.boxShadow='0 0 0 3px rgba(245,158,11,0.12)'"
-                           onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">
+                           onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''"
+                           oninput="checkTaskTitleDuplicate(this, document.getElementById('dqtTitleDupWarn'), document.getElementById('dqtCustomerSelect').value, document.getElementById('dqtProjectSelect').value)">
+                    <p id="dqtTitleDupWarn" style="display:none;font-size:11px;color:#D97706;margin:5px 0 0;"></p>
                 </div>
 
                 <div style="margin-bottom:14px;">
@@ -336,7 +338,8 @@
                 <div class="adash-modal-2col" style="margin-bottom:20px;">
                     <div>
                         <label class="form-label">Link to Project <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
-                        <select name="project_id" class="form-input form-select">
+                        <select name="project_id" id="dqtProjectSelect" class="form-input form-select"
+                                onchange="checkTaskTitleDuplicate(document.getElementById('dqtTitleInput'), document.getElementById('dqtTitleDupWarn'), document.getElementById('dqtCustomerSelect').value, this.value)">
                             <option value="">— No project —</option>
                             @foreach($allProjects as $proj)
                             <option value="{{ $proj->id }}" {{ old('project_id') == $proj->id ? 'selected' : '' }}>
@@ -347,9 +350,10 @@
                     </div>
                     <div>
                         <label class="form-label">Customer <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
-                        <select name="customer_id" class="form-input form-select"
+                        <select name="customer_id" id="dqtCustomerSelect" class="form-input form-select"
                                 onfocus="this.style.borderColor='#F59E0B';this.style.boxShadow='0 0 0 3px rgba(245,158,11,0.12)'"
-                                onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">
+                                onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''"
+                                onchange="checkTaskTitleDuplicate(document.getElementById('dqtTitleInput'), document.getElementById('dqtTitleDupWarn'), this.value, document.getElementById('dqtProjectSelect').value)">
                             <option value="">— No customer —</option>
                             @foreach($customers as $c)
                             <option value="{{ $c->id }}" {{ old('customer_id') == $c->id ? 'selected' : '' }}>
@@ -450,10 +454,12 @@
 
                 <div style="margin-bottom:14px;">
                     <label class="form-label">Post Title <span style="color:#EF4444;">*</span></label>
-                    <input type="text" name="title" class="form-input" placeholder="e.g. Ramadan promotion post" required
+                    <input type="text" name="title" id="smTitleInput" class="form-input" placeholder="e.g. Ramadan promotion post" required
                            value="{{ old('title') }}"
                            onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.12)'"
-                           onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">
+                           onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''"
+                           oninput="checkTaskTitleDuplicate(this, document.getElementById('smTitleDupWarn'), document.getElementById('smCustomerSelect').value, null)">
+                    <p id="smTitleDupWarn" style="display:none;font-size:11px;color:#D97706;margin:5px 0 0;"></p>
                 </div>
 
                 <div style="margin-bottom:14px;">
@@ -537,9 +543,10 @@
 
                 <div style="margin-bottom:20px;">
                     <label class="form-label">Customer <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
-                    <select name="customer_id" class="form-input form-select"
+                    <select name="customer_id" id="smCustomerSelect" class="form-input form-select"
                             onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.12)'"
-                            onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">
+                            onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''"
+                            onchange="checkTaskTitleDuplicate(document.getElementById('smTitleInput'), document.getElementById('smTitleDupWarn'), this.value, null)">
                         <option value="">— No customer —</option>
                         @foreach($customers as $c)
                         <option value="{{ $c->id }}" {{ old('customer_id') == $c->id ? 'selected' : '' }}>
@@ -2463,6 +2470,7 @@ document.addEventListener('DOMContentLoaded', function () {
 @endsection
 
 @push('scripts')
+@include('admin.partials.duplicate-title-check')
 <script>
 // Count-up animation for stat numbers
 (function() {

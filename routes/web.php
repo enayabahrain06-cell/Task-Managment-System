@@ -217,6 +217,7 @@ Route::middleware([AdminMiddleware::class, MfaMiddleware::class])->prefix('admin
     Route::post('projects/{project}/tasks', [AdminProjectController::class, 'tasksStore'])->name('projects.tasks.store');
     Route::post('tasks/quick', [AdminProjectController::class, 'quickTaskStore'])->name('tasks.quick');
     Route::post('tasks/quick-sm', [AdminProjectController::class, 'quickSMPostStore'])->name('tasks.quick-sm');
+    Route::get('tasks/check-duplicate-title', [AdminProjectController::class, 'checkDuplicateTitle'])->name('tasks.check-duplicate-title');
     Route::get('customers/summary-data', [AdminCustomerController::class, 'summaryData'])->name('customers.summary-data');
     Route::resource('customers', AdminCustomerController::class);
     Route::get('customers/{customer}/report', [AdminCustomerController::class, 'report'])->name('customers.report');

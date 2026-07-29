@@ -556,9 +556,11 @@ $statDefs = [
                 <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">
                     Task Title <span style="color:#EF4444;">*</span>
                 </label>
-                <input type="text" name="title" required placeholder="e.g. Update hero banner image"
+                <input type="text" name="title" id="qtTitleInput" required placeholder="e.g. Update hero banner image"
                        style="width:100%;padding:9px 13px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;"
-                       onfocus="this.style.borderColor='#F59E0B'" onblur="this.style.borderColor='#E5E7EB'">
+                       onfocus="this.style.borderColor='#F59E0B'" onblur="this.style.borderColor='#E5E7EB'"
+                       oninput="checkTaskTitleDuplicate(this, document.getElementById('qtTitleDupWarn'), null, document.getElementById('qtProjectSelect').value)">
+                <p id="qtTitleDupWarn" style="display:none;font-size:11px;color:#D97706;margin:5px 0 0;"></p>
             </div>
 
             <div style="margin-bottom:14px;">
@@ -602,8 +604,9 @@ $statDefs = [
                 <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">
                     Link to Project <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span>
                 </label>
-                <select name="project_id"
-                        style="width:100%;padding:9px 13px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;background:#fff;box-sizing:border-box;outline:none;">
+                <select name="project_id" id="qtProjectSelect"
+                        style="width:100%;padding:9px 13px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;background:#fff;box-sizing:border-box;outline:none;"
+                        onchange="checkTaskTitleDuplicate(document.getElementById('qtTitleInput'), document.getElementById('qtTitleDupWarn'), null, this.value)">
                     <option value="">— No project (standalone) —</option>
                     @foreach($projects as $p)
                     <option value="{{ $p->id }}">{{ $p->name }}</option>
@@ -1152,4 +1155,5 @@ document.addEventListener('click', function(e) {
 });
 document.addEventListener('scroll', closeProjMenu, true);
 </script>
+@include('admin.partials.duplicate-title-check')
 @endsection
