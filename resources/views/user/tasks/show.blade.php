@@ -358,7 +358,7 @@
                 open: false,
                 att: null,
                 show(item) { this.att = item; this.open = true; },
-                close() { this.open = false; this.att = null; }
+                close() { this.open = false; }
              }"
              @keydown.escape.window="close()">
 
@@ -375,14 +375,15 @@
                         $attExt      = strtolower(pathinfo($att->name, PATHINFO_EXTENSION));
                         $attIsImage  = in_array($attExt, $attImgExts);
                         $attIsVideo  = in_array($attExt, ['mp4','mov','avi','webm','mkv']);
-                        $item = ['name'=>$att->name,'size'=>$att->humanSize(),'url'=>$att->url(),'downloadUrl'=>$attDlUrl,'previewUrl'=>$att->isFile()?($attDlUrl.'?inline=1'):$att->url(),'icon'=>$att->iconClass(),'isLink'=>$att->isLink(),'isImage'=>$attIsImage,'isVideo'=>$attIsVideo];
+                        $attPreviewUrl = $att->isFile() ? ($attDlUrl.'?inline=1') : $att->url();
+                        $item = ['name'=>$att->name,'size'=>$att->humanSize(),'url'=>$att->url(),'downloadUrl'=>$attDlUrl,'previewUrl'=>$attPreviewUrl,'icon'=>$att->iconClass(),'isLink'=>$att->isLink(),'isImage'=>$attIsImage,'isVideo'=>$attIsVideo];
                     @endphp
                     <button type="button" @click="show({{ json_encode($item) }})"
                             style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:#FAFAFA;border:1px solid #F3F4F6;border-radius:10px;width:100%;text-align:left;cursor:pointer;transition:border-color .15s,background .15s;"
                             onmouseover="this.style.background='#F0F0FF';this.style.borderColor='#C7D2FE'" onmouseout="this.style.background='#FAFAFA';this.style.borderColor='#F3F4F6'">
                         <div style="width:44px;height:44px;border-radius:9px;overflow:hidden;flex-shrink:0;background:#EEF2FF;display:flex;align-items:center;justify-content:center;">
                             @if($attIsImage)
-                            <img src="{{ $att->url() }}" alt="" loading="lazy"
+                            <img src="{{ $attPreviewUrl }}" alt="" loading="lazy"
                                  style="width:44px;height:44px;object-fit:cover;display:block;"
                                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
                             <span style="display:none;width:44px;height:44px;align-items:center;justify-content:center;">
