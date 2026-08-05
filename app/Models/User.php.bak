@@ -143,9 +143,8 @@ class User extends Authenticatable
             'role'               => 'string',
             'permissions'        => 'array',
             'mfa_enabled'        => 'boolean',
-            'mfa_required'       => 'boolean',
             'mfa_secret'         => 'encrypted',
-            'mfa_recovery_codes' => 'array',
+            'mfa_recovery_codes' => 'encrypted:array',
         ];
     }
 
@@ -189,6 +188,12 @@ class User extends Authenticatable
     public function projects(): BelongsToMany
     {
         return $this->belongsToMany(Project::class, 'project_user');
+    }
+
+    /** Single uppercase initial for compact avatar badges. */
+    public function getInitialAttribute(): string
+    {
+        return strtoupper(substr($this->name ?? '', 0, 1)) ?: '?';
     }
 
     public function socialAccounts(): BelongsToMany

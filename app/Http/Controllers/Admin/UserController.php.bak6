@@ -169,7 +169,6 @@ class UserController extends Controller
             ],
             'role' => ['required', Rule::in(Role::pluck('name'))],
             'password' => ['nullable', 'sometimes', 'confirmed', Password::defaults()],
-            'pin' => ['nullable', 'sometimes', 'digits:4', 'confirmed'],
             'phone' => 'nullable|string|max:30',
             'job_title' => 'nullable|string|max:80',
             'nationality' => 'nullable|string|max:80',
@@ -233,17 +232,6 @@ class UserController extends Controller
             $passwordChanged = true;
         }
 
-        $pinChanged = false;
-        if ($request->boolean('clear_pin')) {
-            $data['pin'] = null;
-            $data['pin_set_at'] = null;
-            $pinChanged = true;
-        } elseif ($request->filled('pin')) {
-            $data['pin'] = $request->pin;
-            $data['pin_set_at'] = now();
-            $pinChanged = true;
-        }
-
         $user->update($data);
 
         // Role change audit
@@ -273,16 +261,6 @@ class UserController extends Controller
                 'user.password_changed',
                 $user,
                 'Password changed for '.$user->name,
-                ['user_name' => $user->name, 'user_email' => $user->email]
-            );
-        }
-
-        // Shift PIN change audit
-        if ($pinChanged) {
-            AuditLogger::log(
-                'user.pin_changed',
-                $user,
-                (empty($data['pin']) ? 'Shift PIN removed for ' : 'Shift PIN reset for ').$user->name,
                 ['user_name' => $user->name, 'user_email' => $user->email]
             );
         }

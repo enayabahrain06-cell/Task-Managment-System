@@ -90,6 +90,11 @@ Route::middleware(['auth', MfaMiddleware::class])->group(function () {
     // Profile update (all roles)
     Route::post('/profile/update', [UserDashboard::class, 'updateProfile'])->name('user.profile.update');
 
+    // Face ID / Touch ID / fingerprint device enrollment (all roles)
+    Route::get('/webauthn/register/options', [\App\Http\Controllers\Auth\WebAuthnController::class, 'registerOptions'])->name('webauthn.register.options');
+    Route::post('/webauthn/register', [\App\Http\Controllers\Auth\WebAuthnController::class, 'register'])->name('webauthn.register');
+    Route::delete('/webauthn/credentials/{credential}', [\App\Http\Controllers\Auth\WebAuthnController::class, 'destroy'])->name('webauthn.destroy');
+
     // Presence / online status
     Route::post('/user/presence', function (Request $request) {
         $allowed = ['online', 'away', 'busy', 'offline'];

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Support\PostLoginRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -28,35 +29,7 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        $user     = auth()->user();
-        $forceMfa = \App\Models\Setting::get('force_mfa', '0') === '1';
-
-        // Resolve per-user MFA requirement (tri-state: null=global, 1=always, 0=exempt)
-        $mfaRequired = $user->getRawOriginal('mfa_required');
-        if ($mfaRequired === null) {
-            $mustMfa = $forceMfa;
-        } elseif ((int) $mfaRequired === 1) {
-            $mustMfa = true;
-        } else {
-            $mustMfa = false;
-        }
-
-        // Challenge only when MFA is actually required for this user
-        if ($mustMfa && $user->mfa_enabled) {
-            return redirect()->route('mfa.challenge');
-        }
-
-        // Force-MFA: user hasn't set up MFA yet — send to setup
-        if ($mustMfa && ! $user->mfa_enabled) {
-            return redirect()->route('mfa.setup');
-        }
-
-        return match($user->role) {
-            'admin'   => redirect()->intended('/admin/dashboard'),
-            'manager' => redirect()->intended('/manager/dashboard'),
-            'user'    => redirect()->intended('/user/dashboard'),
-            default   => redirect()->intended('/user/dashboard'),
-        };
+        return redirect(PostLoginRedirect::url(auth()->user()));
     }
 
     /**

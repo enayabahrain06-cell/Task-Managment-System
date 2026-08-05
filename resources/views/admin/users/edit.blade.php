@@ -177,6 +177,46 @@
             </div>
         </div>
 
+        {{-- Shift PIN --}}
+        <div class="mob-card bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6 max-md:p-4" x-data="{ clear: false }">
+            <div class="flex items-center justify-between mb-1 max-md:pb-3 max-md:border-b max-md:border-gray-100 max-md:mb-3">
+                <p class="text-sm font-semibold text-gray-700">Shift PIN</p>
+                @if($user->hasPin())
+                    <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                        <i class="fa fa-circle-check text-xs"></i> Set
+                    </span>
+                @else
+                    <span class="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-gray-100 text-gray-400 border border-gray-200">
+                        Not set
+                    </span>
+                @endif
+            </div>
+            <p class="text-xs text-gray-400 mb-4">4-digit code for fast handover sign-in on shared counter devices. Leave blank to keep unchanged.</p>
+
+            @if($user->hasPin())
+                <label class="flex items-center gap-2 text-xs text-gray-500 mb-3 cursor-pointer">
+                    <input type="checkbox" name="clear_pin" value="1" x-model="clear" class="w-3.5 h-3.5 accent-red-600 rounded">
+                    Remove this user's Shift PIN
+                </label>
+            @endif
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 eu-form-grid" :class="clear && 'opacity-40 pointer-events-none'">
+                <div class="mob-field">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">New PIN</label>
+                    <input type="text" name="pin" placeholder="4-digit PIN" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"
+                           oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)"
+                           class="w-full px-3 py-2.5 border rounded-xl text-sm text-center tracking-[6px] focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition {{ $errors->has('pin') ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-gray-50' }}">
+                    @error('pin') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                </div>
+                <div class="mob-field">
+                    <label class="block text-xs font-semibold text-gray-600 mb-1.5">Confirm New PIN</label>
+                    <input type="text" name="pin_confirmation" placeholder="Confirm PIN" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"
+                           oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)"
+                           class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-center tracking-[6px] bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition">
+                </div>
+            </div>
+        </div>
+
         {{-- MFA Security --}}
         <div class="mob-card bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6 max-md:p-4">
             <div class="flex items-center justify-between mb-4 max-md:pb-3 max-md:border-b max-md:border-gray-100">

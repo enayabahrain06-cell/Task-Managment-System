@@ -3,48 +3,53 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Models\Domain;
+use App\Models\Project;
+use App\Models\Setting;
 use App\Models\Subscription;
 use App\Models\Task;
 use App\Models\TaskLog;
 use App\Models\TaskTransfer;
 use App\Models\User;
 use App\Notifications\UserReportSubmitted;
+use App\Support\TaskStatusColors;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules;
+use Illuminate\Validation\Rules\Password;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        $user     = auth()->user();
+        $user = auth()->user();
         $allTasks = Task::where(function ($q) use ($user) {
             $q->where('assigned_to', $user->id)
-              ->orWhereExists(fn($sub) => $sub->selectRaw('1')
-                  ->from('task_assignees')
-                  ->whereColumn('task_assignees.task_id', 'tasks.id')
-                  ->where('task_assignees.user_id', $user->id));
+                ->orWhereExists(fn ($sub) => $sub->selectRaw('1')
+                    ->from('task_assignees')
+                    ->whereColumn('task_assignees.task_id', 'tasks.id')
+                    ->where('task_assignees.user_id', $user->id));
         })->with('project')->get();
 
-        $doneStatuses    = ['approved', 'delivered', 'archived'];
+        $doneStatuses = ['approved', 'delivered', 'archived'];
         $nonDoneStatuses = ['draft', 'assigned', 'viewed', 'in_progress', 'paused', 'submitted', 'revision_requested'];
-        $activeStatuses  = ['draft', 'assigned', 'viewed', 'in_progress', 'submitted', 'revision_requested'];
+        $activeStatuses = ['draft', 'assigned', 'viewed', 'in_progress', 'submitted', 'revision_requested'];
 
         // Same scope used by taskModal — includes social_assigned_to and task_assignees pivot
-        $userScope = fn($q) => $q->where('assigned_to', $user->id)
+        $userScope = fn ($q) => $q->where('assigned_to', $user->id)
             ->orWhere('social_assigned_to', $user->id)
-            ->orWhereExists(fn($sub) => $sub->selectRaw('1')
+            ->orWhereExists(fn ($sub) => $sub->selectRaw('1')
                 ->from('task_assignees')
                 ->whereColumn('task_assignees.task_id', 'tasks.id')
                 ->where('task_assignees.user_id', $user->id));
 
         // Stat card counts — identical queries to what each modal filter executes
-        $cardTotal      = Task::where($userScope)->whereIn('status', $nonDoneStatuses)->count();
-        $cardCompleted  = Task::where($userScope)->whereIn('status', $doneStatuses)->count();
+        $cardTotal = Task::where($userScope)->whereIn('status', $nonDoneStatuses)->count();
+        $cardCompleted = Task::where($userScope)->whereIn('status', $doneStatuses)->count();
         $cardInProgress = Task::where($userScope)->whereIn('status', ['in_progress', 'paused'])->count();
-        $cardInReview   = Task::where($userScope)->whereIn('status', ['submitted', 'revision_requested'])->count();
-        $cardOverdue    = Task::where($userScope)->where('deadline', '<', now())->whereIn('status', $nonDoneStatuses)->count();
+        $cardInReview = Task::where($userScope)->whereIn('status', ['submitted', 'revision_requested'])->count();
+        $cardOverdue = Task::where($userScope)->where('deadline', '<', now())->whereIn('status', $nonDoneStatuses)->count();
 
         // IDs of tasks bulk-transferred TO this user
         $inheritedIds = TaskTransfer::where('to_user_id', $user->id)
@@ -55,50 +60,58 @@ class DashboardController extends Controller
         $reassignedLogsToMe = TaskLog::where('action', 'task_reassigned')
             ->whereIn('task_id', $allTasks->pluck('id'))
             ->get()
-            ->filter(fn($log) => ($log->metadata['to_user_id'] ?? null) == $user->id)
+            ->filter(fn ($log) => ($log->metadata['to_user_id'] ?? null) == $user->id)
             ->keyBy('task_id');
 
         // All "received from others" = bulk transfers + individual reassignments
         $receivedFromOthersIds = $inheritedIds->merge($reassignedLogsToMe->keys())->unique();
 
-        $nativeTasks   = $allTasks->whereNotIn('id', $receivedFromOthersIds->toArray());
+        $nativeTasks = $allTasks->whereNotIn('id', $receivedFromOthersIds->toArray());
         $receivedTasks = $allTasks->whereIn('id', $receivedFromOthersIds->toArray());
         $inheritedTasks = $allTasks->whereIn('id', $inheritedIds->toArray()); // legacy compat
 
-        $total      = $allTasks->count();
-        $completed  = $allTasks->whereIn('status', $doneStatuses)->count();
+        $total = $allTasks->count();
+        $completed = $allTasks->whereIn('status', $doneStatuses)->count();
         $inProgress = $allTasks->where('status', 'in_progress')->count();
-        $pending    = $allTasks->whereIn('status', ['draft', 'assigned', 'viewed'])->count();
-        $inReview   = $allTasks->where('status', 'submitted')->count();
-        $overdue    = $allTasks->filter(
-            fn($t) => $t->deadline && $t->deadline->isPast() && in_array($t->status, $activeStatuses)
+        $pending = $allTasks->whereIn('status', ['draft', 'assigned', 'viewed'])->count();
+        $inReview = $allTasks->where('status', 'submitted')->count();
+        $overdue = $allTasks->filter(
+            fn ($t) => $t->deadline && $t->deadline->isPast() && in_array($t->status, $activeStatuses)
         )->count();
 
         // Completion rate based on native (own) tasks only
-        $nativeTotal     = $nativeTasks->count();
+        $nativeTotal = $nativeTasks->count();
         $nativeCompleted = $nativeTasks->whereIn('status', $doneStatuses)->count();
-        $rate            = $nativeTotal > 0 ? round($nativeCompleted / $nativeTotal * 100) : 0;
+        $rate = $nativeTotal > 0 ? round($nativeCompleted / $nativeTotal * 100) : 0;
 
         // Received (reassigned/transferred) task stats
-        $receivedTotal    = $receivedTasks->count();
+        $receivedTotal = $receivedTasks->count();
         $receivedCompleted = $receivedTasks->whereIn('status', $doneStatuses)->count();
 
         // Active tasks sorted: overdue → in_progress → upcoming → submitted (under review last)
-        $tasks = $allTasks->filter(fn($t) => !in_array($t->status, $doneStatuses))
+        $tasks = $allTasks->filter(fn ($t) => ! in_array($t->status, $doneStatuses))
             ->sortBy(function ($t) {
-                if ($t->deadline && $t->deadline->isPast() && $t->status !== 'submitted') return '1_' . $t->deadline->format('Y-m-d');
-                if ($t->status === 'in_progress')            return '2_' . ($t->deadline?->format('Y-m-d') ?? '9999');
-                if ($t->status !== 'submitted')              return '3_' . ($t->deadline?->format('Y-m-d') ?? '9999');
-                return '9_' . ($t->deadline?->format('Y-m-d') ?? '9999');
+                if ($t->deadline && $t->deadline->isPast() && $t->status !== 'submitted') {
+                    return '1_'.$t->deadline->format('Y-m-d');
+                }
+                if ($t->status === 'in_progress') {
+                    return '2_'.($t->deadline?->format('Y-m-d') ?? '9999');
+                }
+                if ($t->status !== 'submitted') {
+                    return '3_'.($t->deadline?->format('Y-m-d') ?? '9999');
+                }
+
+                return '9_'.($t->deadline?->format('Y-m-d') ?? '9999');
             })->values();
 
         // Tag each task — mark received tasks and attach who it came from
         $tasks = $tasks->map(function ($t) use ($inheritedIds, $reassignedLogsToMe, $receivedFromOthersIds) {
-            $t->is_inherited  = $inheritedIds->contains($t->id);
+            $t->is_inherited = $inheritedIds->contains($t->id);
             $t->is_reassigned = $reassignedLogsToMe->has($t->id);
-            $t->from_user     = $reassignedLogsToMe->get($t->id)?->metadata['from_user_name'] ?? null;
-            $t->is_received   = $receivedFromOthersIds->contains($t->id);
-            $t->is_social     = false;
+            $t->from_user = $reassignedLogsToMe->get($t->id)?->metadata['from_user_name'] ?? null;
+            $t->is_received = $receivedFromOthersIds->contains($t->id);
+            $t->is_social = false;
+
             return $t;
         });
 
@@ -109,20 +122,22 @@ class DashboardController extends Controller
             ->get()
             ->map(function ($t) {
                 $t->is_inherited = false;
-                $t->is_social    = true;
+                $t->is_social = true;
+
                 return $t;
             });
 
         $tasks = $tasks->merge($pendingSocialTasks)->values();
 
         // Completed tasks (approved / delivered / archived) — most recently updated first
-        $completedTasks = $allTasks->filter(fn($t) => in_array($t->status, $doneStatuses))
+        $completedTasks = $allTasks->filter(fn ($t) => in_array($t->status, $doneStatuses))
             ->map(function ($t) use ($inheritedIds, $reassignedLogsToMe, $receivedFromOthersIds) {
-                $t->is_inherited  = $inheritedIds->contains($t->id);
+                $t->is_inherited = $inheritedIds->contains($t->id);
                 $t->is_reassigned = $reassignedLogsToMe->has($t->id);
-                $t->from_user     = $reassignedLogsToMe->get($t->id)?->metadata['from_user_name'] ?? null;
-                $t->is_received   = $receivedFromOthersIds->contains($t->id);
-                $t->is_social     = false;
+                $t->from_user = $reassignedLogsToMe->get($t->id)?->metadata['from_user_name'] ?? null;
+                $t->is_received = $receivedFromOthersIds->contains($t->id);
+                $t->is_social = false;
+
                 return $t;
             });
 
@@ -134,11 +149,12 @@ class DashboardController extends Controller
             ->with('project')
             ->get()
             ->map(function ($t) {
-                $t->is_inherited  = false;
+                $t->is_inherited = false;
                 $t->is_reassigned = false;
-                $t->from_user     = null;
-                $t->is_received   = false;
-                $t->is_social     = true;
+                $t->from_user = null;
+                $t->is_received = false;
+                $t->is_social = true;
+
                 return $t;
             });
 
@@ -148,12 +164,12 @@ class DashboardController extends Controller
 
         // Next 4 upcoming (non-done, future deadline)
         $upcomingTasks = $allTasks
-            ->filter(fn($t) => $t->deadline && $t->deadline->isFuture() && !in_array($t->status, $doneStatuses))
+            ->filter(fn ($t) => $t->deadline && $t->deadline->isFuture() && ! in_array($t->status, $doneStatuses))
             ->sortBy('deadline')
             ->take(4);
 
         // Task IDs via task_assignees pivot (for project discovery)
-        $pivotProjectIds = Task::whereExists(fn($sub) => $sub->selectRaw('1')
+        $pivotProjectIds = Task::whereExists(fn ($sub) => $sub->selectRaw('1')
             ->from('task_assignees')
             ->whereColumn('task_assignees.task_id', 'tasks.id')
             ->where('task_assignees.user_id', $user->id))
@@ -183,23 +199,23 @@ class DashboardController extends Controller
             ->values();
 
         // My projects with progress (Quick Tasks excluded per project rules)
-        $myProjects = \App\Models\Project::whereIn('id', $involvedProjectIds)
+        $myProjects = Project::whereIn('id', $involvedProjectIds)
             ->where('is_quick', false)
             ->withCount([
                 'tasks',
-                'tasks as completed_count' => fn($q) => $q->whereIn('status', $doneStatuses),
+                'tasks as completed_count' => fn ($q) => $q->whereIn('status', $doneStatuses),
             ])
             ->orderByRaw("CASE WHEN status='completed' THEN 1 ELSE 0 END")
             ->orderBy('deadline')
             ->take(6)
             ->get();
 
-        $realProjects = \App\Models\Project::whereIn('id', $involvedProjectIds)->where('is_quick', false);
+        $realProjects = Project::whereIn('id', $involvedProjectIds)->where('is_quick', false);
         $myProjectStats = [
-            'total'     => (clone $realProjects)->count(),
-            'active'    => (clone $realProjects)->where('status', 'active')->count(),
+            'total' => (clone $realProjects)->count(),
+            'active' => (clone $realProjects)->where('status', 'active')->count(),
             'completed' => (clone $realProjects)->where('status', 'completed')->count(),
-            'overdue'   => (clone $realProjects)
+            'overdue' => (clone $realProjects)
                 ->whereNotNull('deadline')
                 ->where('deadline', '<', now())
                 ->where('status', '!=', 'completed')
@@ -216,6 +232,7 @@ class DashboardController extends Controller
         // Last 7 days activity bar chart
         $weekActivity = collect(range(6, 0))->map(function ($daysAgo) use ($user) {
             $date = now()->subDays($daysAgo)->toDateString();
+
             return [
                 'label' => now()->subDays($daysAgo)->format('D'),
                 'count' => TaskLog::where('user_id', $user->id)
@@ -235,12 +252,18 @@ class DashboardController extends Controller
             ->orderBy('deadline')
             ->get();
 
-        $pendingSocialPosts   = $socialTasks->whereNull('social_posted_at')->count();
+        $pendingSocialPosts = $socialTasks->whereNull('social_posted_at')->count();
         $completedSocialPosts = $socialTasks->whereNotNull('social_posted_at')->count();
 
-        $myLicenses = Subscription::whereHas('users', fn($q) => $q->where('user_id', $user->id))
+        $myLicenses = Subscription::whereHas('users', fn ($q) => $q->where('user_id', $user->id))
             ->orderBy('renewal_date')
             ->get();
+
+        $expiringDomains = Domain::where('responsible_user_id', $user->id)
+            ->orWhereHas('responsibleUsers', fn ($q) => $q->where('user_id', $user->id))
+            ->whereNotNull('expires_at')->get()
+            ->filter(fn ($d) => $d->status === 'expiring_soon')->values();
+        $showExpiringPopup = $expiringDomains->isNotEmpty() && ! session('domains_expiry_popup_dismissed', false);
 
         return view('user.dashboard', compact(
             'total', 'completed', 'inProgress', 'pending', 'pendingApproval', 'overdue', 'rate',
@@ -248,7 +271,7 @@ class DashboardController extends Controller
             'tasks', 'completedTasks', 'upcomingTasks', 'recentActivity', 'weekActivity',
             'teamTasks', 'myProjects', 'myProjectStats', 'socialTasks',
             'inheritedCount', 'nativeTotal', 'nativeCompleted', 'pendingSocialPosts', 'completedSocialPosts',
-            'receivedTotal', 'receivedCompleted', 'myLicenses'
+            'receivedTotal', 'receivedCompleted', 'myLicenses', 'expiringDomains', 'showExpiringPopup'
         ));
     }
 
@@ -258,12 +281,12 @@ class DashboardController extends Controller
 
         $request->validate([
             'current_password' => 'required|string',
-            'email'            => 'nullable|email|max:255|unique:users,email,' . $user->id,
-            'password'         => ['nullable', 'sometimes', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
-            'avatar'           => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'email' => 'nullable|email|max:255|unique:users,email,'.$user->id,
+            'password' => ['nullable', 'sometimes', 'confirmed', Password::defaults()],
+            'avatar' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
-        if (!Hash::check($request->current_password, $user->password)) {
+        if (! Hash::check($request->current_password, $user->password)) {
             return back()->withErrors(['current_password' => 'Current password is incorrect.'])->withInput();
         }
 
@@ -293,7 +316,7 @@ class DashboardController extends Controller
             'report' => 'required|string|min:10|max:1000',
         ]);
 
-        if (\App\Models\Setting::get('notify_on_report', '1') === '1') {
+        if (Setting::get('notify_on_report', '1') === '1') {
             $admins = User::where('role', 'admin')->get();
             foreach ($admins as $admin) {
                 $admin->notify(new UserReportSubmitted(auth()->user(), $request->report));
@@ -305,15 +328,15 @@ class DashboardController extends Controller
 
     public function taskModal(Request $request)
     {
-        $user   = auth()->user();
+        $user = auth()->user();
         $filter = $request->input('filter', 'total');
 
-        $doneStatuses    = ['approved', 'delivered', 'archived'];
+        $doneStatuses = ['approved', 'delivered', 'archived'];
         $nonDoneStatuses = ['draft', 'assigned', 'viewed', 'in_progress', 'paused', 'submitted', 'revision_requested'];
 
-        $userScope = fn($q) => $q->where('assigned_to', $user->id)
+        $userScope = fn ($q) => $q->where('assigned_to', $user->id)
             ->orWhere('social_assigned_to', $user->id)
-            ->orWhereExists(fn($sub) => $sub->selectRaw('1')
+            ->orWhereExists(fn ($sub) => $sub->selectRaw('1')
                 ->from('task_assignees')
                 ->whereColumn('task_assignees.task_id', 'tasks.id')
                 ->where('task_assignees.user_id', $user->id));
@@ -325,7 +348,7 @@ class DashboardController extends Controller
                 ->whereNull('social_posted_at')
                 ->with(['project:id,name']);
         } elseif ($filter === 'date') {
-            $date    = $request->input('date');
+            $date = $request->input('date');
             $taskIds = TaskLog::where('user_id', $user->id)
                 ->whereDate('created_at', $date)
                 ->pluck('task_id')
@@ -340,45 +363,33 @@ class DashboardController extends Controller
             // Completed tasks for this user (assigned, pivot, or social)
             $base = Task::where($userScope)->whereIn('status', $doneStatuses)->with(['project:id,name']);
         } elseif ($filter === 'received') {
-            $inheritedIds  = \App\Models\TaskTransfer::where('to_user_id', $user->id)->pluck('task_id');
+            $inheritedIds = TaskTransfer::where('to_user_id', $user->id)->pluck('task_id');
             $reassignedIds = TaskLog::where('action', 'task_reassigned')
                 ->whereIn('task_id', Task::where(function ($q) use ($user) {
                     $q->where('assigned_to', $user->id)
-                      ->orWhereExists(fn($sub) => $sub->selectRaw('1')
-                          ->from('task_assignees')
-                          ->whereColumn('task_assignees.task_id', 'tasks.id')
-                          ->where('task_assignees.user_id', $user->id));
+                        ->orWhereExists(fn ($sub) => $sub->selectRaw('1')
+                            ->from('task_assignees')
+                            ->whereColumn('task_assignees.task_id', 'tasks.id')
+                            ->where('task_assignees.user_id', $user->id));
                 })->pluck('id'))
                 ->get()
-                ->filter(fn($log) => ($log->metadata['to_user_id'] ?? null) == $user->id)
+                ->filter(fn ($log) => ($log->metadata['to_user_id'] ?? null) == $user->id)
                 ->pluck('task_id');
             $receivedIds = $inheritedIds->merge($reassignedIds)->unique();
             $base->whereIn('id', $receivedIds);
         } else {
             match ($filter) {
                 'in_progress' => $base->whereIn('status', ['in_progress', 'paused']),
-                'in_review'   => $base->whereIn('status', ['submitted', 'revision_requested']),
-                'overdue'     => $base->where('deadline', '<', now())->whereIn('status', $nonDoneStatuses),
-                default       => $base->whereIn('status', $nonDoneStatuses),
+                'in_review' => $base->whereIn('status', ['submitted', 'revision_requested']),
+                'overdue' => $base->where('deadline', '<', now())->whereIn('status', $nonDoneStatuses),
+                default => $base->whereIn('status', $nonDoneStatuses),
             };
         }
 
-        $statusMeta = [
-            'draft'              => ['label' => 'Draft',        'color' => '#6B7280', 'bg' => '#F3F4F6'],
-            'assigned'           => ['label' => 'Assigned',     'color' => '#4F46E5', 'bg' => '#EEF2FF'],
-            'viewed'             => ['label' => 'Viewed',       'color' => '#0369A1', 'bg' => '#E0F2FE'],
-            'in_progress'        => ['label' => 'In Progress',  'color' => '#D97706', 'bg' => '#FEF3C7'],
-            'paused'             => ['label' => 'Paused',       'color' => '#92400E', 'bg' => '#FEF3C7'],
-            'submitted'          => ['label' => 'In Review',    'color' => '#7C3AED', 'bg' => '#EDE9FE'],
-            'revision_requested' => ['label' => 'Revision',     'color' => '#DC2626', 'bg' => '#FEE2E2'],
-            'approved'           => ['label' => 'Approved',     'color' => '#059669', 'bg' => '#D1FAE5'],
-            'delivered'          => ['label' => 'Delivered',    'color' => '#047857', 'bg' => '#ECFDF5'],
-            'archived'           => ['label' => 'Archived',     'color' => '#6B7280', 'bg' => '#F3F4F6'],
-        ];
         $priorityMeta = [
-            'high'   => ['label' => 'High', 'color' => '#EF4444'],
+            'high' => ['label' => 'High', 'color' => '#EF4444'],
             'medium' => ['label' => 'Med',  'color' => '#F59E0B'],
-            'low'    => ['label' => 'Low',  'color' => '#10B981'],
+            'low' => ['label' => 'Low',  'color' => '#10B981'],
         ];
 
         $totalCount = $base->count();
@@ -387,22 +398,24 @@ class DashboardController extends Controller
             ->orderBy('deadline')
             ->take(50)
             ->get()
-            ->map(function ($task) use ($statusMeta, $priorityMeta) {
-                $sm = $statusMeta[$task->status] ?? ['label' => ucfirst($task->status ?? ''), 'color' => '#6B7280', 'bg' => '#F3F4F6'];
+            ->map(function ($task) use ($priorityMeta) {
+                $statusMeta = TaskStatusColors::for($task->status);
+                $sm = ['label' => $statusMeta['label'], 'color' => $statusMeta['text'], 'bg' => $statusMeta['bg']];
                 $pm = $priorityMeta[$task->priority] ?? null;
+
                 return [
-                    'id'          => $task->id,
-                    'title'       => $task->title,
-                    'status'      => $task->status,
+                    'id' => $task->id,
+                    'title' => $task->title,
+                    'status' => $task->status,
                     'statusLabel' => $sm['label'],
                     'statusColor' => $sm['color'],
-                    'statusBg'    => $sm['bg'],
-                    'priority'    => $task->priority,
-                    'priorityMeta'=> $pm,
-                    'deadline'    => $task->deadline?->format(config('app.date_format', 'M d, Y')),
-                    'isOverdue'   => $task->deadline && $task->deadline->isPast() && !in_array($task->status, ['approved', 'delivered', 'archived']),
-                    'project'     => $task->project?->name,
-                    'url'         => route('user.tasks.show', $task->id),
+                    'statusBg' => $sm['bg'],
+                    'priority' => $task->priority,
+                    'priorityMeta' => $pm,
+                    'deadline' => $task->deadline?->format(config('app.date_format', 'M d, Y')),
+                    'isOverdue' => $task->deadline && $task->deadline->isPast() && ! in_array($task->status, ['approved', 'delivered', 'archived']),
+                    'project' => $task->project?->name,
+                    'url' => route('user.tasks.show', $task->id),
                 ];
             });
 

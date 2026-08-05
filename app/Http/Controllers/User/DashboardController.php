@@ -284,6 +284,7 @@ class DashboardController extends Controller
             'email' => 'nullable|email|max:255|unique:users,email,'.$user->id,
             'password' => ['nullable', 'sometimes', 'confirmed', Password::defaults()],
             'avatar' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'pin' => ['nullable', 'sometimes', 'digits:4', 'confirmed'],
         ]);
 
         if (! Hash::check($request->current_password, $user->password)) {
@@ -303,6 +304,14 @@ class DashboardController extends Controller
                 Storage::disk('public')->delete($user->avatar);
             }
             $user->avatar = $request->file('avatar')->store('avatars', 'public');
+        }
+
+        if ($request->boolean('clear_pin')) {
+            $user->pin = null;
+            $user->pin_set_at = null;
+        } elseif ($request->filled('pin')) {
+            $user->pin = $request->pin;
+            $user->pin_set_at = now();
         }
 
         $user->save();

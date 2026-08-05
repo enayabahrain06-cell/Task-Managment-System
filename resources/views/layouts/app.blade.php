@@ -918,10 +918,10 @@
             <i class="fa fa-circle-check"></i> {{ session('profile_success') }}
         </div>
         @endif
-        @if($errors->has('current_password') || $errors->has('email') || $errors->has('password') || $errors->has('avatar'))
+        @if($errors->has('current_password') || $errors->has('email') || $errors->has('password') || $errors->has('avatar') || $errors->has('pin'))
         <div style="margin:16px 24px 0;background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:10px 14px;font-size:12px;color:#DC2626;display:flex;align-items:center;gap:8px;">
             <i class="fa fa-exclamation-circle"></i>
-            {{ $errors->first('current_password') ?: ($errors->first('email') ?: ($errors->first('password') ?: $errors->first('avatar'))) }}
+            {{ $errors->first('current_password') ?: ($errors->first('email') ?: ($errors->first('password') ?: ($errors->first('avatar') ?: $errors->first('pin')))) }}
         </div>
         @endif
 
@@ -1005,6 +1005,40 @@
                     </div>
                 </div>
 
+                {{-- Shift PIN --}}
+                <div x-data="{ clear: false }">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                        <label style="font-size:12px;font-weight:600;color:#374151;">
+                            Shift PIN <span style="font-weight:400;color:#9CA3AF;">(4-digit quick sign-in for shared devices)</span>
+                        </label>
+                        @if($profileUser->hasPin())
+                            <span style="font-size:10px;font-weight:700;color:#166534;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:20px;padding:2px 8px;">
+                                <i class="fa fa-circle-check" style="font-size:9px;"></i> Set
+                            </span>
+                        @endif
+                    </div>
+
+                    @if($profileUser->hasPin())
+                        <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:#6B7280;cursor:pointer;margin-bottom:10px;">
+                            <input type="checkbox" name="clear_pin" value="1" x-model="clear"
+                                   style="width:14px;height:14px;accent-color:#DC2626;border-radius:4px;">
+                            Remove my Shift PIN
+                        </label>
+                    @endif
+
+                    <div class="gp-pin-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" :style="clear && 'opacity:.4;pointer-events:none;'">
+                        <input type="text" name="pin" placeholder="New PIN" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"
+                               oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)"
+                               style="width:100%;padding:10px 12px;border:1.5px solid {{ $errors->has('pin') ? '#FCA5A5' : '#E5E7EB' }};border-radius:10px;font-size:14px;letter-spacing:4px;text-align:center;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
+                               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                        <input type="text" name="pin_confirmation" placeholder="Confirm PIN" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"
+                               oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)"
+                               style="width:100%;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;letter-spacing:4px;text-align:center;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
+                               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                    </div>
+                    <p style="font-size:11px;color:#9CA3AF;margin:6px 0 0;">Lets you tap your name and enter this PIN on the mobile login screen instead of typing your password &mdash; handy for handing a shared counter device to the next person on shift.</p>
+                </div>
+
             </div>
 
             <div style="padding:16px 24px;border-top:1px solid #F3F4F6;display:flex;justify-content:flex-end;gap:10px;">
@@ -1018,6 +1052,43 @@
                 </button>
             </div>
         </form>
+
+        {{-- Face ID / Touch ID / fingerprint --}}
+        <div style="padding:0 24px 20px;">
+            <div style="height:1px;background:#F3F4F6;margin-bottom:20px;"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+                <label style="font-size:12px;font-weight:600;color:#374151;">
+                    Face ID / Fingerprint <span style="font-weight:400;color:#9CA3AF;">(skip password on this device)</span>
+                </label>
+            </div>
+            <p style="font-size:11px;color:#9CA3AF;margin:4px 0 12px;">Enable once per device for the fastest daily sign-in — no password or PIN typing.</p>
+
+            <div id="wa-device-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+                @forelse($profileUser->webauthnCredentials()->latest()->get() as $cred)
+                <div class="wa-device-row" data-credential-id="{{ $cred->id }}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;">
+                    <span style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#374151;">
+                        <i class="fa fa-mobile-screen-button" style="color:#9CA3AF;"></i>
+                        {{ $cred->device_label ?: 'Unnamed device' }}
+                        <span style="color:#D1D5DB;">&middot;</span>
+                        <span style="color:#9CA3AF;">{{ $cred->last_used_at ? 'used '.$cred->last_used_at->diffForHumans() : 'never used' }}</span>
+                    </span>
+                    <button type="button" onclick="waRemoveDevice({{ $cred->id }}, this)"
+                            style="border:none;background:none;color:#DC2626;cursor:pointer;font-size:12px;padding:2px 4px;">
+                        <i class="fa fa-trash"></i>
+                    </button>
+                </div>
+                @empty
+                <p id="wa-empty-hint" style="font-size:11.5px;color:#9CA3AF;margin:0;">No devices enrolled yet.</p>
+                @endforelse
+            </div>
+
+            <p id="wa-status" style="font-size:12px;font-weight:600;margin:0 0 10px;"></p>
+
+            <button type="button" id="wa-enroll-btn" onclick="waEnroll()"
+                    style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:10px;font-size:12.5px;font-weight:600;cursor:pointer;">
+                <i class="fa fa-fingerprint"></i> Enable on this device
+            </button>
+        </div>
     </div>
 </div>
 
@@ -1159,6 +1230,95 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('global-profile-modal').style.display = 'flex';
 });
 @endif
+</script>
+
+<script>
+// ── Face ID / Touch ID / fingerprint enrollment ──────────────────────
+function waBufToBase64url(buf) {
+    let str = '';
+    new Uint8Array(buf).forEach(b => { str += String.fromCharCode(b); });
+    return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function waBase64urlToBuf(b64url) {
+    const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - b64url.length % 4) % 4);
+    const str = atob(b64);
+    const buf = new Uint8Array(str.length);
+    for (let i = 0; i < str.length; i++) buf[i] = str.charCodeAt(i);
+    return buf.buffer;
+}
+function waCsrf() {
+    return document.querySelector('meta[name="csrf-token"]').content;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('wa-enroll-btn');
+    if (btn && !(window.PublicKeyCredential)) {
+        btn.style.display = 'none';
+        const status = document.getElementById('wa-status');
+        if (status) { status.style.color = '#9CA3AF'; status.textContent = 'Not supported in this browser.'; }
+    }
+});
+
+async function waEnroll() {
+    const status = document.getElementById('wa-status');
+    const btn = document.getElementById('wa-enroll-btn');
+    status.style.color = '#9CA3AF';
+    status.textContent = 'Follow your device prompt…';
+    btn.disabled = true;
+
+    try {
+        const optRes = await fetch('{{ route('webauthn.register.options') }}', { headers: { 'Accept': 'application/json' } });
+        if (!optRes.ok) throw new Error('options');
+        const options = await optRes.json();
+
+        options.publicKey.challenge = waBase64urlToBuf(options.publicKey.challenge);
+        options.publicKey.user.id = waBase64urlToBuf(options.publicKey.user.id);
+        (options.publicKey.excludeCredentials || []).forEach(c => { c.id = waBase64urlToBuf(c.id); });
+
+        const cred = await navigator.credentials.create({ publicKey: options.publicKey });
+
+        const payload = {
+            id: waBufToBase64url(cred.rawId),
+            clientDataJSON: waBufToBase64url(cred.response.clientDataJSON),
+            attestationObject: waBufToBase64url(cred.response.attestationObject),
+        };
+
+        const res = await fetch('{{ route('webauthn.register') }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': waCsrf(), 'Accept': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || 'Could not enable this device.');
+
+        status.style.color = '#166534';
+        status.textContent = data.message || 'Enabled.';
+        setTimeout(() => window.location.reload(), 900);
+    } catch (e) {
+        status.style.color = '#DC2626';
+        status.textContent = (e && e.name === 'NotAllowedError') ? 'Cancelled.' : (e.message || 'Could not enable this device.');
+    }
+    btn.disabled = false;
+}
+
+async function waRemoveDevice(id, btnEl) {
+    const row = btnEl.closest('.wa-device-row');
+    btnEl.disabled = true;
+    try {
+        const res = await fetch('/webauthn/credentials/' + id, {
+            method: 'DELETE',
+            headers: { 'X-CSRF-TOKEN': waCsrf(), 'Accept': 'application/json' },
+        });
+        if (!res.ok) throw new Error();
+        row.remove();
+        const list = document.getElementById('wa-device-list');
+        if (list && !list.querySelector('.wa-device-row')) {
+            list.insertAdjacentHTML('beforeend', '<p id="wa-empty-hint" style="font-size:11.5px;color:#9CA3AF;margin:0;">No devices enrolled yet.</p>');
+        }
+    } catch (e) {
+        btnEl.disabled = false;
+    }
+}
 </script>
 
 <script>

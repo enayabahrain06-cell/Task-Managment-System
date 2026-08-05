@@ -11,6 +11,7 @@
         "barryvdh/laravel-dompdf": "^3.1",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
+        "lbuchs/webauthn": "^2.2",
         "p7h/nas-file-manager": "dev-main",
         "php-mqtt/client": "^2.3",
         "phpoffice/phpspreadsheet": "^5.8",

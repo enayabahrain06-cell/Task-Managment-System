@@ -42,6 +42,8 @@ class User extends Authenticatable
         'mfa_enabled',
         'mfa_recovery_codes',
         'mfa_required',
+        'pin',
+        'pin_set_at',
     ];
 
     public const ALL_PERMISSIONS = [
@@ -116,6 +118,11 @@ class User extends Authenticatable
         return $this->avatar ? \Illuminate\Support\Facades\Storage::url($this->avatar) : null;
     }
 
+    public function webauthnCredentials(): HasMany
+    {
+        return $this->hasMany(WebauthnCredential::class);
+    }
+
     /**
      * The attributes that should be hidden for serialization.
      *
@@ -126,6 +133,7 @@ class User extends Authenticatable
         'remember_token',
         'mfa_secret',
         'mfa_recovery_codes',
+        'pin',
     ];
 
     /**
@@ -145,7 +153,15 @@ class User extends Authenticatable
             'mfa_enabled'        => 'boolean',
             'mfa_secret'         => 'encrypted',
             'mfa_recovery_codes' => 'encrypted:array',
+            'pin'                => 'hashed',
+            'pin_set_at'         => 'datetime',
         ];
+    }
+
+    /** Returns true if this user has a Shift PIN configured for fast counter-device login. */
+    public function hasPin(): bool
+    {
+        return ! empty($this->getRawOriginal('pin'));
     }
 
     public function isArchived(): bool

@@ -7,6 +7,18 @@ Route::get('/login', '\App\Http\Controllers\Auth\AuthenticatedSessionController@
 Route::post('/login', '\App\Http\Controllers\Auth\AuthenticatedSessionController@store')->middleware('guest');
 Route::post('/logout', '\App\Http\Controllers\Auth\AuthenticatedSessionController@destroy')->name('logout');
 
+// Shift PIN — fast handover login for shared counter devices (mobile login screen)
+Route::middleware('guest')->group(function () {
+    Route::get('/login/shift-pin/staff', [\App\Http\Controllers\Auth\ShiftPinController::class, 'staff'])->middleware('throttle:30,1')->name('login.shift-pin.staff');
+    Route::post('/login/shift-pin', [\App\Http\Controllers\Auth\ShiftPinController::class, 'authenticate'])->middleware('throttle:20,1')->name('login.shift-pin');
+});
+
+// Face ID / Touch ID / fingerprint — biometric sign-in for personal daily-return devices
+Route::middleware('guest')->group(function () {
+    Route::get('/login/webauthn/options', [\App\Http\Controllers\Auth\WebAuthnController::class, 'loginOptions'])->middleware('throttle:30,1')->name('login.webauthn.options');
+    Route::post('/login/webauthn', [\App\Http\Controllers\Auth\WebAuthnController::class, 'login'])->middleware('throttle:20,1')->name('login.webauthn');
+});
+
 Route::get('/register', '\App\Http\Controllers\Auth\RegisteredUserController@create')->middleware('guest')->name('register');
 Route::post('/register', '\App\Http\Controllers\Auth\RegisteredUserController@store')->middleware('guest');
 
