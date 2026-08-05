@@ -895,7 +895,7 @@
 <div id="global-profile-modal"
      style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.5);"
      onclick="if(event.target===this)this.style.display='none'">
-    <div style="background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,.2);width:100%;max-width:460px;overflow:hidden;">
+    <div style="background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,.2);width:100%;max-width:460px;max-height:calc(100vh - 32px);overflow-y:auto;overflow-x:hidden;">
 
         <div style="padding:20px 24px 16px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
             <div style="display:flex;align-items:center;gap:10px;">

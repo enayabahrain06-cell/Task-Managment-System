@@ -76,7 +76,7 @@ class WebAuthnController extends Controller
         }
 
         $request->user()->webauthnCredentials()->create([
-            'credential_id'      => $data->credentialId->jsonSerialize(),
+            'credential_id'      => (new ByteBuffer($data->credentialId))->jsonSerialize(),
             'public_key'         => $data->credentialPublicKey,
             'sign_count'         => $data->signatureCounter ?? 0,
             'attestation_format' => $data->attestationFormat,
@@ -160,6 +160,11 @@ class WebAuthnController extends Controller
 
         Auth::login($user);
         $request->session()->regenerate();
+
+        // Face ID / Touch ID / Windows Hello already required biometric/device-PIN user
+        // verification for this assertion (userVerification: 'required' at both registration
+        // and login) — that satisfies MFA's intent, so don't also challenge via MfaMiddleware.
+        $request->session()->put('mfa_verified', true);
 
         return response()->json(['state' => 'ok', 'redirect' => PostLoginRedirect::url($user)]);
     }
