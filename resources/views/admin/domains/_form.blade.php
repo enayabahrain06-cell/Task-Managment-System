@@ -4,14 +4,35 @@
     $currencies    = ['BHD','USD','EUR','GBP','SAR','AED','KWD','QAR','OMR'];
 @endphp
 
+<style>
+/* Mobile-only premium pass (≤768px) — shared domain form grid.
+   Uses the .mob-field token from layouts/app.blade.php; desktop untouched. */
+@media (max-width: 768px) {
+    .mob-field { flex: 1 1 100% !important; width: 100% !important; min-width: 0 !important; }
+    .mob-field input, .mob-field select, .mob-field textarea { min-height: 46px !important; }
+
+    /* Registrar Credentials form-section card — mobile card-consistency pass */
+    .dom-cred-card {
+        border-radius: var(--mob-r-md, 18px) !important;
+        box-shadow: var(--mob-shadow-1, 0 1px 2px 0 rgba(0,0,0,.05), 0 0 0 1px rgba(0,0,0,.05)) !important;
+        padding: var(--mob-sp-2, 16px) !important;
+    }
+    .dom-cred-header {
+        padding-bottom: 12px !important;
+        margin-bottom: 12px !important;
+        border-bottom: 1px solid #F3F4F6 !important;
+    }
+}
+</style>
+
 <div style="display:flex;flex-wrap:wrap;gap:14px;">
-    <div style="flex:1;min-width:220px;">
+    <div class="mob-field" style="flex:1;min-width:220px;">
         <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Domain Name <span style="color:#DC2626;">*</span></label>
         <input name="domain" type="text" value="{{ old('domain', $domain?->domain) }}" placeholder="example.com" required
                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
                onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
     </div>
-    <div style="flex:1;min-width:180px;">
+    <div class="mob-field" style="flex:1;min-width:180px;">
         <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Registrar</label>
         <input name="registrar" type="text" value="{{ old('registrar', $domain?->registrar) }}" placeholder="GoDaddy, Namecheap…"
                list="registrar-list"
@@ -26,7 +47,7 @@
 </div>
 
 <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;">
-    <div style="flex:1;min-width:200px;">
+    <div class="mob-field" style="flex:1;min-width:200px;">
         <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Customer</label>
         <select name="customer_id" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;">
             <option value="">— No customer —</option>
@@ -37,7 +58,7 @@
             @endforeach
         </select>
     </div>
-    <div style="flex:1;min-width:200px;">
+    <div class="mob-field" style="flex:1;min-width:200px;">
         <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Responsible Person(s)</label>
         @php
             $selectedResponsibleIds = old('responsible_user_ids') ?? ($domain
@@ -59,13 +80,13 @@
 </div>
 
 <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;">
-    <div style="flex:1;min-width:200px;">
+    <div class="mob-field" style="flex:1;min-width:200px;">
         <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Bill To</label>
         <input name="billing_to" type="text" value="{{ old('billing_to', $domain?->billing_to) }}" placeholder="Client name, contact person…"
                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
                onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
     </div>
-    <div style="flex:1;min-width:180px;">
+    <div class="mob-field" style="flex:1;min-width:180px;">
         <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Hosting Provider</label>
         <input name="hosting_provider" type="text" value="{{ old('hosting_provider', $domain?->hosting_provider) }}" placeholder="SiteGround, Cloudflare…"
                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
@@ -74,13 +95,13 @@
 </div>
 
 <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;">
-    <div style="flex:1;min-width:100px;">
+    <div class="mob-field" style="flex:1;min-width:100px;">
         <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Cost <span style="color:#DC2626;">*</span></label>
         <input name="cost" type="number" step="0.001" min="0" value="{{ old('cost', $domain?->cost ?? 0) }}" required
                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
                onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
     </div>
-    <div style="flex:1;min-width:100px;">
+    <div class="mob-field" style="flex:1;min-width:100px;">
         <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Currency</label>
         <select name="currency" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;">
             @foreach($currencies as $cur)
@@ -88,7 +109,7 @@
             @endforeach
         </select>
     </div>
-    <div style="flex:1;min-width:160px;">
+    <div class="mob-field" style="flex:1;min-width:160px;">
         <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Billing Cycle</label>
         <select name="billing_cycle" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;">
             @foreach($billingCycles as $key => $label)
@@ -99,13 +120,13 @@
 </div>
 
 <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;">
-    <div style="flex:1;min-width:160px;">
+    <div class="mob-field" style="flex:1;min-width:160px;">
         <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Registered On</label>
         <input name="registered_at" type="date" value="{{ old('registered_at', $domain?->registered_at?->format('Y-m-d')) }}"
                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
                onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
     </div>
-    <div style="flex:1;min-width:160px;">
+    <div class="mob-field" style="flex:1;min-width:160px;">
         <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Expires On</label>
         <input name="expires_at" type="date" value="{{ old('expires_at', $domain?->expires_at?->format('Y-m-d')) }}"
                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
@@ -120,25 +141,25 @@
               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">{{ old('nameservers', implode("\n", $domain?->nameservers ?? [])) }}</textarea>
 </div>
 
-<div style="margin-top:14px;padding:14px;background:#F9FAFB;border-radius:10px;border:1.5px solid #E5E7EB;">
-    <div style="font-size:12px;font-weight:700;color:#6B7280;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+<div class="dom-cred-card" style="margin-top:14px;padding:14px;background:#F9FAFB;border-radius:10px;border:1.5px solid #E5E7EB;">
+    <div class="dom-cred-header" style="font-size:12px;font-weight:700;color:#6B7280;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
         <i class="fas fa-lock" style="font-size:11px;"></i> REGISTRAR CREDENTIALS
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:14px;">
-        <div style="flex:2;min-width:200px;">
+        <div class="mob-field" style="flex:2;min-width:200px;">
             <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Login URL</label>
             <input name="login_url" type="url" value="{{ old('login_url', $domain?->login_url) }}" placeholder="https://account.registrar.com"
                    style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
                    onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
         </div>
-        <div style="flex:1;min-width:160px;">
+        <div class="mob-field" style="flex:1;min-width:160px;">
             <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">Username</label>
             <input name="username" type="text" value="{{ old('username', $domain?->username) }}"
                    style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box;"
                    onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
         </div>
     </div>
-    <div x-data="{showPwd:false}" style="margin-top:10px;">
+    <div x-data="{showPwd:false}" class="mob-field" style="margin-top:10px;">
         <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:5px;">
             Password @if($domain)<span style="font-weight:400;color:#9CA3AF;font-size:11px;"> — leave blank to keep</span>@endif
         </label>

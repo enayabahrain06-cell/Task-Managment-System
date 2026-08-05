@@ -136,6 +136,67 @@
 .emi-title { font-size:12px; font-weight:600; color:#111827; }
 .emi-desc  { font-size:10px; color:#9CA3AF; line-height:1.3; }
 
+/* ══════════════════════════════════════════════
+   Mobile-only premium redesign (320–768px)
+   The Gantt chart itself remains a horizontal-scroll
+   timeline by nature — only the .gantt-right canvas
+   scrolls, never the page. Chart JS/library init is
+   untouched; these are CSS-only layout adjustments.
+   ══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .gantt-header-row { gap: 10px; }
+    .gantt-header-row > a.gantt-back-btn {
+        width: 100%; justify-content: center; min-height: 44px;
+    }
+
+    /* Toolbar: stacked, full-width, ≥44px touch targets */
+    .gantt-toolbar { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px; }
+    .gantt-toolbar > .gantt-select { width: 100%; min-height: 44px; font-size: 14px; }
+
+    /* Filter chips (uds-chip) replace the two full-width stacked selects above */
+    #projectFilter, #statusFilter { display: none !important; }
+    .gantt-mobile-filters { display: flex !important; gap: 8px; flex-wrap: wrap; order: -1; width: 100%; }
+    .gantt-toolbar > .gantt-btn { width: 100%; min-height: 44px; text-align: center; }
+    .gantt-zoom-group { width: 100%; margin-left: 0 !important; justify-content: space-between; }
+    .gantt-zoom-group .gantt-btn { flex: 1; min-height: 44px; }
+    .export-dropdown { width: 100%; }
+    .export-dropdown .gantt-btn { width: 100%; min-height: 44px; text-align: center; }
+    .export-menu { left: 0; right: 0; width: auto; max-width: calc(100vw - 48px); }
+
+    /* Legend: wraps cleanly below the controls */
+    .gantt-legend {
+        width: 100%; padding-left: 0 !important; border-left: none !important;
+        border-top: 1px solid #F3F4F6; padding-top: 8px; margin-top: 2px;
+    }
+
+    /* Chart height: leave room for stacked toolbar + mobile chrome.
+       Also bring the main panel's radius/elevation in line with every other
+       top-level content card on mobile (dash-card / audit-log-scroll pattern),
+       instead of leaving its desktop-only 14px radius unstyled here. */
+    .gantt-wrap {
+        height: calc(100vh - 300px); min-height: 320px;
+        border-radius: var(--mob-r-lg, 20px) !important;
+        box-shadow: var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05));
+    }
+    .gantt-left { width: 130px; min-width: 130px; }
+
+    /* Empty state ("no tasks with deadlines") — same card treatment as gantt-wrap */
+    .gantt-empty {
+        border-radius: var(--mob-r-lg, 20px) !important;
+        box-shadow: var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05));
+    }
+
+    /* "Scroll to see more" hint (chart-internal scroll only) */
+    .gantt-mobile-scroll-hint {
+        display: flex; align-items: center; gap: 6px; width: fit-content;
+        font-size: 11px; font-weight: 600; color: #6366F1;
+        background: #EEF2FF; border: 1px solid #C7D2FE; border-radius: 8px;
+        padding: 6px 10px; margin-bottom: 8px;
+    }
+}
+.gantt-mobile-scroll-hint { display: none; }
+.gantt-mobile-filters { display: none; }
+
 /* ── Print styles ── */
 @media print {
     body * { visibility:hidden !important; }
@@ -151,12 +212,12 @@
 
 @section('content')
 <div style="padding:20px 24px 4px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+    <div class="gantt-header-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
         <div>
             <h1 style="font-size:20px;font-weight:700;color:#111827;margin:0 0 2px;">Gantt Chart</h1>
             <p style="font-size:13px;color:#6B7280;margin:0;">Timeline view of tasks across all projects</p>
         </div>
-        <a href="{{ route('admin.tasks.index') }}"
+        <a href="{{ route('admin.tasks.index') }}" class="gantt-back-btn"
            style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:#F3F4F6;border-radius:9px;font-size:12px;font-weight:600;color:#374151;text-decoration:none;">
             <i class="fas fa-list-check"></i> Task List
         </a>
@@ -258,11 +319,43 @@
 </div>
 @else
 
+<div class="gantt-mobile-scroll-hint">
+    <i class="fas fa-arrows-left-right"></i> Scroll to see more →
+</div>
+
 <div id="ganttPrintArea">
 <div class="gantt-wrap" id="ganttWrap">
 
     {{-- Toolbar --}}
     <div class="gantt-toolbar">
+        {{-- Mobile-only: filter chips (duplicate controls — same filterProject()/filterStatus()
+             calls — replacing the two full-width stacked <select> below on small screens) --}}
+        <div class="gantt-mobile-filters">
+            <x-mobile.filter-chip label="All Projects" id="ganttProjectChip">
+                <select onchange="filterProject(this.value); ganttSyncChipLabel(this)">
+                    <option value="">All Projects</option>
+                    @foreach($projects as $project)
+                    <option value="{{ $project->id }}">{{ $project->name }}</option>
+                    @endforeach
+                </select>
+            </x-mobile.filter-chip>
+            <x-mobile.filter-chip label="All Statuses" id="ganttStatusChip">
+                <select onchange="filterStatus(this.value); ganttSyncChipLabel(this)">
+                    <option value="">All Statuses</option>
+                    <option value="draft">Draft</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="viewed">Viewed</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="submitted">Submitted</option>
+                    <option value="approved">Approved</option>
+                    <option value="revision_requested">Revision</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="archived">Archived</option>
+                    <option value="overdue">Overdue Only</option>
+                </select>
+            </x-mobile.filter-chip>
+        </div>
+
         {{-- Project filter --}}
         <select class="gantt-select" id="projectFilter" onchange="filterProject(this.value)">
             <option value="">All Projects</option>
@@ -287,7 +380,7 @@
         </select>
 
         {{-- Zoom --}}
-        <div style="display:flex;gap:4px;margin-left:auto;">
+        <div class="gantt-zoom-group" style="display:flex;gap:4px;margin-left:auto;">
             <button class="gantt-btn" id="zoomOut" onclick="changeZoom(-8)" title="Zoom out"><i class="fas fa-magnifying-glass-minus"></i></button>
             <button class="gantt-btn active" id="zoomDay" onclick="setZoom(28)" title="Day view">Day</button>
             <button class="gantt-btn" id="zoomWeek" onclick="setZoom(14)" title="Week view">Week</button>
@@ -333,7 +426,7 @@
         </div>
 
         {{-- Legend --}}
-        <div style="display:flex;align-items:center;gap:10px;padding-left:8px;border-left:1px solid #F3F4F6;flex-wrap:wrap;">
+        <div class="gantt-legend" style="display:flex;align-items:center;gap:10px;padding-left:8px;border-left:1px solid #F3F4F6;flex-wrap:wrap;">
             @foreach([
                 ['#DBEAFE','#1D4ED8','Assigned'],
                 ['#EDE9FE','#6D28D9','In Progress'],
@@ -665,6 +758,18 @@ function updateZoomButtons() {
 // ── Filters ───────────────────────────────────────────────────────────
 function filterProject(v) { activeProject = v; render(); }
 function filterStatus(v)  { activeStatus  = v; render(); }
+
+// ── Mobile filter chip: mirror the selected option's text + active state onto
+//    the chip label (the chip's own <select> is invisible, absolutely positioned
+//    over the pill — see .uds-chip in layouts/app.blade.php) ─────────────────
+function ganttSyncChipLabel(sel) {
+    const chip = sel.closest('label.uds-chip');
+    if (!chip) return;
+    const span = chip.querySelector('span');
+    const opt  = sel.options[sel.selectedIndex];
+    if (span && opt) span.textContent = opt.text;
+    chip.classList.toggle('is-active', !!sel.value);
+}
 
 // ── Scroll to today ───────────────────────────────────────────────────
 function scrollToToday() {

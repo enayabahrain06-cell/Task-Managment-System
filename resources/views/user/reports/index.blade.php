@@ -50,7 +50,7 @@
 .rpt-bar-fill  { height:6px; border-radius:4px; }
 .chip-low    { background:#D1FAE5;color:#059669;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600; }
 .chip-medium { background:#FEF3C7;color:#D97706;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600; }
-.chip-high   { background:#FEE2E2;color:#DC2626;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600; }
+.chip-high   { background:#FFE4E6;color:#E11D48;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600; }
 .rpt-scroll  { overflow-y:auto; overflow-x:auto; max-height:240px; -webkit-overflow-scrolling:touch; }
 /* All-tasks table min-width (wider due to many columns) */
 #allTasksTable { min-width:700px; }
@@ -61,8 +61,21 @@
 .rpt-tab-inactive { background:transparent;color:#6B7280; }
 .rpt-tab-inactive:hover { color:#374151; }
 
-/* ── Print ── */
-#rpt-print-header { display:none; }
+/* ── Mobile card polish (≤768px) — additive only, desktop untouched ── */
+@media (max-width:768px) {
+    .rpt-card { border-radius:var(--mob-r-lg) !important; box-shadow:var(--mob-shadow-1) !important; padding:var(--mob-sp-2) !important; }
+    .rpt-grid-6 .rpt-card { padding:14px !important; }
+    .rpt-grid-6 .rpt-card p:nth-child(2) { font-size:24px !important; }
+    .rpt-section-title { font-size:11px !important; }
+    .chip-low, .chip-medium, .chip-high { font-size:10px !important; padding:2px 9px !important; }
+    #rpt-header-gradient { border-radius:var(--mob-r-lg) !important; }
+
+    /* Tab bar, Export dropdown trigger, and 7D/30D/90D/1Y/All range buttons —
+       bump undersized (~28-33px) tap targets up to a comfortable min-height. */
+    .rpt-tab { min-height:44px !important; }
+    button[\@click="exportOpen=!exportOpen"] { min-height:44px !important; }
+    button[name="range"] { min-height:44px !important; }
+}
 
 @media print {
     .app-sidebar, .app-topbar, .no-print { display:none !important; }
@@ -642,10 +655,10 @@
                 <tbody>
                     @forelse($allTaskDetails as $t)
                     @php
-                        $pc  = ['high'=>['#FEE2E2','#DC2626'],'medium'=>['#FEF3C7','#D97706'],'low'=>['#D1FAE5','#059669']];
+                        $pc  = ['high'=>['#FFE4E6','#E11D48'],'medium'=>['#FEF3C7','#D97706'],'low'=>['#D1FAE5','#059669']];
                         [$pbg,$pfg] = $pc[$t['priority']] ?? ['#F3F4F6','#6B7280'];
-                        $sc  = ['draft'=>['#F3F4F6','#6B7280'],'assigned'=>['#EEF2FF','#4F46E5'],'viewed'=>['#E0F2FE','#0369A1'],'in_progress'=>['#FEF3C7','#D97706'],'submitted'=>['#EDE9FE','#7C3AED'],'revision_requested'=>['#FEE2E2','#DC2626'],'approved'=>['#D1FAE5','#059669'],'delivered'=>['#ECFDF5','#047857'],'archived'=>['#F3F4F6','#6B7280']];
-                        $sl  = ['draft'=>'Draft','assigned'=>'Assigned','viewed'=>'Viewed','in_progress'=>'In Progress','submitted'=>'In Review','revision_requested'=>'Revision','approved'=>'Approved','delivered'=>'Delivered','archived'=>'Archived'];
+                        $sc  = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => [$c['bg'], $c['text']])->all();
+                        $sl  = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['label'])->all();
                         [$sbg,$sfg] = $sc[$t['status']] ?? ['#F3F4F6','#6B7280'];
                     @endphp
                     <tr data-search="{{ strtolower($t['title'].' '.$t['project']) }}">

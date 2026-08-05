@@ -21,24 +21,162 @@
 .rpt-inline-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; min-width:0; }
 .rpt-inline-3 > *, .rpt-inline-4 > * { min-width:0; }
 
+/* ── KPI rows: desktop swipe-strip cards vs. real 2-col mobile grid ── */
+.rpt-kpi-mobile { display:none; }
+@media(max-width:768px) {
+    .rpt-kpi-desktop { display:none !important; }
+    .rpt-kpi-mobile  { display:block !important; margin-bottom:10px; }
+}
+
+/* ── Mobile filter bar: segmented range control + chip-style filters + sticky
+   bottom action bar (Summarize / Export). Hidden on desktop; shown <=768px. ── */
+.rpt-mobile-filters, .rpt-m-actionbar { display:none; }
+@media(max-width:768px) {
+    .rpt-mobile-filters { display:block !important; margin-bottom:14px; }
+
+    .rpt-m-seg { display:flex; gap:2px; background:#F3F4F6; border-radius:11px; padding:3px; }
+    .rpt-m-seg-btn {
+        flex:1; min-height:44px; border:0; border-radius:8px; background:transparent;
+        font-family:'Inter',sans-serif; font-size:12.5px; font-weight:600; color:#6B7280; cursor:pointer;
+    }
+    .rpt-m-seg-btn.is-on {
+        background:#fff; color:var(--mob-brand,#4F46E5); font-weight:700;
+        box-shadow:0 1px 4px rgba(17,24,39,.08);
+    }
+
+    .rpt-m-chiprow {
+        display:flex; gap:7px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+        padding:12px 2px 4px; scrollbar-width:none;
+    }
+    .rpt-m-chiprow::-webkit-scrollbar { display:none; }
+    .rpt-m-chip {
+        position:relative; flex:0 0 auto; min-height:44px; display:inline-flex; align-items:center; gap:7px;
+        padding:0 12px; border:1px solid #E1E4EA; border-radius:10px; background:#fff;
+        font-size:12.5px; font-weight:600; color:#374151; white-space:nowrap; max-width:60vw;
+    }
+    .rpt-m-chip span { overflow:hidden; text-overflow:ellipsis; }
+    .rpt-m-chip.is-active { border-color:#C7D2FE; background:#EEF2FF; color:#4F46E5; }
+    .rpt-m-chip i { font-size:9px; color:#9CA3AF; flex-shrink:0; }
+    /* the native select covers the chip so the OS picker opens on tap */
+    .rpt-m-chip select { position:absolute; inset:0; width:100%; height:100%; opacity:0; border:0; }
+
+    /* Sticky action bar — sits above the global bottom tab bar (58px + safe-area) */
+    .rpt-m-actionbar {
+        display:flex !important; gap:9px; position:fixed; left:0; right:0;
+        bottom:calc(58px + env(safe-area-inset-bottom)); z-index:20;
+        padding:10px 16px; background:rgba(255,255,255,.94); backdrop-filter:blur(18px);
+        border-top:1px solid #E9EBF0;
+    }
+    .rpt-m-btn-ghost {
+        flex:0 0 auto; display:flex; align-items:center; gap:7px; padding:0 18px; min-height:48px;
+        border:1px solid #C7D2FE; border-radius:14px; background:#fff; color:var(--mob-brand,#4F46E5);
+        font-family:'Inter',sans-serif; font-size:14px; font-weight:700; cursor:pointer;
+    }
+    .rpt-m-btn-primary {
+        width:100%; display:flex; align-items:center; justify-content:center; gap:7px; min-height:48px;
+        border:0; border-radius:14px; background:var(--mob-brand-grad, linear-gradient(135deg,#4F46E5,#6366F1));
+        color:#fff; font-family:'Inter',sans-serif; font-size:14.5px; font-weight:700; cursor:pointer;
+        box-shadow:0 10px 20px -10px rgba(79,70,229,.8);
+    }
+    .rpt-m-export-menu {
+        position:absolute; bottom:calc(100% + 8px); right:0; background:#fff; border:1px solid #E5E7EB;
+        border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.12); min-width:200px; overflow:hidden;
+    }
+    .rpt-m-export-menu button {
+        display:flex; align-items:center; gap:9px; width:100%; min-height:44px; padding:0 14px;
+        font-size:13px; font-weight:600; color:#374151; border:none; background:transparent; cursor:pointer; text-align:left;
+    }
+}
+
 /* ── Mobile ── */
 @media(max-width:768px) {
-    /* Filter bar stacks vertically — !important beats inline style= */
+    /* Filter bar: title stays, the dense desktop actions-bar (range/selects/summarize/export)
+       is replaced below by .rpt-mobile-filters + .rpt-m-actionbar (segmented control,
+       chip-style selects, sticky bottom action bar) — see the "Mobile filter bar" block. */
     #rpt-filter-bar { flex-direction:column !important; align-items:stretch !important; gap:10px !important; }
     #rpt-filter-bar > div:first-child { width:100% !important; }
-    #rpt-actions-bar { flex-direction:column !important; align-items:stretch !important; width:100% !important; gap:8px !important; }
-    #rpt-actions-bar form { flex-direction:column !important; width:100% !important; gap:8px !important; align-items:stretch !important; }
-    /* Range pill row scrolls horizontally */
-    #rpt-actions-bar form > div:first-child { overflow-x:auto !important; -webkit-overflow-scrolling:touch; white-space:nowrap; width:100% !important; }
-    /* Selects full width */
-    #rpt-actions-bar select { width:100% !important; max-width:100% !important; box-sizing:border-box !important; }
-    /* Export button full width */
-    #rpt-actions-bar > div { width:100% !important; }
-    #rpt-actions-bar > div > button:first-child { width:100% !important; justify-content:center !important; }
+    #rpt-actions-bar { display:none !important; }
     /* Card grids */
     .rpt-inline-3 { grid-template-columns:repeat(3,1fr) !important; }
     .rpt-inline-4 { grid-template-columns:repeat(2,1fr) !important; }
+    /* Room for the new sticky mobile action bar (72px) above the global bottom tab bar */
+    .app-content { padding-bottom: 110px !important; }
 }
+
+/* ══ Premium mobile pass (reuses shared .mob-* tokens/classes from
+   resources/views/layouts/app.blade.php — see "Shared mobile design tokens") ══ */
+@media(max-width:768px) {
+    /* KPI rows (Row 1 + Row 2 only) → horizontally swipeable strip.
+       Scoped to the .mob-kpi-row marker class so the unrelated 3-col/2-col
+       card grids further down the page (status/priority/trend, projects)
+       keep their normal stacked layout. */
+    .rpt-grid-5.mob-kpi-row, .rpt-grid-4.mob-kpi-row,
+    .rpt-grid-3.mob-kpi-row, .rpt-grid-2.mob-kpi-row {
+        display:flex !important; overflow-x:auto !important; -webkit-overflow-scrolling:touch;
+        scroll-snap-type:x mandatory; padding:2px 2px 10px !important; margin-bottom:10px !important;
+    }
+    .mob-kpi-row::-webkit-scrollbar { display:none; }
+    .mob-kpi-row > .rpt-card { flex:0 0 auto !important; min-width:150px !important; scroll-snap-align:start; }
+
+    /* Table → card conversion (reuses the shared .mob-table-cards recipe).
+       Higher-specificity selectors so this page's own .rpt-table rules
+       (min-width / padding / font-size) can never win the cascade. */
+    .mob-table-cards table,
+    .mob-table-cards .rpt-table { min-width:0 !important; width:100% !important; }
+    .mob-table-cards .rpt-table td,
+    .mob-table-cards .rpt-table th { padding:9px 4px !important; font-size:13px !important; }
+    .mob-table-cards .rpt-table tr { margin-bottom:var(--mob-sp-2, 10px) !important; }
+    /* Title/name cell shown as the card heading — no label, full text, left-aligned */
+    .mob-table-cards td.rpt-td-title {
+        display:block !important; text-align:left !important;
+        padding:4px 4px 10px !important; border-bottom:1px solid #F3F4F6 !important;
+    }
+    .mob-table-cards td.rpt-td-title::before { content:none !important; }
+    .mob-table-cards td.rpt-td-title a,
+    .mob-table-cards td.rpt-td-title span {
+        max-width:none !important; white-space:normal !important;
+        overflow:visible !important; text-overflow:clip !important;
+    }
+    /* Purely decorative "→" cell (reassigned-tasks table): no label, centered */
+    .mob-table-cards td.rpt-td-arrow { justify-content:center !important; }
+    .mob-table-cards td.rpt-td-arrow::before { content:none !important; }
+    /* Let the Project Performance card list breathe before it needs to scroll */
+    .rpt-scroll-wrap { max-height:340px; }
+
+    /* Summarize modal renders its tables via JS (kept untouched) — just make
+       sure a wide table scrolls inside its own box instead of forcing the
+       whole page to scroll horizontally. */
+    #rpt-summ-body { overflow-x:hidden; }
+    #rpt-summarize-modal .twrap { overflow-x:auto !important; -webkit-overflow-scrolling:touch; }
+    #rpt-summarize-modal .twrap table { min-width:460px; }
+    #rpt-summarize-modal .kgrid { grid-template-columns:repeat(2,1fr) !important; }
+
+    /* Modal header icon-buttons (Export PDF, print dropdown trigger, Print Now/Cancel, etc.)
+       — real touch target on mobile without touching desktop sizing */
+    button[style*="height:30px"][style*="border-radius:8px"] { min-height:44px !important; }
+    /* Circular "×" close buttons in stat-detail modals (rpt-summarize, social-posts,
+       total-tasks, completed-tasks, ontime-tasks, …) */
+    button[style*="width:30px;height:30px;border-radius:50%"] { width:44px !important; height:44px !important; }
+
+    /* Summarize modal: Period filter chips + date inputs need a real touch target */
+    #rpt-summarize-modal button, #rpt-summarize-modal input[type=date] { min-height:44px !important; }
+
+    /* Modal search inputs (e.g. Social Posts search) */
+    #social-posts-search { min-height:44px !important; }
+
+    /* Tap targets: mini action links/badges under 44px on mobile only (desktop
+       keeps its compact inline sizing — these are additive min-height rules) */
+    .rpt-pg-btn { min-height:44px !important; display:inline-flex !important; align-items:center !important; justify-content:center !important; box-sizing:border-box; }
+    .rpt-manage-link, .rpt-fullpage-link { min-height:44px; }
+    .mob-table-cards td[data-label="Review"] a { min-height:44px; }
+    .mob-table-cards td.rpt-td-title a { min-height:44px; display:flex; align-items:center; }
+
+    /* Completion-rate bar: flat color at .85 opacity on mobile, matching
+       .uds-track-fill — desktop keeps its gradient (background-image is only
+       stripped here, revealing the flat background-color set inline). */
+    .rpt-rate-fill { background-image:none !important; opacity:.85; }
+}
+
 @media(max-width:480px) {
     .rpt-grid-2  { grid-template-columns:1fr !important; }
     .rpt-table th, .rpt-table td { padding:5px 7px !important; font-size:11px !important; }
@@ -50,6 +188,9 @@
     /* Completion rate bar wraps on small phones */
     .rpt-rate-bar-row { flex-wrap:wrap !important; gap:6px !important; }
     .rpt-rate-bar-row .rpt-rate-avg { display:none !important; }
+    /* KPI strip / summarize modal KPI grid: one column on very small phones */
+    .mob-kpi-row > .rpt-card { min-width:135px !important; }
+    #rpt-summarize-modal .kgrid { grid-template-columns:1fr !important; }
 }
 @media(max-width:380px) {
     .rpt-inline-4 { grid-template-columns:1fr 1fr !important; }
@@ -101,7 +242,7 @@
 /* ── Priority chips ── */
 .chip-low    { background:#D1FAE5;color:#059669; }
 .chip-medium { background:#FEF3C7;color:#D97706; }
-.chip-high   { background:#FEE2E2;color:#DC2626; }
+.chip-high   { background:#FFE4E6;color:#E11D48; }
 
 /* ══ PRINT STYLES ══════════════════════════════════════ */
 @media print {
@@ -247,7 +388,7 @@
                 @foreach(['7'=>'7D','30'=>'30D','90'=>'90D','365'=>'1Y','all'=>'All'] as $val=>$label)
                 <button type="button"
                         onclick="document.getElementById('rpt-range-input').value='{{ $val }}';this.closest('form').submit();"
-                        style="padding:5px 13px;font-size:12px;font-weight:600;border:none;border-radius:7px;cursor:pointer;transition:all .15s;{{ $range===$val ? 'background:#fff;color:#4F46E5;box-shadow:0 1px 3px rgba(0,0,0,.1);' : 'background:none;color:#6B7280;' }}">
+                        style="padding:5px 13px;font-size:12px;font-weight:600;border:none;border-radius:7px;cursor:pointer;transition:all .15s;{{ $range===$val ? 'background:#fff;color:var(--mob-brand,#4F46E5);box-shadow:0 1px 3px rgba(0,0,0,.1);' : 'background:none;color:#6B7280;' }}">
                     {{ $label }}
                 </button>
                 @endforeach
@@ -255,7 +396,7 @@
 
             {{-- Project filter --}}
             <select name="project_id" onchange="this.form.submit()"
-                    style="font-size:12px;border:1px solid #E5E7EB;border-radius:8px;padding:7px 28px 7px 10px;background:#fff;color:#374151;outline:none;-webkit-appearance:none;appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
+                    style="font-size:12px;border:1px solid #E5E7EB;border-radius:8px;padding:7px 28px 7px 10px;background:#fff;color:#374151;outline:none;-webkit-appearance:none;appearance:none;background-image:url(data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E);background-repeat:no-repeat;background-position:right 10px center;">
                 <option value="">All Projects</option>
                 @foreach($allProjects as $p)
                 <option value="{{ $p->id }}" {{ $projectId == $p->id ? 'selected' : '' }}>{{ $p->name }}</option>
@@ -265,7 +406,7 @@
             {{-- Customer filter --}}
             @if($allCustomers->isNotEmpty())
             <select name="customer_id" onchange="this.form.submit()"
-                    style="font-size:12px;border:1px solid #E5E7EB;border-radius:8px;padding:7px 28px 7px 10px;background:#fff;color:#374151;outline:none;-webkit-appearance:none;appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
+                    style="font-size:12px;border:1px solid #E5E7EB;border-radius:8px;padding:7px 28px 7px 10px;background:#fff;color:#374151;outline:none;-webkit-appearance:none;appearance:none;background-image:url(data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E);background-repeat:no-repeat;background-position:right 10px center;">
                 <option value="">All Customers</option>
                 @foreach($allCustomers as $c)
                 <option value="{{ $c->id }}" {{ $customerId == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
@@ -275,7 +416,7 @@
 
             {{-- User filter --}}
             <select name="user_id" onchange="this.form.submit()"
-                    style="font-size:12px;border:1px solid {{ $userId ? '#A5B4FC' : '#E5E7EB' }};border-radius:8px;padding:7px 28px 7px 10px;background:{{ $userId ? '#EEF2FF' : '#fff' }};color:{{ $userId ? '#4F46E5' : '#374151' }};font-weight:{{ $userId ? '600' : 'normal' }};outline:none;-webkit-appearance:none;appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;">
+                    style="font-size:12px;border:1px solid {{ $userId ? '#A5B4FC' : '#E5E7EB' }};border-radius:8px;padding:7px 28px 7px 10px;background:{{ $userId ? '#EEF2FF' : '#fff' }};color:{{ $userId ? '#4F46E5' : '#374151' }};font-weight:{{ $userId ? '600' : 'normal' }};outline:none;-webkit-appearance:none;appearance:none;background-image:url(data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E);background-repeat:no-repeat;background-position:right 10px center;">
                 <option value="">All Members</option>
                 @foreach($allUsers->groupBy('role') as $role => $members)
                 <optgroup label="{{ ucfirst($role) }}s">
@@ -297,8 +438,8 @@
         {{-- Export dropdown --}}
         <div x-data="{ exportOpen: false }" style="position:relative;" @click.outside="exportOpen=false">
             <button @click="exportOpen=!exportOpen"
-                    style="display:flex;align-items:center;gap:7px;padding:7px 14px;background:#4F46E5;color:#fff;font-size:12px;font-weight:600;border:none;border-radius:8px;cursor:pointer;transition:background .15s;white-space:nowrap;"
-                    onmouseover="this.style.background='#4338CA'" onmouseout="this.style.background='#4F46E5'">
+                    style="display:flex;align-items:center;gap:7px;padding:7px 14px;background:var(--mob-brand,#4F46E5);color:#fff;font-size:12px;font-weight:600;border:none;border-radius:8px;cursor:pointer;transition:background .15s;white-space:nowrap;"
+                    onmouseover="this.style.background='#4338CA'" onmouseout="this.style.background='var(--mob-brand,#4F46E5)'">
                 <i class="fas fa-file-export" style="font-size:11px;"></i>
                 Export
                 <i class="fas fa-chevron-down" style="font-size:9px;transition:transform .15s;"
@@ -342,6 +483,90 @@
         </div>
     </div>
 </div>
+
+{{-- ══ Mobile filter bar (<=768px only) — segmented range control + chip-style
+     filters + sticky bottom action bar. Replaces #rpt-actions-bar on mobile;
+     posts to the same route/fields so range + filters stay in sync. ══ --}}
+<div class="rpt-mobile-filters no-print">
+    <form method="GET" action="{{ route('admin.reports.index') }}" id="rpt-m-filter-form">
+        <input type="hidden" id="rpt-m-range" name="range" value="{{ $range }}">
+
+        @php
+        $rptRangeOptions = [];
+        foreach (['7'=>'7D','30'=>'30D','90'=>'90D','365'=>'1Y','all'=>'All'] as $val => $label) {
+            $rptRangeOptions[] = [
+                'key' => $val,
+                'label' => $label,
+                'onclick' => "document.getElementById('rpt-m-range').value='{$val}';this.closest('form').submit();",
+            ];
+        }
+        @endphp
+        <x-mobile.segmented :options="$rptRangeOptions" :active="(string) $range" />
+
+        <div class="uds-chiprow" style="margin-top:12px;">
+            <x-mobile.filter-chip :label="optional($allProjects->firstWhere('id', $projectId))->name ?? 'All projects'" :active="(bool) $projectId">
+                <select name="project_id" onchange="this.form.submit()">
+                    <option value="">All Projects</option>
+                    @foreach($allProjects as $p)
+                    <option value="{{ $p->id }}" {{ $projectId == $p->id ? 'selected' : '' }}>{{ $p->name }}</option>
+                    @endforeach
+                </select>
+            </x-mobile.filter-chip>
+
+            @if($allCustomers->isNotEmpty())
+            <x-mobile.filter-chip :label="optional($allCustomers->firstWhere('id', $customerId))->name ?? 'All customers'" :active="(bool) $customerId">
+                <select name="customer_id" onchange="this.form.submit()">
+                    <option value="">All Customers</option>
+                    @foreach($allCustomers as $c)
+                    <option value="{{ $c->id }}" {{ $customerId == $c->id ? 'selected' : '' }}>{{ $c->name }}</option>
+                    @endforeach
+                </select>
+            </x-mobile.filter-chip>
+            @endif
+
+            <x-mobile.filter-chip :label="optional($allUsers->firstWhere('id', $userId))->name ?? 'All members'" :active="(bool) $userId">
+                <select name="user_id" onchange="this.form.submit()">
+                    <option value="">All Members</option>
+                    @foreach($allUsers->groupBy('role') as $role => $members)
+                    <optgroup label="{{ ucfirst($role) }}s">
+                        @foreach($members as $u)
+                        <option value="{{ $u->id }}" {{ $userId == $u->id ? 'selected' : '' }}>{{ $u->name }}</option>
+                        @endforeach
+                    </optgroup>
+                    @endforeach
+                </select>
+            </x-mobile.filter-chip>
+        </div>
+    </form>
+</div>
+
+<x-mobile.action-bar class="rpt-m-actionbar">
+    <button type="button" onclick="openRptSummarize()" class="uds-btn-ghost">
+        <i class="fas fa-chart-pie" style="font-size:12px;"></i> Summarize
+    </button>
+    <div x-data="{ exportOpen: false }" style="position:relative;flex:1;" @click.outside="exportOpen=false">
+        <button type="button" @click="exportOpen=!exportOpen" class="uds-btn-primary" style="width:100%;">
+            <i class="fas fa-file-export" style="font-size:12px;"></i> Export
+            <i class="fas fa-chevron-up" style="font-size:9px;transition:transform .15s;" :style="exportOpen ? 'transform:rotate(180deg)' : ''"></i>
+        </button>
+        <div x-show="exportOpen" x-transition x-cloak class="rpt-m-export-menu">
+            <button type="button" onclick="printReport()" @click="exportOpen=false">
+                <i class="fas fa-print" style="font-size:12px;color:#6B7280;width:14px;text-align:center;"></i> Print
+            </button>
+            <div style="height:1px;background:#F3F4F6;"></div>
+            <button type="button" onclick="exportPDF()" @click="exportOpen=false">
+                <i class="fas fa-file-pdf" style="font-size:12px;color:#DC2626;width:14px;text-align:center;"></i> Export as PDF
+            </button>
+            <button type="button" onclick="exportExcel()" @click="exportOpen=false">
+                <i class="fas fa-file-excel" style="font-size:12px;color:#16A34A;width:14px;text-align:center;"></i> Export as Excel
+            </button>
+            <div style="height:1px;background:#F3F4F6;"></div>
+            <button type="button" onclick="openUserExport()" @click="exportOpen=false">
+                <i class="fas fa-users" style="font-size:12px;color:#4F46E5;width:14px;text-align:center;"></i> User Performance
+            </button>
+        </div>
+    </div>
+</x-mobile.action-bar>
 
 {{-- ══ Summarize Modal ══ --}}
 <div id="rpt-summarize-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.45);"
@@ -618,8 +843,12 @@ $row2Count = count($kpisRow2);
 $row2Class = $row2Count === 5 ? 'rpt-grid-5' : ($row2Count === 3 ? 'rpt-grid-3' : ($row2Count === 2 ? 'rpt-grid-2' : 'rpt-grid-4'));
 @endphp
 
+{{-- Desktop KPI rows (unchanged) — hidden on mobile in favor of the real
+     2-col <x-mobile.kpi-grid> below (see "Mobile KPI grid" block). --}}
+<div class="rpt-kpi-desktop">
+
 {{-- Row 1: Core performance (always 5) --}}
-<div class="rpt-grid-5">
+<div class="rpt-grid-5 mob-kpi-row">
     @foreach($kpisRow1 as $kpi)
     @php $modal1 = $kpi['modal'] ?? null; @endphp
     <div class="rpt-card" style="padding:10px 12px;{{ $modal1 ? 'cursor:pointer;transition:box-shadow .15s;' : '' }}"
@@ -637,7 +866,7 @@ $row2Class = $row2Count === 5 ? 'rpt-grid-5' : ($row2Count === 3 ? 'rpt-grid-3' 
 </div>
 
 {{-- Row 2: Context metrics (5 cols without filter, 3 cols with user filter) --}}
-<div class="{{ $row2Class }}">
+<div class="{{ $row2Class }} mob-kpi-row">
     @foreach($kpisRow2 as $kpi)
     @php $isSocialCard = ($kpi['label'] === 'Social Posts'); @endphp
     <div class="rpt-card" style="padding:10px 12px;{{ $isSocialCard ? 'cursor:pointer;transition:box-shadow .15s;' : '' }}"
@@ -663,6 +892,23 @@ $row2Class = $row2Count === 5 ? 'rpt-grid-5' : ($row2Count === 3 ? 'rpt-grid-3' 
         @endif
     </div>
     @endforeach
+</div>
+
+</div>{{-- /.rpt-kpi-desktop --}}
+
+{{-- Mobile KPI grid — real 2-col <x-mobile.kpi-grid>, hidden on desktop --}}
+<div class="rpt-kpi-mobile">
+    <x-mobile.kpi-grid>
+        @foreach($kpisRow1 as $kpi)
+        <x-mobile.kpi-tile :label="$kpi['label']" :value="$kpi['value']" :sub="$kpi['sub']"
+            @if(!empty($kpi['modal'])) onclick="document.getElementById('{{ $kpi['modal'] }}').style.display='flex'" style="cursor:pointer;" @endif />
+        @endforeach
+        @foreach($kpisRow2 as $kpi)
+        @php $isSocialCardM = ($kpi['label'] === 'Social Posts'); @endphp
+        <x-mobile.kpi-tile :label="$kpi['label']" :value="$kpi['value']" :sub="$kpi['sub']" :money="$kpi['label'] === 'Ad Budget'"
+            @if($isSocialCardM) onclick="document.getElementById('social-posts-modal').style.display='flex';spClearSearch()" style="cursor:pointer;" @endif />
+        @endforeach
+    </x-mobile.kpi-grid>
 </div>
 
 {{-- ══ Social Posts Modal ══ --}}
@@ -701,7 +947,7 @@ $row2Class = $row2Count === 5 ? 'rpt-grid-5' : ($row2Count === 3 ? 'rpt-grid-3' 
                 <p style="font-size:13px;color:#9CA3AF;margin:0;">No social posts in this period.</p>
             </div>
             @else
-            <div style="overflow-x:auto;margin-top:16px;">
+            <div style="overflow-x:auto;margin-top:16px;" class="mob-table-cards">
             <table class="rpt-table" id="social-posts-modal-table">
                 <thead>
                     <tr>
@@ -717,21 +963,21 @@ $row2Class = $row2Count === 5 ? 'rpt-grid-5' : ($row2Count === 3 ? 'rpt-grid-3' 
                 @foreach($socialPostsList as $sp)
                 @php $spIco = $platformIcons[$sp['platform']] ?? $platformIcons['other']; @endphp
                 <tr>
-                    <td style="max-width:200px;">
+                    <td style="max-width:200px;" class="rpt-td-title" data-label="Task">
                         <a href="{{ route('admin.tasks.show', $sp['task_id']) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#EC4899'" onmouseout="this.style.color='#111827'" title="{{ $sp['task'] }}">
                             {{ Str::limit($sp['task'], 40) }}
                         </a>
                     </td>
-                    <td style="color:#374151;font-size:12px;">{{ $sp['customer'] }}</td>
-                    <td style="text-align:center;">
+                    <td style="color:#374151;font-size:12px;" data-label="Customer">{{ $sp['customer'] }}</td>
+                    <td style="text-align:center;" data-label="Platform">
                         <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#374151;background:#F9FAFB;border:1px solid #F3F4F6;border-radius:6px;padding:2px 8px;">
                             <i class="{{ $spIco[0] }}" style="color:{{ $spIco[1] }};font-size:10px;"></i>
                             {{ ucfirst($sp['platform']) }}
                         </span>
                     </td>
-                    <td style="color:#6B7280;font-size:12px;">{{ $sp['poster'] }}</td>
-                    <td style="color:#6B7280;font-size:12px;text-align:right;white-space:nowrap;">{{ $sp['date'] }}</td>
-                    <td style="text-align:center;">
+                    <td style="color:#6B7280;font-size:12px;" data-label="Posted By">{{ $sp['poster'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;text-align:right;white-space:nowrap;" data-label="Date">{{ $sp['date'] }}</td>
+                    <td style="text-align:center;" data-label="Link">
                         @if($sp['url'])
                         <a href="{{ $sp['url'] }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:#FCE7F3;border-radius:6px;font-size:11px;font-weight:600;color:#EC4899;text-decoration:none;" onmouseover="this.style.background='#FBCFE8'" onmouseout="this.style.background='#FCE7F3'">
                             <i class="fas fa-arrow-up-right-from-square" style="font-size:9px;"></i> View
@@ -751,8 +997,8 @@ $row2Class = $row2Count === 5 ? 'rpt-grid-5' : ($row2Count === 3 ? 'rpt-grid-3' 
 </div>
 
 @php
-$statusBgMap    = ['draft'=>'#F3F4F6','assigned'=>'#EEF2FF','viewed'=>'#E0F2FE','in_progress'=>'#FFF7ED','submitted'=>'#F5F3FF','revision_requested'=>'#FEE2E2','approved'=>'#ECFDF5','delivered'=>'#ECFDF5','archived'=>'#F3F4F6','paused'=>'#FEF3C7'];
-$statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1','in_progress'=>'#EA580C','submitted'=>'#7C3AED','revision_requested'=>'#DC2626','approved'=>'#16A34A','delivered'=>'#16A34A','archived'=>'#9CA3AF','paused'=>'#D97706'];
+$statusBgMap    = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['bg'])->all();
+$statusColorMap = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['text'])->all();
 @endphp
 
 {{-- ══ Total Tasks Modal ══ --}}
@@ -774,18 +1020,18 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
             @if($totalTasksList->isEmpty())
             <p style="text-align:center;color:#9CA3AF;font-size:13px;padding:32px 0;">No tasks in this period.</p>
             @else
-            <div style="overflow-x:auto;margin-top:16px;">
+            <div style="overflow-x:auto;margin-top:16px;" class="mob-table-cards">
             <table class="rpt-table" id="total-tasks-modal-table">
                 <thead><tr><th>Task</th><th>Project</th><th>Customer</th><th>Assignee</th><th style="text-align:center;">Status</th><th style="text-align:right;">Deadline</th></tr></thead>
                 <tbody>
                 @foreach($totalTasksList as $ct)
                 <tr>
-                    <td style="max-width:200px;"><a href="{{ route('admin.tasks.show', $ct['task_id']) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#111827'" title="{{ $ct['title'] }}">{{ Str::limit($ct['title'], 40) }}</a></td>
-                    <td style="color:#374151;font-size:12px;">{{ $ct['project'] }}</td>
-                    <td style="color:#6B7280;font-size:12px;">{{ $ct['customer'] }}</td>
-                    <td style="color:#6B7280;font-size:12px;">{{ $ct['assignee'] }}</td>
-                    <td style="text-align:center;"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;background:{{ $statusBgMap[$ct['status']] ?? '#F3F4F6' }};color:{{ $statusColorMap[$ct['status']] ?? '#374151' }};">{{ $ct['status_label'] }}</span></td>
-                    <td style="text-align:right;font-size:12px;white-space:nowrap;color:{{ $ct['overdue'] ? '#DC2626' : '#6B7280' }};">{{ $ct['deadline'] ?? '—' }}{{ $ct['overdue'] ? ' ⚠' : '' }}</td>
+                    <td style="max-width:200px;" class="rpt-td-title" data-label="Task"><a href="{{ route('admin.tasks.show', $ct['task_id']) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#111827'" title="{{ $ct['title'] }}">{{ Str::limit($ct['title'], 40) }}</a></td>
+                    <td style="color:#374151;font-size:12px;" data-label="Project">{{ $ct['project'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;" data-label="Customer">{{ $ct['customer'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;" data-label="Assignee">{{ $ct['assignee'] }}</td>
+                    <td style="text-align:center;" data-label="Status"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;background:{{ $statusBgMap[$ct['status']] ?? '#F3F4F6' }};color:{{ $statusColorMap[$ct['status']] ?? '#374151' }};">{{ $ct['status_label'] }}</span></td>
+                    <td style="text-align:right;font-size:12px;white-space:nowrap;color:{{ $ct['overdue'] ? '#DC2626' : '#6B7280' }};" data-label="Deadline">{{ $ct['deadline'] ?? '—' }}{{ $ct['overdue'] ? ' ' : '' }}@if($ct['overdue'])<i class="fas fa-triangle-exclamation" style="font-size:10px;"></i>@endif</td>
                 </tr>
                 @endforeach
                 </tbody>
@@ -815,18 +1061,18 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
             @if($completedTasksList->isEmpty())
             <p style="text-align:center;color:#9CA3AF;font-size:13px;padding:32px 0;">No completed tasks in this period.</p>
             @else
-            <div style="overflow-x:auto;margin-top:16px;">
+            <div style="overflow-x:auto;margin-top:16px;" class="mob-table-cards">
             <table class="rpt-table" id="completed-tasks-modal-table">
                 <thead><tr><th>Task</th><th>Project</th><th>Customer</th><th>Assignee</th><th style="text-align:center;">Status</th><th style="text-align:right;">Deadline</th></tr></thead>
                 <tbody>
                 @foreach($completedTasksList as $ct)
                 <tr>
-                    <td style="max-width:200px;"><a href="{{ route('admin.tasks.show', $ct['task_id']) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#10B981'" onmouseout="this.style.color='#111827'" title="{{ $ct['title'] }}">{{ Str::limit($ct['title'], 40) }}</a></td>
-                    <td style="color:#374151;font-size:12px;">{{ $ct['project'] }}</td>
-                    <td style="color:#6B7280;font-size:12px;">{{ $ct['customer'] }}</td>
-                    <td style="color:#6B7280;font-size:12px;">{{ $ct['assignee'] }}</td>
-                    <td style="text-align:center;"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;background:{{ $statusBgMap[$ct['status']] ?? '#F3F4F6' }};color:{{ $statusColorMap[$ct['status']] ?? '#374151' }};">{{ $ct['status_label'] }}</span></td>
-                    <td style="text-align:right;font-size:12px;white-space:nowrap;color:#6B7280;">{{ $ct['deadline'] ?? '—' }}</td>
+                    <td style="max-width:200px;" class="rpt-td-title" data-label="Task"><a href="{{ route('admin.tasks.show', $ct['task_id']) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#10B981'" onmouseout="this.style.color='#111827'" title="{{ $ct['title'] }}">{{ Str::limit($ct['title'], 40) }}</a></td>
+                    <td style="color:#374151;font-size:12px;" data-label="Project">{{ $ct['project'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;" data-label="Customer">{{ $ct['customer'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;" data-label="Assignee">{{ $ct['assignee'] }}</td>
+                    <td style="text-align:center;" data-label="Status"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;background:{{ $statusBgMap[$ct['status']] ?? '#F3F4F6' }};color:{{ $statusColorMap[$ct['status']] ?? '#374151' }};">{{ $ct['status_label'] }}</span></td>
+                    <td style="text-align:right;font-size:12px;white-space:nowrap;color:#6B7280;" data-label="Deadline">{{ $ct['deadline'] ?? '—' }}</td>
                 </tr>
                 @endforeach
                 </tbody>
@@ -856,18 +1102,18 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
             @if($onTimeTasksList->isEmpty())
             <p style="text-align:center;color:#9CA3AF;font-size:13px;padding:32px 0;">No on-time completions in this period.</p>
             @else
-            <div style="overflow-x:auto;margin-top:16px;">
+            <div style="overflow-x:auto;margin-top:16px;" class="mob-table-cards">
             <table class="rpt-table" id="ontime-tasks-modal-table">
                 <thead><tr><th>Task</th><th>Project</th><th>Customer</th><th>Assignee</th><th style="text-align:center;">Status</th><th style="text-align:right;">Deadline</th></tr></thead>
                 <tbody>
                 @foreach($onTimeTasksList as $ct)
                 <tr>
-                    <td style="max-width:200px;"><a href="{{ route('admin.tasks.show', $ct['task_id']) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#8B5CF6'" onmouseout="this.style.color='#111827'" title="{{ $ct['title'] }}">{{ Str::limit($ct['title'], 40) }}</a></td>
-                    <td style="color:#374151;font-size:12px;">{{ $ct['project'] }}</td>
-                    <td style="color:#6B7280;font-size:12px;">{{ $ct['customer'] }}</td>
-                    <td style="color:#6B7280;font-size:12px;">{{ $ct['assignee'] }}</td>
-                    <td style="text-align:center;"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;background:{{ $statusBgMap[$ct['status']] ?? '#F3F4F6' }};color:{{ $statusColorMap[$ct['status']] ?? '#374151' }};">{{ $ct['status_label'] }}</span></td>
-                    <td style="text-align:right;font-size:12px;white-space:nowrap;color:#6B7280;">{{ $ct['deadline'] ?? '—' }}</td>
+                    <td style="max-width:200px;" class="rpt-td-title" data-label="Task"><a href="{{ route('admin.tasks.show', $ct['task_id']) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#8B5CF6'" onmouseout="this.style.color='#111827'" title="{{ $ct['title'] }}">{{ Str::limit($ct['title'], 40) }}</a></td>
+                    <td style="color:#374151;font-size:12px;" data-label="Project">{{ $ct['project'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;" data-label="Customer">{{ $ct['customer'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;" data-label="Assignee">{{ $ct['assignee'] }}</td>
+                    <td style="text-align:center;" data-label="Status"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;background:{{ $statusBgMap[$ct['status']] ?? '#F3F4F6' }};color:{{ $statusColorMap[$ct['status']] ?? '#374151' }};">{{ $ct['status_label'] }}</span></td>
+                    <td style="text-align:right;font-size:12px;white-space:nowrap;color:#6B7280;" data-label="Deadline">{{ $ct['deadline'] ?? '—' }}</td>
                 </tr>
                 @endforeach
                 </tbody>
@@ -973,7 +1219,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
         @if($projects->isEmpty())
         <p style="text-align:center;color:#9CA3AF;font-size:12px;padding:20px 0;">No project data available.</p>
         @else
-        <div class="rpt-scroll-wrap" style="overflow-x:auto;">
+        <div class="rpt-scroll-wrap mob-table-cards" style="overflow-x:auto;">
             <table class="rpt-table" id="proj-table">
                 <thead>
                     <tr>
@@ -988,27 +1234,24 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
                 <tbody>
                     @foreach($projects as $proj)
                     @php
-                        $statusColor = match($proj['status']) {
-                            'active'    => ['#DCFCE7','#16A34A'],
-                            'completed' => ['#DBEAFE','#1D4ED8'],
-                            default     => ['#F3F4F6','#6B7280'],
-                        };
+                        $pc = \App\Support\ProjectStatusColors::for($proj['status']);
+                        $statusColor = [$pc['bg'], $pc['text']];
                     @endphp
                     <tr>
-                        <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                        <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" class="rpt-td-title" data-label="Project">
                             <span style="font-weight:600;color:#111827;">{{ $proj['name'] }}</span>
                         </td>
-                        <td style="text-align:center;">
+                        <td style="text-align:center;" data-label="Status">
                             <span class="rpt-badge" style="background:{{ $statusColor[0] }};color:{{ $statusColor[1] }};font-size:10px;">
                                 {{ ucfirst($proj['status']) }}
                             </span>
                         </td>
-                        <td style="text-align:center;font-weight:600;">{{ $proj['total'] }}</td>
-                        <td style="text-align:center;"><span style="color:#10B981;font-weight:700;">{{ $proj['completed'] }}</span></td>
-                        <td style="text-align:center;">
+                        <td style="text-align:center;font-weight:600;" data-label="Tasks">{{ $proj['total'] }}</td>
+                        <td style="text-align:center;" data-label="Done"><span style="color:#10B981;font-weight:700;">{{ $proj['completed'] }}</span></td>
+                        <td style="text-align:center;" data-label="Overdue">
                             <span style="color:{{ $proj['overdue'] > 0 ? '#EF4444' : '#9CA3AF' }};font-weight:700;">{{ $proj['overdue'] }}</span>
                         </td>
-                        <td style="min-width:100px;">
+                        <td style="min-width:100px;" data-label="Progress">
                             <div style="display:flex;align-items:center;gap:6px;">
                                 <div style="flex:1;height:5px;background:#F3F4F6;border-radius:3px;overflow:hidden;">
                                     <div style="height:5px;width:{{ $proj['rate'] }}%;background:{{ $proj['rate'] >= 80 ? '#10B981' : ($proj['rate'] >= 40 ? '#F59E0B' : '#EF4444') }};border-radius:3px;"></div>
@@ -1079,7 +1322,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
         <div class="rpt-rate-bar-row" style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px 12px;background:#F9FAFB;border-radius:10px;border:1px solid #F0F0F0;">
             <span style="font-size:11px;font-weight:600;color:#374151;white-space:nowrap;">12-Month Rate</span>
             <div style="flex:1;min-width:60px;height:7px;background:#E5E7EB;border-radius:99px;overflow:hidden;">
-                <div style="height:7px;width:{{ $completionRate12 }}%;background:{{ $completionRate12 >= 80 ? 'linear-gradient(90deg,#059669,#10B981)' : ($completionRate12 >= 50 ? 'linear-gradient(90deg,#D97706,#F59E0B)' : 'linear-gradient(90deg,#DC2626,#EF4444)') }};border-radius:99px;transition:width .6s;"></div>
+                <div class="rpt-rate-fill" style="height:7px;width:{{ $completionRate12 }}%;background-color:{{ $completionRate12 >= 80 ? '#059669' : ($completionRate12 >= 50 ? '#D97706' : '#DC2626') }};background-image:{{ $completionRate12 >= 80 ? 'linear-gradient(90deg,#059669,#10B981)' : ($completionRate12 >= 50 ? 'linear-gradient(90deg,#D97706,#F59E0B)' : 'linear-gradient(90deg,#DC2626,#EF4444)') }};border-radius:99px;transition:width .6s;"></div>
             </div>
             <span style="font-size:12px;font-weight:700;color:{{ $completionRate12 >= 80 ? '#059669' : ($completionRate12 >= 50 ? '#D97706' : '#DC2626') }};min-width:34px;text-align:right;">{{ $completionRate12 }}%</span>
             <span class="rpt-rate-avg" style="font-size:10px;color:#9CA3AF;white-space:nowrap;">avg {{ $avgCompletion }}/mo</span>
@@ -1108,7 +1351,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
             <i class="fas fa-circle-info" style="margin-right:3px;"></i>
             Admin/Manager: counted by tasks <strong>created</strong> &amp; tasks <strong>approved</strong>. &nbsp;Users: counted by assigned tasks.
         </div>
-        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;" class="mob-table-cards">
             <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:780px;" id="team-table">
                 <thead>
                     <tr style="background:#F9FAFB;border-bottom:1px solid #E5E7EB;">
@@ -1128,7 +1371,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
                     @foreach($teamMembers->sortByDesc('completed') as $member)
                     @php $isAdmin = ($member['member_type'] ?? 'user') === 'admin'; @endphp
                     <tr style="{{ $isAdmin ? 'background:#F5F3FF;' : '' }}border-bottom:1px solid #F3F4F6;">
-                        <td style="padding:8px 12px;">
+                        <td style="padding:8px 12px;" class="rpt-td-title" data-label="Member">
                             <p style="font-weight:600;color:#111827;margin:0;font-size:12px;white-space:nowrap;">{{ $member['name'] }}</p>
                             <span style="font-size:10px;color:{{ $isAdmin ? '#7C3AED' : '#9CA3AF' }};">
                                 {{ $member['role'] }}
@@ -1137,38 +1380,38 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
                                 @endif
                             </span>
                         </td>
-                        <td style="text-align:center;padding:8px 10px;">
+                        <td style="text-align:center;padding:8px 10px;" data-label="Created">
                             <span style="color:{{ $isAdmin ? '#7C3AED' : '#6B7280' }};font-weight:700;">{{ $member['total'] }}</span>
                         </td>
-                        <td style="text-align:center;padding:8px 10px;">
+                        <td style="text-align:center;padding:8px 10px;" data-label="Done">
                             <span style="color:#10B981;font-weight:700;" title="{{ $isAdmin ? 'Tasks Approved' : 'Tasks Completed' }}">{{ $member['completed'] }}</span>
                         </td>
-                        <td style="text-align:center;padding:8px 10px;"><span style="color:#F59E0B;font-weight:700;">{{ $member['in_progress'] }}</span></td>
-                        <td style="text-align:center;padding:8px 10px;">
+                        <td style="text-align:center;padding:8px 10px;" data-label="Active"><span style="color:#F59E0B;font-weight:700;">{{ $member['in_progress'] }}</span></td>
+                        <td style="text-align:center;padding:8px 10px;" data-label="Overdue">
                             <span style="color:{{ $member['overdue'] > 0 ? '#EF4444' : '#9CA3AF' }};font-weight:700;">{{ $member['overdue'] }}</span>
                         </td>
-                        <td style="text-align:center;padding:8px 10px;">
+                        <td style="text-align:center;padding:8px 10px;" data-label="Projects">
                             @if($isAdmin && $member['projects_created'] > 0)
                             <span style="color:#4F46E5;font-weight:700;">{{ $member['projects_created'] }}</span>
                             @else
                             <span style="color:#D1D5DB;">—</span>
                             @endif
                         </td>
-                        <td style="text-align:center;padding:8px 10px;">
+                        <td style="text-align:center;padding:8px 10px;" data-label="Reopened">
                             @if($isAdmin)
                             <span style="color:{{ $member['tasks_reopened'] > 0 ? '#F59E0B' : '#9CA3AF' }};font-weight:700;">{{ $member['tasks_reopened'] }}</span>
                             @else
                             <span style="color:#D1D5DB;">—</span>
                             @endif
                         </td>
-                        <td style="text-align:center;padding:8px 10px;">
+                        <td style="text-align:center;padding:8px 10px;" data-label="Reassigned">
                             @if($isAdmin)
                             <span style="color:{{ $member['tasks_reassigned'] > 0 ? '#6366F1' : '#9CA3AF' }};font-weight:700;">{{ $member['tasks_reassigned'] }}</span>
                             @else
                             <span style="color:#D1D5DB;">—</span>
                             @endif
                         </td>
-                        <td style="text-align:center;padding:8px 10px;">
+                        <td style="text-align:center;padding:8px 10px;" data-label="Revisions">
                             @if(is_null($member['revisions'] ?? null))
                             <span style="color:#D1D5DB;">—</span>
                             @elseif($member['revisions'] > 0)
@@ -1177,7 +1420,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
                             <span style="color:#9CA3AF;font-weight:700;">0</span>
                             @endif
                         </td>
-                        <td style="padding:8px 10px;min-width:110px;">
+                        <td style="padding:8px 10px;min-width:110px;" data-label="Rate">
                             <div style="display:flex;align-items:center;gap:6px;">
                                 <div style="flex:1;height:5px;background:#F3F4F6;border-radius:3px;overflow:hidden;">
                                     <div style="height:5px;width:{{ $member['rate'] }}%;background:{{ $member['rate'] >= 80 ? '#10B981' : ($member['rate'] >= 40 ? '#F59E0B' : '#EF4444') }};border-radius:3px;"></div>
@@ -1205,7 +1448,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
         </p>
         <span style="font-size:11px;color:#4F46E5;background:#EEF2FF;padding:2px 9px;border-radius:20px;font-weight:600;">{{ $customerStats->count() }} Customers</span>
     </div>
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;" class="mob-table-cards">
         <table class="rpt-table" id="customer-table">
             <thead>
                 <tr>
@@ -1221,7 +1464,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
             <tbody>
                 @foreach($customerStats->sortByDesc('total') as $cust)
                 <tr>
-                    <td>
+                    <td class="rpt-td-title" data-label="Customer">
                         <a href="{{ route('admin.customers.show', $cust['id']) }}"
                            style="font-weight:600;color:#4F46E5;text-decoration:none;font-size:12px;"
                            onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
@@ -1231,14 +1474,14 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
                         <p style="margin:1px 0 0;font-size:10px;color:#9CA3AF;">{{ $cust['company'] }}</p>
                         @endif
                     </td>
-                    <td style="text-align:center;font-weight:600;color:#374151;">{{ $cust['projects'] }}</td>
-                    <td style="text-align:center;font-weight:600;color:#374151;">{{ $cust['total'] }}</td>
-                    <td style="text-align:center;"><span style="color:#10B981;font-weight:700;">{{ $cust['completed'] }}</span></td>
-                    <td style="text-align:center;"><span style="color:#F59E0B;font-weight:700;">{{ $cust['active'] }}</span></td>
-                    <td style="text-align:center;">
+                    <td style="text-align:center;font-weight:600;color:#374151;" data-label="Projects">{{ $cust['projects'] }}</td>
+                    <td style="text-align:center;font-weight:600;color:#374151;" data-label="Tasks">{{ $cust['total'] }}</td>
+                    <td style="text-align:center;" data-label="Done"><span style="color:#10B981;font-weight:700;">{{ $cust['completed'] }}</span></td>
+                    <td style="text-align:center;" data-label="Active"><span style="color:#F59E0B;font-weight:700;">{{ $cust['active'] }}</span></td>
+                    <td style="text-align:center;" data-label="Overdue">
                         <span style="color:{{ $cust['overdue'] > 0 ? '#EF4444' : '#9CA3AF' }};font-weight:700;">{{ $cust['overdue'] }}</span>
                     </td>
-                    <td style="min-width:110px;">
+                    <td style="min-width:110px;" data-label="Rate">
                         <div style="display:flex;align-items:center;gap:6px;">
                             <div style="flex:1;height:5px;background:#F3F4F6;border-radius:3px;overflow:hidden;">
                                 <div style="height:5px;width:{{ $cust['rate'] }}%;background:{{ $cust['rate'] >= 80 ? '#10B981' : ($cust['rate'] >= 40 ? '#F59E0B' : '#EF4444') }};border-radius:3px;"></div>
@@ -1299,7 +1542,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
         <p style="font-size:12px;color:#9CA3AF;margin:0;max-width:360px;margin:0 auto;">Data appears here once a manager marks a task as <strong>"Awaiting Customer Approval"</strong> from the Approvals page. That action records when the design was sent, and the timer starts.</p>
     </div>
     @else
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;" class="mob-table-cards">
     <table class="rpt-table" id="approval-speed-table">
         <thead>
             <tr>
@@ -1315,18 +1558,18 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
         <tbody>
         @foreach($approvalSpeedTasks as $row)
         <tr id="approval-row-{{ $row['id'] }}">
-            <td>
+            <td class="rpt-td-title" data-label="Task">
                 <a href="{{ route('admin.tasks.show', $row['id']) }}" style="font-weight:600;color:#111827;text-decoration:none;" onmouseover="this.style.color='#4F46E5'" onmouseout="this.style.color='#111827'">
                     {{ Str::limit($row['title'], 40) }}
                 </a>
             </td>
-            <td style="color:#374151;">{{ $row['customer'] }}</td>
-            <td style="color:#6B7280;">{{ $row['assignee'] }}</td>
-            <td>
+            <td style="color:#374151;" data-label="Customer">{{ $row['customer'] }}</td>
+            <td style="color:#6B7280;" data-label="Assignee">{{ $row['assignee'] }}</td>
+            <td data-label="Design Sent">
                 <span style="font-size:12px;color:#374151;font-weight:600;">{{ $row['sent_at'] }}</span>
                 <span style="font-size:11px;color:#9CA3AF;margin-left:4px;">{{ $row['sent_time'] }}</span>
             </td>
-            <td>
+            <td data-label="Customer Approved">
                 @if($row['approved'])
                 <span style="font-size:12px;color:#16A34A;font-weight:600;">{{ $row['approved_at'] }}</span>
                 <span style="font-size:11px;color:#9CA3AF;margin-left:4px;">{{ $row['approved_time'] }}</span>
@@ -1334,7 +1577,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
                 <span style="font-size:12px;color:#D97706;font-style:italic;">Pending...</span>
                 @endif
             </td>
-            <td id="approval-timer-{{ $row['id'] }}" style="text-align:center;">
+            <td id="approval-timer-{{ $row['id'] }}" style="text-align:center;" data-label="Time to Approve">
                 @if($row['approved'])
                 @php
                     $h = $row['hours'];
@@ -1352,7 +1595,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
                 <span style="font-size:11px;color:#D97706;font-style:italic;">{{ $waitStr }} waiting</span>
                 @endif
             </td>
-            <td style="text-align:center;white-space:nowrap;">
+            <td style="text-align:center;white-space:nowrap;" data-label="Review">
                 @if($row['approved'])
                 <span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#F0FDF4;color:#16A34A;">
                     <i class="fas fa-circle-check" style="font-size:10px;margin-right:3px;"></i>Approved
@@ -1387,7 +1630,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
                 <i class="fas fa-clock" style="font-size:11px;color:#7C3AED;"></i>
                 <span style="font-size:12px;font-weight:700;color:#7C3AED;">{{ $socialPendingTasks->count() }} pending</span>
             </div>
-            <a href="{{ route('admin.approvals.index') }}?tab=social"
+            <a href="{{ route('admin.approvals.index') }}?tab=social" class="rpt-manage-link"
                style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#EDE9FE;border-radius:20px;border:1px solid #DDD6FE;text-decoration:none;">
                 <i class="fas fa-arrow-right" style="font-size:11px;color:#7C3AED;"></i>
                 <span style="font-size:12px;font-weight:700;color:#7C3AED;">Manage in Approvals</span>
@@ -1401,7 +1644,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
         <p style="font-size:13px;color:#9CA3AF;margin:0;">No social media posts pending.</p>
     </div>
     @else
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;" class="mob-table-cards">
     <table class="rpt-table">
         <thead>
             <tr>
@@ -1419,35 +1662,24 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
             $spCustomer  = $task->customer?->name ?? $task->project?->customer?->name ?? '—';
             $spOverdue   = $task->deadline && $task->deadline->isPast();
             $spPlatforms = is_array($task->social_platforms) ? $task->social_platforms : [];
-            $spStatusMap = [
-                'draft'              => ['#F3F4F6','#6B7280','Draft'],
-                'assigned'           => ['#EEF2FF','#4F46E5','Assigned'],
-                'viewed'             => ['#EEF2FF','#4F46E5','Viewed'],
-                'in_progress'        => ['#FEF3C7','#D97706','In Progress'],
-                'submitted'          => ['#E0F2FE','#0284C7','Submitted'],
-                'revision_requested' => ['#FEF2F2','#DC2626','Revision'],
-                'approved'           => ['#D1FAE5','#059669','Approved'],
-                'delivered'          => ['#F0FDF4','#16A34A','Delivered'],
-                'archived'           => ['#F3F4F6','#6B7280','Archived'],
-                'pending_customer'   => ['#FFFBEB','#D97706','Awaiting Customer'],
-            ];
+            $spStatusMap = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => [$c['bg'], $c['text'], $c['label']])->all();
             [$spBg, $spCo, $spLbl] = $spStatusMap[$task->status] ?? ['#F3F4F6','#6B7280', ucfirst($task->status)];
         @endphp
         <tr>
-            <td style="max-width:200px;">
+            <td style="max-width:200px;" class="rpt-td-title" data-label="Task">
                 <a href="{{ route('admin.tasks.show', $task) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#7C3AED'" onmouseout="this.style.color='#111827'" title="{{ $task->title }}">
                     {{ Str::limit($task->title, 40) }}
                 </a>
             </td>
-            <td style="color:#374151;">{{ $spCustomer }}</td>
-            <td>
+            <td style="color:#374151;" data-label="Customer">{{ $spCustomer }}</td>
+            <td data-label="Social Assignee">
                 @if($task->socialAssignee)
                 <span style="font-size:12px;font-weight:600;color:#7C3AED;">{{ $task->socialAssignee->name }}</span>
                 @else
                 <span style="font-size:12px;color:#D1D5DB;">Unassigned</span>
                 @endif
             </td>
-            <td>
+            <td data-label="Platforms">
                 @if(count($spPlatforms))
                 <div style="display:flex;gap:4px;flex-wrap:wrap;">
                     @foreach($spPlatforms as $p)
@@ -1458,16 +1690,16 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
                 <span style="font-size:12px;color:#D1D5DB;">—</span>
                 @endif
             </td>
-            <td>
+            <td data-label="Deadline">
                 @if($task->deadline)
                 <span style="font-size:12px;{{ $spOverdue ? 'color:#DC2626;font-weight:600;' : 'color:#6B7280;' }}white-space:nowrap;">
-                    {{ $spOverdue ? '⚠ ' : '' }}{{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
+                    @if($spOverdue)<i class="fas fa-triangle-exclamation" style="font-size:10px;"></i>@endif {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
                 </span>
                 @else
                 <span style="font-size:12px;color:#D1D5DB;">—</span>
                 @endif
             </td>
-            <td style="text-align:center;">
+            <td style="text-align:center;" data-label="Status">
                 <span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:{{ $spBg }};color:{{ $spCo }};white-space:nowrap;">{{ $spLbl }}</span>
             </td>
         </tr>
@@ -1492,7 +1724,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
                 <i class="fas fa-clock" style="font-size:11px;color:#D97706;"></i>
                 <span style="font-size:12px;font-weight:700;color:#D97706;">{{ $decideLaterReportTasks->count() }} pending decision</span>
             </div>
-            <a href="{{ route('admin.approvals.index') }}?tab=decide_later"
+            <a href="{{ route('admin.approvals.index') }}?tab=decide_later" class="rpt-manage-link"
                style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#FFFBEB;border-radius:20px;border:1px solid #FDE68A;text-decoration:none;">
                 <i class="fas fa-arrow-right" style="font-size:11px;color:#D97706;"></i>
                 <span style="font-size:12px;font-weight:700;color:#D97706;">Manage in Approvals</span>
@@ -1506,7 +1738,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
         <p style="font-size:13px;color:#9CA3AF;margin:0;">No tasks pending a social media decision.</p>
     </div>
     @else
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;" class="mob-table-cards">
     <table class="rpt-table" id="decide-later-table">
         <thead>
             <tr>
@@ -1521,25 +1753,21 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
         @foreach($decideLaterReportTasks as $task)
         @php
             $dlCustomer = $task->customer?->name ?? $task->project?->customer?->name ?? '—';
-            $dlStatusMap = [
-                'approved'  => ['#D1FAE5','#059669','Approved'],
-                'delivered' => ['#F0FDF4','#16A34A','Delivered'],
-                'archived'  => ['#F3F4F6','#6B7280','Archived'],
-            ];
-            [$dlBg, $dlCo, $dlLbl] = $dlStatusMap[$task->status] ?? ['#F3F4F6','#6B7280', ucfirst($task->status)];
+            $dlSc = \App\Support\TaskStatusColors::for($task->status);
+            [$dlBg, $dlCo, $dlLbl] = [$dlSc['bg'], $dlSc['text'], $dlSc['label']];
         @endphp
         <tr>
-            <td style="max-width:220px;">
+            <td style="max-width:220px;" class="rpt-td-title" data-label="Task">
                 <a href="{{ route('admin.tasks.show', $task) }}" style="font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='#D97706'" onmouseout="this.style.color='#111827'" title="{{ $task->title }}">
                     {{ Str::limit($task->title, 45) }}
                 </a>
             </td>
-            <td style="color:#374151;">{{ $dlCustomer }}</td>
-            <td style="color:#6B7280;">{{ $task->assignee?->name ?? '—' }}</td>
-            <td>
+            <td style="color:#374151;" data-label="Customer">{{ $dlCustomer }}</td>
+            <td style="color:#6B7280;" data-label="Assignee">{{ $task->assignee?->name ?? '—' }}</td>
+            <td data-label="Status">
                 <span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:{{ $dlBg }};color:{{ $dlCo }};white-space:nowrap;">{{ $dlLbl }}</span>
             </td>
-            <td style="text-align:center;">
+            <td style="text-align:center;" data-label="Review">
                 <a href="{{ route('admin.approvals.index') }}?tab=decide_later"
                    style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;font-size:11px;font-weight:600;color:#D97706;text-decoration:none;white-space:nowrap;"
                    onmouseover="this.style.background='#FEF3C7'" onmouseout="this.style.background='#FFFBEB'">
@@ -1566,7 +1794,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
         </p>
         <span style="font-size:11px;color:#EF4444;background:#FEE2E2;padding:2px 9px;border-radius:20px;font-weight:600;">Needs Attention</span>
     </div>
-    <div class="rpt-scroll-wrap" style="overflow-x:auto;">
+    <div class="rpt-scroll-wrap mob-table-cards" style="overflow-x:auto;">
         <table class="rpt-table" id="overdue-table">
             <thead>
                 <tr>
@@ -1582,19 +1810,19 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
             <tbody>
                 @foreach($overdueList as $task)
                 <tr>
-                    <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                    <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" class="rpt-td-title" data-label="Task">
                         <span style="font-weight:600;color:#111827;">{{ $task['title'] }}</span>
                     </td>
-                    <td style="color:#6B7280;font-size:12px;">{{ $task['project'] }}</td>
-                    <td style="color:#6B7280;font-size:12px;">{{ $task['assignee'] }}</td>
-                    <td style="color:#EF4444;font-weight:600;font-size:12px;">{{ $task['deadline'] }}</td>
-                    <td style="text-align:center;">
+                    <td style="color:#6B7280;font-size:12px;" data-label="Project">{{ $task['project'] }}</td>
+                    <td style="color:#6B7280;font-size:12px;" data-label="Assignee">{{ $task['assignee'] }}</td>
+                    <td style="color:#EF4444;font-weight:600;font-size:12px;" data-label="Deadline">{{ $task['deadline'] }}</td>
+                    <td style="text-align:center;" data-label="Late">
                         <span style="background:#FEE2E2;color:#DC2626;padding:1px 7px;border-radius:20px;font-size:11px;font-weight:700;">+{{ $task['days_late'] }}d</span>
                     </td>
-                    <td style="text-align:center;">
+                    <td style="text-align:center;" data-label="Priority">
                         <span class="rpt-badge chip-{{ $task['priority'] }}" style="font-size:10px;">{{ ucfirst($task['priority']) }}</span>
                     </td>
-                    <td style="text-align:center;">
+                    <td style="text-align:center;" data-label="Status">
                         <span style="font-size:10px;background:#F3F4F6;color:#6B7280;padding:1px 7px;border-radius:20px;font-weight:600;">
                             {{ ucwords(str_replace('_',' ',$task['status'])) }}
                         </span>
@@ -1619,7 +1847,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
         </p>
         <span style="font-size:11px;color:#EA580C;background:#FFF7ED;padding:2px 9px;border-radius:20px;font-weight:600;">Needs Attention</span>
     </div>
-    <div class="rpt-scroll-wrap" style="overflow-x:auto;">
+    <div class="rpt-scroll-wrap mob-table-cards" style="overflow-x:auto;">
         <table class="rpt-table" id="reopened-table">
             <thead>
                 <tr>
@@ -1633,15 +1861,15 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
             <tbody>
                 @foreach($reopenedList as $row)
                 <tr>
-                    <td style="font-weight:600;color:#111827;font-size:12px;">{{ Str::limit($row['task'], 40) }}</td>
-                    <td style="font-size:12px;color:#6B7280;">{{ $row['project'] }}</td>
-                    <td style="text-align:center;">
+                    <td style="font-weight:600;color:#111827;font-size:12px;" class="rpt-td-title" data-label="Task">{{ Str::limit($row['task'], 40) }}</td>
+                    <td style="font-size:12px;color:#6B7280;" data-label="Project">{{ $row['project'] }}</td>
+                    <td style="text-align:center;" data-label="Was">
                         <span style="font-size:11px;background:#F3F4F6;color:#374151;padding:2px 8px;border-radius:6px;font-weight:600;white-space:nowrap;">{{ $row['old_status'] }}</span>
                     </td>
-                    <td style="text-align:center;">
+                    <td style="text-align:center;" data-label="Reopened By">
                         <span style="font-size:11px;color:#EA580C;font-weight:600;white-space:nowrap;">{{ $row['by'] }}</span>
                     </td>
-                    <td style="text-align:center;white-space:nowrap;">
+                    <td style="text-align:center;white-space:nowrap;" data-label="Date">
                         <span style="font-size:11px;color:#6B7280;">{{ $row['date'] }}</span>
                         <span style="font-size:10px;color:#9CA3AF;display:block;">{{ $row['time'] }}</span>
                     </td>
@@ -1665,7 +1893,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
         </p>
         <span style="font-size:11px;color:#4F46E5;background:#EEF2FF;padding:2px 9px;border-radius:20px;font-weight:600;">Assignment Changes</span>
     </div>
-    <div class="rpt-scroll-wrap" style="overflow-x:auto;">
+    <div class="rpt-scroll-wrap mob-table-cards" style="overflow-x:auto;">
         <table class="rpt-table" id="reassigned-bottom-table">
             <thead>
                 <tr>
@@ -1682,38 +1910,38 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
             <tbody>
                 @foreach($reassignedList as $row)
                 <tr>
-                    <td>
+                    <td class="rpt-td-title" data-label="Task">
                         <a href="{{ route('admin.tasks.show', $row['task_id']) }}"
                            style="font-weight:600;color:#4F46E5;font-size:12px;text-decoration:none;"
                            onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
                             {{ Str::limit($row['task'], 40) }}
                         </a>
                     </td>
-                    <td style="font-size:12px;color:#6B7280;">{{ $row['project'] }}</td>
-                    <td style="text-align:center;">
+                    <td style="font-size:12px;color:#6B7280;" data-label="Project">{{ $row['project'] }}</td>
+                    <td style="text-align:center;" data-label="From">
                         <span style="font-size:11px;background:#FEE2E2;color:#DC2626;padding:2px 8px;border-radius:6px;font-weight:600;white-space:nowrap;">
                             {{ $row['from_user'] }}
                         </span>
                     </td>
-                    <td style="text-align:center;">
+                    <td style="text-align:center;" class="rpt-td-arrow" data-label="">
                         <i class="fas fa-arrow-right" style="color:#9CA3AF;font-size:9px;"></i>
                     </td>
-                    <td style="text-align:center;">
+                    <td style="text-align:center;" data-label="To">
                         <span style="font-size:11px;background:#D1FAE5;color:#065F46;padding:2px 8px;border-radius:6px;font-weight:600;white-space:nowrap;">
                             {{ $row['to_user'] }}
                         </span>
                     </td>
-                    <td style="text-align:center;">
+                    <td style="text-align:center;" data-label="Reassigned By">
                         <span style="font-size:11px;font-weight:600;color:#4F46E5;white-space:nowrap;">{{ $row['by'] }}</span>
                     </td>
-                    <td style="font-size:11px;color:#374151;max-width:200px;">
+                    <td style="font-size:11px;color:#374151;max-width:200px;" data-label="Reason">
                         @if($row['reason'])
                             <span style="font-style:italic;">{{ Str::limit($row['reason'], 80) }}</span>
                         @else
                             <span style="color:#D1D5DB;">—</span>
                         @endif
                     </td>
-                    <td style="text-align:center;white-space:nowrap;">
+                    <td style="text-align:center;white-space:nowrap;" data-label="Date">
                         <span style="font-size:11px;color:#6B7280;">{{ $row['date'] }}</span>
                         <span style="font-size:10px;color:#9CA3AF;display:block;">{{ $row['time'] }}</span>
                     </td>
@@ -1778,7 +2006,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
         </span>
     </div>
 
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;" class="mob-table-cards">
     <table class="rpt-table" id="billing-user-table">
         <thead>
             <tr>
@@ -1799,22 +2027,22 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
             @foreach($billingUsers as $bu)
             @php $hasRate = $bu['hourly_rate'] > 0; @endphp
             <tr>
-                <td><span style="font-weight:600;color:#111827;">{{ $bu['name'] }}</span></td>
-                <td><span class="rpt-badge" style="background:#EEF2FF;color:#4F46E5;">{{ ucfirst($bu['role']) }}</span></td>
+                <td class="rpt-td-title" data-label="Employee"><span style="font-weight:600;color:#111827;">{{ $bu['name'] }}</span></td>
+                <td data-label="Role"><span class="rpt-badge" style="background:#EEF2FF;color:#4F46E5;">{{ ucfirst($bu['role']) }}</span></td>
                 @foreach(array_keys($phaseLabels) as $phaseKey)
                 @php $secs = $bu['phases'][$phaseKey] ?? 0; $pc = $phaseColors[$phaseKey] ?? ['bg'=>'#F3F4F6','color'=>'#6B7280']; @endphp
-                <td>
+                <td data-label="{{ $phaseLabels[$phaseKey] }}">
                     @if($secs > 0)<span style="font-size:12px;font-weight:600;color:{{ $pc['color'] }};">{{ round($secs/3600,1) }}h</span>
                     @else<span style="color:#E5E7EB;">—</span>@endif
                 </td>
                 @endforeach
-                <td><strong>{{ $bu['hours'] }}h</strong></td>
+                <td data-label="Total Hours"><strong>{{ $bu['hours'] }}h</strong></td>
                 @if(($appSettings['hide_hourly_rate'] ?? '0') !== '1')
-                <td>
+                <td data-label="Hourly Rate">
                     @if($hasRate)<span style="color:#059669;font-weight:600;">${{ number_format($bu['hourly_rate'],2) }}/hr</span>
                     @else<span style="color:#9CA3AF;font-size:11px;">Not set</span>@endif
                 </td>
-                <td style="text-align:right;">
+                <td style="text-align:right;" data-label="Est. Pay">
                     @if($bu['estimated_pay'])<span style="font-weight:700;color:#111827;">${{ number_format($bu['estimated_pay'],2) }}</span>
                     @else<span style="color:#D1D5DB;">—</span>@endif
                 </td>
@@ -1823,10 +2051,10 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
             @endforeach
             <tr style="background:#F9FAFB;">
                 <td colspan="{{ 2 + count($phaseLabels) }}"><strong style="color:#374151;">Total</strong></td>
-                <td><strong>{{ round($billingUsers->sum('total_seconds') / 3600, 1) }}h</strong></td>
+                <td data-label="Total Hours"><strong>{{ round($billingUsers->sum('total_seconds') / 3600, 1) }}h</strong></td>
                 @if(($appSettings['hide_hourly_rate'] ?? '0') !== '1')
-                <td></td>
-                <td style="text-align:right;">
+                <td data-label="Hourly Rate"></td>
+                <td style="text-align:right;" data-label="Est. Pay">
                     @php $totalPay = $billingUsers->whereNotNull('estimated_pay')->sum('estimated_pay'); @endphp
                     @if($totalPay > 0)<strong style="color:#6366F1;">${{ number_format($totalPay,2) }}</strong>
                     @else<span style="color:#D1D5DB;">—</span>@endif
@@ -1871,7 +2099,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
         @endforeach
     </div>
 
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;" class="mob-table-cards">
     <table class="rpt-table" id="billing-customer-table">
         <thead>
             <tr>
@@ -1889,7 +2117,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
         <tbody>
             @foreach($billingCustomers->sortByDesc('total_seconds') as $bc)
             <tr>
-                <td>
+                <td class="rpt-td-title" data-label="Customer">
                     <span style="font-weight:600;color:#111827;">{{ $bc['customer_name'] }}</span>
                     <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;">
                         @foreach($bc['by_user'] as $uName => $ud)
@@ -1902,14 +2130,14 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
                 </td>
                 @foreach(array_keys($phaseLabels) as $phaseKey)
                 @php $secs = $bc['phases'][$phaseKey] ?? 0; $pc = $phaseColors[$phaseKey] ?? ['bg'=>'#F3F4F6','color'=>'#6B7280']; @endphp
-                <td>
+                <td data-label="{{ $phaseLabels[$phaseKey] }}">
                     @if($secs > 0)<span style="font-size:12px;font-weight:600;color:{{ $pc['color'] }};">{{ round($secs/3600,1) }}h</span>
                     @else<span style="color:#E5E7EB;">—</span>@endif
                 </td>
                 @endforeach
-                <td><strong>{{ $bc['hours'] }}h</strong></td>
+                <td data-label="Total Hours"><strong>{{ $bc['hours'] }}h</strong></td>
                 @if(($appSettings['hide_hourly_rate'] ?? '0') !== '1')
-                <td style="text-align:right;">
+                <td style="text-align:right;" data-label="Est. Cost">
                     @if($bc['estimated_cost'])<span style="font-weight:700;color:#111827;">${{ number_format($bc['estimated_cost'],2) }}</span>
                     @else<span style="color:#D1D5DB;">—</span>@endif
                 </td>
@@ -1918,9 +2146,9 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
             @endforeach
             <tr style="background:#F9FAFB;">
                 <td colspan="{{ 1 + count($phaseLabels) }}"><strong style="color:#374151;">Total</strong></td>
-                <td><strong>{{ round($billingCustomers->sum('total_seconds') / 3600, 1) }}h</strong></td>
+                <td data-label="Total Hours"><strong>{{ round($billingCustomers->sum('total_seconds') / 3600, 1) }}h</strong></td>
                 @if(($appSettings['hide_hourly_rate'] ?? '0') !== '1')
-                <td style="text-align:right;">
+                <td style="text-align:right;" data-label="Est. Cost">
                     @php $grandTotal = $billingCustomers->whereNotNull('estimated_cost')->sum('estimated_cost'); @endphp
                     @if($grandTotal > 0)<strong style="color:#6366F1;">${{ number_format($grandTotal,2) }}</strong>
                     @else<span style="color:#D1D5DB;">—</span>@endif
@@ -1978,7 +2206,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
                     <i class="fas fa-clock" style="font-size:10px;"></i> {{ $budgetPending }} pending
                 </span>
             </div>
-            <a href="{{ route('admin.social-budget.index') }}"
+            <a href="{{ route('admin.social-budget.index') }}" class="rpt-fullpage-link"
                style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:#FEF3C7;color:#D97706;border:1.5px solid #FDE68A;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;"
                onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
                 <i class="fas fa-arrow-up-right-from-square" style="font-size:10px;"></i> Full page
@@ -1986,7 +2214,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
         </div>
     </div>
 
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;" class="mob-table-cards">
     <table class="rpt-table" id="ad-budget-table">
         <thead>
             <tr>
@@ -2003,16 +2231,16 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
         <tbody>
             @forelse($adBudgetTasks as $at)
             <tr>
-                <td>
+                <td class="rpt-td-title" data-label="Task">
                     <a href="{{ route('admin.tasks.show', $at['id']) }}"
                        style="font-weight:600;color:#111827;text-decoration:none;"
                        onmouseover="this.style.color='#4F46E5'" onmouseout="this.style.color='#111827'">
                         {{ $at['title'] }}
                     </a>
                 </td>
-                <td style="color:#374151;">{{ $at['project'] }}</td>
-                <td style="color:#374151;">{{ $at['customer'] }}</td>
-                <td>
+                <td style="color:#374151;" data-label="Project">{{ $at['project'] }}</td>
+                <td style="color:#374151;" data-label="Customer">{{ $at['customer'] }}</td>
+                <td data-label="Assigned To">
                     @if($at['social_user'] !== '—')
                         <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:8px;background:#E0F2FE;color:#0284C7;font-size:11px;font-weight:600;">
                             <i class="fas fa-share-alt" style="font-size:9px;"></i>
@@ -2022,7 +2250,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
                         <span style="color:#D1D5DB;">—</span>
                     @endif
                 </td>
-                <td>
+                <td data-label="Ad Budget">
                     @if(!empty($at['budget']))
                         <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:8px;background:#FEF3C7;color:#D97706;font-size:12px;font-weight:700;">
                             <i class="fas fa-wallet" style="font-size:10px;"></i>
@@ -2032,7 +2260,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
                         <span style="color:#D1D5DB;font-size:11px;">—</span>
                     @endif
                 </td>
-                <td style="max-width:200px;">
+                <td style="max-width:200px;" data-label="Caption">
                     @if(!empty($at['caption']))
                         <span style="display:block;font-size:11px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;"
                               title="{{ $at['caption'] }}">{{ $at['caption'] }}</span>
@@ -2040,7 +2268,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
                         <span style="color:#D1D5DB;">—</span>
                     @endif
                 </td>
-                <td>
+                <td data-label="Status">
                     @if($at['posted'])
                         <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:8px;background:#D1FAE5;color:#059669;font-size:11px;font-weight:600;">
                             <i class="fas fa-circle-check" style="font-size:9px;"></i> Posted
@@ -2051,7 +2279,7 @@ $statusColorMap = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1',
                         </span>
                     @endif
                 </td>
-                <td style="color:#6B7280;font-size:11px;">{{ $at['posted_at'] ?? '—' }}</td>
+                <td style="color:#6B7280;font-size:11px;" data-label="Posted On">{{ $at['posted_at'] ?? '—' }}</td>
             </tr>
             @empty
             <tr>
@@ -2614,9 +2842,7 @@ async function exportUsersPDF() {
     function rateColor(r)    { return r >= 80 ? '#065F46' : r >= 40 ? '#92400E' : '#991B1B'; }
     function rateBg(r)       { return r >= 80 ? '#D1FAE5' : r >= 40 ? '#FEF3C7' : '#FEE2E2'; }
     function statusColor(s) {
-        const map = { in_progress:'#F59E0B', submitted:'#8B5CF6', revision_requested:'#8B5CF6',
-                      approved:'#10B981', delivered:'#047857', archived:'#047857',
-                      assigned:'#6B7280', viewed:'#6B7280', draft:'#6B7280' };
+        const map = @json(collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['text']));
         return map[s] || '#6B7280';
     }
     function priorityColor(p) {
@@ -3021,6 +3247,7 @@ function rptPaginate(tableId, perPage) {
         function btn(label, page, active, disabled) {
             var el = document.createElement(disabled ? 'span' : 'button');
             el.textContent = label;
+            el.className = 'rpt-pg-btn';
             el.style.cssText = 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:' + (active ? '700' : '600') + ';border:none;cursor:' + (disabled ? 'default' : 'pointer') + ';min-width:32px;text-align:center;background:' + (active ? '#4F46E5' : '#F3F4F6') + ';color:' + (active ? '#fff' : (disabled ? '#D1D5DB' : '#374151')) + ';';
             if (!disabled && !active) el.addEventListener('click', function() { render(page); });
             return el;
@@ -3801,10 +4028,12 @@ function printRptSummSelection(sections) {
             });
         }
         function taskStatusColor(s) {
-            var map = { in_progress:'#F59E0B', paused:'#F59E0B', submitted:'#8B5CF6', revision_requested:'#8B5CF6',
-                        approved:'#10B981', delivered:'#047857', archived:'#047857', pending_customer:'#0EA5E9',
-                        assigned:'#6B7280', viewed:'#6B7280', draft:'#6B7280' };
+            var map = @json(collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['text']));
             return map[s] || '#6B7280';
+        }
+        function taskStatusLabel(s) {
+            var map = @json(collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['label']));
+            return map[s] || (s || '').replace(/_/g, ' ');
         }
         var thLeftTL  = 'text-align:left;padding:8px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #E5E7EB;';
         var thCtrTL   = 'text-align:center;padding:8px 10px;font-size:10px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #E5E7EB;';
@@ -3857,7 +4086,7 @@ function printRptSummSelection(sections) {
             rows.forEach(function(t, i) {
                 var rowBg  = i % 2 === 0 ? '#fff' : '#FAFAFA';
                 var td     = 'padding:9px 10px;border-bottom:1px solid #F3F4F6;overflow-wrap:break-word;word-break:break-word;';
-                var scLbl  = escHtml((t.status || '').replace(/_/g, ' '));
+                var scLbl  = escHtml(taskStatusLabel(t.status));
                 var scCol  = taskStatusColor(t.status);
                 bodyHtml += '<tr style="background:' + rowBg + ';">'
                     + '<td style="' + td + 'font-size:11px;color:#9CA3AF;">' + (i + 1) + '</td>'

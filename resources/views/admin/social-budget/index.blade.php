@@ -2,6 +2,17 @@
 @section('title', 'Ad Budget Monitor')
 
 @section('content')
+@php
+    // Canonical colors for the social-media task posting status (Posted/Pending).
+    // These aren't lifecycle task statuses (App\Support\TaskStatusColors doesn't cover
+    // them), so this is the single source of truth shared between the desktop table
+    // below and the mobile card list (_mobile-index.blade.php) — never hardcode these
+    // hex values a second time.
+    $socialStatusColors = [
+        'posted'  => ['bg' => '#D1FAE5', 'color' => '#059669', 'icon' => 'fa-circle-check', 'label' => 'Posted'],
+        'pending' => ['bg' => '#FEF3C7', 'color' => '#D97706', 'icon' => 'fa-clock', 'label' => 'Pending'],
+    ];
+@endphp
 <style>
 .sb-card {
     background: #fff;
@@ -66,10 +77,18 @@
     .sb-filter-form > * { width:100%; min-width:0; }
     .sb-filter-form .sb-select { width:100%; }
 }
+
+/* Mobile (<=768px): the entire mobile experience for this page — header, status
+   tabs, project/customer filters, KPI cards, task list, pagination — lives in
+   admin/social-budget/_mobile-index.blade.php, which hides all the
+   .sb-desktop-*/.sb-stats-grid/.sb-tasks-table-wrap elements below via its own
+   <style> block. Desktop markup here is untouched. */
 </style>
 
+@include('admin.social-budget._mobile-index')
+
 {{-- Page Header --}}
-<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+<div class="sb-desktop-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
     <div>
         <h1 style="font-size:22px;font-weight:700;color:#111827;margin:0;">Ad Budget Monitor</h1>
         <p style="font-size:13px;color:#9CA3AF;margin:3px 0 0;">Track social media tasks and their ad spend across all projects</p>
@@ -77,8 +96,8 @@
 </div>
 
 {{-- Summary Cards --}}
-<div class="sb-stats-grid">
-    <div class="sb-stat">
+<div class="sb-stats-grid mob-kpi-row">
+    <div class="sb-stat mob-kpi-card">
         <div class="sb-stat-icon" style="background:#F5F3FF;">
             <i class="fas fa-share-alt" style="color:#7C3AED;"></i>
         </div>
@@ -87,7 +106,7 @@
             <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Total Social Tasks</p>
         </div>
     </div>
-    <div class="sb-stat">
+    <div class="sb-stat mob-kpi-card">
         <div class="sb-stat-icon" style="background:#FEF3C7;">
             <i class="fas fa-clock" style="color:#D97706;"></i>
         </div>
@@ -96,7 +115,7 @@
             <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Pending Posting</p>
         </div>
     </div>
-    <div class="sb-stat">
+    <div class="sb-stat mob-kpi-card">
         <div class="sb-stat-icon" style="background:#D1FAE5;">
             <i class="fas fa-circle-check" style="color:#059669;"></i>
         </div>
@@ -105,7 +124,7 @@
             <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Posted</p>
         </div>
     </div>
-    <div class="sb-stat">
+    <div class="sb-stat mob-kpi-card">
         <div class="sb-stat-icon" style="background:#FEF3C7;">
             <i class="fas fa-wallet" style="color:#D97706;"></i>
         </div>
@@ -114,7 +133,7 @@
             <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">With Budget Set</p>
         </div>
     </div>
-    <div class="sb-stat">
+    <div class="sb-stat mob-kpi-card">
         <div class="sb-stat-icon" style="background:#EFF6FF;">
             <i class="fas fa-coins" style="color:#2563EB;"></i>
         </div>
@@ -127,10 +146,10 @@
 
 {{-- Filter Bar --}}
 <div class="sb-card" style="padding:14px 20px;">
-    <form method="GET" action="{{ route('admin.social-budget.index') }}" class="sb-filter-form">
+    <form method="GET" id="sbFilterForm" action="{{ route('admin.social-budget.index') }}" class="sb-filter-form">
 
-        {{-- Status tabs --}}
-        <div style="display:flex;gap:4px;background:#F3F4F6;border-radius:9px;padding:3px;">
+        {{-- Status tabs (desktop) --}}
+        <div class="sb-status-tabs-desktop" style="display:flex;gap:4px;background:#F3F4F6;border-radius:9px;padding:3px;">
             @foreach(['all'=>'All','pending'=>'Pending','posted'=>'Posted'] as $val => $label)
             <button type="button"
                     onclick="document.getElementById('status-input').value='{{ $val }}'; this.closest('form').submit();"
@@ -145,16 +164,16 @@
         </div>
         <input type="hidden" id="status-input" name="status" value="{{ $status }}">
 
-        {{-- Project filter --}}
-        <select name="project_id" class="sb-select" onchange="this.form.submit()">
+        {{-- Project filter (desktop) --}}
+        <select name="project_id" id="sb-project-select" class="sb-select sb-select-desktop" onchange="this.form.submit()">
             <option value="">All Projects</option>
             @foreach($allProjects as $p)
             <option value="{{ $p->id }}" {{ $projectId == $p->id ? 'selected' : '' }}>{{ $p->name }}</option>
             @endforeach
         </select>
 
-        {{-- Customer filter --}}
-        <select name="customer_id" class="sb-select" onchange="this.form.submit()">
+        {{-- Customer filter (desktop) --}}
+        <select name="customer_id" id="sb-customer-select" class="sb-select sb-select-desktop" onchange="this.form.submit()">
             <option value="">All Customers</option>
             @foreach($allCustomers as $c)
             <option value="{{ $c->id }}" {{ $customerId == $c->id ? 'selected' : '' }}>
@@ -175,7 +194,7 @@
 </div>
 
 {{-- Table --}}
-<div class="sb-card" style="padding:0;overflow:hidden;">
+<div class="sb-card sb-desktop-tasklist" style="padding:0;overflow:hidden;">
     <div style="padding:16px 24px 12px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
         <div style="display:flex;align-items:center;gap:10px;">
             <div style="width:32px;height:32px;border-radius:9px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;">
@@ -191,7 +210,7 @@
         </div>
     </div>
 
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+    <div class="mob-table-cards sb-tasks-table-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
     <table class="sb-table">
         <thead>
             <tr>
@@ -208,7 +227,7 @@
         <tbody>
             @forelse($tasks as $t)
             <tr>
-                <td>
+                <td data-label="Task">
                     <a href="{{ route('admin.tasks.show', $t['id']) }}"
                        style="font-weight:600;color:#111827;text-decoration:none;"
                        onmouseover="this.style.color='#4F46E5'" onmouseout="this.style.color='#111827'">
@@ -216,13 +235,13 @@
                     </a>
                     <p style="font-size:10px;color:#9CA3AF;margin:2px 0 0;">Added {{ $t['created_at'] }}</p>
                 </td>
-                <td>
+                <td data-label="Project">
                     <span style="font-size:12px;color:#374151;font-weight:500;">{{ $t['project'] }}</span>
                 </td>
-                <td>
+                <td data-label="Customer">
                     <span style="font-size:12px;color:#374151;">{{ $t['customer'] }}</span>
                 </td>
-                <td>
+                <td data-label="Assigned To">
                     @if($t['social_user'] !== '—')
                         <span class="sb-badge" style="background:#E0F2FE;color:#0284C7;">
                             <i class="fas fa-share-alt" style="font-size:9px;"></i>
@@ -232,7 +251,7 @@
                         <span style="color:#D1D5DB;font-size:12px;">—</span>
                     @endif
                 </td>
-                <td>
+                <td data-label="Ad Budget">
                     @if(!empty($t['budget']))
                         <span class="sb-badge" style="background:#FEF3C7;color:#D97706;font-size:12px;font-weight:700;">
                             <i class="fas fa-wallet" style="font-size:10px;"></i>
@@ -242,7 +261,7 @@
                         <span style="color:#D1D5DB;font-size:11px;">Not set</span>
                     @endif
                 </td>
-                <td style="max-width:220px;">
+                <td data-label="Caption / Instructions" style="max-width:220px;">
                     @if(!empty($t['caption']))
                         <p style="font-size:11px;color:#374151;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;"
                            title="{{ $t['caption'] }}">
@@ -259,20 +278,14 @@
                         <span style="color:#D1D5DB;font-size:11px;">—</span>
                     @endif
                 </td>
-                <td>
-                    @if($t['posted'])
-                        <span class="sb-badge" style="background:#D1FAE5;color:#059669;">
-                            <i class="fas fa-circle-check" style="font-size:9px;"></i>
-                            Posted
-                        </span>
-                    @else
-                        <span class="sb-badge" style="background:#FEF3C7;color:#D97706;">
-                            <i class="fas fa-clock" style="font-size:9px;"></i>
-                            Pending
-                        </span>
-                    @endif
+                <td data-label="Status">
+                    @php $ss = $socialStatusColors[$t['posted'] ? 'posted' : 'pending']; @endphp
+                    <span class="sb-badge" style="background:{{ $ss['bg'] }};color:{{ $ss['color'] }};">
+                        <i class="fas {{ $ss['icon'] }}" style="font-size:9px;"></i>
+                        {{ $ss['label'] }}
+                    </span>
                 </td>
-                <td style="font-size:11px;color:#6B7280;white-space:nowrap;">
+                <td data-label="Posted On" style="font-size:11px;color:#6B7280;white-space:nowrap;">
                     {{ $t['posted_at'] ?? '—' }}
                 </td>
             </tr>
@@ -303,7 +316,7 @@
 
 @if($tasks->hasPages())
 @php $pgParams = array_filter(['project_id'=>$projectId,'customer_id'=>$customerId,'status'=>$status!=='all'?$status:null], fn($v)=>$v!==null); @endphp
-<div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+<div class="sb-desktop-pager" style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
     <span style="font-size:12px;color:#6B7280;">Showing {{ $tasks->firstItem() }}–{{ $tasks->lastItem() }} of {{ $tasks->total() }} results</span>
     <div style="display:flex;gap:4px;align-items:center;">
         @if($tasks->onFirstPage())

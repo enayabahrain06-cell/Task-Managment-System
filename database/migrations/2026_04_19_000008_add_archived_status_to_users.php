@@ -12,7 +12,7 @@ return new class extends Migration
         DB::statement("CREATE TABLE users_new (
             id         INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
             name       VARCHAR(255) NOT NULL,
-            email      VARCHAR(255) NOT NULL UNIQUE,
+            email      VARCHAR(255) NOT NULL,
             email_verified_at DATETIME NULL,
             password   VARCHAR(255) NOT NULL,
             role       VARCHAR(255) NOT NULL DEFAULT 'user',
@@ -37,6 +37,7 @@ return new class extends Migration
 
         DB::statement('DROP TABLE users');
         DB::statement('ALTER TABLE users_new RENAME TO users');
+        DB::statement('CREATE UNIQUE INDEX users_email_unique ON users (email)');
 
         DB::statement('PRAGMA foreign_keys = ON');
     }
@@ -48,7 +49,7 @@ return new class extends Migration
         DB::statement("CREATE TABLE users_new (
             id         INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
             name       VARCHAR(255) NOT NULL,
-            email      VARCHAR(255) NOT NULL UNIQUE,
+            email      VARCHAR(255) NOT NULL,
             email_verified_at DATETIME NULL,
             password   VARCHAR(255) NOT NULL,
             role       VARCHAR(255) NOT NULL DEFAULT 'user',
@@ -72,6 +73,7 @@ return new class extends Migration
 
         DB::statement('DROP TABLE users');
         DB::statement('ALTER TABLE users_new RENAME TO users');
+        DB::statement('CREATE UNIQUE INDEX users_email_unique ON users (email)');
 
         DB::statement('PRAGMA foreign_keys = ON');
     }

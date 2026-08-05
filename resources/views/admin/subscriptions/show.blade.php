@@ -13,6 +13,68 @@
     .show-grid   { grid-template-columns:1fr !important; }
     .stats-grid  { grid-template-columns:1fr 1fr !important; }
 }
+@media (max-width:768px) {
+    /* Header → clean rounded card */
+    .sub-show-header {
+        background: #fff !important;
+        border: 1px solid #F3F4F6 !important;
+        border-radius: var(--mob-r-lg) !important;
+        box-shadow: var(--mob-shadow-1) !important;
+        padding: var(--mob-sp-2) !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    .sub-show-header-top { width: 100%; }
+    .sub-show-header-actions { width: 100%; }
+    .sub-show-header-actions button { flex: 1; min-height: 44px; }
+
+    .stats-grid { gap: var(--mob-sp-2) !important; }
+    .info-card { border-radius: var(--mob-r-md) !important; box-shadow: var(--mob-shadow-1) !important; }
+
+    /* Assigned Users list → distinct rounded card rows (no <table> markup on this page) */
+    .sub-user-list { padding: var(--mob-sp-1) 0 !important; }
+    .sub-user-row {
+        border-radius: var(--mob-r-md) !important;
+        border: 1px solid #F3F4F6 !important;
+        box-shadow: var(--mob-shadow-1) !important;
+        border-bottom: none !important;
+        margin: 0 var(--mob-sp-1) var(--mob-sp-2) !important;
+    }
+    .sub-user-remove-btn { width: 44px !important; height: 44px !important; }
+
+    /* Copy/reveal/attachment icon buttons (~28x28 inline) → comfortable touch target */
+    .info-card a[style*="width:28px"][style*="height:28px"],
+    .info-card button[style*="width:28px"][style*="height:28px"] {
+        min-width: 44px !important;
+        min-height: 44px !important;
+    }
+
+    /* Edit Subscription modal close button (~32x32) → comfortable touch target */
+    .sub-edit-close-btn { width: 44px !important; height: 44px !important; }
+
+    /* Modal forms: full-width, comfortable touch targets */
+    .sub-edit-grid { grid-template-columns: 1fr !important; }
+    .sub-modal-input {
+        width: 100% !important;
+        min-height: 46px !important;
+        font-size: 15px !important;
+        box-sizing: border-box;
+    }
+    textarea.sub-modal-input { min-height: 70px !important; }
+    .sub-modal-btn { min-height: 46px !important; font-size: 14px !important; }
+
+    /* Card design consistency pass: icon badges, hero values, chips, empty state */
+    .sub-show-icon-badge { width: 36px !important; height: 36px !important; border-radius: 12px !important; }
+    .sub-show-icon-badge i { font-size: 14px !important; }
+    .sub-show-badge { border-radius: 999px !important; font-weight: 700 !important; padding: 4px 10px !important; font-size: 11.5px !important; }
+    .sub-show-hero-value { font-size: 20px !important; font-weight: 700 !important; line-height: 1.25 !important; }
+    .sub-show-empty { padding: 32px 20px !important; }
+    .sub-show-empty i { font-size: 32px !important; }
+}
+@media (max-width:480px) {
+    /* Stats grid never collapsed below 2 cols → force single column on very small screens */
+    .stats-grid { grid-template-columns: 1fr !important; }
+}
 
 /* ── Drop zone animations ── */
 @keyframes dz-float {
@@ -152,8 +214,8 @@
     @endif
 
     {{-- Header --}}
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:14px;">
-        <div style="display:flex;align-items:center;gap:16px;">
+    <div class="sub-show-header" style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:14px;">
+        <div class="sub-show-header-top" style="display:flex;align-items:center;gap:16px;">
             <a href="{{ route('admin.subscriptions.index') }}"
                style="width:36px;height:36px;border-radius:10px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;color:#6B7280;text-decoration:none;flex-shrink:0;"
                title="Back to Subscriptions">
@@ -169,14 +231,14 @@
             <div>
                 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                     <h1 style="font-size:22px;font-weight:800;color:#111827;margin:0;">{{ $subscription->name }}</h1>
-                    <span class="sub-status-{{ $status }}"
+                    <span class="sub-status-{{ $status }} sub-show-badge"
                           style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">
                         @if($status === 'active')<i class="fas fa-circle" style="font-size:6px;"></i> Active
                         @elseif($status === 'expiring_soon')<i class="fas fa-clock" style="font-size:10px;"></i> Expiring Soon
                         @else<i class="fas fa-triangle-exclamation" style="font-size:10px;"></i> Expired
                         @endif
                     </span>
-                    <span style="background:{{ $cc['bg'] }};color:{{ $cc['color'] }};padding:4px 10px;border-radius:20px;font-size:11.5px;font-weight:600;">
+                    <span class="sub-show-badge" style="background:{{ $cc['bg'] }};color:{{ $cc['color'] }};padding:4px 10px;border-radius:20px;font-size:11.5px;font-weight:600;">
                         {{ \App\Models\Subscription::categoryOptions()[$subscription->category] ?? $subscription->category }}
                     </span>
                 </div>
@@ -185,13 +247,13 @@
                 @endif
             </div>
         </div>
-        <div style="display:flex;gap:8px;">
+        <div class="sub-show-header-actions" style="display:flex;gap:8px;">
             <button @click="editModal = true"
-                    style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
+                    style="display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 16px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
                 <i class="fas fa-pen" style="font-size:11px;"></i> Edit
             </button>
             <button @click="deleteModal = true"
-                    style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;background:#FEF2F2;color:#DC2626;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
+                    style="display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 16px;background:#FEF2F2;color:#DC2626;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
                 <i class="fas fa-trash" style="font-size:11px;"></i> Delete
             </button>
         </div>
@@ -207,7 +269,7 @@
     @endphp
     <div style="background:{{ $bannerBg }};border:1.5px solid {{ $bannerBdr }};border-radius:14px;padding:18px 24px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
         <div style="display:flex;align-items:center;gap:14px;">
-            <div style="width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <div class="sub-show-icon-badge" style="width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fas {{ $bannerIcon }}" style="color:{{ $bannerColor }};font-size:20px;"></i>
             </div>
             <div>
@@ -222,7 +284,7 @@
             </div>
         </div>
         <div style="text-align:right;">
-            <div style="font-size:38px;font-weight:900;color:{{ $bannerColor }};line-height:1;">{{ $status === 'expired' ? abs($days) : ($days ?? '∞') }}</div>
+            <div class="sub-show-hero-value" style="font-size:38px;font-weight:900;color:{{ $bannerColor }};line-height:1;">{{ $status === 'expired' ? abs($days) : ($days ?? '∞') }}</div>
             <div style="font-size:11px;color:#6B7280;font-weight:500;">{{ $status === 'expired' ? 'days overdue' : 'days left' }}</div>
         </div>
     </div>
@@ -472,16 +534,16 @@
                 </div>
 
                 @if($subscription->users->isEmpty())
-                <div style="padding:32px 24px;text-align:center;color:#9CA3AF;">
+                <div class="sub-show-empty" style="padding:32px 24px;text-align:center;color:#9CA3AF;">
                     <i class="fas fa-users" style="font-size:28px;margin-bottom:10px;opacity:.3;display:block;"></i>
                     <p style="font-size:13px;font-weight:500;margin:0;">No users assigned yet</p>
                     <p style="font-size:12px;margin:4px 0 0;">Click "Assign User" to grant access</p>
                 </div>
                 @else
-                <div>
+                <div class="sub-user-list">
                     @foreach($subscription->users as $user)
                     @php $avatarColors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6']; @endphp
-                    <div style="padding:12px 20px;display:flex;align-items:center;justify-content:space-between;{{ !$loop->last ? 'border-bottom:1px solid #F9FAFB;' : '' }}">
+                    <div class="sub-user-row" style="padding:12px 20px;display:flex;align-items:center;justify-content:space-between;{{ !$loop->last ? 'border-bottom:1px solid #F9FAFB;' : '' }}">
                         <div style="display:flex;align-items:center;gap:12px;">
                             <div style="width:36px;height:36px;border-radius:50%;background:{{ $avatarColors[$loop->index % 5] }};display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;flex-shrink:0;">
                                 {{ strtoupper(substr($user->name, 0, 1)) }}
@@ -499,6 +561,7 @@
                                 @endif
                             </div>
                             <button @click="openRemove({{ $user->id }}, '{{ addslashes($user->name) }}')"
+                                    class="sub-user-remove-btn"
                                     style="width:30px;height:30px;border-radius:8px;background:#FEF2F2;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#DC2626;"
                                     title="Remove" onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
                                 <i class="fas fa-user-minus" style="font-size:11px;"></i>
@@ -694,7 +757,7 @@
                 <p style="font-size:13px;color:#9CA3AF;margin:0 0 20px;">Grant access to {{ $subscription->name }}</p>
                 <form method="POST" action="{{ route('admin.subscriptions.assign-user', $subscription->id) }}">
                     @csrf
-                    <select name="user_id" required
+                    <select name="user_id" required class="sub-modal-input"
                             style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#fff;margin-bottom:16px;box-sizing:border-box;">
                         <option value="">Select a user…</option>
                         @foreach($availableUsers as $u)
@@ -702,11 +765,11 @@
                         @endforeach
                     </select>
                     <div style="display:flex;gap:10px;">
-                        <button type="submit"
+                        <button type="submit" class="sub-modal-btn"
                                 style="flex:1;padding:10px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">
                             Assign
                         </button>
-                        <button type="button" @click="assignModal = false"
+                        <button type="button" @click="assignModal = false" class="sub-modal-btn"
                                 style="padding:10px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">
                             Cancel
                         </button>
@@ -728,13 +791,13 @@
                 <h3 style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">Remove User?</h3>
                 <p style="font-size:13px;color:#6B7280;margin:0 0 20px;">Remove <strong x-text="removeUserName" style="color:#111827;"></strong> from this subscription? They will be notified.</p>
                 <div style="display:flex;gap:10px;">
-                    <button @click="removeModal = false"
+                    <button @click="removeModal = false" class="sub-modal-btn"
                             style="flex:1;padding:10px;background:#F3F4F6;color:#374151;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">
                         Cancel
                     </button>
                     <form :action="'/admin/subscriptions/{{ $subscription->id }}/remove-user/'+removeUserId" method="POST" style="flex:1;">
                         @csrf @method('DELETE')
-                        <button type="submit"
+                        <button type="submit" class="sub-modal-btn"
                                 style="width:100%;padding:10px;background:#DC2626;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">
                             Remove
                         </button>
@@ -756,7 +819,7 @@
                         <h2 style="font-size:17px;font-weight:700;color:#111827;margin:0;">Edit Subscription</h2>
                         <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">{{ $subscription->name }}</p>
                     </div>
-                    <button @click="editModal = false"
+                    <button @click="editModal = false" class="sub-edit-close-btn"
                             style="width:32px;height:32px;border-radius:8px;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;">
                         <i class="fas fa-times"></i>
                     </button>
@@ -816,44 +879,44 @@
                         @endif
                     </div>
 
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div class="sub-edit-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
                         <div style="grid-column:1/-1;">
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Name *</label>
-                            <input type="text" name="name" value="{{ old('name', $subscription->name) }}" required
+                            <input type="text" name="name" value="{{ old('name', $subscription->name) }}" required class="sub-modal-input"
                                    style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;box-sizing:border-box;"
                                    onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
                         </div>
                         <div>
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Vendor</label>
-                            <input type="text" name="vendor" value="{{ old('vendor', $subscription->vendor) }}"
+                            <input type="text" name="vendor" value="{{ old('vendor', $subscription->vendor) }}" class="sub-modal-input"
                                    style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;box-sizing:border-box;"
                                    onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
                         </div>
                         <div>
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Category *</label>
-                            <select name="category" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;background:#fff;box-sizing:border-box;">
+                            <select name="category" class="sub-modal-input" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;background:#fff;box-sizing:border-box;">
                                 @foreach($catOpts as $k=>$v)<option value="{{ $k }}" {{ old('category',$subscription->category)===$k?'selected':'' }}>{{ $v }}</option>@endforeach
                             </select>
                         </div>
                         <div>
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">License Type *</label>
-                            <select name="type" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;background:#fff;box-sizing:border-box;">
+                            <select name="type" class="sub-modal-input" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;background:#fff;box-sizing:border-box;">
                                 @foreach($typeOpts as $k=>$v)<option value="{{ $k }}" {{ old('type',$subscription->type)===$k?'selected':'' }}>{{ $v }}</option>@endforeach
                             </select>
                         </div>
                         <div>
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Billing Cycle *</label>
-                            <select name="billing_cycle" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;background:#fff;box-sizing:border-box;">
+                            <select name="billing_cycle" class="sub-modal-input" style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;background:#fff;box-sizing:border-box;">
                                 @foreach($cycleOpts as $k=>$v)<option value="{{ $k }}" {{ old('billing_cycle',$subscription->billing_cycle)===$k?'selected':'' }}>{{ $v }}</option>@endforeach
                             </select>
                         </div>
                         <div>
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Cost *</label>
                             <div style="display:flex;gap:6px;">
-                                <select name="currency" style="padding:9px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;background:#fff;">
+                                <select name="currency" class="sub-modal-input" style="padding:9px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;background:#fff;">
                                     @foreach($currencies as $c)<option value="{{ $c }}" {{ old('currency',$subscription->currency)===$c?'selected':'' }}>{{ $c }}</option>@endforeach
                                 </select>
-                                <input type="number" name="cost" value="{{ old('cost', $subscription->cost) }}" step="0.001" min="0" required
+                                <input type="number" name="cost" value="{{ old('cost', $subscription->cost) }}" step="0.001" min="0" required class="sub-modal-input"
                                        style="flex:1;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;box-sizing:border-box;"
                                        onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
                             </div>
@@ -861,31 +924,31 @@
                         <div>
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Max Seats</label>
                             <input type="number" name="max_seats" value="{{ old('max_seats', $subscription->max_seats) }}" min="1"
-                                   placeholder="Unlimited if blank"
+                                   placeholder="Unlimited if blank" class="sub-modal-input"
                                    style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;box-sizing:border-box;"
                                    onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
                         </div>
                         <div>
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Purchase Date</label>
-                            <input type="date" name="purchase_date" value="{{ old('purchase_date', $subscription->purchase_date?->format('Y-m-d')) }}"
+                            <input type="date" name="purchase_date" value="{{ old('purchase_date', $subscription->purchase_date?->format('Y-m-d')) }}" class="sub-modal-input"
                                    style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;box-sizing:border-box;">
                         </div>
                         <div>
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Renewal Date</label>
-                            <input type="date" name="renewal_date" value="{{ old('renewal_date', $subscription->renewal_date?->format('Y-m-d')) }}"
+                            <input type="date" name="renewal_date" value="{{ old('renewal_date', $subscription->renewal_date?->format('Y-m-d')) }}" class="sub-modal-input"
                                    style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;box-sizing:border-box;">
                         </div>
                         <div style="grid-column:1/-1;">
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Website</label>
                             <input type="url" name="website" value="{{ old('website', $subscription->website) }}"
-                                   placeholder="https://..."
+                                   placeholder="https://..." class="sub-modal-input"
                                    style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;box-sizing:border-box;"
                                    onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
                         </div>
                         <div>
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Username / Email</label>
                             <input type="text" name="username" value="{{ old('username', $subscription->username) }}"
-                                   placeholder="login@example.com" autocomplete="off"
+                                   placeholder="login@example.com" autocomplete="off" class="sub-modal-input"
                                    style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;box-sizing:border-box;"
                                    onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
                         </div>
@@ -897,7 +960,7 @@
                             <div style="position:relative;">
                                 <input :type="show?'text':'password'" name="password"
                                        placeholder="{{ $subscription->password ? 'Leave blank to keep current' : 'Enter password or key' }}"
-                                       autocomplete="new-password"
+                                       autocomplete="new-password" class="sub-modal-input"
                                        style="width:100%;padding:9px 40px 9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;box-sizing:border-box;"
                                        onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
                                 <button type="button" @click="show=!show"
@@ -921,18 +984,18 @@
                         </div>
                         <div style="grid-column:1/-1;">
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Notes</label>
-                            <textarea name="notes" rows="3"
+                            <textarea name="notes" rows="3" class="sub-modal-input"
                                       style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;resize:vertical;box-sizing:border-box;"
                                       onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">{{ old('notes', $subscription->notes) }}</textarea>
                         </div>
                     </div>
 
                     <div style="display:flex;gap:10px;margin-top:20px;">
-                        <button type="submit"
+                        <button type="submit" class="sub-modal-btn"
                                 style="flex:1;padding:11px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
                             <i class="fas fa-save" style="margin-right:6px;"></i> Save Changes
                         </button>
-                        <button type="button" @click="editModal = false"
+                        <button type="button" @click="editModal = false" class="sub-modal-btn"
                                 style="padding:11px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
                             Cancel
                         </button>
@@ -954,13 +1017,13 @@
                 <h3 style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">Delete Subscription?</h3>
                 <p style="font-size:13px;color:#6B7280;margin:0 0 20px;">This will permanently remove <strong style="color:#111827;">{{ $subscription->name }}</strong> and all associated data.</p>
                 <div style="display:flex;gap:10px;">
-                    <button @click="deleteModal = false"
+                    <button @click="deleteModal = false" class="sub-modal-btn"
                             style="flex:1;padding:10px;background:#F3F4F6;color:#374151;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">
                         Cancel
                     </button>
                     <form action="{{ route('admin.subscriptions.destroy', $subscription->id) }}" method="POST" style="flex:1;">
                         @csrf @method('DELETE')
-                        <button type="submit"
+                        <button type="submit" class="sub-modal-btn"
                                 style="width:100%;padding:10px;background:#DC2626;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;">
                             Delete
                         </button>

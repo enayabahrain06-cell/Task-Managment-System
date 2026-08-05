@@ -40,6 +40,43 @@
 .dom-detail-label { font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;width:130px;flex-shrink:0;padding-top:1px; }
 .dom-detail-val { font-size:13px;color:#111827;font-weight:500;flex:1;word-break:break-word; }
 .dom-expiring-row:hover { background:#FFFBEB; }
+
+/* ── Mobile-only premium pass (≤768px) — desktop styles above are untouched ── */
+@media (max-width: 768px) {
+    .dom-header { padding:20px; border-radius:var(--mob-r-lg,20px); flex-direction:column; align-items:flex-start; gap:16px; }
+    .dom-header > div:last-child { width:100%; }
+    .dom-header > div:last-child button { width:100%; justify-content:center; padding:12px 18px; }
+
+    .dom-stats-grid { grid-template-columns:repeat(2,1fr) !important; gap:10px !important; }
+    .dom-stat { border-radius:18px; box-shadow:0 1px 2px rgba(16,24,40,.06); border:1px solid rgba(0,0,0,.05); padding:16px; }
+    .dom-stat-icon { width:36px !important; height:36px !important; border-radius:12px !important; }
+    .dom-stat-icon i { font-size:14px !important; }
+    .dom-stat-label { font-size:11px !important; font-weight:600 !important; text-transform:uppercase !important; letter-spacing:.05em !important; color:#6B7280 !important; }
+    .dom-stat-value { font-size:20px !important; line-height:1.2 !important; }
+
+    /* Empty state */
+    .dom-empty-card { border-radius:18px !important; padding:32px 20px !important; }
+    .dom-empty-icon-box { width:40px !important; height:40px !important; border-radius:12px !important; }
+    .dom-empty-icon { font-size:16px !important; color:#D1D5DB !important; }
+    .dom-empty-title { font-size:14px !important; }
+
+    /* Toolbar: full-width, stacked search + filter */
+    .dom-toolbar-mobile { flex-direction:column; align-items:stretch !important; border-radius:var(--mob-r-md,16px) !important; }
+    .dom-toolbar-mobile > div, .dom-toolbar-mobile select, .dom-toolbar-mobile #dom-count { width:100%; box-sizing:border-box; }
+    .dom-toolbar-mobile select { padding:11px 14px; }
+    .dom-search { width:100%; min-height:44px; box-sizing:border-box; }
+
+    /* Table → stacked cards, no horizontal scroll */
+    .dom-table { min-width:0 !important; }
+    .mob-table-cards { overflow-x:visible !important; }
+    .mob-table-cards tr.row-expired  { border-left:4px solid #DC2626; }
+    .mob-table-cards tr.row-expiring { border-left:4px solid #D97706; }
+    .mob-table-cards td { font-size:13px; }
+    .mob-table-cards td[data-label="Domain"] { flex-direction:row; }
+
+    /* Add-domain modal */
+    #userAddDomainModal > div > div { padding:20px; border-radius:var(--mob-r-lg,20px); }
+}
 </style>
 
 <div style="padding:0 0 32px;">
@@ -103,8 +140,8 @@
                 <i class="fas fa-globe" style="color:#4F46E5;"></i>
             </div>
             <div>
-                <p style="font-size:22px;font-weight:800;color:#111827;margin:0;">{{ $totalCount }}</p>
-                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Total Domains</p>
+                <p class="dom-stat-value" style="font-size:22px;font-weight:800;color:#111827;margin:0;">{{ $totalCount }}</p>
+                <p class="dom-stat-label" style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Total Domains</p>
             </div>
         </div>
         <div class="dom-stat">
@@ -112,8 +149,8 @@
                 <i class="fas fa-circle-check" style="color:#059669;"></i>
             </div>
             <div>
-                <p style="font-size:22px;font-weight:800;color:#059669;margin:0;">{{ $activeCount }}</p>
-                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Active</p>
+                <p class="dom-stat-value" style="font-size:22px;font-weight:800;color:#059669;margin:0;">{{ $activeCount }}</p>
+                <p class="dom-stat-label" style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Active</p>
             </div>
         </div>
         <div class="dom-stat">
@@ -121,8 +158,8 @@
                 <i class="fas fa-clock" style="color:#D97706;"></i>
             </div>
             <div>
-                <p style="font-size:22px;font-weight:800;color:#D97706;margin:0;">{{ $expiringSoonCount }}</p>
-                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Expiring Soon <strong style="color:#EA580C;">· {{ $weekCount }} in 7d</strong></p>
+                <p class="dom-stat-value" style="font-size:22px;font-weight:800;color:#D97706;margin:0;">{{ $expiringSoonCount }}</p>
+                <p class="dom-stat-label" style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Expiring Soon <strong style="color:#EA580C;">· {{ $weekCount }} in 7d</strong></p>
             </div>
         </div>
         <div class="dom-stat">
@@ -130,8 +167,8 @@
                 <i class="fas fa-circle-xmark" style="color:#DC2626;"></i>
             </div>
             <div>
-                <p style="font-size:22px;font-weight:800;color:#DC2626;margin:0;">{{ $expiredCount }}</p>
-                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Expired</p>
+                <p class="dom-stat-value" style="font-size:22px;font-weight:800;color:#DC2626;margin:0;">{{ $expiredCount }}</p>
+                <p class="dom-stat-label" style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Expired</p>
             </div>
         </div>
         <div class="dom-stat">
@@ -140,21 +177,21 @@
             </div>
             <div>
                 @forelse($annualTotalsByCurrency as $currency => $amount)
-                <p style="font-size:{{ $annualTotalsByCurrency->count() > 1 ? '16px' : '22px' }};font-weight:800;color:#2563EB;margin:0;">{{ format_money($amount, $currency) }}</p>
+                <p class="dom-stat-value" style="font-size:{{ $annualTotalsByCurrency->count() > 1 ? '16px' : '22px' }};font-weight:800;color:#2563EB;margin:0;">{{ format_money($amount, $currency) }}</p>
                 @empty
-                <p style="font-size:22px;font-weight:800;color:#2563EB;margin:0;">BHD 0.000</p>
+                <p class="dom-stat-value" style="font-size:22px;font-weight:800;color:#2563EB;margin:0;">BHD 0.000</p>
                 @endforelse
-                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Annual Spend</p>
+                <p class="dom-stat-label" style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Annual Spend</p>
             </div>
         </div>
     </div>
 
     @if($domains->isEmpty())
-    <div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:16px;padding:60px 20px;text-align:center;">
-        <div style="width:72px;height:72px;background:#EEF2FF;border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
-            <i class="fas fa-globe" style="font-size:28px;color:#4F46E5;"></i>
+    <div class="dom-empty-card" style="background:#fff;border:1.5px solid #E5E7EB;border-radius:16px;padding:60px 20px;text-align:center;">
+        <div class="dom-empty-icon-box" style="width:72px;height:72px;background:#EEF2FF;border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+            <i class="fas fa-globe dom-empty-icon" style="font-size:28px;color:#4F46E5;"></i>
         </div>
-        <p style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">No domains assigned</p>
+        <p class="dom-empty-title" style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">No domains assigned</p>
         <p style="font-size:13px;color:#9CA3AF;margin:0 0 20px;">You have not been assigned as responsible person for any domain yet.</p>
         <button onclick="document.getElementById('userAddDomainModal').style.display='block'"
                 style="display:inline-flex;align-items:center;gap:7px;padding:10px 20px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;">
@@ -164,7 +201,7 @@
     @else
 
     {{-- Search / filter toolbar --}}
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;background:#fff;border:1.5px solid #E5E7EB;border-radius:14px;padding:10px 14px;box-shadow:0 1px 6px rgba(0,0,0,.04);">
+    <div class="dom-toolbar-mobile" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;background:#fff;border:1.5px solid #E5E7EB;border-radius:14px;padding:10px 14px;box-shadow:0 1px 6px rgba(0,0,0,.04);">
         <div style="position:relative;flex:1;min-width:180px;">
             <i class="fas fa-search" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;"></i>
             <input type="text" id="dom-search" class="dom-search" placeholder="Search domain or registrar…" oninput="filterDomains()" style="width:100%;box-sizing:border-box;">
@@ -180,7 +217,7 @@
 
     {{-- Table --}}
     <div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:16px;overflow:clip;box-shadow:0 1px 6px rgba(0,0,0,.04);">
-        <div style="overflow-x:auto;">
+        <div style="overflow-x:auto;" class="mob-table-cards">
         <table class="dom-table" id="domains-table">
             <thead>
                 <tr>
@@ -207,7 +244,7 @@
                     data-registrar="{{ strtolower($domain->registrar ?? '') }}"
                     data-status="{{ $domain->status }}"
                     onclick="window.location='{{ route('user.domains.show', $domain) }}'">
-                    <td>
+                    <td data-label="Domain">
                         <div style="display:flex;align-items:center;gap:10px;">
                             <div style="width:34px;height:34px;border-radius:9px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                 <i class="fas fa-globe" style="font-size:13px;color:#4F46E5;"></i>
@@ -220,9 +257,9 @@
                             </div>
                         </div>
                     </td>
-                    <td style="color:#374151;">{{ $domain->registrar ?: '—' }}</td>
-                    <td style="color:#374151;">{{ $domain->customer?->company ?: $domain->customer?->name ?: '—' }}</td>
-                    <td>
+                    <td data-label="Registrar" style="color:#374151;">{{ $domain->registrar ?: '—' }}</td>
+                    <td data-label="Customer" style="color:#374151;">{{ $domain->customer?->company ?: $domain->customer?->name ?: '—' }}</td>
+                    <td data-label="Expiry Date">
                         @if($domain->expires_at)
                             <span style="font-weight:600;color:{{ $domain->status === 'expired' ? '#DC2626' : ($domain->status === 'expiring_soon' ? '#D97706' : '#111827') }};">
                                 {{ $domain->expires_at->format('d M Y') }}
@@ -231,7 +268,7 @@
                             <span style="color:#9CA3AF;">—</span>
                         @endif
                     </td>
-                    <td>
+                    <td data-label="Days Left">
                         @if($domain->days_until_expiry !== null)
                             @if($domain->days_until_expiry < 0)
                                 <span style="font-weight:700;color:#DC2626;">Expired {{ abs($domain->days_until_expiry) }}d ago</span>
@@ -246,7 +283,7 @@
                             <span style="color:#9CA3AF;">—</span>
                         @endif
                     </td>
-                    <td>
+                    <td data-label="Auto Renew">
                         @if($domain->auto_renew)
                             <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#059669;">
                                 <i class="fas fa-rotate" style="font-size:10px;"></i> Yes
@@ -255,7 +292,7 @@
                             <span style="font-size:12px;color:#9CA3AF;">No</span>
                         @endif
                     </td>
-                    <td>
+                    <td data-label="Status">
                         @if($domain->status === 'active')
                             <span class="status-badge badge-active"><i class="fas fa-circle" style="font-size:7px;"></i> Active</span>
                         @elseif($domain->status === 'expiring_soon')

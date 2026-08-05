@@ -45,8 +45,10 @@
 .toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:20px; background:#fff; border:1.5px solid #E5E7EB; border-radius:14px; padding:10px 14px; box-shadow:0 1px 6px rgba(0,0,0,.04); }
 /* Stat cards */
 .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
-@media(max-width:800px){ .stats-grid { grid-template-columns:repeat(2,1fr); } }
-@media(max-width:440px){ .stats-grid { grid-template-columns:1fr; } }
+/* !important needed: the Social Accounts stats-grid sets grid-template-columns via an
+   inline style (count varies with $saSuspended), which otherwise always beats this rule. */
+@media(max-width:800px){ .stats-grid { grid-template-columns:repeat(2,1fr) !important; } }
+@media(max-width:440px){ .stats-grid { grid-template-columns:1fr !important; } }
 .stat-card { border-radius:14px; padding:18px 20px; position:relative; overflow:hidden; color:#fff; cursor:pointer; transition:transform .15s,box-shadow .15s; }
 .stat-card:hover { transform:translateY(-3px); }
 .stat-card-blob { position:absolute; top:-20px; right:-20px; width:80px; height:80px; border-radius:50%; background:rgba(255,255,255,.12); pointer-events:none; }
@@ -80,7 +82,22 @@
 .sa-vault-card { background:#fff; border:1.5px solid #E5E7EB; border-radius:16px; overflow:hidden; display:flex; flex-direction:column; transition:box-shadow .2s,transform .2s; }
 .sa-vault-card:hover { box-shadow:0 10px 32px rgba(0,0,0,.1); transform:translateY(-2px); }
 .sa-vault-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:18px; }
+@media(max-width:360px){ .sa-vault-grid { grid-template-columns:1fr; } }
 [x-cloak] { display:none !important; }
+/* ── Mobile card polish (max-width:768px) ── additive only, does not affect desktop ── */
+@media (max-width: 768px) {
+    .stat-card { border-radius: var(--mob-r-lg) !important; padding: var(--mob-sp-2) !important; box-shadow: var(--mob-shadow-1) !important; }
+    .stat-card-label { font-size: 11px !important; letter-spacing: .05em !important; }
+    .stat-card-value { font-size: 20px !important; line-height: 1.25 !important; }
+    .stat-card-sub { font-size: 11px !important; }
+    .lic-card, .sa-vault-card { border-radius: var(--mob-r-lg) !important; box-shadow: var(--mob-shadow-1) !important; }
+    .vault-badge { font-size: 11px !important; padding: 2px 8px !important; border-radius: 9999px !important; font-weight: 500 !important; }
+    .mob-empty-card { padding: 32px 20px !important; border-radius: var(--mob-r-lg) !important; }
+    .mob-empty-card .mob-empty-icon-wrap { width: 56px !important; height: 56px !important; }
+    .mob-empty-card .mob-empty-icon { font-size: 22px !important; }
+    .mob-empty-card h2, .mob-empty-card h3 { font-size: 14px !important; }
+    .mob-empty-card p { font-size: 13px !important; }
+}
 </style>
 
 @php
@@ -214,9 +231,9 @@ const LIC_DATA = @json($licData);
 <div style="height:4px;background:linear-gradient(90deg,#4F46E5,#6366F1,#818CF8);border-radius:4px;margin-bottom:20px;"></div>
 
 @if($licenses->isEmpty())
-<div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:16px;padding:72px 24px;text-align:center;">
-    <div style="width:80px;height:80px;border-radius:24px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
-        <i class="fas fa-layer-group" style="font-size:32px;color:#818CF8;"></i>
+<div class="mob-empty-card" style="background:#fff;border:1.5px solid #E5E7EB;border-radius:16px;padding:72px 24px;text-align:center;">
+    <div class="mob-empty-icon-wrap" style="width:80px;height:80px;border-radius:24px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+        <i class="fas fa-layer-group mob-empty-icon" style="font-size:32px;color:#818CF8;"></i>
     </div>
     <h2 style="font-size:18px;font-weight:700;color:#111827;margin:0 0 8px;">No licenses assigned yet</h2>
     <p style="font-size:14px;color:#9CA3AF;margin:0;">Your administrator will assign software licenses to you here.</p>
@@ -341,7 +358,7 @@ const LIC_DATA = @json($licData);
                     @endif
                 </div>
                 {{-- Status badge floating top-right --}}
-                <span style="display:inline-flex;align-items:center;gap:4px;background:{{ $statusBg }};color:{{ $statusColor }};padding:4px 10px;border-radius:20px;font-size:10px;font-weight:700;">
+                <span class="vault-badge" style="display:inline-flex;align-items:center;gap:4px;background:{{ $statusBg }};color:{{ $statusColor }};padding:4px 10px;border-radius:20px;font-size:10px;font-weight:700;">
                     <i class="fas {{ $statusIcon }}" style="font-size:8px;"></i> {{ $statusLabel }}
                 </span>
             </div>
@@ -353,7 +370,7 @@ const LIC_DATA = @json($licData);
                 <p style="font-size:12px;color:#9CA3AF;margin:0 0 8px;">{{ $lic->vendor }}</p>
                 @endif
                 <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;flex-wrap:wrap;">
-                    <span style="display:inline-flex;align-items:center;gap:4px;background:{{ $cc['bg'] }};color:{{ $cc['color'] }};padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;">
+                    <span class="vault-badge" style="display:inline-flex;align-items:center;gap:4px;background:{{ $cc['bg'] }};color:{{ $cc['color'] }};padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;">
                         <i class="fas fa-{{ $icon }}" style="font-size:9px;"></i>
                         {{ $catLabels[$lic->category] ?? $lic->category }}
                     </span>
@@ -472,9 +489,9 @@ const LIC_DATA = @json($licData);
     </div>
 
     {{-- No results (cards) --}}
-    <div x-show="visibleCount === 0" x-cloak style="background:#fff;border:1.5px solid #E5E7EB;border-radius:16px;padding:56px 24px;text-align:center;">
-        <div style="width:56px;height:56px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
-            <i class="fas fa-filter" style="font-size:22px;color:#D1D5DB;"></i>
+    <div x-show="visibleCount === 0" x-cloak class="mob-empty-card" style="background:#fff;border:1.5px solid #E5E7EB;border-radius:16px;padding:56px 24px;text-align:center;">
+        <div class="mob-empty-icon-wrap" style="width:56px;height:56px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+            <i class="fas fa-filter mob-empty-icon" style="font-size:22px;color:#D1D5DB;"></i>
         </div>
         <h3 style="font-size:16px;font-weight:700;color:#111827;margin:0 0 6px;">No licenses match your filter</h3>
         <p style="font-size:13px;color:#9CA3AF;margin:0 0 16px;">Try changing the search or status filter.</p>
@@ -484,6 +501,7 @@ const LIC_DATA = @json($licData);
 
 {{-- ── TABLE VIEW ── --}}
 <div x-show="view==='table'" x-cloak style="background:#fff;border:1.5px solid #E5E7EB;border-radius:14px;overflow:hidden;">
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
     <table class="lic-table">
         <thead>
             <tr>
@@ -536,12 +554,12 @@ const LIC_DATA = @json($licData);
                     </div>
                 </td>
                 <td>
-                    <span style="background:{{ $cc['bg'] }};color:{{ $cc['color'] }};padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;">
+                    <span class="vault-badge" style="background:{{ $cc['bg'] }};color:{{ $cc['color'] }};padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;">
                         {{ $catLabels[$lic->category] ?? $lic->category }}
                     </span>
                 </td>
                 <td>
-                    <span style="display:inline-flex;align-items:center;gap:4px;background:{{ $statusBg }};color:{{ $statusColor }};padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;">
+                    <span class="vault-badge" style="display:inline-flex;align-items:center;gap:4px;background:{{ $statusBg }};color:{{ $statusColor }};padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;">
                         <i class="fas fa-{{ $status === 'expired' ? 'triangle-exclamation' : ($status === 'expiring_soon' ? 'clock' : 'circle-check') }}" style="font-size:9px;"></i>
                         {{ $statusLabel }}
                     </span>
@@ -610,10 +628,11 @@ const LIC_DATA = @json($licData);
             @endforeach
         </tbody>
     </table>
+    </div>
 
     {{-- No results (table) --}}
-    <div x-show="visibleCount === 0" x-cloak style="padding:48px 24px;text-align:center;">
-        <i class="fas fa-filter" style="font-size:28px;color:#D1D5DB;margin-bottom:14px;display:block;"></i>
+    <div x-show="visibleCount === 0" x-cloak class="mob-empty-card" style="padding:48px 24px;text-align:center;">
+        <i class="fas fa-filter mob-empty-icon" style="font-size:28px;color:#D1D5DB;margin-bottom:14px;display:block;"></i>
         <h3 style="font-size:15px;font-weight:700;color:#111827;margin:0 0 6px;">No licenses match your filter</h3>
         <p style="font-size:13px;color:#9CA3AF;margin:0 0 14px;">Try changing the search or status filter.</p>
         <button onclick="resetLicFilters()" style="border:none;background:#EEF2FF;color:#4F46E5;padding:8px 20px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Clear filters</button>
@@ -631,9 +650,9 @@ const LIC_DATA = @json($licData);
 <div style="height:4px;background:linear-gradient(90deg,#059669,#10B981,#34D399);border-radius:4px;margin-bottom:20px;"></div>
 
 @if($socialAccounts->isEmpty())
-<div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:16px;padding:72px 24px;text-align:center;">
-    <div style="width:80px;height:80px;border-radius:24px;background:linear-gradient(135deg,#F0FDF4,#DCFCE7);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
-        <i class="fas fa-share-nodes" style="font-size:32px;color:#86EFAC;"></i>
+<div class="mob-empty-card" style="background:#fff;border:1.5px solid #E5E7EB;border-radius:16px;padding:72px 24px;text-align:center;">
+    <div class="mob-empty-icon-wrap" style="width:80px;height:80px;border-radius:24px;background:linear-gradient(135deg,#F0FDF4,#DCFCE7);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+        <i class="fas fa-share-nodes mob-empty-icon" style="font-size:32px;color:#86EFAC;"></i>
     </div>
     <h2 style="font-size:18px;font-weight:700;color:#111827;margin:0 0 8px;">No social accounts yet</h2>
     <p style="font-size:14px;color:#9CA3AF;margin:0;">Your administrator will grant you access to social accounts here.</p>
@@ -710,7 +729,7 @@ const LIC_DATA = @json($licData);
                     @endif
                 </div>
             </div>
-            <span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:{{ $stBg }};color:{{ $stColor }};flex-shrink:0;text-transform:capitalize;">
+            <span class="vault-badge" style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;background:{{ $stBg }};color:{{ $stColor }};flex-shrink:0;text-transform:capitalize;">
                 {{ $sa->status }}
             </span>
         </div>

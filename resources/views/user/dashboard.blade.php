@@ -58,6 +58,102 @@
     #dashboard-tabs { overflow-x:auto; flex-wrap:nowrap !important; -webkit-overflow-scrolling:touch; padding-bottom:4px; }
     #dashboard-tabs button { flex-shrink:0 !important; font-size:12px !important; padding:6px 12px !important; }
 }
+
+/* Tap targets — keep every button/tab at a comfortable minimum height on mobile */
+@media(max-width:768px) {
+    #dashboard-tabs button { min-height:44px !important; }
+    .usr-dash-header button { min-height:48px !important; }
+    #usmHeader > button { width:44px !important; height:44px !important; }
+    button[onclick="closeUserStatsModal()"] { width:44px !important; height:44px !important; }
+    #profile-modal > div > div > button,
+    #report-modal > div > div > button {
+        min-width:44px !important; min-height:44px !important;
+    }
+    button[style*="border-radius:50%"][\@click="dismissExpiring()"] { width:44px !important; height:44px !important; }
+    button[\@click="dismissExpiring()"][style*="width:100%"] { min-height:44px !important; }
+}
+
+/* Task / activity / list rows — comfortable one-hand tap size on mobile */
+@media(max-width:768px) {
+    .usr-task-row { min-height:46px !important; }
+}
+
+/* Stat/KPI cards — round + soft-shadow per shared mobile design tokens
+   (layout itself already stacks 2-col → 1-col via .usr-stats-grid media
+   queries above; this just brings the tile styling in line with the rest
+   of the app's mobile card language). */
+@media(max-width:768px) {
+    .usr-stats-grid > div {
+        border-radius: var(--mob-r-md) !important;
+        box-shadow: var(--mob-shadow-1) !important;
+    }
+}
+
+/* Panel cards (.usr-mcard) — bring every major panel in line with the golden
+   mobile card language instead of leaving desktop's flatter radius/shadow. */
+@media(max-width:768px) {
+    .usr-mcard { border-radius:var(--mob-r-lg) !important; box-shadow:var(--mob-shadow-1) !important; padding:var(--mob-sp-2) !important; }
+}
+
+/* "View all" / small utility links — bump undersized tap targets on mobile
+   without touching desktop layout, colors, or font-size. */
+@media(max-width:768px) {
+    a[style*="background:#EEF2FF;padding:5px 12px;border-radius:7px;"] { padding:8px 14px !important; }
+    a[style*="text-decoration:none;display:flex;align-items:center;gap:4px;"] { padding:8px 14px !important; }
+    button[style*="color:#6366F1;background:none;border:none;cursor:pointer;font-weight:600;padding:0;"] { padding:8px 14px !important; }
+    a[style*="padding:4px 10px;border-radius:7px;text-decoration:none;"] { padding:8px 14px !important; }
+    a[style*="font-size:11px;color:#6B7280;text-decoration:none;"] { padding:8px 14px !important; display:inline-block !important; }
+    a[style*="font-size:13px;font-weight:600;color:#6366F1;text-decoration:none;"] { padding:8px 14px !important; display:inline-block !important; }
+}
+
+/* Completed-tab summary tiles (Approved/Delivered/Archived) — same card language */
+@media(max-width:768px) {
+    .usr-grid-3 > div {
+        border-radius: var(--mob-r-sm) !important;
+        box-shadow: var(--mob-shadow-1) !important;
+    }
+}
+
+/* Task / activity / list rows — turn each row into a distinct rounded, shadowed
+   card instead of a flat bordered list line (the row-list containers themselves
+   stay full-width/single-column; only the row styling changes). */
+@media(max-width:768px) {
+    .usr-task-row {
+        border-radius: var(--mob-r-sm) !important;
+        border: 1px solid #F3F4F6 !important;
+        box-shadow: var(--mob-shadow-1) !important;
+        margin: 8px 10px !important;
+        border-bottom: none !important;
+    }
+}
+
+/* Team task row — the assignee name plus badges don't fit on very small phones; drop the
+   name (avatar initial stays) and tighten spacing so the row never scrolls horizontally */
+@media(max-width:480px) {
+    .usr-team-row { padding-left:14px !important; padding-right:14px !important; gap:8px !important; }
+    .usr-team-assignee-name { display:none !important; }
+}
+
+/* Profile / report modals — let the overlay scroll instead of clipping tall content */
+@media(max-width:768px) {
+    #profile-modal, #report-modal { align-items:flex-start !important; overflow-y:auto !important; padding:20px 12px !important; }
+}
+
+/* New-password fields — stack instead of squeezing two inputs side by side */
+@media(max-width:480px) {
+    .usr-pwd-grid { grid-template-columns:1fr !important; }
+}
+
+/* Your Queue — actionable breakdown rows in the greeting card */
+.usr-queue-row { display:flex; align-items:center; gap:10px; padding:12px 14px; text-decoration:none; color:#fff; border-bottom:1px solid rgba(255,255,255,.12); }
+.usr-queue-row:hover { background:rgba(255,255,255,.06); }
+@media(max-width:480px) {
+    .usr-queue-row { padding:11px 12px; }
+}
+/* Mobile-only widget — hidden on desktop, the STATS grid below already covers this breakdown there */
+@media(min-width:769px) {
+    .usr-dash-queue { display:none !important; }
+}
 </style>
 @php
     $user      = $previewUser ?? auth()->user();
@@ -108,6 +204,32 @@
         <i class="fas fa-paper-plane" style="font-size:12px;"></i> Submit Report
     </button>
     @endunless
+</div>
+
+{{-- ═══════════════════════════════
+     YOUR QUEUE — actionable breakdown
+════════════════════════════════ --}}
+<div class="usr-dash-queue" style="background:linear-gradient(135deg,#4F46E5 0%,#7C3AED 100%);border-radius:14px;padding:4px;margin-bottom:20px;">
+    <div style="border-radius:11px;overflow:hidden;background:rgba(255,255,255,.14);">
+        <a href="{{ route('user.tasks.index', ['filter' => 'in_progress']) }}" class="usr-queue-row">
+            <span style="width:8px;height:8px;border-radius:50%;background:#FEF3C7;flex-shrink:0;box-shadow:0 0 0 3px rgba(255,255,255,.15);"></span>
+            <span style="flex:1;font-size:13.5px;font-weight:600;">In progress</span>
+            <span style="font-size:15px;font-weight:700;">{{ $cardInProgress }}</span>
+            <i class="fas fa-chevron-right" style="font-size:11px;opacity:.6;"></i>
+        </a>
+        <a href="{{ route('user.tasks.index', ['filter' => 'overdue']) }}" class="usr-queue-row">
+            <span style="width:8px;height:8px;border-radius:50%;background:#FEE2E2;flex-shrink:0;box-shadow:0 0 0 3px rgba(255,255,255,.15);"></span>
+            <span style="flex:1;font-size:13.5px;font-weight:600;">Overdue</span>
+            <span style="font-size:15px;font-weight:700;">{{ $cardOverdue }}</span>
+            <i class="fas fa-chevron-right" style="font-size:11px;opacity:.6;"></i>
+        </a>
+        <a href="{{ route('user.tasks.index', ['filter' => 'completed']) }}" class="usr-queue-row" style="border-bottom:none;">
+            <span style="width:8px;height:8px;border-radius:50%;background:#D1FAE5;flex-shrink:0;box-shadow:0 0 0 3px rgba(255,255,255,.15);"></span>
+            <span style="flex:1;font-size:13.5px;font-weight:600;">Completed</span>
+            <span style="font-size:15px;font-weight:700;">{{ $cardCompleted }}</span>
+            <i class="fas fa-chevron-right" style="font-size:11px;opacity:.6;"></i>
+        </a>
+    </div>
 </div>
 
 {{-- ═══════════════════════════════
@@ -347,7 +469,7 @@ document.addEventListener('keydown', function(e) {
             <div style="display:flex;flex-direction:column;gap:18px;">
 
                 {{-- Tasks --}}
-                <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
+                <div class="usr-mcard" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #F3F4F6;">
                         <div>
                             <h3 style="font-size:14px;font-weight:700;color:#111827;margin:0;">My Tasks</h3>
@@ -363,24 +485,12 @@ document.addEventListener('keydown', function(e) {
                         $isDone = in_array($task->status, $doneStatuses);
                         $isOv = $task->deadline && $task->deadline->isPast() && !$isDone && $task->status !== 'submitted';
                         $dl   = $task->deadline ? now()->diffInDays($task->deadline, false) : 0;
-                        $sm   = [
-                            'draft'              => ['#F3F4F6','#6B7280','Draft'],
-                            'assigned'           => ['#EEF2FF','#4F46E5','Assigned'],
-                            'viewed'             => ['#F0F9FF','#0369A1','Viewed'],
-                            'in_progress'        => ['#FFFBEB','#D97706','In Progress'],
-                            'paused'             => ['#F3F4F6','#6B7280','Paused'],
-                            'submitted'          => ['#F5F3FF','#7C3AED','In Review'],
-                            'revision_requested' => ['#FFF7ED','#C2410C','Revision'],
-                            'pending_customer'   => ['#FEF3C7','#D97706','Awaiting Client'],
-                            'approved'           => ['#F0FDF4','#16A34A','Approved'],
-                            'delivered'          => ['#ECFDF5','#047857','Delivered'],
-                            'archived'           => ['#F3F4F6','#6B7280','Archived'],
-                        ];
+                        $sm   = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => [$c['bg'], $c['text'], $c['label']])->all();
                         [$sbg,$sco,$slbl] = $sm[$task->status] ?? ['#F8FAFC','#9CA3AF','Unknown'];
-                        $pco = ['high'=>'#DC2626','medium'=>'#D97706','low'=>'#16A34A'][$task->priority] ?? '#9CA3AF';
+                        $pco = ['high'=>'#E11D48','medium'=>'#D97706','low'=>'#16A34A'][$task->priority] ?? '#9CA3AF';
                     @endphp
                     @if($task->is_social)
-                    <a href="{{ route('social.show', $task) }}"
+                    <a href="{{ route('social.show', $task) }}" class="usr-task-row"
                        style="display:flex;align-items:center;gap:12px;padding:11px 20px;border-bottom:1px solid #F9FAFB;text-decoration:none;background:#FAFBFF;transition:background .1s;"
                        onmouseover="this.style.background='#F0F4FF'" onmouseout="this.style.background='#FAFBFF'">
                         <div style="width:8px;height:8px;border-radius:50%;background:#6366F1;flex-shrink:0;margin-top:1px;"></div>
@@ -396,7 +506,7 @@ document.addEventListener('keydown', function(e) {
                         </span>
                     </a>
                     @else
-                    <a href="{{ $isPreview ? route('admin.tasks.show',$task) : route('user.tasks.show',$task) }}"
+                    <a href="{{ $isPreview ? route('admin.tasks.show',$task) : route('user.tasks.show',$task) }}" class="usr-task-row"
                        style="display:flex;align-items:center;gap:12px;padding:11px 20px;border-bottom:1px solid #F9FAFB;text-decoration:none;background:{{ $isOv?'#FFF8F8':($task->status==='submitted'?'#FAFBFF':'#fff') }};transition:background .1s;"
                        onmouseover="this.style.background='#F5F5FF'" onmouseout="this.style.background='{{ $isOv?'#FFF8F8':'#fff' }}'">
                         <div style="width:8px;height:8px;border-radius:50%;background:{{ $pco }};flex-shrink:0;margin-top:1px;"></div>
@@ -444,7 +554,7 @@ document.addEventListener('keydown', function(e) {
 
                 {{-- Completed Tasks --}}
                 @if($completedTasks->isNotEmpty())
-                <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
+                <div class="usr-mcard" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 12px;border-bottom:1px solid #F3F4F6;">
                         <div>
                             <h3 style="font-size:13px;font-weight:700;color:#111827;margin:0;">
@@ -464,9 +574,9 @@ document.addEventListener('keydown', function(e) {
                     @foreach($completedTasks->take(3) as $task)
                     @php
                         [$cBg,$cCo,$cLbl,$cIcon] = $cSm[$task->status] ?? ['#F8FAFC','#9CA3AF',ucfirst($task->status),'fa-check'];
-                        $cPco = ['high'=>'#DC2626','medium'=>'#D97706','low'=>'#16A34A'][$task->priority] ?? '#9CA3AF';
+                        $cPco = ['high'=>'#E11D48','medium'=>'#D97706','low'=>'#16A34A'][$task->priority] ?? '#9CA3AF';
                     @endphp
-                    <a href="{{ $isPreview ? route('admin.tasks.show',$task) : route('user.tasks.show',$task) }}"
+                    <a href="{{ $isPreview ? route('admin.tasks.show',$task) : route('user.tasks.show',$task) }}" class="usr-task-row"
                        style="display:flex;align-items:center;gap:10px;padding:9px 18px;border-bottom:1px solid #F9FAFB;text-decoration:none;background:#fff;transition:background .1s;"
                        onmouseover="this.style.background='#F9FFF9'" onmouseout="this.style.background='#fff'">
                         <div style="width:28px;height:28px;border-radius:8px;background:{{ $cBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -505,7 +615,7 @@ document.addEventListener('keydown', function(e) {
                     $perfTotal     = $cardCompleted + $cardInProgress + $cardInReview + $cardOverdue;
                     $perfRate      = $perfTotal > 0 ? round($cardCompleted / $perfTotal * 100) : $rate;
                 @endphp
-                <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.05);padding:20px;transition:box-shadow .2s,transform .2s;"
+                <div class="usr-mcard" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.05);padding:20px;transition:box-shadow .2s,transform .2s;"
                      onmouseover="this.style.boxShadow='0 6px 24px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.05)'">
 
                     {{-- Header --}}
@@ -637,7 +747,7 @@ document.addEventListener('keydown', function(e) {
 
                 {{-- Work Contribution Breakdown (credibility card) --}}
                 @if($receivedTotal > 0)
-                <div style="background:#fff;border-radius:14px;border:1.5px solid #FDE68A;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:18px;transition:box-shadow .2s,transform .2s;"
+                <div class="usr-mcard" style="background:#fff;border-radius:14px;border:1.5px solid #FDE68A;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:18px;transition:box-shadow .2s,transform .2s;"
                      onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.08)';this.style.transform='translateY(-2px)'"
                      onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)';this.style.transform='translateY(0)'">
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
@@ -716,7 +826,7 @@ document.addEventListener('keydown', function(e) {
                     $licExpiring = $myLicenses->filter(fn($l) => $l->days_until_renewal !== null && $l->days_until_renewal >= 0 && $l->days_until_renewal <= 7);
                     $licColors   = \App\Models\Subscription::categoryColors();
                 @endphp
-                <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;transition:box-shadow .2s;"
+                <div class="usr-mcard" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;transition:box-shadow .2s;"
                      onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)'">
                     <div style="padding:14px 18px 12px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
                         <div style="display:flex;align-items:center;gap:8px;">
@@ -749,7 +859,7 @@ document.addEventListener('keydown', function(e) {
                             $lcc = $licColors[$lic->category] ?? $licColors['other'];
                             $ldays = $lic->days_until_renewal;
                         @endphp
-                        <a href="{{ route('user.licenses.index') }}"
+                        <a href="{{ route('user.licenses.index') }}" class="usr-task-row"
                            style="display:flex;align-items:center;gap:10px;padding:9px 18px;text-decoration:none;transition:background .1s;"
                            onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='transparent'">
                             <div style="width:32px;height:32px;border-radius:9px;background:{{ $lcc['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -787,14 +897,14 @@ document.addEventListener('keydown', function(e) {
                 @endif
 
                 {{-- Upcoming deadlines --}}
-                <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
+                <div class="usr-mcard" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
                     <div style="padding:14px 18px 12px;border-bottom:1px solid #F3F4F6;">
                         <h3 style="font-size:14px;font-weight:700;color:#111827;margin:0;">Upcoming Deadlines</h3>
                     </div>
                     <div style="padding:6px 0;">
                         @forelse($upcomingTasks as $ut)
                         @php $dl2 = $ut->deadline ? (int)now()->diffInDays($ut->deadline,false) : 0; $urg=$dl2<=2; @endphp
-                        <a href="{{ $isPreview ? route('admin.tasks.show',$ut) : route('user.tasks.show',$ut) }}"
+                        <a href="{{ $isPreview ? route('admin.tasks.show',$ut) : route('user.tasks.show',$ut) }}" class="usr-task-row"
                            style="display:flex;align-items:center;gap:12px;padding:9px 18px;text-decoration:none;transition:background .1s;"
                            onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='#fff'">
                             <div style="width:34px;height:34px;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;background:{{ $urg?'#FEF2F2':'#EEF2FF' }};">
@@ -814,7 +924,7 @@ document.addEventListener('keydown', function(e) {
                 </div>
 
                 {{-- Activity --}}
-                <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
+                <div class="usr-mcard" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
                     <div style="padding:14px 18px 12px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
                         <div>
                             <h3 style="font-size:13px;font-weight:700;color:#111827;margin:0;">Recent Activity</h3>
@@ -833,7 +943,7 @@ document.addEventListener('keydown', function(e) {
                             && !str_starts_with($log->note, 'Task details updated by')
                             && !str_starts_with($log->note, 'Task "');
                     @endphp
-                    <div style="display:flex;align-items:flex-start;gap:10px;padding:9px 18px;border-bottom:1px solid #F9FAFB;">
+                    <div class="usr-task-row" style="display:flex;align-items:flex-start;gap:10px;padding:9px 18px;border-bottom:1px solid #F9FAFB;">
                         <div style="width:28px;height:28px;border-radius:8px;background:{{ $ab }};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
                             <i class="fas {{ $ai }}" style="font-size:10px;color:{{ $ac }};"></i>
                         </div>
@@ -864,7 +974,7 @@ document.addEventListener('keydown', function(e) {
 
     {{-- ══ TEAM TASKS ══ --}}
     <div x-show="tab==='team-tasks'" x-cloak>
-        <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
+        <div class="usr-mcard" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
             <div style="padding:16px 20px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
                 <div>
                     <h3 style="font-size:14px;font-weight:700;color:#111827;margin:0;">Team Tasks</h3>
@@ -876,11 +986,11 @@ document.addEventListener('keydown', function(e) {
             @php
                 $isDone2=in_array($task->status,['approved','delivered','archived']);
                 $isOv2=$task->deadline&&$task->deadline->isPast()&&!$isDone2&&$task->status!=='submitted';
-                $sm2=['draft'=>['#F3F4F6','#6B7280','Draft'],'assigned'=>['#EEF2FF','#4F46E5','Assigned'],'viewed'=>['#F0F9FF','#0369A1','Viewed'],'in_progress'=>['#FFFBEB','#D97706','In Progress'],'paused'=>['#F3F4F6','#6B7280','Paused'],'submitted'=>['#F5F3FF','#7C3AED','In Review'],'revision_requested'=>['#FFF7ED','#C2410C','Revision'],'approved'=>['#F0FDF4','#16A34A','Approved'],'delivered'=>['#ECFDF5','#047857','Delivered'],'archived'=>['#F3F4F6','#6B7280','Archived']];
+                $sm2=collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => [$c['bg'], $c['text'], $c['label']])->all();
                 [$sb,$sc,$sl]=$sm2[$task->status]??['#F8FAFC','#9CA3AF','Unknown'];
-                $pc2=['high'=>'#DC2626','medium'=>'#D97706','low'=>'#16A34A'][$task->priority]??'#9CA3AF';
+                $pc2=['high'=>'#E11D48','medium'=>'#D97706','low'=>'#16A34A'][$task->priority]??'#9CA3AF';
             @endphp
-            <div style="display:flex;align-items:center;gap:14px;padding:11px 20px;border-bottom:1px solid #F9FAFB;background:{{ $isOv2?'#FFF8F8':'#fff' }};">
+            <div class="usr-task-row usr-team-row" style="display:flex;align-items:center;gap:14px;padding:11px 20px;border-bottom:1px solid #F9FAFB;background:{{ $isOv2?'#FFF8F8':'#fff' }};">
                 <div style="width:8px;height:8px;border-radius:50%;background:{{ $pc2 }};flex-shrink:0;"></div>
                 <div style="flex:1;min-width:0;">
                     <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $task->title }}</p>
@@ -891,14 +1001,14 @@ document.addEventListener('keydown', function(e) {
                     <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;">
                         {{ strtoupper(substr($task->assignee->name,0,1)) }}
                     </div>
-                    <span style="font-size:12px;color:#374151;font-weight:500;">{{ explode(' ',$task->assignee->name)[0] }}</span>
+                    <span class="usr-team-assignee-name" style="font-size:12px;color:#374151;font-weight:500;">{{ explode(' ',$task->assignee->name)[0] }}</span>
                 </div>
                 @endif
                 <span style="font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;background:{{ $sb }};color:{{ $sc }};flex-shrink:0;">{{ $sl }}</span>
                 <span style="font-size:11px;color:{{ $isOv2?'#DC2626':'#9CA3AF' }};font-weight:{{ $isOv2?'700':'400' }};flex-shrink:0;white-space:nowrap;">{{ $task->deadline?->format('M d') ?? '—' }}</span>
             </div>
             @empty
-            <div style="text-align:center;padding:56px 20px;">
+            <div class="usr-empty" style="text-align:center;padding:56px 20px;">
                 <div style="width:56px;height:56px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
                     <i class="fas fa-users" style="color:#D1D5DB;font-size:22px;"></i>
                 </div>
@@ -912,7 +1022,7 @@ document.addEventListener('keydown', function(e) {
     {{-- ══ MY PROJECTS ══ --}}
     <div x-show="tab==='my-projects'" x-cloak>
         @if($myProjects->isEmpty())
-        <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;padding:56px;text-align:center;">
+        <div class="usr-mcard usr-empty" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;padding:56px;text-align:center;">
             <div style="width:56px;height:56px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
                 <i class="fas fa-diagram-project" style="color:#D1D5DB;font-size:22px;"></i>
             </div>
@@ -928,6 +1038,7 @@ document.addEventListener('keydown', function(e) {
                 [$pcbg,$pcco]=$sc2[$proj->status]??['#F3F4F6','#6B7280'];
             @endphp
             <a href="{{ $isPreview ? route('admin.projects.show',$proj) : route('user.projects.show',$proj) }}"
+               class="usr-mcard"
                style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;text-decoration:none;display:block;transition:box-shadow .15s,transform .15s;"
                onmouseover="this.style.boxShadow='0 6px 20px rgba(99,102,241,.14)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)';this.style.transform='translateY(0)'">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;">
@@ -977,7 +1088,7 @@ document.addEventListener('keydown', function(e) {
         @endphp
 
         @if($socialTasks->isEmpty())
-        <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:56px;text-align:center;">
+        <div class="usr-mcard usr-empty" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:56px;text-align:center;">
             <div style="width:56px;height:56px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
                 <i class="fas fa-share-alt" style="color:#D1D5DB;font-size:22px;"></i>
             </div>
@@ -989,7 +1100,7 @@ document.addEventListener('keydown', function(e) {
 
             {{-- Pending tasks --}}
             @if($socialPending->isNotEmpty())
-            <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
+            <div class="usr-mcard" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
                 <div style="padding:14px 20px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
                     <div style="display:flex;align-items:center;gap:8px;">
                         <div style="width:8px;height:8px;border-radius:50%;background:#EF4444;"></div>
@@ -998,7 +1109,7 @@ document.addEventListener('keydown', function(e) {
                     </div>
                 </div>
                 @foreach($socialPending as $st)
-                <a href="{{ route('social.show', $st) }}"
+                <a href="{{ route('social.show', $st) }}" class="usr-task-row"
                    style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid #F9FAFB;text-decoration:none;background:#fff;transition:background .1s;"
                    onmouseover="this.style.background='#FFF8F8'" onmouseout="this.style.background='#fff'">
                     <div style="width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -1032,14 +1143,14 @@ document.addEventListener('keydown', function(e) {
 
             {{-- Completed / posted tasks --}}
             @if($socialPosted->isNotEmpty())
-            <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
+            <div class="usr-mcard" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
                 <div style="padding:14px 20px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;gap:8px;">
                     <div style="width:8px;height:8px;border-radius:50%;background:#10B981;"></div>
                     <h3 style="font-size:14px;font-weight:700;color:#111827;margin:0;">Posted</h3>
                     <span style="font-size:11px;font-weight:700;background:#ECFDF5;color:#059669;padding:2px 9px;border-radius:20px;">{{ $socialPosted->count() }} completed</span>
                 </div>
                 @foreach($socialPosted as $st)
-                <a href="{{ route('social.show', $st) }}"
+                <a href="{{ route('social.show', $st) }}" class="usr-task-row"
                    style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid #F9FAFB;text-decoration:none;background:#fff;transition:background .1s;"
                    onmouseover="this.style.background='#F6FFF9'" onmouseout="this.style.background='#fff'">
                     <div style="width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#059669,#10B981);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -1075,7 +1186,7 @@ document.addEventListener('keydown', function(e) {
     {{-- ══ COMPLETED TASKS ══ --}}
     <div x-show="tab==='completed'" x-cloak>
         @if($completedTasks->isEmpty())
-        <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:64px;text-align:center;">
+        <div class="usr-mcard usr-empty" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:64px;text-align:center;">
             <div style="width:56px;height:56px;border-radius:50%;background:#F0FDF4;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
                 <i class="fas fa-circle-check" style="color:#BBF7D0;font-size:24px;"></i>
             </div>
@@ -1111,7 +1222,7 @@ document.addEventListener('keydown', function(e) {
             </div>
 
             {{-- Task list --}}
-            <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
+            <div class="usr-mcard" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
                 <div style="padding:16px 20px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
                     <div>
                         <h3 style="font-size:14px;font-weight:700;color:#111827;margin:0;">All Completed Tasks</h3>
@@ -1127,10 +1238,10 @@ document.addEventListener('keydown', function(e) {
                         'archived'  => ['#F3F4F6','#6B7280','Archived',  'fa-archive'],
                     ];
                     [$ctRowBg,$ctRowCo,$ctRowLbl,$ctRowIcon] = $ctSm[$ct->status] ?? ['#F8FAFC','#9CA3AF',ucfirst($ct->status),'fa-check'];
-                    $ctPco = ['high'=>'#DC2626','medium'=>'#D97706','low'=>'#16A34A'][$ct->priority] ?? '#9CA3AF';
+                    $ctPco = ['high'=>'#E11D48','medium'=>'#D97706','low'=>'#16A34A'][$ct->priority] ?? '#9CA3AF';
                     $ctPLabel = ['high'=>'High','medium'=>'Medium','low'=>'Low'][$ct->priority] ?? '';
                 @endphp
-                <a href="{{ $isPreview ? route('admin.tasks.show',$ct) : route('user.tasks.show',$ct) }}"
+                <a href="{{ $isPreview ? route('admin.tasks.show',$ct) : route('user.tasks.show',$ct) }}" class="usr-task-row"
                    style="display:flex;align-items:center;gap:14px;padding:13px 20px;border-bottom:1px solid #F9FAFB;text-decoration:none;background:#fff;transition:background .15s;"
                    onmouseover="this.style.background='#F9FFF9'" onmouseout="this.style.background='#fff'">
 
@@ -1197,7 +1308,7 @@ document.addEventListener('keydown', function(e) {
             </div>
             <div style="padding:8px 12px;overflow-y:auto;">
                 @foreach($expiringDomains as $ed)
-                <a href="{{ route('user.domains.show', $ed) }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border-radius:10px;text-decoration:none;color:inherit;">
+                <a href="{{ route('user.domains.show', $ed) }}" class="usr-task-row" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border-radius:10px;text-decoration:none;color:inherit;">
                     <div style="min-width:0;">
                         <div style="font-weight:700;color:#111827;font-size:13.5px;">{{ $ed->domain }}</div>
                         <div style="font-size:11.5px;color:#9CA3AF;margin-top:1px;">{{ $ed->registrar ?: 'No registrar' }}</div>
@@ -1304,7 +1415,7 @@ document.addEventListener('keydown', function(e) {
                 {{-- New Password --}}
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">New Password <span style="font-weight:400;color:#9CA3AF;">(leave blank to keep current)</span></label>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <div class="usr-pwd-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                         <div x-data="{show:false}" style="position:relative;">
                             <i class="fa fa-lock" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;z-index:1;"></i>
                             <input :type="show?'text':'password'" name="password" placeholder="New password"

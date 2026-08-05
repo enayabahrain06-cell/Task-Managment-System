@@ -10,9 +10,50 @@
     /* Page header: stack */
     .cal-page-header { flex-wrap: wrap; gap: 10px; }
     .cal-page-header .hidden.md\:flex { display:none !important; }
+    /* Color picker row (hex input + swatches) doesn't fit alongside the color-picker
+       swatch on very narrow phones — wrap instead of overflowing the modal */
+    .cal-color-row { flex-wrap: wrap; row-gap: 8px; }
+    .cal-color-row input[type="text"] { flex: 1 1 100%; width: auto !important; order: 3; }
 }
 @media (max-width: 380px) {
     #calendar { font-size: 11px; }
+}
+
+/* ══ Mobile (320–768px) premium pass — desktop untouched, JS/init untouched ══ */
+@media (max-width: 768px) {
+    .cal-new-meeting-btn { min-height: 44px; }
+    .cal-mini-icon-btn { width: 32px !important; height: 32px !important; }
+    .cal-modal-input { min-height: 44px; }
+    .cal-modal-btn { min-height: 44px; }
+    /* Meeting modal close/back "X" buttons (create/view/edit) are 32px — bump to a real touch target */
+    button.w-8.h-8 {
+        width: 44px !important; height: 44px !important;
+    }
+
+    /* Unify the calendar card + all sidebar panels to the shared mobile card
+       radius/shadow scale (previously calendar/today's-tasks used a hardcoded
+       18px + ring-1, and the other 3 sidebar panels had no mobile treatment at all) */
+    .cal-panel {
+        border-radius: var(--mob-r-lg, 20px) !important;
+        box-shadow: var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05)) !important;
+        padding: var(--mob-sp-2, 16px) !important;
+    }
+
+    /* FullCalendar toolbar: stack title / nav / view-switcher instead of 3 cramped columns */
+    #calendar .fc-header-toolbar {
+        flex-wrap: wrap;
+        gap: 8px;
+        row-gap: 10px;
+    }
+    #calendar .fc-toolbar-chunk { display: flex; align-items: center; justify-content: center; width: 100%; }
+    #calendar .fc-toolbar-chunk:nth-child(1) { order: 2; justify-content: space-between; }
+    #calendar .fc-toolbar-chunk:nth-child(2) { order: 1; }
+    #calendar .fc-toolbar-chunk:nth-child(3) { order: 3; }
+    #calendar .fc-toolbar-title { font-size: 16px !important; }
+    #calendar .fc-button { padding: 8px 12px !important; font-size: 12px !important; min-height: 40px; }
+    #calendar .fc-daygrid-day-number { font-size: 11px; padding: 2px 4px !important; }
+    #calendar .fc-event { font-size: 10px; padding: 1px 2px; }
+    #calendar .fc-col-header-cell-cushion { font-size: 10px; padding: 4px 2px !important; }
 }
 </style>
 
@@ -124,7 +165,7 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
                     {{-- Color --}}
                     <div>
                         <label class="block text-xs font-semibold text-gray-700 mb-1.5">Color</label>
-                        <div class="flex items-center gap-2">
+                        <div class="cal-color-row flex items-center gap-2">
                             <input type="color" x-model="form.color"
                                    class="w-9 h-9 rounded-lg border-2 cursor-pointer p-0.5 flex-shrink-0"
                                    :style="`border-color:${form.color}`">
@@ -348,7 +389,7 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-gray-700 mb-1.5">Color</label>
-                        <div class="flex items-center gap-2">
+                        <div class="cal-color-row flex items-center gap-2">
                             <input type="color" x-model="form.color"
                                    class="w-9 h-9 rounded-lg border-2 cursor-pointer p-0.5 flex-shrink-0"
                                    :style="`border-color:${form.color}`">
@@ -449,7 +490,7 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
         </div>
         @if($isAdmin)
         <button x-data="{}" @click="$dispatch('open-meeting-modal')"
-                class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition shadow-sm">
+                class="cal-new-meeting-btn flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg transition shadow-sm">
             <i class="fas fa-plus text-xs"></i> New Meeting
         </button>
         @endif
@@ -460,7 +501,7 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
     {{-- Calendar --}}
-    <div class="lg:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <div class="cal-panel lg:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-5">
         <div id="calendar" data-events="{{ $events->toJson() }}"></div>
     </div>
 
@@ -468,45 +509,45 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
     <div class="space-y-4">
 
         {{-- Today's Tasks --}}
-        <div class="bg-gray-900 rounded-xl p-5 text-white">
+        <div class="cal-panel bg-gray-900 rounded-xl p-5 text-white">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-2">
                     <i class="fas fa-list-check text-gray-400 text-sm"></i>
                     <h3 class="font-semibold text-sm">Today's Tasks</h3>
                 </div>
-                <span class="text-xs bg-white/10 rounded-full px-2.5 py-0.5">{{ now()->format('M d') }}</span>
+                <span class="text-xs bg-white/10 rounded-full px-2.5 py-0.5 max-md:text-[11px] max-md:font-medium max-md:px-2 max-md:py-0.5">{{ now()->format('M d') }}</span>
             </div>
-            <div class="space-y-2.5">
+            <div class="space-y-2.5 max-md:space-y-2">
                 @forelse($todayTasks as $task)
                 @php $routeName = auth()->user()->role === 'user' ? 'user.tasks.show' : null; @endphp
-                <div class="flex items-start gap-2.5 p-3 bg-white/8 hover:bg-white/12 rounded-lg transition" style="background:rgba(255,255,255,0.07)">
+                <div class="flex items-start gap-2.5 p-3 bg-white/8 hover:bg-white/12 rounded-lg transition max-md:gap-3 max-md:px-4 max-md:py-3" style="background:rgba(255,255,255,0.07)">
                     <div class="w-1 rounded-full flex-shrink-0 mt-0.5 self-stretch
                         {{ $task->status === 'completed' ? 'bg-emerald-400' : ($task->priority === 'high' ? 'bg-red-400' : 'bg-indigo-400') }}">
                     </div>
                     <div class="flex-1 min-w-0">
                         @if($routeName)
-                        <a href="{{ route($routeName, $task) }}" class="text-sm font-medium text-white hover:text-indigo-200 transition truncate block">{{ $task->title }}</a>
+                        <a href="{{ route($routeName, $task) }}" class="text-sm font-medium text-white hover:text-indigo-200 transition truncate block max-md:text-sm max-md:font-semibold">{{ $task->title }}</a>
                         @else
-                        <p class="text-sm font-medium text-white truncate">{{ $task->title }}</p>
+                        <p class="text-sm font-medium text-white truncate max-md:text-sm max-md:font-semibold">{{ $task->title }}</p>
                         @endif
                         <p class="text-xs text-white/50 mt-0.5">{{ $task->project->name }}</p>
                     </div>
-                    <span class="text-xs px-1.5 py-0.5 rounded bg-white/10 flex-shrink-0
+                    <span class="text-xs px-1.5 py-0.5 rounded bg-white/10 flex-shrink-0 max-md:text-[11px] max-md:font-medium max-md:px-2 max-md:py-0.5 max-md:rounded-full
                         {{ $task->status === 'completed' ? 'text-emerald-300' : ($task->status === 'in_progress' ? 'text-amber-300' : 'text-gray-300') }}">
                         {{ str_replace('_', ' ', ucfirst($task->status)) }}
                     </span>
                 </div>
                 @empty
-                <div class="text-center py-5">
-                    <i class="fas fa-calendar-check text-3xl text-white/15 mb-2 block"></i>
-                    <p class="text-xs text-white/40">No tasks due today</p>
+                <div class="text-center py-5 max-md:py-8">
+                    <i class="fas fa-calendar-check text-3xl text-white/15 mb-2 block max-md:text-xl"></i>
+                    <p class="text-xs text-white/40 max-md:text-sm">No tasks due today</p>
                 </div>
                 @endforelse
             </div>
         </div>
 
         {{-- Today's Meetings --}}
-        <div class="bg-indigo-950 rounded-xl p-5 text-white">
+        <div class="cal-panel bg-indigo-950 rounded-xl p-5 text-white">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-2">
                     <i class="fas fa-video text-indigo-400 text-sm"></i>
@@ -516,7 +557,7 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
                     <span class="text-xs bg-white/10 rounded-full px-2.5 py-0.5">{{ $todayMeetings->count() }}</span>
                     @if($isAdmin)
                     <button x-data="{}" @click="$dispatch('open-meeting-modal')"
-                            class="w-6 h-6 rounded-full bg-indigo-500 hover:bg-indigo-400 flex items-center justify-center transition"
+                            class="cal-mini-icon-btn w-6 h-6 rounded-full bg-indigo-500 hover:bg-indigo-400 flex items-center justify-center transition"
                             title="New Meeting">
                         <i class="fas fa-plus" style="font-size:9px;"></i>
                     </button>
@@ -572,7 +613,7 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
                         <div class="flex flex-col gap-1 flex-shrink-0 ml-1">
                             <button x-data="{}"
                                     @click="$dispatch('open-edit-meeting', {{ json_encode(['id'=>$m->id,'title'=>$m->title,'description'=>$m->description ?? '','meeting_date'=>$m->meeting_date->format('Y-m-d'),'start_time'=>substr($m->start_time,0,5),'duration_minutes'=>(int)$m->duration_minutes,'location'=>$m->location ?? '','color'=>$m->color,'attendees'=>$m->attendees->pluck('id')->values()]) }})"
-                                    class="w-6 h-6 rounded-md bg-white/10 hover:bg-white/20 flex items-center justify-center transition"
+                                    class="cal-mini-icon-btn w-6 h-6 rounded-md bg-white/10 hover:bg-white/20 flex items-center justify-center transition"
                                     title="Edit meeting">
                                 <i class="fas fa-pen" style="font-size:9px;"></i>
                             </button>
@@ -580,7 +621,7 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
                                   onsubmit="return confirm('Delete this meeting?')">
                                 @csrf @method('DELETE')
                                 <button type="submit"
-                                        class="w-6 h-6 rounded-md bg-white/10 hover:bg-red-500/40 flex items-center justify-center transition"
+                                        class="cal-mini-icon-btn w-6 h-6 rounded-md bg-white/10 hover:bg-red-500/40 flex items-center justify-center transition"
                                         title="Delete meeting">
                                     <i class="fas fa-trash-can text-red-300" style="font-size:9px;"></i>
                                 </button>
@@ -605,7 +646,7 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
         </div>
 
         {{-- Upcoming Tasks --}}
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+        <div class="cal-panel bg-white rounded-xl border border-gray-100 shadow-sm p-5">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-semibold text-gray-900 text-sm">Upcoming Tasks</h3>
                 <span class="text-xs text-indigo-500 font-medium">Next deadlines</span>
@@ -641,7 +682,7 @@ $allMeetingsJson = $allMeetings->map(fn($m) => [
         </div>
 
         {{-- Upcoming Meetings --}}
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+        <div class="cal-panel bg-white rounded-xl border border-gray-100 shadow-sm p-5">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-semibold text-gray-900 text-sm">Upcoming Meetings</h3>
                 <span class="text-xs text-indigo-500 font-medium">Next scheduled</span>

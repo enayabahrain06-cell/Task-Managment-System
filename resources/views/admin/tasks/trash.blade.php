@@ -8,6 +8,28 @@
     .trash-search-form { flex-wrap:wrap; }
     .trash-search-form .search-input { min-width:100% !important; }
 }
+
+/* ══════════════════════════════════════════════
+   Mobile-only premium redesign (320–768px)
+   Reuses shared .mob-table-cards tokens from layouts/app.blade.php
+   ══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .trash-back-btn { width: 44px !important; height: 44px !important; }
+    .trash-search-form { flex-wrap: wrap; gap: 10px !important; }
+    .trash-search-form .search-input-wrap { width: 100%; min-width: 100% !important; }
+    .trash-search-form .search-input { min-width: 100% !important; min-height: 44px; box-sizing: border-box; }
+    .trash-search-form button, .trash-search-form a { min-height: 44px; flex: 1; text-align: center; }
+
+    .trash-table-wrap { overflow-x: hidden !important; }
+    .trash-table-wrap table { min-width: 0 !important; }
+    .mob-table-cards td[data-label="Actions"] { flex-direction: column; align-items: stretch; gap: 8px; }
+    .trash-actions { width: 100%; flex-wrap: wrap; justify-content: flex-start !important; }
+    .trash-actions form { flex: 1 1 130px; }
+    .trash-actions button {
+        width: 100%; min-height: 44px !important; justify-content: center !important;
+        font-size: 13px !important;
+    }
+}
 </style>
 @endpush
 
@@ -16,7 +38,7 @@
 {{-- Header --}}
 <div class="flex items-center justify-between mb-6">
     <div class="flex items-center gap-3">
-        <a href="{{ route('admin.tasks.index') }}"
+        <a href="{{ route('admin.tasks.index') }}" class="trash-back-btn"
            style="width:36px;height:36px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;color:#6B7280;text-decoration:none;flex-shrink:0;">
             <i class="fa fa-arrow-left" style="font-size:13px;"></i>
         </a>
@@ -42,11 +64,11 @@
 
 {{-- Search --}}
 <form method="GET" action="{{ route('admin.tasks.trash') }}"
-      class="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 mb-5 flex items-center gap-3">
-    <div class="relative flex-1 min-w-48">
+      class="trash-search-form bg-white rounded-2xl border border-gray-100 shadow-sm max-md:rounded-[18px] max-md:shadow-sm max-md:ring-1 max-md:ring-black/5 max-md:p-4 px-5 py-4 mb-5 flex items-center gap-3">
+    <div class="search-input-wrap relative flex-1 min-w-48">
         <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs"></i>
         <input type="text" name="search" value="{{ request('search') }}" placeholder="Search deleted tasks…"
-               class="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 bg-gray-50">
+               class="search-input w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 bg-gray-50">
     </div>
     <button type="submit" class="px-4 py-2 bg-red-500 text-white text-sm font-semibold rounded-lg hover:bg-red-600 transition">Search</button>
     @if(request('search'))
@@ -55,18 +77,18 @@
 </form>
 
 @if($tasks->isEmpty())
-<div class="bg-white rounded-2xl border border-gray-100 shadow-sm py-24 text-center">
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm max-md:rounded-[18px] max-md:shadow-sm max-md:ring-1 max-md:ring-black/5 py-24 max-md:py-8 text-center">
     <div style="width:64px;height:64px;border-radius:20px;background:linear-gradient(135deg,#FEE2E2,#FECACA);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
         <i class="fa fa-trash-can" style="font-size:28px;color:#F87171;"></i>
     </div>
-    <p class="text-gray-500 font-semibold text-lg">Recycle Bin is empty</p>
-    <p class="text-gray-400 text-sm mt-1">Deleted tasks will appear here</p>
-    <a href="{{ route('admin.tasks.index') }}" class="mt-4 inline-block text-sm text-indigo-500 hover:underline">← Back to Tasks</a>
+    <p class="text-gray-500 font-semibold text-lg max-md:text-sm">Recycle Bin is empty</p>
+    <p class="text-gray-400 text-sm mt-1 max-md:text-xs">Deleted tasks will appear here</p>
+    <a href="{{ route('admin.tasks.index') }}" class="mt-4 inline-block text-sm text-indigo-500 hover:underline max-md:text-xs">← Back to Tasks</a>
 </div>
 @else
 
-<div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-<div class="trash-table-wrap">
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm max-md:rounded-[18px] max-md:shadow-sm max-md:ring-1 max-md:ring-black/5 overflow-hidden">
+<div class="trash-table-wrap mob-table-cards">
 <table style="width:100%;border-collapse:collapse;min-width:640px;">
     <thead>
         <tr style="background:#FEF2F2;border-bottom:1px solid #FEE2E2;">
@@ -79,25 +101,12 @@
         </tr>
     </thead>
     <tbody>
-        @php
-        $statusMeta = [
-            'draft'              => ['label'=>'Draft',       'bg'=>'#F3F4F6','color'=>'#6B7280'],
-            'assigned'           => ['label'=>'Assigned',    'bg'=>'#EEF2FF','color'=>'#4F46E5'],
-            'viewed'             => ['label'=>'Viewed',      'bg'=>'#F0F9FF','color'=>'#0369A1'],
-            'in_progress'        => ['label'=>'In Progress', 'bg'=>'#FFFBEB','color'=>'#D97706'],
-            'submitted'          => ['label'=>'In Review',   'bg'=>'#F5F3FF','color'=>'#7C3AED'],
-            'revision_requested' => ['label'=>'Revision',    'bg'=>'#FFF7ED','color'=>'#C2410C'],
-            'approved'           => ['label'=>'Approved',    'bg'=>'#F0FDF4','color'=>'#15803D'],
-            'delivered'          => ['label'=>'Delivered',   'bg'=>'#F0FDF4','color'=>'#166534'],
-            'archived'           => ['label'=>'Archived',    'bg'=>'#F3F4F6','color'=>'#6B7280'],
-        ];
-        @endphp
         @foreach($tasks as $task)
-        @php $sm = $statusMeta[$task->status] ?? ['label'=>ucfirst($task->status),'bg'=>'#F3F4F6','color'=>'#6B7280']; @endphp
+        @php $smRaw = \App\Support\TaskStatusColors::for($task->status); $sm = ['label'=>$smRaw['label'],'bg'=>$smRaw['bg'],'color'=>$smRaw['text']]; @endphp
         <tr style="border-bottom:1px solid #FEF2F2;transition:background .12s;" onmouseover="this.style.background='#FFF5F5'" onmouseout="this.style.background=''">
 
             {{-- Task title --}}
-            <td style="padding:14px 20px;">
+            <td data-label="Task" style="padding:14px 20px;">
                 <p style="font-size:13px;font-weight:600;color:#374151;margin:0;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ $task->title }}">
                     {{ $task->title }}
                 </p>
@@ -109,7 +118,7 @@
             </td>
 
             {{-- Project --}}
-            <td style="padding:14px 16px;">
+            <td data-label="Project" style="padding:14px 16px;">
                 <span style="font-size:12px;color:#6B7280;display:flex;align-items:center;gap:4px;">
                     <i class="fas fa-folder" style="font-size:10px;color:#C4B5FD;"></i>
                     {{ $task->project?->name ?? '—' }}
@@ -117,7 +126,7 @@
             </td>
 
             {{-- Assignee --}}
-            <td style="padding:14px 16px;">
+            <td data-label="Assignee" style="padding:14px 16px;">
                 @if($task->assignee)
                 <div style="display:flex;align-items:center;gap:8px;">
                     <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">
@@ -131,21 +140,21 @@
             </td>
 
             {{-- Status --}}
-            <td style="padding:14px 16px;">
+            <td data-label="Status" style="padding:14px 16px;">
                 <span style="display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:{{ $sm['bg'] }};color:{{ $sm['color'] }};">
                     {{ $sm['label'] }}
                 </span>
             </td>
 
             {{-- Deleted at --}}
-            <td style="padding:14px 16px;">
+            <td data-label="Deleted" style="padding:14px 16px;">
                 <span style="font-size:12px;color:#6B7280;white-space:nowrap;">{{ $task->deleted_at->format(config('app.date_format', 'M d, Y')) }}</span>
                 <p style="font-size:10px;color:#D1D5DB;margin:2px 0 0;">{{ $task->deleted_at->diffForHumans() }}</p>
             </td>
 
             {{-- Actions --}}
-            <td style="padding:14px 16px;text-align:right;">
-                <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;">
+            <td data-label="Actions" style="padding:14px 16px;text-align:right;">
+                <div class="trash-actions" style="display:flex;align-items:center;justify-content:flex-end;gap:6px;">
 
                     {{-- Restore --}}
                     <form method="POST" action="{{ route('admin.tasks.restore', $task->id) }}">

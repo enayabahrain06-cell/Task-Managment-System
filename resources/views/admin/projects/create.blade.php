@@ -9,8 +9,17 @@
 .proj-grid-2col { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
 .proj-assignee-row { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:center; }
 .proj-link-row { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:center; }
-@media(max-width:480px){
+@media(max-width:768px){
+    .proj-back-btn { width:44px !important; height:44px !important; }
     .proj-create-wrap { padding:0; }
+    .proj-create-wrap > div { padding:0 !important; background:transparent !important; border:none !important; box-shadow:none !important; }
+
+    /* Each logical form section becomes its own card */
+    .pf-card { padding:var(--mob-sp-2) !important; margin-bottom:var(--mob-sp-2) !important; }
+    .pf-title { display:block !important; font-size:17px !important; font-weight:800 !important; color:#111827 !important; margin:0 0 12px !important; letter-spacing:-.01em !important; }
+    .pf-divider { display:none !important; }
+    .proj-task-card { box-shadow:var(--mob-shadow-1) !important; }
+
     .proj-grid-2 { grid-template-columns:1fr !important; gap:10px !important; }
     .proj-grid-3 { grid-template-columns:1fr !important; gap:10px !important; }
     .proj-grid-2col { grid-template-columns:1fr !important; gap:10px !important; }
@@ -18,6 +27,32 @@
     .proj-assignee-row > *:nth-child(2) { grid-column:1; }
     .proj-link-row { grid-template-columns:1fr auto !important; }
     .proj-link-row > *:nth-child(2) { grid-column:1; }
+
+    .proj-create-wrap input,
+    .proj-create-wrap select,
+    .proj-create-wrap textarea {
+        width:100% !important; min-height:46px !important; font-size:16px !important; box-sizing:border-box !important;
+    }
+    .proj-create-wrap textarea { min-height:90px !important; }
+    .proj-create-wrap input[type="file"] { min-height:0 !important; }
+
+    /* Task cards: tighten padding, keep full-width stacked fields */
+    .proj-task-card { padding:14px !important; }
+
+    /* Touch targets for repeatable-row add/remove controls */
+    .mob-touch-btn {
+        min-width:44px !important; min-height:44px !important;
+        display:inline-flex !important; align-items:center !important; justify-content:center !important;
+    }
+    .mob-touch-btn-sm {
+        min-width:38px !important; min-height:38px !important;
+        display:inline-flex !important; align-items:center !important; justify-content:center !important;
+    }
+    /* Drop zone: comfortable tap area, no overflow */
+    .proj-create-wrap [style*="border:2px dashed"] { padding:20px 14px !important; }
+
+    .proj-create-actions { flex-direction:column !important; gap:10px !important; }
+    .proj-create-actions > * { width:100% !important; min-height:46px !important; font-size:15px !important; }
 }
 </style>
 @endpush
@@ -25,7 +60,7 @@
 @section('content')
 <div class="proj-create-wrap" style="max-width:780px;">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-        <a href="{{ route('admin.projects.index') }}"
+        <a href="{{ route('admin.projects.index') }}" class="proj-back-btn"
            style="width:34px;height:34px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;color:#6B7280;text-decoration:none;">
             <i class="fa fa-arrow-left" style="font-size:13px;"></i>
         </a>
@@ -143,7 +178,7 @@
             @csrf
 
             {{-- Name --}}
-            <div style="margin-bottom:18px;">
+            <div class="mob-card pf-card" style="margin-bottom:18px;">
                 <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Project Name <span style="color:#EF4444;">*</span></label>
                 <input type="text" name="name" value="{{ old('name') }}" required
                        placeholder="e.g. Mobile App Redesign"
@@ -152,14 +187,15 @@
             </div>
 
             {{-- Description --}}
-            <div style="margin-bottom:18px;">
+            <div class="mob-card pf-card" style="margin-bottom:18px;">
                 <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Description</label>
                 <textarea name="description" rows="2" placeholder="Brief description of the project..."
                           style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;color:#111827;box-sizing:border-box;outline:none;resize:vertical;font-family:'Inter',sans-serif;">{{ old('description') }}</textarea>
             </div>
 
             {{-- Customer + Deadline --}}
-            <div class="proj-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px;">
+            <div class="proj-grid-2 mob-card pf-card" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px;">
+                <p class="pf-title" style="display:none;grid-column:1/-1;">Schedule</p>
                 <div>
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Customer <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
                     <select name="customer_id"
@@ -181,8 +217,8 @@
             </div>
 
             {{-- Attachments --}}
-            <div style="margin-bottom:22px;">
-                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:8px;">
+            <div class="mob-card pf-card" style="margin-bottom:22px;">
+                <label class="pf-title" style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:8px;">
                     Attachments
                     <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— files or links</span>
                 </label>
@@ -211,7 +247,7 @@
                                     <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="file.name"></p>
                                     <p style="font-size:11px;color:#9CA3AF;margin:0;" x-text="formatSize(file.size)"></p>
                                 </div>
-                                <button type="button" @click.stop="removeFile(i)"
+                                <button type="button" @click.stop="removeFile(i)" class="mob-touch-btn-sm"
                                         style="width:22px;height:22px;border-radius:6px;background:#FEE2E2;color:#DC2626;border:none;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                     <i class="fas fa-times"></i>
                                 </button>
@@ -224,7 +260,7 @@
                 <div style="margin-top:14px;">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
                         <label style="font-size:11px;font-weight:600;color:#6B7280;">Links</label>
-                        <button type="button" @click="addLink()"
+                        <button type="button" @click="addLink()" class="mob-touch-btn-sm"
                                 style="font-size:10px;font-weight:600;color:#4F46E5;background:#EEF2FF;border:none;padding:3px 10px;border-radius:6px;cursor:pointer;">
                             + Add Link
                         </button>
@@ -239,7 +275,7 @@
                                     <input type="text" :name="'links['+i+'][label]'" x-model="link.label"
                                            placeholder="Label (optional)"
                                            style="width:100%;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#111827;box-sizing:border-box;outline:none;background:#fff;">
-                                    <button type="button" @click="removeLink(i)"
+                                    <button type="button" @click="removeLink(i)" class="mob-touch-btn-sm"
                                             style="width:26px;height:26px;border-radius:6px;background:#FEE2E2;color:#DC2626;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                         <i class="fas fa-times"></i>
                                     </button>
@@ -252,16 +288,16 @@
             </div>
 
             {{-- Divider --}}
-            <div style="height:1px;background:#F3F4F6;margin-bottom:22px;"></div>
+            <div class="pf-divider" style="height:1px;background:#F3F4F6;margin-bottom:22px;"></div>
 
             {{-- Tasks --}}
-            <div style="margin-bottom:24px;">
+            <div class="mob-card pf-card" style="margin-bottom:24px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
                     <div>
-                        <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:2px;">Assign Tasks</label>
+                        <label class="pf-title" style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:2px;">Assign Tasks</label>
                         <p style="font-size:11px;color:#9CA3AF;margin:0;">Assigned employees are automatically added as project members</p>
                     </div>
-                    <button type="button" @click="addTask()"
+                    <button type="button" @click="addTask()" class="mob-touch-btn"
                             style="display:flex;align-items:center;gap:6px;padding:7px 14px;background:#EEF2FF;color:#4F46E5;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
                         <i class="fas fa-plus" style="font-size:10px;"></i> Add Task
                     </button>
@@ -269,14 +305,14 @@
 
                 <div style="display:flex;flex-direction:column;gap:14px;">
                     <template x-for="(task, i) in tasks" :key="i">
-                        <div style="border:1.5px solid #E5E7EB;border-radius:12px;padding:18px;background:#FAFBFF;position:relative;">
+                        <div class="proj-task-card" style="border:1.5px solid #E5E7EB;border-radius:12px;padding:18px;background:#FAFBFF;position:relative;">
 
                             {{-- Header --}}
                             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
                                 <span style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">
                                     Task <span x-text="i + 1"></span>
                                 </span>
-                                <button type="button" @click="removeTask(i)" x-show="tasks.length > 1"
+                                <button type="button" @click="removeTask(i)" x-show="tasks.length > 1" class="mob-touch-btn"
                                         style="width:24px;height:24px;border-radius:6px;background:#FEE2E2;color:#DC2626;border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;">
                                     <i class="fas fa-times"></i>
                                 </button>
@@ -309,7 +345,7 @@
                             <div style="margin-bottom:12px;">
                                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
                                     <label style="font-size:11px;font-weight:600;color:#6B7280;">Assignees</label>
-                                    <button type="button" @click="addAssignee(i)"
+                                    <button type="button" @click="addAssignee(i)" class="mob-touch-btn-sm"
                                             style="font-size:10px;font-weight:600;color:#4F46E5;background:#EEF2FF;border:none;padding:3px 10px;border-radius:6px;cursor:pointer;">
                                         + Add Person
                                     </button>
@@ -327,7 +363,7 @@
                                             <input type="text" :name="'tasks['+i+'][assignees]['+j+'][role]'" x-model="assignee.role"
                                                    placeholder="Role (e.g. video editor, designer)"
                                                    style="width:100%;padding:7px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#111827;box-sizing:border-box;outline:none;background:#fff;">
-                                            <button type="button" @click="removeAssignee(i, j)" x-show="task.assignees.length > 1"
+                                            <button type="button" @click="removeAssignee(i, j)" x-show="task.assignees.length > 1" class="mob-touch-btn-sm"
                                                     style="width:26px;height:26px;border-radius:6px;background:#FEE2E2;color:#DC2626;border:none;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                                 <i class="fas fa-times"></i>
                                             </button>
@@ -417,7 +453,7 @@
                 @endif
             </div>
 
-            <div style="display:flex;gap:10px;">
+            <div class="proj-create-actions mob-sticky-action-bar" style="display:flex;gap:10px;">
                 <button type="submit"
                         style="flex:1;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:11px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
                     <i class="fa fa-rocket" style="margin-right:6px;"></i>Create Project &amp; Assign Tasks

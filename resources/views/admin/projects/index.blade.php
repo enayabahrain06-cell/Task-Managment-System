@@ -194,15 +194,17 @@
     }
 }">
 
+@include('admin.projects._mobile-index')
+
 {{-- Page Header --}}
-<div class="flex items-center justify-between mb-6">
+<div class="proj-page-header flex items-center justify-between mb-6">
     <div>
         <h1 class="text-2xl font-bold text-gray-900">Projects</h1>
         <p class="text-sm text-gray-500 mt-0.5">{{ $projects->total() }} {{ request('status') === 'completed' ? 'completed' : 'active' }} project{{ $projects->total() !== 1 ? 's' : '' }}</p>
     </div>
     <div class="flex items-center gap-2">
         @if(auth()->user()->hasPermission('manage_projects'))
-        <button @click="openWizard()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm shadow-indigo-200">
+        <button @click="openWizard()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm shadow-indigo-200 proj-new-btn">
             <i class="fa fa-plus"></i> New Project
         </button>
         @endif
@@ -219,11 +221,102 @@
 .proj-stat-card-sub   { font-size:11px; color:rgba(255,255,255,0.6); margin:6px 0 0; }
 /* ── Mobile responsiveness ── */
 .proj-stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
-@media (max-width: 768px) { .proj-stat-grid { grid-template-columns: repeat(2,1fr); } }
-@media (max-width: 480px) { .proj-stat-grid { grid-template-columns: 1fr; } }
+@media (max-width: 480px) {
+    /* Wizard step indicator (3 steps × 72px + 2 connectors × 64px ≈ 416px) overflows a 375px phone */
+    .proj-wiz-steps [style*="min-width:72px"] { min-width: 54px !important; }
+    .proj-wiz-steps [style*="width:36px;height:36px;border-radius:50%"] { width: 30px !important; height: 30px !important; font-size: 11px !important; }
+    .proj-wiz-steps [style*="width:64px;height:2px"] { width: 28px !important; margin: 0 2px !important; }
+    .proj-wiz-steps span[style*="white-space:nowrap"] { font-size: 10px !important; }
+}
+@media (max-width: 480px) { .proj-task-field-row { grid-template-columns: 1fr !important; } }
+@media (max-width: 480px) { .proj-stat-grid > a { flex: 0 0 80% !important; } }
 .proj-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .proj-table-wrap table { min-width: 600px; }
 .proj-tab-bar { flex-wrap: wrap; }
+
+@media (max-width: 768px) {
+    /* ── Page header: stack title and New Project button ── */
+    .proj-page-header { flex-direction: column; align-items: flex-start !important; gap: 10px; }
+    .proj-new-btn { min-height: 44px; }
+
+    /* ── Tab bar: full-width, ≥44px touch targets ── */
+    .proj-tab-bar { width: 100%; }
+    .proj-tab-bar-link { flex: 1; justify-content: center; padding: 12px 14px !important; min-height: 44px; box-sizing: border-box; }
+
+    /* ── Table/Cards view toggle: full-width, ≥44px touch targets ── */
+    .proj-view-toggle { width: 100%; }
+    .proj-view-toggle-btn { flex: 1; justify-content: center; padding: 11px 14px !important; min-height: 44px; box-sizing: border-box; }
+
+    /* ── Stat cards: align to shared design tokens ── */
+    .proj-stat-card { border-radius: var(--mob-r-md) !important; box-shadow: var(--mob-shadow-1); }
+    .proj-stat-card-value { font-size: 28px; }
+
+    /* ── Stat cards: swipeable horizontal row (mob-kpi-row style, matches admin/tasks/index) ── */
+    .proj-stat-grid {
+        display: flex !important;
+        grid-template-columns: none !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scroll-snap-type: x mandatory !important;
+        gap: var(--mob-sp-2) !important;
+        padding: 2px 2px 10px !important;
+        margin-bottom: var(--mob-sp-2) !important;
+    }
+    .proj-stat-grid::-webkit-scrollbar { display: none; }
+    .proj-stat-grid > a { flex: 0 0 72% !important; max-width: 230px; scroll-snap-align: start; }
+
+    /* ── Table view → stacked card list (mob-table-cards technique) ── */
+    .proj-table-wrap.mob-table-cards {
+        background: transparent !important; border: none !important; box-shadow: none !important;
+        border-radius: 0 !important; overflow: visible !important;
+    }
+    .proj-table-wrap.mob-table-cards table { min-width: 0 !important; width: 100% !important; }
+    .proj-table-wrap.mob-table-cards tbody tr { display: flex !important; flex-direction: column !important; }
+    /* Project name: hero cell, full width, no label, shown first */
+    .proj-table-wrap.mob-table-cards td.mob-proj-cell {
+        order: 1; display: block !important; text-align: left !important;
+        padding: 4px 4px 12px !important; border-bottom: 1px solid #F3F4F6 !important;
+    }
+    .proj-table-wrap.mob-table-cards td.mob-proj-cell::before { content: none !important; }
+    .proj-table-wrap.mob-table-cards td.mob-col-tasks    { order: 2; }
+    .proj-table-wrap.mob-table-cards td.mob-col-status   { order: 3; }
+    .proj-table-wrap.mob-table-cards td.mob-col-deadline { order: 4; }
+    .proj-table-wrap.mob-table-cards td.mob-col-created  { order: 5; }
+    /* Actions: full-width comfortable button, last */
+    .proj-table-wrap.mob-table-cards td.mob-col-actions {
+        order: 6; display: block !important; text-align: right !important;
+        padding: 12px 4px 4px !important; border-bottom: none !important; border-top: 1px solid #F3F4F6 !important; margin-top: 4px;
+    }
+    .proj-table-wrap.mob-table-cards td.mob-col-actions::before { content: none !important; }
+    .proj-table-wrap.mob-table-cards .mob-row-actions-btn {
+        width: 100% !important; height: 44px !important; border-radius: var(--mob-r-sm) !important;
+        font-size: 15px !important; gap: 8px !important;
+    }
+    .proj-table-wrap.mob-table-cards .mob-row-actions-btn::after {
+        content: "Actions"; font-size: 13px; font-weight: 600; color: #6B7280; margin-left: 6px;
+    }
+    /* Empty-state row: keep centered, not a label/value row */
+    .proj-table-wrap.mob-table-cards td.mob-table-empty {
+        display: block !important; text-align: center !important; padding: 32px 0 !important;
+    }
+    .proj-table-wrap.mob-table-cards td.mob-table-empty::before { content: none !important; }
+
+    /* ── Wizard modal: tighter gutters on small phones ── */
+    .proj-wizard-outer { padding: 8px !important; }
+    .proj-wizard-modal { max-width: 100% !important; border-radius: 18px !important; }
+
+    /* ── Wizard 2-column rows → stack for readable full-width inputs ── */
+    .proj-wiz-2col { grid-template-columns: 1fr !important; }
+    .proj-assignee-row { grid-template-columns: 1fr !important; }
+    .proj-link-row { grid-template-columns: 1fr !important; }
+
+    /* ── Wizard footer: ≥44px touch targets ── */
+    .proj-wiz-footer { flex-wrap: wrap; row-gap: 10px; }
+    .proj-wiz-footer-btn { min-height: 44px; padding: 11px 20px !important; font-size: 14px !important; }
+
+    /* ── Card view: larger tap target for the row-actions icon button ── */
+    .proj-card-action-btn { width: 36px !important; height: 36px !important; font-size: 15px !important; }
+}
 </style>
 
 @php
@@ -234,7 +327,7 @@ $isCompletedTab  = ($currentStatus === 'completed');
 
 {{-- Tab Bar --}}
 <div class="proj-tab-bar" style="display:flex;align-items:center;gap:3px;background:#F3F4F6;border-radius:12px;padding:4px;width:fit-content;margin-bottom:20px;">
-    <a href="{{ route('admin.projects.index') }}"
+    <a href="{{ route('admin.projects.index') }}" class="proj-tab-bar-link"
        style="display:flex;align-items:center;gap:8px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;{{ !$isCompletedTab ? 'background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);' : 'background:transparent;color:#6B7280;' }}">
         <i class="fa fa-circle-play" style="font-size:11px;"></i>
         Active
@@ -242,7 +335,7 @@ $isCompletedTab  = ($currentStatus === 'completed');
             {{ $stats['total'] - $stats['completed'] }}
         </span>
     </a>
-    <a href="{{ route('admin.projects.index', ['status'=>'completed']) }}"
+    <a href="{{ route('admin.projects.index', ['status'=>'completed']) }}" class="proj-tab-bar-link"
        style="display:flex;align-items:center;gap:8px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;{{ $isCompletedTab ? 'background:#fff;color:#7C3AED;box-shadow:0 1px 4px rgba(0,0,0,.08);' : 'background:transparent;color:#6B7280;' }}">
         <i class="fa fa-circle-check" style="font-size:11px;"></i>
         Completed
@@ -279,7 +372,7 @@ $statDefs = [
     @endforeach
 </div>
 @if($currentStatus === 'active' || $isOverdueFilter)
-<div style="margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+<div class="proj-desktop-banner" style="margin-bottom:16px;display:flex;align-items:center;gap:8px;">
     <span style="font-size:13px;color:#6B7280;">Filtering: <strong style="color:#111827;">{{ $isOverdueFilter ? 'Overdue only' : 'Active only' }}</strong></span>
     <a href="{{ route('admin.projects.index') }}" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:#EF4444;text-decoration:none;background:#FEF2F2;border:1px solid #FECACA;padding:3px 9px;border-radius:6px;">
         <i class="fas fa-times" style="font-size:10px;"></i> Clear filter
@@ -289,7 +382,7 @@ $statDefs = [
 
 @else
 {{-- Completed tab: summary banner instead of stat cards --}}
-<div style="display:flex;align-items:center;gap:14px;padding:16px 20px;background:linear-gradient(135deg,#F5F3FF,#EDE9FE);border-radius:14px;border:1px solid #DDD6FE;margin-bottom:24px;">
+<div class="proj-desktop-banner" style="display:flex;align-items:center;gap:14px;padding:16px 20px;background:linear-gradient(135deg,#F5F3FF,#EDE9FE);border-radius:14px;border:1px solid #DDD6FE;margin-bottom:24px;">
     <div style="width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#7C3AED,#8B5CF6);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(124,58,237,.3);">
         <i class="fa fa-circle-check" style="color:#fff;font-size:18px;"></i>
     </div>
@@ -305,14 +398,14 @@ $statDefs = [
 @endif
 
 {{-- View Toggle --}}
-<div style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;margin-bottom:22px;width:fit-content;">
-    <button @click="setView('table')"
+<div class="proj-view-toggle" style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;margin-bottom:22px;width:fit-content;">
+    <button @click="setView('table')" class="proj-view-toggle-btn"
             :style="view==='table'
                 ? 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);'
                 : 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:transparent;color:#6B7280;'">
         <i class="fa fa-table-list" style="font-size:11px;"></i> Table
     </button>
-    <button @click="setView('cards')"
+    <button @click="setView('cards')" class="proj-view-toggle-btn"
             :style="view==='cards'
                 ? 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);'
                 : 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:transparent;color:#6B7280;'">
@@ -321,8 +414,8 @@ $statDefs = [
 </div>
 
 {{-- ══ TABLE VIEW ══ --}}
-<div x-show="view === 'table'" x-cloak>
-<div class="proj-table-wrap bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+<div class="proj-desktop-view" x-show="view === 'table'" x-cloak>
+<div class="proj-table-wrap mob-table-cards bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
     <table class="w-full">
         <thead>
             <tr class="border-b border-gray-100 bg-gray-50/50">
@@ -337,10 +430,10 @@ $statDefs = [
         <tbody class="divide-y divide-gray-50">
             @forelse($projects as $project)
             @php
-                $statusBg = ['active' => 'bg-emerald-100 text-emerald-700', 'completed' => 'bg-gray-100 text-gray-600', 'overdue' => 'bg-red-100 text-red-600'];
+                $statusColors = \App\Support\ProjectStatusColors::for($project->status);
             @endphp
             <tr class="hover:bg-gray-50/70 transition">
-                <td class="px-5 py-3.5">
+                <td class="px-5 py-3.5 mob-proj-cell">
                     <a href="{{ route('admin.projects.show', $project) }}" class="text-sm font-semibold text-gray-900 hover:text-indigo-600 transition">
                         {{ $project->name }}
                     </a>
@@ -353,15 +446,15 @@ $statDefs = [
                     <p class="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{{ $project->description }}</p>
                     @endif
                 </td>
-                <td class="px-5 py-3.5">
+                <td class="px-5 py-3.5 mob-col-tasks" data-label="Tasks">
                     <span class="inline-flex items-center gap-1 text-sm text-gray-700">
                         <i class="fa fa-tasks text-gray-300 text-xs"></i> {{ $project->tasks_count }}
                     </span>
                 </td>
-                <td class="px-5 py-3.5">
+                <td class="px-5 py-3.5 mob-col-status" data-label="Status">
                     <div class="flex items-center gap-1.5 flex-wrap">
-                        <span class="text-xs px-2.5 py-1 rounded-full font-medium {{ $statusBg[$project->status] ?? 'bg-gray-100 text-gray-600' }}">
-                            {{ ucfirst($project->status) }}
+                        <span class="text-xs px-2.5 py-1 rounded-full font-medium {{ $statusColors['class'] }}">
+                            {{ $statusColors['label'] }}
                         </span>
                         @if($project->social_pending_count > 0)
                         <span class="text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
@@ -372,11 +465,11 @@ $statDefs = [
                         @endif
                     </div>
                 </td>
-                <td class="px-5 py-3.5 text-sm {{ $project->deadline < now() && $project->status !== 'completed' ? 'text-red-500 font-semibold' : 'text-gray-500' }}">
+                <td class="px-5 py-3.5 text-sm mob-col-deadline {{ $project->deadline < now() && $project->status !== 'completed' ? 'text-red-500 font-semibold' : 'text-gray-500' }}" data-label="Deadline">
                     {{ $project->deadline->format(config('app.date_format', 'M d, Y')) }}
                 </td>
-                <td class="px-5 py-3.5 text-sm text-gray-400">{{ $project->created_at->format('M d') }}</td>
-                <td class="px-5 py-3.5 text-right">
+                <td class="px-5 py-3.5 text-sm text-gray-400 mob-col-created" data-label="Created">{{ $project->created_at->format('M d') }}</td>
+                <td class="px-5 py-3.5 text-right mob-col-actions" data-label="Actions">
                     <button type="button"
                             onclick="openProjMenu(event, this)"
                             data-view="{{ route('admin.projects.show', $project) }}"
@@ -387,14 +480,15 @@ $statDefs = [
                             data-name="{{ addslashes($project->name) }}"
                             style="width:30px;height:30px;border-radius:8px;background:#F9FAFB;border:1px solid #E5E7EB;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#6B7280;font-size:14px;transition:background .15s;"
                             onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='#F9FAFB'"
-                            title="Actions">
+                            title="Actions"
+                            class="mob-row-actions-btn">
                         <i class="fas fa-ellipsis-vertical"></i>
                     </button>
                 </td>
             </tr>
             @empty
             <tr>
-                <td colspan="6" class="px-5 py-12 text-center">
+                <td colspan="6" class="px-5 py-12 text-center mob-table-empty">
                     <i class="fa fa-project-diagram text-4xl text-gray-200 mb-3"></i>
                     <p class="text-sm text-gray-400">No projects found</p>
                 </td>
@@ -407,7 +501,7 @@ $statDefs = [
 </div>{{-- end table view --}}
 
 {{-- ══ CARD VIEW ══ --}}
-<div x-show="view === 'cards'" x-cloak>
+<div class="proj-desktop-view" x-show="view === 'cards'" x-cloak>
     @if($projects->isEmpty())
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm py-24 text-center">
         <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -422,12 +516,8 @@ $statDefs = [
             $pct        = $project->tasks_count > 0 ? round(($project->completed_tasks_count / $project->tasks_count) * 100) : 0;
             $isOverdue  = $project->deadline < now() && $project->status !== 'completed';
             $isDone     = $project->status === 'completed';
-            $statusMap  = [
-                'active'    => ['label'=>'Active',    'color'=>'#16A34A','bg'=>'#DCFCE7'],
-                'completed' => ['label'=>'Completed', 'color'=>'#64748B','bg'=>'#F1F5F9'],
-                'overdue'   => ['label'=>'Overdue',   'color'=>'#DC2626','bg'=>'#FEE2E2'],
-            ];
-            $s = $statusMap[$project->status] ?? $statusMap['active'];
+            $pc         = \App\Support\ProjectStatusColors::for($project->status);
+            $s          = ['label' => $pc['label'], 'color' => $pc['text'], 'bg' => $pc['bg']];
             $members    = $project->members->take(4);
             $extraCount = max(0, $project->members->count() - 4);
             $avatarColors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6','#EC4899','#06B6D4'];
@@ -535,7 +625,7 @@ $statDefs = [
                                 data-close-url="{{ $project->status !== 'completed' ? route('admin.projects.close', $project) : '' }}"
                                 data-delete-url="{{ auth()->user()->hasPermission('delete_projects') ? route('admin.projects.destroy', $project) : '' }}"
                                 data-name="{{ addslashes($project->name) }}"
-                                class="w-6 h-6 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 transition"
+                                class="w-6 h-6 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 transition proj-card-action-btn"
                                 style="border:none;cursor:pointer;font-size:13px;"
                                 title="Actions">
                             <i class="fas fa-ellipsis-vertical"></i>
@@ -693,13 +783,13 @@ $statDefs = [
 
 {{-- ══════════════════ WIZARD MODAL ══════════════════ --}}
 <div x-show="wizardOpen" x-cloak style="position:fixed;inset:0;z-index:9999;">
-<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;">
+<div class="proj-wizard-outer" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;">
 
     {{-- Backdrop --}}
     <div @click="closeWizard()" style="position:absolute;inset:0;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);"></div>
 
     {{-- Modal --}}
-    <div style="position:relative;width:100%;max-width:680px;max-height:92vh;background:#fff;border-radius:24px;box-shadow:0 32px 80px rgba(0,0,0,0.22);display:flex;flex-direction:column;">
+    <div class="proj-wizard-modal" style="position:relative;width:100%;max-width:680px;max-height:92vh;background:#fff;border-radius:24px;box-shadow:0 32px 80px rgba(0,0,0,0.22);display:flex;flex-direction:column;">
 
         {{-- ── Header ── --}}
         <div style="padding:24px 28px 0;flex-shrink:0;">
@@ -715,7 +805,7 @@ $statDefs = [
             </div>
 
             {{-- Step Indicators (centered, equal spacing, clickable) --}}
-            <div style="display:flex;align-items:flex-start;justify-content:center;margin-bottom:28px;">
+            <div class="proj-wiz-steps" style="display:flex;align-items:flex-start;justify-content:center;margin-bottom:28px;">
                 <template x-for="s in totalSteps" :key="s">
                     <div style="display:flex;align-items:center;">
                         {{-- Circle + Label --}}
@@ -780,7 +870,7 @@ $statDefs = [
                     </div>
 
                     {{-- First Review Date (first) then Deadline --}}
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px;">
+                    <div class="proj-wiz-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:8px;">
                         <div>
                             <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
                                 First Review Date
@@ -862,7 +952,7 @@ $statDefs = [
                                     </div>
                                     <div style="display:flex;flex-direction:column;gap:6px;">
                                         <template x-for="(assignee, j) in task.assignees" :key="j">
-                                            <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;">
+                                            <div class="proj-assignee-row" style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;">
                                                 <select :name="'tasks['+i+'][assignees]['+j+'][user_id]'" x-model="assignee.user_id"
                                                         @change="task.assigneeError = false"
                                                         :style="task.assigneeError && j === 0
@@ -890,7 +980,7 @@ $statDefs = [
                                 </div>
 
                                 {{-- Reviewer + Priority + Deadline --}}
-                                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+                                <div class="proj-task-field-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
                                     <div>
                                         <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px;">Reviewer</label>
                                         <select :name="'tasks['+i+'][reviewer_id]'" x-model="task.reviewer_id"
@@ -1024,7 +1114,7 @@ $statDefs = [
                         <template x-if="links.length > 0">
                             <div style="display:flex;flex-direction:column;gap:8px;">
                                 <template x-for="(link, i) in links" :key="i">
-                                    <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;">
+                                    <div class="proj-link-row" style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;">
                                         <input type="url" :name="'links['+i+'][url]'" x-model="link.url"
                                                placeholder="https://..."
                                                style="width:100%;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#111827;box-sizing:border-box;outline:none;background:#fff;">
@@ -1047,9 +1137,9 @@ $statDefs = [
             </div>{{-- end scrollable body --}}
 
             {{-- ── Footer ── --}}
-            <div style="padding:16px 28px;border-top:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fff;border-radius:0 0 24px 24px;">
+            <div class="proj-wiz-footer" style="padding:16px 28px;border-top:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fff;border-radius:0 0 24px 24px;">
 
-                <button type="button" @click="step > 1 ? prevStep() : closeWizard()"
+                <button type="button" @click="step > 1 ? prevStep() : closeWizard()" class="proj-wiz-footer-btn"
                         style="padding:9px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;">
                     <i class="fa fa-arrow-left" style="font-size:11px;"></i>
                     <span x-text="step > 1 ? 'Back' : 'Cancel'"></span>
@@ -1064,14 +1154,14 @@ $statDefs = [
                 </div>
 
                 <template x-if="step < totalSteps">
-                    <button type="button" @click="nextStep()"
+                    <button type="button" @click="nextStep()" class="proj-wiz-footer-btn"
                             style="padding:9px 22px;background:#4F46E5;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(79,70,229,.3);">
                         Next <i class="fa fa-arrow-right" style="font-size:11px;"></i>
                     </button>
                 </template>
 
                 <template x-if="step === totalSteps">
-                    <button type="submit"
+                    <button type="submit" class="proj-wiz-footer-btn"
                             style="padding:9px 22px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 4px 14px rgba(99,102,241,.35);">
                         <i class="fa fa-rocket" style="font-size:11px;"></i> Create Project
                     </button>

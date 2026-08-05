@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Project;
 use App\Models\Role;
 use App\Models\Setting;
 use App\Models\Task;
@@ -14,6 +15,10 @@ class TeamController extends Controller
     {
         if (!auth()->user()->hasPermission('view_team')) {
             return redirect()->route('user.dashboard')->with('error', "You don't have permission to access Team Members.");
+        }
+
+        if ($request->isMobileDevice()) {
+            return $this->mobileIndex();
         }
 
         $allowedViews = ['team', 'permissions', 'roles', 'former'];
@@ -120,5 +125,60 @@ class TeamController extends Controller
             'allRoles', 'view', 'stats', 'formerEmployees',
             'minPasswordLength', 'requireStrongPassword', 'passwordRequirementText'
         ));
+    }
+
+    private function mobileIndex()
+    {
+        $isAdmin      = in_array(auth()->user()->role, ['admin', 'manager']);
+        $doneStatuses = ['approved', 'delivered', 'archived'];
+        $colors       = ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#3B82F6'];
+
+        $members = collect();
+        if ($isAdmin) {
+            $doneIn = implode("','", $doneStatuses);
+            $members = User::where('role', 'user')
+                ->where('status', 'active')
+                ->selectRaw("users.*,
+                    (SELECT COUNT(DISTINCT t.id) FROM tasks t
+                     WHERE (t.assigned_to = users.id OR t.social_assigned_to = users.id
+                            OR t.id IN (SELECT task_id FROM task_assignees WHERE user_id = users.id))
+                       AND t.status NOT IN ('{$doneIn}')
+                    ) as open_tasks")
+                ->orderByDesc('open_tasks')
+                ->take(8)
+                ->get();
+
+            $workloadMax = (int) ($members->max('open_tasks') ?: 1);
+
+            $members->each(function ($m) use ($workloadMax) {
+                $m->initial = strtoupper(substr($m->name, 0, 1));
+                $m->note = $m->open_tasks == 0
+                    ? 'No pending tasks'
+                    : ($m->open_tasks === $workloadMax && $workloadMax > 3 ? 'Busiest right now' : 'Healthy load');
+            });
+        }
+
+        $projectsQuery = $isAdmin
+            ? Project::where('is_quick', false)
+            : auth()->user()->projects()->where('is_quick', false);
+
+        $projects = $projectsQuery
+            ->withCount([
+                'tasks',
+                'tasks as completed_tasks_count' => fn ($q) => $q->whereIn('status', $doneStatuses),
+            ])
+            ->orderByDesc('updated_at')
+            ->take(10)
+            ->get()
+            ->values()
+            ->map(function ($p, $i) use ($colors) {
+                $pending    = $p->tasks_count - $p->completed_tasks_count;
+                $p->pct     = $p->tasks_count > 0 ? min(100, round($p->completed_tasks_count / $p->tasks_count * 100)) : 0;
+                $p->color   = $colors[$i % count($colors)];
+                $p->meta    = $pending > 0 ? "{$pending} task" . ($pending === 1 ? '' : 's') . ' left' : 'All tasks done';
+                return $p;
+            });
+
+        return view('mobile.team.index', compact('isAdmin', 'members', 'projects'));
     }
 }

@@ -804,6 +804,7 @@ class TaskApprovalController extends Controller
         // Auto-record review time before changing status
         $this->recordReviewSegment($task);
 
+        $oldStatus = $task->status;
         $task->update(['status' => 'revision_requested']);
 
         TaskSubmission::where('task_id', $task->id)
@@ -827,7 +828,7 @@ class TaskApprovalController extends Controller
             'action'   => 'status_updated_revision_requested',
             'note'     => 'Revision requested: ' . $request->note,
             'metadata' => [
-                'old_status'         => 'submitted',
+                'old_status'         => $oldStatus,
                 'new_status'         => 'revision_requested',
                 'reviewer_id'        => auth()->id(),
                 'reviewer_name'      => auth()->user()->name,

@@ -25,28 +25,102 @@
     gap: 8px;
     flex-wrap: wrap;
 }
+
+/* ══════════════════════════════════════════════════════════
+   Mobile-only premium pass (≤768px) — project detail page.
+   Builds on the shared .mob-card / .mob-kpi-row / .mob-action-chips
+   tokens from layouts/app.blade.php. Desktop is untouched.
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    /* Header card: stack back-button / title / status+actions vertically */
+    .proj-show-header {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: var(--mob-sp-1) !important;
+        padding: var(--mob-sp-2);
+        margin-bottom: var(--mob-sp-2) !important;
+    }
+    .proj-show-header > a:first-child { align-self: flex-start; }
+    .proj-show-header h1 { font-size: 18px !important; }
+    .proj-show-header-actions {
+        width: 100%;
+        justify-content: flex-start !important;
+    }
+    .proj-show-header-actions a, .proj-show-header-actions button {
+        min-height: 44px !important;
+    }
+    /* Back-arrow circle (36px) → real touch target */
+    .proj-show-header > a:first-child {
+        width: 44px !important; height: 44px !important;
+    }
+
+    /* Stat cards: horizontal snapping KPI row instead of a fixed grid */
+    .proj-show-stat-grid.mob-kpi-row {
+        display: flex !important;
+        grid-template-columns: none !important;
+        margin-bottom: var(--mob-sp-3) !important;
+    }
+    .proj-show-stat-grid.mob-kpi-row > .mob-kpi-card {
+        min-width: 118px !important;
+        /* these cards set their own radius/shadow inline (border-radius:14px etc.) which
+           otherwise beats the shared .mob-kpi-card class since inline styles always win */
+        border-radius: var(--mob-r-md) !important;
+        box-shadow: var(--mob-shadow-1) !important;
+    }
+
+    /* Project brief */
+    .proj-show-brief-body { padding: var(--mob-sp-2) !important; }
+    .proj-show-brief-body > div { font-size: 15px !important; }
+
+    /* Task list card + rows */
+    .proj-show-tasks-card {
+        border-radius: var(--mob-r-lg) !important;
+        box-shadow: var(--mob-shadow-1) !important;
+    }
+    .proj-show-task-row { padding: var(--mob-sp-2) !important; }
+    .proj-show-task-row > div:first-of-type { align-items: flex-start !important; }
+    .proj-show-task-actions {
+        width: 100%;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap !important;
+        padding: 2px 2px 4px;
+        margin-top: var(--mob-sp-1);
+    }
+    .proj-show-task-actions > * { flex-shrink: 0; }
+
+    /* Inline reassign / social-assign forms: stack full width, larger touch targets */
+    .proj-show-inline-form {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    .proj-show-inline-form select,
+    .proj-show-inline-form button {
+        width: 100% !important;
+        min-height: 44px;
+    }
+
+    /* Members card: compact 2-up grid instead of shrink-wrap chips */
+    .proj-show-members-card {
+        padding: var(--mob-sp-2) !important;
+        border-radius: var(--mob-r-lg) !important;
+        box-shadow: var(--mob-shadow-1) !important;
+    }
+    .proj-show-members-card > div > div { flex: 1 1 calc(50% - 5px); }
+}
 </style>
 @php
-    $statusMap = [
-        'pending'            => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Pending'],
-        'draft'              => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Draft'],
-        'assigned'           => ['bg'=>'#E0F2FE','color'=>'#0284C7','label'=>'Assigned'],
-        'viewed'             => ['bg'=>'#EEF2FF','color'=>'#4F46E5','label'=>'Viewed'],
-        'in_progress'        => ['bg'=>'#FEF3C7','color'=>'#D97706','label'=>'In Progress'],
-        'paused'             => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Paused'],
-        'submitted'          => ['bg'=>'#EDE9FE','color'=>'#7C3AED','label'=>'In Review'],
-        'revision_requested' => ['bg'=>'#FEE2E2','color'=>'#DC2626','label'=>'Revision Requested'],
-        'completed'          => ['bg'=>'#D1FAE5','color'=>'#059669','label'=>'Completed'],
-        'approved'           => ['bg'=>'#D1FAE5','color'=>'#059669','label'=>'Approved'],
-        'delivered'          => ['bg'=>'#ECFDF5','color'=>'#047857','label'=>'Delivered'],
-        'archived'           => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Archived'],
+    $statusMap = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => ['bg'=>$c['bg'], 'color'=>$c['text'], 'label'=>$c['label']])->all() + [
+        // legacy aliases seen on old rows / project-level pseudo-statuses
+        'pending'   => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Pending'],
+        'completed' => ['bg'=>'#D1FAE5','color'=>'#059669','label'=>'Completed'],
     ];
-    $priorityMap = ['low'=>['#D1FAE5','#059669'],'medium'=>['#FEF3C7','#D97706'],'high'=>['#FEE2E2','#DC2626']];
+    $priorityMap = ['low'=>['#D1FAE5','#059669'],'medium'=>['#FEF3C7','#D97706'],'high'=>['#FFE4E6','#E11D48']];
     $users = \App\Models\User::whereIn('role',['user','manager'])->orderBy('name')->get();
 @endphp
 
 {{-- Page header --}}
-<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
+<div class="proj-show-header mob-card" style="display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
     <a href="{{ route('admin.projects.index') }}"
        style="width:36px;height:36px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;color:#6B7280;text-decoration:none;flex-shrink:0;">
         <i class="fa fa-arrow-left" style="font-size:13px;"></i>
@@ -66,8 +140,8 @@
             @endif
         </div>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        @php $pStatus = ['active'=>['#D1FAE5','#059669'],'completed'=>['#F3F4F6','#6B7280'],'overdue'=>['#FEE2E2','#DC2626']][$project->status] ?? ['#F3F4F6','#6B7280']; @endphp
+    <div class="proj-show-header-actions" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        @php $pc = \App\Support\ProjectStatusColors::for($project->status); $pStatus = [$pc['bg'], $pc['text']]; @endphp
         <span style="padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;background:{{ $pStatus[0] }};color:{{ $pStatus[1] }};">{{ ucfirst($project->status) }}</span>
         <span style="font-size:13px;color:#9CA3AF;">Due {{ $project->deadline->format(config('app.date_format', 'M d, Y')) }}</span>
         @if($pendingApprovalCount > 0)
@@ -115,9 +189,9 @@
     $active        = $project->tasks->whereIn('status', ['pending','in_progress','assigned','viewed'])->count();
     $socialPending = $project->tasks->filter(fn($t) => $t->social_required && !$t->social_posted_at)->count();
 @endphp
-<div class="proj-show-stat-grid {{ $socialPending > 0 ? 'proj-show-stat-grid-5' : 'proj-show-stat-grid-4' }}">
+<div class="proj-show-stat-grid mob-kpi-row {{ $socialPending > 0 ? 'proj-show-stat-grid-5' : 'proj-show-stat-grid-4' }}">
     @foreach([['Tasks','fa-list-check','#EEF2FF','#6366F1',$total],['In Progress','fa-circle-play','#FEF3C7','#D97706',$active],['In Review','fa-hourglass-half','#EDE9FE','#7C3AED',$inReview],['Completed','fa-circle-check','#D1FAE5','#059669',$done]] as [$label,$icon,$bg,$col,$val])
-    <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+    <div class="mob-kpi-card" style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
             <div style="width:36px;height:36px;border-radius:10px;background:{{ $bg }};display:flex;align-items:center;justify-content:center;">
                 <i class="fa {{ $icon }}" style="color:{{ $col }};font-size:14px;"></i>
@@ -128,7 +202,7 @@
     </div>
     @endforeach
     @if($socialPending > 0)
-    <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+    <div class="mob-kpi-card" style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
             <div style="width:36px;height:36px;border-radius:10px;background:#F0FDF4;display:flex;align-items:center;justify-content:center;">
                 <i class="fa-brands fa-whatsapp" style="color:#25D366;font-size:16px;"></i>
@@ -147,7 +221,7 @@
         <span style="font-size:20px;line-height:1;">📋</span>
         <h2 style="font-size:16px;font-weight:700;color:#fff;margin:0;letter-spacing:.02em;">Project Brief</h2>
     </div>
-    <div style="background:linear-gradient(160deg,#fffbeb,#fef3c7,#fde68a22);padding:24px;">
+    <div class="proj-show-brief-body" style="background:linear-gradient(160deg,#fffbeb,#fef3c7,#fde68a22);padding:24px;">
         <div style="font-size:18px;font-weight:500;color:#1c1917;line-height:1.65;">
             {!! nl2br(e($project->description)) !!}
         </div>
@@ -156,7 +230,7 @@
 @endif
 
 {{-- Task list --}}
-<div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
+<div class="proj-show-tasks-card" style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
     <div style="padding:18px 20px 14px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
         <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0;">Tasks <span style="font-size:13px;font-weight:500;color:#9CA3AF;">({{ $total }})</span></h2>
     </div>
@@ -169,7 +243,7 @@
         $hasSocialPending = $task->social_required && !$task->social_posted_at;
         $hasSocialDone    = $task->social_required && $task->social_posted_at;
     @endphp
-    <div x-data="{ reassignOpen: false, socialOpen: false }" style="border-bottom:1px solid #F9FAFB;padding:16px 20px;">
+    <div x-data="{ reassignOpen: false, socialOpen: false }" class="proj-show-task-row" style="border-bottom:1px solid #F9FAFB;padding:16px 20px;">
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
 
             {{-- Avatar --}}
@@ -214,9 +288,9 @@
             </div>
 
             {{-- Actions --}}
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <div class="proj-show-task-actions" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                 {{-- View task --}}
-                <a href="{{ route('admin.tasks.show', $task) }}"
+                <a href="{{ route('admin.tasks.show', $task) }}" class="mob-action-chip"
                    style="padding:6px 12px;background:#F3F4F6;color:#374151;border-radius:8px;font-size:12px;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:4px;"
                    onmouseover="this.style.background='#EEF2FF';this.style.color='#4F46E5'" onmouseout="this.style.background='#F3F4F6';this.style.color='#374151'">
                     <i class="fa fa-eye" style="font-size:11px;"></i> View
@@ -226,7 +300,7 @@
                 @if($task->status === 'completed')
                 <form method="POST" action="{{ route('admin.tasks.deliver', $task) }}">
                     @csrf
-                    <button type="submit"
+                    <button type="submit" class="mob-action-chip"
                             style="padding:6px 12px;background:#D1FAE5;color:#047857;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;"
                             onmouseover="this.style.background='#A7F3D0'" onmouseout="this.style.background='#D1FAE5'">
                         <i class="fa fa-truck" style="font-size:11px;"></i> Deliver
@@ -236,7 +310,7 @@
 
                 {{-- Assign Social button (shown when social_required but no assignee yet, or to change) --}}
                 @if($task->social_required && !$task->social_posted_at)
-                <button @click="socialOpen = !socialOpen"
+                <button @click="socialOpen = !socialOpen" class="mob-action-chip"
                         style="padding:6px 12px;background:#F0FDF4;color:#065F46;border:1px solid #BBF7D0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;"
                         onmouseover="this.style.background='#DCFCE7'" onmouseout="this.style.background='#F0FDF4'">
                     <i class="fa-brands fa-whatsapp" style="color:#25D366;font-size:12px;"></i>
@@ -245,7 +319,7 @@
                 @endif
 
                 {{-- Reassign toggle --}}
-                <button @click="reassignOpen = !reassignOpen"
+                <button @click="reassignOpen = !reassignOpen" class="mob-action-chip"
                         style="padding:6px 12px;background:#F3F4F6;color:#374151;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;"
                         onmouseover="this.style.background='#FEF3C7';this.style.color='#D97706'" onmouseout="this.style.background='#F3F4F6';this.style.color='#374151'">
                     <i class="fa fa-arrows-rotate" style="font-size:11px;"></i> Reassign
@@ -256,7 +330,7 @@
         {{-- Inline social assign form --}}
         @if($task->social_required && !$task->social_posted_at)
         <div x-show="socialOpen" x-cloak style="margin-top:10px;padding:14px;background:#F0FDF4;border-radius:10px;border:1px solid #BBF7D0;">
-            <form method="POST" action="{{ route('admin.tasks.social.assign', $task) }}" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <form method="POST" action="{{ route('admin.tasks.social.assign', $task) }}" class="proj-show-inline-form" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
                 @csrf
                 <i class="fa-brands fa-whatsapp" style="color:#25D366;font-size:16px;flex-shrink:0;"></i>
                 <label style="font-size:12px;font-weight:600;color:#065F46;white-space:nowrap;">Assign social post to:</label>
@@ -281,7 +355,7 @@
 
         {{-- Inline reassign form --}}
         <div x-show="reassignOpen" x-cloak style="margin-top:12px;padding:14px;background:#FAFAFA;border-radius:10px;border:1px solid #F3F4F6;">
-            <form method="POST" action="{{ route('admin.tasks.reassign', $task) }}" style="display:flex;gap:10px;align-items:center;">
+            <form method="POST" action="{{ route('admin.tasks.reassign', $task) }}" class="proj-show-inline-form" style="display:flex;gap:10px;align-items:center;">
                 @csrf
                 <label style="font-size:12px;font-weight:600;color:#6B7280;white-space:nowrap;">Reassign to:</label>
                 <select name="assigned_to" required
@@ -317,7 +391,7 @@
 
 {{-- Members --}}
 @if($project->members->count())
-<div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;margin-top:20px;">
+<div class="proj-show-members-card" style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;margin-top:20px;">
     <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 14px;display:flex;align-items:center;gap:8px;">
         <i class="fa fa-users" style="color:#6366F1;"></i> Team Members
     </h2>

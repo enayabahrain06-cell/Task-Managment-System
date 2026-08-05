@@ -6,23 +6,124 @@
 @media (max-width: 768px) {
     /* Header: stack title and button */
     .users-page-header { flex-direction: column; align-items: flex-start !important; gap: 10px; }
+    .users-page-header a { width: 100%; justify-content: center; min-height: 46px; }
     /* Tabs: allow horizontal scroll */
     .users-tabs-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
     .users-tabs-wrap > div { width: max-content; }
-    /* Filters: stack */
+    /* Filters: stack, full-width, touch-friendly */
     .users-filter-form { flex-direction: column; }
     .users-filter-form > * { width: 100%; min-width: 0; }
-    /* Permissions panel: stack columns */
+    .users-filter-form input[type="text"],
+    .users-filter-form select {
+        min-height: 46px !important;
+        font-size: 15px !important;
+        border-radius: var(--mob-r-sm) !important;
+        box-sizing: border-box;
+    }
+    .users-filter-form button[type="submit"],
+    .users-filter-form > a {
+        min-height: 46px !important;
+        font-size: 15px !important;
+        border-radius: var(--mob-r-sm) !important;
+        display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Permissions panel: stack columns, larger tap targets */
     .perms-layout { flex-direction: column !important; height: auto !important; min-height: auto !important; }
     .perms-sidebar { width: 100% !important; max-height: 260px; }
+    .perms-user-row { padding: 13px 16px !important; min-height: 48px; box-sizing: border-box; }
+    .perm-item-row { padding: 14px 16px !important; }
+    .perm-toggle { width: 48px !important; height: 26px !important; }
+    .perm-toggle-knob { width: 18px !important; height: 18px !important; }
+    .perm-toggle.is-on .perm-toggle-knob { transform: translateX(22px) !important; }
+    .all-access-toggle { width: 52px !important; height: 28px !important; }
+    .all-access-toggle-knob { width: 20px !important; height: 20px !important; }
+    .all-access-toggle.is-on .all-access-toggle-knob { transform: translateX(24px) !important; }
+
+    /* Roles tab: permission grid inside create/edit modal — single column, larger toggle */
+    .mob-perm-grid { grid-template-columns: 1fr !important; }
+    .role-perm-toggle { width: 40px !important; height: 22px !important; }
+    .role-perm-toggle-knob { width: 14px !important; height: 14px !important; }
+    .role-perm-toggle.is-on .role-perm-toggle-knob { transform: translateX(18px) !important; }
+
+    /* Role modal close button: larger tap target */
+    .role-modal-close { width: 44px !important; height: 44px !important; }
 }
 @media (max-width: 768px) {
-    .users-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .users-table-wrap table { min-width: 600px; }
+    /* Users table → stacked cards (no horizontal scroll) */
+    .users-table-wrap { overflow-x: visible; }
+    .mob-table-cards table { min-width: 0 !important; }
+    .mob-table-cards tbody tr { display: flex !important; flex-direction: column !important; }
+
+    /* Hero cell: avatar + name, full width, no label, shown first */
+    .mob-table-cards td.mob-col-user {
+        order: 1; display: block !important; text-align: left !important;
+        padding: 12px 4px 10px !important; border-bottom: 1px solid #F3F4F6 !important;
+    }
+    .mob-table-cards td.mob-col-user::before { content: none !important; }
+
+    /* Role + Status: prominent, right after the hero */
+    .mob-table-cards td.mob-col-role   { order: 2; }
+    .mob-table-cards td.mob-col-status { order: 3; display: flex !important; }
+
+    /* Secondary columns not shown on mobile cards */
+    .mob-table-cards td.mob-col-contact,
+    .mob-table-cards td.mob-col-mfa    { display: none !important; }
+    .mob-table-cards td.mob-col-tasks  { order: 4; }
+    .mob-table-cards td.mob-col-joined { order: 5; }
+
+    /* Actions: full-width comfortable footer, last */
+    .mob-table-cards td.mob-col-actions {
+        order: 6; display: block !important; text-align: right !important;
+        padding: 12px 4px 4px !important; border-bottom: none !important; border-top: 1px solid #F3F4F6 !important; margin-top: 4px;
+    }
+    .mob-table-cards td.mob-col-actions::before { content: none !important; }
+    .mob-table-cards td.mob-col-actions a,
+    .mob-table-cards td.mob-col-actions button { width: 40px !important; height: 40px !important; }
+
+    .mob-table-cards td.mob-empty-cell { display: block !important; text-align: center !important; }
+
+    /* Status rail: 3px colored bar on the left edge of each user row card */
+    .mob-table-cards tbody tr { position: relative; padding-left: 10px; }
+    .mob-table-cards tbody tr::before {
+        content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 2px;
+        background: var(--mob-row-rail, #D1D5DB);
+    }
 }
-@media (max-width: 480px) {
-    .users-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
-    .users-table-wrap table { min-width: 540px !important; }
+@media (max-width: 768px) {
+    /* Mobile pill filter row: quick status switch, scrolls horizontally */
+    .users-status-pills { display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 2px 2px 8px; margin-bottom: 6px; }
+    .users-status-pills::-webkit-scrollbar { display: none; }
+    .users-status-pills { scrollbar-width: none; }
+    .users-status-pills a {
+        flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px;
+        font-size: 13px; font-weight: 600; white-space: nowrap; background: #fff; color: #6B7280; border: 1px solid #E5E7EB;
+        min-height: 44px; box-sizing: border-box;
+    }
+    .users-status-pills a.active { background: var(--mob-brand); color: #fff; border-color: transparent; }
+    .users-status-pills a span.cnt { font-size: 11px; opacity: .8; }
+}
+@media (min-width: 769px) {
+    .users-status-pills { display: none; }
+}
+
+/* Role create/edit modal fields — base styles (not defined elsewhere in this file) */
+.form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 6px;
+}
+.form-input {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid #E5E7EB;
+    border-radius: 10px;
+    background: #F9FAFB;
+    color: #111827;
+    outline: none;
+    box-sizing: border-box;
 }
 </style>
 @php
@@ -64,9 +165,9 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
 @if(request('tab','users') === 'users')
 
 {{-- Stats --}}
-<div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+<div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6 mob-kpi-row">
     @foreach([['label'=>'Total','value'=>$stats['total'],'icon'=>'fa-users','color'=>'#6366F1'],['label'=>'Active','value'=>$stats['active'],'icon'=>'fa-circle-check','color'=>'#10B981'],['label'=>'Inactive','value'=>$stats['inactive'],'icon'=>'fa-circle-xmark','color'=>'#EF4444'],['label'=>'Admins','value'=>$stats['admins'],'icon'=>'fa-user-shield','color'=>'#8B5CF6'],['label'=>'Managers','value'=>$stats['managers'],'icon'=>'fa-user-tie','color'=>'#F59E0B']] as $s)
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex items-center gap-3">
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex items-center gap-3 mob-kpi-card">
         <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style="background:{{ $s['color'] }}18;">
             <i class="fa {{ $s['icon'] }} text-sm" style="color:{{ $s['color'] }};"></i>
         </div>
@@ -76,6 +177,19 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
         </div>
     </div>
     @endforeach
+</div>
+
+{{-- Mobile quick status filter (pills) --}}
+<div class="users-status-pills">
+    @php $curStatus = request('status'); @endphp
+    <a href="{{ route('admin.users.index') }}?{{ http_build_query(array_merge(request()->except(['status','page']), ['tab'=>'users'])) }}"
+       class="{{ !$curStatus ? 'active' : '' }}">All <span class="cnt">{{ $stats['total'] }}</span></a>
+    <a href="{{ route('admin.users.index') }}?{{ http_build_query(array_merge(request()->except(['status','page']), ['tab'=>'users','status'=>'active'])) }}"
+       class="{{ $curStatus === 'active' ? 'active' : '' }}">Active <span class="cnt">{{ $stats['active'] }}</span></a>
+    <a href="{{ route('admin.users.index') }}?{{ http_build_query(array_merge(request()->except(['status','page']), ['tab'=>'users','status'=>'inactive'])) }}"
+       class="{{ $curStatus === 'inactive' ? 'active' : '' }}">Inactive <span class="cnt">{{ $stats['inactive'] }}</span></a>
+    <a href="{{ route('admin.users.index') }}?{{ http_build_query(array_merge(request()->except(['status','page']), ['tab'=>'users','status'=>'archived'])) }}"
+       class="{{ $curStatus === 'archived' ? 'active' : '' }}">Archived <span class="cnt">{{ $stats['archived'] }}</span></a>
 </div>
 
 {{-- Search & Filters --}}
@@ -103,7 +217,7 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
 </form>
 
 {{-- Table --}}
-<div class="users-table-wrap bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+<div class="users-table-wrap mob-table-cards bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
     <table class="w-full">
         <thead>
             <tr class="border-b border-gray-100 bg-gray-50/60">
@@ -119,9 +233,16 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
         </thead>
         <tbody class="divide-y divide-gray-50">
             @forelse($users as $user)
-            <tr class="hover:bg-gray-50/60 transition">
+            @php
+                $railColor = match($user->status) {
+                    'active'   => '#10B981',
+                    'archived' => '#9CA3AF',
+                    default    => '#D1D5DB',
+                };
+            @endphp
+            <tr class="hover:bg-gray-50/60 transition" style="--mob-row-rail: {{ $railColor }};">
                 {{-- User --}}
-                <td class="px-5 py-3.5">
+                <td class="px-5 py-3.5 mob-col-user" data-label="User">
                     <div class="flex items-center gap-3">
                         @if($user->avatarUrl())
                             <img src="{{ $user->avatarUrl() }}" alt="{{ $user->name }}"
@@ -141,14 +262,14 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
                     </div>
                 </td>
                 {{-- Contact --}}
-                <td class="px-5 py-3.5 hidden sm:table-cell">
+                <td class="px-5 py-3.5 hidden sm:table-cell mob-col-contact" data-label="Contact">
                     <p class="text-sm text-gray-600">{{ $user->email }}</p>
                     @if($user->phone)
                     <p class="text-xs text-gray-400 mt-0.5"><i class="fa fa-phone text-xs mr-1"></i>{{ $user->phone }}</p>
                     @endif
                 </td>
                 {{-- Role --}}
-                <td class="px-5 py-3.5">
+                <td class="px-5 py-3.5 mob-col-role" data-label="Role">
                     @php
                         $roleObj = $allRoles->firstWhere('name', $user->role);
                         $roleLabel = $roleObj ? $roleObj->label : ucfirst($user->role);
@@ -160,7 +281,7 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
                     </span>
                 </td>
                 {{-- Status --}}
-                <td class="px-5 py-3.5 hidden md:table-cell">
+                <td class="px-5 py-3.5 hidden md:table-cell mob-col-status" data-label="Status">
                     @if($user->status === 'active')
                     <span class="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-100 text-emerald-700">
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
@@ -177,7 +298,7 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
                     $isExempted = !$user->mfa_enabled && $mfaRaw !== null && (int)$mfaRaw === 0;
                     $isForced   = $forceMfa && !$user->mfa_enabled && !$isExempted;
                 @endphp
-                <td class="px-5 py-3.5 hidden md:table-cell">
+                <td class="px-5 py-3.5 hidden md:table-cell mob-col-mfa" data-label="MFA">
                     @if($user->mfa_enabled)
                     <form action="{{ route('admin.users.disable-mfa', $user) }}" method="POST"
                           onsubmit="return confirm('Disable MFA for {{ addslashes($user->name) }}? They will log in with password only.')">
@@ -206,16 +327,16 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
                     @endif
                 </td>
                 {{-- Tasks --}}
-                <td class="px-5 py-3.5 hidden lg:table-cell">
+                <td class="px-5 py-3.5 hidden lg:table-cell mob-col-tasks" data-label="Tasks">
                     <span class="text-sm font-medium text-gray-700">{{ $user->tasks_count }}</span>
                     <span class="text-xs text-gray-400 ml-1">tasks</span>
                 </td>
                 {{-- Joined --}}
-                <td class="px-5 py-3.5 hidden lg:table-cell text-sm text-gray-400">
+                <td class="px-5 py-3.5 hidden lg:table-cell text-sm text-gray-400 mob-col-joined" data-label="Joined">
                     {{ $user->created_at->format(config('app.date_format', 'M d, Y')) }}
                 </td>
                 {{-- Actions --}}
-                <td class="px-5 py-3.5 text-right">
+                <td class="px-5 py-3.5 text-right mob-col-actions" data-label="Actions">
                     <div class="flex items-center justify-end gap-2">
                         <a href="{{ route('admin.users.edit', $user) }}"
                            class="w-8 h-8 flex items-center justify-center rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition" title="Edit">
@@ -234,7 +355,7 @@ $avatarBg     = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6'];
             </tr>
             @empty
             <tr>
-                <td colspan="7" class="px-5 py-16 text-center">
+                <td colspan="7" class="px-5 py-16 text-center mob-empty-cell">
                     <i class="fa fa-users text-5xl text-gray-200 mb-3 block"></i>
                     <p class="text-sm text-gray-400">No users found</p>
                     @if(request()->hasAny(['search','role','status']))
@@ -741,7 +862,7 @@ function permsApp() {
                             <p style="font-size:11px;color:#9CA3AF;margin:0;" x-text="editId ? 'Update label, color, description or permissions' : 'Define a new custom role with permissions'"></p>
                         </div>
                     </div>
-                    <button @click="modalOpen=false"
+                    <button @click="modalOpen=false" class="role-modal-close"
                             style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;">
                         <i class="fa fa-times text-sm"></i>
                     </button>
@@ -863,7 +984,7 @@ function permsApp() {
                                         <i class="fa {{ $grp['icon'] }}" style="font-size:11px;color:{{ $grp['color'] }};"></i>
                                         <span style="font-size:11px;font-weight:700;color:{{ $grp['color'] }};text-transform:uppercase;letter-spacing:.05em;">{{ $grpName }}</span>
                                     </div>
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+                                    <div class="mob-perm-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
                                         @foreach($grp['perms'] as $pk => $pinfo)
                                         <label style="display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;border-top:1px solid #F9FAFB;{{ $loop->index % 2 === 1 ? 'border-left:1px solid #F9FAFB;' : '' }}transition:background .1s;"
                                                onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
@@ -957,7 +1078,7 @@ function permsApp() {
                                         <i class="fa {{ $grp['icon'] }}" style="font-size:11px;color:{{ $grp['color'] }};"></i>
                                         <span style="font-size:11px;font-weight:700;color:{{ $grp['color'] }};text-transform:uppercase;letter-spacing:.05em;">{{ $grpName }}</span>
                                     </div>
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+                                    <div class="mob-perm-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
                                         @foreach($grp['perms'] as $pk => $pinfo)
                                         <label style="display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;border-top:1px solid #F9FAFB;{{ $loop->index % 2 === 1 ? 'border-left:1px solid #F9FAFB;' : '' }}transition:background .1s;"
                                                onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">

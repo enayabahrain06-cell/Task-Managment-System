@@ -223,6 +223,15 @@ class Task extends Model
         return $this->dependencies()->whereNotIn('status', $doneStatuses)->doesntExist();
     }
 
+    /** Past its deadline and not yet in a done state. */
+    public function isOverdue(): bool
+    {
+        $doneStatuses = ['approved', 'delivered', 'archived'];
+        return $this->deadline
+            && $this->deadline->isPast()
+            && !in_array($this->status, $doneStatuses);
+    }
+
     public function transfers(): HasMany
     {
         return $this->hasMany(TaskTransfer::class)->orderBy('transferred_at');

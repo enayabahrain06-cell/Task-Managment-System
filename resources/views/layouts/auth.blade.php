@@ -168,7 +168,7 @@
         .bg-ring-1   { top:80px; left:370px; width:30px; height:30px; }
         .bg-ring-2   { bottom:330px; right:60px; width:22px; height:22px; animation-delay:1.2s; }
 
-        @media (max-width: 1160px) { .bg-blob-br2, .bg-dots-tr, .bg-dots-bl, .bg-ring-1 { display:none !important; } }
+        @media (max-width: 1160px) { .bg-blob-br2, .bg-dots-tr, .bg-dots-bl, .bg-ring-1, .bg-ring-2 { display:none !important; } }
 
         /* ── Hero heading ── */
         .team-hero {
@@ -432,12 +432,49 @@
 
         @media (max-width: 1160px) { .team-frame-group { display:none !important; } }
         @media (max-height: 760px)  { .team-bottom-pill { display:none !important; } }
+        /* Below 768px the hero banner would sit fixed at the top of the viewport while the
+           login card is centered by the body's flexbox — on short/narrow phones the two
+           overlap. Take the hero (and pill) out of fixed positioning so they stack in normal
+           flow above/below the card instead, and let the page scroll if content is tall. */
+        @media (max-width: 768px) {
+            body { display:block !important; padding:20px 16px 28px !important; overflow-y:auto !important; height:auto !important; }
+            .team-hero {
+                position:static !important; top:auto; left:auto; transform:none !important;
+                animation:none !important; margin:0 0 18px; max-width:100%;
+            }
+            .team-bottom-pill { position:static !important; transform:none !important; margin:20px auto 0; animation:none !important; }
+        }
         @media (max-width: 600px)   {
             .team-hero       { padding:16px 22px 15px; border-radius:20px; }
             .team-hero-title { font-size:20px; letter-spacing:0; white-space:normal; }
             .team-bottom-pill { white-space:normal; text-align:center; }
         }
         @endif
+    </style>
+
+    {{-- ── Shared mobile-only design tokens for auth pages ──
+         layouts/auth.blade.php is a separate layout from layouts/app.blade.php, so the
+         `--mob-*` tokens defined there aren't in scope here. This is a small local
+         equivalent set (same values: 16-20px radius, soft shadow, 8/16/24 spacing) used
+         by login/register/mfa-*.blade.php, scoped entirely to mobile widths. --}}
+    <style>
+        @media (max-width: 768px) {
+            :root {
+                --amob-r-lg: 20px;
+                --amob-r-md: 16px;
+                --amob-r-sm: 10px;
+                --amob-shadow-1: 0 10px 30px rgba(17,24,39,0.14);
+                --amob-shadow-2: 0 4px 14px rgba(17,24,39,0.08);
+                --amob-sp-1: 8px;
+                --amob-sp-2: 16px;
+                --amob-sp-3: 24px;
+                --amob-brand-grad: linear-gradient(135deg,#4F46E5,#6366F1);
+            }
+            body { padding: 12px; }
+        }
+        @media (max-width: 480px) {
+            body { padding: 10px; }
+        }
     </style>
 
     {{-- ── Background override from branding settings ── --}}

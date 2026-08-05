@@ -28,9 +28,9 @@
 @section('content')
 @php
     $hideWaWeb = \App\Models\Setting::get('hide_wa_web_button', '0') === '1';
-    $_tsBg    = ['draft'=>'#F3F4F6','assigned'=>'#EEF2FF','viewed'=>'#E0F2FE','in_progress'=>'#FFF7ED','submitted'=>'#F5F3FF','revision_requested'=>'#FEE2E2','approved'=>'#ECFDF5','delivered'=>'#ECFDF5','archived'=>'#F3F4F6'];
-    $_tsColor = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1','in_progress'=>'#EA580C','submitted'=>'#7C3AED','revision_requested'=>'#DC2626','approved'=>'#16A34A','delivered'=>'#16A34A','archived'=>'#9CA3AF'];
-    $_tsLabel = ['draft'=>'Draft','assigned'=>'Assigned','viewed'=>'Viewed','in_progress'=>'In Progress','submitted'=>'In Review','revision_requested'=>'Revision','approved'=>'Approved','delivered'=>'Delivered','archived'=>'Archived'];
+    $_tsBg    = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['bg'])->all();
+    $_tsColor = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['text'])->all();
+    $_tsLabel = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['label'])->all();
     $_psBg    = ['active'=>'#EEF2FF','completed'=>'#ECFDF5','pending'=>'#FEF3C7','on_hold'=>'#FEF3C7','cancelled'=>'#FEE2E2'];
     $_psColor = ['active'=>'#4F46E5','completed'=>'#16A34A','pending'=>'#D97706','on_hold'=>'#D97706','cancelled'=>'#DC2626'];
     $_psLabel = ['active'=>'Active','completed'=>'Completed','pending'=>'Pending','on_hold'=>'On Hold','cancelled'=>'Cancelled'];
@@ -107,6 +107,197 @@
 }
 @media (max-width: 480px) {
     .cust-show-stats-grid { grid-template-columns: repeat(2,1fr); gap:8px; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   Mobile-only REBUILD (shared component library) — hidden on
+   desktop by default, shown at <=768px in the media query below.
+   ══════════════════════════════════════════════════════════ */
+.cust-mobile-show { display:none; }
+.cms-actionbar-wrap { display:none; }
+
+/* ══════════════════════════════════════════════════════════
+   Mobile-only redesign pass (customer detail page).
+   Everything below is scoped to <=768px — desktop untouched.
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+    /* Page rhythm: reuse the shared card/shadow tokens on every panel */
+    .cust-panel {
+        border-radius: var(--mob-r-lg, 20px) !important;
+        padding: 16px !important;
+        box-shadow: var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05)) !important;
+    }
+    .cust-show-split { gap: 12px !important; }
+    .cust-show-stats-grid { gap: 8px !important; margin-bottom: 16px !important; }
+
+    /* ── Header: avatar+name row, actions wrap into compact pill chips ── */
+    .cust-hdr { flex-wrap: wrap !important; gap: 10px !important; margin-bottom: 16px !important; }
+    .cust-hdr-back { order: 1; flex: 0 0 auto !important; }
+    .cust-hdr-name { order: 2; flex: 1 1 60% !important; min-width: 0 !important; }
+    .cust-hdr-avatar { width: 40px !important; height: 40px !important; font-size: 15px !important; border-radius: var(--mob-r-sm, 12px) !important; }
+    .cust-hdr-title { font-size: 17px !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60vw; }
+    .cust-hdr-action, .cust-hdr-export {
+        order: 4; flex: 0 0 auto !important;
+    }
+    .cust-hdr-action {
+        padding: 7px 12px !important;
+        font-size: 12px !important;
+        border-radius: 999px !important;
+        white-space: nowrap;
+        min-height: 44px !important;
+    }
+    /* Modal close "X" buttons throughout this page's modals are 30-32px circles */
+    .cust-modal-box button[style*="border-radius:50%"] {
+        width: 44px !important; height: 44px !important;
+    }
+    .cust-hdr-export-menu { min-width: 150px !important; max-width: 78vw !important; }
+
+    /* ── KPI stat cards: consistent rounded/shadow + press feedback ── */
+    .cust-stat-btn {
+        border-radius: var(--mob-r-md, 16px) !important;
+        box-shadow: var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05)) !important;
+        padding: 12px !important;
+        transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+    }
+    .cust-stat-btn:active { transform: scale(.97); opacity: .92; }
+
+    /* ── Contact card quick actions: full 44px touch targets ── */
+    .cust-touch-btn { min-height: 44px !important; }
+
+    /* ── Section "Manage" links (Domains / Social Accounts headers): comfortable touch height ── */
+    .cust-manage-link { min-height: 40px !important; padding: 9px 14px !important; }
+
+    /* ── Domains: 4-column desktop row → stacked 2×2 card ── */
+    .cust-domain-row {
+        display: grid !important;
+        grid-template-columns: 1fr auto !important;
+        grid-template-areas: "name badge" "cost expiry" !important;
+        gap: 8px 10px !important;
+        padding: 14px !important;
+        border-radius: var(--mob-r-md, 16px) !important;
+    }
+    .cust-domain-name   { grid-area: name; min-width: 0 !important; }
+    .cust-domain-badge  { grid-area: badge; justify-self: end; align-self: start; }
+    .cust-domain-cost   { grid-area: cost; text-align: left !important; }
+    .cust-domain-expiry { grid-area: expiry; text-align: right !important; min-width: 0 !important; }
+
+    /* ── Social accounts: 3-column desktop row → stacked card ── */
+    .cust-social-grid { display: block !important; min-height: 0 !important; }
+    .cust-social-left, .cust-social-mid, .cust-social-right {
+        min-width: 0 !important; max-width: none !important; width: 100% !important;
+        border-right: none !important; border-left: none !important;
+        box-sizing: border-box !important;
+    }
+    .cust-social-left  { border-bottom: 1px solid #F3F4F6 !important; padding: 12px 14px !important; }
+    .cust-social-mid   { padding: 10px 14px !important; }
+    .cust-social-right { border-top: 1px solid #F3F4F6 !important; padding: 10px 14px !important; align-items: flex-start !important; }
+
+    /* ── Design approval timeline row: assignee stacks full-width below ── */
+    .cust-approval-row { grid-template-columns: 1fr !important; gap: 6px !important; }
+    .cust-approval-title { max-width: 58vw !important; }
+    .cust-approval-right {
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        text-align: left !important;
+    }
+
+    /* ── Pagination buttons: touch-friendly ── */
+    .cust-page-btn { min-height: 34px !important; min-width: 36px !important; }
+
+    /* ── Modals: full-viewport width, roomy inputs (min 44px, 15px to avoid iOS zoom) ── */
+    .cust-modal-box { max-width: 100% !important; width: 100% !important; }
+    .cust-modal-box select,
+    .cust-modal-box textarea,
+    .cust-modal-box input[type="text"] {
+        min-height: 44px !important;
+        font-size: 15px !important;
+    }
+
+    /* ── Stats modal tabs: comfortable touch height ── */
+    .cust-show-tab-btn { min-height: 40px !important; }
+
+    /* ══════════════════════════════════════════════════════════
+       Mobile REBUILD — replaces the ad-hoc desktop header/stats/
+       contact+lists split with the shared component library.
+       Doubled selectors out-specificity any earlier !important rule
+       for the same desktop class (last-in-source wins on ties).
+       ══════════════════════════════════════════════════════════ */
+    .cust-hdr.cust-hdr { display: none !important; }
+    .cust-show-stats-grid.cust-show-stats-grid { display: none !important; }
+    .cust-show-split.cust-show-split { display: none !important; }
+    .cust-mobile-show { display: block; }
+    .cms-actionbar-wrap.cms-actionbar-wrap { display: block !important; }
+    .app-content { padding-bottom: 110px !important; }
+
+    /* Two section-header icon badges (Domains / Social Accounts) are the only
+       other gradients left on this page — flatten them so the sticky action
+       bar's "Smart Report" button is the single gradient visible on screen. */
+    .cust-domain-header-icon.cust-domain-header-icon { background: #EEF2FF !important; }
+    .cust-social-header-icon.cust-social-header-icon { background: #F0FDF4 !important; }
+
+    /* ── Compact header ── */
+    .cms-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .cms-back {
+        flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%; background: #F3F4F6;
+        display: flex; align-items: center; justify-content: center; color: #6B7280; text-decoration: none; font-size: 13px;
+    }
+    .cms-avatar {
+        position: relative; flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px;
+        background: #4F46E5; display: flex; align-items: center; justify-content: center;
+        font-size: 15px; font-weight: 700; color: #fff; overflow: hidden;
+    }
+    .cms-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #fff; }
+    .cms-head-text { flex: 1; min-width: 0; }
+    .cms-title { font-size: 17px; font-weight: 700; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cms-sub { font-size: 12px; color: #9CA3AF; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cms-edit-btn {
+        flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px; background: #EEF2FF; color: #4F46E5;
+        display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 13px;
+    }
+
+    /* ── Contact card ── */
+    .cms-contact-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .cms-contact-row i { width: 32px; height: 32px; border-radius: 8px; background: #F3F4F6; color: #6B7280; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+    .cms-contact-text { min-width: 0; flex: 1; }
+    .cms-contact-label { font-size: 10px; color: #9CA3AF; text-transform: uppercase; letter-spacing: .04em; }
+    .cms-contact-text a { font-size: 13px; color: #111827; text-decoration: none; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cms-contact-actions { display: flex; gap: 8px; margin-top: 4px; }
+
+    /* ── Section headers (Projects / Tasks) ── */
+    .cms-section-head { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 10px; }
+    .cms-section-head > span:first-child { font-size: 13px; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: .05em; }
+    .cms-count { font-weight: 500; color: #9CA3AF; text-transform: none; letter-spacing: 0; }
+    .cms-new-link { font-size: 12px; font-weight: 600; color: #4F46E5; background: #EEF2FF; padding: 5px 11px; border-radius: 8px; text-decoration: none; min-height: 30px; display: inline-flex; align-items: center; }
+
+    .cms-list { display: flex; flex-direction: column; gap: 10px; }
+    .cms-chip { display: inline-flex; align-items: center; padding: 4px 9px; border-radius: 8px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+
+    .cms-showall-btn {
+        width: 100%; margin-top: 10px; padding: 0; min-height: 44px; border: 1px dashed #C7D2FE; border-radius: 14px;
+        background: #F8F9FF; color: #4F46E5; font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+
+    /* ── Export menu (sticky action bar) ── */
+    .cms-export-menu {
+        position: absolute; bottom: calc(100% + 8px); left: 0; min-width: 180px; background: #fff;
+        border: 1px solid #E5E7EB; border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.16); overflow: hidden; z-index: 30;
+    }
+    .cms-export-menu button {
+        width: 100%; padding: 11px 14px; background: none; border: none; text-align: left; font-size: 13px;
+        font-weight: 500; color: #374151; cursor: pointer; display: flex; align-items: center; gap: 9px; min-height: 44px;
+    }
+    .cms-export-menu button:not(:last-child) { border-bottom: 1px solid #F3F4F6; }
+}
+
+@media (max-width: 480px) {
+    .cust-panel { padding: 14px !important; }
+    .cust-hdr-title { font-size: 16px !important; max-width: 50vw; }
+    .cust-hdr-action { font-size: 11.5px !important; padding: 6px 10px !important; }
+    .cust-domain-row { padding: 12px !important; }
+    .cust-approval-title { max-width: 48vw !important; }
 }
 </style>
 <script>window._reviewSuffix = @json("has been submitted for review. We'd love your feedback before we finalize approval.");</script>
@@ -228,7 +419,7 @@
 <div style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;"
      @click.self="close()">
     <div style="position:absolute;inset:0;background:rgba(0,0,0,.45);"></div>
-    <div style="position:relative;background:#fff;border-radius:20px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.22);">
+    <div class="cust-modal-box" style="position:relative;background:#fff;border-radius:20px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.22);">
 
         <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:22px 24px 0;">
             <div style="flex:1;min-width:0;padding-right:12px;">
@@ -257,7 +448,7 @@
                     <span style="width:110px;font-size:12px;color:#9CA3AF;flex-shrink:0;"><i class="fa fa-calendar" style="width:14px;margin-right:5px;"></i>Deadline</span>
                     <span x-text="project.deadline || '—'"
                           :style="'font-size:13px;font-weight:600;color:'+(project.overdue?'#DC2626':'#111827')+';'"></span>
-                    <span x-show="project.overdue" style="font-size:11px;color:#DC2626;font-weight:600;">⚠ Overdue</span>
+                    <span x-show="project.overdue" style="font-size:11px;color:#DC2626;font-weight:600;"><i class="fas fa-triangle-exclamation"></i> Overdue</span>
                 </div>
                 <div style="display:flex;align-items:center;gap:12px;" x-show="project.description">
                     <span style="width:110px;font-size:12px;color:#9CA3AF;flex-shrink:0;align-self:flex-start;padding-top:1px;"><i class="fa fa-align-left" style="width:14px;margin-right:5px;"></i>Description</span>
@@ -280,7 +471,7 @@
 <div style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;"
      @click.self="close()">
     <div style="position:absolute;inset:0;background:rgba(0,0,0,.45);"></div>
-    <div style="position:relative;background:#fff;border-radius:20px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.22);">
+    <div class="cust-modal-box" style="position:relative;background:#fff;border-radius:20px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.22);">
 
         {{-- Modal header --}}
         <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:22px 24px 0;">
@@ -320,7 +511,7 @@
                     <span style="width:110px;font-size:12px;color:#9CA3AF;flex-shrink:0;"><i class="fa fa-calendar" style="width:14px;margin-right:5px;"></i>Deadline</span>
                     <span x-text="task.deadline || '—'"
                           :style="'font-size:13px;font-weight:600;color:'+(task.overdue?'#DC2626':'#111827')+';'"></span>
-                    <span x-show="task.overdue" style="font-size:11px;color:#DC2626;font-weight:600;">⚠ Overdue</span>
+                    <span x-show="task.overdue" style="font-size:11px;color:#DC2626;font-weight:600;"><i class="fas fa-triangle-exclamation"></i> Overdue</span>
                 </div>
                 {{-- Overdue reason row --}}
                 <template x-if="task.overdue && task.overdueReason">
@@ -355,7 +546,7 @@
 <div style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;"
      @click.self="close()">
     <div style="position:absolute;inset:0;background:rgba(0,0,0,.45);"></div>
-    <div style="position:relative;background:#fff;border-radius:20px;width:100%;max-width:560px;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.22);">
+    <div class="cust-modal-box" style="position:relative;background:#fff;border-radius:20px;width:100%;max-width:560px;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.22);">
 
         {{-- Modal header --}}
         <div style="padding:20px 24px 0;flex-shrink:0;">
@@ -374,7 +565,7 @@
 
             {{-- Tabs --}}
             <div style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;width:fit-content;">
-                <button @click="statsTab='tasks'"
+                <button @click="statsTab='tasks'" class="cust-show-tab-btn"
                         :style="statsTab==='tasks'
                             ? 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);'
                             : 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:transparent;color:#6B7280;'"
@@ -382,7 +573,7 @@
                     <i class="fas fa-list-check" style="font-size:11px;"></i>
                     Tasks <span x-text="'('+statsModalTasks.length+')'" style="font-weight:400;opacity:.7;"></span>
                 </button>
-                <button @click="statsTab='projects'"
+                <button @click="statsTab='projects'" class="cust-show-tab-btn"
                         :style="statsTab==='projects'
                             ? 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);'
                             : 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:transparent;color:#6B7280;'"
@@ -457,7 +648,7 @@
                         <div style="min-width:0;flex:1;">
                             <div style="display:flex;align-items:center;gap:6px;">
                                 <p x-text="p.name" style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;"></p>
-                                <span x-show="p.overdue" style="font-size:10px;font-weight:600;color:#DC2626;flex-shrink:0;">⚠ Overdue</span>
+                                <span x-show="p.overdue" style="font-size:10px;font-weight:600;color:#DC2626;flex-shrink:0;"><i class="fas fa-triangle-exclamation"></i> Overdue</span>
                             </div>
                             <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;display:flex;align-items:center;gap:8px;">
                                 <span style="display:flex;align-items:center;gap:3px;">
@@ -489,7 +680,7 @@
     <template x-if="sendModal">
     <div style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;" @click.self="close()">
         <div style="position:absolute;inset:0;background:rgba(10,12,30,.6);backdrop-filter:blur(4px);"></div>
-        <div style="position:relative;background:#fff;border-radius:24px;width:100%;max-width:520px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 32px 90px rgba(0,0,0,.28);overflow:hidden;">
+        <div class="cust-modal-box" style="position:relative;background:#fff;border-radius:24px;width:100%;max-width:520px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 32px 90px rgba(0,0,0,.28);overflow:hidden;">
 
             {{-- Header --}}
             <div style="padding:20px 24px 18px;border-bottom:1px solid #F0F2F8;display:flex;align-items:center;gap:12px;flex-shrink:0;background:linear-gradient(135deg,#F8F9FF,#fff);">
@@ -684,7 +875,7 @@
                                 @foreach($t->submissions ?? [] as $sub)
                                     @if($sub->file_path)
                                     <option value="{{ url(\Illuminate\Support\Facades\Storage::url($sub->file_path)) }}">
-                                        {{ $t->title }} — v{{ $sub->version }} ({{ $sub->original_filename ?? basename($sub->file_path) }})
+                                        {{ $t->title }} — v{{ $sub->version }}
                                     </option>
                                     @endif
                                 @endforeach
@@ -762,14 +953,14 @@
     </template>
 
     {{-- Header --}}
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-        <a href="{{ route('admin.customers.index') }}" class="no-print"
+    <div class="cust-hdr" style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+        <a href="{{ route('admin.customers.index') }}" class="no-print cust-hdr-back"
            style="width:34px;height:34px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;color:#6B7280;text-decoration:none;">
             <i class="fa fa-arrow-left" style="font-size:13px;"></i>
         </a>
-        <div style="flex:1;">
+        <div class="cust-hdr-name" style="flex:1;">
             <div style="display:flex;align-items:center;gap:10px;">
-                <div style="position:relative;width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;">
+                <div class="cust-hdr-avatar" style="position:relative;width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;">
                     {{ strtoupper(substr($customer->name, 0, 1)) }}
                     @if($customer->logo)
                     <img src="{{ Storage::url($customer->logo) }}" alt="" decoding="async"
@@ -778,32 +969,33 @@
                     @endif
                 </div>
                 <div>
-                    <h1 style="font-size:20px;font-weight:700;color:#111827;margin:0;">{{ $customer->name }}</h1>
+                    <h1 class="cust-hdr-title" style="font-size:20px;font-weight:700;color:#111827;margin:0;">{{ $customer->name }}</h1>
                     @if($customer->company)
                     <p style="font-size:13px;color:#9CA3AF;margin:1px 0 0;">{{ $customer->company }}</p>
                     @endif
                 </div>
             </div>
         </div>
-        <a href="{{ route('admin.customers.edit', $customer) }}" class="no-print"
+        <a href="{{ route('admin.customers.edit', $customer) }}" class="no-print cust-hdr-action"
            style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:#EEF2FF;color:#4F46E5;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;">
             <i class="fas fa-pencil" style="font-size:11px;"></i> Edit
         </a>
 
         {{-- Smart Report button --}}
-        <a href="{{ route('admin.customers.report', $customer) }}" class="no-print" target="_blank"
+        <a href="{{ route('admin.customers.report', $customer) }}" class="no-print cust-hdr-action" target="_blank"
            style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;box-shadow:0 2px 8px rgba(99,102,241,.35);">
             <i class="fas fa-chart-line" style="font-size:11px;"></i> Smart Report
         </a>
 
         {{-- Export / Print dropdown --}}
-        <div x-data="{ exportOpen: false }" style="position:relative;">
-            <button @click="exportOpen = !exportOpen" @click.outside="exportOpen = false"
+        <div x-data="{ exportOpen: false }" class="cust-hdr-export" style="position:relative;">
+            <button @click="exportOpen = !exportOpen" @click.outside="exportOpen = false" class="cust-hdr-action"
                     style="display:inline-flex;align-items:center;gap:7px;padding:8px 14px;background:#F9FAFB;border:1px solid #E5E7EB;color:#374151;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">
                 <i class="fas fa-download" style="font-size:11px;"></i> Export
                 <i class="fas fa-chevron-down" style="font-size:9px;transition:transform .2s;" :style="exportOpen ? 'transform:rotate(180deg)' : ''"></i>
             </button>
             <div x-show="exportOpen" x-transition
+                 class="cust-hdr-export-menu"
                  style="position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.1);min-width:170px;z-index:200;overflow:hidden;">
                 <button @click="exportOpen=false; window.exportCustomerCSV()"
                         style="width:100%;padding:10px 16px;background:none;border:none;text-align:left;font-size:13px;font-weight:500;color:#374151;cursor:pointer;display:flex;align-items:center;gap:9px;"
@@ -841,7 +1033,7 @@
         $statOverdue  = $allTasks->filter(fn($t) => $t->deadline && $t->deadline->isPast() && !in_array($t->status, ['approved','delivered','archived']))->count();
 
         // CSV export data
-        $_statusLabel = ['draft'=>'Draft','assigned'=>'Assigned','viewed'=>'Viewed','in_progress'=>'In Progress','submitted'=>'In Review','revision_requested'=>'Revision','approved'=>'Approved','delivered'=>'Delivered','archived'=>'Archived','pending_customer'=>'Awaiting Customer'];
+        $_statusLabel = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['label'])->all();
         $csvRows = $allTasks->map(fn($t) => [
             'title'          => $t->title,
             'project'        => $t->project->name ?? '',
@@ -857,7 +1049,7 @@
         ])->values()->toArray();
     @endphp
     <div class="cust-show-stats-grid">
-        <button @click="openStats('pending')"
+        <button @click="openStats('pending')" class="cust-stat-btn"
                 style="background:#fff;border-radius:12px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;transition:box-shadow .15s,border-color .15s;"
                 onmouseover="this.style.boxShadow='0 4px 12px rgba(99,102,241,.15)';this.style.borderColor='#C7D2FE';"
                 onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)';this.style.borderColor='#F0F0F0';">
@@ -869,7 +1061,7 @@
                 <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Pending</p>
             </div>
         </button>
-        <button @click="openStats('active')"
+        <button @click="openStats('active')" class="cust-stat-btn"
                 style="background:#fff;border-radius:12px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;transition:box-shadow .15s,border-color .15s;"
                 onmouseover="this.style.boxShadow='0 4px 12px rgba(234,88,12,.15)';this.style.borderColor='#FED7AA';"
                 onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)';this.style.borderColor='#F0F0F0';">
@@ -881,7 +1073,7 @@
                 <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">In Progress</p>
             </div>
         </button>
-        <button @click="openStats('done')"
+        <button @click="openStats('done')" class="cust-stat-btn"
                 style="background:#fff;border-radius:12px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;transition:box-shadow .15s,border-color .15s;"
                 onmouseover="this.style.boxShadow='0 4px 12px rgba(22,163,74,.15)';this.style.borderColor='#A7F3D0';"
                 onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)';this.style.borderColor='#F0F0F0';">
@@ -893,7 +1085,7 @@
                 <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Completed</p>
             </div>
         </button>
-        <button @click="openStats('overdue')"
+        <button @click="openStats('overdue')" class="cust-stat-btn"
                 style="background:#fff;border-radius:12px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;transition:box-shadow .15s,border-color .15s;"
                 onmouseover="this.style.boxShadow='0 4px 12px rgba(220,38,38,.15)';this.style.borderColor='#FECACA';"
                 onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)';this.style.borderColor='#F0F0F0';">
@@ -910,7 +1102,7 @@
     <div class="cust-show-split" style="gap:20px;align-items:stretch;">
 
         {{-- Contact card --}}
-        <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;display:flex;flex-direction:column;align-self:stretch;height:100%;box-sizing:border-box;">
+        <div class="cust-panel" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;display:flex;flex-direction:column;align-self:stretch;height:100%;box-sizing:border-box;">
             <h2 style="font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:0 0 16px;">Contact Info</h2>
 
             {{-- Email --}}
@@ -961,13 +1153,13 @@
 
             {{-- Quick action buttons --}}
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
-                <button type="button" @click="openSend('whatsapp')"
+                <button type="button" @click="openSend('whatsapp')" class="cust-touch-btn"
                         style="display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 10px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(37,211,102,.25);transition:opacity .15s;"
                         onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"
                         title="{{ $customer->phone ? 'Send via WhatsApp' : 'No phone on file' }}">
                     <i class="fab fa-whatsapp" style="font-size:14px;"></i> WhatsApp
                 </button>
-                <button type="button" @click="openSend('email')"
+                <button type="button" @click="openSend('email')" class="cust-touch-btn"
                         style="display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 10px;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(99,102,241,.25);transition:opacity .15s;"
                         onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"
                         title="{{ $customer->email ? 'Send via Email' : 'No email on file' }}">
@@ -1040,7 +1232,7 @@
                 </a>
             </div>
             @else
-            <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;">
+            <div class="cust-panel" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
                     <h2 style="font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:0;">
                         Projects <span style="font-weight:500;color:#9CA3AF;">({{ $customer->projects->count() }})</span>
@@ -1093,11 +1285,11 @@
             {{-- Tasks (direct only — tasks in customer projects are shown via the Projects section) --}}
             @php
                 $directTasks = $customer->tasks->where('customer_id', $customer->id)->sortByDesc('created_at')->values();
-                $tsBg    = ['draft'=>'#F3F4F6','assigned'=>'#EEF2FF','viewed'=>'#E0F2FE','in_progress'=>'#FFF7ED','submitted'=>'#F5F3FF','revision_requested'=>'#FEE2E2','approved'=>'#ECFDF5','delivered'=>'#ECFDF5','archived'=>'#F3F4F6'];
-                $tsColor = ['draft'=>'#6B7280','assigned'=>'#4F46E5','viewed'=>'#0369A1','in_progress'=>'#EA580C','submitted'=>'#7C3AED','revision_requested'=>'#DC2626','approved'=>'#16A34A','delivered'=>'#16A34A','archived'=>'#9CA3AF'];
-                $tsLabel = ['draft'=>'Draft','assigned'=>'Assigned','viewed'=>'Viewed','in_progress'=>'In Progress','submitted'=>'In Review','revision_requested'=>'Revision','approved'=>'Approved','delivered'=>'Delivered','archived'=>'Archived'];
-                $prBg    = ['high'=>'#FEE2E2','medium'=>'#FEF3C7','low'=>'#DCFCE7'];
-                $prColor = ['high'=>'#DC2626','medium'=>'#D97706','low'=>'#16A34A'];
+                $tsBg    = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['bg'])->all();
+                $tsColor = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['text'])->all();
+                $tsLabel = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['label'])->all();
+                $prBg    = ['high'=>'#FFE4E6','medium'=>'#FEF3C7','low'=>'#DCFCE7'];
+                $prColor = ['high'=>'#E11D48','medium'=>'#D97706','low'=>'#16A34A'];
                 $directTasksJson = $directTasks->map(fn($task) => [
                     'title'         => $task->title,
                     'project'       => $task->project->name ?? '—',
@@ -1128,7 +1320,7 @@
                 nextPage() { if (this.page < this.totalPages) this.page++; },
                 goPage(n) { this.page = n; },
                 openTask(t) { window.dispatchEvent(new CustomEvent('open-customer-task', { detail: t })); }
-            }" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;">
+            }" class="cust-panel" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
                     <h2 style="font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:0;">
                         Tasks <span style="font-weight:500;color:#9CA3AF;">({{ $directTasks->count() }})</span>
@@ -1146,7 +1338,7 @@
                         <div style="min-width:0;flex:1;padding-right:12px;">
                             <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
                                 <span x-text="task.title"></span>
-                                <span x-show="task.overdue" style="font-size:10px;font-weight:600;color:#DC2626;margin-left:6px;">⚠ Overdue</span>
+                                <span x-show="task.overdue" style="font-size:10px;font-weight:600;color:#DC2626;margin-left:6px;"><i class="fas fa-triangle-exclamation"></i> Overdue</span>
                             </p>
                             <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">
                                 <span x-text="task.project"></span>
@@ -1168,15 +1360,15 @@
                             Showing <span x-text="start + 1"></span>–<span x-text="end"></span> of <span x-text="total"></span> tasks
                         </span>
                         <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
-                            <button @click="prevPage()"
+                            <button @click="prevPage()" class="cust-page-btn"
                                     :disabled="page === 1"
                                     :style="page === 1 ? 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:default;min-width:32px;text-align:center;background:#F3F4F6;color:#D1D5DB;' : 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;min-width:32px;text-align:center;background:#F3F4F6;color:#374151;'">‹ Prev</button>
                             <template x-for="n in totalPages" :key="n">
-                                <button @click="goPage(n)"
+                                <button @click="goPage(n)" class="cust-page-btn"
                                         :style="n === page ? 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:700;border:none;cursor:pointer;min-width:32px;text-align:center;background:#4F46E5;color:#fff;' : 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;min-width:32px;text-align:center;background:#F3F4F6;color:#374151;'"
                                         x-text="n"></button>
                             </template>
-                            <button @click="nextPage()"
+                            <button @click="nextPage()" class="cust-page-btn"
                                     :disabled="page === totalPages"
                                     :style="page === totalPages ? 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:default;min-width:32px;text-align:center;background:#F3F4F6;color:#D1D5DB;' : 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;min-width:32px;text-align:center;background:#F3F4F6;color:#374151;'">Next ›</button>
                         </div>
@@ -1188,17 +1380,182 @@
         </div>
     </div>
 
+    {{-- ══════════════════════ MOBILE: rebuilt view using the shared component library (<=768px only) ══════════════════════
+         Desktop markup above (Header / Quick Stats Bar / Contact+Projects+Tasks split) is untouched and hidden
+         at <=768px via doubled selectors in the <style> block near the top of this file; this block replaces it. --}}
+    <div class="cust-mobile-show">
+
+        {{-- Compact header: back + avatar + name, Edit as a 34px icon button.
+             Smart Report / Export move to the sticky action bar below. --}}
+        <div class="cms-head">
+            <a href="{{ route('admin.customers.index') }}" class="cms-back no-print" aria-label="Back to customers">
+                <i class="fa fa-arrow-left"></i>
+            </a>
+            <div class="cms-avatar">
+                {{ strtoupper(substr($customer->name, 0, 1)) }}
+                @if($customer->logo)
+                <img src="{{ Storage::url($customer->logo) }}" alt="" decoding="async" onerror="this.remove()">
+                @endif
+            </div>
+            <div class="cms-head-text">
+                <div class="cms-title">{{ $customer->name }}</div>
+                @if($customer->company)<div class="cms-sub">{{ $customer->company }}</div>@endif
+            </div>
+            <a href="{{ route('admin.customers.edit', $customer) }}" class="cms-edit-btn no-print" aria-label="Edit customer">
+                <i class="fas fa-pencil"></i>
+            </a>
+        </div>
+
+        {{-- KPI grid — identical scope/query as the stats modal; tapping a tile opens it --}}
+        <x-mobile.kpi-grid style="margin-bottom:14px;">
+            <x-mobile.kpi-tile label="Pending" value="{{ $statPending }}" @click="openStats('pending')" style="cursor:pointer;" />
+            <x-mobile.kpi-tile label="In Progress" value="{{ $statActive }}" @click="openStats('active')" style="cursor:pointer;" />
+            <x-mobile.kpi-tile label="Completed" value="{{ $statDone }}" @click="openStats('done')" style="cursor:pointer;" />
+            <x-mobile.kpi-tile label="Overdue" value="{{ $statOverdue }}" @click="openStats('overdue')" style="cursor:pointer;" />
+        </x-mobile.kpi-grid>
+
+        {{-- Contact card — no duplicate Projects/Tasks tiles (section headers below are the single source);
+             WhatsApp/Email are solid ghost buttons, not gradients. --}}
+        <div class="uds-card" style="margin-bottom:14px;">
+            <div class="uds-eyebrow" style="margin-bottom:11px;">Contact Info</div>
+
+            @if($customer->email)
+            <div class="cms-contact-row">
+                <i class="fas fa-envelope"></i>
+                <div class="cms-contact-text">
+                    <div class="cms-contact-label">Email</div>
+                    <a href="mailto:{{ $customer->email }}">{{ $customer->email }}</a>
+                </div>
+            </div>
+            @endif
+
+            @if($customer->phone)
+            <div class="cms-contact-row">
+                <i class="fas fa-phone"></i>
+                <div class="cms-contact-text">
+                    <div class="cms-contact-label">Phone / WhatsApp</div>
+                    <a href="tel:{{ $customer->phone }}">{{ $customer->phone }}</a>
+                </div>
+            </div>
+            @endif
+
+            @if(!$customer->email && !$customer->phone)
+            <p style="font-size:12.5px;color:#9CA3AF;margin:0 0 12px;">No contact info on file.</p>
+            @endif
+
+            <div class="cms-contact-actions">
+                <button type="button" @click="openSend('whatsapp')" class="uds-btn-ghost" style="flex:1;">
+                    <i class="fab fa-whatsapp"></i> WhatsApp
+                </button>
+                <button type="button" @click="openSend('email')" class="uds-btn-ghost" style="flex:1;">
+                    <i class="fas fa-paper-plane"></i> Email
+                </button>
+            </div>
+        </div>
+
+        {{-- Projects — colors via ProjectStatusColors::for(), no local $psBg/$psColor reinvention --}}
+        <div class="cms-section-head">
+            <span>Projects <span class="cms-count">({{ $customer->projects->count() }})</span></span>
+            <a href="{{ route('admin.projects.create') }}" class="cms-new-link">+ New</a>
+        </div>
+        @if($customer->projects->isEmpty())
+            <x-mobile.empty-state title="No projects linked yet" sub="Projects assigned to this customer will appear here." icon="fa-folder-open" style="margin-bottom:16px;" />
+        @else
+            <div class="cms-list" style="margin-bottom:16px;">
+                @foreach($customer->projects as $project)
+                    @php
+                        $pc        = \App\Support\ProjectStatusColors::for($project->status);
+                        $pOverdue  = $project->deadline && $project->deadline->isPast() && $project->status !== 'completed';
+                        $pDue      = $project->deadline
+                            ? ($pOverdue ? 'Overdue · ' : 'Due · ') . $project->deadline->format(config('app.date_format', 'M d, Y'))
+                            : null;
+                        $pContext  = $project->tasks_count . ' ' . Str::plural('task', $project->tasks_count);
+                    @endphp
+                    <x-mobile.record-card
+                        :href="route('admin.projects.show', $project->id)"
+                        :title="$project->name"
+                        :context="$pContext"
+                        :dueText="$pDue"
+                        :overdue="$pOverdue"
+                    >
+                        <x-slot:status>
+                            <span class="cms-chip" style="color:{{ $pc['text'] }};background:{{ $pc['bg'] }}">{{ $pc['label'] }}</span>
+                        </x-slot:status>
+                    </x-mobile.record-card>
+                @endforeach
+            </div>
+        @endif
+
+        {{-- Tasks — status rail via <x-mobile.list-row>, capped at 6 with "Show all N tasks" --}}
+        <div class="cms-section-head">
+            <span>Tasks <span class="cms-count">({{ $directTasks->count() }})</span></span>
+        </div>
+        @if($directTasks->isEmpty())
+            <x-mobile.empty-state title="No tasks linked yet" sub="Tasks assigned to this customer will appear here." icon="fa-list-check" />
+        @else
+            <div x-data="{ cmsShowAllTasks: false }">
+                <div class="uds-list">
+                    @foreach($directTasks as $i => $task)
+                        @php
+                            $tMeta = $task->project->name ?? '—';
+                            if ($task->assignee) { $tMeta .= ' · ' . $task->assignee->name; }
+                            if ($task->deadline) { $tMeta .= ' · ' . $task->deadline->format(config('app.date_format', 'M d, Y')); }
+                        @endphp
+                        <x-mobile.list-row
+                            :href="route('admin.tasks.show', $task->id)"
+                            :status="$task->status"
+                            :title="$task->title"
+                            :meta="$tMeta"
+                            x-cloak
+                            x-show="{{ $i }} < 6 || cmsShowAllTasks"
+                        >
+                            <x-slot:right>
+                                <x-status-chip :status="$task->status" />
+                            </x-slot:right>
+                        </x-mobile.list-row>
+                    @endforeach
+                </div>
+                @if($directTasks->count() > 6)
+                <button type="button" @click="cmsShowAllTasks = true" x-show="!cmsShowAllTasks" class="cms-showall-btn">
+                    Show all {{ $directTasks->count() }} tasks
+                </button>
+                @endif
+            </div>
+        @endif
+
+    </div>
+
+    {{-- Sticky mobile action bar: Export (ghost, opens a small menu) + Smart Report (primary — the one allowed gradient) --}}
+    <div class="cms-actionbar-wrap" x-data="{ cmsExportOpen: false }">
+        <x-mobile.action-bar>
+            <div style="position:relative;flex:0 0 auto;">
+                <button type="button" @click="cmsExportOpen = !cmsExportOpen" @click.outside="cmsExportOpen = false" class="uds-btn-ghost">
+                    <i class="fas fa-download"></i> Export
+                </button>
+                <div x-show="cmsExportOpen" x-cloak x-transition class="cms-export-menu">
+                    <button type="button" @click="cmsExportOpen=false; window.exportCustomerCSV()"><i class="fas fa-file-csv" style="color:#16A34A;"></i> Export CSV</button>
+                    <button type="button" @click="cmsExportOpen=false; window.exportCustomerExcel()"><i class="fas fa-file-excel" style="color:#16A34A;"></i> Export Excel</button>
+                    <button type="button" @click="cmsExportOpen=false; window.printCustomerShow()"><i class="fas fa-print" style="color:#6366F1;"></i> Print</button>
+                    <button type="button" @click="cmsExportOpen=false; window.exportCustomerShowPDF()"><i class="fas fa-file-pdf" style="color:#DC2626;"></i> Export PDF</button>
+                </div>
+            </div>
+            <a href="{{ route('admin.customers.report', $customer) }}" target="_blank" class="uds-btn-primary">
+                <i class="fas fa-chart-line"></i> Smart Report
+            </a>
+        </x-mobile.action-bar>
+    </div>
+
     {{-- ══ Domains ══ --}}
     @php
         $customerDomains = $customer->domains;
         $domainCycles    = App\Models\Domain::billingCycleOptions();
     @endphp
-    <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;margin-top:20px;">
+    <div class="cust-panel" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;margin-top:20px;">
 
         {{-- Header --}}
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px;">
             <div style="display:flex;align-items:center;gap:10px;">
-                <span style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(79,70,229,.15);">
+                <span class="cust-domain-header-icon" style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(79,70,229,.15);">
                     <i class="fas fa-globe" style="font-size:14px;color:#4F46E5;"></i>
                 </span>
                 <div>
@@ -1206,7 +1563,7 @@
                     <p style="font-size:11px;color:#9CA3AF;margin:0;font-weight:500;">{{ $customerDomains->count() }} {{ Str::plural('domain', $customerDomains->count()) }} linked</p>
                 </div>
             </div>
-            <a href="{{ route('admin.domains.index', ['customer_id' => $customer->id]) }}"
+            <a href="{{ route('admin.domains.index', ['customer_id' => $customer->id]) }}" class="cust-manage-link"
                style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#4F46E5;text-decoration:none;padding:7px 14px;border-radius:8px;background:#EEF2FF;border:1px solid #C7D2FE;transition:all .15s;"
                onmouseover="this.style.background='#E0E7FF';this.style.borderColor='#A5B4FC';" onmouseout="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE';">
                 <i class="fas fa-arrow-up-right-from-square" style="font-size:10px;"></i>
@@ -1231,10 +1588,10 @@
                         $stColor  = match($dStatus) { 'active'=>'#16A34A', 'expiring_soon'=>'#D97706', 'expired'=>'#DC2626', default=>'#6B7280' };
                         $stLabel  = match($dStatus) { 'active'=>'Active', 'expiring_soon'=>'Expiring Soon', 'expired'=>'Expired', default=>ucfirst($dStatus) };
                     @endphp
-                    <a href="{{ route('admin.domains.show', $d->id) }}"
+                    <a href="{{ route('admin.domains.show', $d->id) }}" class="cust-domain-row"
                        style="display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:14px;padding:14px 18px;border:1px solid #E5E7EB;border-radius:12px;text-decoration:none;transition:box-shadow .15s;"
                        onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.07)'" onmouseout="this.style.boxShadow='none'">
-                        <div style="min-width:0;">
+                        <div class="cust-domain-name" style="min-width:0;">
                             <p style="font-size:13px;font-weight:700;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $d->domain }}</p>
                             <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">
                                 {{ $d->registrar ?: 'No registrar' }}
@@ -1243,15 +1600,15 @@
                                 @endif
                             </p>
                         </div>
-                        <div style="text-align:right;">
+                        <div class="cust-domain-cost" style="text-align:right;">
                             <p style="font-size:12px;font-weight:600;color:#374151;margin:0;">{{ format_money($d->cost, $d->currency) }}</p>
                             <p style="font-size:10.5px;color:#9CA3AF;margin:2px 0 0;">/ {{ $domainCycles[$d->billing_cycle] ?? $d->billing_cycle }}</p>
                         </div>
-                        <div style="text-align:right;min-width:90px;">
+                        <div class="cust-domain-expiry" style="text-align:right;min-width:90px;">
                             <p style="font-size:12px;color:#374151;margin:0;">{{ $d->expires_at ? $d->expires_at->format('d M Y') : '—' }}</p>
                             <p style="font-size:10.5px;color:#9CA3AF;margin:2px 0 0;">expires</p>
                         </div>
-                        <span style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:{{ $stBg }};color:{{ $stColor }};white-space:nowrap;">
+                        <span class="cust-domain-badge" style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:{{ $stBg }};color:{{ $stColor }};white-space:nowrap;">
                             {{ $stLabel }}
                         </span>
                     </a>
@@ -1265,12 +1622,12 @@
         $socialAccounts = $customer->socialAccounts;
         $saPlatforms    = App\Models\SocialAccount::platforms();
     @endphp
-    <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;margin-top:20px;">
+    <div class="cust-panel" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;margin-top:20px;">
 
         {{-- Header --}}
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px;">
             <div style="display:flex;align-items:center;gap:10px;">
-                <span style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#F0FDF4,#DCFCE7);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(22,163,74,.15);">
+                <span class="cust-social-header-icon" style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#F0FDF4,#DCFCE7);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(22,163,74,.15);">
                     <i class="fas fa-share-nodes" style="font-size:14px;color:#16A34A;"></i>
                 </span>
                 <div>
@@ -1278,7 +1635,7 @@
                     <p style="font-size:11px;color:#9CA3AF;margin:0;font-weight:500;">{{ $socialAccounts->count() }} {{ Str::plural('account', $socialAccounts->count()) }} linked</p>
                 </div>
             </div>
-            <a href="{{ route('admin.social-accounts.index', ['customer' => $customer->id]) }}"
+            <a href="{{ route('admin.social-accounts.index', ['customer' => $customer->id]) }}" class="cust-manage-link"
                style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#4F46E5;text-decoration:none;padding:7px 14px;border-radius:8px;background:#EEF2FF;border:1px solid #C7D2FE;transition:all .15s;"
                onmouseover="this.style.background='#E0E7FF';this.style.borderColor='#A5B4FC';" onmouseout="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE';">
                 <i class="fas fa-arrow-up-right-from-square" style="font-size:10px;"></i>
@@ -1310,10 +1667,10 @@
                          onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.07)'" onmouseout="this.style.boxShadow='none'">
 
                         {{-- Row layout: icon+info | credentials | access+url --}}
-                        <div style="display:grid;grid-template-columns:auto 1fr auto;align-items:stretch;min-height:64px;">
+                        <div class="cust-social-grid" style="display:grid;grid-template-columns:auto 1fr auto;align-items:stretch;min-height:64px;">
 
                             {{-- Left: platform icon + name --}}
-                            <div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-right:1px solid #F3F4F6;min-width:200px;max-width:240px;">
+                            <div class="cust-social-left" style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-right:1px solid #F3F4F6;min-width:200px;max-width:240px;">
                                 <span style="width:44px;height:44px;border-radius:12px;background:{{ $pi['bg'] }};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.06);">
                                     <i class="fab {{ $pi['icon'] }}" style="font-size:22px;color:{{ $pi['color'] }};"></i>
                                 </span>
@@ -1329,7 +1686,7 @@
                             </div>
 
                             {{-- Middle: credentials --}}
-                            <div style="padding:10px 18px;display:flex;flex-direction:column;justify-content:center;gap:4px;">
+                            <div class="cust-social-mid" style="padding:10px 18px;display:flex;flex-direction:column;justify-content:center;gap:4px;">
                                 @if(!$hasCreds)
                                     <span style="font-size:12px;color:#D1D5DB;font-style:italic;">No credentials stored</span>
                                 @else
@@ -1391,7 +1748,7 @@
                             </div>
 
                             {{-- Right: access + link + notes --}}
-                            <div style="padding:12px 18px;border-left:1px solid #F3F4F6;display:flex;flex-direction:column;justify-content:center;gap:8px;min-width:180px;background:#FAFAFA;">
+                            <div class="cust-social-right" style="padding:12px 18px;border-left:1px solid #F3F4F6;display:flex;flex-direction:column;justify-content:center;gap:8px;min-width:180px;background:#FAFAFA;">
 
                                 @if($sa->users->isNotEmpty())
                                     <div>
@@ -1459,7 +1816,7 @@
             ? round($approvedRows->avg(fn($t) => $t->design_sent_at->diffInMinutes($t->customer_approved_at) / 60), 1)
             : null;
     @endphp
-    <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;margin-top:20px;">
+    <div class="cust-panel" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;margin-top:20px;">
 
         {{-- Header --}}
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
@@ -1542,14 +1899,14 @@
                 'sentHumans'   => $sent->diffForHumans(),
             ]);
         @endphp
-        <div @click="openApproval({{ $modalData }})"
+        <div @click="openApproval({{ $modalData }})" class="cust-approval-row"
              style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #F9FAFB;cursor:pointer;border-radius:6px;transition:background .15s;"
              onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
 
             {{-- Left: task + timeline --}}
             <div style="min-width:0;">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-                    <span style="font-size:13px;font-weight:600;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px;display:block;"
+                    <span class="cust-approval-title" style="font-size:13px;font-weight:600;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px;display:block;"
                           title="{{ $t->title }}">{{ $t->title }}</span>
                     @if($t->project)
                     <span style="font-size:11px;color:#9CA3AF;display:flex;align-items:center;gap:3px;flex-shrink:0;">
@@ -1608,7 +1965,7 @@
             </div>
 
             {{-- Right: assignee + expand hint --}}
-            <div style="text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <div class="cust-approval-right" style="text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
                 @if($t->assignee)
                 <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;">
                     <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;">
@@ -1630,7 +1987,7 @@
     {{-- ══ Approval Detail Modal ══ --}}
     <template x-if="approvalModal">
     <div @click.self="close()" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;">
-        <div style="background:#fff;border-radius:16px;width:100%;max-width:520px;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden;">
+        <div class="cust-modal-box" style="background:#fff;border-radius:16px;width:100%;max-width:520px;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden;">
 
             {{-- Header --}}
             <div style="padding:20px 24px 16px;border-bottom:1px solid #F3F4F6;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">

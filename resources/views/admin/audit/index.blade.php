@@ -12,6 +12,122 @@
     .audit-modal-grid { grid-template-columns:1fr !important; gap:8px !important; }
     .audit-log-scroll { max-height:60vh !important; }
 }
+
+/* Mobile-only markup (shared uds-* components) — hidden by default, shown only
+   inside the @media(max-width:768px) block below. Desktop is untouched. */
+.audit-mobile-only { display: none; }
+
+/* ══════════════════════════════════════════════
+   Mobile-only premium redesign (320–768px)
+   Reuses shared .mob-card tokens from layouts/app.blade.php
+   ══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    /* Mobile-only shared components take over: segmented tab control replaces the
+       old pill tabs, and a filter-chip row replaces the two select dropdowns. */
+    .audit-mobile-only { display: block !important; }
+    .audit-tabs-wrap { display: none !important; }
+    .audit-select-field-desktop { display: none !important; }
+
+    /* Tabs: full-width, larger touch targets (legacy fallback, now hidden above) */
+    .audit-tab-btn { flex: 1; justify-content: center; min-height: 44px !important; }
+
+    /* Filter form: stacked, full-width, touch-friendly */
+    .audit-filter-form { flex-direction: column; align-items: stretch; gap: 12px !important; padding: 16px !important; }
+    .audit-filter-field { min-width: 100% !important; flex: none !important; width: 100%; }
+    .audit-filter-field select, .audit-filter-field input {
+        width: 100% !important; min-height: 44px !important; font-size: 14px !important; box-sizing: border-box;
+    }
+    .audit-filter-actions { width: 100%; gap: 10px !important; }
+    .audit-filter-actions button, .audit-filter-actions a {
+        flex: 1; justify-content: center; min-height: 44px !important; font-size: 13px !important;
+    }
+
+    /* P44: compact date-range panel that opens from the 3rd chip, replacing the two
+       full-width stacked native date inputs */
+    .audit-date-panel {
+        background: #fff; border: 1px solid #E5E7EB; border-radius: 14px;
+        padding: 12px; margin: -6px 0 12px; display: flex; gap: 10px;
+    }
+    .audit-date-panel > div { flex: 1; }
+    .audit-date-panel input[type="date"] {
+        width: 100%; min-height: 44px; padding: 8px 10px; border: 1.5px solid #E5E7EB;
+        border-radius: 8px; font-size: 13px; box-sizing: border-box;
+    }
+
+    /* Audit log rows -> premium stacked cards (no forced horizontal scroll) */
+    .audit-log-scroll { overflow-x: hidden !important; padding: 4px; }
+    .audit-row-inner { min-width: 0 !important; }
+    .audit-row-inner.mob-card { margin: 0 !important; padding: 14px 16px !important; border-bottom: 1px solid #F0F1F5 !important; }
+    .audit-row-inner.mob-card:last-child { border-bottom: none !important; }
+    .audit-row-header { flex-wrap: wrap !important; }
+    .audit-row-meta {
+        width: 100%; justify-content: space-between !important; margin-top: 8px; padding-top: 8px;
+        border-top: 1px dashed #F3F4F6;
+    }
+    .audit-row-meta > div:first-child { text-align: left !important; }
+
+    /* Error log toolbar: stacked, full-width, touch-friendly */
+    .audit-err-toolbar { flex-direction: column; align-items: stretch !important; }
+    #err-level-btns { width: 100%; }
+    #err-level-btns button { flex: 1; min-height: 44px !important; text-align: center; justify-content: center; }
+    .audit-err-search-wrap { width: 100%; }
+    .audit-err-search-wrap input#err-search { width: 100% !important; min-height: 44px !important; box-sizing: border-box; }
+    .audit-err-actions { width: 100%; justify-content: space-between !important; }
+    .audit-err-actions button[type="submit"] { min-height: 44px !important; }
+
+    .err-row.mob-card { margin: 0 !important; border-bottom: 1px solid #F0F1F5 !important; }
+    .err-row.mob-card:last-child { border-bottom: none !important; }
+    #err-list { background: transparent !important; border: none !important; box-shadow: none !important; padding: 4px; }
+
+    /* ── C6: rows share ONE container (radius/elevation live on the container only),
+       split by 1px hairlines — not individually boxed/shadowed cards ── */
+    .audit-card.mob-card,
+    .err-row.mob-card {
+        border-radius: 0 !important;
+        box-shadow: none !important;
+    }
+    .audit-card.mob-card { padding: 14px 16px !important; }
+    .audit-filter-form { border-radius: var(--mob-r-lg, 20px) !important; }
+    .audit-log-scroll { border-radius: var(--mob-r-lg, 20px) !important; padding: 0 !important; }
+
+    /* ── Icon badges: consistent size across audit + error rows (P47: 30x30) ── */
+    .audit-icon-badge { width: 30px !important; height: 30px !important; border-radius: var(--mob-r-sm, 12px) !important; }
+    .audit-icon-badge i { font-size: 13px !important; }
+
+    /* ── Action/level badges: spec 4px 9px padding / 8px radius / weight 700 (C8) ── */
+    .audit-badge {
+        font-size: 11px !important; font-weight: 700 !important;
+        padding: 4px 9px !important; border-radius: 8px !important;
+    }
+    /* Meta/detail chips keep their pill shape, but long unbroken values (e.g. a URL in a
+       "changes" chip) must wrap instead of silently overflowing/clipping (G1) */
+    .audit-meta-chip {
+        font-size: 11px !important; padding: 2px 8px !important; border-radius: 9999px !important;
+        overflow-wrap: anywhere !important; word-break: break-word !important; max-width: 100% !important;
+    }
+
+    /* ── P46: day-grouping header above each calendar-day's rows ── */
+    .audit-day-header {
+        padding: 10px 16px 6px; font-size: 11px; font-weight: 700; color: #9CA3AF;
+        text-transform: uppercase; letter-spacing: .04em; background: #FAFAFB;
+    }
+
+    /* ── Empty-state cards: reduce vertical padding, shrink icon/text ── */
+    .audit-empty { padding: 32px var(--mob-sp-2, 16px) !important; }
+    .audit-empty-icon { width: 40px !important; height: 40px !important; }
+    .audit-empty-icon i { font-size: 20px !important; }
+    .audit-empty-title { font-size: 14px !important; }
+    .audit-empty-sub { font-size: 13px !important; }
+
+    /* ── Modal detail tiles: unified small-card radius/padding ── */
+    .audit-modal-tile { border-radius: var(--mob-r-sm, 12px) !important; padding: 12px !important; }
+
+    /* ── Modal close button: bump undersized 26px hit-area to a proper 44px touch target ── */
+    .audit-modal-close {
+        width: 44px !important; height: 44px !important; padding: 0 !important;
+        display: flex !important; align-items: center; justify-content: center;
+    }
+}
 </style>
 @endpush
 
@@ -74,14 +190,14 @@
 @endif
 
 {{-- ── Tabs ── --}}
-<div style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;margin-bottom:20px;width:fit-content;">
-    <button id="tab-audit" onclick="switchTab('audit')"
+<div class="audit-tabs-wrap" style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;margin-bottom:20px;width:fit-content;">
+    <button id="tab-audit" class="audit-tab-btn" onclick="switchTab('audit')"
         style="padding:7px 20px;border-radius:9px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:7px;">
         <i class="fas fa-shield-halved"></i>
         Audit Log
         <span style="background:#E0E7FF;color:#4F46E5;font-size:11px;font-weight:700;padding:1px 7px;border-radius:8px;">{{ number_format($logs->count()) }}</span>
     </button>
-    <button id="tab-errors" onclick="switchTab('errors')"
+    <button id="tab-errors" class="audit-tab-btn" onclick="switchTab('errors')"
         style="padding:7px 20px;border-radius:9px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:7px;">
         <i class="fas fa-triangle-exclamation"></i>
         Error Logs
@@ -91,16 +207,105 @@
     </button>
 </div>
 
+{{-- Mobile-only: segmented control replaces the pill tabs above --}}
+@php
+    $auditMobileTabs = [
+        ['key' => 'audit',  'label' => 'Audit Log',  'count' => $logs->count(), 'onclick' => "switchTab('audit')"],
+        ['key' => 'errors', 'label' => 'Error Logs', 'count' => $errCount ?: null, 'onclick' => "switchTab('errors')"],
+    ];
+@endphp
+<div class="audit-mobile-only" style="margin-bottom:20px;">
+    <x-mobile.segmented
+        id="mobileAuditSeg"
+        :options="$auditMobileTabs"
+        active="{{ $activeTab }}"
+    />
+</div>
+
 {{-- ════════════════════════════════════════════
      TAB 1 — AUDIT LOG
 ════════════════════════════════════════════ --}}
 <div id="pane-audit">
 
-<form method="GET" style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;padding:16px 20px;margin-bottom:20px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+<form method="GET" id="auditFilterForm" class="audit-filter-form" style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;padding:16px 20px;margin-bottom:20px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
     <input type="hidden" name="tab" value="audit">
-    <div style="flex:1;min-width:160px;">
+
+    {{-- Mobile-only: filter-chip row replaces the Action Type / Performed By selects below --}}
+    @php
+        $selectedActionLabel = request('action') ? ($actionMeta[request('action')][3] ?? ucwords(str_replace(['.','_'],['  ',' '],request('action')))) : 'All actions';
+        $selectedActorName   = request('actor_id') ? (optional($users->firstWhere('id', (int) request('actor_id')))->name ?? 'Anyone') : 'Anyone';
+        $selectedDateLabel = 'Any date';
+        if (request('from') && request('to')) {
+            $selectedDateLabel = \Illuminate\Support\Carbon::parse(request('from'))->format('M j') . ' – ' . \Illuminate\Support\Carbon::parse(request('to'))->format('M j');
+        } elseif (request('from')) {
+            $selectedDateLabel = 'From ' . \Illuminate\Support\Carbon::parse(request('from'))->format('M j');
+        } elseif (request('to')) {
+            $selectedDateLabel = 'Until ' . \Illuminate\Support\Carbon::parse(request('to'))->format('M j');
+        }
+    @endphp
+    <div class="audit-mobile-only uds-chiprow">
+        <x-mobile.filter-chip :label="$selectedActionLabel" :active="request()->filled('action')">
+            <select onchange="document.getElementById('audit-action-select').value=this.value; document.getElementById('auditFilterForm').submit();">
+                <option value="">All actions</option>
+                <optgroup label="Account">
+                    @foreach(['user.created','user.updated','user.deleted','user.deactivated','user.reactivated','user.role_changed','user.password_changed','user.archived','user.restored','user.held','user.released'] as $a)
+                    <option value="{{ $a }}" {{ request('action') === $a ? 'selected' : '' }}>{{ $actionMeta[$a][3] ?? ucwords(str_replace(['.','_'],['  ',' '],$a)) }}</option>
+                    @endforeach
+                </optgroup>
+                <optgroup label="Tasks">
+                    @foreach(['task.approved','task.rejected','task.reassigned','task.deleted','task.force_deleted','task.reopened','task.archived','task.delivered','tasks.bulk_transferred'] as $a)
+                    <option value="{{ $a }}" {{ request('action') === $a ? 'selected' : '' }}>{{ $actionMeta[$a][3] ?? ucwords(str_replace(['.','_'],['  ',' '],$a)) }}</option>
+                    @endforeach
+                </optgroup>
+                <optgroup label="Projects">
+                    @foreach(['project.created','project.updated','project.deleted','project.reopened','project.closed'] as $a)
+                    <option value="{{ $a }}" {{ request('action') === $a ? 'selected' : '' }}>{{ $actionMeta[$a][3] ?? ucwords(str_replace(['.','_'],['  ',' '],$a)) }}</option>
+                    @endforeach
+                </optgroup>
+                <optgroup label="Roles">
+                    @foreach(['role.created','role.updated','role.deleted'] as $a)
+                    <option value="{{ $a }}" {{ request('action') === $a ? 'selected' : '' }}>{{ $actionMeta[$a][3] ?? ucwords(str_replace(['.','_'],['  ',' '],$a)) }}</option>
+                    @endforeach
+                </optgroup>
+                <optgroup label="Settings / System">
+                    @foreach(['settings.updated','data.cleared','system.restored'] as $a)
+                    <option value="{{ $a }}" {{ request('action') === $a ? 'selected' : '' }}>{{ $actionMeta[$a][3] ?? ucwords(str_replace(['.','_'],['  ',' '],$a)) }}</option>
+                    @endforeach
+                </optgroup>
+            </select>
+        </x-mobile.filter-chip>
+        <x-mobile.filter-chip :label="$selectedActorName" :active="request()->filled('actor_id')">
+            <select onchange="document.getElementById('audit-actor-select').value=this.value; document.getElementById('auditFilterForm').submit();">
+                <option value="">Anyone</option>
+                @foreach($users as $u)
+                <option value="{{ $u->id }}" {{ request('actor_id') == $u->id ? 'selected' : '' }}>{{ $u->name }}</option>
+                @endforeach
+            </select>
+        </x-mobile.filter-chip>
+        <label class="uds-chip {{ request()->hasAny(['from','to']) ? 'is-active' : '' }}" style="cursor:pointer;"
+               onclick="var p=document.getElementById('auditDatePanel'); p.style.display = (p.style.display==='flex') ? 'none' : 'flex';">
+            <span>{{ $selectedDateLabel }}</span>
+            <i class="fas fa-chevron-down"></i>
+        </label>
+    </div>
+
+    {{-- Mobile-only: compact date-range panel opened by the "date" chip above --}}
+    <div id="auditDatePanel" class="audit-date-panel" style="display:none;">
+        <div>
+            <label style="font-size:11px;font-weight:600;color:#6B7280;display:block;margin-bottom:4px;">From</label>
+            <input type="date" value="{{ request('from') }}"
+                   onchange="document.getElementById('audit-from-input').value=this.value; document.getElementById('auditFilterForm').submit();">
+        </div>
+        <div>
+            <label style="font-size:11px;font-weight:600;color:#6B7280;display:block;margin-bottom:4px;">To</label>
+            <input type="date" value="{{ request('to') }}"
+                   onchange="document.getElementById('audit-to-input').value=this.value; document.getElementById('auditFilterForm').submit();">
+        </div>
+    </div>
+
+    <div class="audit-filter-field audit-select-field-desktop" style="flex:1;min-width:160px;">
         <label style="font-size:11px;font-weight:600;color:#6B7280;display:block;margin-bottom:4px;">Action Type</label>
-        <select name="action" style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#111827;background:#fff;outline:none;">
+        <select name="action" id="audit-action-select" style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#111827;background:#fff;outline:none;">
             <option value="">All actions</option>
             <optgroup label="Account">
                 @foreach(['user.created','user.updated','user.deleted','user.deactivated','user.reactivated','user.role_changed','user.password_changed','user.archived','user.restored','user.held','user.released'] as $a)
@@ -129,27 +334,27 @@
             </optgroup>
         </select>
     </div>
-    <div style="flex:1;min-width:160px;">
+    <div class="audit-filter-field audit-select-field-desktop" style="flex:1;min-width:160px;">
         <label style="font-size:11px;font-weight:600;color:#6B7280;display:block;margin-bottom:4px;">Performed By</label>
-        <select name="actor_id" style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#111827;background:#fff;outline:none;">
+        <select name="actor_id" id="audit-actor-select" style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#111827;background:#fff;outline:none;">
             <option value="">Anyone</option>
             @foreach($users as $u)
             <option value="{{ $u->id }}" {{ request('actor_id') == $u->id ? 'selected' : '' }}>{{ $u->name }}</option>
             @endforeach
         </select>
     </div>
-    <div style="flex:1;min-width:130px;">
+    <div class="audit-filter-field audit-select-field-desktop" style="flex:1;min-width:130px;">
         <label style="font-size:11px;font-weight:600;color:#6B7280;display:block;margin-bottom:4px;">From</label>
-        <input type="date" name="from" value="{{ request('from') }}"
+        <input type="date" name="from" id="audit-from-input" value="{{ request('from') }}"
                style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#111827;outline:none;">
     </div>
-    <div style="flex:1;min-width:130px;">
+    <div class="audit-filter-field audit-select-field-desktop" style="flex:1;min-width:130px;">
         <label style="font-size:11px;font-weight:600;color:#6B7280;display:block;margin-bottom:4px;">To</label>
-        <input type="date" name="to" value="{{ request('to') }}"
+        <input type="date" name="to" id="audit-to-input" value="{{ request('to') }}"
                style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#111827;outline:none;">
     </div>
-    <div style="display:flex;gap:8px;">
-        <button type="submit" style="padding:8px 20px;background:#6366F1;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
+    <div class="audit-filter-actions" style="display:flex;gap:8px;">
+        <button type="submit" class="audit-select-field-desktop" style="padding:8px 20px;background:#6366F1;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
             <i class="fa fa-filter" style="margin-right:4px;"></i> Filter
         </button>
         @if(request()->hasAny(['action','actor_id','from','to']))
@@ -161,13 +366,23 @@
     </div>
 </form>
 
+@php
+    // P46: group rows by calendar day so a header ("Today · 12 events") separates each day.
+    $groupedLogs = $logs->groupBy(fn($l) => $l->created_at->format('Y-m-d'));
+@endphp
 <div class="audit-log-scroll" style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow-y:auto;max-height:68vh;">
-    @forelse($logs as $log)
+    @forelse($groupedLogs as $day => $dayLogs)
+    @php
+        $dayObj   = \Illuminate\Support\Carbon::createFromFormat('Y-m-d', $day)->startOfDay();
+        $dayLabel = $dayObj->isToday() ? 'Today' : ($dayObj->isYesterday() ? 'Yesterday' : $dayObj->format('M j'));
+    @endphp
+    <div class="audit-day-header audit-mobile-only">{{ $dayLabel }} · {{ $dayLogs->count() }} {{ Str::plural('event', $dayLogs->count()) }}</div>
+    @foreach($dayLogs as $log)
     @php
         [$icon, $fg, $bg, $label] = $actionMeta[$log->action] ?? ['fa-circle-dot', '#6366F1', '#EEF2FF', ucwords(str_replace(['.','_'],['  ',' '],$log->action))];
         $meta = $log->metadata ?? [];
     @endphp
-    <div class="audit-row audit-row-inner"
+    <div class="audit-row audit-row-inner mob-card audit-card"
          onclick="openAuditModal(this)"
          data-icon="{{ $icon }}" data-fg="{{ $fg }}" data-bg="{{ $bg }}" data-label="{{ $label }}"
          data-action="{{ $log->action }}" data-actor="{{ $log->actor->name ?? 'System' }}"
@@ -180,14 +395,14 @@
          data-subject-id="{{ $log->subject_id ?? '' }}"
          data-meta="{{ json_encode($meta) }}"
          style="display:flex;gap:14px;padding:14px 20px;border-bottom:1px solid #F9FAFB;cursor:pointer;transition:background .15s;">
-        <div style="width:38px;height:38px;border-radius:10px;background:{{ $bg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <div class="audit-icon-badge" style="width:38px;height:38px;border-radius:10px;background:{{ $bg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
             <i class="fa {{ $icon }}" style="color:{{ $fg }};font-size:14px;"></i>
         </div>
         <div style="flex:1;min-width:0;">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+            <div class="audit-row-header" style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                 <div>
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">
-                        <span style="font-size:12px;font-weight:700;padding:2px 9px;border-radius:10px;background:{{ $bg }};color:{{ $fg }};">{{ $label }}</span>
+                        <span class="audit-badge" style="font-size:12px;font-weight:700;padding:2px 9px;border-radius:10px;background:{{ $bg }};color:{{ $fg }};">{{ $label }}</span>
                         @if($log->actor)
                         <span style="font-size:12px;font-weight:600;color:#111827;">{{ $log->actor->name }}</span>
                         @else
@@ -199,7 +414,7 @@
                     <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;">
                         @foreach($meta as $key => $value)
                         @if(!in_array($key, ['task_ids','changes']) && !is_null($value) && !is_array($value))
-                        <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;">
+                        <span class="audit-meta-chip" style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;">
                             {{ str_replace('_', ' ', $key) }}: <strong>{{ $value }}</strong>
                         </span>
                         @endif
@@ -207,21 +422,21 @@
                         @if(isset($meta['changes']) && is_array($meta['changes']))
                         @foreach($meta['changes'] as $field => $change)
                         @if(isset($change['from'], $change['to']) && $change['from'] !== $change['to'])
-                        <span style="font-size:11px;background:#FEF3C7;color:#D97706;padding:2px 8px;border-radius:6px;">
+                        <span class="audit-meta-chip" style="font-size:11px;background:#FEF3C7;color:#D97706;padding:2px 8px;border-radius:6px;">
                             {{ $field }}: <span style="text-decoration:line-through;opacity:.7;">{{ $change['from'] ?? '—' }}</span> → <strong>{{ $change['to'] }}</strong>
                         </span>
                         @endif
                         @endforeach
                         @endif
                         @if(isset($meta['task_ids']) && is_array($meta['task_ids']))
-                        <span style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;">
+                        <span class="audit-meta-chip" style="font-size:11px;background:#F3F4F6;color:#6B7280;padding:2px 8px;border-radius:6px;">
                             task IDs: {{ implode(', ', array_slice($meta['task_ids'], 0, 5)) }}{{ count($meta['task_ids']) > 5 ? ' +'.(count($meta['task_ids'])-5).' more' : '' }}
                         </span>
                         @endif
                     </div>
                     @endif
                 </div>
-                <div style="display:flex;align-items:center;gap:12px;flex-shrink:0;">
+                <div class="audit-row-meta" style="display:flex;align-items:center;gap:12px;flex-shrink:0;">
                     <div style="text-align:right;">
                         <p style="font-size:12px;color:#374151;font-weight:500;margin:0;">{{ $log->created_at->format(config('app.date_format', 'M d, Y')) }}</p>
                         <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">{{ $log->created_at->format('H:i:s') }}</p>
@@ -234,20 +449,21 @@
             </div>
         </div>
     </div>
+    @endforeach
     @empty
-    <div style="padding:60px;text-align:center;">
-        <div style="width:56px;height:56px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+    @php
+        $auditEmptySub = request()->hasAny(['action','actor_id','from','to'])
+            ? 'Try adjusting your filters.'
+            : 'Audit records will appear here as admins take actions.';
+    @endphp
+    <div class="audit-empty audit-select-field-desktop" style="padding:60px;text-align:center;">
+        <div class="audit-empty-icon" style="width:56px;height:56px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
             <i class="fa fa-shield-halved" style="color:#D1D5DB;font-size:24px;"></i>
         </div>
-        <p style="font-size:15px;font-weight:600;color:#374151;margin:0 0 6px;">No audit records found</p>
-        <p style="font-size:13px;color:#9CA3AF;margin:0;">
-            @if(request()->hasAny(['action','actor_id','from','to']))
-            Try adjusting your filters.
-            @else
-            Audit records will appear here as admins take actions.
-            @endif
-        </p>
+        <p class="audit-empty-title" style="font-size:15px;font-weight:600;color:#374151;margin:0 0 6px;">No audit records found</p>
+        <p class="audit-empty-sub" style="font-size:13px;color:#9CA3AF;margin:0;">{{ $auditEmptySub }}</p>
     </div>
+    <x-mobile.empty-state class="audit-mobile-only" title="No audit records found" :sub="$auditEmptySub" icon="fa-shield-halved" />
     @endforelse
 </div>
 
@@ -259,7 +475,7 @@
 <div id="pane-errors" style="display:none;">
 
 {{-- Header bar --}}
-<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+<div class="audit-err-toolbar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         {{-- Level pills --}}
         <div id="err-level-btns" style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -277,14 +493,14 @@
             </button>
         </div>
         {{-- Search --}}
-        <div style="position:relative;">
+        <div class="audit-err-search-wrap" style="position:relative;">
             <i class="fas fa-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:11px;pointer-events:none;"></i>
             <input id="err-search" type="text" placeholder="Search messages…"
                 style="padding:6px 12px 6px 28px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;outline:none;width:220px;"
                 oninput="errSearch()" onfocus="this.style.borderColor='#DC2626'" onblur="this.style.borderColor='#E5E7EB'">
         </div>
     </div>
-    <div style="display:flex;align-items:center;gap:10px;">
+    <div class="audit-err-actions" style="display:flex;align-items:center;gap:10px;">
         <span style="font-size:11px;color:#9CA3AF;">File: {{ $logFileSize }}</span>
         <form method="POST" action="{{ route('admin.audit.clear-logs') }}" onsubmit="return confirm('Clear the entire error log file? This cannot be undone.');">
             @csrf
@@ -302,26 +518,27 @@
 @php
     $lvl   = $err['level'];
     $isErr = in_array($lvl, ['ERROR','CRITICAL','ALERT','EMERGENCY']);
-    $lvlBg    = $isErr ? '#FEE2E2' : '#FEF3C7';
-    $lvlColor = $isErr ? '#DC2626'  : '#D97706';
+    // G10: reuse $actionMeta's existing red/amber pair instead of hardcoding a second copy of the colors.
+    $lvlColor = $isErr ? $actionMeta['task.deleted'][1] : $actionMeta['user.deactivated'][1];
+    $lvlBg    = $isErr ? $actionMeta['task.deleted'][2] : $actionMeta['user.deactivated'][2];
     $iconCls  = $isErr ? 'fa-circle-xmark' : 'fa-triangle-exclamation';
     $shortMsg = Str::limit($err['message'], 160);
     $hasTrace = !empty(trim($err['trace']));
 @endphp
-<div class="err-row" data-level="{{ strtolower($lvl) }}" data-msg="{{ strtolower($err['message']) }}"
+<div class="err-row mob-card" data-level="{{ strtolower($lvl) }}" data-msg="{{ strtolower($err['message']) }}"
      style="border-bottom:1px solid #F9FAFB;transition:background .12s;">
 
     {{-- Summary row (always visible) --}}
     <div style="display:flex;gap:12px;padding:13px 18px;align-items:flex-start;cursor:{{ $hasTrace ? 'pointer' : 'default' }};"
          @if($hasTrace) onclick="toggleTrace({{ $i }})" @endif>
 
-        <div style="width:34px;height:34px;border-radius:9px;background:{{ $lvlBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
+        <div class="audit-icon-badge" style="width:34px;height:34px;border-radius:9px;background:{{ $lvlBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
             <i class="fas {{ $iconCls }}" style="color:{{ $lvlColor }};font-size:13px;"></i>
         </div>
 
         <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
-                <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;background:{{ $lvlBg }};color:{{ $lvlColor }};">{{ $lvl }}</span>
+                <span class="audit-badge" style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;background:{{ $lvlBg }};color:{{ $lvlColor }};">{{ $lvl }}</span>
                 <span style="font-size:11px;color:#9CA3AF;font-family:monospace;">{{ $err['channel'] }}</span>
                 <span style="font-size:11px;color:#9CA3AF;">{{ $err['datetime'] }}</span>
             </div>
@@ -342,13 +559,14 @@
 
 </div>
 @empty
-<div style="padding:60px;text-align:center;">
-    <div style="width:56px;height:56px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+<div class="audit-empty audit-select-field-desktop" style="padding:60px;text-align:center;">
+    <div class="audit-empty-icon" style="width:56px;height:56px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
         <i class="fas fa-circle-check" style="color:#10B981;font-size:24px;"></i>
     </div>
-    <p style="font-size:15px;font-weight:600;color:#374151;margin:0 0 6px;">No errors found</p>
-    <p style="font-size:13px;color:#9CA3AF;margin:0;">The application log has no error or warning entries.</p>
+    <p class="audit-empty-title" style="font-size:15px;font-weight:600;color:#374151;margin:0 0 6px;">No errors found</p>
+    <p class="audit-empty-sub" style="font-size:13px;color:#9CA3AF;margin:0;">The application log has no error or warning entries.</p>
 </div>
+<x-mobile.empty-state class="audit-mobile-only" title="No errors found" sub="The application log has no error or warning entries." icon="fa-circle-check" />
 @endforelse
 
 <p id="err-no-results" style="display:none;text-align:center;padding:32px;font-size:13px;color:#9CA3AF;">No entries match your filter.</p>
@@ -372,26 +590,26 @@
                 </div>
                 <p id="modal-description" style="font-size:14px;font-weight:600;color:#111827;margin:4px 0 0;line-height:1.4;"></p>
             </div>
-            <button onclick="closeAuditModal()" style="background:none;border:none;cursor:pointer;padding:4px;color:#9CA3AF;flex-shrink:0;">
+            <button onclick="closeAuditModal()" class="audit-modal-close" style="background:none;border:none;cursor:pointer;padding:4px;color:#9CA3AF;flex-shrink:0;">
                 <i class="fa fa-xmark" style="font-size:18px;"></i>
             </button>
         </div>
         <div style="padding:20px 24px;overflow-y:auto;flex:1;">
             <div class="audit-modal-grid" style="display:grid;gap:12px;margin-bottom:20px;">
-                <div style="background:#F9FAFB;border-radius:10px;padding:12px 14px;">
+                <div class="audit-modal-tile" style="background:#F9FAFB;border-radius:10px;padding:12px 14px;">
                     <p style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Performed By</p>
                     <p id="modal-actor" style="font-size:13px;font-weight:600;color:#111827;margin:0;"></p>
                 </div>
-                <div style="background:#F9FAFB;border-radius:10px;padding:12px 14px;">
+                <div class="audit-modal-tile" style="background:#F9FAFB;border-radius:10px;padding:12px 14px;">
                     <p style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Timestamp</p>
                     <p id="modal-date" style="font-size:13px;font-weight:600;color:#111827;margin:0;"></p>
                     <p id="modal-relative" style="font-size:11px;color:#9CA3AF;margin:2px 0 0;"></p>
                 </div>
-                <div id="modal-ip-wrap" style="background:#F9FAFB;border-radius:10px;padding:12px 14px;">
+                <div id="modal-ip-wrap" class="audit-modal-tile" style="background:#F9FAFB;border-radius:10px;padding:12px 14px;">
                     <p style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">IP Address</p>
                     <p id="modal-ip" style="font-size:13px;font-weight:600;color:#111827;margin:0;font-family:monospace;"></p>
                 </div>
-                <div id="modal-subject-wrap" style="background:#F9FAFB;border-radius:10px;padding:12px 14px;">
+                <div id="modal-subject-wrap" class="audit-modal-tile" style="background:#F9FAFB;border-radius:10px;padding:12px 14px;">
                     <p style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Subject</p>
                     <p id="modal-subject" style="font-size:13px;font-weight:600;color:#111827;margin:0;"></p>
                 </div>
@@ -419,6 +637,15 @@ function switchTab(tab) {
 
     auditBtn.style.cssText  += isAudit  ? activeStyle : inactiveStyle;
     errorsBtn.style.cssText += !isAudit ? activeStyle : inactiveStyle;
+
+    // Mirror the active state onto the mobile segmented control (order matches
+    // the options array: index 0 = audit, index 1 = errors)
+    var mobileSeg = document.getElementById('mobileAuditSeg');
+    if (mobileSeg) {
+        var opts = mobileSeg.querySelectorAll('.uds-seg-opt');
+        if (opts[0]) opts[0].classList.toggle('is-on', isAudit);
+        if (opts[1]) opts[1].classList.toggle('is-on', !isAudit);
+    }
 
     // Update URL without reload
     const url = new URL(window.location);

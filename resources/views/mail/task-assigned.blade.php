@@ -75,7 +75,7 @@
               <tr>
                 <td style="padding:8px 12px;background:#F9FAFB;border-radius:8px;border:1px solid #E5E7EB;">
                   <span style="font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;">Priority</span>
-                  <p style="margin:2px 0 0;font-size:14px;font-weight:600;color:{{ $task->priority === 'high' ? '#DC2626' : ($task->priority === 'medium' ? '#D97706' : '#059669') }};">{{ ucfirst($task->priority) }}</p>
+                  <p style="margin:2px 0 0;font-size:14px;font-weight:600;color:{{ $task->priority === 'high' ? '#E11D48' : ($task->priority === 'medium' ? '#D97706' : '#059669') }};">{{ ucfirst($task->priority) }}</p>
                 </td>
               </tr>
               @endif

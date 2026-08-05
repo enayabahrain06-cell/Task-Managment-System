@@ -32,10 +32,19 @@ class MessagesController extends Controller
             ->get()
             ->groupBy(fn($m) => $m->sender_id === $me ? $m->receiver_id : $m->sender_id);
 
+        // Friendly attachment preview — never leak a raw filename into the sidebar
+        // (matches the mime-type logic in messages/_mobile-index.blade.php's $preview closure).
+        $attachmentPreview = function ($msg) {
+            $mime = (string) $msg->file_type;
+            return str_starts_with($mime, 'image/') ? '📎 Photo'
+                 : (str_starts_with($mime, 'video/') ? '📎 Video'
+                 : (str_starts_with($mime, 'audio/') ? '🎤 Voice note' : '📎 Attachment'));
+        };
+
         $lastMsgs = $lastMsgsRaw->map(fn($msgs) => [
                 'body'      => $msgs->first()->deleted_at
                                 ? '🚫 Message deleted'
-                                : ($msgs->first()->body ?: ($msgs->first()->file_name ? '📎 '.$msgs->first()->file_name : '📎 File')),
+                                : ($msgs->first()->body ?: ($msgs->first()->file_name ? $attachmentPreview($msgs->first()) : '📎 Attachment')),
                 'time'      => $msgs->first()->created_at->diffForHumans(null, true, true, 1),
                 'mine'      => $msgs->first()->sender_id === $me,
                 'timestamp' => $msgs->first()->created_at->timestamp,
@@ -72,7 +81,75 @@ class MessagesController extends Controller
                 ];
             });
 
-        return view('messages.index', compact('teamMembers', 'groups', 'lastMsgs', 'onlineMap', 'lastSeenMap'));
+        [$directThreads, $groupThreads, $unreadTotal] = $this->mobileThreads($me, $teamMembers, $onlineMap, $lastMsgsRaw);
+
+        return view('messages.index', compact(
+            'teamMembers', 'groups', 'lastMsgs', 'onlineMap', 'lastSeenMap',
+            'directThreads', 'groupThreads', 'unreadTotal'
+        ));
+    }
+
+    /**
+     * Unified Direct/Group thread view-models for the mobile list
+     * (resources/views/messages/_mobile-index.blade.php). Not used by the
+     * desktop UI, which drives its own contact list from $teamMembers/$groups.
+     */
+    private function mobileThreads(int $me, $teamMembers, array $onlineMap, $lastMsgsRaw): array
+    {
+        $colors = ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#3B82F6'];
+
+        $directUnread = Message::where('receiver_id', $me)->whereNull('read_at')
+            ->get()->groupBy('sender_id')->map->count();
+
+        $toThread = function ($lastMsg) {
+            return $lastMsg ? (object) [
+                'body'            => $lastMsg->deleted_at ? null : $lastMsg->body,
+                'deleted'         => (bool) $lastMsg->deleted_at,
+                'attachment_name' => $lastMsg->file_name,
+                'mime_type'       => $lastMsg->file_type,
+                'from_me'         => $lastMsg->sender_id === auth()->id(),
+            ] : null;
+        };
+
+        $directThreads = $teamMembers->values()->map(function ($u, $i) use ($colors, $onlineMap, $lastMsgsRaw, $directUnread, $toThread) {
+            $lastMsg = $lastMsgsRaw->get($u->id)?->first();
+
+            return (object) [
+                'id'              => $u->id,
+                'kind'            => 'direct',
+                'display_name'    => $u->name,
+                'avatar_color'    => $colors[$i % count($colors)],
+                'avatar_url'      => $u->avatarUrl(),
+                'is_online'       => $onlineMap[$u->id] ?? false,
+                'unread_count'    => $directUnread->get($u->id, 0),
+                'last_message_at' => $lastMsg?->created_at,
+                'role_label'      => ucfirst($u->role),
+                'last_message'    => $toThread($lastMsg),
+            ];
+        })->sortByDesc(fn ($t) => $t->last_message_at?->timestamp ?? 0)->values();
+
+        $groupThreads = MessageGroup::whereHas('members', fn ($q) => $q->where('user_id', $me))
+            ->get()
+            ->map(function ($g, $i) use ($me, $colors, $toThread) {
+                $lastMsg = $g->messages()->latest('created_at')->first();
+
+                return (object) [
+                    'id'              => $g->id,
+                    'kind'            => 'group',
+                    'display_name'    => $g->name,
+                    'avatar_color'    => $colors[($i + 3) % count($colors)],
+                    'avatar_url'      => null,
+                    'is_online'       => false,
+                    'unread_count'    => $g->unreadCountFor($me),
+                    'last_message_at' => $lastMsg?->created_at,
+                    'role_label'      => null,
+                    'last_message'    => $toThread($lastMsg),
+                ];
+            })->sortByDesc(fn ($t) => $t->last_message_at?->timestamp ?? 0)->values();
+
+        $unreadTotal = $directThreads->sum('unread_count') + $groupThreads->sum('unread_count');
+
+        return [$directThreads, $groupThreads, $unreadTotal];
     }
 
     /** GET /messages/conversation/{user} */

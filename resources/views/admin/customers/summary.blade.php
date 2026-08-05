@@ -8,6 +8,29 @@
 .bar-fill  { height:6px; border-radius:999px; transition:width .6s ease; }
 .print-only { display:none; }
 
+/* ── Mobile (320-768px): align cards/grids with the admin/dashboard golden mobile standard ── */
+@media (max-width:768px) {
+    .sum-card {
+        border-radius: var(--mob-r-lg, 20px) !important;
+        box-shadow: var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05)) !important;
+        padding: var(--mob-sp-2, 16px) !important;
+    }
+    /* 6-col KPI row → horizontally-snapping swipeable strip (same pattern as admin/dashboard .stats-grid) */
+    .sum-kpi-row {
+        display: flex !important;
+        grid-template-columns: none !important;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        gap: 12px !important;
+        padding: 2px 2px 8px;
+    }
+    .sum-kpi-row::-webkit-scrollbar { display: none; }
+    .sum-kpi-row > .sum-card { scroll-snap-align: start; flex: 0 0 152px; }
+    /* Customer table + task-share chart: stack instead of squeezing side by side */
+    [style*="grid-template-columns:2fr 1fr"] { grid-template-columns: 1fr !important; }
+}
+
 @media print {
     @page {
         size: A4 landscape;
@@ -117,7 +140,7 @@
     </div>
 
     {{-- KPI row --}}
-    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:20px;">
+    <div class="sum-kpi-row" style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:20px;">
         @foreach([
             ['label'=>'Customers',  'value'=>$summaryTotals['customers'], 'color'=>'#4f46e5', 'bg'=>'#eef2ff', 'icon'=>'fa-building'],
             ['label'=>'Projects',   'value'=>$summaryTotals['projects'],  'color'=>'#0ea5e9', 'bg'=>'#f0f9ff', 'icon'=>'fa-folder-open'],

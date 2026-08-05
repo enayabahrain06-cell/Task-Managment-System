@@ -758,7 +758,7 @@ class ReportsController extends Controller
             'customer'     => $task->customer?->name ?? $task->project?->customer?->name ?? '—',
             'assignee'     => $task->assignee?->name ?? '—',
             'status'       => $task->status,
-            'status_label' => ucwords(str_replace('_', ' ', $task->status)),
+            'status_label' => \App\Support\TaskStatusColors::label($task->status),
             'deadline'     => $task->deadline?->format(config('app.date_format', 'M d, Y')),
             'overdue'      => $task->deadline && $task->deadline->isPast() && !in_array($task->status, $doneStatuses),
         ];

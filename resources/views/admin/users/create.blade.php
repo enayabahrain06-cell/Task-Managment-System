@@ -3,6 +3,27 @@
 
 @push('styles')
 <style>
+@media (max-width: 768px) {
+    /* Single-column, full-width fields with touch-friendly sizing */
+    .uc-form-grid { grid-template-columns: 1fr !important; }
+    .uc-form-grid input, .uc-form-grid select {
+        min-height: 46px !important; font-size: 15px !important; box-sizing: border-box;
+    }
+
+    /* Avatar upload: larger tap target (JS/behavior untouched) */
+    .uc-avatar-camera-btn { width: 38px !important; height: 38px !important; }
+
+    /* Permission rows: comfortable tap spacing + bigger toggles */
+    .uc-perm-group-header { padding: 10px 16px !important; }
+    .uc-perm-row { padding: 14px 16px !important; }
+    .uc-perm-icon-badge { width: 36px !important; height: 36px !important; border-radius: 12px !important; }
+    .uc-fullaccess-toggle { width: 48px !important; height: 26px !important; }
+    .uc-perm-toggle { width: 46px !important; height: 25px !important; }
+
+    /* Actions: full-width, stacked, sticky above the bottom nav */
+    .uc-actions { flex-direction: column !important; gap: 10px !important; }
+    .uc-actions > * { width: 100% !important; flex: none !important; justify-content: center; min-height: 46px; }
+}
 @media(max-width:480px){
     .max-w-2xl { padding-left:0 !important; padding-right:0 !important; }
     .user-create-card { padding:16px !important; }
@@ -56,9 +77,9 @@
         @csrf
 
         {{-- Avatar Upload --}}
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-4"
+        <div class="mob-card bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-4 max-md:p-4"
              x-data="{ preview: null }">
-            <p class="text-sm font-semibold text-gray-700 mb-4">Profile Photo</p>
+            <p class="text-sm font-semibold text-gray-700 mb-4 max-md:pb-3 max-md:mb-3 max-md:border-b max-md:border-gray-100">Profile Photo</p>
             <div class="flex items-center gap-5">
                 {{-- Preview circle --}}
                 <div class="relative flex-shrink-0">
@@ -70,7 +91,7 @@
                             <i class="fa fa-user text-2xl text-indigo-300"></i>
                         </template>
                     </div>
-                    <label class="absolute -bottom-1 -right-1 w-7 h-7 bg-indigo-600 hover:bg-indigo-700 rounded-full flex items-center justify-center cursor-pointer shadow transition">
+                    <label class="uc-avatar-camera-btn absolute -bottom-1 -right-1 w-7 h-7 bg-indigo-600 hover:bg-indigo-700 rounded-full flex items-center justify-center cursor-pointer shadow transition">
                         <i class="fa fa-camera text-white text-xs"></i>
                         <input type="file" name="avatar" accept="image/*" class="hidden"
                                @change="preview = $event.target.files[0] ? URL.createObjectURL($event.target.files[0]) : null">
@@ -85,39 +106,39 @@
         </div>
 
         {{-- Basic Info --}}
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-4">
-            <p class="text-sm font-semibold text-gray-700 mb-4">Basic Information</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="mob-card bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-4 max-md:p-4">
+            <p class="text-sm font-semibold text-gray-700 mb-4 max-md:pb-3 max-md:mb-3 max-md:border-b max-md:border-gray-100">Basic Information</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 uc-form-grid">
 
-                <div class="sm:col-span-2">
+                <div class="sm:col-span-2 mob-field">
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Full Name <span class="text-red-400">*</span></label>
                     <input type="text" name="name" value="{{ old('name') }}" required placeholder="John Doe"
                            class="w-full px-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition {{ $errors->has('name') ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-gray-50' }}">
                     @error('name') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
                 </div>
 
-                <div>
+                <div class="mob-field">
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Email Address <span class="text-red-400">*</span></label>
                     <input type="email" name="email" value="{{ old('email') }}" required placeholder="user@company.com"
                            class="w-full px-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition {{ $errors->has('email') ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-gray-50' }}">
                     @error('email') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
                 </div>
 
-                <div>
+                <div class="mob-field">
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Phone Number</label>
                     <input type="tel" name="phone" value="{{ old('phone') }}" placeholder="+1 555 000 0000"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition">
                     @error('phone') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
                 </div>
 
-                <div>
+                <div class="mob-field">
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Job Title</label>
                     <input type="text" name="job_title" value="{{ old('job_title') }}" placeholder="e.g. Frontend Developer"
                            class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition">
                     @error('job_title') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
                 </div>
 
-                <div>
+                <div class="mob-field">
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Role <span class="text-red-400">*</span></label>
                     <select name="role" required x-model="role"
                             class="w-full px-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition bg-gray-50 {{ $errors->has('role') ? 'border-red-400' : 'border-gray-200' }}">
@@ -129,7 +150,7 @@
                     @error('role') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
                 </div>
 
-                <div>
+                <div class="mob-field">
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Status</label>
                     <select name="status"
                             class="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition">
@@ -142,10 +163,10 @@
         </div>
 
         {{-- Password --}}
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6">
-            <p class="text-sm font-semibold text-gray-700 mb-4">Password</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
+        <div class="mob-card bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6 max-md:p-4">
+            <p class="text-sm font-semibold text-gray-700 mb-4 max-md:pb-3 max-md:mb-3 max-md:border-b max-md:border-gray-100">Password</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 uc-form-grid">
+                <div class="mob-field">
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Password <span class="text-red-400">*</span></label>
                     <div class="relative" x-data="{show:false}">
                         <input :type="show?'text':'password'" name="password" required placeholder="Min. 8 characters"
@@ -156,7 +177,7 @@
                     </div>
                     @error('password') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
                 </div>
-                <div>
+                <div class="mob-field">
                     <label class="block text-xs font-semibold text-gray-600 mb-1.5">Confirm Password <span class="text-red-400">*</span></label>
                     <div class="relative" x-data="{show:false}">
                         <input :type="show?'text':'password'" name="password_confirmation" required placeholder="Re-enter password"
@@ -202,7 +223,7 @@
                    class="sr-only">
             @endforeach
 
-            <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+            <div class="mob-card bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
 
                 {{-- Header + Full Access toggle --}}
                 <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
@@ -215,6 +236,7 @@
                               x-text="allOn ? 'Full Access' : 'Custom'"></span>
                         <button type="button" @click="setAll(!allOn)"
                             :class="allOn ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-gray-300'"
+                            class="uc-fullaccess-toggle"
                             style="position:relative;width:44px;height:24px;border-radius:12px;border:2px solid;transition:background .2s,border-color .2s;cursor:pointer;flex-shrink:0;outline:none;">
                             <span :style="allOn ? 'transform:translateX(20px)' : 'transform:translateX(0)'"
                                   style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s;display:block;"></span>
@@ -234,8 +256,8 @@
                 <div x-show="!allOn" x-cloak>
                     @foreach($createPermGroups as $groupName => $group)
                     <div class="{{ !$loop->first ? 'border-t border-gray-100' : '' }}">
-                        <div style="padding:10px 24px;background:#FAFAFA;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;gap:8px;">
-                            <div style="width:24px;height:24px;border-radius:6px;background:{{ $group['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <div class="uc-perm-group-header" style="padding:10px 24px;background:#FAFAFA;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;gap:8px;">
+                            <div class="uc-perm-icon-badge" style="width:24px;height:24px;border-radius:6px;background:{{ $group['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                 <i class="fa {{ $group['icon'] }}" style="font-size:10px;color:{{ $group['color'] }};"></i>
                             </div>
                             <span style="font-size:12px;font-weight:600;color:#374151;text-transform:uppercase;letter-spacing:.04em;">{{ $groupName }}</span>
@@ -243,9 +265,9 @@
                         @foreach($group['perms'] as $key => $perm)
                         <div style="padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;{{ !$loop->last ? 'border-bottom:1px solid #F9FAFB;' : '' }}"
                              style2="cursor:pointer;" @click="toggle('{{ $key }}')"
-                             class="hover:bg-gray-50 transition-colors cursor-pointer">
+                             class="hover:bg-gray-50 transition-colors cursor-pointer uc-perm-row">
                             <div style="display:flex;align-items:center;gap:10px;">
-                                <div style="width:32px;height:32px;border-radius:8px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <div class="uc-perm-icon-badge" style="width:32px;height:32px;border-radius:8px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                     <i class="fa {{ $perm['icon'] }}" style="font-size:12px;color:#6B7280;"></i>
                                 </div>
                                 <div>
@@ -255,6 +277,7 @@
                             </div>
                             <button type="button" @click.stop="toggle('{{ $key }}')"
                                 :class="hasPermission('{{ $key }}') ? 'bg-indigo-500 border-indigo-500' : 'bg-white border-gray-300'"
+                                class="uc-perm-toggle"
                                 style="position:relative;width:40px;height:22px;border-radius:11px;border:2px solid;transition:background .2s,border-color .2s;cursor:pointer;flex-shrink:0;outline:none;">
                                 <span :style="hasPermission('{{ $key }}') ? 'transform:translateX(18px)' : 'transform:translateX(0)'"
                                       style="position:absolute;top:2px;left:2px;width:14px;height:14px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s;display:block;"></span>
@@ -269,9 +292,9 @@
         </div>
 
         {{-- Actions --}}
-        <div class="flex gap-3">
+        <div class="flex gap-3 uc-actions mob-sticky-action-bar">
             <button type="submit"
-                    class="flex-1 sm:flex-none sm:px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow-sm">
+                    class="mob-btn-primary flex-1 sm:flex-none sm:px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow-sm">
                 <i class="fa fa-user-plus mr-2"></i>Create User
             </button>
             <a href="{{ route('admin.users.index') }}"

@@ -76,6 +76,13 @@ class Domain extends Model
         return (int) now()->startOfDay()->diffInDays($this->expires_at->copy()->startOfDay(), false);
     }
 
+    public function getStatusColorAttribute(): array
+    {
+        $c = \App\Support\DomainStatusColors::for($this->status);
+
+        return ['bg' => $c['bg'], 'color' => $c['text'], 'label' => $c['label']];
+    }
+
     public function getNotifyDaysAttribute($value): array
     {
         $decoded = json_decode($value, true);

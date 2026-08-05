@@ -62,34 +62,144 @@
 .contact-time { font-size:10px; color:#D1D5DB; flex-shrink:0; }
 
 /* ── Mobile responsiveness ── */
+.msg-mobile-tabs { display: none; }
+
 @media (max-width: 768px) {
-    /* Chat panel: use a fixed mobile height instead of viewport calc */
-    .msg-chat-grid {
-        height: auto !important;
-        min-height: 0;
+
+    /* Direct/Groups segmented switch — hidden on desktop (both lists stay stacked there).
+       Panel visibility is toggled purely via CSS driven by the .mob-show-groups class,
+       set by the msgMobileTab() plain-JS helper below; no new Alpine state introduced. */
+    .msg-mobile-tabs { display: block; padding: 0 12px 10px; }
+    .msg-contacts-sidebar .msg-tab-panel[data-panel="groups"] { display: none; }
+    .msg-contacts-sidebar.mob-show-groups .msg-tab-panel[data-panel="direct"] { display: none; }
+    .msg-contacts-sidebar.mob-show-groups .msg-tab-panel[data-panel="groups"] { display: block; }
+
+    /* Compact page header (menu / title / actions only — no verbose labels) */
+    .mob-msg-header { margin-bottom: 12px !important; gap: 8px; }
+    .mob-msg-title { font-size: 18px !important; letter-spacing: -.01em; }
+    .msg-header-actions { gap: 6px; }
+    .msg-header-actions button {
+        padding: 9px 12px !important;
+        border-radius: var(--mob-r-sm, 12px);
     }
-    /* Contacts sidebar gets a capped height on mobile */
-    .msg-contacts-sidebar {
-        max-height: 280px;
-    }
-    /* Chat window gets its own scroll height */
-    .msg-chat-window {
-        height: 60vh;
-        min-height: 300px;
-    }
-    /* Details panel hidden on mobile by default — shown if active */
-    .msg-details-panel {
-        display: none;
-    }
-    /* Header action buttons smaller */
+    /* Header action buttons: icon-only on mobile */
     .msg-header-actions .btn-text-label {
         display: none;
     }
+    /* P52: one 44px compose control in the header — "New Group" moves into the
+       Groups section's own header (see _mobile-index.blade.php's .msg-newgroup),
+       so it no longer duplicates itself here. */
+    .msg-header-actions .msg-btn-newgroup {
+        display: none !important;
+    }
+    .msg-header-actions .msg-btn-newmsg {
+        width: 44px !important; height: 44px !important; padding: 0 !important;
+        justify-content: center;
+    }
+
+    /* ── Single-pane conversation switcher ──
+       Toggled purely via CSS, driven by the .mob-thread-active class already
+       bound on .msg-chat-grid from existing Alpine state (activeUserId / isGroup).
+       No new Alpine state or functions are introduced. */
+    .msg-chat-grid {
+        height: calc(100vh - 190px) !important;
+        min-height: 420px;
+        overflow: hidden;
+    }
+    .msg-contacts-sidebar {
+        max-height: none;
+        height: 100%;
+        border-radius: var(--mob-r-lg, 20px) !important;
+        box-shadow: var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05));
+    }
+    .msg-chat-window {
+        height: 100%;
+        min-height: 0;
+        display: none;
+        border-radius: var(--mob-r-lg, 20px) !important;
+    }
+    .msg-chat-grid.mob-thread-active .msg-contacts-sidebar { display: none; }
+    .msg-chat-grid.mob-thread-active .msg-chat-window { display: flex; }
+    /* Details panel hidden on mobile — single-pane focuses on list/thread only */
+    .msg-details-panel {
+        display: none;
+    }
+
+    /* ── Conversation list rows → rounded, modern cards ──
+       Targets the existing data-user-id / data-group-id attributes already
+       present on each row, so no extra markup is required. */
+    .msg-contacts-sidebar [data-user-id],
+    .msg-contacts-sidebar [data-group-id] {
+        border-radius: var(--mob-r-md, 16px);
+        padding: 10px !important;
+        margin-bottom: 6px;
+        border: 1px solid #F3F4F6;
+        box-shadow: var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05));
+        gap: 12px !important;
+    }
+    .contact-last-msg { max-width: none; }
+    /* Avatar / group-icon parity — direct rows use a 36px circle, group rows a
+       32px rounded-square; bring both to the same 40px footprint on mobile so
+       the two lists read as one consistent row height/rhythm. */
+    .msg-contacts-sidebar [data-user-id] .relative.flex-shrink-0,
+    .msg-contacts-sidebar [data-user-id] .relative.flex-shrink-0 img,
+    .msg-contacts-sidebar [data-user-id] .relative.flex-shrink-0 > div,
+    .msg-contacts-sidebar [data-group-id] > div:first-child {
+        width: 40px !important;
+        height: 40px !important;
+    }
+    .msg-contacts-sidebar [data-user-id] .online-dot {
+        width: 11px !important; height: 11px !important;
+    }
+    .msg-contacts-sidebar [data-user-id] p.text-sm,
+    .msg-contacts-sidebar [data-group-id] p.text-sm {
+        font-size: 14.5px;
+    }
+
+    /* ── Mobile "back to list" affordance ──
+       Reads/writes only the pre-existing activeUserId / isGroup state. */
+    .msg-mobile-back {
+        display: flex !important;
+        align-items: center; justify-content: center;
+        width: 36px; height: 36px; border-radius: var(--mob-r-sm, 12px);
+        background: #F3F4F6; color: #4F46E5; border: none; flex-shrink: 0;
+        margin-right: 2px; font-size: 14px;
+    }
+    .msg-mobile-back:active { transform: scale(.92); }
+
+    /* ── Composer: full-width bottom bar with large, comfortable tap targets ── */
+    .msg-composer-wrap {
+        padding-bottom: calc(12px + env(safe-area-inset-bottom));
+        background: rgba(255,255,255,.98);
+    }
+    .msg-composer-row {
+        border-radius: var(--mob-r-md, 16px) !important;
+        padding: 8px 10px !important;
+    }
+    .msg-attach-btn, .msg-mic-btn, .msg-emoji-btn {
+        width: 44px !important;
+        height: 44px !important;
+    }
+    .msg-modal-close-btn {
+        width: 44px !important;
+        height: 44px !important;
+    }
+
+    .msg-compose-textarea {
+        font-size: 16px;
+        padding: 6px 0;
+    }
+    .msg-send-btn {
+        width: 44px !important;
+        height: 44px !important;
+        border-radius: var(--mob-r-sm, 12px) !important;
+    }
 }
 @media (max-width: 480px) {
-    .msg-chat-window {
-        height: 55vh;
+    .msg-chat-grid {
+        height: calc(100vh - 170px) !important;
     }
+    .mob-msg-title { font-size: 17px !important; }
     /* voice player wrap can shrink */
     .vp-wrap { min-width: 140px; max-width: 200px; }
 }
@@ -110,7 +220,7 @@ $lastSeenMapJson = json_encode($lastSeenMap);
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" @click.stop>
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-bold text-gray-900 text-lg">New Message</h3>
-                <button @click="open=false" class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center hover:bg-gray-200"><i class="fa fa-times text-gray-500 text-sm"></i></button>
+                <button @click="open=false" class="msg-modal-close-btn w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center hover:bg-gray-200"><i class="fa fa-times text-gray-500 text-sm"></i></button>
             </div>
             <div class="relative mb-4">
                 <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
@@ -151,7 +261,7 @@ $lastSeenMapJson = json_encode($lastSeenMap);
                     </div>
                     <h3 class="font-bold text-gray-900 text-base">New Group</h3>
                 </div>
-                <button @click="close()" class="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center hover:bg-gray-200"><i class="fa fa-times text-gray-500 text-sm"></i></button>
+                <button @click="close()" class="msg-modal-close-btn w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center hover:bg-gray-200"><i class="fa fa-times text-gray-500 text-sm"></i></button>
             </div>
             <div class="p-6">
                 <div class="mb-4">
@@ -213,17 +323,17 @@ $lastSeenMapJson = json_encode($lastSeenMap);
     </div>
 </div>
 
-<div class="flex items-center justify-between mb-6 flex-wrap gap-2">
-    <h1 class="text-2xl font-bold text-gray-900">Messages</h1>
+<div class="mob-msg-header flex items-center justify-between mb-6 flex-wrap gap-2">
+    <h1 class="mob-msg-title text-2xl font-bold text-gray-900">Messages</h1>
     <div class="flex items-center gap-2 msg-header-actions">
         @if(in_array(auth()->user()->role, ['admin', 'manager']))
         <button @click="$dispatch('open-new-group')"
-                class="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm border border-gray-200">
+                class="msg-btn-newgroup flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm border border-gray-200">
             <i class="fa fa-users text-indigo-500"></i> <span class="btn-text-label">New Group</span>
         </button>
         @endif
         <button @click="$dispatch('open-new-msg')"
-                class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm">
+                class="msg-btn-newmsg flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm">
             <i class="fa fa-edit"></i> <span class="btn-text-label">New Message</span>
         </button>
     </div>
@@ -232,8 +342,11 @@ $lastSeenMapJson = json_encode($lastSeenMap);
 <div class="msg-chat-grid grid grid-cols-1 lg:grid-cols-4 gap-4" style="height:calc(100vh - 14rem);"
      x-data="messageApp()"
      x-init="init()"
+     :class="(activeUserId!==null || isGroup) ? 'mob-thread-active' : ''"
      @open-new-msg.window="$dispatch('open-new-msg-modal')"
      @group-created.window="onGroupCreated($event.detail)">
+
+    @include('messages._mobile-index')
 
     {{-- ── Contacts + Groups Sidebar ── --}}
     <div class="msg-contacts-sidebar bg-white rounded-xl border border-gray-100 shadow-sm flex flex-col overflow-hidden">
@@ -244,11 +357,26 @@ $lastSeenMapJson = json_encode($lastSeenMap);
                        class="w-full pl-8 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300">
             </div>
         </div>
+        {{-- Mobile-only Direct/Groups segmented switch — desktop keeps both lists stacked --}}
+        @php
+            $msgMobileTabs = [
+                ['key' => 'direct', 'label' => 'Direct', 'count' => $teamMembers->count(), 'onclick' => "msgMobileTab('direct', this)"],
+                ['key' => 'groups', 'label' => 'Groups', 'count' => $groups->count(), 'onclick' => "msgMobileTab('groups', this)"],
+            ];
+        @endphp
+        <div class="msg-mobile-tabs">
+            <x-mobile.segmented
+                :options="$msgMobileTabs"
+                active="direct"
+            />
+        </div>
+
         <div class="flex-1 overflow-y-auto pb-3">
 
+            <div class="msg-tab-panel" data-panel="direct">
             {{-- Direct messages --}}
             <div class="px-3 pt-3 pb-1">
-                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Direct</p>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Direct</p>
             </div>
             <div class="px-2 space-y-0.5">
                 @forelse($teamMembers as $member)
@@ -286,7 +414,7 @@ $lastSeenMapJson = json_encode($lastSeenMap);
                         @if($memberLast)
                         <p class="contact-last-msg">{{ $memberLast['mine'] ? 'You: ' : '' }}{{ $memberLast['body'] }}</p>
                         @else
-                        <p class="text-xs text-gray-400">{{ ucfirst($member->role) }}</p>
+                        <p class="text-xs text-gray-500">{{ ucfirst($member->role) }}</p>
                         @endif
                     </div>
                     <template x-if="unreadCounts.direct && unreadCounts.direct[{{ $member->id }}]>0">
@@ -295,17 +423,19 @@ $lastSeenMapJson = json_encode($lastSeenMap);
                     </template>
                 </button>
                 @empty
-                <div class="text-center py-4 text-gray-400 text-xs">No team members</div>
+                <div class="text-center py-4 text-gray-500 text-xs">No team members</div>
                 @endforelse
             </div>
+            </div>{{-- /msg-tab-panel[direct] --}}
 
+            <div class="msg-tab-panel" data-panel="groups">
             {{-- Groups --}}
             <div class="px-3 pt-4 pb-1 flex items-center justify-between">
-                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Groups</p>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Groups</p>
                 @if(in_array(auth()->user()->role, ['admin', 'manager']))
                 <button @click="$dispatch('open-new-group')"
-                        class="w-5 h-5 rounded flex items-center justify-center hover:bg-gray-100 text-gray-400 hover:text-indigo-500 transition" title="New Group">
-                    <i class="fa fa-plus" style="font-size:9px;"></i>
+                        class="w-11 h-11 rounded flex items-center justify-center hover:bg-gray-100 text-gray-400 hover:text-indigo-500 transition" title="New Group">
+                    <i class="fa fa-plus" style="font-size:11px;"></i>
                 </button>
                 @endif
             </div>
@@ -322,7 +452,7 @@ $lastSeenMapJson = json_encode($lastSeenMap);
                         </div>
                         <div class="flex-1 min-w-0">
                             <p class="text-sm font-medium text-gray-900 truncate" x-text="grp.name"></p>
-                            <p class="text-xs text-gray-400 truncate" x-text="grp.members.length + ' members'"></p>
+                            <p class="text-xs text-gray-500 truncate" x-text="grp.members.length + ' members'"></p>
                         </div>
                         <template x-if="grp.unread > 0">
                             <span class="text-xs font-bold bg-indigo-600 text-white rounded-full px-1.5 py-0.5 flex-shrink-0"
@@ -331,9 +461,10 @@ $lastSeenMapJson = json_encode($lastSeenMap);
                     </button>
                 </template>
                 <template x-if="groups.length===0">
-                    <p class="text-center text-xs text-gray-400 py-3">No groups yet</p>
+                    <p class="text-center text-xs text-gray-500 py-3">No groups yet</p>
                 </template>
             </div>
+            </div>{{-- /msg-tab-panel[groups] --}}
 
         </div>
     </div>
@@ -380,6 +511,9 @@ $lastSeenMapJson = json_encode($lastSeenMap);
                 {{-- Header --}}
                 <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
                     <div class="flex items-center gap-3 min-w-0">
+                        <button type="button" class="msg-mobile-back" style="display:none;" @click="activeUserId=null; isGroup=false;" aria-label="Back to conversations" title="Back">
+                            <i class="fa fa-chevron-left"></i>
+                        </button>
                         <div class="relative flex-shrink-0">
                             <template x-if="!isGroup && activeUserAvatar">
                                 <img :src="activeUserAvatar" :alt="activeUserName"
@@ -741,7 +875,7 @@ $lastSeenMapJson = json_encode($lastSeenMap);
                 </template>
 
                 {{-- Input --}}
-                <div class="px-4 py-3 border-t border-gray-100 flex-shrink-0" @click.outside="showEmoji=false">
+                <div class="msg-composer-wrap px-4 py-3 border-t border-gray-100 flex-shrink-0" @click.outside="showEmoji=false">
                     {{-- Emoji picker popup --}}
                     <template x-if="showEmoji">
                         <div class="mb-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden" style="max-height:260px;">
@@ -780,7 +914,7 @@ $lastSeenMapJson = json_encode($lastSeenMap);
                         </div>
                     </template>
                     <template x-if="!recording">
-                        <div class="flex items-center gap-2 rounded-xl px-3 py-2 border-2 transition-all duration-150"
+                        <div class="msg-composer-row flex items-center gap-2 rounded-xl px-3 py-2 border-2 transition-all duration-150"
                              :class="composeDrag
                                  ? 'bg-indigo-50 border-dashed border-indigo-400 ring-2 ring-indigo-100'
                                  : 'bg-gray-50 border-gray-200 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100'"
@@ -798,7 +932,7 @@ $lastSeenMapJson = json_encode($lastSeenMap);
                             </template>
 
                             <template x-if="!composeDrag">
-                                <label class="cursor-pointer flex-shrink-0" title="Attach file">
+                                <label class="msg-attach-btn cursor-pointer flex-shrink-0" title="Attach file">
                                     <input type="file" x-ref="fileInput" class="hidden" multiple @change="onFileSelected($event)">
                                     <span class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 transition text-gray-400 hover:text-indigo-500">
                                         <i class="fa fa-paperclip text-sm"></i>
@@ -807,7 +941,7 @@ $lastSeenMapJson = json_encode($lastSeenMap);
                             </template>
                             <template x-if="!composeDrag">
                                 <button type="button" @click="startRecording()" title="Voice message"
-                                        class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 transition text-gray-400 hover:text-red-500 flex-shrink-0">
+                                        class="msg-mic-btn w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 transition text-gray-400 hover:text-red-500 flex-shrink-0">
                                     <i class="fa fa-microphone text-sm"></i>
                                 </button>
                             </template>
@@ -825,19 +959,19 @@ $lastSeenMapJson = json_encode($lastSeenMap);
                                        @paste="if($event.clipboardData.files.length){$event.preventDefault();addFiles($event.clipboardData.files)}"
                                        rows="1"
                                        style="resize:none;overflow:hidden;max-height:96px;line-height:1.5;"
-                                       class="flex-1 bg-transparent text-sm text-gray-700 focus:outline-none placeholder-gray-400 min-w-0 self-center"></textarea>
+                                       class="msg-compose-textarea flex-1 bg-transparent text-sm text-gray-700 focus:outline-none placeholder-gray-400 min-w-0 self-center"></textarea>
                             </template>
                             <template x-if="!composeDrag">
                                 <button type="button" @click.stop="showEmoji=!showEmoji" title="Emoji"
                                         :class="showEmoji?'text-indigo-500 bg-indigo-50':'text-gray-400 hover:text-yellow-500'"
-                                        class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 transition flex-shrink-0">
+                                        class="msg-emoji-btn w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-200 transition flex-shrink-0">
                                     <span class="text-base leading-none">😊</span>
                                 </button>
                             </template>
                             <button type="button"
                                     :disabled="sending||(newMessage.trim()===''&&pendingFiles.length===0)"
                                     @click="sendMessage()"
-                                    class="w-8 h-8 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 rounded-lg flex items-center justify-center text-white transition flex-shrink-0">
+                                    class="msg-send-btn w-8 h-8 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 rounded-lg flex items-center justify-center text-white transition flex-shrink-0">
                                 <i :class="sending?'fa fa-spinner fa-spin':'fa fa-paper-plane'" class="text-xs"></i>
                             </button>
                         </div>
@@ -1026,6 +1160,17 @@ function voicePlayer(url, msgId) {
         seek(e) { const a = this.$refs.audio; if (!a || !this.duration) return; const rect = e.currentTarget.getBoundingClientRect(); const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)); a.currentTime = ratio * this.duration; this.progress = ratio; },
         get timeDisplay() { const t = this.playing ? this.current : this.duration; if (!t || isNaN(t) || !isFinite(t)) return '0:00'; return Math.floor(t/60)+':'+(Math.floor(t%60)).toString().padStart(2,'0'); },
     };
+}
+
+/* ── Mobile-only Direct/Groups tab switch (contacts sidebar) ── */
+function msgMobileTab(tab, btn) {
+    const sidebar = document.querySelector('.msg-contacts-sidebar');
+    if (sidebar) sidebar.classList.toggle('mob-show-groups', tab === 'groups');
+    if (btn) {
+        const seg = btn.closest('.uds-seg');
+        if (seg) seg.querySelectorAll('.uds-seg-opt').forEach(b => b.classList.remove('is-on'));
+        btn.classList.add('is-on');
+    }
 }
 
 const TEAM_MEMBERS = {!! $teamMembersJson !!};

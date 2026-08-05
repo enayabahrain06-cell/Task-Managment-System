@@ -39,8 +39,12 @@ class CustomerController extends Controller
         $summaryDefaultFromStr = now()->subMonth()->toDateString();
         $summaryDefaultToStr   = now()->toDateString();
 
+        // Mobile header sub-stat (resources/views/admin/customers/_mobile-index.blade.php):
+        // must be a real full-table count, not scoped to the current page like $customers->where(...).
+        $withOpenWork = Customer::whereRaw($this->taskCountRaw() . ' > 0')->count();
+
         return view('admin.customers.index', compact(
-            'customers', 'summaryDefaultFromStr', 'summaryDefaultToStr'
+            'customers', 'summaryDefaultFromStr', 'summaryDefaultToStr', 'withOpenWork'
         ));
     }
 

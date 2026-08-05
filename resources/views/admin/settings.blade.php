@@ -167,6 +167,125 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
     [style*="grid-template-columns:auto 1fr auto auto"] { grid-template-columns:1fr !important; }
     .scard-body [style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr !important; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   MOBILE PREMIUM PASS (≤768px) — reuses the shared .mob-*
+   design tokens defined in layouts/app.blade.php (radius,
+   shadow, spacing, brand gradient). Desktop (>768px) is
+   completely untouched by this block.
+   ══════════════════════════════════════════════════════════ */
+@media (max-width:768px){
+
+    /* ── Expand tap area (without enlarging the visible circle) for the
+       team-artwork thumbnail remove buttons and the team-avatar upload
+       trigger — both are small absolutely-positioned circles. ── */
+    .art-remove-btn::before, .team-avatar-upload-btn::before {
+        content:''; position:absolute; top:-12px; right:-12px; bottom:-12px; left:-12px;
+    }
+
+    /* ── Tab bar → compact horizontally-scrolling chip row ── */
+    .settings-wrap { grid-template-columns:1fr !important; gap:0 !important; }
+    .settings-nav {
+        display:flex !important; flex-wrap:nowrap !important; overflow-x:auto;
+        -webkit-overflow-scrolling:touch; scroll-snap-type:x proximity;
+        gap:8px !important; padding:2px 2px 10px !important;
+        margin:0 0 var(--mob-sp-2, 16px) !important;
+        background:transparent !important; border:none !important; box-shadow:none !important;
+        position:static !important; border-radius:0 !important;
+    }
+    .settings-nav::-webkit-scrollbar { display:none; }
+    .snav-item {
+        scroll-snap-align:start; flex:0 0 auto !important; width:auto !important;
+        display:inline-flex !important; align-items:center; gap:7px;
+        min-height:44px; padding:0 14px !important; border-radius:999px !important;
+        background:#fff; border:1px solid #F3F4F6;
+        box-shadow:var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05));
+        font-size:13px; white-space:nowrap;
+    }
+    .snav-item.active {
+        background:var(--mob-brand-grad, linear-gradient(135deg,#4F46E5,#6366F1)) !important;
+        color:#fff !important; box-shadow:0 6px 16px rgba(79,70,229,.25) !important;
+    }
+
+    /* ── Form controls: full width, ≥46px tall, comfortable text size ── */
+    .sf-input, .sf-select,
+    .scard-body input[type=text], .scard-body input[type=password],
+    .scard-body input[type=email], .scard-body input[type=number],
+    .scard-body input[type=url], .scard-body input[type=tel],
+    .scard-body input[type=time],
+    .scard-body select {
+        min-height:46px; font-size:15px;
+    }
+    .scard-body textarea.sf-input,
+    .scard-body textarea { min-height:88px; font-size:15px; }
+    .sf-row { grid-template-columns:1fr !important; gap:14px !important; }
+
+    /* Any remaining inline paired-input grids collapse to a single column */
+    [style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr !important; }
+    [style*="grid-template-columns:1fr 120px"] { grid-template-columns:1fr !important; }
+    .export-grid { grid-template-columns:1fr !important; }
+
+    /* Test-email row (Mail tab) — let the button drop below the input instead of squeezing */
+    [style*="align-items:flex-end"][style*="gap:10px"] { flex-wrap:wrap; }
+    [style*="align-items:flex-end"][style*="gap:10px"] > div { flex-basis:100%; }
+
+    /* Danger-zone rows (Clear Data) — allow label + button to wrap instead of crowding */
+    [style*="justify-content:space-between"][style*="padding:16px 24px"] {
+        flex-wrap:wrap; row-gap:10px;
+    }
+
+    /* Team Photos row (Team tab) — stack avatar block above the login-card fields */
+    .team-photo-row { flex-wrap:wrap; }
+    .team-photo-fields {
+        flex:1 1 100% !important; flex-wrap:wrap; padding-left:0 !important;
+        border-left:none !important; margin-top:12px; padding-top:12px;
+        border-top:1px dashed #F3F4F6;
+    }
+    .team-photo-fields > div { flex:1 1 100% !important; }
+
+    /* Fixed-width popup modals (Backup & Export tab) — never wider than the viewport */
+    [style*="width:360px"] {
+        width:calc(100% - 32px) !important; max-width:360px;
+    }
+
+    /* ── Toggle switches: bigger, easier to hit ── */
+    .toggle { width:48px !important; height:27px !important; }
+    .toggle-slider:before { height:21px !important; width:21px !important; }
+    input:checked + .toggle-slider:before { transform:translateX(21px) !important; }
+    .sf-toggle-row { min-height:44px; gap:12px; }
+
+    /* Custom Alpine/inline pill switches (Developer tab, Storage provider toggles) */
+    [style*="width:44px;height:24px;border-radius:12px"] {
+        height:30px !important; border-radius:15px !important;
+    }
+    [style*="width:44px;height:24px;border-radius:12px"] > div,
+    [style*="width:44px;height:24px;border-radius:12px"] > span {
+        top:50% !important; transform:translateY(-50%) !important;
+    }
+
+    /* ── Upload zones: roomier tap area (drag-and-drop already implemented) ── */
+    .upload-zone { padding:18px 14px; }
+    .remove-btn { min-height:32px; padding:6px 12px; }
+
+    /* ── Section cards: align to shared mob-* card tokens ── */
+    .scard {
+        overflow:visible !important;
+        border-radius:var(--mob-r-lg, 20px) !important;
+        box-shadow:var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05)) !important;
+    }
+    .scard-body { padding:var(--mob-sp-2, 16px) !important; }
+    .scard-header { border-radius:var(--mob-r-lg, 20px) var(--mob-r-lg, 20px) 0 0; padding:var(--mob-sp-2, 16px) !important; }
+
+    /* ── Save / cancel buttons: full width, sticky above the bottom nav ── */
+    .scard-footer {
+        position:sticky; bottom:calc(58px + env(safe-area-inset-bottom));
+        border-radius:0 0 var(--mob-r-lg, 20px) var(--mob-r-lg, 20px); flex-wrap:wrap;
+        background:rgba(250,250,250,.94); backdrop-filter:blur(8px);
+        box-shadow:0 -6px 20px rgba(0,0,0,.06); z-index:5;
+    }
+    .scard-footer button { min-height:44px; }
+    .btn-save, .btn-cancel { min-height:46px; flex:1 1 auto; }
+}
 </style>
 
 {{-- Page Header --}}
@@ -963,7 +1082,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                             <template x-if="artworkIsVideo(img.path)">
                                                 <span style="position:absolute;bottom:3px;left:3px;background:rgba(17,24,39,.75);color:#fff;border-radius:4px;padding:1px 5px;font-size:9px;"><i class="fas fa-video"></i></span>
                                             </template>
-                                            <button type="button" @click="artworkRemoveExisting(i)"
+                                            <button type="button" @click="artworkRemoveExisting(i)" class="art-remove-btn"
                                                     style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(17,24,39,.75);border:none;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;padding:0;">
                                                 <i class="fas fa-times"></i>
                                             </button>
@@ -980,7 +1099,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                             <template x-if="artworkIsVideo(file.name)">
                                                 <span style="position:absolute;bottom:3px;left:3px;background:rgba(17,24,39,.75);color:#fff;border-radius:4px;padding:1px 5px;font-size:9px;"><i class="fas fa-video"></i></span>
                                             </template>
-                                            <button type="button" @click="artworkRemoveNew(i)"
+                                            <button type="button" @click="artworkRemoveNew(i)" class="art-remove-btn"
                                                     style="position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(17,24,39,.75);border:none;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;padding:0;">
                                                 <i class="fas fa-times"></i>
                                             </button>
@@ -1989,7 +2108,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         $photoIndex = $member->avatar ? $photoOrder->search(fn ($m) => $m->id === $member->id) : false;
                         $slot = $photoIndex !== false ? $photoIndex + 1 : null;
                     @endphp
-                    <div style="display:flex;align-items:center;gap:16px;padding:14px 0;{{ !$loop->last ? 'border-bottom:1px solid #F3F4F6;' : '' }}">
+                    <div class="team-photo-row" style="display:flex;align-items:center;gap:16px;padding:14px 0;{{ !$loop->last ? 'border-bottom:1px solid #F3F4F6;' : '' }}">
                         <form method="POST" action="{{ route('admin.settings.about-page.team-photo', $member) }}" enctype="multipart/form-data"
                               style="display:flex;align-items:center;gap:16px;flex-shrink:0;"
                               x-data="{ preview: @js($member->avatarUrl()) }">
@@ -2005,7 +2124,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                         </div>
                                     </template>
                                 </div>
-                                <label style="position:absolute;bottom:-2px;right:-2px;width:24px;height:24px;background:#6366F1;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.2);">
+                                <label class="team-avatar-upload-btn" style="position:absolute;bottom:-2px;right:-2px;width:24px;height:24px;background:#6366F1;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.2);">
                                     <i class="fa fa-camera" style="color:#fff;font-size:10px;"></i>
                                     <input type="file" name="avatar" accept="image/*" style="display:none;"
                                            @change="if ($event.target.files[0]) { preview = URL.createObjectURL($event.target.files[0]); $el.closest('form').submit(); }">
@@ -2017,7 +2136,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </div>
                         </form>
                         @if($slot && $slot <= 5)
-                        <div style="display:flex;gap:8px;flex:1;min-width:0;padding-left:16px;border-left:1px solid #F3F4F6;">
+                        <div class="team-photo-fields" style="display:flex;gap:8px;flex:1;min-width:0;padding-left:16px;border-left:1px solid #F3F4F6;">
                             <div style="flex:1;min-width:0;">
                                 <label class="sf-label" style="font-weight:400;color:#9CA3AF;font-size:10.5px;">Login corner card — title</label>
                                 <input type="text" form="about-page-form" name="login_frame{{ $slot }}_title" class="sf-input" maxlength="40"
@@ -3200,7 +3319,8 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
             <div class="scard" x-data="{
                 showRestore: false, showBackupPicker: false,
                 showRestoreAuth: false, authPassword: '', authError: '', authChecking: false, restoreUnlocked: false,
-                pendingNasPath: '',
+                pendingNasPath: '', pendingServerFilename: '',
+                restoring: false, restoreProgress: 0, restoreOk: null, restoreMsg: '',
                 openRestore() {
                     if (this.restoreUnlocked) { this.showRestore = !this.showRestore; return; }
                     this.authPassword=''; this.authError=''; this.showRestoreAuth=true;
@@ -3209,6 +3329,11 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                 openNasRestore(path) {
                     if (this.restoreUnlocked) { this._submitNasRestore(path); return; }
                     this.pendingNasPath=path; this.authPassword=''; this.authError=''; this.showRestoreAuth=true;
+                    this.$nextTick(()=>{ document.getElementById('restore-pwd-input')?.focus(); });
+                },
+                openServerRestore(filename) {
+                    if (this.restoreUnlocked) { this._submitServerRestore(filename); return; }
+                    this.pendingServerFilename=filename; this.authPassword=''; this.authError=''; this.showRestoreAuth=true;
                     this.$nextTick(()=>{ document.getElementById('restore-pwd-input')?.focus(); });
                 },
                 verifyPassword() {
@@ -3222,6 +3347,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         if (d.ok) {
                             this.restoreUnlocked=true; this.showRestoreAuth=false;
                             if (this.pendingNasPath) { this._submitNasRestore(this.pendingNasPath); this.pendingNasPath=''; }
+                            else if (this.pendingServerFilename) { this._submitServerRestore(this.pendingServerFilename); this.pendingServerFilename=''; }
                             else { this.showRestore=true; }
                         } else {
                             this.authError='Incorrect password. Please try again.';
@@ -3233,8 +3359,65 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                     const f = document.getElementById('nas-restore-form');
                     f.querySelector('[name=nas_path]').value = path;
                     f.submit();
+                },
+                _submitServerRestore(filename) {
+                    if (!window.confirm('Restore from server file: ' + filename + '?\n\nThis replaces ALL current data and cannot be undone.')) return;
+                    const f = document.getElementById('server-restore-form');
+                    f.querySelector('[name=filename]').value = filename;
+                    f.submit();
+                },
+                async submitChunkedRestore(form) {
+                    const file = form.querySelector('input[name=backup_file]').files[0];
+                    if (!file) return;
+                    if (!window.confirm('Are you sure? This will replace ALL system data with the uploaded backup. This cannot be undone.')) return;
+
+                    this.restoring = true; this.restoreOk = null; this.restoreMsg = ''; this.restoreProgress = 0;
+
+                    const CHUNK_SIZE = 40 * 1024 * 1024;
+                    const totalChunks = Math.max(1, Math.ceil(file.size / CHUNK_SIZE));
+                    const uploadId = (window.crypto?.randomUUID ? crypto.randomUUID() : ('u' + Date.now() + Math.random().toString(36).slice(2)));
+
+                    try {
+                        for (let i = 0; i < totalChunks; i++) {
+                            const start = i * CHUNK_SIZE;
+                            const fd = new FormData();
+                            fd.append('upload_id', uploadId);
+                            fd.append('chunk_index', i);
+                            fd.append('total_chunks', totalChunks);
+                            fd.append('original_filename', file.name);
+                            fd.append('chunk', file.slice(start, start + CHUNK_SIZE));
+                            const r = await fetch('{{ route('admin.settings.backup.restore.chunk') }}', {
+                                method: 'POST',
+                                headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}'},
+                                body: fd,
+                            });
+                            if (!r.ok) throw new Error('Upload failed on chunk ' + (i + 1) + ' of ' + totalChunks + '. Please try again.');
+                            this.restoreProgress = Math.round(((i + 1) / totalChunks) * 100);
+                        }
+
+                        const fr = await fetch('{{ route('admin.settings.backup.restore.chunk.finalize') }}', {
+                            method: 'POST',
+                            headers: {'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Content-Type': 'application/json', 'Accept': 'application/json'},
+                            body: JSON.stringify({upload_id: uploadId, total_chunks: totalChunks, original_filename: file.name}),
+                        });
+                        const data = await fr.json();
+                        this.restoreOk = data.ok;
+                        this.restoreMsg = data.msg;
+                        if (data.ok) { setTimeout(() => window.location.reload(), 1800); }
+                    } catch (e) {
+                        this.restoreOk = false;
+                        this.restoreMsg = e.message || 'Upload failed. Please try again.';
+                    } finally {
+                        this.restoring = false;
+                    }
                 }
             }" style="margin-bottom:16px;">
+
+                {{-- Hidden server-file restore form (shared by all server restore buttons) --}}
+                <form id="server-restore-form" method="POST" action="{{ route('admin.settings.backup.restore.server') }}" style="display:none;">
+                    @csrf
+                    <input type="hidden" name="filename" value="">
+                </form>
 
                 {{-- Hidden NAS restore form (shared by all NAS restore buttons) --}}
                 <form id="nas-restore-form" method="POST" action="{{ route('admin.settings.backup.restore.nas') }}" style="display:none;">
@@ -3278,7 +3461,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         </p>
 
                         <div style="display:flex;gap:8px;">
-                            <button type="button" @click="showRestoreAuth=false; pendingNasPath='';"
+                            <button type="button" @click="showRestoreAuth=false; pendingNasPath=''; pendingServerFilename='';"
                                     style="flex:1;padding:9px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
                                 Cancel
                             </button>
@@ -3567,6 +3750,64 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                 </div>
                 @endif
 
+                {{-- Restore from Server — for backups too large to upload through the browser
+                     (e.g. blocked by Cloudflare's proxy body-size limit). Copy the .zip/.sqlite
+                     file into storage/app/backups/ on the server directly (scp/sftp), then restore
+                     it from this list — no browser upload involved. --}}
+                <div x-data="{ showFiles: false, loadingFiles: false, files: [], filesLoaded: false,
+                    loadFiles() {
+                        this.loadingFiles=true;
+                        fetch('{{ route('admin.settings.backup.server.list') }}', {headers:{'Accept':'application/json'}})
+                            .then(r=>r.json()).then(d=>{ this.files=d.files||[]; this.filesLoaded=true; this.loadingFiles=false; });
+                    },
+                    toggle() { this.showFiles=!this.showFiles; if(this.showFiles && !this.filesLoaded) this.loadFiles(); }
+                }" style="border-top:1px solid #F3F4F6;padding:14px 20px 16px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:32px;height:32px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-server" style="color:#4F46E5;font-size:13px;"></i>
+                            </div>
+                            <div>
+                                <p style="font-size:13px;font-weight:700;color:#111827;margin:0;">Restore from Server</p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:1px 0 0;">For files too large to upload through the browser — copy to <code style="background:#F3F4F6;padding:1px 4px;border-radius:3px;">storage/app/backups/</code> on the server first</p>
+                            </div>
+                        </div>
+                        <button type="button" @click="toggle()"
+                                style="display:flex;align-items:center;gap:6px;padding:7px 12px;background:#F3F4F6;color:#374151;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">
+                            <i class="fas fa-folder-open" style="font-size:10px;"></i>
+                            <span x-text="showFiles ? 'Hide Files' : 'View Server Files'"></span>
+                        </button>
+                    </div>
+
+                    <div x-show="showFiles" x-cloak style="margin-top:12px;padding-top:12px;border-top:1px solid #F3F4F6;">
+                        <div x-show="loadingFiles" style="text-align:center;padding:12px;color:#9CA3AF;font-size:12px;">
+                            <i class="fas fa-circle-notch fa-spin"></i> Loading…
+                        </div>
+                        <div x-show="!loadingFiles && filesLoaded && files.length === 0" style="font-size:12px;color:#9CA3AF;padding:8px 0;">
+                            No backup files found in storage/app/backups/ on the server.
+                        </div>
+                        <template x-if="!loadingFiles && filesLoaded && files.length > 0">
+                            <div style="display:flex;flex-direction:column;gap:6px;">
+                                <template x-for="f in files" :key="f.name">
+                                    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;">
+                                        <i class="fas" :class="f.name.endsWith('.zip') ? 'fa-file-zipper' : 'fa-database'"
+                                           :style="f.name.endsWith('.zip') ? 'color:#6366F1;' : 'color:#6B7280;'" style="font-size:13px;flex-shrink:0;"></i>
+                                        <div style="flex:1;min-width:0;">
+                                            <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="f.name"></p>
+                                            <p style="font-size:11px;color:#9CA3AF;margin:0;" x-text="f.size + ' MB · ' + f.modified"></p>
+                                        </div>
+                                        <button type="button" @click="openServerRestore(f.name)"
+                                                style="display:flex;align-items:center;gap:5px;padding:5px 10px;background:#DC2626;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap;"
+                                                onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
+                                            <i class="fas fa-rotate-left" style="font-size:9px;"></i> Restore
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
                 {{-- Full System Restore (collapsible row) --}}
                 <div style="border-top:1px solid #F3F4F6;padding:14px 20px 16px;">
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
@@ -3596,24 +3837,31 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         <p style="font-size:11px;color:#7F1D1D;background:#FEF2F2;border:1px solid #FECACA;border-radius:7px;padding:8px 12px;margin:0 0 10px;line-height:1.5;">
                             <i class="fas fa-triangle-exclamation" style="margin-right:5px;"></i><strong>Warning:</strong> This permanently replaces ALL current data (database + uploaded files). Download a fresh backup first. Supports both <strong>.zip</strong> (full backup) and <strong>.sqlite</strong> (DB-only legacy).
                         </p>
-                        <form method="POST" action="{{ route('admin.settings.backup.restore') }}" enctype="multipart/form-data"
-                              onsubmit="return confirm('Are you sure? This will replace ALL system data with the uploaded backup. This cannot be undone.')">
-                            @csrf
+                        {{-- Uploaded in chunks (not one large request) so it doesn't hit Cloudflare's
+                             proxy body-size limit — this form previously sent the whole file in a
+                             single POST, which silently connection-reset for large ZIP backups. --}}
+                        <form @submit.prevent="submitChunkedRestore($event.target)" enctype="multipart/form-data">
                             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                                 <label style="flex:1;min-width:180px;display:flex;align-items:center;gap:8px;padding:8px 12px;border:2px dashed #FECACA;border-radius:8px;cursor:pointer;background:#fff;"
                                        onmouseover="this.style.borderColor='#DC2626'" onmouseout="this.style.borderColor='#FECACA'">
                                     <i class="fas fa-file" style="color:#DC2626;font-size:13px;flex-shrink:0;"></i>
                                     <span style="font-size:12px;color:#9CA3AF;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="backup-file-name">Choose .zip or .sqlite backup…</span>
-                                    <input type="file" name="backup_file" accept=".zip,.sqlite" required style="display:none;"
+                                    <input type="file" name="backup_file" accept=".zip,.sqlite" required style="display:none;" :disabled="restoring"
                                            onchange="document.getElementById('backup-file-name').textContent = this.files[0]?.name || 'Choose .zip or .sqlite backup…'">
                                 </label>
-                                <button type="submit"
+                                <button type="submit" :disabled="restoring"
                                         style="padding:8px 18px;background:#DC2626;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0;"
-                                        onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
-                                    <i class="fas fa-rotate-left" style="font-size:10px;"></i> Restore Now
+                                        :style="restoring ? 'opacity:.6;cursor:not-allowed;' : ''"
+                                        onmouseover="if(!this.disabled)this.style.background='#B91C1C'" onmouseout="if(!this.disabled)this.style.background='#DC2626'">
+                                    <i class="fas" :class="restoring ? 'fa-circle-notch fa-spin' : 'fa-rotate-left'" style="font-size:10px;"></i>
+                                    <span x-text="restoring ? 'Uploading ' + restoreProgress + '%…' : 'Restore Now'"></span>
                                 </button>
                             </div>
                         </form>
+                        <div x-show="restoreMsg !== ''" x-cloak style="margin-top:10px;">
+                            <p :style="restoreOk ? 'color:#065F46;background:#ECFDF5;border:1px solid #6EE7B7;' : 'color:#7F1D1D;background:#FEF2F2;border:1px solid #FECACA;'"
+                               style="font-size:11px;border-radius:7px;padding:8px 12px;margin:0;" x-text="restoreMsg"></p>
+                        </div>
                     </div>
                 </div>
 

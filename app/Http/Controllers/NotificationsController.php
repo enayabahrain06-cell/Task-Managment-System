@@ -2,10 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-
 class NotificationsController extends Controller
 {
+    public function index()
+    {
+        $notifications = auth()->user()->notifications()->latest()->paginate(20);
+
+        return view('alerts.index', compact('notifications'));
+    }
+
     public function markRead(string $id)
     {
         $notification = auth()->user()->notifications()->where('id', $id)->first();
@@ -24,12 +29,14 @@ class NotificationsController extends Controller
     public function markAllRead()
     {
         auth()->user()->unreadNotifications->markAsRead();
+
         return back();
     }
 
     public function clearAll()
     {
         auth()->user()->notifications()->delete();
+
         return back();
     }
 
@@ -39,5 +46,4 @@ class NotificationsController extends Controller
             'count' => auth()->user()->unreadNotifications()->count(),
         ]);
     }
-
 }

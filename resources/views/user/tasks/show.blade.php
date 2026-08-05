@@ -27,6 +27,50 @@
     .user-task-table-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
     .user-task-table-wrap table { min-width: 600px !important; }
 }
+/* Sticky bottom action bar for the comment/submit primary actions — sits above the
+   global mobile tab bar (58px) so it never gets covered by it. */
+@media (max-width: 768px) {
+    .uts-action-bar {
+        position: sticky;
+        bottom: calc(58px + env(safe-area-inset-bottom));
+        background: #fff;
+        padding: 10px 4px 4px;
+        margin: 8px -4px -20px;
+        z-index: 5;
+        box-shadow: 0 -6px 16px rgba(0,0,0,.08);
+        border-top: 1px solid #F3F4F6;
+    }
+    .uts-action-bar button { flex: 1; justify-content: center; min-height: 46px; }
+}
+/* Visual polish pass — align existing plain/tinted panels with the shared
+   mobile design tokens from layouts/app.blade.php (rounded corners + soft
+   shadow). Desktop is untouched; classes only take effect below 768px. */
+@media (max-width: 768px) {
+    .uts-mob-card {
+        border-radius: var(--mob-r-md) !important;
+        box-shadow: var(--mob-shadow-1) !important;
+        border-color: #F3F4F6 !important;
+    }
+    .uts-mob-card-accent { border-radius: var(--mob-r-md) !important; }
+    .uts-mob-banner {
+        border-radius: var(--mob-r-md) !important;
+        box-shadow: var(--mob-shadow-1) !important;
+    }
+    /* Primary tap targets should meet the 44px minimum */
+    .uts-mob-tap { min-height: 44px; }
+    /* Modal close "X" buttons (attachment-preview, submission-preview, admin-note-popup) */
+    .uts-modal-close-x { width: 44px !important; height: 44px !important; }
+    /* Back-navigation icon link near the page header */
+    .uts-back-nav { width: 44px !important; height: 44px !important; }
+    /* File-chip remove button — bumped from 16x16 to a safer 32x32 tap target */
+    .uts-filechip-remove { width: 32px !important; height: 32px !important; }
+    /* Paste-link "Clear" button — bumped from 20x20 to a safer 32x32 tap target */
+    .uts-linkclear-btn { width: 32px !important; height: 32px !important; }
+    /* Pause-reason grid: single column so labels don't get cramped */
+}
+@media (max-width: 480px) {
+    .uts-pause-reason-grid { grid-template-columns: 1fr !important; }
+}
 </style>
 @php
     $isSocialAssignee = $isSocialAssignee ?? false;
@@ -36,22 +80,9 @@
     $deadlineEOD  = $task->deadline ? \App\Models\Setting::deadlineEOD($task->deadline) : null;
     $isOverdue    = $deadlineEOD && $deadlineEOD->isPast() && !in_array($task->status, $doneStatuses);
 
-    $statusMap = [
-        'draft'              => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Draft'],
-        'assigned'           => ['bg'=>'#E0F2FE','color'=>'#0284C7','label'=>'Assigned'],
-        'viewed'             => ['bg'=>'#EEF2FF','color'=>'#4F46E5','label'=>'Viewed'],
-        'in_progress'        => ['bg'=>'#FEF3C7','color'=>'#D97706','label'=>'In Progress'],
-        'paused'             => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Paused'],
-        'pending_customer'   => ['bg'=>'#FFF7ED','color'=>'#C2410C','label'=>'Awaiting Customer Review'],
-        'submitted'          => ['bg'=>'#EDE9FE','color'=>'#7C3AED','label'=>'Submitted for Review'],
-        'revision_requested' => ['bg'=>'#FEE2E2','color'=>'#DC2626','label'=>'Revision Requested'],
-        'approved'           => ['bg'=>'#D1FAE5','color'=>'#059669','label'=>'Approved'],
-        'delivered'          => ['bg'=>'#ECFDF5','color'=>'#047857','label'=>'Delivered'],
-        'archived'           => ['bg'=>'#F3F4F6','color'=>'#6B7280','label'=>'Archived'],
-    ];
-
-    $priorityMap = ['low'=>['bg'=>'#D1FAE5','color'=>'#059669'],'medium'=>['bg'=>'#FEF3C7','color'=>'#D97706'],'high'=>['bg'=>'#FEE2E2','color'=>'#DC2626']];
-    $s = $statusMap[$task->status] ?? $statusMap['assigned'];
+    $priorityMap = ['low'=>['bg'=>'#D1FAE5','color'=>'#059669'],'medium'=>['bg'=>'#FEF3C7','color'=>'#D97706'],'high'=>['bg'=>'#FFE4E6','color'=>'#E11D48']];
+    $statusMapC = \App\Support\TaskStatusColors::for($task->status);
+    $s = ['bg' => $statusMapC['bg'], 'color' => $statusMapC['text'], 'label' => $statusMapC['label']];
     $p = $priorityMap[$task->priority] ?? $priorityMap['medium'];
 
     $latestSubmission = $task->submissions->first();
@@ -90,7 +121,7 @@
 
 {{-- Header --}}
 <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
-    <a href="{{ route('user.tasks.index') }}"
+    <a href="{{ route('user.tasks.index') }}" class="uts-back-nav"
        style="width:36px;height:36px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;color:#6B7280;text-decoration:none;flex-shrink:0;">
         <i class="fa fa-arrow-left" style="font-size:13px;"></i>
     </a>
@@ -106,7 +137,7 @@
 </div>
 
 {{-- Workflow Stepper --}}
-<div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;margin-bottom:20px;overflow-x:auto;">
+<div class="uts-mob-card" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;margin-bottom:20px;overflow-x:auto;">
     <div class="uts-stepper-inner" style="min-width:{{ $hasSocial ? '900px' : '660px' }};">
         @foreach($steps as $idx => $step)
         @php
@@ -186,7 +217,7 @@
 
 {{-- Transfer provenance banner --}}
 @if(isset($incomingTransfer) && $incomingTransfer)
-<div style="background:#EEF2FF;border:1px solid #C7D2FE;border-radius:12px;padding:14px 18px;margin-bottom:16px;display:flex;gap:14px;align-items:flex-start;">
+<div class="uts-mob-banner" style="background:#EEF2FF;border:1px solid #C7D2FE;border-radius:12px;padding:14px 18px;margin-bottom:16px;display:flex;gap:14px;align-items:flex-start;">
     <div style="width:36px;height:36px;border-radius:10px;background:#E0E7FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
         <i class="fa fa-arrow-right-arrow-left" style="color:#4F46E5;font-size:13px;"></i>
     </div>
@@ -207,12 +238,12 @@
 @endif
 
 @if(session('success'))
-<div style="background:#D1FAE5;border:1px solid #A7F3D0;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px;color:#065F46;font-size:14px;">
+<div class="uts-mob-banner" style="background:#D1FAE5;border:1px solid #A7F3D0;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px;color:#065F46;font-size:14px;">
     <i class="fa fa-circle-check"></i> {{ session('success') }}
 </div>
 @endif
 @if(session('timer_warning'))
-<div style="background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:10px;color:#92400E;font-size:13px;">
+<div class="uts-mob-banner" style="background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:flex-start;gap:10px;color:#92400E;font-size:13px;">
     <i class="fa fa-triangle-exclamation" style="color:#D97706;margin-top:1px;flex-shrink:0;"></i>
     <div>
         <strong style="display:block;margin-bottom:2px;">Outside Work Hours</strong>
@@ -221,7 +252,7 @@
 </div>
 @endif
 @if(session('error'))
-<div style="background:#FEE2E2;border:1px solid #FECACA;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px;color:#991B1B;font-size:14px;">
+<div class="uts-mob-banner" style="background:#FEE2E2;border:1px solid #FECACA;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px;color:#991B1B;font-size:14px;">
     <i class="fa fa-circle-exclamation"></i> {{ session('error') }}
 </div>
 @endif
@@ -232,7 +263,7 @@
     <div style="display:flex;flex-direction:column;gap:20px;">
 
         {{-- Task details --}}
-        <div style="border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(109,40,217,.13);border:1px solid rgba(109,40,217,.12);">
+        <div class="uts-mob-banner" style="border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(109,40,217,.13);border:1px solid rgba(109,40,217,.12);">
             {{-- Purple gradient header --}}
             <div style="background:linear-gradient(135deg,#312e81,#4c1d95,#5b21b6);padding:16px 24px;display:flex;align-items:center;gap:10px;">
                 <span style="font-size:20px;line-height:1;">💡</span>
@@ -261,14 +292,14 @@
 
                 {{-- Info row --}}
                 <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                    <div style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
+                    <div class="uts-mob-card-accent" style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
                         <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:5px;">
                             <i class="fa fa-folder" style="font-size:9px;"></i> Project
                         </p>
                         <p style="font-size:13px;font-weight:700;color:#1c1917;margin:0;">{{ $task->project->name }}</p>
                     </div>
 
-                    <div style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
+                    <div class="uts-mob-card-accent" style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
                         <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:5px;">
                             <i class="fa fa-calendar" style="font-size:9px;"></i> Deadline
                         </p>
@@ -279,7 +310,7 @@
                     </div>
 
                     @if($task->reviewer)
-                    <div style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
+                    <div class="uts-mob-card-accent" style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
                         <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:5px;">
                             <i class="fa fa-eye" style="font-size:9px;"></i> Reviewer
                         </p>
@@ -290,7 +321,7 @@
                     {{-- Submitted by --}}
                     @if($task->submissions->isNotEmpty())
                     @php $latestSub = $task->submissions->sortByDesc('created_at')->first(); @endphp
-                    <div style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
+                    <div class="uts-mob-card-accent" style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:110px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
                         <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 4px;display:flex;align-items:center;gap:5px;">
                             <i class="fa fa-file-arrow-up" style="font-size:9px;"></i> Submitted by
                         </p>
@@ -306,7 +337,7 @@
                         $spFirst  = $task->socialPosts->first();
                         $spPosted = $spFirst !== null;
                     @endphp
-                    <div style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:130px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
+                    <div class="uts-mob-card-accent" style="background:rgba(255,255,255,.75);border-radius:10px;padding:12px 16px;flex:1;min-width:130px;box-shadow:0 1px 6px rgba(0,0,0,.06);backdrop-filter:blur(4px);">
                         <p style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#92400e;font-weight:700;margin:0 0 6px;display:flex;align-items:center;gap:5px;">
                             <i class="fas fa-share-nodes" style="font-size:9px;"></i> Social Post
                         </p>
@@ -362,7 +393,7 @@
              }"
              @keydown.escape.window="close()">
 
-            <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
+            <div class="uts-mob-card" style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
                 <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 16px;display:flex;align-items:center;gap:8px;">
                     <i class="fa fa-paperclip" style="color:#6366F1;"></i> Attachments
                     <span style="margin-left:auto;font-size:12px;font-weight:400;color:#9CA3AF;">{{ $allAttachments->count() }} {{ Str::plural('file', $allAttachments->count()) }}</span>
@@ -425,7 +456,7 @@
                                     <p style="font-size:14px;font-weight:700;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="att.name"></p>
                                     <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;" x-text="att.size || (att.isLink ? 'External link' : '')"></p>
                                 </div>
-                                <button @click="close()" style="width:32px;height:32px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <button @click="close()" class="uts-modal-close-x" style="width:32px;height:32px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                     <i class="fa fa-xmark" style="color:#6B7280;font-size:13px;"></i>
                                 </button>
                             </div>
@@ -470,7 +501,7 @@
 
         {{-- Social-only assignee CTA --}}
         @if($isSocialAssignee && !$task->social_posted_at)
-        <div style="background:linear-gradient(135deg,#EEF2FF,#F5F3FF);border:1.5px solid #C7D2FE;border-radius:14px;padding:20px;display:flex;align-items:center;gap:16px;">
+        <div class="uts-mob-banner" style="background:linear-gradient(135deg,#EEF2FF,#F5F3FF);border:1.5px solid #C7D2FE;border-radius:14px;padding:20px;display:flex;align-items:center;gap:16px;">
             <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(99,102,241,.3);">
                 <i class="fas fa-share-alt" style="color:#fff;font-size:18px;"></i>
             </div>
@@ -478,14 +509,14 @@
                 <p style="font-size:14px;font-weight:700;color:#3730A3;margin:0 0 4px;">Social Media Post Pending</p>
                 <p style="font-size:12px;color:#6D28D9;margin:0;">You're assigned to post this content on social media. Record the post once it's live.</p>
             </div>
-            <a href="{{ route('social.show', $task) }}"
+            <a href="{{ route('social.show', $task) }}" class="uts-mob-tap"
                style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;box-shadow:0 4px 12px rgba(99,102,241,.3);flex-shrink:0;white-space:nowrap;"
                onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">
                 <i class="fas fa-arrow-right" style="font-size:11px;"></i> Record Post
             </a>
         </div>
         @elseif($isSocialAssignee && $task->social_posted_at)
-        <div style="background:linear-gradient(135deg,#ECFDF5,#F0FDF4);border:1.5px solid #A7F3D0;border-radius:14px;padding:20px;display:flex;align-items:center;gap:16px;">
+        <div class="uts-mob-banner" style="background:linear-gradient(135deg,#ECFDF5,#F0FDF4);border:1.5px solid #A7F3D0;border-radius:14px;padding:20px;display:flex;align-items:center;gap:16px;">
             <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#059669,#10B981);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fas fa-circle-check" style="color:#fff;font-size:18px;"></i>
             </div>
@@ -493,7 +524,7 @@
                 <p style="font-size:14px;font-weight:700;color:#065F46;margin:0 0 4px;">Social Post Submitted</p>
                 <p style="font-size:12px;color:#047857;margin:0;">Posted on {{ $task->social_posted_at->format(config('app.date_format', 'M d, Y') . ' · H:i') }}.</p>
             </div>
-            <a href="{{ route('social.show', $task) }}"
+            <a href="{{ route('social.show', $task) }}" class="uts-mob-tap"
                style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:#ECFDF5;color:#059669;border:1.5px solid #A7F3D0;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;flex-shrink:0;white-space:nowrap;"
                onmouseover="this.style.background='#D1FAE5'" onmouseout="this.style.background='#ECFDF5'">
                 <i class="fas fa-eye" style="font-size:11px;"></i> View Post
@@ -504,7 +535,7 @@
         {{-- Status Banner --}}
         @if(!$isSocialAssignee)
         @if($task->status === 'submitted')
-        <div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:14px;padding:20px;display:flex;align-items:flex-start;gap:16px;">
+        <div class="uts-mob-banner" style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:14px;padding:20px;display:flex;align-items:flex-start;gap:16px;">
             <div style="width:44px;height:44px;border-radius:50%;background:#EDE9FE;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fa fa-hourglass-half" style="color:#7C3AED;font-size:18px;"></i>
             </div>
@@ -518,7 +549,7 @@
         </div>
 
         @elseif($task->status === 'revision_requested')
-        <div style="background:#FEF2F2;border:1.5px solid #FECACA;border-radius:14px;padding:20px;">
+        <div class="uts-mob-banner" style="background:#FEF2F2;border:1.5px solid #FECACA;border-radius:14px;padding:20px;">
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
                 <div style="width:44px;height:44px;border-radius:50%;background:#FEE2E2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <i class="fa fa-rotate-left" style="color:#DC2626;font-size:18px;"></i>
@@ -540,7 +571,7 @@
             </div>
             <form method="POST" action="{{ route('user.tasks.acknowledge-revision', $task) }}">
                 @csrf
-                <button type="submit"
+                <button type="submit" class="uts-mob-tap"
                         style="background:linear-gradient(135deg,#DC2626,#B91C1C);color:#fff;border:none;padding:11px 22px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;box-shadow:0 4px 12px rgba(220,38,38,.25);">
                     <i class="fa fa-circle-play"></i> I Accept &amp; Start Revision
                 </button>
@@ -553,7 +584,7 @@
             $pcNote = $pcLog?->note;
             $pcBy   = $pcLog?->user?->name ?? 'Manager';
         @endphp
-        <div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:14px;padding:18px 20px;display:flex;align-items:flex-start;gap:14px;">
+        <div class="uts-mob-banner" style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:14px;padding:18px 20px;display:flex;align-items:flex-start;gap:14px;">
             <div style="width:40px;height:40px;border-radius:50%;background:#FFEDD5;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
                 <i class="fa fa-user-clock" style="color:#C2410C;font-size:17px;"></i>
             </div>
@@ -579,7 +610,7 @@
                 ? array_filter(array_map('trim', explode(', ', $lastPauseLog->metadata['reason'])))
                 : [];
         @endphp
-        <div style="background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:14px;padding:18px 20px;display:flex;align-items:flex-start;gap:12px;">
+        <div class="uts-mob-banner" style="background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:14px;padding:18px 20px;display:flex;align-items:flex-start;gap:12px;">
             <div style="width:36px;height:36px;border-radius:50%;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
                 <i class="fa fa-circle-pause" style="color:#D97706;font-size:16px;"></i>
             </div>
@@ -600,14 +631,14 @@
             </div>
             <form id="_resumeTimerForm" method="POST" action="{{ route('user.tasks.timer.start', $task) }}" style="flex-shrink:0;">
                 @csrf
-                <button type="button" onclick="confirmStart('_resumeTimerForm')" style="background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
+                <button type="button" onclick="confirmStart('_resumeTimerForm')" class="uts-mob-tap" style="background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
                     <i class="fa fa-circle-play"></i> Resume Timer
                 </button>
             </form>
         </div>
 
         @elseif($task->status === 'approved')
-        <div style="background:#F0FDF4;border:1px solid #A7F3D0;border-radius:14px;padding:20px;display:flex;align-items:center;gap:14px;">
+        <div class="uts-mob-banner" style="background:#F0FDF4;border:1px solid #A7F3D0;border-radius:14px;padding:20px;display:flex;align-items:center;gap:14px;">
             <div style="width:44px;height:44px;border-radius:50%;background:#D1FAE5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fa fa-circle-check" style="color:#059669;font-size:20px;"></i>
             </div>
@@ -622,7 +653,7 @@
         </div>
 
         @elseif($task->status === 'delivered')
-        <div style="background:#ECFDF5;border:1px solid #6EE7B7;border-radius:14px;padding:20px;display:flex;align-items:center;gap:14px;">
+        <div class="uts-mob-banner" style="background:#ECFDF5;border:1px solid #6EE7B7;border-radius:14px;padding:20px;display:flex;align-items:center;gap:14px;">
             <div style="width:44px;height:44px;border-radius:50%;background:#D1FAE5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fa fa-truck" style="color:#047857;font-size:18px;"></i>
             </div>
@@ -633,7 +664,7 @@
         </div>
 
         @elseif($task->status === 'viewed')
-        <div style="background:#EEF2FF;border:1px solid #C7D2FE;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:12px;">
+        <div class="uts-mob-banner" style="background:#EEF2FF;border:1px solid #C7D2FE;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:12px;">
             <div style="width:36px;height:36px;border-radius:50%;background:#E0E7FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 <i class="fa fa-lightbulb" style="color:#6366F1;font-size:15px;"></i>
             </div>
@@ -644,7 +675,7 @@
         </div>
 
         @elseif($task->status === 'in_progress')
-        <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:12px;">
+        <div class="uts-mob-banner" style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:14px;padding:16px 20px;display:flex;align-items:center;gap:12px;">
             <div style="width:36px;height:36px;border-radius:50%;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                 @if($activeSegment)
                 <span style="width:10px;height:10px;border-radius:50%;background:#D97706;animation:pulse 1.5s infinite;display:block;"></span>
@@ -664,14 +695,14 @@
             <form id="_pauseForm" method="POST" action="{{ route('user.tasks.timer.pause', $task) }}">
                 @csrf
                 <input type="hidden" name="pause_reason" id="_pauseReasonInput">
-                <button type="button" onclick="openPauseModal('_pauseForm','_pauseReasonInput')" style="background:#F59E0B;color:#fff;border:none;padding:9px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
+                <button type="button" onclick="openPauseModal('_pauseForm','_pauseReasonInput')" class="uts-mob-tap" style="background:#F59E0B;color:#fff;border:none;padding:9px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
                     <i class="fa fa-circle-pause"></i> Pause
                 </button>
             </form>
             @else
             <form id="_startTimerForm" method="POST" action="{{ route('user.tasks.timer.start', $task) }}">
                 @csrf
-                <button type="button" onclick="confirmStart('_startTimerForm')" style="background:linear-gradient(135deg,#D97706,#B45309);color:#fff;border:none;padding:9px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
+                <button type="button" onclick="confirmStart('_startTimerForm')" class="uts-mob-tap" style="background:linear-gradient(135deg,#D97706,#B45309);color:#fff;border:none;padding:9px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;">
                     <i class="fa fa-circle-play"></i> Start Timer
                 </button>
             </form>
@@ -695,7 +726,7 @@
             $extBtnBg     = $isOverdue ? 'linear-gradient(135deg,#DC2626,#B91C1C)'   : 'linear-gradient(135deg,#4F46E5,#6366F1)';
             $extBtnShadow = $isOverdue ? 'rgba(220,38,38,.3)'                         : 'rgba(99,102,241,.3)';
         @endphp
-        <div style="background:{{ $extBg }};border:1.5px solid {{ $extBorder }};border-radius:14px;padding:16px 20px;">
+        <div class="uts-mob-banner" style="background:{{ $extBg }};border:1.5px solid {{ $extBorder }};border-radius:14px;padding:16px 20px;">
             <div style="display:flex;align-items:flex-start;gap:12px;">
                 <div style="width:36px;height:36px;border-radius:50%;background:{{ $extIconBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <i class="fa {{ $extIcon }}" style="color:{{ $extIconColor }};font-size:15px;"></i>
@@ -719,7 +750,7 @@
                     <i class="fa fa-circle-xmark"></i> Request Rejected
                 </span>
                 @else
-                <button type="button" onclick="document.getElementById('_extModal').style.display='flex'"
+                <button type="button" onclick="document.getElementById('_extModal').style.display='flex'" class="uts-mob-tap"
                         style="background:{{ $extBtnBg }};color:#fff;border:none;padding:9px 16px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;flex-shrink:0;box-shadow:0 3px 10px {{ $extBtnShadow }};">
                     <i class="fa fa-calendar-plus"></i> Request More Time
                 </button>
@@ -761,7 +792,7 @@
                     this.$nextTick(()=>this.$refs.rteEditor.querySelectorAll('a[href]').forEach(a=>{ a.setAttribute('target','_blank'); a.setAttribute('rel','noopener'); }));
                 },
                 getBody() { return this.$refs.rteEditor?.innerHTML?.trim() || ''; }
-             }" style="background:#fff;border-radius:14px;border:1.5px solid #6366F1;box-shadow:0 4px 16px rgba(99,102,241,.08);padding:24px;">
+             }" class="uts-mob-card-accent" style="background:#fff;border-radius:14px;border:1.5px solid #6366F1;box-shadow:0 4px 16px rgba(99,102,241,.08);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 4px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-comment" style="color:#6366F1;"></i>
                 @if($task->status === 'viewed')
@@ -907,7 +938,7 @@
                                     <i class="fa fa-paperclip" style="color:#6366F1;font-size:10px;flex-shrink:0;"></i>
                                     <span x-text="f.name" style="font-size:11px;font-weight:500;color:#3730A3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;"></span>
                                     <span x-text="f.size" style="font-size:10px;color:#818CF8;flex-shrink:0;white-space:nowrap;"></span>
-                                    <button type="button" @click.prevent="removeUFile(i)"
+                                    <button type="button" @click.prevent="removeUFile(i)" class="uts-filechip-remove"
                                             style="width:16px;height:16px;border-radius:50%;background:#FEE2E2;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                         <i class="fa fa-xmark" style="font-size:8px;color:#DC2626;"></i>
                                     </button>
@@ -928,7 +959,7 @@
                                    style="flex:1;border:none;background:transparent;font-size:13px;color:#111827;outline:none;"
                                    @input="deliveryUrl = $event.target.value">
                             <template x-if="deliveryUrl">
-                                <button type="button" @click="deliveryUrl = ''; $el.closest('div').querySelector('input').value = ''"
+                                <button type="button" @click="deliveryUrl = ''; $el.closest('div').querySelector('input').value = ''" class="uts-linkclear-btn"
                                         style="width:20px;height:20px;border-radius:50%;background:#FEE2E2;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                     <i class="fa fa-xmark" style="font-size:9px;color:#DC2626;"></i>
                                 </button>
@@ -946,7 +977,7 @@
                 <button type="submit" x-ref="submitBtn" formaction="{{ route('user.tasks.submit', $task) }}" style="display:none;" aria-hidden="true"></button>
                 @endif
 
-                <div style="display:flex;gap:8px;justify-content:flex-end;">
+                <div class="uts-action-bar" style="display:flex;gap:8px;justify-content:flex-end;">
                     @if($canSubmit && auth()->user()->hasPermission('submit_work'))
                     {{-- Comment button (secondary) --}}
                     <button type="button"
@@ -1088,7 +1119,7 @@
                 closeSub() { this.subOpen = false; this.subItem = null; }
              }"
              @keydown.escape.window="if(subOpen) closeSub()">
-        <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
+        <div class="uts-mob-card" style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:24px;">
             <h2 style="font-size:15px;font-weight:600;color:#374151;margin:0 0 16px;display:flex;align-items:center;gap:8px;">
                 <i class="fa fa-timeline" style="color:#6366F1;"></i> Timeline
                 <span style="margin-left:auto;font-size:12px;font-weight:500;color:#9CA3AF;">{{ $timeline->count() }} {{ Str::plural('event', $timeline->count()) }}</span>
@@ -1427,7 +1458,7 @@
                                                         <p style="font-size:11px;color:#9CA3AF;margin:0;">by {{ $sub->reviewer?->name ?? 'Admin' }}{{ $sub->reviewed_at ? ' · '.$sub->reviewed_at->format('M d, H:i') : '' }}</p>
                                                     </div>
                                                 </div>
-                                                <button @click="noteOpen=false" style="width:30px;height:30px;border-radius:8px;background:#F3F4F6;border:none;cursor:pointer;color:#6B7280;font-size:12px;display:flex;align-items:center;justify-content:center;"
+                                                <button @click="noteOpen=false" class="uts-modal-close-x" style="width:30px;height:30px;border-radius:8px;background:#F3F4F6;border:none;cursor:pointer;color:#6B7280;font-size:12px;display:flex;align-items:center;justify-content:center;"
                                                         onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
                                                     <i class="fas fa-times"></i>
                                                 </button>
@@ -1757,7 +1788,7 @@
                                     <p style="font-size:14px;font-weight:700;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="subItem.name"></p>
                                     <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;" x-text="'Version ' + subItem.version"></p>
                                 </div>
-                                <button @click="closeSub()" style="width:32px;height:32px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <button @click="closeSub()" class="uts-modal-close-x" style="width:32px;height:32px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                     <i class="fa fa-xmark" style="color:#6B7280;font-size:13px;"></i>
                                 </button>
                             </div>
@@ -1793,7 +1824,7 @@
     <div style="display:flex;flex-direction:column;gap:16px;">
 
         {{-- Quick info --}}
-        <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;">
+        <div class="uts-mob-card" style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;">
             <h3 style="font-size:13px;font-weight:600;color:#374151;margin:0 0 14px;text-transform:uppercase;letter-spacing:.04em;">Quick Info</h3>
             <div style="display:flex;flex-direction:column;gap:12px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -1859,7 +1890,7 @@
             $activeSegmentStartTs = $activeSegment ? $activeSegment->started_at->timestamp : 0;
         @endphp
         @if($showTimer)
-        <div id="timerWidget" style="background:#fff;border-radius:14px;border:1px solid {{ $timerRunning ? '#FDE68A' : '#F3F4F6' }};box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;text-align:center;transition:border-color .3s;">
+        <div id="timerWidget" class="uts-mob-card" style="background:#fff;border-radius:14px;border:1px solid {{ $timerRunning ? '#FDE68A' : '#F3F4F6' }};box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;text-align:center;transition:border-color .3s;">
             <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px;">
                 <i class="fa fa-stopwatch" style="color:{{ $timerRunning ? '#D97706' : '#9CA3AF' }};font-size:13px;"></i>
                 <h3 style="font-size:12px;font-weight:600;color:#6B7280;margin:0;text-transform:uppercase;letter-spacing:.04em;">Time Tracked</h3>
@@ -1876,14 +1907,14 @@
                 <form id="_sidebarPauseForm" method="POST" action="{{ route('user.tasks.timer.pause', $task) }}" style="display:inline;">
                     @csrf
                     <input type="hidden" name="pause_reason" id="_sidebarPauseReasonInput">
-                    <button type="button" onclick="openPauseModal('_sidebarPauseForm','_sidebarPauseReasonInput')" style="background:#F3F4F6;color:#374151;border:none;padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                    <button type="button" onclick="openPauseModal('_sidebarPauseForm','_sidebarPauseReasonInput')" class="uts-mob-tap" style="background:#F3F4F6;color:#374151;border:none;padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
                         <i class="fa fa-circle-pause"></i> Pause Timer
                     </button>
                 </form>
                 @elseif(in_array($task->status, ['in_progress', 'paused', 'viewed']))
                 <form id="_sidebarStartTimerForm" method="POST" action="{{ route('user.tasks.timer.start', $task) }}" style="display:inline;">
                     @csrf
-                    <button type="button" onclick="confirmStart('_sidebarStartTimerForm')" style="background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(99,102,241,.3);">
+                    <button type="button" onclick="confirmStart('_sidebarStartTimerForm')" class="uts-mob-tap" style="background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:8px 20px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(99,102,241,.3);">
                         <i class="fa fa-circle-play"></i> {{ $task->status === 'viewed' ? 'Start Timer' : ($completedTimerSeconds > 0 ? 'Resume Timer' : 'Start Timer') }}
                     </button>
                 </form>
@@ -1897,7 +1928,7 @@
 
         {{-- Manual Time Log --}}
         @if(\App\Models\Setting::get('show_time_tracking','1') === '1' && !in_array($task->status, ['draft','assigned']))
-        <div x-data="{ open: false }" style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
+        <div x-data="{ open: false }" class="uts-mob-card" style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
             <button type="button" @click="open=!open"
                     style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:none;border:none;cursor:pointer;">
                 <div style="display:flex;align-items:center;gap:8px;">
@@ -1931,7 +1962,7 @@
                         <input type="text" name="note" placeholder="What did you work on?"
                                style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:12px;color:#111827;box-sizing:border-box;outline:none;">
                     </div>
-                    <button type="submit"
+                    <button type="submit" class="uts-mob-tap"
                             style="width:100%;background:#059669;color:#fff;border:none;padding:9px;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;">
                         <i class="fas fa-plus" style="margin-right:5px;"></i>Add Time
                     </button>
@@ -2046,7 +2077,7 @@
             elseif($task->status === 'revision_requested') { $tbg='#FEF2F2';$tbo='#FECACA';$tico='#DC2626';$ttitle='Revision Needed';$tsub='Check admin feedback.'; }
             elseif($isOverdue) { $tbg='#FEF2F2';$tbo='#FECACA';$tico='#DC2626';$ttitle='Overdue';$tsub=$deadlineEOD->diffForHumans(); }
         @endphp
-        <div style="background:{{ $tbg }};border:1px solid {{ $tbo }};border-radius:14px;padding:20px;text-align:center;">
+        <div class="uts-mob-banner" style="background:{{ $tbg }};border:1px solid {{ $tbo }};border-radius:14px;padding:20px;text-align:center;">
             <i class="fa fa-clock" style="font-size:24px;color:{{ $tico }};margin-bottom:8px;display:block;"></i>
             <p style="font-size:14px;font-weight:700;color:#111827;margin:0 0 4px;">{{ $ttitle }}</p>
             <p style="font-size:12px;color:#6B7280;margin:{{ ($deadlineEOD && !$isSocialAssignee && !in_array($task->status, ['submitted','approved','delivered','archived'])) ? '0 0 12px' : '0' }};">{{ $tsub }}</p>
@@ -2060,7 +2091,7 @@
                 <i class="fa fa-circle-xmark"></i> Request Rejected
             </span>
             @else
-            <button type="button" onclick="document.getElementById('_extModal').style.display='flex'"
+            <button type="button" onclick="document.getElementById('_extModal').style.display='flex'" class="uts-mob-tap"
                     style="display:inline-flex;align-items:center;gap:5px;background:transparent;border:1.5px solid {{ $tbo }};color:{{ $tico }};padding:6px 14px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;">
                 <i class="fa fa-calendar-plus"></i> Request More Time
             </button>
@@ -2078,11 +2109,11 @@
                 ->take(4)->get();
         @endphp
         @if($siblingTasks->count())
-        <div style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;">
+        <div class="uts-mob-card" style="background:#fff;border-radius:14px;border:1px solid #F3F4F6;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;">
             <h3 style="font-size:13px;font-weight:600;color:#374151;margin:0 0 14px;text-transform:uppercase;letter-spacing:.04em;">Other Tasks in Project</h3>
             <div style="display:flex;flex-direction:column;gap:8px;">
                 @foreach($siblingTasks as $sib)
-                @php $sc = $statusMap[$sib->status] ?? $statusMap['assigned']; @endphp
+                @php $scRaw = \App\Support\TaskStatusColors::for($sib->status); $sc = ['bg' => $scRaw['bg'], 'color' => $scRaw['text'], 'label' => $scRaw['label']]; @endphp
                 <a href="{{ route('user.tasks.show', $sib) }}"
                    style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:#FAFAFA;text-decoration:none;transition:background .15s;"
                    onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='#FAFAFA'">
@@ -2131,7 +2162,7 @@
             <p style="font-size:13px;color:#6B7280;margin:0;">Select one or more reasons</p>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div class="uts-pause-reason-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
             <template x-for="opt in options" :key="opt.key">
                 <button type="button"
                         @click="let i=selected.indexOf(opt.key); i>-1?selected.splice(i,1):selected.push(opt.key); error=false;"

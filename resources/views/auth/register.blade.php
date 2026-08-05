@@ -1,13 +1,36 @@
 @extends('layouts.auth')
 
 @section('content')
-<div style="width:100%;max-width:880px;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(79,70,229,0.15);overflow:hidden;display:flex;min-height:540px;">
+<style>
+/* This page previously had no responsive rules at all — the 880px+340px side-by-side
+   card would overflow horizontally on phones. Mobile-only rules below fix that without
+   touching the desktop layout (all inline styles above stay authoritative >768px). */
+@media(max-width:768px) {
+    .register-card     { flex-direction: column !important; min-height: unset !important; max-width: 92vw !important; box-shadow: var(--amob-shadow-1, 0 10px 30px rgba(17,24,39,0.14)) !important; }
+    .register-form-col { padding: 28px 20px !important; }
+    .register-deco-col { display: none !important; }
+    .amob-logo-row      { margin-bottom: 20px !important; }
+    .amob-h1            { font-size: 20px !important; line-height: 1.25 !important; }
+    .amob-help          { font-size: 13px !important; }
+    .amob-field         { min-height: 46px !important; font-size: 15px !important; }
+    .amob-btn           { min-height: 48px !important; font-size: 15px !important; }
+}
+@media(max-width:480px) {
+    .register-card      { border-radius: var(--amob-r-md, 16px) !important; }
+    .register-form-col  { padding: 24px 16px !important; }
+    .amob-h1             { font-size: 19px !important; }
+}
+@media(max-width:380px) {
+    .amob-pw-grid { grid-template-columns: 1fr !important; gap: 14px !important; }
+}
+</style>
+<div class="register-card" style="width:100%;max-width:880px;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(79,70,229,0.15);overflow:hidden;display:flex;min-height:540px;">
 
     {{-- ── Left: Form ── --}}
-    <div style="flex:1;padding:40px 44px;display:flex;flex-direction:column;justify-content:center;min-width:0;">
+    <div class="register-form-col" style="flex:1;padding:40px 44px;display:flex;flex-direction:column;justify-content:center;min-width:0;">
 
         {{-- Logo --}}
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:28px;">
+        <div class="amob-logo-row" style="display:flex;align-items:center;gap:8px;margin-bottom:28px;">
             @if(!empty($appSettings['logo_path']))
                 <img src="{{ Storage::url($appSettings['logo_path']) }}"
                      alt="{{ $appSettings['app_name'] ?? 'Logo' }}"
@@ -26,11 +49,11 @@
                 <i class="fa fa-shield-alt" style="color:#4F46E5;font-size:11px;"></i>
                 <span style="font-size:11px;font-weight:600;color:#4F46E5;">Initial System Setup</span>
             </div>
-            <h1 style="font-size:22px;font-weight:800;color:#111827;margin:0 0 6px;">Create Administrator Account</h1>
-            <p style="font-size:13px;color:#9CA3AF;margin:0 0 24px;">You are the first user — you will become the system administrator.</p>
+            <h1 class="amob-h1" style="font-size:22px;font-weight:800;color:#111827;margin:0 0 6px;">Create Administrator Account</h1>
+            <p class="amob-help" style="font-size:13px;color:#9CA3AF;margin:0 0 24px;">You are the first user — you will become the system administrator.</p>
         @else
-            <h1 style="font-size:22px;font-weight:800;color:#111827;margin:0 0 6px;">Create your account!</h1>
-            <p style="font-size:13px;color:#9CA3AF;margin:0 0 24px;">Fill in your details to get started</p>
+            <h1 class="amob-h1" style="font-size:22px;font-weight:800;color:#111827;margin:0 0 6px;">Create your account!</h1>
+            <p class="amob-help" style="font-size:13px;color:#9CA3AF;margin:0 0 24px;">Fill in your details to get started</p>
         @endif
 
         @if ($errors->any())
@@ -47,7 +70,7 @@
                 <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Full name</label>
                 <div style="position:relative;">
                     <i class="fa fa-user" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;"></i>
-                    <input type="text" name="name" value="{{ old('name') }}" required placeholder="John Doe"
+                    <input type="text" name="name" value="{{ old('name') }}" required placeholder="John Doe" class="amob-field"
                            style="width:100%;padding:10px 10px 10px 32px;border:1.5px solid {{ $errors->has('name') ? '#FCA5A5':'#E5E7EB' }};border-radius:10px;font-size:13px;font-family:'Inter',sans-serif;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
                            onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
                 </div>
@@ -58,19 +81,19 @@
                 <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Email</label>
                 <div style="position:relative;">
                     <i class="fa fa-envelope" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;"></i>
-                    <input type="email" name="email" value="{{ old('email') }}" required placeholder="you@company.com"
+                    <input type="email" name="email" value="{{ old('email') }}" required placeholder="you@company.com" class="amob-field"
                            style="width:100%;padding:10px 10px 10px 32px;border:1.5px solid {{ $errors->has('email') ? '#FCA5A5':'#E5E7EB' }};border-radius:10px;font-size:13px;font-family:'Inter',sans-serif;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
                            onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
                 </div>
             </div>
 
             {{-- Password row --}}
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:22px;">
+            <div class="amob-pw-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:22px;">
                 <div x-data="{show:false}">
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Password</label>
                     <div style="position:relative;">
                         <i class="fa fa-lock" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;"></i>
-                        <input :type="show?'text':'password'" name="password" required placeholder="Min. 8 chars"
+                        <input :type="show?'text':'password'" name="password" required placeholder="Min. 8 chars" class="amob-field"
                                style="width:100%;padding:10px 32px 10px 32px;border:1.5px solid {{ $errors->has('password') ? '#FCA5A5':'#E5E7EB' }};border-radius:10px;font-size:13px;font-family:'Inter',sans-serif;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
                                onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
                         <button type="button" @click="show=!show" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9CA3AF;padding:0;">
@@ -82,7 +105,7 @@
                     <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Confirm</label>
                     <div style="position:relative;">
                         <i class="fa fa-lock" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;"></i>
-                        <input :type="show?'text':'password'" name="password_confirmation" required placeholder="Re-enter"
+                        <input :type="show?'text':'password'" name="password_confirmation" required placeholder="Re-enter" class="amob-field"
                                style="width:100%;padding:10px 32px 10px 32px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;font-family:'Inter',sans-serif;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
                                onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
                         <button type="button" @click="show=!show" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9CA3AF;padding:0;">
@@ -92,7 +115,7 @@
                 </div>
             </div>
 
-            <button type="submit"
+            <button type="submit" class="amob-btn"
                     style="width:100%;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;font-size:14px;font-weight:600;padding:12px;border:none;border-radius:12px;cursor:pointer;box-shadow:0 6px 20px rgba(79,70,229,0.35);font-family:'Inter',sans-serif;"
                     onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
                 {{ $isSetup ? 'Create Administrator Account' : 'Create Account' }}
@@ -106,7 +129,7 @@
     </div>
 
     {{-- ── Right: Illustration ── --}}
-    <div style="width:340px;flex-shrink:0;background:linear-gradient(145deg,{{ $isSetup ? '#6EE7B7 0%,#34D399 40%,#059669' : '#6EE7F7 0%,#818CF8 40%,#4F46E5' }} 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 28px;position:relative;overflow:hidden;">
+    <div class="register-deco-col" style="width:340px;flex-shrink:0;background:linear-gradient(145deg,{{ $isSetup ? '#6EE7B7 0%,#34D399 40%,#059669' : '#6EE7F7 0%,#818CF8 40%,#4F46E5' }} 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 28px;position:relative;overflow:hidden;">
         <div style="position:absolute;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,0.06);top:-80px;right:-80px;"></div>
         <div style="position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,0.06);bottom:-60px;left:-60px;"></div>
 

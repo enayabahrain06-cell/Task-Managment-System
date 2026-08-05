@@ -5,9 +5,8 @@
 <style>
 .dom-stat { background:#fff; border-radius:12px; border:1px solid #F0F0F0; box-shadow:0 1px 4px rgba(0,0,0,.04); padding:16px 20px; display:flex; align-items:center; gap:14px; }
 .dom-stat-icon { width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:16px; }
-.status-active        { background:#ECFDF5; color:#16A34A; }
-.status-expiring_soon { background:#FEF3C7; color:#D97706; }
-.status-expired       { background:#FEE2E2; color:#DC2626; }
+/* Status colors come from $domain->status_color (App\Support\DomainStatusColors) and are
+   applied inline per-row — no more hardcoded .status-* classes to keep in sync. */
 .dom-status-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:11.5px; font-weight:600; }
 .dom-row:hover { background:#FAFAFA; }
 .dom-tbl-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
@@ -17,6 +16,131 @@
 .dz-zone { border:2px dashed #D1D5DB; border-radius:12px; padding:16px; text-align:center; cursor:pointer; background:#FAFAFA; transition:border-color .25s, background .25s; }
 .dz-zone:hover { border-color:#A5B4FC; background:#F5F3FF; }
 .dz-zone.is-dragging { border-color:#6366F1; background:#EEF2FF; }
+
+/* ══════════════════════════════════════════════════════════
+   Mobile-only premium pass (≤768px) — Domains list page.
+   Builds on shared .mob-card / .mob-kpi-row / .mob-table-cards /
+   .mob-field tokens from layouts/app.blade.php. Desktop untouched.
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    /* Header actions: wrap/stack full width, never overflow */
+    .dom-header-actions { flex-wrap: wrap !important; width: 100% !important; }
+    .dom-header-actions > a, .dom-header-actions > button {
+        flex: 1 1 auto !important; justify-content: center !important; min-height: 44px !important;
+    }
+
+    /* Stat cards -> horizontal snapping KPI row */
+    .dom-stats-grid.mob-kpi-row {
+        display: flex !important;
+        grid-template-columns: none !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scroll-snap-type: x mandatory !important;
+        padding: 2px 2px 8px !important;
+        margin-bottom: var(--mob-sp-2) !important;
+        scrollbar-width: none !important;
+    }
+    .dom-stats-grid.mob-kpi-row::-webkit-scrollbar { display: none; }
+    .dom-stats-grid.mob-kpi-row > .dom-stat.mob-kpi-card {
+        flex: 0 0 auto !important;
+        min-width: 154px !important;
+        scroll-snap-align: start;
+    }
+
+    /* Filter bar: full-width stacked fields with comfortable touch targets */
+    .dom-filter-bar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        border-radius: var(--mob-r-lg) !important;
+    }
+    .dom-filter-bar .mob-field {
+        flex: 1 1 100% !important; width: 100% !important; min-width: 0 !important;
+    }
+    .dom-filter-bar .mob-field select,
+    .dom-filter-bar .mob-field input {
+        min-height: 46px !important;
+    }
+    .dom-filter-bar > button[type="submit"],
+    .dom-filter-bar > a {
+        width: 100% !important; justify-content: center !important; min-height: 46px !important;
+    }
+
+    /* Delete confirmation input: comfortable touch height */
+    .dom-confirm-input { min-height: 46px !important; }
+
+    /* Table -> stacked cards */
+    .dom-tbl-scroll.mob-table-cards { overflow-x: visible !important; }
+    .dom-tbl-scroll.mob-table-cards table { min-width: 0 !important; width: 100% !important; }
+    .dom-tbl-scroll.mob-table-cards tbody tr { display: flex !important; flex-direction: column !important; }
+    .dom-tbl-scroll.mob-table-cards td { font-size: 13px !important; }
+
+    /* Domain name: hero cell, no label, full width */
+    .dom-tbl-scroll.mob-table-cards td.mob-domain-cell {
+        order: 1; display: block !important; text-align: left !important;
+        padding: 4px 4px 12px !important; border-bottom: 1px solid #F3F4F6 !important;
+    }
+    .dom-tbl-scroll.mob-table-cards td.mob-domain-cell::before { content: none !important; }
+
+    /* Status + expiry surfaced right under the name */
+    .dom-tbl-scroll.mob-table-cards td.mob-col-status      { order: 2; }
+    .dom-tbl-scroll.mob-table-cards td.mob-col-expiry      { order: 3; }
+    .dom-tbl-scroll.mob-table-cards td.mob-col-customer    { order: 4; }
+    .dom-tbl-scroll.mob-table-cards td.mob-col-registrar   { order: 5; }
+    .dom-tbl-scroll.mob-table-cards td.mob-col-responsible { order: 6; }
+    .dom-tbl-scroll.mob-table-cards td.mob-col-billto      { order: 7; }
+    .dom-tbl-scroll.mob-table-cards td.mob-col-cost        { order: 8; }
+    .dom-tbl-scroll.mob-table-cards td.mob-col-auto        { order: 9; }
+
+    /* Row actions: full-width, last */
+    .dom-tbl-scroll.mob-table-cards td.mob-actions-cell {
+        order: 10; display: block !important; text-align: right !important;
+        padding: 12px 4px 4px !important; border-top: 1px solid #F3F4F6 !important; border-bottom: none !important;
+    }
+    .dom-tbl-scroll.mob-table-cards td.mob-actions-cell::before { content: none !important; }
+    .dom-tbl-scroll.mob-table-cards td.mob-actions-cell button { width: 44px !important; height: 44px !important; }
+
+    /* Expiry urgency pill (mobile-only badge) */
+    .dom-expiry-pill {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; margin-top: 2px;
+    }
+    .dom-expiry-pill.dom-expiry-danger { background: #FEE2E2; color: #DC2626; }
+    .dom-expiry-pill.dom-expiry-warn   { background: #FEF3C7; color: #D97706; }
+    .dom-expiry-pill.dom-expiry-ok     { background: #F3F4F6; color: #6B7280; }
+
+    /* Modal action rows: full-width stacked buttons */
+    .dom-modal-actions { flex-direction: column !important; }
+    .dom-modal-actions > button, .dom-modal-actions > a {
+        width: 100% !important; min-height: 46px !important; justify-content: center !important;
+    }
+
+    /* Modal close "✕" buttons: comfortable tap target */
+    .dom-modal-close {
+        width: 44px !important; height: 44px !important;
+    }
+
+    /* Status filter tabs/pills: comfortable tap target */
+    .dom-status-tab {
+        min-height: 44px !important;
+    }
+
+    /* Row action dropdown menu items: comfortable tap target (mirrors .app-dropdown a) */
+    .dom-row-menu-item {
+        min-height: 44px !important; padding-top: 12px !important; padding-bottom: 12px !important;
+    }
+
+    /* Status tabs: swap the desktop pill row for the shared uds-seg segmented control
+       (same 4 keys, same $statusFilter-driven href/active logic — server-rendered,
+       no Alpine state involved, so the swap is a straight visual upgrade). */
+    .dom-status-tabs-row.dom-status-tabs-row { display: none !important; }
+    .dom-status-seg-mobile.dom-status-seg-mobile { display: block !important; }
+
+    /* Empty state: desktop hand-rolled block vs. the shared mobile empty-state
+       component — only one may render per breakpoint. */
+    .dom-empty-desktop.dom-empty-desktop { display: none !important; }
+    .dom-empty-mobile.dom-empty-mobile { display: block !important; }
+    .dom-empty-mobile .dom-empty-cta { min-height: 44px !important; box-sizing: border-box; }
+}
 </style>
 
 <div x-data="{
@@ -65,7 +189,7 @@
             <h1 style="font-size:22px;font-weight:700;color:#111827;margin:0;">Domain Management</h1>
             <p style="font-size:13px;color:#9CA3AF;margin:4px 0 0;">Track all client domains, expiry dates, registrars, and billing info</p>
         </div>
-        <div style="display:flex;gap:8px;">
+        <div class="dom-header-actions" style="display:flex;gap:8px;">
             <a href="{{ route('admin.domains.export.pdf') }}"
                style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;background:#fff;color:#374151;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;"
                onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='#fff'">
@@ -78,17 +202,7 @@
         </div>
     </div>
 
-    {{-- Flash --}}
-    @if(session('success'))
-    <div style="background:#ECFDF5;border:1px solid #A7F3D0;color:#16A34A;padding:12px 16px;border-radius:10px;margin-bottom:20px;font-size:13px;display:flex;align-items:center;gap:8px;">
-        <i class="fas fa-circle-check"></i> {{ session('success') }}
-    </div>
-    @endif
-    @if(session('error'))
-    <div style="background:#FEE2E2;border:1px solid #FCA5A5;color:#DC2626;padding:12px 16px;border-radius:10px;margin-bottom:20px;font-size:13px;display:flex;align-items:center;gap:8px;">
-        <i class="fas fa-circle-exclamation"></i> {{ session('error') }}
-    </div>
-    @endif
+    {{-- Flash messages are handled by the shared window.showToast() in layouts.app — no page-local banner. --}}
 
     {{-- Expiring Alert --}}
     @if($expiringThisWeek->count())
@@ -115,8 +229,8 @@
     @endif
 
     {{-- Stats --}}
-    <div class="dom-stats-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px;">
-        <div class="dom-stat">
+    <div class="dom-stats-grid mob-kpi-row" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px;">
+        <div class="dom-stat mob-kpi-card">
             <div class="dom-stat-icon" style="background:#EEF2FF;">
                 <i class="fas fa-globe" style="color:#4F46E5;"></i>
             </div>
@@ -125,7 +239,7 @@
                 <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Total Domains</p>
             </div>
         </div>
-        <div class="dom-stat">
+        <div class="dom-stat mob-kpi-card">
             <div class="dom-stat-icon" style="background:#D1FAE5;">
                 <i class="fas fa-circle-check" style="color:#059669;"></i>
             </div>
@@ -134,7 +248,7 @@
                 <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Active</p>
             </div>
         </div>
-        <div class="dom-stat">
+        <div class="dom-stat mob-kpi-card">
             <div class="dom-stat-icon" style="background:#FEF3C7;">
                 <i class="fas fa-clock" style="color:#D97706;"></i>
             </div>
@@ -143,7 +257,7 @@
                 <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Expiring Soon <strong style="color:#EA580C;">· {{ $weekCount }} in 7d</strong></p>
             </div>
         </div>
-        <div class="dom-stat">
+        <div class="dom-stat mob-kpi-card">
             <div class="dom-stat-icon" style="background:#FEE2E2;">
                 <i class="fas fa-circle-xmark" style="color:#DC2626;"></i>
             </div>
@@ -152,7 +266,7 @@
                 <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Expired</p>
             </div>
         </div>
-        <div class="dom-stat">
+        <div class="dom-stat mob-kpi-card">
             <div class="dom-stat-icon" style="background:#EFF6FF;">
                 <i class="fas fa-coins" style="color:#2563EB;"></i>
             </div>
@@ -168,14 +282,14 @@
     </div>
 
     {{-- Filters --}}
-    <form method="GET" style="background:#fff;border:1.5px solid #E5E7EB;border-radius:14px;padding:16px 20px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
-        <div style="flex:1;min-width:200px;">
+    <form method="GET" class="dom-filter-bar" style="background:#fff;border:1.5px solid #E5E7EB;border-radius:14px;padding:16px 20px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;">
+        <div class="mob-field" style="flex:1;min-width:200px;">
             <label style="font-size:11px;font-weight:600;color:#6B7280;display:block;margin-bottom:4px;">SEARCH</label>
             <input name="search" value="{{ request('search') }}" placeholder="Domain, registrar, customer, billing to…"
                    style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box;"
                    onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
         </div>
-        <div style="min-width:160px;">
+        <div class="mob-field" style="min-width:160px;">
             <label style="font-size:11px;font-weight:600;color:#6B7280;display:block;margin-bottom:4px;">CUSTOMER</label>
             <select name="customer_id" style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;outline:none;">
                 <option value="">All customers</option>
@@ -187,7 +301,7 @@
             </select>
         </div>
         @if($registrars->count())
-        <div style="min-width:150px;">
+        <div class="mob-field" style="min-width:150px;">
             <label style="font-size:11px;font-weight:600;color:#6B7280;display:block;margin-bottom:4px;">REGISTRAR</label>
             <select name="registrar" style="width:100%;padding:8px 12px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;outline:none;">
                 <option value="">All registrars</option>
@@ -207,18 +321,18 @@
         @endif
     </form>
 
-    {{-- Status Tab Filter --}}
-    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+    {{-- Status Tab Filter (desktop: pill row) --}}
+    <div class="dom-status-tabs-row" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
         @php
             $tabs = [
                 'all'           => ['label'=>'All', 'count'=>$totalCount, 'color'=>'#374151'],
-                'active'        => ['label'=>'Active', 'count'=>$activeCount, 'color'=>'#16A34A'],
-                'expiring_soon' => ['label'=>'Expiring Soon', 'count'=>$expiringSoonCount, 'color'=>'#D97706'],
-                'expired'       => ['label'=>'Expired', 'count'=>$expiredCount, 'color'=>'#DC2626'],
+                'active'        => ['label'=>\App\Support\DomainStatusColors::label('active'), 'count'=>$activeCount, 'color'=>\App\Support\DomainStatusColors::text('active')],
+                'expiring_soon' => ['label'=>\App\Support\DomainStatusColors::label('expiring_soon'), 'count'=>$expiringSoonCount, 'color'=>\App\Support\DomainStatusColors::text('expiring_soon')],
+                'expired'       => ['label'=>\App\Support\DomainStatusColors::label('expired'), 'count'=>$expiredCount, 'color'=>\App\Support\DomainStatusColors::text('expired')],
             ];
         @endphp
         @foreach($tabs as $key => $tab)
-        <a href="{{ request()->fullUrlWithQuery(['status' => $key]) }}"
+        <a href="{{ request()->fullUrlWithQuery(['status' => $key]) }}" class="dom-status-tab"
            style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:20px;font-size:12.5px;font-weight:600;text-decoration:none;transition:all .15s;
                   {{ $statusFilter === $key ? 'background:'.$tab['color'].';color:#fff;' : 'background:#F3F4F6;color:#6B7280;' }}">
             {{ $tab['label'] }}
@@ -227,10 +341,24 @@
         @endforeach
     </div>
 
+    {{-- Status Tab Filter (mobile: segmented control, uds-seg) --}}
+    <div class="dom-status-seg-mobile" style="display:none;margin-bottom:16px;">
+        <x-mobile.segmented
+            :options="[
+                ['key' => 'all', 'label' => 'All', 'count' => $totalCount, 'href' => request()->fullUrlWithQuery(['status' => 'all'])],
+                ['key' => 'active', 'label' => 'Active', 'count' => $activeCount, 'href' => request()->fullUrlWithQuery(['status' => 'active'])],
+                ['key' => 'expiring_soon', 'label' => 'Expiring', 'count' => $expiringSoonCount, 'href' => request()->fullUrlWithQuery(['status' => 'expiring_soon'])],
+                ['key' => 'expired', 'label' => 'Expired', 'count' => $expiredCount, 'href' => request()->fullUrlWithQuery(['status' => 'expired'])],
+            ]"
+            active="{{ $statusFilter }}"
+        />
+    </div>
+
     {{-- Table --}}
     <div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:14px;overflow:clip;">
         @if($domains->isEmpty())
-        <div style="padding:60px 24px;text-align:center;">
+        {{-- Desktop empty state (hidden on mobile — replaced by the shared component below) --}}
+        <div class="dom-empty-desktop" style="padding:60px 24px;text-align:center;">
             <div style="width:56px;height:56px;background:#F3F4F6;border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
                 <i class="fas fa-globe" style="font-size:22px;color:#9CA3AF;"></i>
             </div>
@@ -240,8 +368,17 @@
                 <i class="fas fa-plus" style="margin-right:6px;"></i>Add Domain
             </button>
         </div>
+
+        {{-- Mobile empty state — shared component --}}
+        <div class="dom-empty-mobile" style="display:none;padding:16px;">
+            <x-mobile.empty-state title="No domains yet" sub="Add your first domain to start tracking renewals." icon="fa-globe" />
+            <button @click="createModal = true" class="dom-empty-cta"
+                    style="display:flex;align-items:center;justify-content:center;width:100%;margin-top:14px;padding:11px 20px;background:#6366F1;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;box-sizing:border-box;">
+                <i class="fas fa-plus" style="margin-right:6px;"></i>Add Domain
+            </button>
+        </div>
         @else
-        <div class="dom-tbl-scroll">
+        <div class="dom-tbl-scroll mob-table-cards">
         <table style="width:100%;border-collapse:collapse;">
             <thead>
                 <tr style="background:#F9FAFB;border-bottom:1.5px solid #E5E7EB;">
@@ -262,9 +399,10 @@
                 @php
                     $status = $domain->status;
                     $days   = $domain->days_until_expiry;
+                    $sc     = $domain->status_color;
                 @endphp
                 <tr class="dom-row" style="border-bottom:1px solid #F3F4F6;">
-                    <td style="padding:14px 16px;">
+                    <td class="mob-domain-cell" style="padding:14px 16px;">
                         <div style="display:flex;align-items:center;gap:10px;">
                             <div style="width:36px;height:36px;background:#EEF2FF;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                 <i class="fas fa-globe" style="color:#6366F1;font-size:14px;"></i>
@@ -281,7 +419,7 @@
                             </div>
                         </div>
                     </td>
-                    <td style="padding:14px 16px;">
+                    <td class="mob-col-customer" data-label="Customer" style="padding:14px 16px;">
                         @if($domain->customer)
                         <a href="{{ route('admin.customers.show', $domain->customer_id) }}"
                            style="font-size:13px;font-weight:600;color:#374151;text-decoration:none;"
@@ -295,14 +433,14 @@
                         <span style="color:#D1D5DB;font-size:13px;">—</span>
                         @endif
                     </td>
-                    <td style="padding:14px 16px;">
+                    <td class="mob-col-registrar" data-label="Registrar" style="padding:14px 16px;">
                         @if($domain->registrar)
                         <span style="font-size:13px;color:#374151;font-weight:500;">{{ $domain->registrar }}</span>
                         @else
                         <span style="color:#D1D5DB;font-size:13px;">—</span>
                         @endif
                     </td>
-                    <td style="padding:14px 16px;">
+                    <td class="mob-col-responsible" data-label="Responsible" style="padding:14px 16px;">
                         @if($domain->responsibleUsers->isNotEmpty())
                         <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
                             @foreach($domain->responsibleUsers as $ru)
@@ -318,19 +456,19 @@
                         <span style="color:#D1D5DB;font-size:13px;">—</span>
                         @endif
                     </td>
-                    <td style="padding:14px 16px;">
+                    <td class="mob-col-billto" data-label="Bill To" style="padding:14px 16px;">
                         @if($domain->billing_to)
                         <span style="font-size:13px;color:#374151;font-weight:500;">{{ $domain->billing_to }}</span>
                         @else
                         <span style="color:#D1D5DB;font-size:13px;">—</span>
                         @endif
                     </td>
-                    <td style="padding:14px 16px;">
+                    <td class="mob-col-expiry" data-label="Expires" style="padding:14px 16px;">
                         @if($domain->expires_at)
-                        <div style="font-size:13px;font-weight:600;color:{{ $status==='expired' ? '#DC2626' : ($status==='expiring_soon' ? '#D97706' : '#374151') }};">
+                        <div style="font-size:13px;font-weight:600;color:{{ $status==='active' ? '#374151' : $sc['color'] }};">
                             {{ $domain->expires_at->format('d M Y') }}
                         </div>
-                        <div style="font-size:11.5px;color:#9CA3AF;">
+                        <div class="dom-expiry-pill {{ $status==='expired' ? 'dom-expiry-danger' : ($status==='expiring_soon' ? 'dom-expiry-warn' : 'dom-expiry-ok') }}" style="font-size:11.5px;color:#9CA3AF;">
                             @if($days === null) No date
                             @elseif($days < 0) {{ abs($days) }}d ago
                             @elseif($days === 0) Today
@@ -342,7 +480,7 @@
                         <span style="color:#D1D5DB;font-size:13px;">—</span>
                         @endif
                     </td>
-                    <td style="padding:14px 16px;">
+                    <td class="mob-col-cost" data-label="Cost" style="padding:14px 16px;">
                         @if($domain->cost > 0)
                         <span style="font-size:13px;font-weight:600;color:#111827;">{{ format_money($domain->cost, $domain->currency) }}</span>
                         <div style="font-size:11px;color:#9CA3AF;">{{ $billingCycles[$domain->billing_cycle] ?? $domain->billing_cycle }}</div>
@@ -350,7 +488,7 @@
                         <span style="color:#D1D5DB;font-size:13px;">—</span>
                         @endif
                     </td>
-                    <td style="padding:14px 16px;text-align:center;">
+                    <td class="mob-col-auto" data-label="Auto-Renew" style="padding:14px 16px;text-align:center;">
                         @if($domain->auto_renew)
                         <span title="Auto-renew ON" style="display:inline-flex;width:22px;height:22px;border-radius:50%;background:#ECFDF5;align-items:center;justify-content:center;">
                             <i class="fas fa-check" style="font-size:10px;color:#16A34A;"></i>
@@ -361,15 +499,17 @@
                         </span>
                         @endif
                     </td>
-                    <td style="padding:14px 16px;">
-                        <span class="dom-status-badge status-{{ $status }}">
-                            @if($status==='active') <i class="fas fa-circle" style="font-size:7px;"></i> Active
-                            @elseif($status==='expiring_soon') <i class="fas fa-clock" style="font-size:9px;"></i> Expiring
-                            @else <i class="fas fa-triangle-exclamation" style="font-size:9px;"></i> Expired
+                    <td class="mob-col-status" data-label="Status" style="padding:14px 16px;">
+                        <span class="dom-status-badge" style="background:{{ $sc['bg'] }};color:{{ $sc['color'] }};">
+                            @if($status==='active') <i class="fas fa-circle" style="font-size:7px;"></i>
+                            @elseif($status==='expiring_soon') <i class="fas fa-clock" style="font-size:9px;"></i>
+                            @elseif($status==='expired') <i class="fas fa-triangle-exclamation" style="font-size:9px;"></i>
+                            @else <i class="fas fa-circle-question" style="font-size:9px;"></i>
                             @endif
+                            {{ $sc['label'] }}
                         </span>
                     </td>
-                    <td style="padding:14px 16px;text-align:right;">
+                    <td class="mob-actions-cell" style="padding:14px 16px;text-align:right;">
                         <button onclick="openDomRowMenu(event, this, {{ $domain->id }}, {{ json_encode($domain->domain) }}, '{{ route('admin.domains.show', $domain->id) }}', {{ json_encode([
                             'domain'            => $domain->domain,
                             'registrar'         => $domain->registrar,
@@ -404,23 +544,23 @@
     {{-- Shared row action dropdown (fixed position, avoids overflow:hidden clipping) --}}
     <div id="dom-row-action-menu"
          style="display:none;position:fixed;background:#fff;border:1px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.12);min-width:168px;z-index:9998;padding:4px 0;">
-        <a id="dram-view" href="#"
+        <a id="dram-view" href="#" class="dom-row-menu-item"
            style="display:flex;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#374151;text-decoration:none;"
            onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
             <i class="fas fa-eye" style="width:14px;font-size:12px;color:#4F46E5;"></i> View
         </a>
-        <button id="dram-edit"
+        <button id="dram-edit" class="dom-row-menu-item"
                 style="display:flex;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#374151;background:none;border:none;cursor:pointer;width:100%;text-align:left;"
                 onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
             <i class="fas fa-pen" style="width:14px;font-size:12px;color:#6B7280;"></i> Edit
         </button>
-        <button id="dram-renew"
+        <button id="dram-renew" class="dom-row-menu-item"
                 style="display:flex;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#16A34A;background:none;border:none;cursor:pointer;width:100%;text-align:left;"
                 onmouseover="this.style.background='#F0FDF4'" onmouseout="this.style.background=''">
             <i class="fas fa-rotate" style="width:14px;font-size:12px;"></i> Quick Renew
         </button>
         <div style="border-top:1px solid #F3F4F6;margin:3px 0;"></div>
-        <button id="dram-delete"
+        <button id="dram-delete" class="dom-row-menu-item"
                 style="display:flex;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#DC2626;background:none;border:none;cursor:pointer;width:100%;text-align:left;"
                 onmouseover="this.style.background='#FEF2F2'" onmouseout="this.style.background=''">
             <i class="fas fa-trash" style="width:14px;font-size:12px;"></i> Delete
@@ -484,7 +624,7 @@
                     </template>
                 </div>
             </div>
-            <div style="display:flex;gap:8px;justify-content:center;margin-top:20px;">
+            <div class="dom-modal-actions" style="display:flex;gap:8px;justify-content:center;margin-top:20px;">
                 <button @click="renewModal=false" style="padding:10px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
                 <button @click="submitRenew()" style="padding:10px 20px;background:#16A34A;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Confirm Renewal</button>
             </div>
@@ -507,7 +647,7 @@
                         <p style="font-size:12px;color:#9CA3AF;margin:0;">{{ $expiringDomains->count() }} domain{{ $expiringDomains->count() !== 1 ? 's' : '' }} within 30 days</p>
                     </div>
                 </div>
-                <button @click="dismissExpiring()" style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:13px;flex-shrink:0;">
+                <button @click="dismissExpiring()" class="dom-modal-close" style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:13px;flex-shrink:0;">
                     <i class="fa fa-times"></i>
                 </button>
             </div>
@@ -548,10 +688,10 @@
             <p style="font-size:13px;color:#6B7280;text-align:center;margin:0 0 20px;">
                 Type <strong x-text="deleteName"></strong> to confirm deletion.
             </p>
-            <input x-model="deleteConfirmInput" placeholder="Type domain name to confirm"
+            <input x-model="deleteConfirmInput" placeholder="Type domain name to confirm" class="dom-confirm-input"
                    style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;outline:none;box-sizing:border-box;margin-bottom:16px;"
                    onfocus="this.style.borderColor='#DC2626'" onblur="this.style.borderColor='#E5E7EB'">
-            <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <div class="dom-modal-actions" style="display:flex;gap:8px;justify-content:flex-end;">
                 <button @click="deleteModal=false" style="padding:9px 18px;background:#F3F4F6;color:#374151;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
                 <button @click="submitDelete()"
                         :disabled="!deleteConfirmed"
@@ -571,12 +711,12 @@
             <div style="position:relative;background:#fff;border-radius:16px;padding:28px;width:640px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);" @click.stop>
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
                     <h3 style="font-size:18px;font-weight:700;color:#111827;margin:0;">Add Domain</h3>
-                    <button @click="createModal=false" style="width:32px;height:32px;background:#F3F4F6;border:none;border-radius:8px;cursor:pointer;font-size:16px;color:#6B7280;">✕</button>
+                    <button @click="createModal=false" class="dom-modal-close" style="width:32px;height:32px;background:#F3F4F6;border:none;border-radius:8px;cursor:pointer;font-size:16px;color:#6B7280;display:flex;align-items:center;justify-content:center;"><i class="fas fa-times"></i></button>
                 </div>
                 <form method="POST" action="{{ route('admin.domains.store') }}">
                     @csrf
                     @include('admin.domains._form', ['domain' => null])
-                    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px;">
+                    <div class="dom-modal-actions" style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px;">
                         <button type="button" @click="createModal=false" style="padding:10px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
                         <button type="submit" style="padding:10px 24px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
                             <i class="fas fa-plus" style="margin-right:6px;"></i>Add Domain
@@ -593,12 +733,12 @@
             <div style="position:relative;background:#fff;border-radius:16px;padding:28px;width:640px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);" onclick="event.stopPropagation()">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
                     <h3 style="font-size:18px;font-weight:700;color:#111827;margin:0;">Edit Domain</h3>
-                    <button onclick="document.getElementById('editModal').style.display='none'" style="width:32px;height:32px;background:#F3F4F6;border:none;border-radius:8px;cursor:pointer;font-size:16px;color:#6B7280;">✕</button>
+                    <button onclick="document.getElementById('editModal').style.display='none'" class="dom-modal-close" style="width:32px;height:32px;background:#F3F4F6;border:none;border-radius:8px;cursor:pointer;font-size:16px;color:#6B7280;display:flex;align-items:center;justify-content:center;"><i class="fas fa-times"></i></button>
                 </div>
                 <form id="editForm" method="POST">
                     @csrf @method('PUT')
                     <div id="editFormFields"></div>
-                    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px;">
+                    <div class="dom-modal-actions" style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px;">
                         <button type="button" onclick="document.getElementById('editModal').style.display='none'" style="padding:10px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
                         <button type="submit" style="padding:10px 24px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Save Changes</button>
                     </div>

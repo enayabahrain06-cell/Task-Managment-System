@@ -45,11 +45,136 @@
 .team-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .team-table-wrap table { min-width: 700px; }
 .team-form-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+.team-workload-mobonly { display: none; }
+@media (max-width: 768px) {
+    .team-workload-mobonly { display: block !important; }
+}
 @media (max-width: 480px) {
     .team-form-grid-2 { grid-template-columns: 1fr; }
     /* Stack the outer tab nav */
     .team-outer-tabs { flex-direction: column; width: 100%; }
     .team-outer-tabs a { justify-content: center; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   Mobile polish pass (<=768px) — team directory, permissions,
+   roles, former employees & all modals.
+   Desktop (>768px) layout/behavior is untouched.
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+    /* ── Outer tabs: comfortable tap height ── */
+    .team-outer-tabs a { min-height: 44px; }
+
+    /* ── KPI stat row → swipeable card strip (same technique used on the admin dashboard) ── */
+    .stats-grid {
+        display: flex !important;
+        grid-template-columns: none !important;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        gap: 12px;
+        padding: 2px 2px 10px;
+        margin-bottom: var(--mob-sp-2, 16px);
+    }
+    .stats-grid::-webkit-scrollbar { display: none; }
+    .stats-grid > a { scroll-snap-align: start; flex: 0 0 152px; }
+    .stat-card {
+        border-radius: var(--mob-r-md, 16px) !important;
+        box-shadow: var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05));
+    }
+
+    /* ── Search & filter bar: full-width stacked controls, no cramped inline row ── */
+    .team-filter-form {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px !important;
+    }
+    .team-filter-form > * { width: 100% !important; min-width: 0 !important; }
+    .team-filter-form input[type="text"],
+    .team-filter-form select {
+        min-height: 46px; border-radius: var(--mob-r-sm, 12px); font-size: 15px;
+    }
+    .team-filter-form button,
+    .team-filter-form a {
+        min-height: 46px; border-radius: var(--mob-r-sm, 12px);
+        display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ── Table / Cards view toggle: full-width, comfortable tap size ── */
+    .team-view-toggle { width: 100%; }
+    .team-view-toggle button { flex: 1; min-height: 44px; justify-content: center; }
+
+    /* ── Team / former-employee / role cards ── */
+    .mob-card h3 { font-size: 16px; font-weight: 700; }
+    .mob-card-actions button,
+    .mob-card-actions a,
+    .mob-card-actions > div { min-height: 40px; }
+
+    /* ── Table view → stacked cards (mob-table-cards technique) ── */
+    .team-table-wrap { overflow-x: visible !important; }
+    .team-table-wrap table { min-width: 0 !important; width: 100% !important; }
+    .mob-table-cards tbody tr { display: flex !important; flex-direction: column !important; }
+    .mob-table-cards td {
+        display: flex !important; align-items: center !important; justify-content: space-between !important;
+        padding: 9px 4px !important; font-size: 13px !important;
+    }
+    /* Member cell: hero, full width, no label, shown first */
+    .mob-table-cards td.mob-team-cell {
+        order: 1; display: block !important; text-align: left !important;
+        padding: 4px 4px 12px !important; border-bottom: 1px solid #F3F4F6 !important;
+    }
+    .mob-table-cards td.mob-team-cell::before { content: none !important; }
+    .mob-table-cards td.mob-col-role   { order: 2; }
+    .mob-table-cards td.mob-col-status { order: 3; }
+    .mob-table-cards td.mob-col-open   { order: 4; }
+    .mob-table-cards td.mob-col-done   { order: 5; }
+    .mob-table-cards td.mob-col-actions {
+        order: 6; display: block !important; text-align: right !important;
+        padding: 12px 4px 4px !important; border-bottom: none !important; border-top: 1px solid #F3F4F6 !important; margin-top: 4px;
+    }
+    .mob-table-cards td.mob-col-actions::before { content: none !important; }
+    .mob-table-cards td.mob-col-actions .flex { justify-content: flex-end; }
+
+    /* ── Permissions tab: stack the two-column layout ── */
+    .perms-two-col {
+        flex-direction: column !important;
+        height: auto !important;
+        min-height: 0 !important;
+        gap: 12px !important;
+    }
+    .perms-user-list { width: 100% !important; max-height: 260px; }
+
+    /* ── Roles tab: permission grid inside create/edit modal collapses to 1 column ── */
+    .mob-role-perm-grid { grid-template-columns: 1fr !important; }
+
+    /* ── Phone country-code picker "back" button: real 44px tap target ── */
+    [style*="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border:none;background:#F3F4F6;border-radius:8px;cursor:pointer;color:#374151;"] {
+        width: 44px !important; height: 44px !important;
+    }
+
+    /* ── Modal close (×) buttons: real 44px tap target ── */
+    [style*="border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280"] {
+        width: 44px !important; height: 44px !important;
+    }
+    /* Modal footer "Cancel" buttons (edit-user / add-user modals) */
+    [style*="padding:9px 20px;background:#F3F4F6;border:none;border-radius:10px;font-size:13px;font-weight:600;color:#6B7280;cursor:pointer;"] {
+        min-height: 44px; padding-top: 0 !important; padding-bottom: 0 !important;
+        display: inline-flex; align-items: center; justify-content: center;
+    }
+    .btn-modal-primary { min-height: 44px; }
+
+    /* ── Legacy confirm/transfer/clone modals: edge gutter + scrollable panel + 44px action buttons ── */
+    .mob-confirm-modal { padding: 16px; box-sizing: border-box; }
+    .mob-confirm-modal > div {
+        width: 100% !important; max-height: calc(100vh - 32px) !important; overflow-y: auto !important; box-sizing: border-box;
+    }
+    .mob-confirm-modal button[style*="flex:1;padding:10px"],
+    .mob-confirm-modal button[style*="flex:2;padding:10px"] { min-height: 44px; }
+    .mob-modal-x {
+        width: 44px !important; height: 44px !important; display: inline-flex !important;
+        align-items: center; justify-content: center; font-size: 22px !important;
+    }
 }
 </style>
 
@@ -70,7 +195,7 @@
 
 {{-- ═══════ Outer Tabs (admin/manager only) ═══════ --}}
 @if(in_array(auth()->user()->role, ['admin', 'manager']))
-<div class="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit mb-6" style="flex-wrap:wrap;">
+<div class="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit mb-6 team-outer-tabs" style="flex-wrap:wrap;">
     <a href="{{ route('team.index') }}"
        class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition {{ $view === 'team' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
         <i class="fa fa-users text-xs"></i> Team
@@ -196,9 +321,38 @@
 
 </div>
 
+{{-- Mobile-only workload glance — individual contributors, sorted busiest first --}}
+@php
+    $workloadMembers = $members->getCollection()->where('role', 'user')->sortByDesc('pending_tasks')->take(8);
+    $workloadMax = $workloadMembers->max('pending_tasks') ?: 1;
+@endphp
+@if($workloadMembers->isNotEmpty())
+<div class="team-workload-mobonly" style="background:#fff;border:1px solid #EDEFF3;border-radius:16px;padding:16px;margin-bottom:20px;">
+    <div style="font-size:14.5px;font-weight:700;color:#111827;letter-spacing:-.01em;margin-bottom:12px;">Workload</div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+        @foreach($workloadMembers as $wm)
+        @php $wmPct = min(100, round($wm->pending_tasks / $workloadMax * 100)); @endphp
+        <div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                <span style="width:30px;height:30px;flex-shrink:0;border-radius:99px;background:var(--mob-brand-grad, linear-gradient(135deg,#4F46E5,#6366F1));color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;">{{ strtoupper(substr($wm->name, 0, 1)) }}</span>
+                <span style="flex:1;font-size:13px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $wm->name }}</span>
+                <span style="font-size:13px;font-weight:700;color:#111827;font-variant-numeric:tabular-nums;">{{ $wm->pending_tasks }} {{ Str::plural('task', $wm->pending_tasks) }}</span>
+            </div>
+            <div style="height:7px;border-radius:99px;background:#F3F4F6;overflow:hidden;">
+                <div style="height:100%;width:{{ $wmPct }}%;background:var(--mob-brand-accent, #6366F1);opacity:.85;border-radius:99px;"></div>
+            </div>
+            <div style="font-size:11px;font-weight:500;color:#9CA3AF;margin-top:4px;">
+                {{ $wm->pending_tasks == 0 ? 'No pending tasks' : ($wm->pending_tasks === $workloadMax && $workloadMax > 3 ? 'Busiest right now' : 'Healthy load') }}
+            </div>
+        </div>
+        @endforeach
+    </div>
+</div>
+@endif
+
 {{-- Search & Filters --}}
 @if(in_array(auth()->user()->role, ['admin', 'manager']))
-<form method="GET" action="{{ route('team.index') }}" class="flex flex-wrap gap-3 mb-5">
+<form method="GET" action="{{ route('team.index') }}" class="flex flex-wrap gap-3 mb-5 team-filter-form">
     <div class="relative flex-1 min-w-[200px]">
         <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
         <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name, email or username…"
@@ -233,7 +387,7 @@
 {{-- View Toggle Wrapper --}}
 <div x-data="{ view: localStorage.getItem('team_view') || 'cards', setView(v){ this.view=v; localStorage.setItem('team_view',v); } }">
 
-<div style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;margin-bottom:22px;width:fit-content;">
+<div class="team-view-toggle" style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;margin-bottom:22px;width:fit-content;">
     <button @click="setView('table')"
             :style="view==='table'
                 ? 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);'
@@ -257,7 +411,7 @@
         $progress  = $member->total_tasks > 0 ? round(($member->completed_tasks / $member->total_tasks) * 100) : 0;
     @endphp
     @php $canViewDash = !(auth()->user()->role === 'manager' && $member->role === 'admin'); @endphp
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 transition group {{ $canViewDash ? 'hover:shadow-md hover:border-indigo-200 cursor-pointer' : 'cursor-default' }}"
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 transition group mob-card {{ $canViewDash ? 'hover:shadow-md hover:border-indigo-200 cursor-pointer' : 'cursor-default' }}"
          @if($canViewDash) onclick="window.location.href='{{ route('admin.users.dashboard', $member) }}'" @endif>
         {{-- Avatar + Name --}}
         <div class="flex flex-col items-center text-center mb-4">
@@ -321,7 +475,7 @@
         {{-- Actions (admin/manager) --}}
         @if(in_array(auth()->user()->role, ['admin', 'manager']))
         @php $isAdminTarget = $member->role === 'admin'; $isManager = auth()->user()->role === 'manager'; $managerBlocked = $isManager && $isAdminTarget; @endphp
-        <div class="flex gap-2 mt-4" onclick="event.stopPropagation()">
+        <div class="flex gap-2 mt-4 mob-card-actions" onclick="event.stopPropagation()">
             {{-- Edit --}}
             @if($managerBlocked)
             <div class="flex-1 text-center text-xs bg-gray-50 text-gray-300 py-1.5 rounded-lg font-medium cursor-not-allowed select-none" title="Cannot edit admin accounts">
@@ -434,7 +588,7 @@
 
 {{-- ══ TABLE VIEW ══ --}}
 <div x-show="view === 'table'" x-cloak>
-<div class="team-table-wrap bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+<div class="team-table-wrap mob-table-cards bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
     <table class="w-full">
         <thead>
             <tr class="border-b border-gray-100 bg-gray-50/50">
@@ -458,7 +612,7 @@
                 @if($canViewDash2) onclick="window.location.href='{{ route('admin.users.dashboard', $member) }}'" @endif>
 
                 {{-- Member --}}
-                <td class="px-5 py-3.5">
+                <td class="px-5 py-3.5 mob-team-cell" data-label="Member">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center"
                              style="background:{{ $aColor2 }};">
@@ -479,14 +633,14 @@
                 </td>
 
                 {{-- Role --}}
-                <td class="px-5 py-3.5">
+                <td class="px-5 py-3.5 mob-col-role" data-label="Role">
                     <span class="text-xs px-2.5 py-1 rounded-full font-medium {{ $roleBg[$member->role] ?? 'bg-gray-100 text-gray-600' }}">
                         {{ ucfirst($member->role) }}
                     </span>
                 </td>
 
                 {{-- Status --}}
-                <td class="px-5 py-3.5">
+                <td class="px-5 py-3.5 mob-col-status" data-label="Status">
                     @if($member->status === 'inactive')
                     <span class="text-xs px-2.5 py-1 rounded-full font-semibold bg-amber-100 text-amber-700">Held</span>
                     @else
@@ -495,15 +649,15 @@
                 </td>
 
                 {{-- Open Tasks --}}
-                <td class="px-5 py-3.5 text-sm text-gray-700 font-semibold">{{ $member->pending_tasks }}</td>
+                <td class="px-5 py-3.5 text-sm text-gray-700 font-semibold mob-col-open" data-label="Open">{{ $member->pending_tasks }}</td>
 
                 {{-- Done Tasks --}}
-                <td class="px-5 py-3.5 text-sm text-gray-500">{{ $member->completed_tasks }}</td>
+                <td class="px-5 py-3.5 text-sm text-gray-500 mob-col-done" data-label="Done">{{ $member->completed_tasks }}</td>
 
                 {{-- Actions --}}
                 @if(in_array(auth()->user()->role, ['admin', 'manager']))
                 @php $isAdminTarget2 = $member->role === 'admin'; $isManager2 = auth()->user()->role === 'manager'; $managerBlocked2 = $isManager2 && $isAdminTarget2; @endphp
-                <td class="px-5 py-3.5" onclick="event.stopPropagation()">
+                <td class="px-5 py-3.5 mob-col-actions" data-label="Actions" onclick="event.stopPropagation()">
                     <div class="flex items-center gap-2">
                         @if(!$managerBlocked2)
                         <button type="button"
@@ -597,7 +751,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="{{ in_array(auth()->user()->role, ['admin','manager']) ? 6 : 5 }}" class="px-5 py-12 text-center">
+                <td colspan="{{ in_array(auth()->user()->role, ['admin','manager']) ? 6 : 5 }}" class="px-5 py-12 text-center mob-team-cell">
                     <i class="fa fa-users text-4xl text-gray-200 mb-3"></i>
                     <p class="text-sm text-gray-400">No team members found</p>
                 </td>
@@ -739,10 +893,10 @@ $roleColorMap = ['admin'=>'bg-red-100 text-red-600','manager'=>'bg-amber-100 tex
 </div>
 @else
 
-<div x-data="permsApp()" x-init="init()" style="display:flex;gap:20px;height:calc(100vh - 280px);min-height:540px;">
+<div x-data="permsApp()" x-init="init()" class="perms-two-col" style="display:flex;gap:20px;height:calc(100vh - 280px);min-height:540px;">
 
     {{-- Left panel: user list --}}
-    <div style="width:272px;flex-shrink:0;background:#fff;border-radius:16px;border:1px solid #E5E7EB;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 1px 4px rgba(0,0,0,.05);">
+    <div class="perms-user-list" style="width:272px;flex-shrink:0;background:#fff;border-radius:16px;border:1px solid #E5E7EB;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 1px 4px rgba(0,0,0,.05);">
         <div style="padding:14px;border-bottom:1px solid #F3F4F6;">
             <div style="position:relative;">
                 <i class="fa fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:11px;pointer-events:none;"></i>
@@ -1060,7 +1214,7 @@ function permsApp() {
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
         @foreach($allRoles as $role)
         @php $userCount = \App\Models\User::where('role', $role->name)->count(); @endphp
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col transition hover:shadow-md">
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col transition hover:shadow-md mob-card">
             <div class="h-1.5 w-full" style="background:{{ $role->color }};"></div>
             <div class="p-5 flex flex-col gap-3 flex-1">
                 <div class="flex items-center justify-between">
@@ -1219,7 +1373,7 @@ function permsApp() {
                                         <i class="fa {{ $grp['icon'] }}" style="font-size:11px;color:{{ $grp['color'] }};"></i>
                                         <span style="font-size:11px;font-weight:700;color:{{ $grp['color'] }};text-transform:uppercase;letter-spacing:.05em;">{{ $grpName }}</span>
                                     </div>
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+                                    <div class="mob-role-perm-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
                                         @foreach($grp['perms'] as $pk => $pinfo)
                                         <label style="display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;border-top:1px solid #F9FAFB;{{ $loop->index % 2 === 1 ? 'border-left:1px solid #F9FAFB;' : '' }}transition:background .1s;"
                                                onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
@@ -1301,7 +1455,7 @@ function permsApp() {
                                         <i class="fa {{ $grp['icon'] }}" style="font-size:11px;color:{{ $grp['color'] }};"></i>
                                         <span style="font-size:11px;font-weight:700;color:{{ $grp['color'] }};text-transform:uppercase;letter-spacing:.05em;">{{ $grpName }}</span>
                                     </div>
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+                                    <div class="mob-role-perm-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
                                         @foreach($grp['perms'] as $pk => $pinfo)
                                         <label style="display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;border-top:1px solid #F9FAFB;{{ $loop->index % 2 === 1 ? 'border-left:1px solid #F9FAFB;' : '' }}transition:background .1s;"
                                                onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
@@ -1400,7 +1554,7 @@ function rolesTab() {
         $fPending  = $fTotal - $fDone;
         $fProgress = $fTotal > 0 ? round(($fDone / $fTotal) * 100) : 0;
     @endphp
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md hover:border-indigo-200 transition group cursor-pointer"
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md hover:border-indigo-200 transition group cursor-pointer mob-card"
          onclick="window.location.href='{{ route('admin.users.dashboard', $former) }}'">
 
         {{-- Avatar + Name --}}
@@ -1437,7 +1591,7 @@ function rolesTab() {
         </div>
 
         {{-- Actions --}}
-        <div class="flex gap-2 mt-4" onclick="event.stopPropagation()">
+        <div class="flex gap-2 mt-4 mob-card-actions" onclick="event.stopPropagation()">
             {{-- Restore --}}
             <form method="POST" action="{{ route('admin.users.restore', $former) }}" class="flex-1">
                 @csrf
@@ -2566,7 +2720,7 @@ function editUserModal() {
                                 <i class="fa {{ $grp['icon'] }}" style="font-size:10px;color:{{ $grp['color'] }};"></i>
                                 <span style="font-size:10px;font-weight:700;color:{{ $grp['color'] }};text-transform:uppercase;letter-spacing:.05em;">{{ $grpName }}</span>
                             </div>
-                            <div style="display:grid;grid-template-columns:1fr 1fr;">
+                            <div class="mob-role-perm-grid" style="display:grid;grid-template-columns:1fr 1fr;">
                                 @foreach($grp['perms'] as $pk => $plabel)
                                 <label style="display:flex;align-items:center;gap:8px;padding:9px 14px;cursor:pointer;border-top:1px solid #F9FAFB;{{ $loop->index % 2 === 1 ? 'border-left:1px solid #F9FAFB;' : '' }}"
                                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
@@ -2696,7 +2850,7 @@ function closePermanentDeleteConfirm() {
 </script>
 
 {{-- Delete confirmation modal --}}
-<div id="delete-confirm-modal"
+<div id="delete-confirm-modal" class="mob-confirm-modal"
      style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;"
      onclick="if(event.target===this)closeDeleteConfirm()">
     <div style="background:#fff;border-radius:16px;padding:28px 28px 24px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
@@ -2735,7 +2889,7 @@ function closePermanentDeleteConfirm() {
 </div>
 
 {{-- Permanent Delete confirmation modal --}}
-<div id="permanent-delete-modal"
+<div id="permanent-delete-modal" class="mob-confirm-modal"
      style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;"
      onclick="if(event.target===this)closePermanentDeleteConfirm()">
     <div style="background:#fff;border-radius:16px;padding:28px 28px 24px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.25);">
@@ -2780,7 +2934,7 @@ function closePermanentDeleteConfirm() {
 </div>
 
 {{-- Transfer Tasks Modal --}}
-<div id="transfer-modal"
+<div id="transfer-modal" class="mob-confirm-modal"
      style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;"
      onclick="if(event.target===this)closeTransferModal()">
     <div style="background:#fff;border-radius:16px;padding:28px 28px 24px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
@@ -2792,7 +2946,7 @@ function closePermanentDeleteConfirm() {
                 <p style="font-size:15px;font-weight:700;color:#111827;margin:0;">Transfer Tasks</p>
                 <p id="transfer-subtitle" style="font-size:12px;color:#9CA3AF;margin:0;">Move all pending tasks to another member</p>
             </div>
-            <button type="button" onclick="closeTransferModal()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:18px;line-height:1;">×</button>
+            <button type="button" onclick="closeTransferModal()" class="mob-modal-x" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:18px;line-height:1;">×</button>
         </div>
 
         <form id="transfer-form" method="POST">
@@ -2827,7 +2981,7 @@ function closePermanentDeleteConfirm() {
 </div>
 
 {{-- Clone User Modal --}}
-<div id="clone-modal"
+<div id="clone-modal" class="mob-confirm-modal"
      style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;"
      onclick="if(event.target===this)closeCloneModal()">
     <div style="background:#fff;border-radius:16px;padding:28px 28px 24px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.2);max-height:90vh;overflow-y:auto;">
@@ -2839,7 +2993,7 @@ function closePermanentDeleteConfirm() {
                 <p style="font-size:15px;font-weight:700;color:#111827;margin:0;">Clone User</p>
                 <p id="clone-subtitle" style="font-size:12px;color:#9CA3AF;margin:0;">Creates a new account with the same role & permissions — no tasks assigned</p>
             </div>
-            <button type="button" onclick="closeCloneModal()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:20px;line-height:1;">×</button>
+            <button type="button" onclick="closeCloneModal()" class="mob-modal-x" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:20px;line-height:1;">×</button>
         </div>
 
         {{-- Source badge --}}

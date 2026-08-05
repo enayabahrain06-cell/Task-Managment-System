@@ -14,6 +14,21 @@
     .mfa-deco-col { display:none !important; }
 }
 [x-cloak] { display:none !important; }
+
+/* ── Mobile-only premium polish (additive; desktop >768px untouched) ── */
+@media(max-width:768px) {
+    .mfa-card    { max-width: 92vw; box-shadow: var(--amob-shadow-1, 0 10px 30px rgba(17,24,39,0.14)); }
+    .amob-h1     { font-size: 19px !important; }
+    .amob-help   { font-size: 12.5px !important; }
+    .amob-field  { min-height: 46px !important; font-size: 16px !important; }
+    .amob-btn    { min-height: 48px !important; font-size: 15px !important; }
+}
+@media(max-width:480px) {
+    .mfa-form-col     { padding: 24px 18px !important; }
+    #totpBoxes        { gap: 4px !important; }
+    .otp-box          { width: 40px !important; height: 48px !important; font-size: 19px !important; }
+    .amob-otp-divider { width: 10px !important; }
+}
 </style>
 
 @php $authUser = auth()->user(); @endphp
@@ -55,8 +70,8 @@
 
         {{-- Heading --}}
         <div style="margin-bottom:22px;">
-            <h1 style="font-size:19px;font-weight:800;color:#111827;margin:0 0 4px;" x-text="useRecovery ? 'Enter Recovery Code' : 'Two-Factor Authentication'"></h1>
-            <p style="font-size:12px;color:#9CA3AF;margin:0;" x-text="useRecovery ? 'Enter one of your saved recovery codes' : 'Enter the 6-digit code from your authenticator app'"></p>
+            <h1 class="amob-h1" style="font-size:19px;font-weight:800;color:#111827;margin:0 0 4px;" x-text="useRecovery ? 'Enter Recovery Code' : 'Two-Factor Authentication'"></h1>
+            <p class="amob-help" style="font-size:12px;color:#9CA3AF;margin:0;" x-text="useRecovery ? 'Enter one of your saved recovery codes' : 'Enter the 6-digit code from your authenticator app'"></p>
         </div>
 
         {{-- Error --}}
@@ -77,13 +92,13 @@
                     <input class="otp-box" type="text" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
                     <input class="otp-box" type="text" inputmode="numeric" maxlength="1" autocomplete="off">
                     <input class="otp-box" type="text" inputmode="numeric" maxlength="1" autocomplete="off">
-                    <div style="width:14px;height:2px;background:#D1D5DB;border-radius:2px;flex-shrink:0;"></div>
+                    <div class="amob-otp-divider" style="width:14px;height:2px;background:#D1D5DB;border-radius:2px;flex-shrink:0;"></div>
                     <input class="otp-box" type="text" inputmode="numeric" maxlength="1" autocomplete="off">
                     <input class="otp-box" type="text" inputmode="numeric" maxlength="1" autocomplete="off">
                     <input class="otp-box" type="text" inputmode="numeric" maxlength="1" autocomplete="off">
                 </div>
 
-                <button type="submit" id="totpSubmitBtn"
+                <button type="submit" id="totpSubmitBtn" class="amob-btn"
                         style="width:100%;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;font-size:14px;font-weight:600;padding:13px;border:none;border-radius:12px;cursor:pointer;box-shadow:0 6px 20px rgba(79,70,229,0.35);transition:opacity 0.15s;"
                         onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
                     <i class="fas fa-arrow-right" style="margin-right:6px;font-size:12px;"></i> Verify
@@ -96,11 +111,11 @@
             <form method="POST" action="{{ route('mfa.verify') }}">
                 @csrf
                 <label style="display:block;font-size:10px;font-weight:600;color:#9CA3AF;margin-bottom:8px;text-align:center;letter-spacing:1px;text-transform:uppercase;">Recovery Code</label>
-                <input type="text" name="code" inputmode="text" autocomplete="off" placeholder="XXXXX-XXXXX" maxlength="11"
+                <input type="text" name="code" inputmode="text" autocomplete="off" placeholder="XXXXX-XXXXX" maxlength="11" class="amob-field"
                        style="width:100%;padding:14px;border:1.5px solid #E5E7EB;border-radius:12px;font-size:18px;font-weight:700;text-align:center;letter-spacing:4px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;font-family:monospace;margin-bottom:20px;"
                        onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.1)'"
                        onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow='none'">
-                <button type="submit"
+                <button type="submit" class="amob-btn"
                         style="width:100%;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;font-size:14px;font-weight:600;padding:13px;border:none;border-radius:12px;cursor:pointer;box-shadow:0 6px 20px rgba(79,70,229,0.35);transition:opacity 0.15s;"
                         onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
                     <i class="fas fa-arrow-right" style="margin-right:6px;font-size:12px;"></i> Verify

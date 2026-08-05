@@ -36,13 +36,38 @@
         .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 40; }
         .hamburger-btn   { display: none; width: 36px; height: 36px; border-radius: 8px; background: #F3F4F6; border: none; cursor: pointer; align-items: center; justify-content: center; color: #6B7280; font-size: 14px; flex-shrink: 0; margin-right: 8px; }
 
+        /* Mobile bottom tab bar */
+        .mobile-bottom-nav {
+            display: none; position: fixed; left: 0; right: 0; bottom: 0; height: 58px;
+            background: #fff; border-top: 1px solid #F1F1F4; z-index: 45;
+            padding-bottom: env(safe-area-inset-bottom);
+            box-shadow: 0 -4px 20px rgba(17,24,39,.06);
+        }
+        .mbn-item {
+            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 3px; text-decoration: none; color: #9CA3AF; font-size: 10px; font-weight: 600;
+            min-height: 44px; position: relative; background: none; border: none; cursor: pointer;
+            font-family: 'Inter', sans-serif;
+        }
+        .mbn-item i { font-size: 17px; transition: transform .15s ease; }
+        .mbn-item.active { color: {{ $appSettings['primary_color'] ?? '#4F46E5' }}; }
+        .mbn-item.active i { transform: translateY(-1px) scale(1.08); }
+        .mbn-badge {
+            position: absolute; top: 2px; right: calc(50% - 20px); min-width: 15px; height: 15px;
+            background: #EF4444; border-radius: 999px; color: #fff; font-size: 9px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center; padding: 0 3px; border: 2px solid #fff;
+            line-height: 1;
+        }
+
         @media (max-width: 768px) {
             .app-sidebar  { position: fixed; top: 0; left: 0; height: 100%; transform: translateX(-100%); }
             .app-sidebar.sidebar-open { transform: translateX(0); }
             .sidebar-overlay.overlay-open { display: block; }
             .hamburger-btn { display: flex; }
-            .app-content { padding: 12px; }
+            .app-content { padding: 12px; padding-bottom: 78px; }
             .topbar-search { display: none !important; }
+            .mobile-bottom-nav { display: flex; }
+            .app-copyright { display: none !important; }
         }
 
         @media (min-width: 769px) {
@@ -167,6 +192,8 @@
             }
             /* Hide low-priority topbar items on very small screens */
             .topbar-hide-xs { display: none !important; }
+            /* Every dropdown row (notifications, messages, etc.) gets a full 44px tap target */
+            .app-dropdown a { min-height: 44px !important; padding-top: 12px !important; padding-bottom: 12px !important; }
             .dev-label-text { display: none !important; }
         }
         /* Profile modal — fluid on small phones */
@@ -177,8 +204,277 @@
         }
         /* Touch-friendly tap targets */
         @media (max-width: 768px) {
-            .nav-item { padding: 10px 10px; min-height: 40px; }
+            .nav-item { padding: 10px 10px; min-height: 44px; font-size: 13.5px; }
+            .nav-item .nav-icon { width: 22px; font-size: 15px; }
             .icon-btn { width: 36px; height: 36px; }
+            /* Drawer (hamburger panel) is wider than the desktop rail */
+            .app-sidebar { width: 302px; min-width: 302px; }
+            .sidebar-signout-mobile-only { display: block !important; }
+        }
+        .sidebar-signout-mobile-only { display: none; }
+
+        /* ══════════════════════════════════════════════════════════
+           Shared mobile design tokens & primitives (320–768px only)
+           Opt-in utility classes any page can use for a consistent
+           "premium native app" feel — rounded cards, soft shadows,
+           8/16/24 spacing, brand gradient. Desktop is untouched.
+           ══════════════════════════════════════════════════════════ */
+        @media (max-width: 768px) {
+            :root {
+                --mob-r-lg: 20px;
+                --mob-r-md: 16px;
+                --mob-r-sm: 12px;
+                --mob-shadow-1: 0 2px 10px rgba(17,24,39,.05);
+                --mob-shadow-2: 0 10px 30px rgba(17,24,39,.10);
+                --mob-sp-1: 8px;
+                --mob-sp-2: 16px;
+                --mob-sp-3: 24px;
+                --mob-brand: {{ $appSettings['primary_color'] ?? '#4F46E5' }};
+                --mob-brand-grad: linear-gradient(135deg, {{ $appSettings['primary_color'] ?? '#4F46E5' }} 0%, #6366F1 100%);
+            }
+
+            body { font-size: 15px; }
+
+            /* Topbar avatar-initial fallback: flat brand fill on mobile, not a gradient —
+               every page's first screenful already shows this, so it counts against the
+               "at most one gradient visible" budget everywhere unless it's flattened here. */
+            .topbar-avatar-fallback { background: var(--mob-brand, #4F46E5) !important; }
+
+            /* App-wide: any text/number/date/search/password/select/textarea field inside the
+               page content must be >=16px on mobile — smaller sizes trigger iOS Safari's
+               auto-zoom-on-focus, which is the single most common mobile input bug across the app. */
+            .app-content input[type="text"],
+            .app-content input[type="email"],
+            .app-content input[type="password"],
+            .app-content input[type="number"],
+            .app-content input[type="date"],
+            .app-content input[type="datetime-local"],
+            .app-content input[type="search"],
+            .app-content input[type="tel"],
+            .app-content input[type="url"],
+            .app-content input:not([type]),
+            .app-content select,
+            .app-content textarea {
+                font-size: 16px !important;
+            }
+
+            /* Generic rounded/soft-shadow card */
+            .mob-card {
+                border-radius: var(--mob-r-lg) !important;
+                box-shadow: var(--mob-shadow-1) !important;
+                border: 1px solid #F3F4F6 !important;
+                background: #fff;
+            }
+            .mob-card-elevated { box-shadow: var(--mob-shadow-2) !important; }
+
+            .mob-section-title {
+                font-size: 17px; font-weight: 800; color: #111827; letter-spacing: -.01em;
+                margin: var(--mob-sp-3) 0 var(--mob-sp-2);
+            }
+
+            /* Horizontally snapping KPI/stat row (swipeable stat cards) */
+            .mob-kpi-row {
+                display: flex; gap: var(--mob-sp-2); overflow-x: auto; scroll-snap-type: x mandatory;
+                -webkit-overflow-scrolling: touch; padding: 2px 2px 8px;
+            }
+            .mob-kpi-row::-webkit-scrollbar { display: none; }
+            .mob-kpi-card {
+                scroll-snap-align: start; flex: 0 0 auto; min-width: 128px;
+                border-radius: var(--mob-r-md); background: #fff; border: 1px solid #F3F4F6;
+                box-shadow: var(--mob-shadow-1); padding: var(--mob-sp-2);
+            }
+
+            /* Large touch-friendly quick-action tile */
+            .mob-quick-action {
+                border-radius: var(--mob-r-md); background: #fff; border: 1px solid #F3F4F6;
+                box-shadow: var(--mob-shadow-1); padding: var(--mob-sp-2);
+                display: flex; align-items: center; gap: 12px; min-height: 56px;
+                text-decoration: none; color: #111827;
+            }
+
+            /* Sticky bottom action bar (sits above the global bottom tab bar) */
+            .mob-sticky-action-bar {
+                position: sticky; bottom: calc(58px + env(safe-area-inset-bottom));
+                background: rgba(255,255,255,.94); backdrop-filter: blur(8px);
+                padding: 10px var(--mob-sp-2); margin: var(--mob-sp-2) calc(-1 * var(--mob-sp-2)) calc(-1 * var(--mob-sp-2));
+                box-shadow: 0 -6px 20px rgba(0,0,0,.06); border-top: 1px solid #F3F4F6; z-index: 5;
+            }
+
+            /* Table → card conversion helper.
+               Usage: wrap the table in a container with class "mob-table-cards",
+               and add data-label="Column Name" to every <td>. */
+            .mob-table-cards table { width: 100%; }
+            .mob-table-cards thead { display: none; }
+            .mob-table-cards tbody, .mob-table-cards tr { display: block; width: 100%; }
+            .mob-table-cards tr {
+                border-radius: var(--mob-r-md); background: #fff; border: 1px solid #F3F4F6;
+                box-shadow: var(--mob-shadow-1); margin-bottom: var(--mob-sp-2); padding: 4px var(--mob-sp-2);
+            }
+            .mob-table-cards td {
+                display: flex; align-items: center; justify-content: space-between; gap: 10px;
+                padding: 9px 0; border-bottom: 1px solid #F9FAFB; font-size: 13px; text-align: right; white-space: normal;
+            }
+            .mob-table-cards td:last-child { border-bottom: none; }
+            .mob-table-cards td::before {
+                content: attr(data-label); font-size: 11px; font-weight: 700; color: #9CA3AF;
+                text-transform: uppercase; letter-spacing: .04em; text-align: left; flex-shrink: 0; margin-right: auto;
+            }
+
+            /* Full-width, large, label-above touch inputs for forms opting in */
+            .mob-field { margin-bottom: var(--mob-sp-2); }
+            .mob-field label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+            .mob-field input, .mob-field select, .mob-field textarea {
+                width: 100%; min-height: 46px; font-size: 15px; border-radius: var(--mob-r-sm);
+                box-sizing: border-box;
+            }
+            .mob-btn-primary {
+                background: var(--mob-brand-grad); color: #fff; border: none; border-radius: var(--mob-r-sm);
+                min-height: 46px; font-weight: 700; font-size: 14px; box-shadow: 0 6px 16px rgba(79,70,229,.25);
+            }
+
+            /* Header simplification: menu / title / notification / profile only.
+               Secondary actions (storage badge, history, dev mode, who's-online) are hidden on mobile. */
+            .topbar-hide-mobile { display: none !important; }
+            .app-topbar { height: 52px; padding: 0 12px; }
+            .breadcrumb-current { max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .topbar-right { gap: 6px; }
+
+            /* Compact horizontally-scrolling action-chip row (replaces large quick-action buttons) */
+            .mob-action-chips {
+                display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+                padding: 2px 2px 6px; scroll-snap-type: x proximity;
+            }
+            .mob-action-chips::-webkit-scrollbar { display: none; }
+            .mob-action-chip {
+                scroll-snap-align: start; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 7px;
+                min-height: 40px; padding: 0 14px; border-radius: 999px; background: #fff;
+                border: 1px solid #F3F4F6; box-shadow: var(--mob-shadow-1); font-size: 13px; font-weight: 700;
+                color: #374151; white-space: nowrap;
+            }
+            .mob-action-chip i { font-size: 12px; color: var(--mob-brand); }
+            .mob-action-chip.mob-action-chip-primary { background: var(--mob-brand-grad); color: #fff; border: none; }
+            .mob-action-chip.mob-action-chip-primary i { color: #fff; }
+
+            /* Native-app press feedback (CSS-only, no JS) — fast, subtle */
+            .mob-card, .mob-card-elevated, .mob-kpi-card, .mob-quick-action,
+            .mob-action-chip, .mbn-item, .nav-item, .qa-btn, .usr-task-row, .utask-row {
+                transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+            }
+            .mob-card:active, .mob-kpi-card:active, .mob-quick-action:active,
+            .mob-action-chip:active, .qa-btn:active, .usr-task-row:active, .utask-row:active {
+                transform: scale(.97); opacity: .92;
+            }
+            .mbn-item:active { transform: scale(.92); }
+        }
+
+        /* ══════════════════════════════════════════════════════════
+           Unified mobile design system (uds-*) — backs the shared
+           components in resources/views/components/mobile/*.blade.php.
+           One canonical recipe per component; pages should consume the
+           component, not copy this markup. Desktop (>768px) untouched.
+           ══════════════════════════════════════════════════════════ */
+        @media (max-width: 768px) {
+            /* Record card (task / approval / project) + list-row shared card shell */
+            .uds-card {
+                background: #fff; border: 1px solid #EDEFF3; border-radius: 18px;
+                padding: 15px; box-shadow: 0 1px 2px rgba(17,24,39,.04);
+            }
+            .uds-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: #9CA3AF; }
+            .uds-card-title { font-size: 15.5px; font-weight: 700; letter-spacing: -.018em; color: #111827; line-height: 1.35; text-decoration: none; display: block; }
+            .uds-context-line { font-size: 12.5px; color: #6B7280; line-height: 1.45; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+            .uds-progress-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 11px; }
+            .uds-progress-row span:first-child { font-size: 11.5px; font-weight: 600; color: #6B7280; }
+            .uds-progress-row span:last-child { font-size: 12px; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; }
+            .uds-track { height: 6px; border-radius: 99px; background: #F3F4F6; overflow: hidden; margin-top: 5px; }
+            .uds-track-fill { display: block; height: 100%; border-radius: 99px; opacity: .85; }
+            .uds-due-row { display: flex; align-items: center; gap: 8px; margin-top: 11px; padding-top: 11px; border-top: 1px solid #F0F1F5; flex-wrap: wrap; }
+            .uds-due-line { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; }
+            .uds-actions-row { display: flex; gap: 9px; margin-top: 13px; }
+
+            /* List row (dense lists) */
+            .uds-list { background: #fff; border-radius: 18px; overflow: hidden; }
+            .uds-list-row { display: flex; align-items: center; gap: 11px; padding: 12px 14px; text-decoration: none; border-bottom: 1px solid #EDEFF3; }
+            .uds-list-row:last-child { border-bottom: none; }
+            .uds-list-title { font-size: 14.5px; font-weight: 600; letter-spacing: -.012em; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .uds-list-meta { font-size: 11.5px; color: #9CA3AF; font-weight: 500; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .uds-list-avatar { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 9px; font-weight: 700; }
+
+            /* Segmented control */
+            .uds-seg { display: flex; gap: 2px; background: #F3F4F6; border-radius: 11px; padding: 3px; }
+            .uds-seg-opt {
+                flex: 1; min-height: 44px; border: 0; border-radius: 8px; background: transparent;
+                font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 600; color: #6B7280; cursor: pointer;
+                display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; white-space: nowrap;
+            }
+            .uds-seg-opt.is-on { background: #fff; color: var(--mob-brand, #4F46E5); font-weight: 700; box-shadow: 0 1px 4px rgba(17,24,39,.08); }
+            .uds-seg-count { padding: 4px 9px; border-radius: 8px; font-size: 11px; font-weight: 700; background: #E5E7EB; color: #6B7280; }
+            .uds-seg-opt.is-on .uds-seg-count { background: #EEF2FF; color: var(--mob-brand, #4F46E5); }
+
+            /* Filter chip row (wraps a native <select> so the OS picker still opens) */
+            .uds-chiprow { display: flex; gap: 7px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 2px 2px 4px; scrollbar-width: none; }
+            .uds-chiprow::-webkit-scrollbar { width: 0; height: 0; display: none; }
+            .uds-chip {
+                position: relative; flex: 0 0 auto; min-height: 44px; max-width: 60vw; display: inline-flex; align-items: center; gap: 7px;
+                padding: 0 12px; border: 1px solid #E1E4EA; border-radius: 10px; background: #fff;
+                font-size: 12.5px; font-weight: 600; color: #374151; white-space: nowrap;
+            }
+            .uds-chip span { overflow: hidden; text-overflow: ellipsis; }
+            .uds-chip i { font-size: 9px; color: #9CA3AF; flex-shrink: 0; }
+            .uds-chip.is-active { border-color: #C7D2FE; background: #EEF2FF; color: #4F46E5; }
+            /* inset:-1px (not 0) so the invisible tap target covers the chip's full 44px
+               border-box — inset:0 anchors to the padding box, which left this 2px short
+               (a real G2 miss: the <select> itself, not just its label, is what the audit
+               measures as the interactive element). */
+            .uds-chip select { position: absolute; inset: -1px; width: auto; height: auto; opacity: 0; border: 0; }
+
+            /* KPI grid — 2 columns, never a swipe strip that clips */
+            .uds-kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+            .uds-kpi-tile { background: #fff; border: 1px solid #EDEFF3; border-radius: 16px; padding: 13px; box-shadow: 0 1px 2px rgba(17,24,39,.04); }
+            .uds-kpi-value { font-size: 25px; font-weight: 700; letter-spacing: -.03em; color: #111827; margin-top: 7px; line-height: 1; font-variant-numeric: tabular-nums; }
+            .uds-kpi-value.is-money { font-size: 18px; }
+            .uds-kpi-sub { font-size: 11px; font-weight: 500; color: #9CA3AF; margin-top: 5px; }
+
+            /* Sticky bottom action bar */
+            .uds-actionbar {
+                position: fixed; left: 0; right: 0; bottom: calc(58px + env(safe-area-inset-bottom)); z-index: 20;
+                display: flex; gap: 9px; padding: 12px 16px; background: rgba(255,255,255,.94);
+                backdrop-filter: blur(18px); border-top: 1px solid #E9EBF0;
+            }
+            .uds-btn-ghost {
+                flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 18px; min-height: 48px;
+                border: 1px solid #C7D2FE; border-radius: 14px; background: #fff; color: var(--mob-brand, #4F46E5);
+                font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none;
+            }
+            .uds-btn-primary {
+                flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 48px;
+                border: 0; border-radius: 14px; background: var(--mob-brand-grad, linear-gradient(135deg,#4F46E5,#6366F1));
+                color: #fff; font-family: 'Inter', sans-serif; font-size: 14.5px; font-weight: 700; cursor: pointer;
+                box-shadow: 0 10px 20px -10px rgba(79,70,229,.8); text-decoration: none;
+            }
+            .uds-btn-danger { background: #FEE2E2; color: #DC2626; }
+
+            /* Empty state */
+            .uds-empty { background: #fff; border: 1px dashed #D1D5DB; border-radius: 18px; padding: 34px 20px; text-align: center; }
+            .uds-empty-title { font-size: 14.5px; font-weight: 600; color: #111827; margin: 0 0 4px; }
+            .uds-empty-sub { font-size: 12.5px; color: #9CA3AF; margin: 0; }
+
+            /* Toast — one dark pattern app-wide on mobile, pinned above the tab bar
+               (desktop keeps its existing bottom-right floating white toast) */
+            #appToastWrap {
+                left: 16px; right: 16px; bottom: calc(58px + env(safe-area-inset-bottom) + 12px) !important;
+                align-items: stretch;
+            }
+            .app-toast { min-width: 0; max-width: none; width: 100%; box-sizing: border-box; }
+            .app-toast-success, .app-toast-error {
+                background: #111827; border: none; color: #fff; border-radius: 14px; padding: 13px 15px;
+            }
+            .app-toast-icon { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px !important; margin-top: 0; }
+            .app-toast-success .app-toast-icon { background: #16A34A; color: #fff !important; }
+            .app-toast-error .app-toast-icon { background: #DC2626; color: #fff !important; }
+            .app-toast-title { font-size: 13px; font-weight: 600; color: #fff; }
+            .app-toast-msg { color: rgba(255,255,255,.75); opacity: 1; }
+            .app-toast-close { color: rgba(255,255,255,.6); }
+            .app-toast-close:hover { color: #fff; opacity: 1; }
         }
     </style>
 </head>
@@ -193,6 +489,45 @@
     <aside class="app-sidebar" :class="sidebarOpen ? 'sidebar-open' : ''">
         @include('layouts.navigation')
     </aside>
+
+    {{-- Mobile bottom tab bar (hidden on desktop; sits alongside the hamburger sidebar, not a replacement) --}}
+    @php
+        $mbnRole         = auth()->user()->role ?? 'user';
+        $mbnDashRoute    = $mbnRole === 'admin' ? 'admin.dashboard' : ($mbnRole === 'manager' ? 'manager.dashboard' : 'user.dashboard');
+        $mbnTasksRoute   = $mbnRole === 'user' ? 'user.tasks.index' : 'admin.tasks.index';
+        $mbnTasksPattern = $mbnRole === 'user' ? 'user.tasks.*' : 'admin.tasks.*';
+        $mbnCanTasks     = $mbnRole === 'user' || auth()->user()->hasPermission('manage_tasks');
+        $mbnCanTeam      = auth()->user()->hasPermission('view_team');
+    @endphp
+    <nav class="mobile-bottom-nav" aria-label="Primary">
+        <a href="{{ route($mbnDashRoute) }}" class="mbn-item {{ request()->routeIs($mbnDashRoute) ? 'active' : '' }}"
+           aria-current="{{ request()->routeIs($mbnDashRoute) ? 'page' : 'false' }}">
+            <i class="fas fa-table-cells-large" aria-hidden="true"></i>
+            <span>Home</span>
+        </a>
+        @if($mbnCanTasks)
+        <a href="{{ route($mbnTasksRoute) }}" class="mbn-item {{ request()->routeIs($mbnTasksPattern) ? 'active' : '' }}"
+           aria-current="{{ request()->routeIs($mbnTasksPattern) ? 'page' : 'false' }}">
+            <i class="fas fa-list-check" aria-hidden="true"></i>
+            <span>Tasks</span>
+        </a>
+        @endif
+        @if($mbnCanTeam)
+        <a href="{{ route('team.index') }}" class="mbn-item {{ request()->routeIs('team.*') ? 'active' : '' }}"
+           aria-current="{{ request()->routeIs('team.*') ? 'page' : 'false' }}">
+            <i class="fas fa-users" aria-hidden="true"></i>
+            <span>Team</span>
+        </a>
+        @endif
+        <a href="{{ route('alerts.index') }}" class="mbn-item {{ request()->routeIs('alerts.*') ? 'active' : '' }}"
+           aria-current="{{ request()->routeIs('alerts.*') ? 'page' : 'false' }}">
+            <i class="fas fa-bell" aria-hidden="true"></i>
+            <span>Alerts</span>
+            @if($notificationCount > 0)
+            <span class="mbn-badge">{{ $notificationCount > 9 ? '9+' : $notificationCount }}</span>
+            @endif
+        </a>
+    </nav>
 
     {{-- Main --}}
     <div class="app-main">
@@ -216,7 +551,7 @@
                 @endphp
                 @if(auth()->user()?->role === 'admin')
                 <a href="{{ route('admin.settings.index') }}#storage" title="{{ $storageNasOn ? 'Storage: NAS (SMB) — click to manage' : 'Storage: Local — click to manage' }}"
-                   class="topbar-hide-xs"
+                   class="topbar-hide-xs topbar-hide-mobile"
                    style="display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:20px;text-decoration:none;font-size:10px;font-weight:700;letter-spacing:.3px;border:1.5px solid {{ $storageNasOn ? '#BBF7D0' : '#E5E7EB' }};background:{{ $storageNasOn ? '#F0FDF4' : '#F9FAFB' }};color:{{ $storageNasOn ? '#15803D' : '#6B7280' }};transition:all .2s;flex-shrink:0;"
                    onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
                     <i class="fas {{ $storageNasOn ? 'fa-network-wired' : 'fa-hdd' }}" style="font-size:9px;"></i>
@@ -231,7 +566,7 @@
                 @endif
                 {{-- Page History --}}
                 @if(!in_array('nav_history', $headerHidden))
-                <div x-data="navHistory()" x-init="init()" @click.outside="open=false" style="position:relative;">
+                <div class="topbar-hide-mobile" x-data="navHistory()" x-init="init()" @click.outside="open=false" style="position:relative;">
                     <button @click="open=!open; if(open) load()" class="icon-btn" title="Recently viewed" style="position:relative;">
                         <i class="fas fa-clock-rotate-left"></i>
                         <span x-show="items.length>0 && !open"
@@ -282,7 +617,7 @@
                 <div x-data="notifBell()" x-init="init()" @click.outside="open = false" style="position:relative;">
 
                     {{-- Bell button --}}
-                    <button @click="open = !open" class="icon-btn" title="Notifications" style="position:relative;">
+                    <button id="topbar-notif-bell-btn" @click="open = !open" class="icon-btn" title="Notifications" style="position:relative;">
                         <i class="fas fa-bell" :class="count > 0 && !open ? 'fa-shake' : ''" style="animation-duration:2s;"></i>
                         <span x-show="count > 0"
                               style="position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:#EF4444;border-radius:999px;font-size:9px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 3px;border:2px solid #fff;line-height:1;"
@@ -370,6 +705,7 @@
                 @php $devOn = ($appSettings['developer_mode'] ?? '0') === '1'; @endphp
                 <button id="global-dev-mode-btn" onclick="typeof toggleGlobalDevMode!=='undefined'&&toggleGlobalDevMode(this)"
                         title="{{ $devOn ? 'Developer Mode ON — click to disable' : 'Developer Mode OFF — click to enable' }}"
+                        class="topbar-hide-mobile"
                         style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1.5px solid {{ $devOn ? '#C7D2FE' : '#E5E7EB' }};cursor:pointer;transition:all .2s;flex-shrink:0;{{ $devOn ? 'background:#EEF2FF;color:#4F46E5;' : 'background:#F9FAFB;color:#9CA3AF;' }}">
                     <i class="fas fa-code" style="font-size:9px;"></i>
                     <span id="global-dev-label" class="dev-label-text">{{ $devOn ? 'Dev On' : 'Dev' }}</span>
@@ -379,7 +715,7 @@
 
                 {{-- Who's Online (admin/manager only) --}}
                 @if(in_array(auth()->user()?->role, ['admin','manager']) && !in_array('nav_online_users', $headerHidden))
-                <div x-data="onlineUsers()" x-init="init()" @click.outside="open=false" style="position:relative;">
+                <div class="topbar-hide-mobile" x-data="onlineUsers()" x-init="init()" @click.outside="open=false" style="position:relative;">
                     <button @click="open=!open" class="icon-btn" title="Who's online" style="position:relative;">
                         <i class="fas fa-circle-dot" style="color:#10B981;font-size:13px;"></i>
                         <span x-show="count>0"
@@ -448,7 +784,7 @@
                             <img src="{{ $dropUser->avatarUrl() }}" alt="{{ $dropUser->name }}"
                                  style="width:32px;height:32px;border-radius:50%;object-fit:cover;display:block;">
                         @else
-                            <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;letter-spacing:-.5px;">
+                            <div class="topbar-avatar-fallback" style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;letter-spacing:-.5px;">
                                 {{ strtoupper(substr($dropUser->name ?? 'U', 0, 1)) }}
                             </div>
                         @endif
@@ -546,7 +882,7 @@
 
         @php $copyright = \App\Models\Setting::get('copyright', ''); @endphp
         @if($copyright)
-        <div style="flex-shrink:0;text-align:center;padding:10px 16px;font-size:11.5px;color:#B0B7C3;border-top:1px solid #F3F4F6;background:#fff;">
+        <div class="app-copyright" style="flex-shrink:0;text-align:center;padding:10px 16px;font-size:11.5px;color:#B0B7C3;border-top:1px solid #F3F4F6;background:#fff;">
             {{ $copyright }}
         </div>
         @endif
@@ -1326,7 +1662,7 @@ document.addEventListener('DOMContentLoaded', function () {
        Call from anywhere: window.showToast(...) */
     window.showToast = function (title, message, type, duration) {
         type     = type     || 'success';
-        duration = duration || (type === 'success' ? 4000 : 7000);
+        duration = duration || 2600;
 
         const wrap = document.getElementById('appToastWrap');
         if (!wrap) return;

@@ -7,10 +7,27 @@
 .otp-box:focus { border-color:#6366F1;box-shadow:0 0 0 3px rgba(99,102,241,0.12);background:#fff; }
 .otp-box.filled { border-color:#6366F1;background:#F5F3FF;color:#4F46E5; }
 [x-cloak] { display:none !important; }
+
+/* ── Mobile-only premium polish — this page previously had no responsive rules at all,
+   so the fixed 36px padding + full-size OTP boxes could overflow narrow phones. ── */
+@media(max-width:768px) {
+    .mfa-card    { max-width: 92vw; box-shadow: var(--amob-shadow-1, 0 10px 30px rgba(17,24,39,0.14)); }
+    .mfa-content { padding: 28px 24px 22px !important; }
+    .amob-h1     { font-size: 19px !important; }
+    .amob-help   { font-size: 12.5px !important; }
+    .amob-btn    { min-height: 48px !important; font-size: 15px !important; }
+}
+@media(max-width:480px) {
+    .mfa-card         { border-radius: var(--amob-r-md, 16px); }
+    .mfa-content      { padding: 24px 18px 20px !important; }
+    #emailOtpBoxes    { gap: 4px !important; }
+    .otp-box          { width: 40px !important; height: 48px !important; font-size: 19px !important; }
+    .amob-otp-divider { width: 10px !important; }
+}
 </style>
 
 <div class="mfa-card" x-data="{ codeSent: {{ $sent ? 'true' : 'false' }} }">
-    <div style="padding:36px 36px 28px;">
+    <div class="mfa-content" style="padding:36px 36px 28px;">
 
         {{-- Header --}}
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
@@ -18,8 +35,8 @@
                 <i class="fas fa-envelope-open-text" style="color:#fff;font-size:18px;"></i>
             </div>
             <div>
-                <h1 style="font-size:17px;font-weight:800;color:#111827;margin:0;" x-text="codeSent ? 'Check Your Email' : 'Email Recovery'"></h1>
-                <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;" x-text="codeSent ? 'Enter the 6-digit code we sent you' : 'We\'ll send a one-time code to your email'"></p>
+                <h1 class="amob-h1" style="font-size:17px;font-weight:800;color:#111827;margin:0;" x-text="codeSent ? 'Check Your Email' : 'Email Recovery'"></h1>
+                <p class="amob-help" style="font-size:12px;color:#9CA3AF;margin:2px 0 0;" x-text="codeSent ? 'Enter the 6-digit code we sent you' : 'We\'ll send a one-time code to your email'"></p>
             </div>
         </div>
 
@@ -57,7 +74,7 @@
 
             <form method="POST" action="{{ route('mfa.send-email-code') }}">
                 @csrf
-                <button type="submit"
+                <button type="submit" class="amob-btn"
                         style="width:100%;background:linear-gradient(135deg,#0EA5E9,#6366F1);color:#fff;font-size:14px;font-weight:600;padding:13px;border:none;border-radius:12px;cursor:pointer;box-shadow:0 6px 20px rgba(99,102,241,0.3);transition:opacity 0.15s;"
                         onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
                     <i class="fas fa-paper-plane" style="margin-right:6px;font-size:12px;"></i> Send Recovery Code
@@ -76,13 +93,13 @@
                     <input class="otp-box" type="text" inputmode="numeric" maxlength="1" autocomplete="off">
                     <input class="otp-box" type="text" inputmode="numeric" maxlength="1" autocomplete="off">
                     <input class="otp-box" type="text" inputmode="numeric" maxlength="1" autocomplete="off">
-                    <div style="width:12px;height:2px;background:#D1D5DB;border-radius:2px;flex-shrink:0;"></div>
+                    <div class="amob-otp-divider" style="width:12px;height:2px;background:#D1D5DB;border-radius:2px;flex-shrink:0;"></div>
                     <input class="otp-box" type="text" inputmode="numeric" maxlength="1" autocomplete="off">
                     <input class="otp-box" type="text" inputmode="numeric" maxlength="1" autocomplete="off">
                     <input class="otp-box" type="text" inputmode="numeric" maxlength="1" autocomplete="off">
                 </div>
 
-                <button type="submit"
+                <button type="submit" class="amob-btn"
                         style="width:100%;background:linear-gradient(135deg,#0EA5E9,#6366F1);color:#fff;font-size:14px;font-weight:600;padding:13px;border:none;border-radius:12px;cursor:pointer;box-shadow:0 6px 20px rgba(99,102,241,0.3);transition:opacity 0.15s;margin-bottom:12px;"
                         onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
                     <i class="fas fa-arrow-right" style="margin-right:6px;font-size:12px;"></i> Verify Code

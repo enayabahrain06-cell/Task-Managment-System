@@ -222,6 +222,12 @@
             --brand-soft: color-mix(in srgb, var(--brand) 9%, white);
             --brand-soft2: color-mix(in srgb, var(--brand) 16%, white);
             --brand-line: color-mix(in srgb, var(--brand) 22%, white);
+            /* Mobile design tokens — only referenced inside the @media (max-width) blocks below */
+            --mobile-radius: 18px;
+            --mobile-shadow: 0 2px 10px rgba(17,24,39,.05);
+            --mobile-space-sm: 8px;
+            --mobile-space-md: 16px;
+            --mobile-space-lg: 24px;
         }
         * { box-sizing: border-box; }
         html { scroll-behavior: smooth; }
@@ -297,6 +303,30 @@
         .team-artwork-dotrow { display: flex; gap: 6px; }
         .team-artwork-dot { width: 7px; height: 7px; border-radius: 50%; border: none; background: #E5E7EB; cursor: pointer; padding: 0; }
         .team-artwork-dot.active { background: var(--brand); width: 18px; border-radius: 4px; }
+
+        /* ── Mobile-only premium pass — every rule is scoped inside @media (max-width: 768px)/(max-width: 480px)
+             and only touches classes added below; desktop (>768px / md:/lg:) styling is untouched.
+             Note: the team-card drag-reorder JS (data-member-id listeners) is untouched — only grid/sizing here. ── */
+        @media (max-width: 768px) {
+            .mobile-team-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: var(--mobile-space-md) !important; }
+            .mobile-team-card { padding: var(--mobile-space-md) !important; border-radius: var(--mobile-radius) !important; box-shadow: var(--mobile-shadow) !important; }
+            .mobile-stat-card { padding: var(--mobile-space-md) !important; }
+            .mobile-journey-card { padding: var(--mobile-space-md) !important; }
+            .mobile-nav-login {
+                min-height: 44px !important;
+                padding-top: 0 !important;
+                padding-bottom: 0 !important;
+                display: inline-flex !important;
+                align-items: center !important;
+            }
+            .mobile-hero-title { font-size: clamp(26px, 8vw, 32px) !important; line-height: 1.18 !important; }
+            .mobile-hero-intro { font-size: 14.5px !important; line-height: 1.65 !important; }
+        }
+
+        @media (max-width: 480px) {
+            .mobile-team-grid { grid-template-columns: minmax(0, 1fr) !important; }
+            .mobile-hero-title { font-size: 24px !important; }
+        }
 
         /* ── Developer Mode live editing ── */
         @if($devEditOn)
@@ -376,7 +406,7 @@
                 <a href="{{ $ctaLink }}" @if($ctaExternal) target="_blank" rel="noopener" @endif
                    class="hidden sm:inline text-[13.5px] font-bold text-[#16132B] hover:text-[color:var(--brand)] transition">{{ $ctaText }}</a>
                 @endif
-                <a href="{{ route('login') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#16132B] text-white text-[13.5px] font-bold shadow-[0_4px_14px_rgba(22,19,43,0.25)] hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(22,19,43,0.32)] transition">
+                <a href="{{ route('login') }}" class="mobile-nav-login inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#16132B] text-white text-[13.5px] font-bold shadow-[0_4px_14px_rgba(22,19,43,0.25)] hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(22,19,43,0.32)] transition">
                     Login <i class="fa-solid fa-arrow-right text-[11px]"></i>
                 </a>
             </div>
@@ -426,10 +456,10 @@
         @endif
 
         <div class="relative z-10 text-center max-w-2xl mx-auto px-6 pt-16 pb-8 md:pt-24">
-            <h1 class="font-extrabold tracking-tight leading-[1.04] mb-4 {{ $hasHeroBg ? 'text-white' : '' }}" style="font-size: clamp(34px, 6vw, 58px); letter-spacing: -0.03em;">
+            <h1 class="mobile-hero-title font-extrabold tracking-tight leading-[1.04] mb-4 {{ $hasHeroBg ? 'text-white' : '' }}" style="font-size: clamp(34px, 6vw, 58px); letter-spacing: -0.03em;">
                 About <span class="gradient-text block">{{ $teamName }}</span>
             </h1>
-            <p class="text-base leading-relaxed max-w-md mx-auto {{ $hasHeroBg ? 'text-white/85' : 'text-gray-500' }} {{ $devEditOn ? 'dev-editable' : '' }}"
+            <p class="mobile-hero-intro text-base leading-relaxed max-w-md mx-auto {{ $hasHeroBg ? 'text-white/85' : 'text-gray-500' }} {{ $devEditOn ? 'dev-editable' : '' }}"
                @if($devEditOn) contenteditable="true" data-key="about_page_intro" data-placeholder="{{ e($introText) }}" @endif>{{ $devEditOn ? $introRaw : $introText }}</p>
 
             <div class="mt-7 flex items-center justify-center gap-5 flex-wrap">
@@ -529,7 +559,7 @@
         @endif
         <div class="reveal grid grid-cols-2 lg:grid-cols-4 gap-5">
             @foreach($stats as $i => $stat)
-            <div class="bg-white rounded-3xl p-6 text-center shadow-[0_10px_30px_-14px_rgba(22,19,43,0.15)] border border-black/[0.03] hover:-translate-y-1 hover:shadow-[0_16px_36px_-14px_rgba(22,19,43,0.22)] transition {{ $devEditOn ? 'dev-hideable' : '' }}"
+            <div class="mobile-stat-card bg-white rounded-3xl p-6 text-center shadow-[0_10px_30px_-14px_rgba(22,19,43,0.15)] border border-black/[0.03] hover:-translate-y-1 hover:shadow-[0_16px_36px_-14px_rgba(22,19,43,0.22)] transition {{ $devEditOn ? 'dev-hideable' : '' }}"
                  @if($devEditOn) data-hidden="{{ $stat['hidden'] ? '1' : '0' }}" @endif>
                 @if($devEditOn)
                 <button type="button" class="dev-eye-btn" data-key="about_page_stat{{ $stat['slot'] }}_hidden"><i class="fa-solid {{ $stat['hidden'] ? 'fa-eye-slash' : 'fa-eye' }}"></i></button>
@@ -632,9 +662,9 @@
         @if($teamMembers->isEmpty())
             <p class="text-center text-gray-400 text-sm py-10">No team members to show yet.</p>
         @else
-            <div class="reveal grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+            <div class="mobile-team-grid reveal grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
                 @foreach($teamMembers as $i => $member)
-                <div class="bg-white rounded-[22px] p-6 text-center shadow-[0_4px_20px_rgba(99,102,241,0.08)] border border-black/[0.03] hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(99,102,241,0.16)] transition {{ $devEditOn ? 'dev-draggable-card' : '' }}" style="transition-delay:{{ $i * 30 }}ms;"
+                <div class="mobile-team-card bg-white rounded-[22px] p-6 text-center shadow-[0_4px_20px_rgba(99,102,241,0.08)] border border-black/[0.03] hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(99,102,241,0.16)] transition {{ $devEditOn ? 'dev-draggable-card' : '' }}" style="transition-delay:{{ $i * 30 }}ms;"
                      @if($devEditOn) draggable="true" data-member-id="{{ $member->id }}" @endif>
                     @if($member->avatar)
                         <img src="{{ Storage::url($member->avatar) }}" alt="{{ $member->name }}" class="w-[72px] h-[72px] rounded-full mx-auto mb-3.5 object-cover shadow-[0_4px_14px_rgba(0,0,0,0.1)]">
@@ -670,7 +700,7 @@
                             <i class="fa-solid {{ $stop['icon'] }} text-[13px]"></i>
                         </div>
                         <div class="ml-5 md:ml-0 md:w-[calc(50%-40px)] {{ $i % 2 === 0 ? 'md:mr-auto md:text-right md:pr-[56px]' : 'md:ml-auto md:pl-[56px]' }}">
-                            <div class="bg-white rounded-2xl p-5 shadow-[0_10px_30px_-16px_rgba(22,19,43,0.18)] border border-black/[0.03] inline-block text-left {{ $devEditOn ? 'dev-hideable' : '' }}"
+                            <div class="mobile-journey-card bg-white rounded-2xl p-5 shadow-[0_10px_30px_-16px_rgba(22,19,43,0.18)] border border-black/[0.03] inline-block text-left {{ $devEditOn ? 'dev-hideable' : '' }}"
                                  @if($devEditOn) data-hidden="{{ $stop['hidden'] ? '1' : '0' }}" @endif>
                                 @if($devEditOn)
                                 <button type="button" class="dev-eye-btn" data-key="about_page_journey{{ $stop['slot'] }}_hidden"><i class="fa-solid {{ $stop['hidden'] ? 'fa-eye-slash' : 'fa-eye' }}"></i></button>

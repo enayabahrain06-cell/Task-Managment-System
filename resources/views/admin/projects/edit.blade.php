@@ -5,10 +5,30 @@
 <style>
 .proj-edit-wrap { max-width:680px; width:100%; }
 .proj-edit-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px; }
-@media(max-width:480px){
+@media(max-width:768px){
+    .proj-back-btn { width:44px !important; height:44px !important; }
     .proj-edit-wrap { padding:0; }
-    .proj-edit-wrap > div { padding:16px !important; }
+    .proj-edit-wrap > div {
+        padding:16px !important;
+        border-radius:var(--mob-r-lg, 20px) !important;
+        box-shadow:var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05)) !important;
+    }
     .proj-edit-grid2 { grid-template-columns:1fr !important; gap:10px !important; }
+
+    .proj-edit-wrap input,
+    .proj-edit-wrap select,
+    .proj-edit-wrap textarea {
+        width:100% !important; min-height:46px !important; font-size:16px !important; box-sizing:border-box !important;
+        border-radius:var(--mob-r-sm, 12px) !important;
+    }
+    .proj-edit-wrap textarea { min-height:100px !important; }
+    .proj-edit-wrap input[type="checkbox"] { width:18px !important; height:18px !important; min-height:0 !important; }
+
+    /* Team member rows already stack via flex; just enlarge tap target */
+    .proj-edit-wrap label[style*="cursor:pointer"] { min-height:44px !important; box-sizing:border-box !important; }
+
+    .proj-edit-actions { flex-direction:column !important; gap:10px !important; }
+    .proj-edit-actions > * { width:100% !important; min-height:46px !important; font-size:15px !important; }
 }
 </style>
 @endpush
@@ -16,7 +36,7 @@
 @section('content')
 <div class="proj-edit-wrap" style="max-width:680px;">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-        <a href="{{ route('admin.projects.index') }}"
+        <a href="{{ route('admin.projects.index') }}" class="proj-back-btn"
            style="width:34px;height:34px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;color:#6B7280;text-decoration:none;">
             <i class="fa fa-arrow-left" style="font-size:13px;"></i>
         </a>
@@ -105,7 +125,7 @@
                 </div>
             </div>
 
-            <div style="display:flex;gap:10px;">
+            <div class="proj-edit-actions" style="display:flex;gap:10px;">
                 <button type="submit"
                         style="flex:1;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:11px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
                     <i class="fa fa-floppy-disk" style="margin-right:6px;"></i>Save Changes

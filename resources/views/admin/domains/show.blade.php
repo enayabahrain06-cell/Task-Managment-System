@@ -10,6 +10,65 @@
 .dom-status-expiring_soon { background:#FEF3C7; color:#D97706; }
 .dom-status-expired       { background:#FEE2E2; color:#DC2626; }
 @media (max-width:900px) { .show-grid { grid-template-columns:1fr !important; } }
+
+/* ══════════════════════════════════════════════════════════
+   Mobile-only premium pass (≤768px) — Domain detail page.
+   Builds on shared .mob-card / .mob-kpi-row / .mob-field tokens
+   from layouts/app.blade.php. Desktop untouched.
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    /* Header card: stack icon/title block above action buttons */
+    .dom-show-header { flex-direction: column !important; align-items: stretch !important; }
+    .dom-show-actions { flex-direction: column !important; width: 100% !important; }
+    .dom-show-actions > button {
+        width: 100% !important; justify-content: center !important; min-height: 46px !important;
+    }
+    .dom-show-header-card {
+        border-radius: 18px !important;
+        box-shadow: 0 1px 2px 0 rgba(0,0,0,.05), 0 0 0 1px rgba(0,0,0,.05) !important;
+        padding: 16px !important;
+    }
+    /* Billing attachment row: actions drop to their own full-width line instead of
+       forcing the row past 375px (icon + filename + View + Download + delete). */
+    .domshow-att-actions { width: 100%; justify-content: flex-end !important; margin-top: 4px; }
+
+    /* Stat cards -> horizontal snapping KPI row */
+    .dom-show-stats-grid.mob-kpi-row {
+        display: flex !important;
+        grid-template-columns: none !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scroll-snap-type: x mandatory !important;
+        padding: 2px 2px 8px !important;
+        margin-bottom: var(--mob-sp-2) !important;
+    }
+    .dom-show-stats-grid.mob-kpi-row::-webkit-scrollbar { display: none; }
+    .dom-show-stats-grid.mob-kpi-row > .info-card.mob-kpi-card {
+        flex: 0 0 auto !important;
+        min-width: 152px !important;
+        scroll-snap-align: start;
+    }
+    .dom-kpi-hero { font-size: 20px !important; font-weight: 700 !important; line-height: 1.25 !important; }
+
+    /* Card-consistency pass: unify every .info-card (Domain Details, Nameservers,
+       Notes, Billing, Credentials, Quick Actions, Attachments) on this page */
+    .info-card {
+        border-radius: 18px !important;
+        box-shadow: 0 1px 2px 0 rgba(0,0,0,.05), 0 0 0 1px rgba(0,0,0,.05) !important;
+        padding: 16px !important;
+    }
+    .info-label { font-size: 11px !important; }
+    .info-value { font-size: 14px !important; }
+
+    /* Domain Details / Billing grids collapse to a single column */
+    .dom-details-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+
+    /* Modal action rows: full-width stacked buttons */
+    .dom-modal-actions { flex-direction: column !important; }
+    .dom-modal-actions > button, .dom-modal-actions > a {
+        width: 100% !important; min-height: 46px !important; justify-content: center !important;
+    }
+}
 @keyframes dz-float {
     0%, 100% { transform: translateY(0);    }
     50%       { transform: translateY(-6px); }
@@ -127,7 +186,7 @@
 
     {{-- Header --}}
     <div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:16px;padding:24px;margin-bottom:20px;">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+        <div class="dom-show-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;">
             <div style="display:flex;align-items:center;gap:16px;">
                 <div style="width:56px;height:56px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);border-radius:16px;display:flex;align-items:center;justify-content:center;border:1.5px solid #C7D2FE;flex-shrink:0;">
                     <i class="fas fa-globe" style="font-size:22px;color:#6366F1;"></i>
@@ -167,7 +226,7 @@
                     </div>
                 </div>
             </div>
-            <div style="display:flex;gap:8px;">
+            <div class="dom-show-actions" style="display:flex;gap:8px;">
                 @if($domain->billing_cycle !== 'one_time')
                 <button @click="renewModal = true"
                         style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:#ECFDF5;color:#16A34A;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
@@ -207,8 +266,8 @@
     @endif
 
     {{-- Stats Row --}}
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;">
-        <div class="info-card" style="text-align:center;">
+    <div class="dom-show-stats-grid mob-kpi-row" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;">
+        <div class="info-card mob-kpi-card" style="text-align:center;">
             <div style="font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;margin-bottom:4px;">Annual Cost</div>
             @if($domain->cost > 0)
             <div style="font-size:26px;font-weight:800;color:#4F46E5;">{{ format_money($domain->annual_cost, $domain->currency) }}</div>
@@ -220,7 +279,7 @@
             <div style="font-size:18px;font-weight:700;color:#9CA3AF;">—</div>
             @endif
         </div>
-        <div class="info-card" style="text-align:center;">
+        <div class="info-card mob-kpi-card" style="text-align:center;">
             <div style="font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;margin-bottom:4px;">Days Until Expiry</div>
             @if($days !== null)
             <div style="font-size:26px;font-weight:800;color:{{ $status==='expired' ? '#DC2626' : ($status==='expiring_soon' ? '#D97706' : '#16A34A') }};">
@@ -232,7 +291,7 @@
             <div style="font-size:12px;color:#9CA3AF;">No expiry date set</div>
             @endif
         </div>
-        <div class="info-card" style="text-align:center;">
+        <div class="info-card mob-kpi-card" style="text-align:center;">
             <div style="font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;margin-bottom:4px;">Renewal Type</div>
             @if($domain->auto_renew)
             <div style="font-size:20px;font-weight:800;color:#16A34A;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;">
@@ -259,7 +318,7 @@
                 <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
                     <i class="fas fa-circle-info" style="color:#6366F1;font-size:13px;"></i> Domain Details
                 </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="dom-details-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
                     <div>
                         <div class="info-label">Customer</div>
                         @if($domain->customer)
@@ -568,7 +627,7 @@
         @if($domain->attachments->isNotEmpty())
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
             @foreach($domain->attachments as $att)
-            <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;">
+            <div class="domshow-att-row" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;flex-wrap:wrap;">
                 <div style="width:36px;height:36px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <i class="fas {{ $att->icon_class }}" style="color:#6366F1;font-size:15px;"></i>
                 </div>
@@ -579,6 +638,7 @@
                         @if($att->uploader) &bull; {{ $att->uploader->name }} @endif
                     </div>
                 </div>
+                <div class="domshow-att-actions" style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
                 <a href="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($att->path) }}" target="_blank" rel="noopener noreferrer"
                    style="padding:6px 12px;background:#F3F4F6;color:#374151;border-radius:7px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;display:flex;align-items:center;gap:5px;"
                    onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
@@ -596,6 +656,7 @@
                         <i class="fas fa-trash" style="font-size:10px;"></i>
                     </button>
                 </form>
+                </div>
             </div>
             @endforeach
         </div>
@@ -669,7 +730,7 @@
                     $staffUsers = \App\Models\User::whereIn('role',['admin','manager','user'])->where('status','active')->orderBy('name')->get(['id','name','email','role']);
                 @endphp
                 @include('admin.domains._form', ['domain' => $domain])
-                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px;">
+                <div class="dom-modal-actions" style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px;">
                     <button type="button" @click="editModal=false" style="padding:10px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">Cancel</button>
                     <button type="submit" style="padding:10px 24px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
                         Save Changes
@@ -730,7 +791,7 @@
                         </div>
                     </template>
                 </div>
-                <div style="display:flex;gap:8px;justify-content:center;margin-top:20px;">
+                <div class="dom-modal-actions" style="display:flex;gap:8px;justify-content:center;margin-top:20px;">
                     <button type="button" @click="renewModal=false" style="padding:10px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
                     <button type="submit" style="padding:10px 20px;background:#16A34A;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Confirm Renewal</button>
                 </div>
@@ -753,7 +814,7 @@
             </p>
             <form method="POST" action="{{ route('admin.domains.destroy', $domain) }}">
                 @csrf @method('DELETE')
-                <div style="display:flex;gap:8px;justify-content:center;">
+                <div class="dom-modal-actions" style="display:flex;gap:8px;justify-content:center;">
                     <button type="button" @click="deleteModal=false" style="padding:10px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
                     <button type="submit" style="padding:10px 20px;background:#DC2626;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Delete</button>
                 </div>

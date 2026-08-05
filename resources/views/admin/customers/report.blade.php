@@ -18,6 +18,49 @@ canvas { max-width:100% !important; }
 .sort-icon { margin-left:4px; font-size:9px; opacity:.5; }
 .sort-th.active .sort-icon { opacity:1; color:#4f46e5; }
 
+/* ── Mobile (320-768px): align cards/grids/touch-targets with the
+   admin/dashboard + activities golden mobile standard ── */
+@media (max-width:768px) {
+    .report-card {
+        border-radius: var(--mob-r-lg, 20px) !important;
+        box-shadow: var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05)) !important;
+        padding: var(--mob-sp-2, 16px) !important;
+    }
+    /* 6-col KPI row → horizontally-snapping swipeable strip (same pattern as dashboard .stats-grid) */
+    .cr-kpi-row {
+        display: flex !important;
+        grid-template-columns: none !important;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        gap: 12px !important;
+        padding: 2px 2px 8px;
+    }
+    .cr-kpi-row::-webkit-scrollbar { display: none; }
+    .cr-kpi-row > .report-card { scroll-snap-align: start; flex: 0 0 168px; }
+    /* Any remaining 2-column inline grid collapses to 1 column (matches admin/dashboard) */
+    [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+    /* Task search — full width, no iOS auto-zoom */
+    .cr-search-wrap { width: 100%; }
+    .cr-search-input {
+        width: 100% !important; font-size: 15px !important; min-height: 44px !important;
+        padding: 10px 10px 10px 30px !important; box-sizing: border-box;
+    }
+    /* Filter tabs — horizontally scrollable chip row instead of a fixed-width block */
+    .cr-filter-tabs {
+        width: 100% !important; overflow-x: auto; flex-wrap: nowrap !important;
+        -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    }
+    .cr-filter-tabs::-webkit-scrollbar { display: none; }
+    .cr-filter-tabs button { min-height: 44px !important; flex-shrink: 0; }
+    /* AI Brief modal: highlight pills + footer/close buttons */
+    #ai-brief-highlights { grid-template-columns: repeat(2,1fr) !important; }
+    #ai-brief-panel button { min-height: 44px !important; }
+}
+@media (max-width:420px) {
+    #ai-brief-highlights { grid-template-columns: 1fr !important; }
+}
+
 /* ── Print ─────────────────────────────────────────────── */
 @media print {
     @page { size: A4 portrait; margin: 12mm 14mm; }
@@ -267,7 +310,7 @@ canvas { max-width:100% !important; }
     @endphp
 
     {{-- All 6 KPIs in one row --}}
-    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:20px;">
+    <div class="cr-kpi-row" style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:20px;">
 
         {{-- Total Tasks --}}
         <div class="report-card" style="border-left:4px solid #6366f1;padding:20px 20px 18px;display:flex;flex-direction:column;gap:0;">
@@ -409,17 +452,10 @@ canvas { max-width:100% !important; }
     {{-- ── Status Breakdown + Projects ─────────────────────────────────────── --}}
     @php
         $statusGroups = $allTasks->groupBy('status')->map->count();
-        $statusConfig = [
-            'draft'              => ['label'=>'Draft',       'bg'=>'#f3f4f6','color'=>'#6b7280','border'=>'#e5e7eb'],
-            'assigned'           => ['label'=>'Assigned',    'bg'=>'#eff6ff','color'=>'#1d4ed8','border'=>'#bfdbfe'],
-            'viewed'             => ['label'=>'Viewed',      'bg'=>'#f3f4f6','color'=>'#4b5563','border'=>'#d1d5db'],
-            'in_progress'        => ['label'=>'In Progress', 'bg'=>'#fff7ed','color'=>'#ea580c','border'=>'#fed7aa'],
-            'submitted'          => ['label'=>'Submitted',   'bg'=>'#fef3c7','color'=>'#d97706','border'=>'#fde68a'],
-            'revision_requested' => ['label'=>'Revision',    'bg'=>'#fee2e2','color'=>'#dc2626','border'=>'#fecaca'],
-            'approved'           => ['label'=>'Approved',    'bg'=>'#d1fae5','color'=>'#059669','border'=>'#a7f3d0'],
-            'delivered'          => ['label'=>'Delivered',   'bg'=>'#dcfce7','color'=>'#16a34a','border'=>'#bbf7d0'],
-            'archived'           => ['label'=>'Archived',    'bg'=>'#f3f4f6','color'=>'#9ca3af','border'=>'#e5e7eb'],
-        ];
+        // Sourced from the single canonical status map — do not duplicate colors/labels here.
+        $statusConfig = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => [
+            'label' => $c['label'], 'bg' => $c['bg'], 'color' => $c['text'], 'border' => '#E5E7EB',
+        ])->all();
         $projPalette = ['#6366f1','#f59e0b','#10b981','#ef4444','#ec4899','#0ea5e9','#8b5cf6'];
         $projectsBreakdown = $allTasks
             ->filter(fn($t) => !($t->project?->is_quick))
@@ -763,7 +799,11 @@ canvas { max-width:100% !important; }
                             @endif
                         </td>
                         <td style="padding:9px 10px;">
-                            @php $sc = match($bt->status) { 'delivered','approved'=>['bg'=>'#dcfce7','color'=>'#15803d','label'=>'Delivered'], 'in_progress'=>['bg'=>'#ede9fe','color'=>'#6d28d9','label'=>'In Progress'], 'submitted'=>['bg'=>'#fff3cd','color'=>'#92400e','label'=>'Submitted'], default=>['bg'=>'#f3f4f6','color'=>'#6b7280','label'=>ucfirst(str_replace('_',' ',$bt->status))] }; @endphp
+                            @php
+                                $scKey = in_array($bt->status, ['delivered', 'approved']) ? 'delivered' : $bt->status;
+                                $scRaw = \App\Support\TaskStatusColors::for($scKey);
+                                $sc    = ['bg' => $scRaw['bg'], 'color' => $scRaw['text'], 'label' => $scKey === 'delivered' ? 'Delivered' : $scRaw['label']];
+                            @endphp
                             <span style="background:{{ $sc['bg'] }};color:{{ $sc['color'] }};border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600;">{{ $sc['label'] }}</span>
                         </td>
                         <td style="padding:9px 10px;">
@@ -891,16 +931,16 @@ canvas { max-width:100% !important; }
                     Showing <span x-text="visibleCount"></span> of {{ $total }} tasks
                 </div>
             </div>
-            <div style="position:relative;">
+            <div class="cr-search-wrap" style="position:relative;">
                 <i class="fas fa-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:11px;pointer-events:none;"></i>
-                <input type="text" x-model="search" placeholder="Search tasks…"
+                <input type="text" x-model="search" placeholder="Search tasks…" class="cr-search-input"
                        style="padding:6px 10px 6px 28px;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;width:180px;outline:none;color:#374151;"
                        @focus="$el.style.borderColor='#6366f1'" @blur="$el.style.borderColor='#e5e7eb'">
             </div>
         </div>
 
         {{-- Hardcoded tabs (no x-for — avoids template/rendered-element confusion) --}}
-        <div style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;margin-bottom:22px;width:fit-content;" class="no-print">
+        <div class="cr-filter-tabs no-print" style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;margin-bottom:22px;width:fit-content;">
             @php
             $tabDefs = [
                 ['key'=>'all',      'label'=>'All'],
@@ -1240,18 +1280,7 @@ function buildCustomerReportHTML(immediate) {
     ;
 
     // ── Status badge map ─────────────────────────────────
-    var statusMap = {
-        in_progress:        { label:'In Progress', bg:'#EDE9FE', c:'#7C3AED' },
-        submitted:          { label:'Submitted',   bg:'#FEF3C7', c:'#D97706' },
-        revision_requested: { label:'Revision',    bg:'#FEE2E2', c:'#DC2626' },
-        approved:           { label:'Approved',    bg:'#D1FAE5', c:'#059669' },
-        delivered:          { label:'Delivered',   bg:'#DCFCE7', c:'#16A34A' },
-        assigned:           { label:'Assigned',    bg:'#E0F2FE', c:'#0284C7' },
-        viewed:             { label:'Viewed',      bg:'#F3F4F6', c:'#4B5563' },
-        draft:              { label:'Draft',       bg:'#F3F4F6', c:'#6B7280' },
-        archived:           { label:'Archived',    bg:'#F3F4F6', c:'#9CA3AF' },
-        paused:             { label:'Paused',      bg:'#FEF3C7', c:'#D97706' },
-    };
+    var statusMap = @json(collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => ['label' => $c['label'], 'bg' => $c['bg'], 'c' => $c['text']]));
 
     // ── Logo ─────────────────────────────────────────────
     var logoEl = logoSrc

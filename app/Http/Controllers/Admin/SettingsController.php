@@ -2243,6 +2243,72 @@ class SettingsController extends Controller
         return $this->performRestore($request->file('backup_file')->getRealPath());
     }
 
+    // Chunked restore upload — the plain restoreBackup() above sends the whole file in a
+    // single POST, which gets silently connection-reset by Cloudflare's proxy body-size
+    // limit for large ZIP backups. These two endpoints let the browser upload the same
+    // file in smaller pieces that each stay under that limit.
+    public function restoreChunkUpload(Request $request)
+    {
+        $request->validate([
+            'upload_id' => 'required|string|max:64',
+            'chunk_index' => 'required|integer|min:0',
+            'chunk' => 'required|file',
+        ]);
+
+        $uploadId = preg_replace('/[^a-zA-Z0-9_-]/', '', $request->input('upload_id'));
+        $dir = storage_path('app/backup-chunks/'.$uploadId);
+        if (! is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $request->file('chunk')->move($dir, 'chunk_'.(int) $request->input('chunk_index'));
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function restoreChunkFinalize(Request $request)
+    {
+        $request->validate([
+            'upload_id' => 'required|string|max:64',
+            'total_chunks' => 'required|integer|min:1',
+            'original_filename' => 'required|string|max:255',
+        ]);
+
+        $uploadId = preg_replace('/[^a-zA-Z0-9_-]/', '', $request->input('upload_id'));
+        $dir = storage_path('app/backup-chunks/'.$uploadId);
+        $total = (int) $request->input('total_chunks');
+
+        for ($i = 0; $i < $total; $i++) {
+            if (! file_exists($dir.'/chunk_'.$i)) {
+                return response()->json(['ok' => false, 'msg' => "Upload incomplete — missing chunk $i. Please try again."], 422);
+            }
+        }
+
+        $originalName = basename($request->input('original_filename'));
+        $ext = pathinfo($originalName, PATHINFO_EXTENSION) ?: 'zip';
+        $finalPath = storage_path('app/backups/restore_upload_'.now()->format('YmdHis').'.'.$ext);
+
+        $out = fopen($finalPath, 'wb');
+        for ($i = 0; $i < $total; $i++) {
+            $in = fopen($dir.'/chunk_'.$i, 'rb');
+            stream_copy_to_stream($in, $out);
+            fclose($in);
+        }
+        fclose($out);
+
+        array_map('unlink', glob($dir.'/chunk_*'));
+        @rmdir($dir);
+
+        $this->performRestore($finalPath);
+        @unlink($finalPath);
+
+        $ok = session()->has('success');
+        $msg = session('success') ?? session('error') ?? 'Restore finished.';
+        session()->forget(['success', 'error']);
+
+        return response()->json(['ok' => $ok, 'msg' => $msg]);
+    }
+
     private function performRestore(string $filePath)
     {
         $handle = fopen($filePath, 'rb');

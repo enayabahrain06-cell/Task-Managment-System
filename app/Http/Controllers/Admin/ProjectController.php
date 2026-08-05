@@ -58,7 +58,16 @@ class ProjectController extends Controller
                 ->where('status', '!=', 'completed')
                 ->count(),
         ];
-        return view('admin.projects.index', compact('projects', 'users', 'stats'));
+
+        // Mobile card view (resources/views/admin/projects/index.blade.php, <=768px partial):
+        // full, unpaginated Active/Completed splits since the mobile UI has no pager.
+        $mobileProjectsQuery = fn () => Project::where('is_quick', false)
+            ->withCount('tasks')
+            ->withCount(['tasks as completed_tasks_count' => fn ($q) => $q->whereIn('status', ['completed', 'delivered', 'approved'])]);
+        $activeProjects = $mobileProjectsQuery()->where('status', '!=', 'completed')->orderBy('deadline')->get();
+        $completedProjects = $mobileProjectsQuery()->where('status', 'completed')->orderByDesc('updated_at')->get();
+
+        return view('admin.projects.index', compact('projects', 'users', 'stats', 'activeProjects', 'completedProjects'));
     }
 
     public function create()

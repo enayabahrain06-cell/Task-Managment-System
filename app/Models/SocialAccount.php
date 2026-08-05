@@ -51,16 +51,13 @@ class SocialAccount extends Model
 
     public function getPlatformInfoAttribute(): array
     {
-        return static::platforms()[$this->platform] ?? ['label' => ucfirst($this->platform), 'icon' => 'fa-globe', 'color' => '#6B7280', 'bg' => '#F3F4F6'];
+        return \App\Support\SocialAccountColors::platform($this->platform);
     }
 
     public function getStatusColorAttribute(): array
     {
-        return match ($this->status) {
-            'active'    => ['bg' => '#ECFDF5', 'color' => '#16A34A'],
-            'inactive'  => ['bg' => '#F3F4F6', 'color' => '#6B7280'],
-            'suspended' => ['bg' => '#FEE2E2', 'color' => '#DC2626'],
-            default     => ['bg' => '#F3F4F6', 'color' => '#6B7280'],
-        };
+        $c = \App\Support\SocialAccountColors::for($this->status);
+
+        return ['bg' => $c['bg'], 'color' => $c['text']];
     }
 }

@@ -1,0 +1,71 @@
+@props([
+    'href' => null,
+    'title',
+    'context' => null,       // one grey context line (project name / short blurb)
+    'progressLabel' => null, // e.g. "Progress" — omit the whole row if null
+    'progressPct' => null,
+    'progressColor' => '#4F46E5',
+    'dueText' => null,       // e.g. "Due · Aug 12" / "Overdue · Aug 12"
+    'overdue' => false,
+])
+{{--
+    Record card (task / approval / project) — white 18px card, in the fixed order:
+    top meta row (slots: top-left, top-right) → title (optional leading slot: titleIcon,
+    e.g. a small vendor logo/icon tile) → context line → progress bar → status chip + due
+    line (slot: status) → actions row (slot: actions).
+    Any slot left empty renders nothing — never a blank space or a raw status string.
+--}}
+<div {{ $attributes->merge(['class' => 'uds-card']) }}>
+
+    @if(isset($topLeft) || isset($topRight))
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div>{{ $topLeft ?? '' }}</div>
+        <div>{{ $topRight ?? '' }}</div>
+    </div>
+    @endif
+
+    @php $titleStyle = 'margin-top:8px;' . (isset($titleIcon) ? 'display:flex;align-items:center;gap:10px;' : ''); @endphp
+    @if($href)
+        <a href="{{ $href }}" class="uds-card-title" style="{{ $titleStyle }}">
+            @isset($titleIcon){{ $titleIcon }}@endisset
+            <span>{{ $title }}</span>
+        </a>
+    @else
+        <div class="uds-card-title" style="{{ $titleStyle }}">
+            @isset($titleIcon){{ $titleIcon }}@endisset
+            <span>{{ $title }}</span>
+        </div>
+    @endif
+
+    @if($context)
+        <div class="uds-context-line">{{ $context }}</div>
+    @endif
+
+    @if($progressLabel !== null && $progressPct !== null)
+    <div>
+        <div class="uds-progress-row">
+            <span>{{ $progressLabel }}</span>
+            <span>{{ $progressPct }}%</span>
+        </div>
+        <div class="uds-track">
+            <span class="uds-track-fill" style="width:{{ $progressPct }}%;background:{{ $progressColor }};"></span>
+        </div>
+    </div>
+    @endif
+
+    @if(isset($status) || $dueText)
+    <div class="uds-due-row">
+        @isset($status){{ $status }}@endisset
+        @if($dueText)
+        <span class="uds-due-line" style="color:{{ $overdue ? '#DC2626' : '#6B7280' }};">
+            <i class="fas fa-clock" style="font-size:12px;"></i> {{ $dueText }}
+        </span>
+        @endif
+    </div>
+    @endif
+
+    @isset($actions)
+    <div class="uds-actions-row">{{ $actions }}</div>
+    @endisset
+
+</div>

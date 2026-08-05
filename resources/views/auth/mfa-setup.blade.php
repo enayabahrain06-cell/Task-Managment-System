@@ -92,6 +92,25 @@
     .mfa-form-col { padding: 28px 22px; }
     .mfa-deco-col { display: none !important; }
 }
+
+/* ── Mobile-only premium polish (additive; desktop >768px untouched) ── */
+@media (max-width: 768px) {
+    .mfa-card    { max-width: 92vw; box-shadow: var(--amob-shadow-1, 0 10px 30px rgba(17,24,39,0.14)); }
+    .amob-h1     { font-size: 18px !important; }
+    .amob-help   { font-size: 12px !important; }
+    .amob-btn    { min-height: 48px !important; font-size: 15px !important; }
+    .amob-copy-btn { min-height: 44px !important; padding: 10px 14px !important; }
+    /* QR code must never overflow the viewport width on narrow phones */
+    .amob-qr-wrap     { max-width: 100%; }
+    .amob-qr-wrap svg { width: 100% !important; height: auto !important; max-width: 180px; display: block; }
+}
+@media (max-width: 480px) {
+    .mfa-form-col     { padding: 20px 16px !important; }
+    #enableBoxes      { gap: 4px !important; }
+    .otp-box          { width: 40px !important; height: 48px !important; font-size: 19px !important; }
+    .amob-otp-divider { width: 10px !important; }
+    .amob-qr-wrap svg { max-width: 150px; }
+}
 </style>
 
 @php $authUser = auth()->user(); @endphp
@@ -133,8 +152,8 @@
 
         {{-- Heading --}}
         <div style="margin-bottom:22px;">
-            <h1 style="font-size:18px;font-weight:800;color:#111827;margin:0 0 4px;">Set Up Two-Factor Authentication</h1>
-            <p style="font-size:12px;color:#9CA3AF;margin:0;">Follow three quick steps to secure your account.</p>
+            <h1 class="amob-h1" style="font-size:18px;font-weight:800;color:#111827;margin:0 0 4px;">Set Up Two-Factor Authentication</h1>
+            <p class="amob-help" style="font-size:12px;color:#9CA3AF;margin:0;">Follow three quick steps to secure your account.</p>
         </div>
 
         {{-- Error --}}
@@ -180,13 +199,13 @@
             <div style="flex:1;">
                 <p style="font-size:12px;font-weight:700;color:#374151;margin:0 0 10px;">Scan this QR code with your app</p>
                 <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
-                    <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:12px;padding:12px;display:inline-flex;flex-shrink:0;">
+                    <div class="amob-qr-wrap" style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:12px;padding:12px;display:inline-flex;flex-shrink:0;">
                         {!! $qrSvg !!}
                     </div>
                     <div style="flex:1;min-width:160px;">
                         <p style="font-size:11px;color:#9CA3AF;margin:0 0 8px;">Can't scan? Enter this key manually:</p>
                         <code id="mfaSecret" style="font-size:11px;font-weight:700;color:#374151;letter-spacing:2px;font-family:monospace;background:#F3F4F6;padding:8px 10px;border-radius:8px;display:block;word-break:break-all;line-height:1.8;margin-bottom:8px;">{{ chunk_split($secret, 4, ' ') }}</code>
-                        <button type="button" onclick="copySecret()" id="copyBtn"
+                        <button type="button" onclick="copySecret()" id="copyBtn" class="amob-copy-btn"
                                 style="display:inline-flex;align-items:center;gap:5px;padding:7px 12px;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;transition:background .15s;"
                                 onmouseover="this.style.background='#E0E7FF'" onmouseout="if(!window._copied)this.style.background='#EEF2FF'">
                             <i class="fas fa-copy" style="font-size:11px;"></i> Copy Key
@@ -212,13 +231,13 @@
                         <input class="otp-box" type="text" inputmode="numeric" maxlength="1" autocomplete="one-time-code">
                         <input class="otp-box" type="text" inputmode="numeric" maxlength="1" autocomplete="off">
                         <input class="otp-box" type="text" inputmode="numeric" maxlength="1" autocomplete="off">
-                        <div style="width:12px;height:2px;background:#D1D5DB;border-radius:2px;flex-shrink:0;"></div>
+                        <div class="amob-otp-divider" style="width:12px;height:2px;background:#D1D5DB;border-radius:2px;flex-shrink:0;"></div>
                         <input class="otp-box" type="text" inputmode="numeric" maxlength="1" autocomplete="off">
                         <input class="otp-box" type="text" inputmode="numeric" maxlength="1" autocomplete="off">
                         <input class="otp-box" type="text" inputmode="numeric" maxlength="1" autocomplete="off">
                     </div>
 
-                    <button type="submit"
+                    <button type="submit" class="amob-btn"
                             style="width:100%;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;font-size:14px;font-weight:600;padding:13px;border:none;border-radius:12px;cursor:pointer;box-shadow:0 6px 20px rgba(79,70,229,.35);transition:opacity .15s;"
                             onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">
                         <i class="fas fa-check" style="margin-right:6px;font-size:11px;"></i> Enable Two-Factor Auth

@@ -7,14 +7,19 @@
 .th-filter-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px; }
 .th-header-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
 @media(max-width:768px){
+    .th-filter-grid { grid-template-columns:repeat(2,1fr) !important; gap:10px !important; }
     .th-task-row { flex-wrap:wrap; gap:6px !important; padding:10px 14px !important; }
-    .th-task-row .th-task-title { min-width:0; flex:1 1 100%; order:-1; }
-    .th-task-row .th-task-meta { display:flex; gap:6px; flex-wrap:wrap; width:100%; }
+    .th-task-row .th-task-title { min-width:0; flex:1 1 100%; }
+    .th-task-row .th-task-meta { gap:6px !important; flex-wrap:wrap; width:100%; }
+    .th-header-row a { min-height:44px; }
 }
 @media(max-width:480px){
-    .th-filter-grid { grid-template-columns:repeat(2,1fr) !important; gap:10px !important; }
     .th-header-row { flex-direction:column; align-items:flex-start; gap:10px; }
     .th-header-row a { align-self:flex-start; }
+}
+@media(max-width:768px){
+    .th-filter-card { border-radius:var(--mob-r-md) !important; padding:14px 16px !important; }
+    .th-list-card { border-radius:var(--mob-r-lg) !important; box-shadow:var(--mob-shadow-1) !important; }
 }
 </style>
 @endpush
@@ -54,7 +59,7 @@
 <div class="th-filter-grid">
     @foreach($filterCards as [$key, $label, $icon, $bg, $color, $count])
     @php $isActive = $filter === $key; @endphp
-    <a href="{{ route('admin.users.task-history', [$user, 'filter' => $key]) }}"
+    <a href="{{ route('admin.users.task-history', [$user, 'filter' => $key]) }}" class="th-filter-card"
        style="display:block;background:{{ $isActive ? $color : '#fff' }};border:2px solid {{ $isActive ? $color : '#E5E7EB' }};border-radius:14px;padding:16px 18px;text-decoration:none;transition:all .15s;box-shadow:{{ $isActive ? '0 4px 14px rgba(0,0,0,.12)' : '0 1px 3px rgba(0,0,0,.05)' }};"
        onmouseover="if({{ $isActive ? 'false' : 'true' }}) { this.style.borderColor='{{ $color }}'; this.style.boxShadow='0 4px 12px rgba(0,0,0,.08)'; }"
        onmouseout="if({{ $isActive ? 'false' : 'true' }}) { this.style.borderColor='#E5E7EB'; this.style.boxShadow='0 1px 3px rgba(0,0,0,.05)'; }">
@@ -73,7 +78,7 @@
 </div>
 
 {{-- Task List --}}
-<div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+<div class="th-list-card bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
     @if($filter !== 'all')
     <div style="padding:12px 20px;border-bottom:1px solid #F3F4F6;background:#F9FAFB;display:flex;align-items:center;justify-content:space-between;">
         <span style="font-size:12px;font-weight:600;color:#6B7280;">
@@ -93,54 +98,47 @@
             $isRevision = $task->status === 'revision_requested';
             $isOverdue  = $task->deadline && $task->deadline < now() && !$isDone && !$isPaused;
 
-            $statusMeta = match($task->status) {
-                'approved'           => ['Approved',    'bg-emerald-100 text-emerald-700'],
-                'delivered'          => ['Delivered',   'bg-emerald-100 text-emerald-700'],
-                'archived'           => ['Archived',    'bg-gray-100 text-gray-500'],
-                'in_progress'        => ['In Progress', 'bg-amber-100 text-amber-700'],
-                'paused'             => ['Paused',      'bg-gray-100 text-gray-500'],
-                'submitted'          => ['In Review',   'bg-purple-100 text-purple-700'],
-                'revision_requested' => ['Revision',    'bg-red-100 text-red-600'],
-                'viewed'             => ['Viewed',      'bg-blue-100 text-blue-600'],
-                'assigned'           => ['Assigned',    'bg-indigo-100 text-indigo-600'],
-                default              => [ucfirst($task->status), 'bg-gray-100 text-gray-600'],
-            };
+            $statusColor = \App\Support\TaskStatusColors::for($task->status);
         @endphp
         <a href="{{ route('admin.tasks.show', $task) }}"
-           class="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/70 transition group
+           class="th-task-row flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/70 transition group
                {{ $isPaused   ? 'bg-amber-50/40 border-l-2 border-amber-300'  : '' }}
                {{ $isRevision ? 'bg-red-50/40 border-l-2 border-red-300'      : '' }}
                {{ $isOverdue && !$isPaused && !$isRevision ? 'bg-red-50/30'  : '' }}">
-            <div class="w-2.5 h-2.5 rounded-full flex-shrink-0
-                {{ $isDone ? 'bg-emerald-400' : ($task->status === 'in_progress' ? 'bg-amber-400' : ($isPaused ? 'bg-gray-400' : ($isOverdue ? 'bg-red-400' : 'bg-gray-300'))) }}">
+            <div class="th-task-title flex items-center gap-3 flex-1 min-w-0">
+                <div class="w-2.5 h-2.5 rounded-full flex-shrink-0
+                    {{ $isDone ? 'bg-emerald-400' : ($task->status === 'in_progress' ? 'bg-amber-400' : ($isPaused ? 'bg-gray-400' : ($isOverdue ? 'bg-red-400' : 'bg-gray-300'))) }}">
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium truncate group-hover:text-indigo-600 transition
+                        {{ $isDone ? 'line-through text-gray-400' : ($isPaused ? 'text-gray-500' : 'text-gray-900') }}">
+                        {{ $task->title }}
+                        @if($isPaused)
+                        <span class="inline-flex items-center gap-1 ml-1 text-xs font-normal text-amber-600">
+                            <i class="fa fa-circle-pause" style="font-size:9px;"></i> paused
+                        </span>
+                        @endif
+                    </p>
+                    <p class="text-xs text-gray-400 mt-0.5">{{ $task->project->name ?? '—' }}</p>
+                </div>
             </div>
-            <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium truncate group-hover:text-indigo-600 transition
-                    {{ $isDone ? 'line-through text-gray-400' : ($isPaused ? 'text-gray-500' : 'text-gray-900') }}">
-                    {{ $task->title }}
-                    @if($isPaused)
-                    <span class="inline-flex items-center gap-1 ml-1 text-xs font-normal text-amber-600">
-                        <i class="fa fa-circle-pause" style="font-size:9px;"></i> paused
-                    </span>
-                    @endif
-                </p>
-                <p class="text-xs text-gray-400 mt-0.5">{{ $task->project->name ?? '—' }}</p>
+            <div class="th-task-meta flex items-center gap-2 flex-shrink-0">
+                <span class="text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0
+                    {{ $task->priority === 'high' ? 'bg-red-100 text-red-600' : ($task->priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700') }}">
+                    {{ ucfirst($task->priority ?? 'low') }}
+                </span>
+                @if($task->deadline)
+                <span class="text-xs flex-shrink-0 {{ $isOverdue ? 'text-red-500 font-semibold' : 'text-gray-400' }}">
+                    {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
+                </span>
+                @else
+                <span class="text-xs text-gray-300 flex-shrink-0">No deadline</span>
+                @endif
+                <span class="text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0" style="background:{{ $statusColor['bg'] }};color:{{ $statusColor['text'] }};">
+                    {{ $statusColor['label'] }}
+                </span>
+                <i class="fa fa-chevron-right text-gray-300 text-xs flex-shrink-0 group-hover:text-indigo-400 transition"></i>
             </div>
-            <span class="text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0
-                {{ $task->priority === 'high' ? 'bg-red-100 text-red-600' : ($task->priority === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700') }}">
-                {{ ucfirst($task->priority ?? 'low') }}
-            </span>
-            @if($task->deadline)
-            <span class="text-xs flex-shrink-0 {{ $isOverdue ? 'text-red-500 font-semibold' : 'text-gray-400' }}">
-                {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
-            </span>
-            @else
-            <span class="text-xs text-gray-300 flex-shrink-0">No deadline</span>
-            @endif
-            <span class="text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 {{ $statusMeta[1] }}">
-                {{ $statusMeta[0] }}
-            </span>
-            <i class="fa fa-chevron-right text-gray-300 text-xs flex-shrink-0 group-hover:text-indigo-400 transition"></i>
         </a>
         @empty
         <div class="px-5 py-16 text-center">

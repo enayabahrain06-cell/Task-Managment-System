@@ -190,6 +190,12 @@ class User extends Authenticatable
         return $this->belongsToMany(Project::class, 'project_user');
     }
 
+    /** Single uppercase initial for compact avatar badges. */
+    public function getInitialAttribute(): string
+    {
+        return strtoupper(substr($this->name ?? '', 0, 1)) ?: '?';
+    }
+
     public function socialAccounts(): BelongsToMany
     {
         return $this->belongsToMany(SocialAccount::class, 'social_account_users')->withTimestamps();

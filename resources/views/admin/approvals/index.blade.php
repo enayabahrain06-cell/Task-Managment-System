@@ -12,6 +12,22 @@
     $company        = \App\Models\Setting::get('app_name', config('app.name'));
     $waPreviewTpl   = \App\Models\Setting::get('wa_tpl_customer_preview',
         "Hello {customer_name},\n\nYour design for \"{task_title}\" is ready for your review. We'd love your feedback before we finalize approval. 👀\n\n{design_link}\n\n{$company}");
+
+    // Priority isn't a task status (not covered by TaskStatusColors), so it gets
+    // one shared local helper here instead of the 4 near-duplicate match()/array
+    // blocks that used to be scattered across the pending/awaiting tab renders.
+    $apvPriorityColors = fn($priority) => match ($priority) {
+        'high'   => ['#FFE4E6', '#E11D48'],
+        'medium' => ['#FEF3C7', '#D97706'],
+        default  => ['#D1FAE5', '#059669'],
+    };
+
+    // Submission decision (approved/rejected) badge — 'approved' is a real task
+    // status so its color comes from TaskStatusColors; 'rejected' has no task-
+    // status equivalent, so it keeps a small local fallback.
+    $apvDecisionStyle = fn($isApproved) => $isApproved
+        ? ['bg' => \App\Support\TaskStatusColors::bg('approved'), 'text' => \App\Support\TaskStatusColors::text('approved'), 'icon' => 'fa-circle-check', 'label' => 'Approved']
+        : ['bg' => '#FEE2E2', 'text' => '#991B1B', 'icon' => 'fa-rotate-left', 'label' => 'Rejected'];
 @endphp
 <style>
 /* ── Card ── */
@@ -187,9 +203,8 @@
     .apv-page-header h1 { font-size: 18px; }
 
     /* Tabs: allow horizontal scroll */
-    .apv-tabs-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
-    .apv-tabs-scroll::-webkit-scrollbar { height: 3px; }
-    .apv-tabs-scroll::-webkit-scrollbar-thumb { background: #C7D2FE; border-radius: 2px; }
+    .apv-tabs-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; scrollbar-width: none; }
+    .apv-tabs-scroll::-webkit-scrollbar { display: none; width: 0; height: 0; }
     .apv-tabs { white-space: nowrap; width: max-content; }
 
     /* Task title truncation relief */
@@ -237,12 +252,171 @@
 /* pend-table standalone min-width (used inside .tbl-scroll wrappers) */
 .pend-table { min-width: 600px; }
 
+/* Mobile tab bar (real segmented mobile component) — hidden on desktop by default,
+   shown only inside the <=768px mobile pass below. */
+.apv-tabs-mobile-wrap { display: none; }
+
+/* History card footer: passive "Open thread" link for non-actionable (rejected)
+   cards — hidden on desktop by default, swapped in on mobile below. */
+.hist-foot-passive { display: none; }
+
 @media (max-width: 380px) {
     .apv-header { padding: 10px 12px 9px; }
     .apv-submission { padding: 9px 12px; }
     .apv-approve, .apv-reject { padding: 10px 12px 12px; }
     .apv-task-title { max-width: 160px !important; }
     .hist-view-btn span { display: none; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   Mobile premium redesign pass (≤768px only) — reuses the
+   shared mobile design tokens/primitives defined in
+   layouts/app.blade.php (--mob-r-*, --mob-shadow-*, --mob-sp-*,
+   --mob-brand-grad, .mob-table-cards). Desktop is untouched.
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+    /* ── Card container unification: history cards + empty states
+       align to the shared mobile card spec (18px radius, shadow-sm+ring) ── */
+    .hist-card {
+        border-radius: 18px !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,.05), 0 1px 2px rgba(0,0,0,.03), 0 0 0 1px rgba(0,0,0,.05) !important;
+    }
+    .apv-empty {
+        padding: 32px 20px !important;
+    }
+
+    /* No colored top border on mobile cards (pending priority accent, history
+       decision accent) — desktop keeps both when the optional Cards view is used. */
+    .apv-pending-card,
+    .hist-card.dec-approved,
+    .hist-card.dec-rejected {
+        border-top: none !important;
+    }
+
+    /* History card footer: non-actionable (rejected) cards show a passive
+       "Open thread" link instead of the View/Task button row on mobile. */
+    .hist-foot-actionable { display: none !important; }
+    .hist-foot-passive { display: flex !important; }
+
+    /* ── Tab bar: desktop pill row hidden, real segmented mobile component shown ── */
+    .apv-tabs-desktop { display: none !important; }
+    .apv-tabs-mobile-wrap { display: block !important; margin-bottom: 20px; }
+    .apv-tabs-mobile-wrap .uds-seg { width: max-content; }
+    .apv-tabs-mobile-wrap .uds-seg-opt { flex: 0 0 auto; }
+    /* History cards (mobile view, JS-switched at <=900px): footer action buttons + the
+       expand/collapse chevron toggle in the table-row fallback both sit under the 44px floor */
+    .hist-card-foot button, .hist-card-foot a {
+        min-height: 44px !important;
+    }
+
+    /* ── Table → card stacking (mob-table-cards primitive) ── */
+    /* Neutralise desktop min-widths so cards never force horizontal scroll */
+    .pend-table,
+    .hist-table,
+    .tbl-scroll table,
+    .pend-tbl-scroll table {
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+    .tbl-scroll,
+    .pend-tbl-scroll,
+    .pend-list-wrap {
+        overflow-x: visible !important;
+    }
+    .mob-table-cards { padding: 2px; }
+    .mob-table-cards table { table-layout: fixed !important; }
+
+    /* Expanded detail / inline-edit rows use colspan — let them stack as
+       a normal block instead of the label+value flex row used for data cells */
+    .mob-table-cards td[colspan] {
+        display: block !important;
+        text-align: left !important;
+    }
+    .mob-table-cards td[colspan]::before { content: none; }
+    .mob-table-cards td:empty { display: none; }
+
+    /* Row action buttons (Approve / Revision / WhatsApp / View) need real
+       touch targets once the row becomes a stacked card */
+    .mob-table-cards .apv-row-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        width: 100%;
+        justify-content: flex-start;
+    }
+    .mob-table-cards .apv-row-actions > button,
+    .mob-table-cards .apv-row-actions > a,
+    .mob-table-cards .apv-row-actions > div > button {
+        min-height: 44px !important;
+        height: auto !important;
+        min-width: 44px !important;
+        width: auto !important;
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+    .mob-table-cards td[data-label="Actions"] {
+        flex-direction: column;
+        align-items: stretch !important;
+    }
+    .mob-table-cards td[data-label="Actions"]::before { margin-bottom: 6px; }
+
+    /* Card-view (Tailwind grid) quick action icons — bump up from 24px so
+       Approve/Reject are comfortably tappable on this high-frequency page */
+    #pendingCardsView button[title="Approve"],
+    #pendingCardsView button[title="Request revision"] {
+        width: 44px !important;
+        height: 44px !important;
+    }
+
+    /* Pending tab: the "List" table view stacks into 7 LABEL/value rows per
+       task below 768px (Task/Assignee/Project/Priority/Deadline/Vers./Actions)
+       — Cards is the only legible layout on a phone, so force it and hide the
+       now-meaningless Table/Cards toggle. JS still runs setPendView('list') by
+       default; !important on an author stylesheet wins over a plain inline
+       style, so this override holds regardless of load order. */
+    #pendViewToggle { display: none !important; }
+    #pendingListView { display: none !important; }
+    #pendingCardsView { display: block !important; }
+
+    /* ── Approve / Reject modals: fit viewport, scroll internally,
+         sticky action bar for the primary buttons ── */
+    .apv-modal-panel {
+        max-height: 92vh;
+        width: 100%;
+    }
+    .apv-modal-titlebar { flex-shrink: 0; }
+    .apv-modal-form {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 16px 18px 18px !important;
+    }
+    .apv-modal-form input[type="text"],
+    .apv-modal-form input[type="email"],
+    .apv-modal-form input[type="tel"],
+    .apv-modal-form select,
+    .apv-modal-form textarea {
+        min-height: 46px;
+        font-size: 15px;
+    }
+    .apv-modal-form [contenteditable="true"] { font-size: 15px; }
+    .apv-modal-footer {
+        position: sticky;
+        bottom: 0;
+        margin: 16px -18px -18px;
+        padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+        background: rgba(255,255,255,.97);
+        backdrop-filter: blur(6px);
+        box-shadow: 0 -6px 16px rgba(0,0,0,.07);
+        border-top: 1px solid #F3F4F6;
+        z-index: 2;
+    }
+    .apv-modal-footer button,
+    .apv-modal-footer > div > button {
+        min-height: 46px !important;
+    }
 }
 </style>
 
@@ -621,10 +795,10 @@
          style="position:fixed;inset:0;z-index:99999;backdrop-filter:blur(4px);background:rgba(15,18,40,.6);">
         <div @click.self="approvalModal=false"
              style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;">
-        <div style="background:#fff;border-radius:22px;width:100%;max-width:500px;box-shadow:0 28px 80px rgba(0,0,0,.25);overflow:hidden;display:flex;flex-direction:column;">
+        <div class="apv-modal-panel" style="background:#fff;border-radius:22px;width:100%;max-width:500px;box-shadow:0 28px 80px rgba(0,0,0,.25);overflow:hidden;display:flex;flex-direction:column;">
 
             {{-- Header --}}
-            <div style="padding:22px 26px 18px;border-bottom:1px solid #F0F4F8;background:linear-gradient(135deg,#F0FDF4,#fff);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+            <div class="apv-modal-titlebar" style="padding:22px 26px 18px;border-bottom:1px solid #F0F4F8;background:linear-gradient(135deg,#F0FDF4,#fff);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
                 <div style="display:flex;align-items:center;gap:12px;">
                     <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#10B981,#059669);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(16,185,129,.3);">
                         <i class="fas fa-circle-check" style="color:#fff;font-size:16px;"></i>
@@ -642,13 +816,13 @@
             </div>
 
             {{-- Task title strip --}}
-            <div style="padding:14px 26px;background:#F8FAFF;border-bottom:1px solid #F0F4F8;">
+            <div class="apv-modal-titlebar" style="padding:14px 26px;background:#F8FAFF;border-bottom:1px solid #F0F4F8;">
                 <p style="font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px;">Task</p>
                 <p style="font-size:14px;font-weight:600;color:#111827;margin:0;line-height:1.4;" x-text="approvalTask?.title"></p>
             </div>
 
             {{-- Form body --}}
-            <form x-ref="approvalForm" :action="approvalTask ? approvalTask.url : '#'" method="POST" style="padding:20px 26px 24px;overflow-y:auto;">
+            <form x-ref="approvalForm" class="apv-modal-form" :action="approvalTask ? approvalTask.url : '#'" method="POST" style="padding:20px 26px 24px;overflow-y:auto;">
                 @csrf
 
                 {{-- Approval note --}}
@@ -979,7 +1153,7 @@
                 </div>
 
                 {{-- Footer buttons --}}
-                <div style="display:flex;flex-direction:column;gap:8px;margin-top:20px;">
+                <div class="apv-modal-footer" style="display:flex;flex-direction:column;gap:8px;margin-top:20px;">
                     {{-- Awaiting Customer Approval button --}}
                     <button type="button"
                             @click="$refs.approvalForm.action = approvalTask.pending_customer_url; $refs.approvalForm.requestSubmit()"
@@ -1017,9 +1191,9 @@
          style="position:fixed;inset:0;z-index:99999;backdrop-filter:blur(4px);background:rgba(15,18,40,.6);">
         <div @click.self="rejectModal=false"
              style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;">
-        <div style="background:#fff;border-radius:22px;width:100%;max-width:580px;box-shadow:0 28px 80px rgba(0,0,0,.25);overflow:hidden;display:flex;flex-direction:column;">
+        <div class="apv-modal-panel" style="background:#fff;border-radius:22px;width:100%;max-width:580px;box-shadow:0 28px 80px rgba(0,0,0,.25);overflow:hidden;display:flex;flex-direction:column;">
 
-            <div style="padding:22px 26px 18px;border-bottom:1px solid #F0F4F8;background:linear-gradient(135deg,#FFF8F8,#fff);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+            <div class="apv-modal-titlebar" style="padding:22px 26px 18px;border-bottom:1px solid #F0F4F8;background:linear-gradient(135deg,#FFF8F8,#fff);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
                 <div style="display:flex;align-items:center;gap:12px;">
                     <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#EF4444,#DC2626);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(239,68,68,.3);">
                         <i class="fas fa-rotate-left" style="color:#fff;font-size:15px;"></i>
@@ -1036,12 +1210,13 @@
                 </button>
             </div>
 
-            <div style="padding:14px 26px;background:#FFF8F8;border-bottom:1px solid #FEE2E2;">
+            <div class="apv-modal-titlebar" style="padding:14px 26px;background:#FFF8F8;border-bottom:1px solid #FEE2E2;">
                 <p style="font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px;">Task</p>
                 <p style="font-size:14px;font-weight:600;color:#111827;margin:0;line-height:1.4;" x-text="rejectTask?.title"></p>
             </div>
 
             <form :action="rejectTask ? rejectTask.url : '#'" method="POST"
+                  class="apv-modal-form"
                   style="padding:20px 26px 24px;"
                   @submit.prevent="revSubmit($el)">
                 @csrf
@@ -1125,7 +1300,7 @@
                              style="min-height:90px;max-height:220px;overflow-y:auto;padding:10px 13px;font-size:13px;color:#111827;outline:none;background:#FEF2F2;line-height:1.6;"></div>
                     </div>
                 </div>
-                <div style="display:flex;gap:10px;">
+                <div class="apv-modal-footer" style="display:flex;gap:10px;">
                     <button type="button" @click="rejectModal=false"
                             style="flex:1;padding:11px;background:#F3F4F6;color:#374151;border:none;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;"
                             onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
@@ -1200,7 +1375,7 @@
     </div>
     @if($tasks->total() > 0)
     <div style="display:flex;align-items:center;gap:8px;">
-        <div style="display:flex;align-items:center;gap:6px;background:linear-gradient(135deg,#EDE9FE,#DDD6FE);padding:8px 16px;border-radius:12px;border:1px solid #C4B5FD;">
+        <div style="display:flex;align-items:center;gap:6px;background:#EDE9FE;padding:8px 16px;border-radius:12px;border:1px solid #C4B5FD;">
             <div style="width:8px;height:8px;border-radius:50%;background:#7C3AED;animation:pulse 2s infinite;"></div>
             <span style="font-size:13px;font-weight:700;color:#5B21B6;">{{ $tasks->total() }} pending {{ Str::plural('review', $tasks->total()) }}</span>
         </div>
@@ -1208,51 +1383,52 @@
     @endif
 </div>
 
-{{-- ── Tabs ── --}}
-<div class="apv-tabs-scroll" style="margin-bottom:24px;">
-<div class="apv-tabs" style="display:flex;gap:3px;background:#F1F2F6;border-radius:13px;padding:4px;width:fit-content;">
-    <a href="{{ route('admin.approvals.index') }}?tab=pending"
+{{-- ── Tabs (desktop) — unchanged, hidden on mobile in favor of the real
+     segmented mobile component below ── --}}
+<div class="apv-tabs-scroll apv-tabs-desktop" style="margin-bottom:24px;">
+<div class="apv-tabs apv-tabs-mob" style="display:flex;gap:3px;background:#F1F2F6;border-radius:13px;padding:4px;width:fit-content;">
+    <a href="{{ route('admin.approvals.index') }}?tab=pending" class="apv-tab-link"
        style="display:flex;align-items:center;gap:7px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all .18s;
               {{ $tab === 'pending' ? 'background:#fff;color:#4F46E5;box-shadow:0 2px 8px rgba(99,102,241,.12);' : 'color:#6B7280;' }}">
         <i class="fas fa-clock" style="font-size:11px;"></i> Pending
         @if($tasks->total() > 0)
-        <span style="background:linear-gradient(135deg,#EDE9FE,#DDD6FE);color:#7C3AED;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">{{ $tasks->total() }}</span>
+        <span style="background:#EDE9FE;color:#7C3AED;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">{{ $tasks->total() }}</span>
         @endif
     </a>
-    <a href="{{ route('admin.approvals.index') }}?tab=awaiting"
+    <a href="{{ route('admin.approvals.index') }}?tab=awaiting" class="apv-tab-link"
        style="display:flex;align-items:center;gap:7px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all .18s;
               {{ $tab === 'awaiting' ? 'background:#fff;color:#D97706;box-shadow:0 2px 8px rgba(217,119,6,.12);' : 'color:#6B7280;' }}">
         <i class="fas fa-hourglass-half" style="font-size:11px;"></i> Awaiting Customer
         @if($awaitingTasks->total() > 0)
-        <span style="background:{{ $tab === 'awaiting' ? 'linear-gradient(135deg,#FEF3C7,#FDE68A)' : '#F3F4F6' }};color:{{ $tab === 'awaiting' ? '#92400E' : '#6B7280' }};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">{{ $awaitingTasks->total() }}</span>
+        <span style="background:{{ $tab === 'awaiting' ? '#FEF3C7' : '#F3F4F6' }};color:{{ $tab === 'awaiting' ? '#92400E' : '#6B7280' }};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">{{ $awaitingTasks->total() }}</span>
         @endif
     </a>
-    <a href="{{ route('admin.approvals.index') }}?tab=decide_later"
+    <a href="{{ route('admin.approvals.index') }}?tab=decide_later" class="apv-tab-link"
        style="display:flex;align-items:center;gap:7px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all .18s;
               {{ $tab === 'decide_later' ? 'background:#fff;color:#D97706;box-shadow:0 2px 8px rgba(217,119,6,.12);' : 'color:#6B7280;' }}">
         <i class="fas fa-clock" style="font-size:11px;"></i> Decide Later
         @if($decideLaterTasks->total() > 0)
-        <span style="background:{{ $tab === 'decide_later' ? 'linear-gradient(135deg,#FEF3C7,#FDE68A)' : '#F3F4F6' }};color:{{ $tab === 'decide_later' ? '#92400E' : '#6B7280' }};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">{{ $decideLaterTasks->total() }}</span>
+        <span style="background:{{ $tab === 'decide_later' ? '#FEF3C7' : '#F3F4F6' }};color:{{ $tab === 'decide_later' ? '#92400E' : '#6B7280' }};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">{{ $decideLaterTasks->total() }}</span>
         @endif
     </a>
-    <a href="{{ route('admin.approvals.index') }}?tab=social"
+    <a href="{{ route('admin.approvals.index') }}?tab=social" class="apv-tab-link"
        style="display:flex;align-items:center;gap:7px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all .18s;
               {{ $tab === 'social' ? 'background:#fff;color:#4F46E5;box-shadow:0 2px 8px rgba(99,102,241,.12);' : 'color:#6B7280;' }}">
         <i class="fas fa-share-alt" style="font-size:11px;"></i> Social Media
         @php $socialPending = $socialTasks->total(); @endphp
         @if($socialTasks->total() > 0)
-        <span style="background:{{ $tab === 'social' ? 'linear-gradient(135deg,#EDE9FE,#DDD6FE)' : '#F3F4F6' }};color:{{ $tab === 'social' ? '#7C3AED' : '#6B7280' }};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">{{ $socialTasks->total() }}</span>
+        <span style="background:{{ $tab === 'social' ? '#EDE9FE' : '#F3F4F6' }};color:{{ $tab === 'social' ? '#7C3AED' : '#6B7280' }};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">{{ $socialTasks->total() }}</span>
         @endif
     </a>
-    <a href="{{ route('admin.approvals.index') }}?tab=published"
+    <a href="{{ route('admin.approvals.index') }}?tab=published" class="apv-tab-link"
        style="display:flex;align-items:center;gap:7px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all .18s;
               {{ $tab === 'published' ? 'background:#fff;color:#4F46E5;box-shadow:0 2px 8px rgba(99,102,241,.12);' : 'color:#6B7280;' }}">
         <i class="fas fa-circle-check" style="font-size:11px;"></i> Published Posts
         @if($publishedSocialTasks->total() > 0)
-        <span style="background:{{ $tab === 'published' ? 'linear-gradient(135deg,#D1FAE5,#A7F3D0)' : '#F3F4F6' }};color:{{ $tab === 'published' ? '#065F46' : '#6B7280' }};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">{{ $publishedSocialTasks->total() }}</span>
+        <span style="background:{{ $tab === 'published' ? '#D1FAE5' : '#F3F4F6' }};color:{{ $tab === 'published' ? '#065F46' : '#6B7280' }};font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">{{ $publishedSocialTasks->total() }}</span>
         @endif
     </a>
-    <a href="{{ route('admin.approvals.index') }}?tab=history"
+    <a href="{{ route('admin.approvals.index') }}?tab=history" class="apv-tab-link"
        style="display:flex;align-items:center;gap:7px;padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:all .18s;
               {{ $tab === 'history' ? 'background:#fff;color:#4F46E5;box-shadow:0 2px 8px rgba(99,102,241,.12);' : 'color:#6B7280;' }}">
         <i class="fas fa-clock-rotate-left" style="font-size:11px;"></i> History
@@ -1263,14 +1439,24 @@
 </div>{{-- .apv-tabs --}}
 </div>{{-- .apv-tabs-scroll --}}
 
-@if(session('success'))
-<div style="background:linear-gradient(135deg,#ECFDF5,#D1FAE5);border:1px solid #A7F3D0;border-radius:12px;padding:13px 18px;margin-bottom:20px;color:#065F46;font-size:14px;display:flex;gap:10px;align-items:center;">
-    <div style="width:22px;height:22px;border-radius:50%;background:#10B981;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-        <i class="fa fa-check" style="color:#fff;font-size:10px;"></i>
+{{-- ── Tabs (mobile) — real segmented mobile component, all 6 live-count buckets ── --}}
+@php
+$apvTabOptions = [
+    ['key' => 'pending',      'label' => 'Pending',   'count' => $tasks->total(),               'href' => route('admin.approvals.index').'?tab=pending'],
+    ['key' => 'awaiting',     'label' => 'Awaiting',  'count' => $awaitingTasks->total(),        'href' => route('admin.approvals.index').'?tab=awaiting'],
+    ['key' => 'decide_later', 'label' => 'Decide',    'count' => $decideLaterTasks->total(),     'href' => route('admin.approvals.index').'?tab=decide_later'],
+    ['key' => 'social',       'label' => 'Social',    'count' => $socialTasks->total(),          'href' => route('admin.approvals.index').'?tab=social'],
+    ['key' => 'published',    'label' => 'Published', 'count' => $publishedSocialTasks->total(), 'href' => route('admin.approvals.index').'?tab=published'],
+    ['key' => 'history',      'label' => 'History',   'count' => $history->total(),              'href' => route('admin.approvals.index').'?tab=history'],
+];
+@endphp
+<div class="apv-tabs-mobile-wrap">
+    <div class="uds-chiprow">
+        <x-mobile.segmented :options="$apvTabOptions" :active="$tab" style="min-width:max-content;" />
     </div>
-    {{ session('success') }}
 </div>
-@endif
+
+{{-- Flash messages are handled by the shared window.showToast() in layouts.app — no page-local banner. --}}
 
 {{-- ══════════════════════ PENDING TAB ══════════════════════ --}}
 @if($tab === 'pending')
@@ -1297,8 +1483,7 @@
     $latestSub    = $task->submissions->first();
     $isOverdue    = $task->deadline->isPast();
     $priTopColor  = ['high'=>'#EF4444','medium'=>'#F59E0B','low'=>'#10B981'][$task->priority] ?? '#6B7280';
-    $priColors    = ['high'=>['#FEE2E2','#DC2626'],'medium'=>['#FEF3C7','#D97706'],'low'=>['#D1FAE5','#059669']];
-    [$pbg,$pco]   = $priColors[$task->priority] ?? ['#F3F4F6','#6B7280'];
+    [$pbg,$pco]   = $apvPriorityColors($task->priority);
     $allAssignees = $task->assignees->isNotEmpty() ? $task->assignees : ($task->assignee ? collect([$task->assignee]) : collect());
     $shownMembers = $allAssignees->take(4);
     $extraCount   = max(0, $allAssignees->count() - 4);
@@ -1308,39 +1493,39 @@
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-5">
 @endif
 
-<div class="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-indigo-100 transition group flex flex-col overflow-hidden cursor-pointer"
+<div class="apv-pending-card bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-indigo-100 transition group flex flex-col overflow-hidden cursor-pointer max-md:rounded-[18px] max-md:shadow-sm max-md:ring-1 max-md:ring-black/5"
      style="border-top:3px solid {{ $priTopColor }};"
      onclick="window.location='{{ route('admin.tasks.show', $task) }}'">
 
-    <div class="p-5 flex flex-col gap-3 flex-1">
+    <div class="p-5 flex flex-col gap-3 flex-1 max-md:p-4 max-md:gap-2.5">
 
         {{-- Priority badge + version count --}}
         <div class="flex items-center justify-between gap-2">
-            <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full max-md:text-[11px] max-md:font-medium max-md:px-2 max-md:py-0.5"
                   style="background:{{ $pbg }};color:{{ $pco }};">
                 {{ ucfirst($task->priority) }}
             </span>
-            <span class="text-xs text-gray-400 flex items-center gap-1">
+            <span class="text-xs text-gray-400 flex items-center gap-1 max-md:text-[11px]">
                 <i class="fas fa-code-branch" style="font-size:10px;"></i>
                 v{{ $latestSub?->version ?? 1 }}
             </span>
         </div>
 
         {{-- Title --}}
-        <h3 class="text-sm font-semibold text-gray-800 leading-snug group-hover:text-indigo-600 transition line-clamp-2">
+        <h3 class="text-sm font-semibold text-gray-800 leading-snug group-hover:text-indigo-600 transition line-clamp-2 max-md:text-sm max-md:font-semibold max-md:text-gray-900">
             {{ $task->title }}
         </h3>
 
         {{-- Project + submitted time --}}
         <div class="flex flex-col gap-1 -mt-1">
-            <p class="text-xs text-gray-400 flex items-center gap-1 m-0">
+            <p class="text-xs text-gray-400 flex items-center gap-1 m-0 max-md:text-gray-500">
                 <i class="fas fa-folder" style="font-size:10px;"></i>
                 {{ $task->project->name ?? '—' }}
             </p>
             @if($latestSub)
             <div class="flex items-center gap-1.5">
-                <span class="text-xs px-1.5 py-0.5 rounded font-semibold" style="background:#EDE9FE;color:#7C3AED;">Submitted</span>
-                <span class="text-xs text-gray-400">{{ $latestSub->created_at->diffForHumans() }}</span>
+                <span class="text-xs px-1.5 py-0.5 rounded font-semibold max-md:text-[11px] max-md:font-medium max-md:px-2 max-md:py-0.5 max-md:rounded-full" style="background:#EDE9FE;color:#7C3AED;">Submitted</span>
+                <span class="text-xs text-gray-400 max-md:text-gray-500">{{ $latestSub->created_at->diffForHumans() }}</span>
             </div>
             @endif
         </div>
@@ -1379,7 +1564,7 @@
         </div>
 
         {{-- Deadline + actions --}}
-        <div class="flex items-center justify-between gap-1.5 pt-2.5 border-t border-gray-50">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 pt-2.5 border-t border-gray-50">
             <div class="flex items-center gap-1.5">
                 @if($isOverdue)
                 <i class="fas fa-triangle-exclamation text-red-400 text-xs"></i>
@@ -1389,142 +1574,184 @@
                 <span class="text-xs text-gray-400">Due {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}</span>
                 @endif
             </div>
-            <div class="flex items-center gap-1" onclick="event.stopPropagation()">
-                <button @click.stop="openApprovalModal({
-                            id:                   {{ $task->id }},
-                            title:                @js($task->title),
-                            assignee:             @js($task->assignee->name ?? 'Unknown'),
-                            url:                  '{{ route('admin.tasks.approve', $task) }}',
-                            pending_customer_url: '{{ route('admin.tasks.pending-customer', $task) }}',
-                            customer_name:        @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
-                            customer_email:       @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
-                            customer_phone:       @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
-                            submission_url:       @js($latestSub?->file_path ? route('submissions.file',$latestSub).'?inline=1' : ($latestSub?->delivery_url ?? null)),
-                            submission_name:      @js($latestSub?->original_filename ?? ($latestSub?->file_path ? basename($latestSub->file_path) : ($latestSub?->delivery_url ? 'Delivery Link' : null))),
-                            submission_is_link:   @js(!$latestSub?->file_path && $latestSub?->delivery_url),
-                        })"
-                        class="w-6 h-6 rounded-lg bg-green-50 hover:bg-green-100 flex items-center justify-center text-green-500 hover:text-green-600 transition"
+            @php
+                $cwPhone = $task->customer?->phone ?? $task->project?->customer?->phone ?? '';
+                $cwName  = $task->customer?->name  ?? $task->project?->customer?->name  ?? 'Customer';
+                $cwFile  = $latestSub?->file_path ? url(Storage::url($latestSub->file_path)) : '';
+                $cwMsg = str_replace(
+                    ['{customer_name}', '{task_title}', '{design_link}', '{company}'],
+                    [$cwName, $task->title, $cwFile ?: '', $company],
+                    $waPreviewTpl
+                );
+                $approvalPayload = [
+                    'id'                   => $task->id,
+                    'title'                => $task->title,
+                    'assignee'             => $task->assignee->name ?? 'Unknown',
+                    'url'                  => route('admin.tasks.approve', $task),
+                    'pending_customer_url' => route('admin.tasks.pending-customer', $task),
+                    'customer_name'        => $task->customer?->name ?? $task->project?->customer?->name ?? null,
+                    'customer_email'       => $task->customer?->email ?? $task->project?->customer?->email ?? null,
+                    'customer_phone'       => $task->customer?->phone ?? $task->project?->customer?->phone ?? null,
+                    'submission_url'       => $latestSub?->file_path ? route('submissions.file', $latestSub) . '?inline=1' : ($latestSub?->delivery_url ?? null),
+                    'submission_name'      => $latestSub?->original_filename ?? ($latestSub?->file_path ? basename($latestSub->file_path) : ($latestSub?->delivery_url ? 'Delivery Link' : null)),
+                    'submission_is_link'   => !$latestSub?->file_path && $latestSub?->delivery_url,
+                ];
+                $rejectPayload = [
+                    'id'       => $task->id,
+                    'title'    => $task->title,
+                    'assignee' => $task->assignee->name ?? 'Unknown',
+                    'url'      => route('admin.tasks.reject', $task),
+                ];
+            @endphp
+            <div class="flex items-center gap-1"
+                 data-wa-phone="{{ $cwPhone }}" data-wa-msg="{{ $cwMsg }}" data-wa-file="{{ $cwFile }}"
+                 x-data="{
+                     more: false,
+                     waOpen: false, waPhone: '', waMsg: '', waFile: '',
+                     waTop: 0, waRight: 0, waSending: false, waResult: null,
+                     init() {
+                         this.waPhone = this.$el.dataset.waPhone;
+                         this.waMsg   = this.$el.dataset.waMsg;
+                         this.waFile  = this.$el.dataset.waFile;
+                     },
+                     toggleWa(btn) {
+                         if (!this.waOpen) {
+                             const r = btn.getBoundingClientRect();
+                             this.waTop   = r.bottom + 7;
+                             this.waRight = window.innerWidth - r.right;
+                         }
+                         this.waOpen = !this.waOpen;
+                     },
+                     openWeb() {
+                         const d = this.waPhone.replace(/\D/g,'');
+                         if (!d) { this.$refs.cwInput.style.borderColor='#EF4444'; this.$refs.cwInput.focus(); return; }
+                         window.open('https://wa.me/' + d + '?text=' + encodeURIComponent(this.waMsg), '_blank');
+                     },
+                     async doSend() {
+                         const d = this.waPhone.replace(/\D/g,'');
+                         if (!d) { this.$refs.cwInput.style.borderColor='#EF4444'; this.$refs.cwInput.focus(); return; }
+                         this.waSending = true; this.waResult = null;
+                         const hasFile = !!this.waFile;
+                         const isImage = hasFile && /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(this.waFile);
+                         const baseMsg = this.waMsg.split('\n\nView design:')[0];
+                         const url = hasFile ? '{{ $waMediaRoute }}' : '{{ $waSendRoute }}';
+                         const body = hasFile
+                             ? { phone: this.waPhone, file_url: this.waFile, filename: this.waFile.split('/').pop(), caption: baseMsg }
+                             : { phone: this.waPhone, message: this.waMsg };
+                         try {
+                             const res  = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ $waCsrf }}','Accept':'application/json'}, body: JSON.stringify(body) });
+                             const data = await res.json();
+                             this.waResult = { ok: data.ok, message: typeof data.message === 'string' ? data.message : JSON.stringify(data.message) };
+                             if (data.ok) setTimeout(() => { this.waOpen = false; this.waResult = null; }, 1800);
+                         } catch(e) {
+                             this.waResult = { ok: false, message: 'Network error. Try again.' };
+                         }
+                         this.waSending = false;
+                     }
+                 }" onclick="event.stopPropagation()">
+
+                {{-- Desktop: icon-only actions (unchanged) --}}
+                <button @click.stop="openApprovalModal(@js($approvalPayload))"
+                        class="hidden md:flex w-6 h-6 rounded-lg bg-green-50 hover:bg-green-100 items-center justify-center text-green-500 hover:text-green-600 transition"
                         title="Approve">
                     <i class="fas fa-check" style="font-size:10px;"></i>
                 </button>
-                <button @click.stop="openRejectModal({
-                            id:       {{ $task->id }},
-                            title:    @js($task->title),
-                            assignee: @js($task->assignee->name ?? 'Unknown'),
-                            url:      '{{ route('admin.tasks.reject', $task) }}'
-                        })"
-                        class="w-6 h-6 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center text-red-400 hover:text-red-500 transition"
+                <button @click.stop="openRejectModal(@js($rejectPayload))"
+                        class="hidden md:flex w-6 h-6 rounded-lg bg-red-50 hover:bg-red-100 items-center justify-center text-red-400 hover:text-red-500 transition"
                         title="Request revision">
                     <i class="fas fa-rotate-left" style="font-size:10px;"></i>
                 </button>
                 @if(($appSettings['hide_approval_customer_notify'] ?? '0') !== '1')
-                @php
-                    $cwPhone = $task->customer?->phone ?? $task->project?->customer?->phone ?? '';
-                    $cwName  = $task->customer?->name  ?? $task->project?->customer?->name  ?? 'Customer';
-                    $cwFile  = $latestSub?->file_path ? url(Storage::url($latestSub->file_path)) : '';
-                    $cwMsg = str_replace(
-                        ['{customer_name}', '{task_title}', '{design_link}', '{company}'],
-                        [$cwName, $task->title, $cwFile ?: '', $company],
-                        $waPreviewTpl
-                    );
-                @endphp
-                <div data-wa-phone="{{ $cwPhone }}" data-wa-msg="{{ $cwMsg }}" data-wa-file="{{ $cwFile }}"
-                     x-data="{
-                         waOpen: false, waPhone: '', waMsg: '', waFile: '',
-                         waTop: 0, waRight: 0, waSending: false, waResult: null,
-                         init() {
-                             this.waPhone = this.$el.dataset.waPhone;
-                             this.waMsg   = this.$el.dataset.waMsg;
-                             this.waFile  = this.$el.dataset.waFile;
-                         },
-                         toggleWa(btn) {
-                             if (!this.waOpen) {
-                                 const r = btn.getBoundingClientRect();
-                                 this.waTop   = r.bottom + 7;
-                                 this.waRight = window.innerWidth - r.right;
-                             }
-                             this.waOpen = !this.waOpen;
-                         },
-                         openWeb() {
-                             const d = this.waPhone.replace(/\D/g,'');
-                             if (!d) { this.$refs.cwInput.style.borderColor='#EF4444'; this.$refs.cwInput.focus(); return; }
-                             window.open('https://wa.me/' + d + '?text=' + encodeURIComponent(this.waMsg), '_blank');
-                         },
-                         async doSend() {
-                             const d = this.waPhone.replace(/\D/g,'');
-                             if (!d) { this.$refs.cwInput.style.borderColor='#EF4444'; this.$refs.cwInput.focus(); return; }
-                             this.waSending = true; this.waResult = null;
-                             const hasFile = !!this.waFile;
-                             const isImage = hasFile && /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(this.waFile);
-                             const baseMsg = this.waMsg.split('\n\nView design:')[0];
-                             const url = hasFile ? '{{ $waMediaRoute }}' : '{{ $waSendRoute }}';
-                             const body = hasFile
-                                 ? { phone: this.waPhone, file_url: this.waFile, filename: this.waFile.split('/').pop(), caption: baseMsg }
-                                 : { phone: this.waPhone, message: this.waMsg };
-                             try {
-                                 const res  = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':'{{ $waCsrf }}','Accept':'application/json'}, body: JSON.stringify(body) });
-                                 const data = await res.json();
-                                 this.waResult = { ok: data.ok, message: typeof data.message === 'string' ? data.message : JSON.stringify(data.message) };
-                                 if (data.ok) setTimeout(() => { this.waOpen = false; this.waResult = null; }, 1800);
-                             } catch(e) {
-                                 this.waResult = { ok: false, message: 'Network error. Try again.' };
-                             }
-                             this.waSending = false;
-                         }
-                     }" @click.stop>
-                    <button type="button" @click.stop="toggleWa($event.currentTarget)"
-                            class="w-6 h-6 rounded-lg flex items-center justify-center"
-                            :style="waOpen ? 'background:#25D366;' : 'background:#DCFCE7;'"
-                            title="Send preview via WhatsApp">
-                        <i class="fab fa-whatsapp" :style="waOpen ? 'font-size:12px;color:#fff;' : 'font-size:12px;color:#25D366;'"></i>
-                    </button>
-                    <div x-show="waOpen" x-cloak x-transition @click.outside="waOpen=false" @click.stop
-                         :style="`position:fixed;top:${waTop}px;right:${waRight}px;z-index:9999;background:#fff;border-radius:14px;width:244px;box-shadow:0 16px 40px rgba(0,0,0,.18);border:1px solid #D1FAE5;overflow:hidden;`">
-                        <div style="background:linear-gradient(135deg,#25D366,#128C7E);padding:11px 14px;display:flex;align-items:center;gap:9px;">
-                            <i class="fab fa-whatsapp" style="color:#fff;font-size:18px;flex-shrink:0;"></i>
-                            <div>
-                                <p style="font-size:12px;font-weight:700;color:#fff;margin:0;">Send Preview</p>
-                                <p style="font-size:10px;color:rgba(255,255,255,.75);margin:0;">Before approval · sends via API</p>
-                            </div>
+                <button type="button" @click.stop="toggleWa($event.currentTarget)"
+                        class="hidden md:flex w-6 h-6 rounded-lg items-center justify-center"
+                        :style="waOpen ? 'background:#25D366;' : 'background:#DCFCE7;'"
+                        title="Send preview via WhatsApp">
+                    <i class="fab fa-whatsapp" :style="waOpen ? 'font-size:12px;color:#fff;' : 'font-size:12px;color:#25D366;'"></i>
+                </button>
+                @endif
+                <a href="{{ route('admin.tasks.show', $task) }}"
+                   class="hidden md:flex w-6 h-6 rounded-lg bg-gray-100 hover:bg-indigo-100 items-center justify-center text-gray-400 hover:text-indigo-600 transition"
+                   style="text-decoration:none;" title="View task">
+                    <i class="fa fa-arrow-up-right-from-square" style="font-size:10px;"></i>
+                </a>
+
+                {{-- WhatsApp popover — shared state, opened from either the desktop icon or the mobile fold below --}}
+                <div x-show="waOpen" x-cloak x-transition @click.outside="waOpen=false" @click.stop
+                     :style="`position:fixed;top:${waTop}px;right:${waRight}px;z-index:9999;background:#fff;border-radius:14px;width:244px;box-shadow:0 16px 40px rgba(0,0,0,.18);border:1px solid #D1FAE5;overflow:hidden;`">
+                    <div style="background:linear-gradient(135deg,#25D366,#128C7E);padding:11px 14px;display:flex;align-items:center;gap:9px;">
+                        <i class="fab fa-whatsapp" style="color:#fff;font-size:18px;flex-shrink:0;"></i>
+                        <div>
+                            <p style="font-size:12px;font-weight:700;color:#fff;margin:0;">Send Preview</p>
+                            <p style="font-size:10px;color:rgba(255,255,255,.75);margin:0;">Before approval · sends via API</p>
                         </div>
-                        <div style="padding:13px 14px;">
-                            <p style="font-size:11px;color:#6B7280;margin:0 0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                                <i class="fas fa-file-image" style="font-size:9px;color:#A78BFA;margin-right:3px;"></i>{{ Str::limit($task->title, 32) }}
-                            </p>
-                            <label style="display:block;font-size:10px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">WhatsApp Number</label>
-                            <input type="tel" x-model="waPhone" x-ref="cwInput" placeholder="+971501234567"
-                                   style="width:100%;padding:8px 10px;border:1.5px solid #D1FAE5;background:#F0FDF4;border-radius:8px;font-size:12px;color:#111827;outline:none;box-sizing:border-box;margin-bottom:9px;transition:border-color .15s;"
-                                   onfocus="this.style.borderColor='#25D366'" onblur="this.style.borderColor='#D1FAE5'">
-                            <button type="button" @click="doSend()" :disabled="waSending"
-                                    :style="waSending ? 'width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;background:#9CA3AF;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:not-allowed;' : 'width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(37,211,102,.3);transition:opacity .15s;'"
-                                    onmouseover="if(this.style.cursor!=='not-allowed')this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
-                                <i class="fab fa-whatsapp" style="font-size:13px;" x-show="!waSending"></i>
-                                <i class="fas fa-spinner fa-spin" style="font-size:12px;" x-show="waSending" x-cloak></i>
-                                <span x-text="waSending ? 'Sending…' : (waFile ? 'Send File via WhatsApp' : 'Send via WhatsApp API')">Send via WhatsApp API</span>
-                            </button>
-                            @unless($hideWaWeb)
-                            <button type="button" @click="openWeb()"
-                                    style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:#fff;color:#25D366;border:1.5px solid #25D366;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;margin-top:6px;transition:opacity .15s;"
-                                    onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
-                                <i class="fab fa-whatsapp" style="font-size:13px;"></i>
-                                Send via WhatsApp Web ↗
-                            </button>
-                            @endunless
-                            <div x-show="waResult" x-cloak
-                                 :style="waResult?.ok ? 'margin-top:8px;font-size:11px;color:#16A34A;display:flex;align-items:center;gap:4px;' : 'margin-top:8px;font-size:11px;color:#DC2626;display:flex;align-items:center;gap:4px;'">
-                                <i :class="waResult?.ok ? 'fas fa-circle-check' : 'fas fa-circle-xmark'" style="font-size:11px;"></i>
-                                <span x-text="waResult?.message ?? ''"></span>
-                            </div>
+                    </div>
+                    <div style="padding:13px 14px;">
+                        <p style="font-size:11px;color:#6B7280;margin:0 0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                            <i class="fas fa-file-image" style="font-size:9px;color:#A78BFA;margin-right:3px;"></i>{{ Str::limit($task->title, 32) }}
+                        </p>
+                        <label style="display:block;font-size:10px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">WhatsApp Number</label>
+                        <input type="tel" x-model="waPhone" x-ref="cwInput" placeholder="+971501234567"
+                               style="width:100%;padding:8px 10px;border:1.5px solid #D1FAE5;background:#F0FDF4;border-radius:8px;font-size:12px;color:#111827;outline:none;box-sizing:border-box;margin-bottom:9px;transition:border-color .15s;"
+                               onfocus="this.style.borderColor='#25D366'" onblur="this.style.borderColor='#D1FAE5'">
+                        <button type="button" @click="doSend()" :disabled="waSending"
+                                :style="waSending ? 'width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;background:#9CA3AF;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:not-allowed;' : 'width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(37,211,102,.3);transition:opacity .15s;'"
+                                onmouseover="if(this.style.cursor!=='not-allowed')this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                            <i class="fab fa-whatsapp" style="font-size:13px;" x-show="!waSending"></i>
+                            <i class="fas fa-spinner fa-spin" style="font-size:12px;" x-show="waSending" x-cloak></i>
+                            <span x-text="waSending ? 'Sending…' : (waFile ? 'Send File via WhatsApp' : 'Send via WhatsApp API')">Send via WhatsApp API</span>
+                        </button>
+                        @unless($hideWaWeb)
+                        <button type="button" @click="openWeb()"
+                                style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:#fff;color:#25D366;border:1.5px solid #25D366;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;margin-top:6px;transition:opacity .15s;"
+                                onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+                            <i class="fab fa-whatsapp" style="font-size:13px;"></i>
+                            Send via WhatsApp Web ↗
+                        </button>
+                        @endunless
+                        <div x-show="waResult" x-cloak
+                             :style="waResult?.ok ? 'margin-top:8px;font-size:11px;color:#16A34A;display:flex;align-items:center;gap:4px;' : 'margin-top:8px;font-size:11px;color:#DC2626;display:flex;align-items:center;gap:4px;'">
+                            <i :class="waResult?.ok ? 'fas fa-circle-check' : 'fas fa-circle-xmark'" style="font-size:11px;"></i>
+                            <span x-text="waResult?.message ?? ''"></span>
                         </div>
                     </div>
                 </div>
-                @endif {{-- hide_approval_customer_notify --}}
-                <a href="{{ route('admin.tasks.show', $task) }}"
-                   class="w-6 h-6 rounded-lg bg-gray-100 hover:bg-indigo-100 flex items-center justify-center text-gray-400 hover:text-indigo-600 transition"
-                   style="text-decoration:none;" title="View task"
-                   onclick="event.stopPropagation()">
-                    <i class="fa fa-arrow-up-right-from-square" style="font-size:10px;"></i>
-                </a>
+
+                {{-- Mobile: one primary decision + one counter-decision, everything else folded --}}
+                <div class="md:hidden w-full">
+                    <div class="flex gap-2">
+                        <button @click.stop="openApprovalModal(@js($approvalPayload))"
+                                class="flex-1 min-h-[44px] rounded-xl text-white text-[13px] font-bold flex items-center justify-center gap-1.5"
+                                style="background:linear-gradient(135deg,#4F46E5,#6366F1);box-shadow:0 6px 14px -8px rgba(79,70,229,.7)">
+                            <i class="fas fa-check" style="font-size:11px;"></i> Approve
+                        </button>
+                        <button @click.stop="openRejectModal(@js($rejectPayload))"
+                                class="px-3.5 min-h-[44px] rounded-xl text-[13px] font-bold"
+                                style="background:#fff;color:#DC2626;border:1px solid #FCA5A5;">Changes</button>
+                        <button type="button" @click.stop="more = !more"
+                                class="w-10 min-h-[44px] rounded-xl border border-gray-200 bg-white flex items-center justify-center flex-shrink-0"
+                                aria-label="More actions">
+                            <i class="fas fa-ellipsis" style="font-size:14px;color:#6B7280"></i>
+                        </button>
+                    </div>
+                    <div x-show="more" x-cloak x-collapse class="flex flex-col mt-2 pt-2 border-t border-gray-100">
+                        @if(($appSettings['hide_approval_customer_notify'] ?? '0') !== '1')
+                        <button type="button" @click.stop="toggleWa($event.currentTarget)"
+                                class="flex items-center gap-2.5 min-h-[44px] text-[13px] font-semibold text-gray-600 w-full text-left">
+                            <span class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style="background:#DCFCE7">
+                                <i class="fab fa-whatsapp" style="color:#25D366;font-size:13px"></i>
+                            </span>
+                            Send preview via WhatsApp
+                        </button>
+                        @endif
+                        <a href="{{ route('admin.tasks.show', $task) }}"
+                           class="flex items-center gap-2.5 min-h-[44px] text-[13px] font-semibold text-gray-600">
+                            <span class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style="background:#EEF2FF;color:#4F46E5">
+                                <i class="fa fa-arrow-up-right-from-square" style="font-size:11px"></i>
+                            </span>
+                            Open full task
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1548,7 +1775,7 @@
 {{-- ── LIST VIEW ── --}}
 @if($tasks->count() > 0)
 <div id="pendingListView" style="display:none;">
-    <div class="pend-list-wrap tbl-scroll">
+    <div class="pend-list-wrap tbl-scroll mob-table-cards">
     <table class="pend-table">
         <thead>
             <tr>
@@ -1566,8 +1793,7 @@
         @php
             $latestSub2 = $task->submissions->first();
             $isOverdue2 = $task->deadline && $task->deadline->isPast();
-            $priColors2 = ['high'=>['#FEE2E2','#DC2626'],'medium'=>['#FEF3C7','#D97706'],'low'=>['#D1FAE5','#059669']];
-            [$pbg2,$pco2] = $priColors2[$task->priority] ?? ['#F3F4F6','#6B7280'];
+            [$pbg2,$pco2] = $apvPriorityColors($task->priority);
         @endphp
         {{-- Main row --}}
         @php
@@ -1598,7 +1824,7 @@
             @click="openQuickView(@js($qvData))"
             style="cursor:pointer;">
             {{-- Task --}}
-            <td style="max-width:240px;">
+            <td style="max-width:240px;" data-label="Task">
                 <div style="display:flex;align-items:center;gap:8px;">
                     <div style="width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;">
                         {{ strtoupper(substr($task->assignee->name ?? 'U', 0, 1)) }}
@@ -1607,34 +1833,34 @@
                 </div>
             </td>
             {{-- Assignee --}}
-            <td>
+            <td data-label="Assignee">
                 <span style="font-size:12px;font-weight:600;color:#4F46E5;">{{ $task->assignee->name ?? '—' }}</span>
             </td>
             {{-- Project --}}
-            <td>
+            <td data-label="Project">
                 <span style="font-size:12px;color:#6B7280;"><i class="fas fa-folder" style="font-size:10px;color:#A5B4FC;margin-right:4px;"></i>{{ $task->project->name ?? '—' }}</span>
             </td>
             {{-- Priority --}}
-            <td>
+            <td data-label="Priority">
                 <span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:{{ $pbg2 }};color:{{ $pco2 }};white-space:nowrap;">{{ ucfirst($task->priority) }}</span>
             </td>
             {{-- Deadline --}}
-            <td>
+            <td data-label="Deadline">
                 @if($task->deadline)
                 <span style="font-size:12px;{{ $isOverdue2 ? 'color:#DC2626;font-weight:600;' : 'color:#6B7280;' }}white-space:nowrap;">
-                    {{ $isOverdue2 ? '⚠ ' : '' }}{{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
+                    @if($isOverdue2)<i class="fas fa-triangle-exclamation" style="font-size:10px;"></i>@endif {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
                 </span>
                 @else
                 <span style="font-size:12px;color:#D1D5DB;">—</span>
                 @endif
             </td>
             {{-- Versions --}}
-            <td style="text-align:center;">
+            <td style="text-align:center;" data-label="Versions">
                 <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#EDE9FE;color:#7C3AED;">{{ $task->submissions->count() }}</span>
             </td>
             {{-- Actions --}}
-            <td style="text-align:right;white-space:nowrap;" onclick="event.stopPropagation()">
-                <div style="display:inline-flex;align-items:center;gap:5px;">
+            <td style="text-align:right;white-space:nowrap;" data-label="Actions" onclick="event.stopPropagation()">
+                <div class="apv-row-actions" style="display:inline-flex;align-items:center;gap:5px;">
                     {{-- Approve --}}
                     <button type="button"
                             @click="openApprovalModal({
@@ -1837,7 +2063,7 @@
     <p style="font-size:13px;color:#9CA3AF;margin:0;">Tasks marked as "Awaiting Customer Approval" will appear here.</p>
 </div>
 @else
-<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:14px;border:1px solid #F3F4F6;">
+<div class="hidden md:block mob-table-cards" style="overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:14px;border:1px solid #F3F4F6;">
 <table class="pend-table" style="background:#fff;">
     <thead>
         <tr>
@@ -1854,11 +2080,10 @@
     @php
         $latestSubAw  = $task->submissions->first();
         $isOverdueAw  = $task->deadline && $task->deadline->isPast();
-        $pbgAw = match($task->priority) { 'high' => '#FEE2E2', 'medium' => '#FEF3C7', default => '#D1FAE5' };
-        $pcoAw = match($task->priority) { 'high' => '#DC2626', 'medium' => '#D97706', default => '#059669' };
+        [$pbgAw, $pcoAw] = $apvPriorityColors($task->priority);
     @endphp
     <tr>
-        <td style="max-width:220px;">
+        <td style="max-width:220px;" data-label="Task">
             <div style="display:flex;align-items:center;gap:8px;">
                 <div style="width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#FCD34D,#F59E0B);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;">
                     {{ strtoupper(substr($task->assignee->name ?? 'U', 0, 1)) }}
@@ -1873,20 +2098,20 @@
                 </div>
             </div>
         </td>
-        <td><span style="font-size:12px;font-weight:600;color:#D97706;">{{ $task->assignee->name ?? '—' }}</span></td>
-        <td><span style="font-size:12px;color:#6B7280;"><i class="fas fa-folder" style="font-size:10px;color:#FCD34D;margin-right:4px;"></i>{{ $task->project->name ?? '—' }}</span></td>
-        <td><span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:{{ $pbgAw }};color:{{ $pcoAw }};white-space:nowrap;">{{ ucfirst($task->priority) }}</span></td>
-        <td>
+        <td data-label="Assignee"><span style="font-size:12px;font-weight:600;color:#D97706;">{{ $task->assignee->name ?? '—' }}</span></td>
+        <td data-label="Project"><span style="font-size:12px;color:#6B7280;"><i class="fas fa-folder" style="font-size:10px;color:#FCD34D;margin-right:4px;"></i>{{ $task->project->name ?? '—' }}</span></td>
+        <td data-label="Priority"><span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:{{ $pbgAw }};color:{{ $pcoAw }};white-space:nowrap;">{{ ucfirst($task->priority) }}</span></td>
+        <td data-label="Deadline">
             @if($task->deadline)
             <span style="font-size:12px;{{ $isOverdueAw ? 'color:#DC2626;font-weight:600;' : 'color:#6B7280;' }}white-space:nowrap;">
-                {{ $isOverdueAw ? '⚠ ' : '' }}{{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
+                @if($isOverdueAw)<i class="fas fa-triangle-exclamation" style="font-size:10px;"></i>@endif {{ $task->deadline->format(config('app.date_format', 'M d, Y')) }}
             </span>
             @else
             <span style="font-size:12px;color:#D1D5DB;">—</span>
             @endif
         </td>
-        <td style="text-align:right;white-space:nowrap;">
-            <div style="display:inline-flex;align-items:center;gap:5px;">
+        <td style="text-align:right;white-space:nowrap;" data-label="Actions">
+            <div class="apv-row-actions" style="display:inline-flex;align-items:center;gap:5px;">
                 {{-- Approve --}}
                 <button type="button"
                         @click="openApprovalModal({
@@ -1926,6 +2151,74 @@
     </tbody>
 </table>
 </div>
+
+{{-- Mobile: true cards, not a stacked LABEL/value table row per task --}}
+<div class="md:hidden flex flex-col gap-2.5">
+    @foreach($awaitingTasks as $task)
+    @php
+        $latestSubAw2 = $task->submissions->first();
+        $isOverdueAw2 = $task->deadline && $task->deadline->isPast();
+        [$pbgAw2, $pcoAw2] = $apvPriorityColors($task->priority);
+    @endphp
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5">
+        <div class="flex items-center gap-2 mb-2">
+            <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full" style="background:{{ $pbgAw2 }};color:{{ $pcoAw2 }}">{{ ucfirst($task->priority) }}</span>
+            @if($task->customer_decision_deferred_at)
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background:#F5F3FF;color:#7C3AED">
+                <i class="fas fa-clock" style="font-size:9px;"></i> Decide Later
+            </span>
+            @endif
+        </div>
+
+        <a href="{{ route('admin.tasks.show', $task) }}" class="block text-[15px] font-semibold text-gray-900 leading-snug">{{ $task->title }}</a>
+
+        <div class="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-gray-100">
+            <span class="w-[22px] h-[22px] rounded-full text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,#FCD34D,#F59E0B)">
+                {{ strtoupper(substr($task->assignee->name ?? 'U', 0, 1)) }}
+            </span>
+            <span class="text-[12.5px] font-semibold text-gray-600 truncate max-w-[10ch]">{{ $task->assignee->name ?? '—' }}</span>
+            <span class="w-1 h-1 rounded-full flex-shrink-0" style="background:#D1D5DB"></span>
+            <span class="text-[11.5px] font-medium text-gray-400 truncate">{{ $task->project->name ?? '—' }}</span>
+            <span class="flex-1"></span>
+            @if($task->deadline)
+            <span class="text-[11.5px] font-bold flex-shrink-0" style="{{ $isOverdueAw2 ? 'color:#DC2626' : 'color:#9CA3AF' }}">
+                @if($isOverdueAw2)<i class="fas fa-triangle-exclamation" style="font-size:9px;"></i> @endif{{ $task->deadline->format('M d') }}
+            </span>
+            @endif
+        </div>
+
+        <div class="flex gap-2 mt-3">
+            <button type="button"
+                    @click="openApprovalModal({
+                        id:                   {{ $task->id }},
+                        title:                @js($task->title),
+                        assignee:             @js($task->assignee->name ?? 'Unknown'),
+                        url:                  '{{ route('admin.tasks.approve', $task) }}',
+                        pending_customer_url: '{{ route('admin.tasks.pending-customer', $task) }}',
+                        customer_name:        @js($task->customer?->name ?? $task->project?->customer?->name ?? null),
+                        customer_email:       @js($task->customer?->email ?? $task->project?->customer?->email ?? null),
+                        customer_phone:       @js($task->customer?->phone ?? $task->project?->customer?->phone ?? null),
+                        submission_url:       @js($latestSubAw2?->file_path ? route('submissions.file',$latestSubAw2).'?inline=1' : ($latestSubAw2?->delivery_url ?? null)),
+                        submission_name:      @js($latestSubAw2?->original_filename ?? ($latestSubAw2?->file_path ? basename($latestSubAw2->file_path) : ($latestSubAw2?->delivery_url ? 'Delivery Link' : null))),
+                        submission_is_link:   @js(!$latestSubAw2?->file_path && $latestSubAw2?->delivery_url),
+                    })"
+                    class="flex-1 min-h-[44px] rounded-xl text-white text-[13px] font-bold flex items-center justify-center gap-1.5"
+                    style="background:linear-gradient(135deg,#4F46E5,#6366F1);box-shadow:0 6px 14px -8px rgba(79,70,229,.7)">
+                <i class="fas fa-check" style="font-size:11px;"></i> Approve
+            </button>
+            <button type="button"
+                    @click="openRejectModal({
+                        id:       {{ $task->id }},
+                        title:    @js($task->title),
+                        assignee: @js($task->assignee->name ?? 'Unknown'),
+                        url:      '{{ route('admin.tasks.reject', $task) }}'
+                    })"
+                    class="px-3.5 min-h-[44px] rounded-xl text-[13px] font-bold" style="background:#fff;color:#DC2626;border:1px solid #FCA5A5;">Changes</button>
+        </div>
+    </div>
+    @endforeach
+</div>
+
 @if($awaitingTasks->hasPages())
 <div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
     <span style="font-size:12px;color:#6B7280;">Showing {{ $awaitingTasks->firstItem() }}–{{ $awaitingTasks->lastItem() }} of {{ $awaitingTasks->total() }} results</span>
@@ -2005,7 +2298,7 @@
 
     {{-- Decision --}}
     <select name="hdecision"
-            style="padding:7px 28px 7px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#374151;outline:none;background:#FAFAFA url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E\") no-repeat right 10px center;-webkit-appearance:none;">
+            style="padding:7px 28px 7px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#374151;outline:none;background:#FAFAFA url(data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E) no-repeat right 10px center;-webkit-appearance:none;">
         <option value="">All Decisions</option>
         <option value="approved"  {{ $hDecision === 'approved'  ? 'selected' : '' }}>Approved</option>
         <option value="rejected"  {{ $hDecision === 'rejected'  ? 'selected' : '' }}>Rejected</option>
@@ -2013,7 +2306,7 @@
 
     {{-- Sort --}}
     <select name="hsort"
-            style="padding:7px 28px 7px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#374151;outline:none;background:#FAFAFA url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E\") no-repeat right 10px center;-webkit-appearance:none;">
+            style="padding:7px 28px 7px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#374151;outline:none;background:#FAFAFA url(data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='%239CA3AF' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E) no-repeat right 10px center;-webkit-appearance:none;">
         <option value="date"     {{ $hSort === 'date'     ? 'selected' : '' }}>Sort: Date</option>
         <option value="task"     {{ $hSort === 'task'     ? 'selected' : '' }}>Sort: Task Name</option>
         <option value="assignee" {{ $hSort === 'assignee' ? 'selected' : '' }}>Sort: Assignee</option>
@@ -2073,7 +2366,7 @@
 {{-- ══ TABLE VIEW ══ --}}
 <div id="histTableView">
 <div style="background:#fff;border-radius:18px;border:1px solid #EBEBEB;box-shadow:0 2px 10px rgba(99,102,241,.06);overflow:clip;">
-<div class="tbl-scroll">
+<div class="tbl-scroll mob-table-cards">
     <table class="hist-table" style="table-layout:auto;">
         <thead>
             <tr>
@@ -2088,10 +2381,11 @@
         @foreach($history as $sub)
         @php
             $isApproved  = $sub->status === 'approved';
-            $decisionBg  = $isApproved ? 'linear-gradient(135deg,#D1FAE5,#A7F3D0)' : 'linear-gradient(135deg,#FEE2E2,#FECACA)';
-            $decisionCo  = $isApproved ? '#065F46' : '#991B1B';
-            $decisionIco = $isApproved ? 'fa-circle-check' : 'fa-rotate-left';
-            $decisionLbl = $isApproved ? 'Approved' : 'Rejected';
+            $decisionStyle = $apvDecisionStyle($isApproved);
+            $decisionBg  = $decisionStyle['bg'];
+            $decisionCo  = $decisionStyle['text'];
+            $decisionIco = $decisionStyle['icon'];
+            $decisionLbl = $decisionStyle['label'];
             $socialAssignee = $sub->task?->socialAssignee;
             $postedAt       = $sub->task?->social_posted_at;
             $taskSocialPosts = $sub->task?->socialPosts ?? collect();
@@ -2111,7 +2405,7 @@
                     </button>
                 </td>
                 {{-- Task --}}
-                <td @click="expanded = !expanded" style="cursor:pointer;">
+                <td @click="expanded = !expanded" style="cursor:pointer;" data-label="Task">
                     <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;"
                        title="{{ $sub->task->title ?? '' }}">{{ $sub->task->title ?? '—' }}</p>
                     <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">
@@ -2120,7 +2414,7 @@
                     </p>
                 </td>
                 {{-- Assignee --}}
-                <td>
+                <td data-label="Assignee">
                     <div style="display:flex;align-items:center;gap:8px;">
                         <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">
                             {{ strtoupper(substr($sub->task->assignee->name ?? 'U', 0, 1)) }}
@@ -2129,18 +2423,18 @@
                     </div>
                 </td>
                 {{-- Decision --}}
-                <td>
+                <td data-label="Decision">
                     <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 11px;border-radius:20px;background:{{ $decisionBg }};color:{{ $decisionCo }};white-space:nowrap;">
                         <i class="fa {{ $decisionIco }}" style="font-size:10px;"></i> {{ $decisionLbl }}
                     </span>
                 </td>
                 {{-- Date --}}
-                <td>
+                <td data-label="Date">
                     <span style="font-size:12px;color:#6B7280;white-space:nowrap;">{{ $sub->reviewed_at?->format(config('app.date_format', 'M d, Y')) }}</span>
                     <p style="font-size:10px;color:#D1D5DB;margin:2px 0 0;white-space:nowrap;">{{ $sub->reviewed_at?->diffForHumans() }}</p>
                 </td>
                 {{-- Actions dropdown --}}
-                <td style="white-space:nowrap;">
+                <td style="white-space:nowrap;" data-label="Actions">
                     @if($sub->task_id)
                     <div x-data="{ menuOpen: false, dTop: 0, dRight: 0 }"
                          @click.outside="menuOpen=false"
@@ -2272,10 +2566,11 @@
     @foreach($history as $sub)
     @php
         $isApproved  = $sub->status === 'approved';
-        $decisionBg  = $isApproved ? 'linear-gradient(135deg,#D1FAE5,#A7F3D0)' : 'linear-gradient(135deg,#FEE2E2,#FECACA)';
-        $decisionCo  = $isApproved ? '#065F46' : '#991B1B';
-        $decisionIco = $isApproved ? 'fa-circle-check' : 'fa-rotate-left';
-        $decisionLbl = $isApproved ? 'Approved' : 'Rejected';
+        $decisionStyle = $apvDecisionStyle($isApproved);
+        $decisionBg  = $decisionStyle['bg'];
+        $decisionCo  = $decisionStyle['text'];
+        $decisionIco = $decisionStyle['icon'];
+        $decisionLbl = $decisionStyle['label'];
         $socialAssignee = $sub->task?->socialAssignee;
         $postedAt       = $sub->task?->social_posted_at;
         $taskSocialPosts = $sub->task?->socialPosts ?? collect();
@@ -2352,8 +2647,11 @@
             @endif
         </div>
 
-        {{-- Card footer: action buttons --}}
-        <div class="hist-card-foot" onclick="event.stopPropagation()">
+        {{-- Card footer: action buttons (real actions only — Reopen is the one true
+             action here; View/Task are just navigation). On mobile, non-actionable
+             (rejected) cards swap this for a single passive "Open thread" link so
+             the footer doesn't imply an action is still available when it isn't. --}}
+        <div class="hist-card-foot {{ $isApproved ? '' : 'hist-foot-actionable' }}" onclick="event.stopPropagation()">
             @if($sub->task_id)
             <button onclick="openTaskPanel({{ $sub->task_id }})"
                     style="display:flex;align-items:center;gap:5px;padding:7px 14px;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;"
@@ -2378,6 +2676,15 @@
             @endif
             @endif
         </div>
+        @if(!$isApproved && $sub->task_id)
+        <div class="hist-card-foot hist-foot-passive" onclick="event.stopPropagation()">
+            <a href="{{ route('admin.tasks.show', $sub->task_id) }}"
+               style="display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:#6B7280;text-decoration:none;">
+                Open thread <i class="fas fa-arrow-right" style="font-size:10px;"></i>
+            </a>
+            <span style="font-size:11px;color:#D1D5DB;margin-left:auto;">{{ $sub->reviewed_at?->diffForHumans() }}</span>
+        </div>
+        @endif
 
     </div>
     @endforeach
@@ -2466,7 +2773,7 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
         @foreach($pt->socialPosts as $sp)
         @php [$pIcon,$pColor] = $pubIcons[$sp->platform] ?? $pubIcons['other']; @endphp
 
-        <div x-data="{ editing: false }" class="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden"
+        <div x-data="{ editing: false }" class="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col overflow-hidden max-md:rounded-[18px] max-md:shadow-sm max-md:ring-1 max-md:ring-black/5"
              style="transition:box-shadow .15s;"
              onmouseover="this.style.boxShadow='0 4px 14px rgba(99,102,241,.1)'" onmouseout="this.style.boxShadow=''">
 
@@ -2569,7 +2876,7 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
     {{-- ── TABLE VIEW ── --}}
     <div id="pendingListView" style="display:none;">
     <div style="background:#fff;border-radius:18px;border:1px solid #EBEBEB;box-shadow:0 2px 10px rgba(99,102,241,.06);overflow:clip;">
-    <div class="tbl-scroll">
+    <div class="tbl-scroll mob-table-cards">
     <table class="pend-table" style="table-layout:auto;">
         <thead>
             <tr>
@@ -2587,7 +2894,7 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
         @php [$pIconT,$pColorT] = $pubIcons[$sp->platform] ?? $pubIcons['other']; @endphp
         <tr x-data="{ editing: false }">
             {{-- Platform --}}
-            <td style="white-space:nowrap;">
+            <td style="white-space:nowrap;" data-label="Platform">
                 <div style="display:flex;align-items:center;gap:7px;">
                     <div style="width:28px;height:28px;border-radius:8px;background:#F9FAFB;border:1px solid #E5E7EB;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                         <i class="fab {{ $pIconT }}" style="font-size:14px;color:{{ $pColorT }};"></i>
@@ -2596,13 +2903,13 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
                 </div>
             </td>
             {{-- Task --}}
-            <td style="max-width:200px;">
+            <td style="max-width:200px;" data-label="Task">
                 <a href="{{ route('admin.tasks.show', $pt) }}" style="font-size:12px;font-weight:600;color:#4F46E5;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;max-width:190px;" title="{{ $pt->title }}">{{ $pt->title }}</a>
             </td>
             {{-- Project --}}
-            <td style="font-size:12px;color:#6B7280;white-space:nowrap;">{{ $pt->project->name ?? '—' }}</td>
+            <td style="font-size:12px;color:#6B7280;white-space:nowrap;" data-label="Project">{{ $pt->project->name ?? '—' }}</td>
             {{-- Post URL --}}
-            <td style="max-width:200px;">
+            <td style="max-width:200px;" data-label="Post URL">
                 @if($sp->post_url)
                 <div style="display:flex;align-items:center;gap:6px;">
                     <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;" title="{{ $sp->post_url }}">{{ $sp->post_url }}</span>
@@ -2616,9 +2923,9 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
                 @endif
             </td>
             {{-- Posted date --}}
-            <td style="font-size:12px;color:#6B7280;white-space:nowrap;">{{ $pt->social_posted_at->format(config('app.date_format', 'M d, Y')) }}</td>
+            <td style="font-size:12px;color:#6B7280;white-space:nowrap;" data-label="Posted">{{ $pt->social_posted_at->format(config('app.date_format', 'M d, Y')) }}</td>
             {{-- Actions --}}
-            <td style="text-align:right;white-space:nowrap;">
+            <td style="text-align:right;white-space:nowrap;" data-label="Actions">
                 <div style="display:flex;align-items:center;gap:4px;justify-content:flex-end;">
                     <button type="button" @click="editing=!editing" class="pub-edit-btn">
                         <i class="fas fa-pen" style="font-size:9px;"></i>
@@ -2814,7 +3121,7 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
 </div>
 
 <div style="background:#fff;border-radius:18px;border:1px solid #EBEBEB;box-shadow:0 2px 10px rgba(217,119,6,.06);overflow:clip;">
-<div class="tbl-scroll">
+<div class="tbl-scroll mob-table-cards">
     <table class="hist-table" style="table-layout:auto;">
         <thead>
             <tr>
@@ -2842,7 +3149,7 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
                         </button>
                     </div>
                 </td>
-                <td @click="expanded = !expanded" style="cursor:pointer;">
+                <td @click="expanded = !expanded" style="cursor:pointer;" data-label="Task">
                     <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px;" title="{{ $dl->title }}">{{ $dl->title }}</p>
                     <div style="display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap;">
                         <span style="font-size:11px;color:#9CA3AF;">
@@ -2855,7 +3162,7 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
                         @endif
                     </div>
                 </td>
-                <td>
+                <td data-label="Assignee">
                     @if($dl->assignee)
                     <div style="display:flex;align-items:center;gap:8px;">
                         <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#FEF3C7,#FDE68A);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#92400E;flex-shrink:0;">
@@ -2867,14 +3174,14 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
                     <span style="color:#D1D5DB;font-size:12px;">—</span>
                     @endif
                 </td>
-                <td>
+                <td data-label="Waiting Since">
                     @php $waitDays = $dl->updated_at->diffInDays(now()); @endphp
                     <span style="font-size:12px;font-weight:600;color:{{ $waitDays >= 7 ? '#DC2626' : ($waitDays >= 3 ? '#D97706' : '#374151') }};white-space:nowrap;">
                         {{ $dl->updated_at->diffForHumans() }}
                     </span>
                     <p style="font-size:10px;color:#D1D5DB;margin:2px 0 0;white-space:nowrap;">{{ $dl->updated_at->format(config('app.date_format', 'M d, Y')) }}</p>
                 </td>
-                <td style="white-space:nowrap;">
+                <td style="white-space:nowrap;" data-label="Actions">
                     <div style="display:flex;align-items:center;gap:6px;">
                     <form method="POST" action="{{ route('admin.tasks.social.required', $dl->id) }}" style="margin:0;">
                         @csrf
@@ -2993,7 +3300,7 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
 </div>
 @else
 <div style="background:#fff;border-radius:18px;border:1px solid #EBEBEB;box-shadow:0 2px 10px rgba(99,102,241,.06);overflow:clip;">
-<div class="tbl-scroll">
+<div class="tbl-scroll mob-table-cards">
     <table class="hist-table" style="table-layout:auto;">
         <thead>
             <tr>
@@ -3015,7 +3322,7 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
                         <i class="fas fa-chevron-right" :style="expanded ? 'transform:rotate(90deg);color:#4F46E5;' : ''"></i>
                     </button>
                 </td>
-                <td @click="expanded = !expanded" style="cursor:pointer;">
+                <td @click="expanded = !expanded" style="cursor:pointer;" data-label="Task">
                     <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;" title="{{ $st->title }}">{{ $st->title }}</p>
                     <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">
                         <i class="fas fa-folder" style="font-size:9px;color:#C4B5FD;margin-right:3px;"></i>{{ $st->project->name ?? '—' }}
@@ -3024,7 +3331,7 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
                         @endif
                     </p>
                 </td>
-                <td>
+                <td data-label="Social Handler">
                     @if($st->socialAssignee)
                     <div style="display:flex;align-items:center;gap:8px;">
                         <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">
@@ -3036,7 +3343,7 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
                     <span style="color:#D1D5DB;font-size:12px;">—</span>
                     @endif
                 </td>
-                <td>
+                <td data-label="Status">
                     <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 11px;border-radius:20px;background:#FEF3C7;color:#D97706;white-space:nowrap;">
                         <i class="fas fa-clock" style="font-size:9px;"></i> Pending
                     </span>
@@ -3046,11 +3353,11 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
                     </p>
                     @endif
                 </td>
-                <td>
+                <td data-label="Assigned">
                     <span style="font-size:12px;color:#6B7280;white-space:nowrap;">{{ $st->updated_at->format(config('app.date_format', 'M d, Y')) }}</span>
                     <p style="font-size:10px;color:#D1D5DB;margin:2px 0 0;white-space:nowrap;">{{ $st->updated_at->diffForHumans() }}</p>
                 </td>
-                <td style="white-space:nowrap;">
+                <td style="white-space:nowrap;" data-label="Actions">
                     <div x-data="{ menuOpen: false, dTop: 0, dRight: 0 }" @click.outside="menuOpen=false" @scroll.window="menuOpen=false" @keydown.escape.window="menuOpen=false">
                         <button x-ref="actBtn" @click.stop="
                                     if (!menuOpen) {
@@ -3477,14 +3784,15 @@ function approvalPage() {
         },
 
         statusBadge(status) {
-            const map = {
-                submitted: 'background:linear-gradient(135deg,#EEF2FF,#E0E7FF);color:#4F46E5;border:1px solid #C7D2FE',
-                approved:  'background:linear-gradient(135deg,#D1FAE5,#A7F3D0);color:#065F46;border:1px solid #6EE7B7',
-                rejected:  'background:linear-gradient(135deg,#FEE2E2,#FECACA);color:#991B1B;border:1px solid #FCA5A5',
-            };
-            const s = map[status] || 'background:#F3F4F6;color:#6B7280';
-            const label = status ? status.charAt(0).toUpperCase() + status.slice(1) : '';
-            return `<span style="font-size:11px;font-weight:700;padding:4px 11px;border-radius:20px;${s}">${label}</span>`;
+            // Submission decision (approved/submitted) is a real task status for
+            // those two values, so its color + label come from the canonical
+            // TaskStatusColors map. 'rejected' has no task-status equivalent.
+            const taskStatusMap = @json(collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => ['bg' => $c['bg'], 'text' => $c['text'], 'label' => $c['label']]));
+            if (status === 'rejected') {
+                return `<span style="font-size:11px;font-weight:700;padding:4px 11px;border-radius:20px;background:#FEE2E2;color:#991B1B;">Rejected</span>`;
+            }
+            const c = taskStatusMap[status] || { bg: '#F3F4F6', text: '#6B7280', label: status || '' };
+            return `<span style="font-size:11px;font-weight:700;padding:4px 11px;border-radius:20px;background:${c.bg};color:${c.text};">${c.label}</span>`;
         }
     }
 }
@@ -3595,7 +3903,7 @@ function renderTaskPanel(d) {
             var decBg    = isAppr ? '#D1FAE5' : (isRej ? '#FEE2E2' : '#EEF2FF');
             var decColor = isAppr ? '#065F46' : (isRej ? '#991B1B' : '#4F46E5');
             var decIcon  = isAppr ? 'fa-circle-check' : (isRej ? 'fa-rotate-left' : 'fa-hourglass-half');
-            var decLabel = isAppr ? 'Approved' : (isRej ? 'Revision Requested' : ucfirstJs(s.status));
+            var decLabel = isAppr ? 'Approved' : (isRej ? 'Revision Requested' : taskStatusLabelJs(s.status));
             subHtml += '<div style="background:#fff;border:1px solid #EBEBEB;border-radius:14px;overflow:hidden;margin-bottom:10px;">';
             // version header bar
             subHtml += '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #F3F4F6;background:#FAFBFF;">';
@@ -3706,6 +4014,13 @@ function renderTaskPanel(d) {
 function ucfirstJs(str) {
     if (!str) return '';
     return str.charAt(0).toUpperCase() + str.slice(1).replace(/_/g, ' ');
+}
+
+// Canonical task-status label (e.g. 'submitted' -> "In Review") — falls back
+// to ucfirstJs for any value that isn't a real task status.
+function taskStatusLabelJs(str) {
+    var map = @json(collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['label']));
+    return map[str] || ucfirstJs(str);
 }
 
 // ── History view toggle (Table / Cards) ──────────────────────────────────

@@ -51,6 +51,107 @@
 .sa-search { border:1.5px solid #E5E7EB; border-radius:10px; padding:7px 13px 7px 34px; font-size:13px; color:#111827; outline:none; width:200px; transition:border-color .15s; background:#fff; }
 .sa-search:focus { border-color:#4F46E5; }
 @media(max-width:700px) { .sa-cards-grid { grid-template-columns:1fr !important; } }
+
+/* ══════════════════════ MOBILE (<=768px) — premium pass ══════════════════════
+   Reuses shared tokens from layouts/app.blade.php (.mob-card, .mob-table-cards).
+   Scoped entirely to mobile; desktop (>768px) rules above are untouched. */
+@media (max-width: 768px) {
+    /* Card grid: always single column, never cramped */
+    .sa-cards-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+
+    /* Card footer (avatars + actions): allow wrap instead of clipping */
+    .sa-card-footer { flex-wrap: wrap; row-gap: 8px; }
+
+    /* Toolbar: search goes full-width on its own row */
+    .sa-toolbar { gap: 8px; }
+    .sa-search { width: 100%; }
+    .sa-toolbar > div:last-child { width: 100%; margin-left: 0; }
+
+    /* Create/Edit modal: single-column form, touch-friendly field heights */
+    .sa-modal-form > div:first-of-type { grid-template-columns: 1fr !important; }
+    .sa-modal-form input[name]:not([type=hidden]),
+    .sa-modal-form select[name],
+    .sa-modal-form textarea[name] {
+        min-height: 46px;
+        box-sizing: border-box;
+    }
+
+    /* Secondary nav controls: real 44px touch-target floor (was 40px — under the
+       44px minimum tap-target rule). Table/Cards toggle is hidden entirely below,
+       so only .sa-plat-tab / .sa-search still rely on this. */
+    .sa-view-btn, .sa-plat-tab, .sa-search { min-height: 44px; box-sizing: border-box; }
+
+    /* Customer-picker trigger button: bump from ~32px to a real tap target */
+    .sa-customer-trigger { min-height: 44px; box-sizing: border-box; }
+
+    /* Password reveal / secret modals are plain fixed-position overlays not covered
+       by .sa-modal-form — give their inputs/buttons real touch targets on mobile. */
+    #sa-reveal-modal input,
+    #sa-reveal-modal button,
+    #sa-secret-modal button {
+        min-height: 46px;
+        box-sizing: border-box;
+    }
+
+    /* Card/table row action buttons (Edit, Delete): bump to a real 44px touch target */
+    .sa-card-footer button,
+    .sa-table td button {
+        min-width: 44px !important;
+        min-height: 44px !important;
+    }
+
+    /* Header actions (Export/Add) move to the sticky bottom action bar on mobile —
+       hide the inline pair here so they don't render twice. */
+    .sa-header-actions.sa-header-actions { display: none !important; }
+    .sa-mobile-actionbar.sa-mobile-actionbar { display: block !important; }
+    .app-content { padding-bottom: 110px !important; }
+
+    /* Platform filter: icon-only pill row is hard to scan on mobile (no labels) —
+       swap for a single filter-chip + native select showing the active platform as text. */
+    .sa-plat-tabs-row.sa-plat-tabs-row { display: none !important; }
+    .sa-plat-chip-mobile.sa-plat-chip-mobile { display: flex !important; }
+
+    /* Stat cards: fold into the status-chip row below instead (avoids duplicating
+       the same 4 counts twice on a short mobile screen). */
+    .sa-stats-grid.sa-stats-grid { display: none !important; }
+    .sa-status-chips-mobile.sa-status-chips-mobile { display: flex !important; }
+
+    /* Table/Cards toggle: mobile always shows the card list — remove the redundant
+       control and force the cards view regardless of the stored (desktop) preference. */
+    .sa-view-toggle.sa-view-toggle { display: none !important; }
+    div[x-show="view==='table'"] { display: none !important; }
+    div[x-show="view==='cards'"] { display: block !important; }
+
+    /* Desktop hand-rolled empty state vs. the shared mobile empty-state component
+       block: only one may render on screen at a time per breakpoint. */
+    .sa-empty-desktop.sa-empty-desktop { display: none !important; }
+    .sa-empty-mobile.sa-empty-mobile { display: block !important; }
+
+    /* Empty-state CTA: real 44px tap target */
+    .sa-empty-mobile .sa-empty-cta { min-height: 44px; box-sizing: border-box; }
+
+    /* Card footer: hide the two separate Edit/Delete buttons, show the single
+       "···" overflow-menu button instead (mirrors .prj-more-btn in
+       admin/projects/_mobile-index.blade.php). */
+    .sa-card-actions-desktop.sa-card-actions-desktop { display: none !important; }
+    .sa-card-more-btn.sa-card-more-btn { display: flex !important; }
+}
+
+/* Status chip row (mobile status filter, replaces the 4 stat cards) — hidden on
+   desktop; shown via the max-width:768px rule above. */
+.sa-status-chips-mobile { display: none; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.sa-status-chip {
+    display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 8px;
+    font-size: 11px; font-weight: 700; border: 1.5px solid transparent; cursor: pointer;
+    background: #F3F4F6; color: #6B7280; min-height: 32px; box-sizing: border-box;
+}
+.sa-status-chip.is-on { border-color: currentColor; }
+
+/* "···" overflow menu button for social account cards (mobile only) */
+.sa-card-more-btn {
+    display: none; flex: none; width: 34px; height: 34px; border: 1px solid #E1E4EA; border-radius: 11px;
+    background: #fff; color: #6B7280; font-size: 15px; align-items: center; justify-content: center; cursor: pointer;
+}
 </style>
 
 @php
@@ -103,17 +204,7 @@ let formPreselectedUserIds = [];
     }
 }">
 
-{{-- Flash --}}
-@if(session('success'))
-<div style="background:#ECFDF5;border:1px solid #A7F3D0;color:#16A34A;padding:12px 16px;border-radius:10px;margin-bottom:20px;font-size:13px;display:flex;align-items:center;gap:8px;">
-    <i class="fas fa-circle-check"></i> {{ session('success') }}
-</div>
-@endif
-@if(session('error'))
-<div style="background:#FEE2E2;border:1px solid #FCA5A5;color:#DC2626;padding:12px 16px;border-radius:10px;margin-bottom:20px;font-size:13px;display:flex;align-items:center;gap:8px;">
-    <i class="fas fa-circle-exclamation"></i> {{ session('error') }}
-</div>
-@endif
+{{-- Flash messages are handled by the shared window.showToast() in layouts.app — no page-local banner. --}}
 
 {{-- ══════════════════════ BANNER HEADER ══════════════════════ --}}
 <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:24px;">
@@ -131,7 +222,7 @@ let formPreselectedUserIds = [];
             </p>
         </div>
     </div>
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <div class="sa-header-actions" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <a href="{{ route('admin.social-accounts.export.pdf') }}"
            style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:#fff;color:#374151;border:1.5px solid #E5E7EB;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;transition:border-color .15s,box-shadow .15s;"
            onmouseover="this.style.borderColor='#4F46E5';this.style.color='#4F46E5'" onmouseout="this.style.borderColor='#E5E7EB';this.style.color='#374151'">
@@ -145,9 +236,23 @@ let formPreselectedUserIds = [];
     </div>
 </div>
 
-{{-- ══════════════════════ STAT CARDS ══════════════════════ --}}
+{{-- ══════════════════════ MOBILE: sticky bottom action bar (replaces header actions on <=768px) ══════════════════════ --}}
+<div class="sa-mobile-actionbar" style="display:none;">
+    <x-mobile.action-bar>
+        <a href="{{ route('admin.social-accounts.export.pdf') }}" class="uds-btn-ghost">
+            <i class="fas fa-file-pdf"></i> Export
+        </a>
+        @if($accounts->isNotEmpty())
+        <button type="button" @click="openCreate()" class="uds-btn-primary">
+            <i class="fas fa-plus"></i> Add Account
+        </button>
+        @endif
+    </x-mobile.action-bar>
+</div>
+
+{{-- ══════════════════════ STAT CARDS (desktop) ══════════════════════ --}}
 <div class="sa-stats-grid">
-    <div class="sa-stat" :class="statusFilter==='all' ? 'active-filter' : ''" @click="statusFilter='all'">
+    <div class="sa-stat mob-kpi-card" :class="statusFilter==='all' ? 'active-filter' : ''" @click="statusFilter='all'">
         <div class="sa-stat-icon" style="background:#EEF2FF;">
             <i class="fas fa-share-nodes" style="color:#4F46E5;"></i>
         </div>
@@ -156,7 +261,7 @@ let formPreselectedUserIds = [];
             <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Total Accounts</p>
         </div>
     </div>
-    <div class="sa-stat" :class="statusFilter==='active' ? 'active-filter' : ''" @click="statusFilter='active'">
+    <div class="sa-stat mob-kpi-card" :class="statusFilter==='active' ? 'active-filter' : ''" @click="statusFilter='active'">
         <div class="sa-stat-icon" style="background:#D1FAE5;">
             <i class="fas fa-circle-check" style="color:#059669;"></i>
         </div>
@@ -165,7 +270,7 @@ let formPreselectedUserIds = [];
             <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Active</p>
         </div>
     </div>
-    <div class="sa-stat" :class="statusFilter==='inactive' ? 'active-filter' : ''" @click="statusFilter='inactive'">
+    <div class="sa-stat mob-kpi-card" :class="statusFilter==='inactive' ? 'active-filter' : ''" @click="statusFilter='inactive'">
         <div class="sa-stat-icon" style="background:#F3F4F6;">
             <i class="fas fa-moon" style="color:#6B7280;"></i>
         </div>
@@ -174,7 +279,7 @@ let formPreselectedUserIds = [];
             <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Inactive</p>
         </div>
     </div>
-    <div class="sa-stat" :class="statusFilter==='suspended' ? 'active-filter' : ''" @click="statusFilter='suspended'">
+    <div class="sa-stat mob-kpi-card" :class="statusFilter==='suspended' ? 'active-filter' : ''" @click="statusFilter='suspended'">
         <div class="sa-stat-icon" style="background:#FEE2E2;">
             <i class="fas fa-triangle-exclamation" style="color:#DC2626;"></i>
         </div>
@@ -183,6 +288,25 @@ let formPreselectedUserIds = [];
             <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Suspended</p>
         </div>
     </div>
+</div>
+
+{{-- ══════════════════════ STATUS CHIPS (mobile — replaces stat cards as the filter UI) ══════════════════════ --}}
+@php
+    $_saStatusChips = [
+        ['key' => 'all',       'label' => 'All',        'count' => $stats['total'],     'color' => '#4F46E5', 'bg' => '#EEF2FF'],
+        ['key' => 'active',    'label' => 'Active',     'count' => $stats['active'],    'color' => \App\Support\SocialAccountColors::for('active')['text'],    'bg' => \App\Support\SocialAccountColors::for('active')['bg']],
+        ['key' => 'inactive',  'label' => 'Inactive',   'count' => $stats['inactive'],  'color' => \App\Support\SocialAccountColors::for('inactive')['text'],  'bg' => \App\Support\SocialAccountColors::for('inactive')['bg']],
+        ['key' => 'suspended', 'label' => 'Suspended',  'count' => $stats['suspended'], 'color' => \App\Support\SocialAccountColors::for('suspended')['text'], 'bg' => \App\Support\SocialAccountColors::for('suspended')['bg']],
+    ];
+@endphp
+<div class="sa-status-chips-mobile">
+    @foreach($_saStatusChips as $chip)
+    <button type="button" class="sa-status-chip" :class="statusFilter==='{{ $chip['key'] }}' ? 'is-on' : ''"
+            @click="statusFilter='{{ $chip['key'] }}'"
+            :style="statusFilter==='{{ $chip['key'] }}' ? 'background:{{ $chip['bg'] }};color:{{ $chip['color'] }};' : ''">
+        {{ $chip['label'] }} · {{ $chip['count'] }}
+    </button>
+    @endforeach
 </div>
 
 {{-- ══════════════════════ TOOLBAR ══════════════════════ --}}
@@ -199,8 +323,8 @@ let formPreselectedUserIds = [];
 
     <div style="width:1px;height:24px;background:#E5E7EB;flex-shrink:0;"></div>
 
-    {{-- Platform filters ── server-side links ── --}}
-    <div style="display:flex;flex-wrap:wrap;gap:5px;flex:1;min-width:0;">
+    {{-- Platform filters ── server-side links ── (desktop: icon pill row) --}}
+    <div class="sa-plat-tabs-row" style="display:flex;flex-wrap:wrap;gap:5px;flex:1;min-width:0;">
         <a href="{{ route('admin.social-accounts.index', array_filter(['customer' => request('customer')])) }}"
            class="sa-plat-tab {{ !request('platform') ? 'active' : '' }}"
            title="All platforms" style="padding:5px 10px;">
@@ -216,6 +340,25 @@ let formPreselectedUserIds = [];
         </a>
         @endif
         @endforeach
+    </div>
+
+    {{-- Platform filter (mobile: filter-chip wrapping a native select — shows the label as text
+         instead of an icon-only pill row, and opens the OS picker) --}}
+    <div class="sa-plat-chip-mobile" style="display:none;flex:1;min-width:0;">
+        <x-mobile.filter-chip :label="request('platform') ? ($platforms[request('platform')]['label'] ?? 'Platform') : 'All platforms'" :active="(bool) request('platform')">
+            <select onchange="if(this.value) window.location = this.value;">
+                <option value="{{ route('admin.social-accounts.index', array_filter(['customer' => request('customer')])) }}" {{ !request('platform') ? 'selected' : '' }}>
+                    All platforms
+                </option>
+                @foreach($platforms as $key => $p)
+                @if(isset($byPlatform[$key]))
+                <option value="{{ route('admin.social-accounts.index', array_filter(['platform' => $key, 'customer' => request('customer')])) }}" {{ request('platform') === $key ? 'selected' : '' }}>
+                    {{ $p['label'] }} ({{ $byPlatform[$key]->count() }})
+                </option>
+                @endif
+                @endforeach
+            </select>
+        </x-mobile.filter-chip>
     </div>
 
     @if($customers->count())
@@ -239,7 +382,7 @@ let formPreselectedUserIds = [];
          @keydown.escape.window="open=false">
 
         {{-- Trigger button --}}
-        <button type="button" @click="open=!open"
+        <button type="button" class="sa-customer-trigger" @click="open=!open"
                 style="display:inline-flex;align-items:center;gap:8px;padding:6px 10px 6px 7px;border:1.5px solid;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;transition:all .15s;max-width:180px;"
                 :style="{'border-color': current ? '#6366F1' : '#E5E7EB', 'color': current ? '#4F46E5' : '#374151'}"
             {{-- Avatar --}}
@@ -310,7 +453,8 @@ let formPreselectedUserIds = [];
 
 {{-- ══════════════════════ CONTENT ══════════════════════ --}}
 @if($accounts->isEmpty())
-<div style="background:#fff;border:1.5px dashed #E5E7EB;border-radius:16px;padding:64px 24px;text-align:center;">
+{{-- Desktop empty state (hidden on mobile — replaced by the shared component below) --}}
+<div class="sa-empty-desktop" style="background:#fff;border:1.5px dashed #E5E7EB;border-radius:16px;padding:64px 24px;text-align:center;">
     <div style="width:72px;height:72px;border-radius:22px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;">
         <i class="fas fa-share-nodes" style="font-size:30px;color:#6366F1;"></i>
     </div>
@@ -318,6 +462,15 @@ let formPreselectedUserIds = [];
     <p style="font-size:13px;color:#9CA3AF;margin:0 0 22px;">Add your first social media account to get started.</p>
     <button @click="openCreate()"
             style="display:inline-flex;align-items:center;gap:7px;padding:10px 22px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:600;cursor:pointer;">
+        <i class="fas fa-plus" style="font-size:11px;"></i> Add Account
+    </button>
+</div>
+
+{{-- Mobile empty state — shared component, single non-gradient icon, one CTA --}}
+<div class="sa-empty-mobile" style="display:none;">
+    <x-mobile.empty-state title="No social accounts yet" sub="Add your first social media account to get started." icon="fa-share-nodes" />
+    <button @click="openCreate()" class="sa-empty-cta"
+            style="display:flex;align-items:center;justify-content:center;gap:7px;width:100%;margin-top:14px;padding:11px 22px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;box-sizing:border-box;">
         <i class="fas fa-plus" style="font-size:11px;"></i> Add Account
     </button>
 </div>
@@ -347,16 +500,12 @@ let formPreselectedUserIds = [];
             $assignedUsers = $account->users;
             $customer      = $account->customer;
             $hasCreds      = $account->email || $account->username || $account->password || $account->account_id;
-            $stDot         = match($account->status) { 'active'=>'#22C55E','inactive'=>'#9CA3AF','suspended'=>'#EF4444', default=>'#9CA3AF' };
-            $stPill        = match($account->status) {
-                'active'    => ['bg'=>'#F0FDF4','border'=>'#86EFAC','color'=>'#16A34A'],
-                'suspended' => ['bg'=>'#FFF1F2','border'=>'#FCA5A5','color'=>'#EF4444'],
-                default     => ['bg'=>'#F9FAFB','border'=>'#E5E7EB','color'=>'#6B7280'],
-            };
+            $cardTitle     = $account->username ? '@'.$account->username : $account->name;
         @endphp
-        <div class="sa-card" style="animation-delay:{{ $idx * 0.035 }}s;cursor:pointer;"
+        <div class="sa-card mob-card" style="animation-delay:{{ $idx * 0.035 }}s;cursor:pointer;"
              x-show="matchesCard('{{ addslashes($account->name) }}', '{{ $account->status }}')"
-             x-data="{showPw:false}"
+             x-data="{showPw:false, menuOpen:false}"
+             @click.outside="menuOpen=false"
              @click="openEdit({
                 id: {{ $account->id }},
                 name: '{{ addslashes($account->name) }}',
@@ -378,22 +527,19 @@ let formPreselectedUserIds = [];
                     <i class="fab {{ $pi['icon'] }}" style="font-size:23px;color:{{ $pi['color'] }};"></i>
                 </div>
                 <div style="flex:1;min-width:0;">
-                    <h3 style="font-size:15px;font-weight:800;color:#111827;margin:0 0 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:-.2px;">{{ $account->name }}</h3>
+                    <h3 style="font-size:15px;font-weight:800;color:#111827;margin:0 0 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:-.2px;">{{ $cardTitle }}</h3>
                     <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
-                        <span style="width:7px;height:7px;border-radius:50%;background:{{ $stDot }};flex-shrink:0;"></span>
+                        <span style="width:7px;height:7px;border-radius:50%;background:{{ $sc['color'] }};flex-shrink:0;"></span>
                         <span style="font-size:12px;color:#6B7280;font-weight:500;">{{ $pi['label'] }}</span>
                         @if($customer)
                         <span style="font-size:11px;color:#D1D5DB;">·</span>
                         <i class="fas fa-building" style="font-size:9px;color:#6366F1;"></i>
                         <a href="{{ route('admin.customers.show', $customer->id) }}" @click.stop
                            style="font-size:11px;color:#6366F1;font-weight:600;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px;">{{ $customer->name }}</a>
-                        @elseif($account->username)
-                        <span style="font-size:11px;color:#D1D5DB;">·</span>
-                        <span style="font-size:11px;color:#6B7280;font-family:monospace;">&#64;{{ $account->username }}</span>
                         @endif
                     </div>
                 </div>
-                <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:{{ $stPill['bg'] }};color:{{ $stPill['color'] }};flex-shrink:0;text-transform:capitalize;border:1px solid {{ $stPill['border'] }};">
+                <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:{{ $sc['bg'] }};color:{{ $sc['color'] }};flex-shrink:0;text-transform:capitalize;border:1px solid {{ $sc['color'] }}33;">
                     {{ $account->status }}
                 </span>
             </div>
@@ -462,7 +608,7 @@ let formPreselectedUserIds = [];
             @endif
 
             {{-- ── Footer: access + actions ── --}}
-            <div style="padding:11px 18px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;">
+            <div class="sa-card-footer" style="padding:11px 18px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;">
                 {{-- Stacked avatars --}}
                 <div style="display:flex;align-items:center;gap:7px;min-width:0;">
                     @if($assignedUsers->count())
@@ -487,8 +633,8 @@ let formPreselectedUserIds = [];
                     <span style="font-size:11px;color:#D1D5DB;font-weight:500;">No access</span>
                     @endif
                 </div>
-                {{-- Actions --}}
-                <div style="display:flex;gap:5px;flex-shrink:0;">
+                {{-- Actions (desktop: two buttons; mobile: single "···" overflow menu) --}}
+                <div class="sa-card-actions-desktop" style="display:flex;gap:5px;flex-shrink:0;">
                     <button @click.stop="openEdit({
                                 id: {{ $account->id }},
                                 name: '{{ addslashes($account->name) }}',
@@ -514,6 +660,36 @@ let formPreselectedUserIds = [];
                         <i class="fas fa-trash" style="font-size:9px;"></i>
                     </button>
                 </div>
+                <div style="position:relative;flex-shrink:0;">
+                    <button type="button" class="sa-card-more-btn" @click.stop="menuOpen = !menuOpen" aria-label="Account actions">
+                        <i class="fas fa-ellipsis-vertical" style="pointer-events:none;"></i>
+                    </button>
+                    <div x-show="menuOpen" x-cloak @click.stop
+                         style="position:absolute;right:0;bottom:calc(100% + 6px);background:#fff;border:1px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.14);min-width:150px;z-index:30;overflow:hidden;">
+                        <button type="button"
+                                @click="menuOpen=false; openEdit({
+                                    id: {{ $account->id }},
+                                    name: '{{ addslashes($account->name) }}',
+                                    platform: '{{ $account->platform }}',
+                                    customer_id: {{ $account->customer_id ?? 'null' }},
+                                    username: '{{ addslashes($account->username ?? '') }}',
+                                    email: '{{ addslashes($account->email ?? '') }}',
+                                    account_id: '{{ addslashes($account->account_id ?? '') }}',
+                                    page_url: '{{ addslashes($account->page_url ?? '') }}',
+                                    status: '{{ $account->status }}',
+                                    notes: {{ json_encode($account->notes ?? '') }},
+                                    has_password: {{ $account->password ? 'true' : 'false' }},
+                                    user_ids: {{ json_encode($assignedUsers->pluck('id')->toArray()) }}
+                                })"
+                                style="width:100%;display:flex;align-items:center;gap:9px;padding:11px 14px;border:none;background:none;font-size:13px;font-weight:600;color:#374151;cursor:pointer;text-align:left;min-height:44px;box-sizing:border-box;">
+                            <i class="fas fa-pen" style="width:14px;font-size:12px;color:#4F46E5;"></i> Edit
+                        </button>
+                        <button type="button" @click="menuOpen=false; openDelete({{ $account->id }}, '{{ addslashes($account->name) }}')"
+                                style="width:100%;display:flex;align-items:center;gap:9px;padding:11px 14px;border:none;background:none;font-size:13px;font-weight:600;color:#DC2626;cursor:pointer;text-align:left;min-height:44px;box-sizing:border-box;">
+                            <i class="fas fa-trash" style="width:14px;font-size:12px;"></i> Delete
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
         @endforeach
@@ -528,7 +704,7 @@ let formPreselectedUserIds = [];
 </div>{{-- /cards view --}}
 
 {{-- ════════════ TABLE VIEW ════════════ --}}
-<div x-show="view==='table'" x-cloak style="background:#fff;border:1.5px solid #E5E7EB;border-radius:14px;overflow:hidden;">
+<div x-show="view==='table'" x-cloak class="mob-table-cards" style="background:#fff;border:1.5px solid #E5E7EB;border-radius:14px;overflow:hidden;">
     <table class="sa-table">
         <thead>
             <tr>
@@ -550,12 +726,11 @@ let formPreselectedUserIds = [];
                 $pi            = $account->platform_info;
                 $assignedUsers = $account->users;
                 $customer      = $account->customer;
-                $stDot         = match($account->status) { 'active'=>'#22C55E','inactive'=>'#9CA3AF','suspended'=>'#EF4444', default=>'#9CA3AF' };
             @endphp
             <tr x-show="matchesCard('{{ addslashes($account->name) }}', '{{ $account->status }}')">
 
                 {{-- Account --}}
-                <td>
+                <td data-label="Account">
                     <div style="display:flex;align-items:center;gap:10px;">
                         <div style="width:34px;height:34px;border-radius:9px;background:{{ $pi['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                             <i class="fab {{ $pi['icon'] }}" style="font-size:15px;color:{{ $pi['color'] }};"></i>
@@ -568,7 +743,7 @@ let formPreselectedUserIds = [];
                 </td>
 
                 {{-- Customer --}}
-                <td>
+                <td data-label="Customer">
                     @if($customer)
                     <div style="display:flex;align-items:center;gap:6px;">
                         <span style="width:22px;height:22px;border-radius:6px;background:#EEF2FF;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -582,7 +757,7 @@ let formPreselectedUserIds = [];
                 </td>
 
                 {{-- Login --}}
-                <td style="max-width:190px;">
+                <td data-label="Login" style="max-width:190px;">
                     @if($account->email)
                     <div style="display:flex;align-items:center;gap:5px;">
                         <span style="font-size:12px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;">{{ $account->email }}</span>
@@ -599,7 +774,7 @@ let formPreselectedUserIds = [];
                 </td>
 
                 {{-- Password --}}
-                <td>
+                <td data-label="Password">
                     @if($account->password)
                     <div style="display:flex;align-items:center;gap:4px;">
                         <span style="font-size:12px;color:#374151;font-family:monospace;letter-spacing:.1em;">••••••</span>
@@ -615,15 +790,15 @@ let formPreselectedUserIds = [];
                 </td>
 
                 {{-- Status --}}
-                <td>
+                <td data-label="Status">
                     <span style="display:inline-flex;align-items:center;gap:5px;background:{{ $sc['bg'] }};color:{{ $sc['color'] }};padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;">
-                        <span style="width:5px;height:5px;border-radius:50%;background:{{ $stDot }};flex-shrink:0;"></span>
+                        <span style="width:5px;height:5px;border-radius:50%;background:{{ $sc['color'] }};flex-shrink:0;"></span>
                         {{ ucfirst($account->status) }}
                     </span>
                 </td>
 
                 {{-- Access --}}
-                <td>
+                <td data-label="Access">
                     @if($assignedUsers->count())
                     <div style="display:flex;align-items:center;gap:5px;">
                         <div style="display:flex;align-items:center;">
@@ -657,7 +832,7 @@ let formPreselectedUserIds = [];
                 </td>
 
                 {{-- Actions --}}
-                <td style="text-align:right;">
+                <td data-label="Actions" style="text-align:right;">
                     <div style="display:inline-flex;gap:5px;">
                         <button @click="openEdit({
                                     id: {{ $account->id }},
@@ -710,7 +885,7 @@ let formPreselectedUserIds = [];
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <form method="POST" action="{{ route('admin.social-accounts.store') }}" style="padding:20px 24px 24px;">
+            <form method="POST" action="{{ route('admin.social-accounts.store') }}" class="sa-modal-form" style="padding:20px 24px 24px;">
                 @csrf
                 @include('admin.social-accounts._form', ['account' => null, 'allUsers' => $allUsers, 'platforms' => $platforms, 'saFormCustomers' => $customers])
                 <div style="display:flex;gap:10px;margin-top:20px;">
@@ -741,7 +916,7 @@ let formPreselectedUserIds = [];
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <form method="POST" :action="'/admin/social-accounts/'+editData.id" style="padding:20px 24px 24px;">
+            <form method="POST" :action="'/admin/social-accounts/'+editData.id" class="sa-modal-form" style="padding:20px 24px 24px;">
                 @csrf @method('PUT')
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
 

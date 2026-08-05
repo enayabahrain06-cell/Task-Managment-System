@@ -14,24 +14,41 @@
     .social-meta-grid { grid-template-columns: 1fr !important; }
     .social-platform-picker { grid-template-columns: repeat(2,1fr) !important; }
 }
+/* Mobile card design system — bring social/show cards in line with the shared
+   .mob-card tokens (radius/shadow/padding) defined in layouts/app.blade.php,
+   without restructuring the existing markup. */
+@media (max-width: 768px) {
+    .socshow-card {
+        border-radius: var(--mob-r-lg) !important;
+        box-shadow: var(--mob-shadow-1) !important;
+        border: 1px solid #F3F4F6 !important;
+    }
+    .socshow-card > div { padding-left: var(--mob-sp-2) !important; padding-right: var(--mob-sp-2) !important; }
+    .socshow-card .social-meta-grid > div { padding-left: var(--mob-sp-2) !important; padding-right: var(--mob-sp-2) !important; }
+    .social-show-header > div:first-child > div:first-child { width: 40px !important; height: 40px !important; border-radius: var(--mob-r-sm) !important; }
+    .socshow-card .fa-circle-check[style*="font-size:28px"] { font-size: 22px !important; }
+    .socshow-card div[style*="width:64px"][style*="height:64px"] { width: 48px !important; height: 48px !important; border-radius: var(--mob-r-md) !important; margin-bottom: 12px !important; }
+
+    /* Record Posts entry: Remove / Change buttons get a real 44px tap target */
+    .soc-entry-remove-btn, .soc-entry-change-btn {
+        min-width: 44px !important;
+        min-height: 44px !important;
+    }
+
+    /* Image/lightbox viewer close button */
+    .soc-lightbox-close-btn {
+        width: 44px !important;
+        height: 44px !important;
+    }
+}
 </style>
 
 @php
-$statusMap = [
-    'draft'               => ['Draft',              '#F3F4F6','#6B7280'],
-    'assigned'            => ['Assigned',           '#EEF2FF','#4F46E5'],
-    'viewed'              => ['Viewed',             '#F0FDF4','#16A34A'],
-    'in_progress'         => ['In Progress',        '#FFFBEB','#D97706'],
-    'submitted'           => ['In Review',          '#F5F3FF','#7C3AED'],
-    'revision_requested'  => ['Revision Requested', '#FEF2F2','#DC2626'],
-    'approved'            => ['Approved',           '#ECFDF5','#059669'],
-    'delivered'           => ['Delivered',          '#EFF6FF','#2563EB'],
-    'archived'            => ['Archived',           '#F9FAFB','#9CA3AF'],
-];
+$statusMap = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => [$c['label'], $c['bg'], $c['text']])->all();
 [$statusLabel, $statusBg, $statusColor] = $statusMap[$task->status] ?? [ucfirst($task->status), '#F3F4F6', '#6B7280'];
 
 $priorityMap = [
-    'high'   => ['High',   '#FEE2E2','#DC2626'],
+    'high'   => ['High',   '#FFE4E6','#E11D48'],
     'medium' => ['Medium', '#FEF3C7','#D97706'],
     'low'    => ['Low',    '#D1FAE5','#059669'],
 ];
@@ -91,7 +108,7 @@ $pMeta = [
     <div style="display:flex;flex-direction:column;gap:20px;">
 
         {{-- ── Full Task Details Card ── --}}
-        <div style="background:#fff;border-radius:18px;border:1px solid #E5E7EB;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow:hidden;">
+        <div class="socshow-card" style="background:#fff;border-radius:18px;border:1px solid #E5E7EB;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow:hidden;">
 
             {{-- Task header --}}
             <div style="padding:20px 24px 18px;border-bottom:1px solid #F3F4F6;background:linear-gradient(135deg,#F8F9FF,#fff);">
@@ -323,7 +340,7 @@ $pMeta = [
                         <div @click.self="subLbOpen=false" style="width:100%;height:100%;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:20px;">
                             <div x-transition style="position:relative;max-width:90vw;max-height:90vh;">
                                 <img :src="subLbUrl" :alt="subLbName" style="max-width:90vw;max-height:90vh;border-radius:10px;display:block;object-fit:contain;">
-                                <button type="button" @click="subLbOpen=false" style="position:absolute;top:-14px;right:-14px;width:32px;height:32px;border-radius:50%;background:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.25);">
+                                <button type="button" @click="subLbOpen=false" class="soc-lightbox-close-btn" style="position:absolute;top:-14px;right:-14px;width:32px;height:32px;border-radius:50%;background:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.25);">
                                     <i class="fa fa-xmark" style="color:#374151;font-size:14px;"></i>
                                 </button>
                                 <a :href="subLbUrl" :download="subLbName" style="position:absolute;bottom:-48px;left:50%;transform:translateX(-50%);display:inline-flex;align-items:center;gap:6px;padding:8px 20px;background:#6366F1;color:#fff;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap;">
@@ -339,7 +356,7 @@ $pMeta = [
 
         {{-- ── Published Post History ── --}}
         @if($task->socialPosts->isNotEmpty())
-        <div style="background:#fff;border-radius:18px;border:1px solid #E5E7EB;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow:hidden;">
+        <div class="socshow-card" style="background:#fff;border-radius:18px;border:1px solid #E5E7EB;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow:hidden;">
             <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;gap:10px;">
                 <div style="width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#D1FAE5,#A7F3D0);display:flex;align-items:center;justify-content:center;">
                     <i class="fas fa-circle-check" style="color:#10B981;font-size:13px;"></i>
@@ -384,7 +401,7 @@ $pMeta = [
         {{-- ── Add New Post Form / Locked State ── --}}
         @if($task->social_posted_at)
         {{-- Locked: already submitted --}}
-        <div style="background:#fff;border-radius:18px;border:1px solid #A7F3D0;box-shadow:0 2px 12px rgba(16,185,129,.1);overflow:hidden;">
+        <div class="socshow-card" style="background:#fff;border-radius:18px;border:1px solid #A7F3D0;box-shadow:0 2px 12px rgba(16,185,129,.1);overflow:hidden;">
             <div style="padding:24px;text-align:center;">
                 <div style="width:64px;height:64px;border-radius:20px;background:linear-gradient(135deg,#D1FAE5,#A7F3D0);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;box-shadow:0 4px 14px rgba(16,185,129,.2);">
                     <i class="fas fa-circle-check" style="color:#059669;font-size:28px;"></i>
@@ -422,7 +439,7 @@ $pMeta = [
         @endif
 
         {{-- Open: user can record posts --}}
-        <div style="background:#fff;border-radius:18px;border:1px solid #E5E7EB;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow:hidden;"
+        <div class="socshow-card" style="background:#fff;border-radius:18px;border:1px solid #E5E7EB;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow:hidden;"
              x-data="socialForm()">
 
             <div style="padding:18px 24px;border-bottom:1px solid #F3F4F6;background:linear-gradient(135deg,#F8F9FF,#fff);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
@@ -497,6 +514,7 @@ $pMeta = [
                                 {{-- Change button (only when platform chosen) --}}
                                 <template x-if="entry.platform">
                                     <button type="button" @click="entry.showPicker = !entry.showPicker"
+                                            class="soc-entry-change-btn"
                                             :style="entry.showPicker
                                                 ? 'display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#6366F1;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:7px;padding:4px 10px;cursor:pointer;'
                                                 : 'display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#6B7280;background:#F3F4F6;border:1px solid #E5E7EB;border-radius:7px;padding:4px 10px;cursor:pointer;'">
@@ -508,6 +526,7 @@ $pMeta = [
                                 {{-- Remove (only when more than 1 entry) --}}
                                 <template x-if="entries.length > 1">
                                     <button type="button" @click="remove(idx)"
+                                            class="soc-entry-remove-btn"
                                             style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;color:#EF4444;background:#FEF2F2;border:1px solid #FECACA;border-radius:7px;cursor:pointer;flex-shrink:0;"
                                             onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'">
                                         <i class="fas fa-xmark" style="font-size:12px;"></i>
@@ -605,7 +624,7 @@ $pMeta = [
         </div>
         @endif
 
-        <div id="smTimerWidget"
+        <div id="smTimerWidget" class="socshow-card"
              style="background:#fff;border-radius:18px;border:1.5px solid {{ $smTimerRunning ? '#FDE68A' : '#F3F4F6' }};box-shadow:0 2px 12px rgba(0,0,0,.06);padding:20px;text-align:center;transition:border-color .3s;">
             <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px;">
                 <i class="fa fa-stopwatch" style="color:{{ $smTimerRunning ? '#D97706' : '#9CA3AF' }};font-size:13px;"></i>
@@ -652,7 +671,7 @@ $pMeta = [
         {{-- ── Project Card ── --}}
         @if($proj && !$proj->is_quick)
         @php [$projStatusLabel,$projStatusBg,$projStatusColor] = $projStatusMap[$proj->status] ?? [ucfirst($proj->status),'#F3F4F6','#6B7280']; @endphp
-        <div style="background:#fff;border-radius:18px;border:1px solid #E5E7EB;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow:hidden;">
+        <div class="socshow-card" style="background:#fff;border-radius:18px;border:1px solid #E5E7EB;box-shadow:0 2px 12px rgba(0,0,0,.06);overflow:hidden;">
             <div style="padding:16px 20px;border-bottom:1px solid #F3F4F6;background:linear-gradient(135deg,#F0FDF4,#fff);">
                 <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">
                     <div style="width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#059669,#10B981);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -726,7 +745,7 @@ $pMeta = [
 
         {{-- ── Social Assignee Card ── --}}
         @if($task->socialAssignee)
-        <div style="background:#fff;border-radius:18px;border:1px solid #E5E7EB;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:16px 20px;">
+        <div class="socshow-card" style="background:#fff;border-radius:18px;border:1px solid #E5E7EB;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:16px 20px;">
             <p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;">
                 <i class="fas fa-share-alt" style="margin-right:4px;color:#6366F1;"></i>Social Media Handler
             </p>
@@ -754,7 +773,7 @@ $pMeta = [
 
         {{-- ── Multi-Assignee list ── --}}
         @if($task->assignees->isNotEmpty())
-        <div style="background:#fff;border-radius:18px;border:1px solid #E5E7EB;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:16px 20px;">
+        <div class="socshow-card" style="background:#fff;border-radius:18px;border:1px solid #E5E7EB;box-shadow:0 2px 12px rgba(0,0,0,.06);padding:16px 20px;">
             <p style="font-size:10px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;">
                 <i class="fas fa-users" style="margin-right:4px;color:#6366F1;"></i>Task Assignees
             </p>

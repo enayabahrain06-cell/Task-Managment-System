@@ -98,6 +98,44 @@
 .dz-zone.is-dragging .dz-particles span:nth-child(2) { top:20%; right:14%; animation-delay:.2s; background:#A5B4FC; }
 .dz-zone.is-dragging .dz-particles span:nth-child(3) { bottom:18%; left:18%; animation-delay:.35s; background:#C7D2FE; }
 .dz-zone.is-dragging .dz-particles span:nth-child(4) { bottom:22%; right:10%; animation-delay:.1s; background:#818CF8; }
+
+/* ── Mobile-only premium pass (≤768px) — desktop styles above are untouched ── */
+@media (max-width: 768px) {
+    .info-card { border-radius:var(--mob-r-lg) !important; box-shadow:var(--mob-shadow-1) !important; padding:var(--mob-sp-2); }
+
+    .dom-show-header-card { padding:var(--mob-sp-2); border-radius:var(--mob-r-lg) !important; }
+    .dom-show-header-row { flex-direction:column; align-items:stretch !important; gap:14px; }
+    .dom-show-header-row > div:first-child { width:100%; }
+    .dom-show-header-actions { width:100%; }
+    .dom-show-header-actions button { flex:1; justify-content:center; min-height:44px; }
+    .dom-show-header-row span[style*="border-radius:20px"] { font-size:11px !important; font-weight:500 !important; padding:2px 8px !important; }
+
+    .dom-show-stats { grid-template-columns:repeat(3,1fr) !important; gap:8px !important; }
+    .dom-show-stats .info-card { padding:12px 8px; }
+    .dom-show-stats div[style*="font-size:26px"] { font-size:19px !important; }
+    .dom-show-stats div[style*="font-size:20px"] { font-size:16px !important; }
+    .dom-show-stats div[style*="text-transform:uppercase"] { font-size:11px !important; }
+
+    /* Details grid inside Domain Details card: single column, no overflow */
+    .info-card div[style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr !important; gap:12px !important; }
+
+    /* Attachment + credential rows wrap instead of overflowing */
+    .dom-att-row { flex-wrap:wrap; border-radius:var(--mob-r-md) !important; padding:12px var(--mob-sp-2) !important; }
+    .dom-att-row > div:nth-child(2) { min-width:100%; }
+    .dom-att-row > div:first-child { width:40px !important; height:40px !important; }
+
+    /* Expiry banner: unify radius/padding with the rest of the mobile cards */
+    div[style*="border-radius:12px;padding:14px 18px"] { border-radius:var(--mob-r-lg) !important; padding:14px var(--mob-sp-2) !important; }
+
+    /* Modals: full-width, no side overflow */
+    #dom-reveal-modal > div { width:92vw; padding:20px; }
+
+    /* Username-copy / password reveal / password-copy buttons — bump to 44px tap target */
+    .dom-cred-btn { min-width:44px !important; min-height:44px !important; }
+
+    /* Attachment row View/Download links — bump to 44px tap target */
+    .dom-att-row a { min-height:44px !important; box-sizing:border-box; }
+}
 </style>
 
 @php
@@ -124,8 +162,8 @@
     @endif
 
     {{-- Header --}}
-    <div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:16px;padding:24px;margin-bottom:20px;">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+    <div class="dom-show-header-card" style="background:#fff;border:1.5px solid #E5E7EB;border-radius:16px;padding:24px;margin-bottom:20px;">
+        <div class="dom-show-header-row" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px;">
             <div style="display:flex;align-items:center;gap:16px;">
                 <div style="width:56px;height:56px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);border-radius:16px;display:flex;align-items:center;justify-content:center;border:1.5px solid #C7D2FE;flex-shrink:0;">
                     <i class="fas fa-globe" style="font-size:22px;color:#6366F1;"></i>
@@ -164,7 +202,7 @@
                     </div>
                 </div>
             </div>
-            <div style="display:flex;gap:8px;">
+            <div class="dom-show-header-actions" style="display:flex;gap:8px;">
                 <button @click="editModal = true"
                         style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">
                     <i class="fas fa-pen" style="font-size:11px;"></i> Edit
@@ -282,7 +320,7 @@
     @endif
 
     {{-- Stats Row --}}
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;">
+    <div class="dom-show-stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;">
         <div class="info-card" style="text-align:center;">
             <div style="font-size:11px;font-weight:600;color:#9CA3AF;text-transform:uppercase;margin-bottom:4px;">Annual Cost</div>
             @if($domain->cost > 0)
@@ -461,6 +499,7 @@
                         <div style="display:flex;align-items:center;gap:8px;">
                             <code style="font-size:13px;font-weight:600;color:#374151;font-family:monospace;background:#F9FAFB;padding:4px 10px;border-radius:6px;border:1px solid #E5E7EB;">{{ $domain->username }}</code>
                             <button onclick="navigator.clipboard.writeText('{{ addslashes($domain->username) }}').then(() => this.innerHTML = '<i class=\'fas fa-check\' style=\'color:#16A34A;\'></i>')"
+                                    class="dom-cred-btn"
                                     style="padding:5px 10px;background:#F3F4F6;border:none;border-radius:6px;cursor:pointer;font-size:11px;color:#6B7280;"
                                     title="Copy">
                                 <i class="fas fa-copy"></i>
@@ -473,11 +512,11 @@
                         <div class="info-label">Password</div>
                         <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
                             <code id="dom-pwd-display" style="font-size:13px;font-weight:600;color:#374151;font-family:monospace;background:#F9FAFB;padding:4px 10px;border-radius:6px;border:1px solid #E5E7EB;flex:1;letter-spacing:.15em;word-break:break-all;">••••••••••</code>
-                            <button onclick="openDomRevealModal()" title="Reveal password"
+                            <button onclick="openDomRevealModal()" title="Reveal password" class="dom-cred-btn"
                                     style="width:28px;height:28px;background:#FEF3C7;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#D97706;flex-shrink:0;">
                                 <i class="fas fa-lock" style="font-size:11px;"></i>
                             </button>
-                            <button id="dom-pwd-copy" onclick="domCopyPwd(this)" title="Copy"
+                            <button id="dom-pwd-copy" onclick="domCopyPwd(this)" title="Copy" class="dom-cred-btn"
                                     style="display:none;width:28px;height:28px;background:#F3F4F6;border:none;border-radius:6px;cursor:pointer;align-items:center;justify-content:center;color:#6B7280;flex-shrink:0;">
                                 <i class="fas fa-copy" style="font-size:11px;"></i>
                             </button>
@@ -611,7 +650,7 @@
         @if($domain->attachments->isNotEmpty())
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
             @foreach($domain->attachments as $att)
-            <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;">
+            <div class="dom-att-row" style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;">
                 <div style="width:36px;height:36px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <i class="fas {{ $att->icon_class }}" style="color:#6366F1;font-size:15px;"></i>
                 </div>

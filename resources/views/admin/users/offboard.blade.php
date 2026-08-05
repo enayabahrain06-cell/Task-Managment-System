@@ -12,6 +12,27 @@
     .offboard-wrap { padding:0; }
     .offboard-card-pad { padding:14px !important; }
 }
+@media(max-width:768px){
+    .ob-card { border-radius:var(--mob-r-lg) !important; box-shadow:var(--mob-shadow-1) !important; padding:var(--mob-sp-2) !important; }
+    .ob-tint-card { border-radius:var(--mob-r-md) !important; padding:14px 16px !important; }
+    .ob-badge { border-radius:999px !important; padding:2px 10px !important; }
+    .ob-stat-row { gap:14px !important; }
+
+    /* Back button: larger tap target */
+    .ob-back-btn { width:44px !important; height:44px !important; }
+
+    /* Confirm/Cancel footer: stack full-width, comfortable tap height */
+    .ob-confirm-row { flex-direction:column !important; align-items:stretch !important; }
+    .ob-action-btns { flex-direction:column !important; width:100% !important; }
+    .ob-cancel-btn,
+    .ob-submit-btn {
+        width:100% !important;
+        min-height:44px !important;
+        box-sizing:border-box;
+        justify-content:center !important;
+        align-items:center !important;
+    }
+}
 </style>
 @endpush
 
@@ -20,7 +41,7 @@
 
     {{-- Header --}}
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-        <a href="{{ route('admin.users.index') }}"
+        <a href="{{ route('admin.users.index') }}" class="ob-back-btn"
            style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:#F3F4F6;color:#6B7280;text-decoration:none;flex-shrink:0;">
             <i class="fa fa-arrow-left" style="font-size:13px;"></i>
         </a>
@@ -32,7 +53,7 @@
 
     {{-- Validation errors --}}
     @if ($errors->any())
-    <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:14px 18px;margin-bottom:20px;">
+    <div class="ob-tint-card" style="background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:14px 18px;margin-bottom:20px;">
         <p style="font-size:13px;font-weight:600;color:#991B1B;margin:0 0 6px;"><i class="fa fa-circle-exclamation" style="margin-right:6px;"></i>Please fix the following:</p>
         <ul style="margin:0;padding-left:20px;">
             @foreach ($errors->all() as $error)
@@ -43,7 +64,7 @@
     @endif
 
     {{-- Warning banner --}}
-    <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;gap:14px;align-items:flex-start;">
+    <div class="ob-tint-card" style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;gap:14px;align-items:flex-start;">
         <div style="width:38px;height:38px;border-radius:10px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
             <i class="fa fa-triangle-exclamation" style="color:#D97706;font-size:15px;"></i>
         </div>
@@ -68,7 +89,7 @@
         $totalTasks     = \App\Models\Task::where('assigned_to', $user->id)->count();
     @endphp
 
-    <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.05);padding:20px;margin-bottom:20px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+    <div class="ob-card" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.05);padding:20px;margin-bottom:20px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
         @if($user->avatar && \Illuminate\Support\Facades\Storage::disk('public')->exists($user->avatar))
         <img src="{{ asset('storage/' . $user->avatar) }}" alt="{{ $user->name }}"
              style="width:58px;height:58px;border-radius:50%;object-fit:cover;border:2px solid #E5E7EB;flex-shrink:0;">
@@ -80,13 +101,13 @@
         <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">
                 <p style="font-size:16px;font-weight:700;color:#111827;margin:0;">{{ $user->name }}</p>
-                <span style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:10px;background:{{ $rb }};color:{{ $rc }};">{{ ucfirst($user->role) }}</span>
-                <span style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:10px;background:#FEF3C7;color:#D97706;">{{ ucfirst($user->status) }}</span>
+                <span class="ob-badge" style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:10px;background:{{ $rb }};color:{{ $rc }};">{{ ucfirst($user->role) }}</span>
+                <span class="ob-badge" style="font-size:11px;font-weight:600;padding:2px 10px;border-radius:10px;background:#FEF3C7;color:#D97706;">{{ ucfirst($user->status) }}</span>
             </div>
             <p style="font-size:13px;color:#6B7280;margin:0;">{{ $user->email }}{{ $user->job_title ? ' · ' . $user->job_title : '' }}</p>
             <p style="font-size:12px;color:#9CA3AF;margin:3px 0 0;">Member since {{ $user->created_at->format(config('app.date_format', 'M d, Y')) }}</p>
         </div>
-        <div style="display:flex;gap:20px;flex-shrink:0;text-align:center;">
+        <div class="ob-stat-row" style="display:flex;gap:20px;flex-shrink:0;text-align:center;">
             <div>
                 <p style="font-size:24px;font-weight:700;color:#DC2626;margin:0;line-height:1;">{{ $unfinishedTasks->count() }}</p>
                 <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Unfinished</p>
@@ -111,7 +132,7 @@
             <div style="display:flex;flex-direction:column;gap:16px;">
 
                 {{-- Action selection --}}
-                <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.05);padding:20px;"
+                <div class="ob-card" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.05);padding:20px;"
                      x-data="{ action: '{{ old('action', 'archive') }}' }">
                     <p style="font-size:11px;font-weight:700;color:#9CA3AF;margin:0 0 14px;text-transform:uppercase;letter-spacing:.06em;">Action</p>
 
@@ -143,7 +164,7 @@
                 </div>
 
                 {{-- Reason --}}
-                <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.05);padding:20px;flex:1;">
+                <div class="ob-card" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.05);padding:20px;flex:1;">
                     <label style="font-size:11px;font-weight:700;color:#9CA3AF;display:block;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">
                         Reason for Offboarding <span style="color:#EF4444;">*</span>
                     </label>
@@ -163,7 +184,7 @@
 
             {{-- Right: Task Handover --}}
             <div>
-                <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.05);padding:20px;height:100%;box-sizing:border-box;display:flex;flex-direction:column;gap:14px;">
+                <div class="ob-card" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.05);padding:20px;height:100%;box-sizing:border-box;display:flex;flex-direction:column;gap:14px;">
                     <p style="font-size:11px;font-weight:700;color:#9CA3AF;margin:0;text-transform:uppercase;letter-spacing:.06em;">Task Handover</p>
 
                     @if($unfinishedTasks->isEmpty())
@@ -185,14 +206,7 @@
 
                     {{-- Task list --}}
                     @php
-                    $statusMap = [
-                        'draft'               => ['Draft',             '#6B7280','#F3F4F6'],
-                        'assigned'            => ['Assigned',          '#4F46E5','#EEF2FF'],
-                        'viewed'              => ['Viewed',            '#0284C7','#E0F2FE'],
-                        'in_progress'         => ['In Progress',       '#D97706','#FEF3C7'],
-                        'submitted'           => ['In Review',         '#7C3AED','#EDE9FE'],
-                        'revision_requested'  => ['Revision Needed',   '#DC2626','#FEE2E2'],
-                    ];
+                    $statusMap = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => [$c['label'], $c['text'], $c['bg']])->all();
                     @endphp
 
                     <div style="max-height:200px;overflow-y:auto;border:1px solid #F3F4F6;border-radius:10px;flex-shrink:0;">
@@ -209,7 +223,7 @@
                                     @endif
                                 </p>
                             </div>
-                            <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px;background:{{ $sb }};color:{{ $sc }};white-space:nowrap;flex-shrink:0;">{{ $sl }}</span>
+                            <span class="ob-badge" style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px;background:{{ $sb }};color:{{ $sc }};white-space:nowrap;flex-shrink:0;">{{ $sl }}</span>
                         </div>
                         @endforeach
                     </div>
@@ -256,7 +270,7 @@
         </div>
 
         {{-- What is preserved --}}
-        <div style="background:#F0FDF4;border:1px solid #A7F3D0;border-radius:12px;padding:18px 20px;margin-bottom:16px;">
+        <div class="ob-tint-card" style="background:#F0FDF4;border:1px solid #A7F3D0;border-radius:12px;padding:18px 20px;margin-bottom:16px;">
             <p style="font-size:13px;font-weight:700;color:#065F46;margin:0 0 12px;display:flex;align-items:center;gap:7px;">
                 <i class="fa fa-shield-halved" style="font-size:14px;"></i> What is preserved after offboarding
             </p>
@@ -280,7 +294,7 @@
         </div>
 
         {{-- Confirmation + Submit --}}
-        <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.05);padding:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;"
+        <div class="ob-card ob-confirm-row" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.05);padding:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;"
              x-data="{ confirmed: false }">
             <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
                 <input type="checkbox" x-model="confirmed"
@@ -290,12 +304,12 @@
                     <strong>{{ $user->name }}</strong>'s access to the system.
                 </span>
             </label>
-            <div style="display:flex;gap:10px;flex-shrink:0;">
-                <a href="{{ route('admin.users.index') }}"
+            <div class="ob-action-btns" style="display:flex;gap:10px;flex-shrink:0;">
+                <a href="{{ route('admin.users.index') }}" class="ob-cancel-btn"
                    style="padding:10px 22px;background:#F3F4F6;color:#374151;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;">
                     Cancel
                 </a>
-                <button type="submit" :disabled="!confirmed"
+                <button type="submit" :disabled="!confirmed" class="ob-submit-btn"
                         :style="!confirmed ? 'opacity:0.5;cursor:not-allowed;' : ''"
                         style="padding:10px 28px;background:#DC2626;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;">
                     <i class="fa fa-user-slash"></i> Proceed with Offboarding

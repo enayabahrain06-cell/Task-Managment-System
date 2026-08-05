@@ -15,6 +15,39 @@
     .proj-show-stats { grid-template-columns:repeat(2,1fr) !important; gap:10px !important; }
     .proj-show-header span[style*="margin-left:auto"] { margin-left:0 !important; }
 }
+
+/* ── Mobile-only premium pass (≤768px) — desktop styles above are untouched ── */
+@media (max-width: 768px) {
+    .proj-show-stats > div {
+        border-radius:var(--mob-r-md) !important;
+        box-shadow:var(--mob-shadow-1) !important;
+        padding:var(--mob-sp-2);
+    }
+    .proj-show-stats span[style*="text-transform:uppercase"] { font-size:11px !important; }
+    .proj-show-stats p[style*="font-size:24px"] { font-size:20px !important; }
+    .proj-show-stats div[style*="border-radius:8px"] { width:36px !important; height:36px !important; border-radius:var(--mob-r-sm) !important; }
+    .proj-show-stats i[style*="font-size:11px"] { font-size:16px !important; }
+
+    /* Progress card + task list + members card become clean mobile cards */
+    .proj-progress-card {
+        border-radius:var(--mob-r-lg) !important;
+        box-shadow:var(--mob-shadow-1) !important;
+        padding:var(--mob-sp-2) !important;
+    }
+    .proj-tasklist-card, .proj-members-card {
+        border-radius:var(--mob-r-lg) !important;
+        box-shadow:var(--mob-shadow-1) !important;
+    }
+    .proj-members-card { padding:var(--mob-sp-2) !important; }
+
+    /* Task rows: allow wrapping so status/date never force horizontal scroll */
+    .proj-task-row { flex-wrap:wrap; row-gap:6px; padding:12px var(--mob-sp-2) !important; }
+    .proj-task-row > div:nth-child(2) { min-width:60%; }
+    .proj-task-row span[style*="border-radius:999px"] { font-size:11px !important; padding:2px 8px !important; }
+
+    /* Header status pill + progress % + all badge-like pills unified */
+    [style*="border-radius:20px"][style*="font-size:12px"] { font-size:11px !important; padding:2px 8px !important; border-radius:9999px !important; }
+}
 </style>
 @endpush
 
@@ -50,7 +83,7 @@
 </div>
 
 {{-- Progress bar --}}
-<div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;padding:20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+<div class="proj-progress-card" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;padding:20px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <span style="font-size:13px;font-weight:600;color:#374151;">Overall Progress</span>
         <span style="font-size:20px;font-weight:800;color:#4F46E5;">{{ $stats['rate'] }}%</span>
@@ -64,7 +97,7 @@
 <div class="proj-show-layout" style="display:grid;grid-template-columns:1fr 260px;gap:20px;align-items:start;">
 
     {{-- All tasks --}}
-    <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+    <div class="proj-tasklist-card" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);">
         <div style="padding:16px 20px 14px;border-bottom:1px solid #F3F4F6;">
             <h3 style="font-size:14px;font-weight:700;color:#111827;margin:0;">All Tasks</h3>
             <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">{{ $project->tasks->count() }} total</p>
@@ -74,12 +107,12 @@
             $isMe = $task->assigned_to === auth()->id();
             $sMap=['completed'=>['#F0FDF4','#16A34A','Completed'],'in_progress'=>['#FFFBEB','#D97706','In Progress'],'pending'=>['#F8FAFC','#64748B','Pending'],'submitted'=>['#EDE9FE','#7C3AED','In Review']];
             [$sbg,$sco,$slbl] = $sMap[$task->status] ?? ['#F8FAFC','#9CA3AF','Unknown'];
-            $pco = ['high'=>'#DC2626','medium'=>'#D97706','low'=>'#16A34A'][$task->priority] ?? '#9CA3AF';
+            $pco = ['high'=>'#E11D48','medium'=>'#D97706','low'=>'#16A34A'][$task->priority] ?? '#9CA3AF';
         @endphp
         @if($isMe)
         <a href="{{ route('user.tasks.show', $task) }}" style="text-decoration:none;">
         @endif
-        <div style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #F9FAFB;background:{{ $isMe ? '#FAFBFF' : '#fff' }};{{ $isMe ? 'cursor:pointer;' : '' }}transition:background .1s;"
+        <div class="proj-task-row" style="display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #F9FAFB;background:{{ $isMe ? '#FAFBFF' : '#fff' }};{{ $isMe ? 'cursor:pointer;' : '' }}transition:background .1s;"
              @if($isMe) onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='#FAFBFF'" @endif>
             <div style="width:8px;height:8px;border-radius:50%;background:{{ $pco }};flex-shrink:0;"></div>
             <div style="flex:1;min-width:0;">
@@ -101,7 +134,7 @@
     </div>
 
     {{-- Members --}}
-    <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+    <div class="proj-members-card" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.04);">
         <h3 style="font-size:13px;font-weight:700;color:#374151;margin:0 0 14px;text-transform:uppercase;letter-spacing:.04em;">Team Members</h3>
         <div style="display:flex;flex-direction:column;gap:10px;">
             @forelse($members as $member)

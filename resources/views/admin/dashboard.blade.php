@@ -67,7 +67,7 @@
     .adash-pipeline-grid  { grid-template-columns:repeat(2,1fr); }
     .adash-attention-grid { grid-template-columns:repeat(3,1fr); }
     .adash-rate-grid      { grid-template-columns:1fr; gap:8px; }
-    .stat-card-value      { font-size:26px; }
+    .stat-card-value      { font-size:22px; }
     /* Page title row: stack on mobile, actions become one scrollable row instead of wrapping */
     .adash-title-row      { flex-direction:column; align-items:flex-start !important; }
     .adash-title-btns     {
@@ -82,7 +82,7 @@
     .adash-modal-2col     { grid-template-columns:1fr; }
     .adash-modal-3col     { grid-template-columns:1fr; }
     .adash-assignee-row   { grid-template-columns:1fr; }
-    .stat-card-value      { font-size:22px; }
+    .stat-card-value      { font-size:20px; }
 }
 
 /* ── Mobile: collapse inline grids that have no responsive class ── */
@@ -107,6 +107,9 @@
 @media(max-width:480px){
     /* Any remaining 2-col inline grids inside modals */
     [style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr !important; }
+    /* Pipeline card legend must stay 2-column even on small phones — the blanket
+       [style*=] rule above matches it too since it shares the same inline style substring */
+    .adash-pipeline-legend { grid-template-columns:1fr 1fr !important; }
     /* Recent tasks: hide non-essential columns if user forces table view on mobile */
     .recent-tasks-col-project,
     .recent-tasks-col-priority { display:none !important; }
@@ -117,6 +120,154 @@
     .recent-tasks-table td { padding:8px 10px !important; font-size:11px !important; }
     /* Card view: single column on small phones */
     .recent-tasks-cards { grid-template-columns:1fr !important; }
+}
+
+/* ── Mobile: Social Media "Completed" table → stacked cards ── */
+@media(max-width:768px){
+    .sm-completed-table thead { display:none; }
+    .sm-completed-table, .sm-completed-table tbody { display:block; width:100%; }
+    .sm-completed-table tr {
+        display:block; width:100%; border-top:none !important;
+        border:1px solid #F3F4F6; border-radius:10px; margin-bottom:10px; padding:4px 0;
+    }
+    .sm-completed-table tr:last-child { margin-bottom:0; }
+    .sm-completed-table td {
+        display:block; width:100%; text-align:left;
+        padding:6px 14px !important;
+    }
+    .sm-completed-table td::before {
+        content: attr(data-label);
+        display:block;
+        font-size:10px; font-weight:700; color:#9CA3AF; text-transform:uppercase;
+        letter-spacing:.04em; margin-bottom:4px;
+    }
+    .sm-completed-table td[data-label=""] {
+        text-align:center; padding-top:10px !important; padding-bottom:10px !important;
+    }
+    .sm-completed-table td[data-label=""]::before { content:none; margin:0; }
+    /* The wrapping overflow-x:auto is no longer needed once rows are stacked */
+    .sm-completed-table { min-width:0 !important; }
+}
+
+/* ── Mobile: tap-target sizing (close buttons, icon buttons, chip removes) ── */
+@media(max-width:768px){
+    /* Modal close ("X") buttons — bump to a comfortable 44x44 tap target */
+    [style*="width:30px;height:30px;border-radius:50%;background:#F3F4F6"],
+    [style*="width:34px;height:34px;border-radius:50%;background:#F3F4F6"],
+    [style*="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.15)"],
+    [style*="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.18)"],
+    [style*="background:rgba(255,255,255,0.15);border:none;border-radius:8px;width:32px;height:32px"] {
+        width:44px !important; height:44px !important;
+    }
+    /* Title-row "..." overflow button */
+    .qa-btn-icon { width:44px; height:44px; }
+    /* Quick action buttons — taller, easier to tap */
+    .qa-btn { padding:12px 16px; min-height:44px; }
+    /* File-chip remove buttons (Quick Task / Quick SM Post / New Project uploads) */
+    [style*="border-radius:6px;background:#FEE2E2;color:#DC2626"],
+    [style*="border-radius:7px;background:#FEE2E2;color:#DC2626"] {
+        width:32px !important; height:32px !important;
+    }
+    /* Stat-card kebab menu */
+    .stat-card-menu { width:36px; height:36px; }
+    /* Prevent iOS Safari auto-zoom on focus (inputs must be >=16px) */
+    .form-input, .form-select, textarea.form-input { font-size:16px !important; padding:11px 12px; }
+    /* Recent-tasks table/cards toggle — comfortable tap height */
+    .recent-tasks-toggle button { min-height:40px; }
+}
+
+/* ── Mobile: KPI stat row → swipeable card strip; quick actions → touch-friendly tiles
+   (visual polish only — layered on top of the tap-target/table-card pass above) ── */
+@media(max-width:768px){
+    /* Stats row becomes a horizontally snapping, swipeable strip instead of a shrunk grid */
+    .stats-grid {
+        display:flex !important;
+        grid-template-columns:none !important;
+        overflow-x:auto;
+        scroll-snap-type:x mandatory;
+        -webkit-overflow-scrolling:touch;
+        gap:12px;
+        padding:2px 2px 10px;
+        margin-bottom:16px;
+    }
+    .stats-grid::-webkit-scrollbar { display:none; }
+    .stats-grid > a { scroll-snap-align:start; flex:0 0 152px; }
+    .stat-card {
+        border-radius:var(--mob-r-md, 16px) !important;
+        box-shadow:var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05));
+        padding:var(--mob-sp-2, 16px) !important;
+    }
+    /* Eyebrow label above the KPI value — consistent caption styling */
+    .stat-card-label {
+        font-size:11px !important; font-weight:700 !important;
+        text-transform:uppercase; letter-spacing:.04em;
+    }
+
+    /* Quick actions read as compact tappable chips (pill-shaped, scrollable row) rather than large tiles.
+       Height stays at the 44px touch-target floor set by the tap-target pass above — only shape/padding change. */
+    .qa-btn {
+        border-radius:999px;
+        box-shadow:var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05));
+        min-height:44px;
+        padding:10px 16px !important;
+    }
+    .qa-btn-primary { box-shadow:0 3px 10px rgba(245,158,11,.3); }
+    .qa-btn-icon { border-radius:50%; width:44px; height:44px; }
+}
+
+/* ── Mobile: unify every dash-card panel (analytics/list/empty-state) to one radius/shadow/padding system ── */
+@media(max-width:768px){
+    .dash-card {
+        border-radius:var(--mob-r-lg, 20px) !important;
+        box-shadow:var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05)) !important;
+        padding:var(--mob-sp-2, 16px) !important;
+    }
+    /* Preserve intentional zero-padding wrapper (recent-tasks table card manages its own cell padding) */
+    .dash-card[style*="padding:0;overflow:hidden"] { padding:0 !important; }
+    /* Empty-state cards ("No tasks yet" etc.) — compact vertical rhythm instead of an oversized 40px pad */
+    .dash-card[style*="padding:40px;color:#9CA3AF"] { padding:32px 16px !important; }
+
+    /* Status/priority badge pills (recent-tasks table + card view) — unify size/shape across both */
+    [style*="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:"],
+    [style*="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:"],
+    [style*="padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;background:"] {
+        padding:2px 8px !important; font-size:11px !important; font-weight:700 !important;
+    }
+
+    /* Review Cycles icon badge — shrink to the standard 36px mobile icon-badge size */
+    [style*="width:50px;height:50px;border-radius:12px;background:#EDE9FE"] {
+        width:36px !important; height:36px !important;
+    }
+    [style*="width:50px;height:50px;border-radius:12px;background:#EDE9FE"] i { font-size:16px !important; }
+
+    /* Completion-rate / on-time-rate progress rings — match the Review Cycles icon-badge
+       so all three "rate metrics" tiles share one icon-container size on mobile */
+    [style*="position:relative;width:50px;height:50px;flex-shrink:0;"],
+    [style*="width:50px;height:50px;transform:rotate(-90deg);"] {
+        width:36px !important; height:36px !important;
+    }
+
+    /* "Tasks by Customer" / workload-chart empty states — don't reserve desktop-sized
+       empty space on a narrow screen */
+    [style*="min-height:220px;color:#D1D5DB"] { min-height:140px !important; }
+
+    /* Social-media pending/completed empty states — compact vertical rhythm, same as
+       the other empty-state cards on this page */
+    [style*="text-align:center;padding:40px 20px;"] { padding:28px 16px !important; }
+
+    /* Social-media "pending post" tile — bring radius/padding in line with the shared
+       mobile card system instead of its ad-hoc 12px/14px values */
+    [style*="border-radius:12px;padding:14px;background:"] {
+        border-radius:var(--mob-r-md, 16px) !important;
+        padding:var(--mob-sp-2, 16px) !important;
+        box-shadow:var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05));
+    }
+
+    /* Tasks-by-Customer legend rows are tap targets (link to the customer) — give them
+       a comfortable touch height instead of the ~30px desktop row */
+    [style*="padding:6px 8px;border-radius:8px;"] {
+        min-height:44px !important; padding:8px !important;
+    }
 }
 
 /* ── Card base ── */
@@ -220,10 +371,97 @@
 .priority-btn.active-low    { background:#F0FDF4; border-color:#10B981; color:#059669; }
 .priority-btn.active-medium { background:#FFFBEB; border-color:#F59E0B; color:#D97706; }
 .priority-btn.active-high   { background:#FFF1F2; border-color:#EF4444; color:#DC2626; }
+
+/* ── Quick Task modal → bottom sheet on mobile ── */
+@media(max-width:640px){
+    .qt-modal-overlay { align-items:flex-end !important; padding:0 !important; }
+    .qt-modal-card {
+        max-width:100% !important;
+        width:100% !important;
+        border-radius:26px 26px 0 0 !important;
+        max-height:88vh !important;
+        overflow-y:auto !important;
+        padding-bottom:env(safe-area-inset-bottom) !important;
+        -webkit-animation:qtSheetUp .25s ease-out !important;
+        animation:qtSheetUp .25s ease-out !important;
+    }
+}
+@keyframes qtSheetUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
+
+/* ── Hero focus card + KPI trio ── */
+.adash-hero-row { display:flex; align-items:center; gap:10px; padding:12px 14px; text-decoration:none; color:#fff; border-bottom:1px solid rgba(255,255,255,.12); }
+.adash-hero-row:last-child { border-bottom:none; }
+.adash-hero-row:hover { background:rgba(255,255,255,.06); }
+.adash-kpi-row { display:flex; gap:12px; margin-bottom:16px; }
+.adash-kpi-card { flex:1; min-width:0; background:#fff; border:1px solid #EDEFF3; border-radius:16px; padding:14px 16px; box-shadow:0 1px 2px rgba(17,24,39,.04); }
+@media(max-width:480px){
+    .adash-hero { padding:16px 16px !important; border-radius:18px !important; }
+    .adash-hero h2 { font-size:18px !important; }
+    .adash-kpi-row { gap:8px !important; }
+    .adash-kpi-card { padding:11px 10px !important; border-radius:14px !important; }
+    .adash-kpi-card .adash-kpi-value { font-size:21px !important; }
+}
+
+/* ── Mobile-only home screen: sticky header, Pipeline, Latest updates, FAB ──
+   replaces the desktop cascade (stats/charts/analytics/recent-tasks/etc.)
+   which is hidden below ≤768px so mobile gets one clean scrollable screen. ── */
+.adash-mobile-only { display: none; }
+.adash-mob-header { align-items:center; justify-content:space-between; gap:12px; padding:6px 4px 14px; }
+.adash-mob-updates-card {
+    display:block; box-sizing:border-box; width:100%; text-align:left; background:#fff;
+    border:1px solid #EDEFF3; border-radius:16px; padding:14px; box-shadow:0 1px 2px rgba(17,24,39,.04);
+    text-decoration:none; margin:0 0 9px; overflow:visible;
+}
+.adash-mob-updates-card .adash-mob-updates-row { display:flex; align-items:center; min-width:0; }
+.adash-mob-updates-card .adash-mob-updates-avatar { flex-shrink:0; }
+.adash-mob-updates-card .adash-mob-updates-name,
+.adash-mob-updates-card .adash-mob-updates-project { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.adash-mob-fab { position:fixed; right:18px; bottom:104px; width:54px; height:54px; border-radius:18px; border:0; cursor:pointer; background:var(--mob-brand-grad); box-shadow:0 12px 24px -8px rgba(79,70,229,.7); align-items:center; justify-content:center; z-index:46; }
+@media(max-width:768px){
+    .adash-mobile-only { display: block !important; }
+    .adash-mob-header, .adash-mob-fab, .adash-kpi-row { display: flex !important; }
+    .adash-title-row,
+    #dev-mode-banner,
+    .charts-grid,
+    .bottom-grid,
+    #dash-social-media-section,
+    [data-dev-key] {
+        display: none !important;
+    }
+    /* FAB sits at bottom:104px + 54px tall = occupies the 104-158px band above the
+       tab bar; .app-content only reserves 78px, so the last feed card gets covered
+       unless we reserve enough room here too. */
+    .app-content { padding-bottom: 176px !important; }
+}
 </style>
 
 {{-- ══ Page Title + Quick Create Modals ══ --}}
 <div x-data="dashModals()" x-init="init()" style="margin-bottom:22px;">
+
+    {{-- Mobile-only sticky-feel greeting header (replaces the desktop title row on small screens) --}}
+    @php
+        $mobHour = now()->hour;
+        $mobGreeting = $mobHour < 12 ? 'Good morning' : ($mobHour < 17 ? 'Good afternoon' : 'Good evening');
+    @endphp
+    <div class="adash-mobile-only adash-mob-header">
+        <div style="display:flex;align-items:center;gap:11px;min-width:0;">
+            <div style="width:40px;height:40px;flex-shrink:0;border-radius:99px;background:var(--mob-brand-grad);color:#fff;font-size:16.8px;font-weight:700;display:flex;align-items:center;justify-content:center;">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
+            <div style="min-width:0;">
+                <div style="font-size:17.5px;font-weight:700;color:#111827;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $mobGreeting }}, {{ explode(' ', auth()->user()->name)[0] }}</div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
+                    <span style="width:6px;height:6px;border-radius:99px;background:#059669;"></span>
+                    <span style="font-size:11.5px;color:#6B7280;font-weight:500;">{{ ucfirst(auth()->user()->role) }} · Live</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Mobile-only FAB: quick task --}}
+    @if(auth()->user()->hasPermission('manage_tasks'))
+    <button type="button" @click="taskOpen = true" class="adash-mobile-only adash-mob-fab">
+        <i class="fas fa-plus" style="color:#fff;font-size:18px;"></i>
+    </button>
+    @endif
 
     {{-- Title row --}}
     <div class="adash-title-row" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
@@ -259,12 +497,13 @@
     </div>
 
     {{-- ══ Quick Task Modal ══ --}}
+    <template x-teleport="body">
     <div x-show="taskOpen" x-cloak style="position:fixed;inset:0;z-index:9999;">
-    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;">
+    <div class="qt-modal-overlay" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;">
 
         <div @click="taskOpen = false" style="position:absolute;inset:0;background:rgba(0,0,0,0.45);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);"></div>
 
-        <div style="position:relative;width:100%;max-width:480px;background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,0.2);overflow:hidden;">
+        <div class="qt-modal-card" style="position:relative;width:100%;max-width:480px;background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,0.2);overflow:hidden;">
 
             {{-- Header --}}
             <div style="padding:20px 24px 16px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
@@ -410,8 +649,10 @@
         </div>
     </div>
     </div>
+    </template>
 
     {{-- ══ Quick SM Post Modal ══ --}}
+    <template x-teleport="body">
     <div x-show="smPostOpen" x-cloak style="position:fixed;inset:0;z-index:9999;">
     <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;">
 
@@ -604,8 +845,10 @@
         </div>
     </div>
     </div>
+    </template>
 
     {{-- ══ New Project Wizard Modal ══ --}}
+    <template x-teleport="body">
     <div x-show="projectOpen" x-cloak style="position:fixed;inset:0;z-index:9999;">
     <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;">
 
@@ -1005,8 +1248,10 @@
         </div>
     </div>
     </div>
+    </template>
 
     {{-- Expiring Soon Modal --}}
+    <template x-teleport="body">
     <div x-show="expiringModal" style="position:fixed;inset:0;z-index:9100;overflow-y:auto;" x-cloak>
         <div style="position:fixed;inset:0;background:rgba(0,0,0,.45);" @click="dismissExpiring()"></div>
         <div style="min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px 16px;position:relative;z-index:1;">
@@ -1049,6 +1294,7 @@
         </div>
         </div>
     </div>
+    </template>
 
 </div>
 
@@ -1358,6 +1604,171 @@ document.addEventListener('DOMContentLoaded', function () {
        onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">
         <i class="fas fa-gear" style="font-size:10px;"></i> Manage Sections
     </a>
+</div>
+
+{{-- ══ Hero Focus Card + KPI Trio ══ --}}
+@php
+    $heroInReview   = $taskOverview['in_review'];
+    $heroOverdue    = $taskOverview['overdue'];
+    $heroRevision   = $taskOverview['revision_requested'];
+    $heroActionable = $heroInReview + $heroOverdue + $heroRevision;
+    $kpiOpenTasks   = $taskOverview['total'] - ($taskOverview['completed'] + $taskOverview['delivered'] + $taskOverview['archived']);
+@endphp
+<section class="adash-hero adash-mobile-only" style="border-radius:22px;padding:20px 22px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden;background:var(--mob-brand-grad);box-shadow:0 12px 28px -12px rgba(79,70,229,.5);">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;opacity:.75;">Needs you today</div>
+    <h2 style="font-size:21px;font-weight:700;line-height:1.25;letter-spacing:-.01em;margin:8px 0 0;max-width:36ch;">
+        @if($heroActionable > 0)
+            {{ $heroActionable }} {{ Str::plural('thing', $heroActionable) }} {{ $heroActionable === 1 ? 'needs' : 'need' }} your attention today
+        @else
+            You're all caught up — nothing needs your review today
+        @endif
+    </h2>
+    <div style="margin-top:16px;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.14);">
+        <a href="{{ route('admin.tasks.index', ['status' => 'submitted']) }}" class="adash-hero-row">
+            <span style="width:8px;height:8px;border-radius:50%;background:#EDE9FE;flex-shrink:0;box-shadow:0 0 0 3px rgba(255,255,255,.15);"></span>
+            <span style="flex:1;font-size:13.5px;font-weight:600;">Awaiting your review</span>
+            <span style="font-size:15px;font-weight:700;">{{ $heroInReview }}</span>
+            <i class="fas fa-chevron-right" style="font-size:11px;opacity:.6;"></i>
+        </a>
+        <a href="{{ route('admin.tasks.index') }}?overdue=1" class="adash-hero-row">
+            <span style="width:8px;height:8px;border-radius:50%;background:#FEE2E2;flex-shrink:0;box-shadow:0 0 0 3px rgba(255,255,255,.15);"></span>
+            <span style="flex:1;font-size:13.5px;font-weight:600;">Overdue</span>
+            <span style="font-size:15px;font-weight:700;">{{ $heroOverdue }}</span>
+            <i class="fas fa-chevron-right" style="font-size:11px;opacity:.6;"></i>
+        </a>
+        <a href="{{ route('admin.tasks.index', ['status' => 'revision_requested']) }}" class="adash-hero-row">
+            <span style="width:8px;height:8px;border-radius:50%;background:#FCA5A5;flex-shrink:0;box-shadow:0 0 0 3px rgba(255,255,255,.15);"></span>
+            <span style="flex:1;font-size:13.5px;font-weight:600;">Revision requested</span>
+            <span style="font-size:15px;font-weight:700;">{{ $heroRevision }}</span>
+            <i class="fas fa-chevron-right" style="font-size:11px;opacity:.6;"></i>
+        </a>
+    </div>
+</section>
+
+<div class="adash-kpi-row adash-mobile-only">
+    <div class="adash-kpi-card">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6B7280;">Open</div>
+        <div class="adash-kpi-value" style="font-size:26px;font-weight:700;letter-spacing:-.02em;color:#111827;margin-top:6px;line-height:1;">{{ $kpiOpenTasks }}</div>
+        <div style="font-size:11px;font-weight:500;color:#6B7280;margin-top:3px;">tasks</div>
+    </div>
+    <div class="adash-kpi-card">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6B7280;">On-time</div>
+        <div class="adash-kpi-value" style="font-size:26px;font-weight:700;letter-spacing:-.02em;color:#111827;margin-top:6px;line-height:1;">{{ $onTimeRate }}%</div>
+        <div style="font-size:11px;font-weight:500;color:#6B7280;margin-top:3px;">completed tasks</div>
+    </div>
+    <div class="adash-kpi-card">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6B7280;">Projects</div>
+        <div class="adash-kpi-value" style="font-size:26px;font-weight:700;letter-spacing:-.02em;color:#111827;margin-top:6px;line-height:1;">{{ $activeProjects }}</div>
+        <div style="font-size:11px;font-weight:500;color:#6B7280;margin-top:3px;">active</div>
+    </div>
+</div>
+
+{{-- ══ Mobile Pipeline card — only statuses with real tasks, ordered by workflow stage ══ --}}
+@php
+    $pipelineOrder = ['draft', 'assigned', 'viewed', 'in_progress', 'paused', 'submitted', 'revision_requested', 'pending_customer', 'approved', 'delivered', 'archived'];
+    $pipelineSegments = collect($pipelineOrder)
+        ->map(fn ($key) => ['key' => $key, 'count' => (int) ($statusCounts[$key] ?? 0)])
+        ->filter(fn ($seg) => $seg['count'] > 0)
+        ->values();
+    $pipelineTotal = $pipelineSegments->sum('count');
+@endphp
+@if($pipelineTotal > 0)
+<style>
+    @keyframes adashPipeCardIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+    @keyframes adashPipeSegIn  { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+    @keyframes adashPipeRowIn  { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+    .adash-pipe-card { animation: adashPipeCardIn .35s ease both; }
+    .adash-pipe-seg   { transform-origin:left; animation: adashPipeSegIn .5s cubic-bezier(.22,.9,.35,1) both; animation-delay: calc(var(--i) * 70ms + .1s); }
+    .adash-pipe-row   { animation: adashPipeRowIn .3s ease both; animation-delay: calc(var(--i) * 40ms + .3s); transition: transform .15s ease, opacity .15s ease; }
+    .adash-pipe-row:active { transform: scale(.97); opacity:.8; }
+    .adash-pipe-alltasks { transition: opacity .15s ease; }
+    .adash-pipe-alltasks:active { opacity:.6; }
+    @media (prefers-reduced-motion: reduce) {
+        .adash-pipe-card, .adash-pipe-seg, .adash-pipe-row { animation: none; }
+    }
+</style>
+<div class="adash-mobile-only adash-pipe-card" style="margin:14px 16px 0;background:#fff;border:1px solid #EDEFF3;border-radius:18px;padding:16px;box-shadow:0 1px 2px rgba(17,24,39,.04);">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;">
+        <div style="font-size:14.5px;font-weight:700;color:#111827;letter-spacing:-.01em;">Pipeline</div>
+        <a href="{{ route('admin.tasks.index') }}" class="adash-pipe-alltasks" style="font-size:12.5px;font-weight:600;color:var(--mob-brand);text-decoration:none;">All tasks →</a>
+    </div>
+    <div id="adashPipeSegs" style="display:flex;height:11px;border-radius:99px;overflow:hidden;margin:13px 0;background:#F3F4F6;gap:2px;">
+        @foreach($pipelineSegments as $seg)
+        <div class="adash-pipe-seg" style="--i:{{ $loop->index }};width:{{ round($seg['count'] / $pipelineTotal * 100, 2) }}%;background:{{ \App\Support\TaskStatusColors::text($seg['key']) }};opacity:.9;"></div>
+        @endforeach
+    </div>
+    <div id="adashPipeLegend" class="adash-pipeline-legend" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;">
+        @foreach($pipelineSegments as $seg)
+        <a href="{{ route('admin.tasks.index', ['status' => $seg['key']]) }}" class="adash-pipe-row" style="--i:{{ $loop->index }};display:flex;align-items:center;gap:8px;text-decoration:none;">
+            <span style="width:8px;height:8px;border-radius:3px;background:{{ \App\Support\TaskStatusColors::text($seg['key']) }};flex-shrink:0;"></span>
+            <span style="flex:1;font-size:12.5px;font-weight:600;color:#4B5563;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ \App\Support\TaskStatusColors::label($seg['key']) }}</span>
+            <span style="font-size:12.5px;font-weight:700;color:#111827;font-variant-numeric:tabular-nums;">{{ $seg['count'] }}</span>
+        </a>
+        @endforeach
+    </div>
+</div>
+<script>
+    // Re-renders the mobile Pipeline card (and replays its entrance animation) whenever
+    // dashboard.blade.php's existing live doRefresh() polls fresh data — same pattern the
+    // desktop pipeline bars already use, just extended to this per-status mobile card.
+    window._adashPipelineOrder = @json($pipelineOrder);
+    window._adashPipelineColors = @json(collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => ['text' => $c['text'], 'label' => $c['label']]));
+    window._adashTasksIndexUrl = '{{ route('admin.tasks.index') }}';
+    window.renderAdashPipeline = function (statusCounts) {
+        var segsEl = document.getElementById('adashPipeSegs');
+        var legEl  = document.getElementById('adashPipeLegend');
+        if (!segsEl || !legEl || !statusCounts) return;
+
+        var segments = window._adashPipelineOrder
+            .map(function (key) { return { key: key, count: parseInt(statusCounts[key] || 0, 10) }; })
+            .filter(function (s) { return s.count > 0; });
+        var total = segments.reduce(function (sum, s) { return sum + s.count; }, 0);
+        if (total <= 0) return;
+
+        var segsHtml = '', legHtml = '';
+        segments.forEach(function (s, i) {
+            var c = window._adashPipelineColors[s.key] || { text: '#6B7280', label: s.key };
+            var pct = Math.round((s.count / total) * 10000) / 100;
+            segsHtml += '<div class="adash-pipe-seg" style="--i:' + i + ';width:' + pct + '%;background:' + c.text + ';opacity:.9;"></div>';
+            legHtml += '<a href="' + window._adashTasksIndexUrl + '?status=' + encodeURIComponent(s.key) + '" class="adash-pipe-row" style="--i:' + i + ';display:flex;align-items:center;gap:8px;text-decoration:none;">' +
+                '<span style="width:8px;height:8px;border-radius:3px;background:' + c.text + ';flex-shrink:0;"></span>' +
+                '<span style="flex:1;font-size:12.5px;font-weight:600;color:#4B5563;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + c.label + '</span>' +
+                '<span style="font-size:12.5px;font-weight:700;color:#111827;font-variant-numeric:tabular-nums;">' + s.count + '</span>' +
+                '</a>';
+        });
+        segsEl.innerHTML = segsHtml;
+        legEl.innerHTML  = legHtml;
+    };
+</script>
+@endif
+
+{{-- ══ Mobile "Latest updates" feed — reuses the same $recentTasks as desktop's Recent Tasks ══ --}}
+<div class="adash-mobile-only" style="display:flex;align-items:baseline;justify-content:space-between;padding:22px 20px 10px;">
+    <div style="font-size:15px;font-weight:700;color:#111827;letter-spacing:-.01em;">Latest updates</div>
+    <a href="{{ route('admin.tasks.index') }}" style="font-size:12.5px;font-weight:600;color:var(--mob-brand);text-decoration:none;">View all</a>
+</div>
+<div class="adash-mobile-only" style="padding:0 16px;">
+    @foreach($recentTasks->take(10) as $rt)
+    @php $rtOverdue = $rt->deadline && $rt->deadline->isPast() && !in_array($rt->status, ['approved', 'delivered', 'archived']); @endphp
+    <a href="{{ route('admin.tasks.show', $rt) }}" class="adash-mob-updates-card">
+        <div class="adash-mob-updates-row" style="gap:8px;margin-bottom:9px;">
+            <x-status-chip :status="$rt->status" />
+            <span style="flex:1;min-width:8px;"></span>
+            @if($rt->deadline)
+            <span style="flex-shrink:0;font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;color:{{ $rtOverdue ? '#DC2626' : '#6B7280' }};">{{ $rt->deadline->format('M d') }}</span>
+            @endif
+        </div>
+        <div style="font-size:15px;font-weight:650;color:#111827;letter-spacing:-.012em;line-height:1.3;margin-top:2px;">{{ $rt->title }}</div>
+        <div class="adash-mob-updates-row" style="gap:8px;margin-top:11px;padding-top:11px;border-top:1px solid #F3F4F6;">
+            @if($rt->assignee)
+            <span class="adash-mob-updates-avatar" style="width:22px;height:22px;border-radius:99px;background:var(--mob-brand-grad);color:#fff;font-size:9.24px;font-weight:700;display:flex;align-items:center;justify-content:center;">{{ strtoupper(substr($rt->assignee->name, 0, 1)) }}</span>
+            <span class="adash-mob-updates-name" style="font-size:12.5px;font-weight:600;color:#4B5563;max-width:12ch;flex-shrink:1;">{{ $rt->assignee->name }}</span>
+            @endif
+            <span style="flex:1;min-width:8px;"></span>
+            <span class="adash-mob-updates-project" style="font-size:11.5px;color:#6B7280;font-weight:500;max-width:14ch;flex-shrink:0;">{{ $rt->project->name ?? 'Quick Tasks' }}</span>
+        </div>
+    </a>
+    @endforeach
 </div>
 
 {{-- ══ Stats Row ══ --}}
@@ -1851,7 +2262,7 @@ document.addEventListener('DOMContentLoaded', function () {
         'other'     => ['fa-share-alt',  '#6366F1'],
     ];
 @endphp
-<div class="dash-card anim-card" style="margin-top:16px;margin-bottom:16px;" x-data="{ smTab: 'pending' }">
+<div id="dash-social-media-section" class="dash-card anim-card" style="margin-top:16px;margin-bottom:16px;" x-data="{ smTab: 'pending' }">
 
     {{-- Header --}}
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px;">
@@ -1989,7 +2400,8 @@ document.addEventListener('DOMContentLoaded', function () {
         </div>
         @else
         <div style="border-radius:10px;overflow:hidden;border:1px solid #F3F4F6;">
-            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+            <table class="sm-completed-table" style="width:100%;min-width:560px;border-collapse:collapse;font-size:12px;">
                 <thead>
                     <tr style="background:#F9FAFB;">
                         <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.04em;">Post</th>
@@ -2009,13 +2421,13 @@ document.addEventListener('DOMContentLoaded', function () {
                                 : array_filter(explode(',', $smDone->social_platforms ?? '')));
                     @endphp
                     <tr style="border-top:1px solid #F3F4F6;" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background=''">
-                        <td style="padding:12px 14px;">
+                        <td data-label="Post" style="padding:12px 14px;">
                             <p style="font-size:13px;font-weight:600;color:#111827;margin:0 0 2px;">{{ $smDone->title }}</p>
                             @if($smDone->customer)
                             <p style="font-size:11px;color:#9CA3AF;margin:0;">{{ $smDone->customer->name }}</p>
                             @endif
                         </td>
-                        <td style="padding:12px 14px;">
+                        <td data-label="Platforms" style="padding:12px 14px;">
                             <div style="display:flex;flex-wrap:wrap;gap:4px;">
                                 @if(!empty($dPlatforms))
                                     @foreach($dPlatforms as $plat)
@@ -2029,16 +2441,16 @@ document.addEventListener('DOMContentLoaded', function () {
                                 @endif
                             </div>
                         </td>
-                        <td style="padding:12px 14px;">
+                        <td data-label="Posted by" style="padding:12px 14px;">
                             <span style="font-size:12px;color:#374151;">{{ $smDone->socialAssignee->name ?? '—' }}</span>
                         </td>
-                        <td style="padding:12px 14px;white-space:nowrap;">
+                        <td data-label="Posted on" style="padding:12px 14px;white-space:nowrap;">
                             <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#F0FDF4;border-radius:6px;font-size:11px;font-weight:600;color:#16A34A;">
                                 <i class="fas fa-check" style="font-size:9px;"></i>
                                 {{ $smDone->social_posted_at->format(config('app.date_format','M d, Y')) }}
                             </span>
                         </td>
-                        <td style="padding:12px 14px;text-align:center;">
+                        <td data-label="" style="padding:12px 14px;text-align:center;">
                             <a href="{{ route('admin.tasks.show', $smDone) }}"
                                style="display:inline-flex;align-items:center;gap:3px;padding:4px 10px;background:#EEF2FF;border-radius:6px;font-size:11px;font-weight:600;color:#4F46E5;text-decoration:none;">
                                 View <i class="fas fa-arrow-right" style="font-size:9px;"></i>
@@ -2048,6 +2460,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     @endforeach
                 </tbody>
             </table>
+            </div>{{-- end overflow-x scroll --}}
             @if($socialPostsTotal > 10)
             <div style="padding:10px 14px;background:#F9FAFB;border-top:1px solid #F3F4F6;text-align:center;">
                 <a href="{{ route('admin.approvals.index') }}?tab=social" style="font-size:12px;color:#4F46E5;font-weight:600;text-decoration:none;">
@@ -2182,21 +2595,11 @@ document.addEventListener('DOMContentLoaded', function () {
     </div>
 
     @php
-    $statusMeta = [
-        'draft'              => ['label'=>'Draft',            'bg'=>'#F3F4F6','color'=>'#6B7280'],
-        'assigned'           => ['label'=>'Assigned',         'bg'=>'#EEF2FF','color'=>'#4F46E5'],
-        'viewed'             => ['label'=>'Viewed',           'bg'=>'#E0F2FE','color'=>'#0369A1'],
-        'in_progress'        => ['label'=>'In Progress',      'bg'=>'#FEF3C7','color'=>'#D97706'],
-        'paused'             => ['label'=>'Paused',           'bg'=>'#FFFBEB','color'=>'#92400E'],
-        'pending_customer'   => ['label'=>'Awaiting Client',  'bg'=>'#FFF7ED','color'=>'#C2410C'],
-        'submitted'          => ['label'=>'In Review',        'bg'=>'#EDE9FE','color'=>'#7C3AED'],
-        'revision_requested' => ['label'=>'Revision',         'bg'=>'#FEE2E2','color'=>'#DC2626'],
-        'approved'           => ['label'=>'Approved',         'bg'=>'#D1FAE5','color'=>'#059669'],
-        'delivered'          => ['label'=>'Delivered',        'bg'=>'#ECFDF5','color'=>'#047857'],
-        'archived'           => ['label'=>'Archived',         'bg'=>'#F3F4F6','color'=>'#6B7280'],
-    ];
+    $statusMeta = collect(\App\Support\TaskStatusColors::MAP)->mapWithKeys(fn($c, $k) => [
+        $k => ['label'=>$c['label'], 'bg'=>$c['bg'], 'color'=>$c['text']],
+    ])->all();
     $priorityMeta = [
-        'high'   => ['label'=>'High',   'bg'=>'#FEE2E2','color'=>'#DC2626'],
+        'high'   => ['label'=>'High',   'bg'=>'#FFE4E6','color'=>'#E11D48'],
         'medium' => ['label'=>'Med',    'bg'=>'#FEF3C7','color'=>'#D97706'],
         'low'    => ['label'=>'Low',    'bg'=>'#D1FAE5','color'=>'#059669'],
     ];
@@ -2659,19 +3062,7 @@ fetch('{{ route('admin.dashboard.chart-tasks') }}?period=' + encodeURIComponent(
                 return;
             }
 
-            var statusMeta = {
-                draft:              { label: 'Draft',           bg: '#F3F4F6', color: '#6B7280' },
-                assigned:           { label: 'Assigned',        bg: '#EEF2FF', color: '#4F46E5' },
-                viewed:             { label: 'Viewed',          bg: '#F0F9FF', color: '#0369A1' },
-                in_progress:        { label: 'In Progress',     bg: '#FFFBEB', color: '#D97706' },
-                paused:             { label: 'Paused',          bg: '#FFFBEB', color: '#92400E' },
-                pending_customer:   { label: 'Awaiting Client', bg: '#FFF7ED', color: '#C2410C' },
-                submitted:          { label: 'In Review',       bg: '#F5F3FF', color: '#7C3AED' },
-                revision_requested: { label: 'Revision',        bg: '#FFF7ED', color: '#C2410C' },
-                approved:           { label: 'Approved',        bg: '#F0FDF4', color: '#15803D' },
-                delivered:          { label: 'Delivered',       bg: '#ECFDF5', color: '#065F46' },
-                archived:           { label: 'Archived',        bg: '#F3F4F6', color: '#6B7280' },
-            };
+            var statusMeta = @json(collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => ['label' => $c['label'], 'bg' => $c['bg'], 'color' => $c['text']]));
             var priorityMeta = {
                 high:   { label: 'High',   color: '#EF4444' },
                 medium: { label: 'Med',    color: '#F59E0B' },
@@ -2789,19 +3180,7 @@ fetch('{{ route('admin.dashboard.workload-tasks') }}?index=' + index, { headers:
 
             if (!d.tasks || !d.tasks.length) { empty.style.display = 'block'; return; }
 
-            var statusMeta = {
-                draft:              { label: 'Draft',           bg: '#F3F4F6', color: '#6B7280' },
-                assigned:           { label: 'Assigned',        bg: '#EEF2FF', color: '#4F46E5' },
-                viewed:             { label: 'Viewed',          bg: '#F0F9FF', color: '#0369A1' },
-                in_progress:        { label: 'In Progress',     bg: '#FFFBEB', color: '#D97706' },
-                paused:             { label: 'Paused',          bg: '#FFFBEB', color: '#92400E' },
-                pending_customer:   { label: 'Awaiting Client', bg: '#FFF7ED', color: '#C2410C' },
-                submitted:          { label: 'In Review',       bg: '#F5F3FF', color: '#7C3AED' },
-                revision_requested: { label: 'Revision',        bg: '#FFF7ED', color: '#C2410C' },
-                approved:           { label: 'Approved',        bg: '#F0FDF4', color: '#15803D' },
-                delivered:          { label: 'Delivered',       bg: '#ECFDF5', color: '#065F46' },
-                archived:           { label: 'Archived',        bg: '#F3F4F6', color: '#6B7280' },
-            };
+            var statusMeta = @json(collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => ['label' => $c['label'], 'bg' => $c['bg'], 'color' => $c['text']]));
             var priorityMeta = {
                 high:   { label: 'High',   color: '#EF4444' },
                 medium: { label: 'Med',    color: '#F59E0B' },
@@ -3290,6 +3669,11 @@ chartWorkload = new Chart(document.getElementById('workloadChart'), {
                         if (lbl) lbl.textContent = pct + '%';
                     });
                 })();
+
+                // ── Mobile Pipeline card (per-status breakdown + entrance animation replay) ──
+                if (typeof window.renderAdashPipeline === 'function') {
+                    window.renderAdashPipeline(d.statusCounts);
+                }
 
                 // ── Rate circles ──
                 updateRateCircle('rateCircleCompletion', 'rateTextCompletion', d.completionRate);

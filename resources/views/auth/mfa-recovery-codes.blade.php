@@ -5,10 +5,24 @@
 .mfa-card { width:100%;max-width:440px;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(79,70,229,0.15);overflow:hidden; }
 .recovery-grid { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:16px 0; }
 .recovery-code { background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:10px 12px;font-size:13px;font-weight:700;font-family:monospace;color:#374151;text-align:center;letter-spacing:2px; }
+
+/* ── Mobile-only premium polish — this page had no responsive rules at all; the fixed
+   2-column code grid could force codes to overflow/scroll on narrow phones. ── */
+@media(max-width:768px) {
+    .mfa-card      { max-width: 92vw; box-shadow: var(--amob-shadow-1, 0 10px 30px rgba(17,24,39,0.14)); }
+    .mfa-content   { padding: 28px 20px 22px !important; }
+    .recovery-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
+    .recovery-code { font-size: 14px !important; padding: 12px !important; letter-spacing: 1.5px !important; }
+    .amob-btn      { min-height: 46px !important; font-size: 13px !important; }
+}
+@media(max-width:400px) {
+    .mfa-card    { border-radius: var(--amob-r-md, 16px); }
+    .mfa-content { padding: 22px 16px 18px !important; }
+}
 </style>
 
 <div class="mfa-card">
-    <div style="padding:36px 36px 28px;">
+    <div class="mfa-content" style="padding:36px 36px 28px;">
 
         {{-- Header --}}
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
@@ -35,7 +49,7 @@
         </div>
 
         {{-- Copy all button --}}
-        <button type="button" onclick="copyAllCodes()"
+        <button type="button" onclick="copyAllCodes()" class="amob-btn"
                 style="width:100%;padding:10px;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:14px;display:flex;align-items:center;justify-content:center;gap:8px;"
                 onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'">
             <i class="fas fa-copy"></i> Copy All Codes
@@ -43,6 +57,7 @@
 
         {{-- Continue --}}
         <a href="{{ match(auth()->user()->role) { 'admin' => route('admin.dashboard'), 'manager' => route('manager.dashboard'), default => route('user.dashboard') } }}"
+           class="amob-btn"
            style="display:block;width:100%;text-align:center;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;font-size:14px;font-weight:600;padding:13px;border-radius:12px;text-decoration:none;box-shadow:0 6px 20px rgba(79,70,229,0.35);box-sizing:border-box;">
             <i class="fas fa-arrow-right" style="margin-right:6px;font-size:12px;"></i> Continue to Dashboard
         </a>

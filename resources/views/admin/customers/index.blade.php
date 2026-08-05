@@ -12,9 +12,89 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
     .cust-search-wrap { max-width: 100% !important; }
     .cust-tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .cust-tbl-scroll table { min-width: 600px; }
+
+    /* Force card view on mobile — never show the raw desktop table, and
+       hide the now-redundant table/cards toggle. */
+    .cust-view-toggle { display: none !important; }
+    .cust-view-table-wrap { display: none !important; }
+    .cust-view-cards-wrap { display: block !important; }
+
+    /* Search input: full-width, comfortable touch height */
+    .cust-search-wrap input {
+        min-height: 46px;
+        padding: 10px 14px 10px 38px !important;
+        font-size: 15px !important;
+        border-radius: var(--mob-r-sm) !important;
+    }
+    .cust-search-wrap .fa-search { font-size: 14px !important; }
+
+    /* Customer cards grid */
+    .cust-cards-grid { grid-template-columns: 1fr !important; gap: var(--mob-sp-2) !important; }
+    .cust-card {
+        border-radius: var(--mob-r-md) !important;
+        box-shadow: var(--mob-shadow-1) !important;
+        padding: var(--mob-sp-2) !important;
+    }
+    .cust-card .cust-card-name { font-size: 15px !important; }
+    .cust-card .cust-card-action-btn { width: 44px !important; height: 44px !important; }
+    .cust-card .cust-card-bottom-btn { min-height: 44px !important; }
+
+    /* Modal close "×" buttons (New Customer / Summarize / Delete Customer) */
+    button[style*="width:30px;height:30px;border-radius:8px;background:#F3F4F6;border:none"] {
+        width: 44px !important;
+        height: 44px !important;
+    }
+
+    /* Summary totals row: compact 2-col grid from 768px down (not just 480px) */
+    .cust-summary-totals {
+        grid-template-columns: repeat(2,1fr) !important;
+        gap: var(--mob-sp-1) !important;
+        padding: 14px var(--mob-sp-2) !important;
+    }
+    .cust-summary-totals > div {
+        border-radius: var(--mob-r-sm) !important;
+        box-shadow: var(--mob-shadow-1) !important;
+    }
+
+    /* Summarize modal: filter controls full-width & touch-friendly */
+    .cust-summary-filter-bar { padding: 12px var(--mob-sp-2) !important; }
+    .cust-summary-filter-bar > div { flex-direction: column; align-items: stretch !important; }
+    .cust-summary-filter-bar .cust-summary-divider { display: none; }
+    .cust-summary-chip-row { width: 100%; }
+    .cust-summary-chip-row button { flex: 1 1 auto; min-height: 40px !important; }
+    .cust-summary-date-row { width: 100%; }
+    .cust-summary-date-row input[type="date"] { flex: 1 1 auto; min-height: 42px !important; font-size: 13px !important; }
+    .cust-summary-date-row button { min-height: 42px !important; }
+
+    /* Modal panels: never exceed viewport height, scroll internally */
+    .cust-modal-panel { max-height: calc(100vh - 40px) !important; overflow-y: auto !important; }
+
+    /* Stack 2-column form grids inside modals */
+    .cust-modal-grid-2col { grid-template-columns: 1fr !important; }
+
+    /* Modal form inputs & buttons: comfortable touch size */
+    .cust-modal-panel input[type="text"],
+    .cust-modal-panel input[type="email"],
+    .cust-modal-panel textarea {
+        min-height: 44px;
+        font-size: 15px !important;
+    }
+    .cust-modal-panel textarea { min-height: 66px; }
+    .cust-modal-actions button { min-height: 46px !important; }
+
+    /* Empty state: standardize to shared token radius/shadow, trim decorative padding */
+    .cust-idx-empty {
+        border-radius: var(--mob-r-lg) !important;
+        box-shadow: var(--mob-shadow-1) !important;
+        padding: 36px 20px !important;
+    }
+
+    /* Note: .cust-header (including .cust-header-actions) is already force-hidden
+       on mobile by _mobile-index.blade.php's own doubled-selector rule, which
+       replaces it with the compact header + icon Summarize button — so no
+       separate sticky action bar is rendered here (would duplicate those actions). */
 }
 @media (max-width: 480px) {
-    .cust-view-toggle { flex-wrap: wrap; }
     .cust-cards-grid { grid-template-columns: 1fr !important; }
 }
 @keyframes cust-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
@@ -117,13 +197,15 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
      }"
      @open-cust-delete.window="openDeleteModal($event.detail.name, $event.detail.action)">
 
+    @include('admin.customers._mobile-index')
+
     {{-- Header --}}
     <div class="cust-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;">
         <div>
             <h1 style="font-size:22px;font-weight:700;color:#111827;margin:0;">Customers</h1>
             <p style="font-size:13px;color:#9CA3AF;margin:4px 0 0;">Manage your clients and link them to projects & tasks</p>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
+        <div class="cust-header-actions" style="display:flex;gap:8px;align-items:center;">
             @if(($appSettings['hide_summarize_button'] ?? '0') !== '1')
             <button @click="summarizeModal = true; if (!_summaryLoaded) { _summaryLoaded = true; fetchSummary(); }"
                     style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;background:#fff;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;"
@@ -138,8 +220,12 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
         </div>
     </div>
 
+    {{-- Note: on mobile, "+ New" and "Summarize" are already rendered by
+         _mobile-index.blade.php's compact header/search row above — no separate
+         action bar here to avoid duplicating those actions (see G4/C17/P19 fix). --}}
+
     {{-- View toggle --}}
-    <div style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;margin-bottom:22px;width:fit-content;">
+    <div class="cust-view-toggle" style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;margin-bottom:22px;width:fit-content;">
         <button @click="setView('table')" :style="view==='table'
                     ? 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);'
                     : 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:transparent;color:#6B7280;'" style="display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);">
@@ -170,7 +256,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
 
     @if($customers->isEmpty())
     {{-- Empty state --}}
-    <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:60px;text-align:center;">
+    <div class="cust-idx-empty" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:60px;text-align:center;">
         <div style="width:56px;height:56px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
             <i class="fas fa-building" style="font-size:22px;color:#D1D5DB;"></i>
         </div>
@@ -185,7 +271,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
     @else
 
     {{-- ── TABLE VIEW ── --}}
-    <div x-show="view === 'table'" style="display:block;">
+    <div class="cust-view-table-wrap" x-show="view === 'table'" style="display:block;">
         <div class="cust-tbl-scroll" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);overflow:hidden;">
         <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
             <table style="width:100%;min-width:600px;border-collapse:collapse;">
@@ -284,7 +370,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
     </div>
 
     {{-- ── CARD VIEW ── --}}
-    <div x-show="view === 'cards'" style="display:none;">
+    <div class="cust-view-cards-wrap" x-show="view === 'cards'" style="display:none;">
         <div class="cust-cards-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
             @foreach($customers as $customer)
             <div class="cust-card" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:20px;display:flex;flex-direction:column;gap:14px;">
@@ -302,7 +388,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
                             @endif
                         </div>
                         <div style="min-width:0;">
-                            <a href="{{ route('admin.customers.show', $customer) }}"
+                            <a href="{{ route('admin.customers.show', $customer) }}" class="cust-card-name"
                                style="font-size:14px;font-weight:700;color:#111827;text-decoration:none;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $customer->name }}</a>
                             @if($customer->company)
                             <p style="font-size:12px;color:#9CA3AF;margin:1px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $customer->company }}</p>
@@ -310,7 +396,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
                         </div>
                     </div>
                     {{-- Action button --}}
-                    <button type="button"
+                    <button type="button" class="cust-card-action-btn"
                             onclick="openCustMenu(event, this)"
                             data-view="{{ route('admin.customers.show', $customer) }}"
                             data-report="{{ route('admin.customers.report', $customer) }}"
@@ -368,13 +454,13 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
 
                 {{-- Bottom buttons --}}
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                    <a href="{{ route('admin.customers.show', $customer) }}"
+                    <a href="{{ route('admin.customers.show', $customer) }}" class="cust-card-bottom-btn"
                        style="display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:#F9FAFB;border:1px solid #F0F0F0;border-radius:9px;font-size:12px;font-weight:600;color:#374151;text-decoration:none;transition:background .15s;"
                        onmouseover="this.style.background='#EEF2FF';this.style.color='#4F46E5';this.style.borderColor='#C7D2FE'"
                        onmouseout="this.style.background='#F9FAFB';this.style.color='#374151';this.style.borderColor='#F0F0F0'">
                         <i class="fas fa-eye" style="font-size:10px;"></i> View
                     </a>
-                    <a href="{{ route('admin.customers.report', $customer) }}"
+                    <a href="{{ route('admin.customers.report', $customer) }}" class="cust-card-bottom-btn"
                        style="display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:9px;font-size:12px;font-weight:600;color:#4F46E5;text-decoration:none;transition:background .15s;"
                        onmouseover="this.style.background='#E0E7FF'" onmouseout="this.style.background='#EEF2FF'">
                         <i class="fas fa-chart-line" style="font-size:10px;"></i> Report
@@ -401,7 +487,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
         <div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;padding:20px;pointer-events:none;">
 
         {{-- Panel --}}
-        <div x-show="modal"
+        <div x-show="modal" class="cust-modal-panel"
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 transform scale-95"
              x-transition:enter-end="opacity-100 transform scale-100"
@@ -475,7 +561,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
                     </div>
                 </div>
 
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+                <div class="cust-modal-grid-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
                     <div>
                         <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">Email</label>
                         <input type="email" name="email" value="{{ old('email') }}"
@@ -495,7 +581,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
                               style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:9px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;resize:vertical;font-family:'Inter',sans-serif;">{{ old('notes') }}</textarea>
                 </div>
 
-                <div style="display:flex;gap:10px;">
+                <div class="cust-modal-actions" style="display:flex;gap:10px;">
                     <button type="submit"
                             style="flex:1;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;padding:10px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">
                         <i class="fas fa-plus" style="margin-right:5px;font-size:11px;"></i>Create Customer
@@ -517,7 +603,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
         <div @click="summarizeModal=false"
              style="position:absolute;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(3px);"></div>
         <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;pointer-events:none;">
-        <div x-transition:enter="transition ease-out duration-200"
+        <div class="cust-modal-panel" x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 scale-95"
              x-transition:enter-end="opacity-100 scale-100"
              x-transition:leave="transition ease-in duration-150"
@@ -562,10 +648,10 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
             </div>
 
             {{-- Filter bar --}}
-            <div style="padding:10px 24px;border-bottom:1px solid #F3F4F6;flex-shrink:0;background:#FAFAFA;">
+            <div class="cust-summary-filter-bar" style="padding:10px 24px;border-bottom:1px solid #F3F4F6;flex-shrink:0;background:#FAFAFA;">
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                     {{-- Preset chips --}}
-                    <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                    <div class="cust-summary-chip-row" style="display:flex;gap:5px;flex-wrap:wrap;">
                         <button type="button" @click="setPreset('all')"
                                 :style="summaryPreset==='all' ? 'background:#4F46E5;color:#fff;border-color:#4F46E5;' : 'background:#fff;color:#6B7280;border-color:#E5E7EB;'"
                                 style="padding:5px 10px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid;transition:all .15s;">
@@ -587,9 +673,9 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
                             Last 3 Months
                         </button>
                     </div>
-                    <div style="width:1px;height:22px;background:#E5E7EB;flex-shrink:0;"></div>
+                    <div class="cust-summary-divider" style="width:1px;height:22px;background:#E5E7EB;flex-shrink:0;"></div>
                     {{-- Custom date pickers --}}
-                    <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                    <div class="cust-summary-date-row" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
                         <input type="date" x-model="summaryDateFrom"
                                @change="summaryPreset='custom'"
                                style="padding:5px 8px;border:1px solid #E5E7EB;border-radius:7px;font-size:11px;color:#374151;background:#fff;outline:none;cursor:pointer;"
@@ -608,7 +694,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
             </div>
 
             {{-- Totals row --}}
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:18px 24px;border-bottom:1px solid #F3F4F6;flex-shrink:0;">
+            <div class="cust-summary-totals" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:18px 24px;border-bottom:1px solid #F3F4F6;flex-shrink:0;">
                 <div style="text-align:center;background:#F9FAFB;border-radius:12px;padding:14px 10px;">
                     <div style="font-size:1.6rem;font-weight:800;color:#4F46E5;line-height:1;" x-text="summaryTotals.customers"></div>
                     <div style="font-size:11px;color:#9CA3AF;margin-top:4px;font-weight:600;">Customers</div>
@@ -711,7 +797,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
         <div @click="deleteModal=false"
              style="position:absolute;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(3px);"></div>
         <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;pointer-events:none;">
-        <div x-show="deleteModal"
+        <div x-show="deleteModal" class="cust-modal-panel"
              x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 scale-95"
              x-transition:enter-end="opacity-100 scale-100"
@@ -773,7 +859,7 @@ window._custSummaryDefaults = { from: '{{ $summaryDefaultFromStr }}', to: '{{ $s
                     @method('DELETE')
                 </form>
 
-                <div style="display:flex;gap:10px;margin-top:20px;">
+                <div class="cust-modal-actions" style="display:flex;gap:10px;margin-top:20px;">
                     <button type="button" @click="deleteModal=false"
                             style="flex:1;padding:10px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;"
                             onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">

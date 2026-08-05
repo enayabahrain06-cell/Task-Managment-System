@@ -44,10 +44,12 @@ table.data tr:nth-child(even) td { background: #FAFAFA; }
 
 .st { display: inline-block; padding: 2px 6px; border-radius: 20px; font-size: 8px; font-weight: bold; white-space: nowrap; }
 .st-delivered          { background: #D1FAE5; color: #065F46; }
+.st-archived           { background: #D1FAE5; color: #065F46; }
 .st-approved           { background: #E0E7FF; color: #3730A3; }
 .st-submitted          { background: #FEF3C7; color: #92400E; }
 .st-in_progress        { background: #DBEAFE; color: #1E40AF; }
 .st-revision_requested { background: #FEE2E2; color: #991B1B; }
+.st-pending_customer   { background: #FEF3C7; color: #92400E; }
 .st-assigned           { background: #F3F4F6; color: #374151; }
 .st-viewed             { background: #F3F4F6; color: #374151; }
 .st-draft              { background: #F3F4F6; color: #9CA3AF; }

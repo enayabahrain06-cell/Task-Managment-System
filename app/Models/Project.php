@@ -19,6 +19,7 @@ class Project extends Model
         'first_review_date',
         'created_by',
         'status',
+        'color',
         'customer_id',
         'is_quick',
     ];

@@ -65,10 +65,20 @@ class SocialBudgetController extends Controller
         $allProjects  = Project::where('is_quick', false)->orderBy('name')->get(['id', 'name']);
         $allCustomers = Customer::orderBy('name')->get(['id', 'name', 'company']);
 
+        // Mobile view (resources/views/admin/social-budget/_mobile-index.blade.php) reads
+        // these same counts through one $stats array instead of five separate variables.
+        $stats = [
+            'total'      => $totalCount,
+            'pending'    => $pendingCount,
+            'posted'     => $postedCount,
+            'withBudget' => $withBudget,
+            'spend'      => $totalBudgetBhd,
+        ];
+
         return view('admin.social-budget.index', compact(
             'tasks', 'projectId', 'customerId', 'status',
             'totalCount', 'postedCount', 'pendingCount', 'withBudget', 'totalBudgetBhd',
-            'allProjects', 'allCustomers'
+            'allProjects', 'allCustomers', 'stats'
         ));
     }
 }

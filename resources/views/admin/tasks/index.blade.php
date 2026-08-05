@@ -3,17 +3,23 @@
 
 @section('content')
 @php
-$statusMeta = [
-    'draft'              => ['label'=>'Draft',       'bg'=>'#F3F4F6','color'=>'#6B7280','dot'=>'#9CA3AF', 'pct'=>5],
-    'assigned'           => ['label'=>'Assigned',    'bg'=>'#EEF2FF','color'=>'#4F46E5','dot'=>'#6366F1', 'pct'=>15],
-    'viewed'             => ['label'=>'Viewed',      'bg'=>'#F0F9FF','color'=>'#0369A1','dot'=>'#0EA5E9', 'pct'=>25],
-    'in_progress'        => ['label'=>'In Progress', 'bg'=>'#FFFBEB','color'=>'#D97706','dot'=>'#F59E0B', 'pct'=>55],
-    'submitted'          => ['label'=>'In Review',   'bg'=>'#F5F3FF','color'=>'#7C3AED','dot'=>'#8B5CF6', 'pct'=>75],
-    'revision_requested' => ['label'=>'Revision',   'bg'=>'#FFF7ED','color'=>'#C2410C','dot'=>'#F97316', 'pct'=>60],
-    'approved'           => ['label'=>'Approved',    'bg'=>'#F0FDF4','color'=>'#15803D','dot'=>'#22C55E', 'pct'=>90],
-    'delivered'          => ['label'=>'Delivered',   'bg'=>'#F0FDF4','color'=>'#166534','dot'=>'#16A34A', 'pct'=>100],
-    'archived'           => ['label'=>'Archived',    'bg'=>'#F3F4F6','color'=>'#6B7280','dot'=>'#9CA3AF', 'pct'=>100],
+// pct/dot are pipeline-progress extras not covered by the canonical status map; label/color/bg come from TaskStatusColors::MAP
+$statusPipelineExtra = [
+    'draft'              => ['dot'=>'#9CA3AF', 'pct'=>5],
+    'assigned'           => ['dot'=>'#6366F1', 'pct'=>15],
+    'viewed'             => ['dot'=>'#0EA5E9', 'pct'=>25],
+    'in_progress'        => ['dot'=>'#F59E0B', 'pct'=>55],
+    'paused'             => ['dot'=>'#F59E0B', 'pct'=>55],
+    'submitted'          => ['dot'=>'#8B5CF6', 'pct'=>75],
+    'revision_requested' => ['dot'=>'#F97316', 'pct'=>60],
+    'pending_customer'   => ['dot'=>'#FB923C', 'pct'=>80],
+    'approved'           => ['dot'=>'#22C55E', 'pct'=>90],
+    'delivered'          => ['dot'=>'#16A34A', 'pct'=>100],
+    'archived'           => ['dot'=>'#9CA3AF', 'pct'=>100],
 ];
+$statusMeta = collect(\App\Support\TaskStatusColors::MAP)->mapWithKeys(fn($c, $k) => [
+    $k => ['label'=>$c['label'], 'bg'=>$c['bg'], 'color'=>$c['text'], 'dot'=>$statusPipelineExtra[$k]['dot'], 'pct'=>$statusPipelineExtra[$k]['pct']],
+])->all();
 $priorityMeta = [
     'high'   => ['color'=>'#EF4444','bg'=>'#FEF2F2','label'=>'High'],
     'medium' => ['color'=>'#F59E0B','bg'=>'#FFFBEB','label'=>'Medium'],
@@ -87,17 +93,75 @@ $avatarColors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6','#E
     </a>
 </div>
 
-@if(!$isDoneTab)
-{{-- Active tab: 3 stat cards --}}
 @php
 $activeStatDefs = [
     ['label'=>'All Active',  'value'=>$stats['active'],      'sub'=>'Non-completed',  'grad'=>'linear-gradient(135deg,#4F46E5,#6366F1)', 'shadow'=>'rgba(79,70,229,.4)',   'url'=> route('admin.tasks.index'),                           'active'=> !request('status') && !request('overdue') && !request('filter')],
     ['label'=>'In Progress', 'value'=>$stats['in_progress'], 'sub'=>'Working Now',    'grad'=>'linear-gradient(135deg,#D97706,#F59E0B)', 'shadow'=>'rgba(217,119,6,.4)',   'url'=> route('admin.tasks.index', ['status'=>'in_progress']), 'active'=> request('status')==='in_progress'],
+    ['label'=>'In Review',   'value'=>$stats['in_review'],   'sub'=>'Awaiting you',   'grad'=>'linear-gradient(135deg,#7C3AED,#A78BFA)', 'shadow'=>'rgba(124,58,237,.4)',  'url'=> route('admin.tasks.index', ['status'=>'submitted']),   'active'=> request('status')==='submitted'],
     ['label'=>'Overdue',     'value'=>$stats['overdue'],     'sub'=>'Past Deadline',  'grad'=>'linear-gradient(135deg,#DC2626,#EF4444)', 'shadow'=>'rgba(220,38,38,.4)',   'url'=> route('admin.tasks.index') . '?overdue=1',            'active'=> request()->boolean('overdue')],
-    ['label'=>'Completed',   'value'=>$stats['done'],        'sub'=>'All time done',  'grad'=>'linear-gradient(135deg,#7C3AED,#8B5CF6)', 'shadow'=>'rgba(124,58,237,.4)',  'url'=> route('admin.tasks.index', ['tab'=>'done']),           'active'=> false],
+    ['label'=>'Completed',   'value'=>$stats['done'],        'sub'=>'All time done',  'grad'=>'linear-gradient(135deg,#059669,#10B981)', 'shadow'=>'rgba(5,150,105,.4)',   'url'=> route('admin.tasks.index', ['tab'=>'done']),           'active'=> $isDoneTab],
 ];
 @endphp
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;">
+
+@php $doneStatuses = ['approved', 'delivered', 'archived']; @endphp
+
+{{-- Mobile-only pill filter row (reuses the same real counts/URLs as the desktop stat cards above) --}}
+<div class="atask-mobile-only">
+    @php
+        // Spec chip order/labels: All / Overdue / Active / In review / Done — reuses the
+        // exact same real counts + URLs as the desktop stat cards below ($activeStatDefs
+        // indices: 0=All Active, 1=In Progress, 2=In Review, 3=Overdue, 4=Completed).
+        $ataskPillMap = [
+            ['idx' => 0, 'label' => 'All'],
+            ['idx' => 3, 'label' => 'Overdue'],
+            ['idx' => 1, 'label' => 'Active'],
+            ['idx' => 2, 'label' => 'In review'],
+            ['idx' => 4, 'label' => 'Done'],
+        ];
+    @endphp
+    <div class="atask-pill-row" style="margin-bottom:14px;">
+        @foreach($ataskPillMap as $ap)
+        @php $card = $activeStatDefs[$ap['idx']]; @endphp
+        <a href="{{ $card['url'] }}" class="atask-pill {{ $card['active'] ? 'is-active' : '' }}">{{ $ap['label'] }} · {{ $card['value'] }}</a>
+        @endforeach
+    </div>
+
+    <p style="font-size:12px;color:#9CA3AF;margin:0 0 10px;padding:0 2px;">{{ $tasks->total() }} {{ Str::plural('task', $tasks->total()) }}</p>
+
+    {{-- Mobile-only row list: status rail + chip + due date + assignee avatar --}}
+    <div style="background:#fff;border:1px solid #EDEFF3;border-radius:16px;overflow:hidden;margin-bottom:16px;">
+        @forelse($tasks as $mt)
+        @php $mtOverdue = $mt->deadline && $mt->deadline->isPast() && !in_array($mt->status, $doneStatuses); @endphp
+        <a href="{{ route('admin.tasks.show', $mt) }}" class="atask-mobile-row">
+            <x-status-rail :status="$mt->status" />
+            <span style="flex:1;min-width:0;">
+                <span style="display:block;font-size:14.5px;font-weight:600;color:#111827;letter-spacing:-.012em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $mt->title }}</span>
+                <span style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+                    <x-status-chip :status="$mt->status" />
+                    <span style="font-size:11.5px;font-weight:500;color:#9CA3AF;max-width:13ch;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $mt->project->name ?? 'Quick Tasks' }}</span>
+                </span>
+            </span>
+            <span style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
+                @if($mt->deadline)
+                <span style="font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;color:{{ $mtOverdue ? '#DC2626' : '#9CA3AF' }};">{{ $mt->deadline->format('M d') }}</span>
+                @endif
+                @if($mt->assignee)
+                <span style="width:22px;height:22px;border-radius:99px;background:var(--mob-brand-grad);color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;">{{ strtoupper(substr($mt->assignee->name, 0, 1)) }}</span>
+                @endif
+            </span>
+        </a>
+        @empty
+        <div style="padding:32px 16px;text-align:center;">
+            <p style="font-size:13.5px;font-weight:600;color:#111827;margin:0;">Nothing here</p>
+            <p style="font-size:12px;color:#9CA3AF;margin:4px 0 0;">No tasks match this filter.</p>
+        </div>
+        @endforelse
+    </div>
+</div>
+
+@if(!$isDoneTab)
+{{-- Active tab: 3 stat cards --}}
+<div class="task-stat-row" style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:24px;">
     @foreach($activeStatDefs as $card)
     @php $isActive = $card['active']; @endphp
     <a href="{{ $card['url'] }}" style="text-decoration:none;display:flex;">
@@ -115,19 +179,19 @@ $activeStatDefs = [
 </div>
 @else
 {{-- Done tab: summary banner with breakdown --}}
-<div style="display:flex;align-items:center;gap:14px;padding:16px 20px;background:linear-gradient(135deg,#F0FDF4,#DCFCE7);border-radius:14px;border:1px solid #BBF7D0;margin-bottom:24px;">
-    <div style="width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#059669,#10B981);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(5,150,105,.3);">
+<div class="task-done-banner" style="display:flex;align-items:center;gap:14px;padding:16px 20px;background:linear-gradient(135deg,#F0FDF4,#DCFCE7);border-radius:14px;border:1px solid #BBF7D0;margin-bottom:24px;">
+    <div class="task-done-banner-icon" style="width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,#059669,#10B981);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(5,150,105,.3);">
         <i class="fa fa-circle-check" style="color:#fff;font-size:18px;"></i>
     </div>
     <div style="flex:1;">
         <p style="font-size:15px;font-weight:700;color:#14532D;margin:0;">{{ $stats['done'] }} Completed Task{{ $stats['done'] !== 1 ? 's' : '' }}</p>
-        <div style="display:flex;align-items:center;gap:12px;margin-top:4px;">
+        <div class="task-done-banner-counts" style="display:flex;align-items:center;gap:12px;margin-top:4px;">
             <span style="font-size:12px;color:#15803D;"><i class="fa fa-circle-check" style="font-size:10px;margin-right:3px;color:#22C55E;"></i>{{ $stats['approved'] }} approved</span>
             <span style="font-size:12px;color:#15803D;"><i class="fa fa-truck" style="font-size:10px;margin-right:3px;color:#16A34A;"></i>{{ $stats['delivered'] }} delivered</span>
             <span style="font-size:12px;color:#6B7280;"><i class="fa fa-box-archive" style="font-size:10px;margin-right:3px;color:#9CA3AF;"></i>{{ $stats['archived'] }} archived</span>
         </div>
     </div>
-    <a href="{{ route('admin.tasks.index') }}"
+    <a href="{{ route('admin.tasks.index') }}" class="task-done-banner-back"
        style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#15803D;text-decoration:none;background:rgba(255,255,255,.6);border:1px solid #86EFAC;padding:7px 14px;border-radius:8px;">
         <i class="fa fa-arrow-left" style="font-size:10px;"></i> Back to Active
     </a>
@@ -145,10 +209,10 @@ $activeStatDefs = [
     <form method="GET" action="{{ route('admin.tasks.index') }}" id="taskFilterForm">
         @if($isDoneTab)<input type="hidden" name="tab" value="done">@endif
 
-        <div class="flex items-center gap-2 flex-wrap">
+        <div class="flex items-center gap-2 flex-wrap task-filter-bar">
 
             {{-- Search --}}
-            <div class="relative" style="width:220px;flex-shrink:0;">
+            <div class="relative mob-filter-field" data-label="Search" style="width:220px;flex-shrink:0;">
                 <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                 <input type="text" name="search" value="{{ request('search') }}" placeholder="Search tasks…"
                        class="w-full pl-8 pr-3 py-2 text-sm bg-white border border-gray-200 rounded-xl
@@ -161,7 +225,7 @@ $activeStatDefs = [
             <div class="hidden sm:block w-px h-5 bg-gray-200 mx-1"></div>
 
             {{-- Status --}}
-            <div class="relative">
+            <div class="relative mob-filter-field" data-label="Status">
                 <select name="status" onchange="document.getElementById('taskFilterForm').submit()"
                         class="{{ $filterSelClass }} {{ request('status') ? $filterSelActive : $filterSelIdle }}">
                     <option value="">Status</option>
@@ -173,7 +237,7 @@ $activeStatDefs = [
             </div>
 
             {{-- Priority --}}
-            <div class="relative">
+            <div class="relative mob-filter-field" data-label="Priority">
                 <select name="priority" onchange="document.getElementById('taskFilterForm').submit()"
                         class="{{ $filterSelClass }} {{ request('priority') ? $filterSelActive : $filterSelIdle }}">
                     <option value="">Priority</option>
@@ -185,7 +249,7 @@ $activeStatDefs = [
             </div>
 
             {{-- Project --}}
-            <div class="relative">
+            <div class="relative mob-filter-field" data-label="Project">
                 <select name="project" onchange="document.getElementById('taskFilterForm').submit()"
                         class="{{ $filterSelClass }} {{ request('project') ? $filterSelActive : $filterSelIdle }}">
                     <option value="">Project</option>
@@ -197,7 +261,7 @@ $activeStatDefs = [
             </div>
 
             {{-- Assignee --}}
-            <div class="relative">
+            <div class="relative mob-filter-field" data-label="Assignee">
                 <select name="assignee" onchange="document.getElementById('taskFilterForm').submit()"
                         class="{{ $filterSelClass }} {{ request('assignee') ? $filterSelActive : $filterSelIdle }}">
                     <option value="">User</option>
@@ -211,7 +275,7 @@ $activeStatDefs = [
             {{-- Search submit (for keyboard Enter) --}}
             <button type="submit"
                     class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-700
-                           text-white shadow-sm shadow-indigo-200 transition-all duration-200 active:scale-95 flex-shrink-0">
+                           text-white shadow-sm shadow-indigo-200 transition-all duration-200 active:scale-95 flex-shrink-0 mob-filter-submit">
                 <i class="fas fa-search text-xs"></i>
             </button>
 
@@ -219,7 +283,7 @@ $activeStatDefs = [
             @if($hasFilters)
             <a href="{{ $isDoneTab ? route('admin.tasks.index', ['tab'=>'done']) : route('admin.tasks.index') }}"
                class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100
-                      text-red-500 text-xs font-semibold transition-all duration-200 flex-shrink-0">
+                      text-red-500 text-xs font-semibold transition-all duration-200 flex-shrink-0 mob-filter-clear">
                 <i class="fas fa-times text-[10px]"></i> Clear
             </a>
             @endif
@@ -239,38 +303,159 @@ $activeStatDefs = [
 .task-list-table tr:last-child td { border-bottom:none; }
 .task-list-table tbody tr:hover td { background:#FAFBFF; }
 
-/* ── Mobile responsive overrides ── */
+/* ── Mobile responsive overrides (premium native-app pass; desktop >768px untouched) ── */
 @media(max-width:768px){
     /* Stack the page header */
     .flex.items-center.justify-between.mb-6 { flex-direction:column; align-items:flex-start !important; gap:10px; }
     .flex.items-center.justify-between.mb-6 > .flex { flex-wrap:wrap; }
-    /* Filter bar: wrap on mobile */
-    .task-filter-bar { flex-wrap:wrap; gap:8px !important; }
+    .flex.items-center.justify-between.mb-6 > .flex a { min-height:44px !important; }
     /* Tab bar: allow scroll on very small screens */
     div[style*="width:fit-content"] { max-width:100%; overflow-x:auto; }
+
+    /* ── Stat cards: swipeable horizontal row (mob-kpi-row style) ── */
+    .task-stat-row {
+        display:flex !important;
+        grid-template-columns:none !important;
+        overflow-x:auto !important;
+        -webkit-overflow-scrolling:touch !important;
+        scroll-snap-type:x mandatory !important;
+        gap:var(--mob-sp-2) !important;
+        padding:2px 2px 10px !important;
+        margin-bottom:var(--mob-sp-2) !important;
+    }
+    .task-stat-row::-webkit-scrollbar { display:none; }
+    .task-stat-row > a { flex:0 0 72% !important; max-width:230px; scroll-snap-align:start; }
+    .proj-stat-card { border-radius:var(--mob-r-md) !important; }
+    .proj-stat-card-value { font-size:28px !important; }
+
+    /* ── Done-tab summary banner: stack on mobile ── */
+    .task-done-banner { flex-wrap:wrap; border-radius:var(--mob-r-md) !important; padding:var(--mob-sp-2) !important; }
+    .task-done-banner-counts { flex-wrap:wrap; row-gap:4px; }
+    .task-done-banner-back { width:100%; justify-content:center; margin-top:4px; }
+
+    /* ── Filters: full-width stacked fields with labels above ── */
+    .task-filter-bar {
+        flex-direction:row; flex-wrap:wrap !important;
+        row-gap:26px !important; column-gap:10px !important;
+        align-items:stretch !important;
+        padding-top:22px;
+    }
+    .task-filter-bar .mob-filter-field {
+        flex:1 1 100% !important; width:100% !important; position:relative;
+    }
+    .task-filter-bar .mob-filter-field::before {
+        content:attr(data-label); position:absolute; top:-20px; left:2px;
+        font-size:11px; font-weight:700; color:#9CA3AF; text-transform:uppercase; letter-spacing:.04em;
+    }
+    .task-filter-bar .mob-filter-field select,
+    .task-filter-bar .mob-filter-field input[type="text"] {
+        width:100% !important; min-height:46px !important; border-radius:var(--mob-r-sm) !important;
+        font-size:15px !important; padding-top:10px !important; padding-bottom:10px !important;
+    }
+    .task-filter-bar .mob-filter-submit,
+    .task-filter-bar .mob-filter-clear {
+        flex:1 1 0 !important; width:auto !important; min-height:46px !important;
+        border-radius:var(--mob-r-sm) !important; justify-content:center;
+    }
+
+    /* ── Card view: single column, always-visible touch-friendly actions ── */
+    .task-cards-grid { grid-template-columns:1fr !important; gap:var(--mob-sp-2) !important; }
+    .mob-card-body { padding-top:48px !important; }
+    .mob-action-btn {
+        opacity:1 !important; width:44px !important; height:44px !important; font-size:13px !important;
+    }
+    /* Edit Task modal close "X" (30px, no prior mobile override) */
+    button[style*="width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.15)"] {
+        width:44px !important; height:44px !important;
+    }
+
+    /* ── Table view → stacked card list (mob-table-cards technique) ── */
+    .task-table-outer {
+        background:transparent !important; border:none !important; box-shadow:none !important;
+        border-radius:0 !important; overflow:visible !important;
+    }
+    .mob-table-cards table.task-list-table { min-width:0 !important; width:100% !important; }
+    .mob-table-cards tbody tr {
+        display:flex !important; flex-direction:column !important;
+    }
+    .mob-table-cards td {
+        display:flex !important; align-items:center !important; justify-content:space-between !important;
+        padding:9px 4px !important; border-bottom:1px solid #F9FAFB !important; font-size:13px !important;
+    }
+    /* Task title: hero cell, full width, no label, shown first */
+    .mob-table-cards td.mob-task-cell {
+        order:1; display:block !important; text-align:left !important;
+        padding:4px 4px 12px !important; border-bottom:1px solid #F3F4F6 !important;
+    }
+    .mob-table-cards td.mob-task-cell::before { content:none !important; }
+    .mob-table-cards td.mob-task-cell a { font-size:15px !important; white-space:normal !important; max-width:100% !important; }
+    /* Status shown prominently, right after the title */
+    .mob-table-cards td.mob-col-status   { order:2; }
+    .mob-table-cards td.mob-col-priority { order:3; }
+    .mob-table-cards td.mob-col-assignee { order:4; }
+    .mob-table-cards td.mob-col-deadline { order:5; }
+    .mob-table-cards td.mob-col-project  { order:6; }
+    /* Actions: full-width comfortable button, last */
+    .mob-table-cards td.mob-col-actions {
+        order:7; display:block !important; text-align:right !important;
+        padding:12px 4px 4px !important; border-bottom:none !important; border-top:1px solid #F3F4F6 !important; margin-top:4px;
+    }
+    .mob-table-cards td.mob-col-actions::before { content:none !important; }
+    .mob-row-actions-btn {
+        width:100% !important; height:44px !important; border-radius:var(--mob-r-sm) !important;
+        font-size:15px !important; gap:8px !important;
+    }
+    .mob-row-actions-btn::after {
+        content:"Actions"; font-size:13px; font-weight:600; color:#6B7280; margin-left:6px;
+    }
+
+    /* ── Edit task modal: stack 2-col grids and footer buttons on small phones ── */
+    .mob-edit-grid { grid-template-columns:1fr !important; gap:var(--mob-sp-2) !important; }
+}
+@media(max-width:600px){
+    .mob-edit-footer { flex-wrap:wrap; }
+    .mob-edit-cancel-btn, .mob-edit-save-btn { flex:1 1 auto; text-align:center; justify-content:center; min-height:44px !important; }
 }
 @media(max-width:480px){
-    /* Stat cards row: 2-col on small mobile */
-    .grid.grid-cols-4 { grid-template-columns:repeat(2,1fr) !important; }
-    .proj-stat-card-value { font-size:26px !important; }
+    .task-stat-row > a { flex:0 0 80% !important; }
+}
+
+/* ── Mobile-only tasks list: pill filters + rail/chip rows, replacing the
+   desktop stat-carousel, filter-bar, and cards/table toggle below ≤768px ── */
+.atask-mobile-only { display: none; }
+.atask-pill-row { align-items:center; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding:2px 2px 4px; }
+.atask-pill-row::-webkit-scrollbar { display:none; }
+.atask-pill { flex-shrink:0; padding:9px 15px; border-radius:11px; font-size:12.5px; font-weight:600; white-space:nowrap; text-decoration:none; border:1px solid #E1E4EA; background:#fff; color:#4B5563; }
+.atask-pill.is-active { background:var(--mob-brand); border-color:var(--mob-brand); color:#fff; }
+.atask-mobile-row { align-items:center; gap:12px; background:#fff; padding:13px 14px; text-decoration:none; border-bottom:1px solid #EDEFF3; }
+.atask-mobile-row:last-child { border-bottom:none; }
+@media(max-width:768px){
+    .atask-mobile-only { display: block !important; }
+    .atask-pill-row, .atask-mobile-row { display: flex !important; }
+    .task-stat-row,
+    .task-done-banner,
+    #taskFilterForm,
+    .task-view-toggle-wrap {
+        display: none !important;
+    }
 }
 </style>
 
 @if($tasks->isEmpty())
-<div class="bg-white rounded-2xl border border-gray-100 shadow-sm py-24 text-center">
-    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-        <i class="fas fa-list-check text-2xl text-gray-300"></i>
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm py-24 text-center max-md:rounded-[18px] max-md:shadow-sm max-md:ring-1 max-md:ring-black/5 max-md:py-8">
+    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 max-md:w-10 max-md:h-10">
+        <i class="fas fa-list-check text-2xl text-gray-300 max-md:text-base"></i>
     </div>
-    <p class="text-gray-500 font-semibold">No tasks found</p>
+    <p class="text-gray-500 font-semibold max-md:text-sm">No tasks found</p>
     @if(request()->hasAny(['search','status','priority','project','assignee','overdue','filter']))
-    <a href="{{ $isDoneTab ? route('admin.tasks.index', ['tab'=>'done']) : route('admin.tasks.index') }}" class="mt-3 inline-block text-sm text-indigo-500 hover:underline">Clear filters</a>
+    <a href="{{ $isDoneTab ? route('admin.tasks.index', ['tab'=>'done']) : route('admin.tasks.index') }}" class="mt-3 inline-block text-sm text-indigo-500 hover:underline max-md:text-xs">Clear filters</a>
     @endif
 </div>
 @else
 @php $doneStatuses = ['approved','delivered','archived']; @endphp
 
 {{-- ── View toggle (Alpine) ── --}}
-<div x-data="taskViewToggle()" @task-edit-open.window="openEdit($event.detail)" style="margin-bottom:22px;">
+<div class="task-view-toggle-wrap" x-data="taskViewToggle()" @task-edit-open.window="openEdit($event.detail)" style="margin-bottom:22px;">
 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
     <div style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;width:fit-content;">
         <button @click="setView('table')"
@@ -293,7 +478,7 @@ $activeStatDefs = [
 
 {{-- ── CARD VIEW ── --}}
 <div x-show="view==='cards'">
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-5">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-5 task-cards-grid">
 @foreach($tasks as $task)
     @php
         $sm        = $statusMeta[$task->status] ?? $statusMeta['draft'];
@@ -302,7 +487,7 @@ $activeStatDefs = [
         $daysLeft  = $task->deadline ? now()->diffInDays($task->deadline, false) : null;
         $isDone    = in_array($task->status, $doneStatuses);
         $priorityDot = ['high'=>'#EF4444','medium'=>'#F59E0B','low'=>'#10B981'][$task->priority] ?? '#D1D5DB';
-        $stages    = ['draft'=>0,'assigned'=>1,'viewed'=>1,'in_progress'=>2,'submitted'=>3,'revision_requested'=>2,'approved'=>4,'delivered'=>5,'archived'=>5];
+        $stages    = ['draft'=>0,'assigned'=>1,'viewed'=>1,'in_progress'=>2,'paused'=>2,'submitted'=>3,'revision_requested'=>2,'pending_customer'=>3,'approved'=>4,'delivered'=>5,'archived'=>5];
         $stageNum  = $stages[$task->status] ?? 0;
     @endphp
 
@@ -321,11 +506,11 @@ $activeStatDefs = [
     @endphp
     <div class="relative group/card">
 
-    {{-- Action buttons (top-right, visible on hover) --}}
-    <div style="position:absolute;top:10px;right:10px;z-index:10;display:flex;gap:4px;">
+    {{-- Action buttons (top-right, visible on hover; always visible on mobile via .mob-action-btn) --}}
+    <div class="mob-card-actions" style="position:absolute;top:10px;right:10px;z-index:10;display:flex;gap:4px;">
         <button type="button"
                 @click.prevent="openEdit(@js($cardEditData))"
-                class="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                class="opacity-0 group-hover/card:opacity-100 transition-opacity mob-action-btn"
                 style="width:28px;height:28px;border-radius:8px;background:rgba(99,102,241,.1);color:#6366F1;border:1px solid rgba(99,102,241,.2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;"
                 onmouseover="this.style.background='rgba(99,102,241,.2)'" onmouseout="this.style.background='rgba(99,102,241,.1)'"
                 title="Edit task">
@@ -335,7 +520,7 @@ $activeStatDefs = [
         <form method="POST" action="{{ route('admin.tasks.reopen', $task) }}" style="margin:0;">
             @csrf
             <button type="submit"
-                    class="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                    class="opacity-0 group-hover/card:opacity-100 transition-opacity mob-action-btn"
                     style="width:28px;height:28px;border-radius:8px;background:rgba(217,119,6,.1);color:#D97706;border:1px solid rgba(217,119,6,.2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;"
                     onmouseover="this.style.background='rgba(217,119,6,.2)'" onmouseout="this.style.background='rgba(217,119,6,.1)'"
                     title="Reopen task">
@@ -347,7 +532,7 @@ $activeStatDefs = [
               onsubmit="return confirm('Archive &quot;{{ addslashes($task->title) }}&quot;?')">
             @csrf
             <button type="submit"
-                    class="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                    class="opacity-0 group-hover/card:opacity-100 transition-opacity mob-action-btn"
                     style="width:28px;height:28px;border-radius:8px;background:rgba(22,163,74,.1);color:#16A34A;border:1px solid rgba(22,163,74,.2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;"
                     onmouseover="this.style.background='rgba(22,163,74,.2)'" onmouseout="this.style.background='rgba(22,163,74,.1)'"
                     title="Archive (close) task">
@@ -361,7 +546,7 @@ $activeStatDefs = [
               style="margin:0;">
             @csrf @method('DELETE')
             <button type="submit"
-                    class="opacity-0 group-hover/card:opacity-100 transition-opacity"
+                    class="opacity-0 group-hover/card:opacity-100 transition-opacity mob-action-btn"
                     style="width:28px;height:28px;border-radius:8px;background:rgba(239,68,68,.1);color:#EF4444;border:1px solid rgba(239,68,68,.2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;"
                     onmouseover="this.style.background='rgba(239,68,68,.2)'" onmouseout="this.style.background='rgba(239,68,68,.1)'"
                     title="Move to Recycle Bin">
@@ -372,10 +557,10 @@ $activeStatDefs = [
     </div>
 
     <a href="{{ route('admin.tasks.show', $task) }}"
-       class="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-indigo-100 transition group flex flex-col overflow-hidden"
+       class="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-indigo-100 transition group flex flex-col overflow-hidden mob-card max-md:rounded-[18px] max-md:shadow-sm max-md:ring-1 max-md:ring-black/5"
        style="text-decoration:none;">
 
-        <div class="p-5 flex flex-col gap-3 flex-1">
+        <div class="p-5 flex flex-col gap-3 flex-1 mob-card-body max-md:p-4 max-md:gap-2">
 
             {{-- Top row: project + priority dot --}}
             <div class="flex items-center justify-between gap-2">
@@ -386,7 +571,7 @@ $activeStatDefs = [
             </div>
 
             {{-- Title --}}
-            <h3 class="text-sm font-semibold text-gray-800 leading-snug group-hover:text-indigo-600 transition line-clamp-2">
+            <h3 class="text-sm font-semibold text-gray-800 leading-snug group-hover:text-indigo-600 transition line-clamp-2 max-md:text-gray-900">
                 {{ $task->title }}
             </h3>
 
@@ -425,7 +610,7 @@ $activeStatDefs = [
             </div>
 
             {{-- Assignee --}}
-            <div class="flex items-center gap-2 mt-auto flex-wrap">
+            <div class="flex items-center gap-2 mt-auto flex-wrap max-md:gap-3">
                 @if($task->assignee)
                 <div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 text-xs font-bold flex-shrink-0">
                     {{ strtoupper(substr($task->assignee->name,0,1)) }}
@@ -569,8 +754,8 @@ $activeStatDefs = [
 
 {{-- ── LIST / TABLE VIEW ── --}}
 <div x-show="view==='table'" x-cloak>
-<div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5">
-<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-5 task-table-outer">
+<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;" class="mob-table-cards">
 <table class="task-list-table">
     <thead>
         <tr>
@@ -603,7 +788,7 @@ $activeStatDefs = [
     @endphp
     <tr>
         {{-- Task title --}}
-        <td style="max-width:280px;">
+        <td style="max-width:280px;" class="mob-task-cell">
             <a href="{{ route('admin.tasks.show', $task) }}"
                style="font-size:13px;font-weight:600;color:#111827;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;"
                onmouseover="this.style.color='#4F46E5'" onmouseout="this.style.color='#111827'"
@@ -645,14 +830,14 @@ $activeStatDefs = [
             @endif
         </td>
         {{-- Project --}}
-        <td>
+        <td class="mob-col-project" data-label="Project">
             <span style="font-size:12px;color:#6B7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;display:block;">
                 <i class="fas fa-diagram-project" style="font-size:10px;margin-right:4px;color:#C4B5FD;"></i>
                 {{ $task->project?->name ?? '—' }}
             </span>
         </td>
         {{-- Assignee --}}
-        <td>
+        <td class="mob-col-assignee" data-label="Assignee">
             @if($task->assignee)
             <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
                 <div style="display:flex;align-items:center;gap:6px;">
@@ -689,19 +874,19 @@ $activeStatDefs = [
             @endif
         </td>
         {{-- Priority --}}
-        <td>
+        <td class="mob-col-priority" data-label="Priority">
             <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:{{ $pm['bg'] }};color:{{ $pm['color'] }};white-space:nowrap;">
                 {{ $pm['label'] }}
             </span>
         </td>
         {{-- Status --}}
-        <td>
+        <td class="mob-col-status" data-label="Status">
             <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:{{ $sm['bg'] }};color:{{ $sm['color'] }};white-space:nowrap;">
                 {{ $sm['label'] }}
             </span>
         </td>
         {{-- Deadline / Created date --}}
-        <td style="white-space:nowrap;">
+        <td style="white-space:nowrap;" class="mob-col-deadline" data-label="{{ $isDoneTab ? 'Created / Deadline' : 'Deadline' }}">
             @if($isDoneTab)
                 <div style="display:flex;flex-direction:column;gap:2px;">
                     <span style="font-size:12px;color:#6B7280;">
@@ -724,7 +909,7 @@ $activeStatDefs = [
             @endif
         </td>
         {{-- Actions --}}
-        <td style="text-align:right;white-space:nowrap;">
+        <td style="text-align:right;white-space:nowrap;" class="mob-col-actions">
             <button type="button"
                     onclick="openTaskMenu(event, this)"
                     data-view="{{ route('admin.tasks.show', $task) }}"
@@ -735,7 +920,8 @@ $activeStatDefs = [
                     data-title="{{ addslashes($task->title) }}"
                     style="width:30px;height:30px;border-radius:8px;background:#F9FAFB;border:1px solid #E5E7EB;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:14px;transition:background .15s;letter-spacing:1px;"
                     onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='#F9FAFB'"
-                    title="Actions">
+                    title="Actions"
+                    class="mob-row-actions-btn">
                 <i class="fas fa-ellipsis-vertical"></i>
             </button>
         </td>
@@ -837,7 +1023,7 @@ $activeStatDefs = [
                 </div>
 
                 {{-- Project + Customer row --}}
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" class="mob-edit-grid">
                     <div>
                         <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Project</label>
                         <div style="position:relative;">
@@ -873,7 +1059,7 @@ $activeStatDefs = [
                 </div>
 
                 {{-- Assignee + Priority row --}}
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" class="mob-edit-grid">
                     <div>
                         <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Assignee</label>
                         <div style="position:relative;">
@@ -926,15 +1112,17 @@ $activeStatDefs = [
 
             </div>
             {{-- Footer --}}
-            <div style="padding:16px 24px;border-top:1px solid #F3F4F6;display:flex;align-items:center;justify-content:flex-end;gap:10px;background:#FAFAFA;">
+            <div style="padding:16px 24px;border-top:1px solid #F3F4F6;display:flex;align-items:center;justify-content:flex-end;gap:10px;background:#FAFAFA;" class="mob-edit-footer">
                 <button type="button" @click="closeEdit()"
                         style="padding:9px 20px;border-radius:10px;border:1.5px solid #E5E7EB;background:#fff;color:#374151;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;"
-                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='#fff'">
+                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='#fff'"
+                        class="mob-edit-cancel-btn">
                     Cancel
                 </button>
                 <button type="submit"
                         style="padding:9px 22px;border-radius:10px;border:none;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(79,70,229,.4);transition:opacity .15s;"
-                        onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">
+                        onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'"
+                        class="mob-edit-save-btn">
                     <i class="fa fa-check" style="margin-right:6px;font-size:11px;"></i>Save Changes
                 </button>
             </div>

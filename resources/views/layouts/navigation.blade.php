@@ -373,6 +373,17 @@
     </nav>
 
     {{-- Footer (empty — logout and settings moved to topbar dropdown) --}}
-    <div class="sidebar-footer" style="padding:8px 12px;"></div>
+    <div class="sidebar-footer" style="padding:8px 12px;">
+        {{-- Sign out — mobile drawer only; desktop keeps logout in the topbar dropdown --}}
+        <form method="POST" action="{{ route('logout') }}" class="sidebar-signout-mobile-only">
+            @csrf
+            <button type="submit" class="nav-item" style="width:100%;border:none;background:none;cursor:pointer;color:#EF4444;text-align:left;">
+                <div class="nav-left">
+                    <i class="fas fa-right-from-bracket nav-icon" style="color:#EF4444;"></i>
+                    Sign Out
+                </div>
+            </button>
+        </form>
+    </div>
 
 </div>

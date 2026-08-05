@@ -2,21 +2,141 @@
 @section('title', 'Subscriptions')
 
 @section('content')
+@php
+    // Canonical subscription status colors — single source of truth for BOTH the
+    // desktop table's status-badge and the mobile record-card's status chip, so they
+    // can never render a different color for the same status again (this was a real
+    // QA bug: desktop showed green for "active", the mobile card showed indigo).
+    $subStatusColors = [
+        'active'        => ['bg' => '#ECFDF5', 'color' => '#16A34A', 'label' => 'Active',   'icon' => 'fa-circle'],
+        'expiring_soon' => ['bg' => '#FEF3C7', 'color' => '#D97706', 'label' => 'Expiring',  'icon' => 'fa-clock'],
+        'expired'       => ['bg' => '#FEE2E2', 'color' => '#DC2626', 'label' => 'Expired',   'icon' => 'fa-triangle-exclamation'],
+    ];
+    // Canonical per-category fallback icon (used when a subscription has no logo) —
+    // shared between the desktop row logo and the mobile card's title icon tile.
+    $subCategoryIcons = [
+        'design' => 'fa-pen-nib', 'development' => 'fa-code', 'communication' => 'fa-comment-dots',
+        'marketing' => 'fa-bullhorn', 'security' => 'fa-shield-halved', 'finance' => 'fa-chart-line',
+    ];
+@endphp
 <style>
 .sub-stat { background:#fff; border-radius:12px; border:1px solid #F0F0F0; box-shadow:0 1px 4px rgba(0,0,0,.04); padding:16px 20px; display:flex; align-items:center; gap:14px; }
 .sub-stat-icon { width:40px; height:40px; border-radius:11px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:16px; }
-.status-active        { background:#ECFDF5; color:#16A34A; }
-.status-expiring_soon { background:#FEF3C7; color:#D97706; }
-.status-expired       { background:#FEE2E2; color:#DC2626; }
 .status-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:11.5px; font-weight:600; }
 .cat-badge { display:inline-flex; align-items:center; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; }
 .sub-row:hover { background:#FAFAFA; }
+/* Mobile-only segmented status control + category filter chip + bottom action bar
+   (shared uds-* design system) — hidden on desktop */
+.sub-mobile-tabs, .sub-mobile-cat-chip, .sub-mobile-actionbar, .sub-mobile-cards, .sub-mobile-kpis { display: none; }
+/* Wraps the mobile category chip + search input; at desktop widths it must stay
+   invisible to layout (its children — the search input in particular — are normal
+   flex children of .sub-filter-bar's form there), only becoming a real flex row
+   once .sub-mobile-cat-chip is shown at <=768px (see media query below). */
+.sub-mobile-searchrow { display: contents; }
 @media (max-width:900px) { .sub-stats-grid { grid-template-columns:repeat(2,1fr) !important; } }
-@media (max-width:500px)  { .sub-stats-grid { gap:8px !important; } }
 @media (max-width:768px) {
-    .sub-cost-grid  { grid-template-columns:1fr 1fr !important; }
-    .sub-tbl-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
-    .sub-tbl-scroll table { min-width:750px; }
+    /* Table → stacked cards; never let the underlying table force horizontal scroll */
+    .sub-tbl-scroll { overflow-x: visible !important; }
+
+    /* Stat row + cost summary are replaced on mobile by one flat 6-tile KPI grid
+       (.sub-mobile-kpis below) — no swipe strip, no tinted gradient cost cards. */
+    .sub-stats-grid.mob-kpi-row, .sub-cost-grid { display: none !important; }
+    .sub-mobile-kpis { display: grid !important; }
+
+    /* Filters: stack full-width, comfortable touch height */
+    .sub-filter-bar {
+        border-radius: var(--mob-r-md) !important;
+        box-shadow: var(--mob-shadow-1) !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    .sub-filter-bar form {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: var(--mob-sp-2) !important;
+        width: 100%;
+    }
+    .sub-search-input {
+        width: 100% !important;
+        min-width: 0 !important;
+        min-height: 46px !important;
+        font-size: 15px !important;
+        box-sizing: border-box;
+    }
+    /* Desktop status pill-toggle and category <select> are replaced on mobile by the
+       shared uds-seg segmented control + uds-chip filter chip below — hide the originals
+       (their form values are kept in sync via full page navigation, so nothing is lost). */
+    .sub-status-toggle, .sub-category-select { display: none !important; }
+    /* Standalone magnifier submit button is dropped on mobile (P35) — the search input
+       submits on Enter (see its onkeydown handler) instead of needing a visible button. */
+    .sub-filter-submit { display: none !important; }
+    .sub-filter-clear {
+        width: 100%; box-sizing: border-box; text-align: center;
+        min-height: 44px !important; display: flex !important; align-items: center; justify-content: center;
+    }
+
+    /* Mobile-only segmented status control + category filter chip. The chip and the
+       search input now share one row (P35) instead of stacking on separate lines. */
+    .sub-mobile-tabs { display: flex !important; order: -1; width: 100%; }
+    .sub-mobile-searchrow { display: flex !important; gap: 8px; width: 100%; align-items: stretch; }
+    .sub-mobile-cat-chip { display: inline-flex !important; flex: 0 0 auto; }
+    .sub-mobile-searchrow .sub-search-input { flex: 1; width: auto !important; min-height: 44px !important; margin: 0; }
+
+    /* Table → card list */
+    .mob-table-cards .sub-row { margin-bottom: var(--mob-sp-2); }
+    .mob-table-cards td { font-size: 13px; }
+    .mob-table-cards td.sub-td-name::before { content: none; }
+    .mob-table-cards td.sub-td-name { display: block; text-align: left; }
+    .mob-table-cards td.sub-td-actions { justify-content: flex-end; }
+    .mob-table-cards td.sub-td-actions button { width: 44px !important; height: 44px !important; }
+
+    /* Renewal urgency → prominent pill badge */
+    .sub-renewal-badge {
+        display: inline-block; padding: 3px 10px; border-radius: 20px; margin-top: 4px; font-weight: 700 !important;
+    }
+    .sub-renewal-badge.sub-renewal-crit   { background: #FEE2E2; }
+    .sub-renewal-badge.sub-renewal-urgent { background: #FFEDD5; }
+    .sub-renewal-badge.sub-renewal-soon   { background: #FEF3C7; }
+    .sub-renewal-badge.sub-renewal-far    { background: #F3F4F6; }
+
+    /* Card design consistency pass: hero values, chips, empty state */
+    .sub-table-card { border-radius: var(--mob-r-lg) !important; }
+    .sub-row-logo { width: 36px !important; height: 36px !important; border-radius: 12px !important; }
+    .sub-empty-state { padding: 32px 20px !important; }
+    .sub-empty-state i { font-size: 32px !important; }
+    .sub-empty-state p:first-of-type { font-size: 14px !important; }
+    /* Status/category chips: 8px radius, 4px/9px padding, 700 weight everywhere on mobile */
+    .status-badge, .cat-badge, .sub-renewal-badge {
+        font-size: 11px !important; padding: 4px 9px !important; border-radius: 8px !important; font-weight: 700 !important;
+    }
+    /* Tap target for the subscription name link inside each mobile card (G2) */
+    .sub-mobile-cards .uds-card-title { display: flex; align-items: center; min-height: 44px; }
+
+    /* Create/Edit modal close buttons → comfortable touch target */
+    .sub-modal-close-btn { width: 44px !important; height: 44px !important; }
+
+    /* Page actions move into the sticky bottom bar on mobile (header buttons were
+       below the 44px touch-target minimum; the header itself stays for title/subtitle). */
+    .sub-header-actions { display: none !important; }
+    .sub-mobile-actionbar { display: block !important; }
+    /* Clears both the sticky action bar (~73px) and the global bottom tab bar (58px) so
+       the last card is never hidden behind them (G7). */
+    .app-content { padding-bottom: 140px !important; }
+
+    /* Desktop table (incl. its own empty state) is replaced by a proper record-card
+       list on mobile — denser than a 7-row label/value stack, matches the record-card
+       treatment used elsewhere in the app this session. */
+    .sub-table-card { display: none !important; }
+    .sub-mobile-cards { display: block !important; }
+}
+@media (max-width:480px) {
+    /* Create/Edit Subscription modal form grid is built inline via JS
+       (buildFormHtml()) as style="display:grid;grid-template-columns:1fr 1fr;...".
+       Collapse it to a single column on very small screens. */
+    #createFormContent [style*="grid-template-columns:1fr 1fr"],
+    #editFormContent [style*="grid-template-columns:1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+    }
 }
 </style>
 
@@ -37,7 +157,7 @@
             <h1 style="font-size:22px;font-weight:700;color:#111827;margin:0;">Subscriptions & Licenses</h1>
             <p style="font-size:13px;color:#9CA3AF;margin:4px 0 0;">Track all software subscriptions, renewals, and seat assignments</p>
         </div>
-        <div style="display:flex;gap:8px;">
+        <div class="sub-header-actions" style="display:flex;gap:8px;">
             <a href="{{ route('admin.subscriptions.export.pdf') }}"
                style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;background:#fff;color:#374151;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;"
                onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='#fff'">
@@ -85,40 +205,40 @@
     @endif
 
     {{-- Stats Row --}}
-    <div class="sub-stats-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
-        <div class="sub-stat">
+    <div class="sub-stats-grid mob-kpi-row" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
+        <div class="sub-stat mob-kpi-card">
             <div class="sub-stat-icon" style="background:#EEF2FF;">
                 <i class="fas fa-key" style="color:#4F46E5;"></i>
             </div>
             <div>
-                <p style="font-size:22px;font-weight:800;color:#111827;margin:0;">{{ $totalCount }}</p>
+                <p class="sub-stat-value" style="font-size:22px;font-weight:800;color:#111827;margin:0;">{{ $totalCount }}</p>
                 <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Total Subscriptions</p>
             </div>
         </div>
-        <div class="sub-stat">
+        <div class="sub-stat mob-kpi-card">
             <div class="sub-stat-icon" style="background:#D1FAE5;">
                 <i class="fas fa-circle-check" style="color:#059669;"></i>
             </div>
             <div>
-                <p style="font-size:22px;font-weight:800;color:#059669;margin:0;">{{ $activeCount }}</p>
+                <p class="sub-stat-value" style="font-size:22px;font-weight:800;color:#059669;margin:0;">{{ $activeCount }}</p>
                 <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Active</p>
             </div>
         </div>
-        <div class="sub-stat">
+        <div class="sub-stat mob-kpi-card">
             <div class="sub-stat-icon" style="background:#FEF3C7;">
                 <i class="fas fa-clock" style="color:#D97706;"></i>
             </div>
             <div>
-                <p style="font-size:22px;font-weight:800;color:#D97706;margin:0;">{{ $expiringSoonCount }}</p>
+                <p class="sub-stat-value" style="font-size:22px;font-weight:800;color:#D97706;margin:0;">{{ $expiringSoonCount }}</p>
                 <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Expiring Soon <strong style="color:#EA580C;">· {{ $weekCount }} in 7d</strong></p>
             </div>
         </div>
-        <div class="sub-stat">
+        <div class="sub-stat mob-kpi-card">
             <div class="sub-stat-icon" style="background:#FEE2E2;">
                 <i class="fas fa-circle-xmark" style="color:#DC2626;"></i>
             </div>
             <div>
-                <p style="font-size:22px;font-weight:800;color:#DC2626;margin:0;">{{ $expiredCount }}</p>
+                <p class="sub-stat-value" style="font-size:22px;font-weight:800;color:#DC2626;margin:0;">{{ $expiredCount }}</p>
                 <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Expired</p>
             </div>
         </div>
@@ -126,52 +246,98 @@
 
     {{-- Cost Summary --}}
     <div class="sub-cost-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
-        <div style="background:linear-gradient(135deg,#EEF2FF,#F5F3FF);border:1.5px solid #C7D2FE;border-radius:14px;padding:20px;display:flex;align-items:center;gap:16px;">
-            <div style="width:44px;height:44px;background:#EEF2FF;border-radius:12px;display:flex;align-items:center;justify-content:center;border:1.5px solid #C7D2FE;flex-shrink:0;">
+        <div class="sub-cost-card" style="background:linear-gradient(135deg,#EEF2FF,#F5F3FF);border:1.5px solid #C7D2FE;border-radius:14px;padding:20px;display:flex;align-items:center;gap:16px;">
+            <div class="sub-cost-icon" style="width:44px;height:44px;background:#EEF2FF;border-radius:12px;display:flex;align-items:center;justify-content:center;border:1.5px solid #C7D2FE;flex-shrink:0;">
                 <i class="fas fa-calendar-days" style="color:#4F46E5;font-size:18px;"></i>
             </div>
             <div>
-                <div style="font-size:12px;color:#6B7280;font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Monthly Spend</div>
+                <div class="sub-cost-label" style="font-size:12px;color:#6B7280;font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Monthly Spend</div>
                 @forelse($monthlyTotalsByCurrency as $currency => $amount)
-                <div style="font-size:{{ $monthlyTotalsByCurrency->count() > 1 ? '16px' : '24px' }};font-weight:800;color:#4F46E5;">{{ format_money($amount, $currency) }}</div>
+                <div class="sub-cost-value" style="font-size:{{ $monthlyTotalsByCurrency->count() > 1 ? '16px' : '24px' }};font-weight:800;color:#4F46E5;">{{ format_money($amount, $currency) }}</div>
                 @empty
-                <div style="font-size:24px;font-weight:800;color:#4F46E5;">BHD 0.000</div>
+                <div class="sub-cost-value" style="font-size:24px;font-weight:800;color:#4F46E5;">BHD 0.000</div>
                 @endforelse
                 <div style="font-size:11px;color:#9CA3AF;">Across all active cycles</div>
             </div>
         </div>
-        <div style="background:linear-gradient(135deg,#ECFDF5,#F0FDF4);border:1.5px solid #A7F3D0;border-radius:14px;padding:20px;display:flex;align-items:center;gap:16px;">
-            <div style="width:44px;height:44px;background:#ECFDF5;border-radius:12px;display:flex;align-items:center;justify-content:center;border:1.5px solid #A7F3D0;flex-shrink:0;">
+        <div class="sub-cost-card" style="background:linear-gradient(135deg,#ECFDF5,#F0FDF4);border:1.5px solid #A7F3D0;border-radius:14px;padding:20px;display:flex;align-items:center;gap:16px;">
+            <div class="sub-cost-icon" style="width:44px;height:44px;background:#ECFDF5;border-radius:12px;display:flex;align-items:center;justify-content:center;border:1.5px solid #A7F3D0;flex-shrink:0;">
                 <i class="fas fa-coins" style="color:#16A34A;font-size:18px;"></i>
             </div>
             <div>
-                <div style="font-size:12px;color:#6B7280;font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Annual Spend</div>
+                <div class="sub-cost-label" style="font-size:12px;color:#6B7280;font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Annual Spend</div>
                 @forelse($annualTotalsByCurrency as $currency => $amount)
-                <div style="font-size:{{ $annualTotalsByCurrency->count() > 1 ? '16px' : '24px' }};font-weight:800;color:#16A34A;">{{ format_money($amount, $currency) }}</div>
+                <div class="sub-cost-value" style="font-size:{{ $annualTotalsByCurrency->count() > 1 ? '16px' : '24px' }};font-weight:800;color:#16A34A;">{{ format_money($amount, $currency) }}</div>
                 @empty
-                <div style="font-size:24px;font-weight:800;color:#16A34A;">BHD 0.000</div>
+                <div class="sub-cost-value" style="font-size:24px;font-weight:800;color:#16A34A;">BHD 0.000</div>
                 @endforelse
                 <div style="font-size:11px;color:#9CA3AF;">Projected yearly total</div>
             </div>
         </div>
     </div>
 
-    {{-- Filters --}}
-    <div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:14px;padding:16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-        <form method="GET" action="{{ route('admin.subscriptions.index') }}" style="display:contents;">
-            <input type="text" name="search" value="{{ request('search') }}"
-                   placeholder="Search name or vendor..."
-                   style="flex:1;min-width:200px;padding:8px 14px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;color:#374151;outline:none;"
-                   onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+    {{-- Mobile-only: 6-tile KPI grid replaces the swipeable stat row + tinted gradient
+         cost-summary cards above (G4/P33/G6/C3/C4) — flat white tiles only. --}}
+    @php
+        $mMonthlySpend = $monthlyTotalsByCurrency->isEmpty()
+            ? format_money(0, 'BHD')
+            : $monthlyTotalsByCurrency->map(fn($amt, $cur) => format_money($amt, $cur))->implode(', ');
+        $mAnnualSpend = $annualTotalsByCurrency->isEmpty()
+            ? format_money(0, 'BHD')
+            : $annualTotalsByCurrency->map(fn($amt, $cur) => format_money($amt, $cur))->implode(', ');
+    @endphp
+    <x-mobile.kpi-grid class="sub-mobile-kpis">
+        <x-mobile.kpi-tile label="Total Subscriptions" :value="$totalCount" />
+        <x-mobile.kpi-tile label="Active" :value="$activeCount" />
+        <x-mobile.kpi-tile label="Expiring Soon" :value="$expiringSoonCount" :sub="$weekCount ? $weekCount . ' in 7d' : null" />
+        <x-mobile.kpi-tile label="Expired" :value="$expiredCount" />
+        <x-mobile.kpi-tile label="Monthly Spend" :value="$mMonthlySpend" sub="Across all active cycles" money />
+        <x-mobile.kpi-tile label="Annual Spend" :value="$mAnnualSpend" sub="Projected yearly total" money />
+    </x-mobile.kpi-grid>
 
-            <select name="category" style="padding:8px 14px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;color:#374151;background:#fff;cursor:pointer;">
+    {{-- Filters --}}
+    <div class="sub-filter-bar" style="background:#fff;border:1.5px solid #E5E7EB;border-radius:14px;padding:16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <form method="GET" action="{{ route('admin.subscriptions.index') }}" style="display:contents;">
+            {{-- Mobile-only: segmented status control (replaces the pill toggle below) --}}
+            @php
+                $subStatusOpts = collect(['all'=>'All','active'=>'Active','expiring_soon'=>'Expiring','expired'=>'Expired'])
+                    ->map(fn($lbl, $val) => [
+                        'key' => $val,
+                        'label' => $lbl,
+                        'href' => route('admin.subscriptions.index', array_merge(request()->except('status','page'), ['status'=>$val])),
+                    ])->values()->all();
+            @endphp
+            <x-mobile.segmented :options="$subStatusOpts" active="{{ $statusFilter }}" class="sub-mobile-tabs" />
+
+            {{-- Mobile-only: category filter chip + search share one row (P35) instead of
+                 stacking on separate lines. The chip has no name attribute — it navigates
+                 immediately via the option's data-href, so it can't collide with the hidden
+                 desktop select's own "category" form field on submit. --}}
+            <div class="sub-mobile-searchrow">
+                <x-mobile.filter-chip :label="$categories[request('category')] ?? 'All Categories'" :active="request()->filled('category')" class="sub-mobile-cat-chip">
+                    <select onchange="window.location = this.selectedOptions[0].dataset.href">
+                        <option value="" data-href="{{ route('admin.subscriptions.index', request()->except('category','page')) }}" {{ !request('category') ? 'selected' : '' }}>All Categories</option>
+                        @foreach($categories as $key => $label)
+                        <option value="{{ $key }}" data-href="{{ route('admin.subscriptions.index', array_merge(request()->except('category','page'), ['category'=>$key])) }}" {{ request('category') === $key ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </x-mobile.filter-chip>
+
+                <input type="text" name="search" value="{{ request('search') }}"
+                       placeholder="Search name or vendor..." class="sub-search-input"
+                       style="flex:1;min-width:200px;padding:8px 14px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;color:#374151;outline:none;"
+                       onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"
+                       onkeydown="if(event.key==='Enter'){event.preventDefault();this.form.submit();}">
+            </div>
+
+            <select name="category" class="sub-category-select" style="padding:8px 14px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:13px;color:#374151;background:#fff;cursor:pointer;">
                 <option value="">All Categories</option>
                 @foreach($categories as $key => $label)
                 <option value="{{ $key }}" {{ request('category') === $key ? 'selected' : '' }}>{{ $label }}</option>
                 @endforeach
             </select>
 
-            <div style="display:flex;gap:2px;background:#F3F4F6;border-radius:8px;padding:3px;">
+            <div class="sub-status-toggle" style="display:flex;gap:2px;background:#F3F4F6;border-radius:8px;padding:3px;">
                 @foreach(['all'=>'All','active'=>'Active','expiring_soon'=>'Expiring','expired'=>'Expired'] as $val=>$lbl)
                 <a href="{{ route('admin.subscriptions.index', array_merge(request()->except('status','page'), ['status'=>$val])) }}"
                    style="padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;transition:all .15s;
@@ -181,13 +347,13 @@
                 @endforeach
             </div>
 
-            <button type="submit"
+            <button type="submit" class="sub-filter-submit"
                     style="padding:8px 18px;background:#4F46E5;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">
                 <i class="fas fa-magnifying-glass"></i>
             </button>
 
             @if(request()->hasAny(['search','category']))
-            <a href="{{ route('admin.subscriptions.index', ['status'=>$statusFilter]) }}"
+            <a href="{{ route('admin.subscriptions.index', ['status'=>$statusFilter]) }}" class="sub-filter-clear"
                style="padding:8px 14px;background:#F3F4F6;color:#374151;border-radius:8px;font-size:13px;font-weight:500;text-decoration:none;">
                 Clear
             </a>
@@ -196,15 +362,15 @@
     </div>
 
     {{-- Table --}}
-    <div style="background:#fff;border:1.5px solid #E5E7EB;border-radius:14px;overflow:hidden;">
+    <div class="sub-table-card" style="background:#fff;border:1.5px solid #E5E7EB;border-radius:14px;overflow:hidden;">
         @if($subscriptions->isEmpty())
-        <div style="padding:60px 24px;text-align:center;color:#9CA3AF;">
+        <div class="sub-empty-state" style="padding:60px 24px;text-align:center;color:#9CA3AF;">
             <i class="fas fa-layer-group" style="font-size:40px;margin-bottom:12px;opacity:.3;display:block;"></i>
             <p style="font-size:15px;font-weight:500;">No subscriptions found</p>
             <p style="font-size:13px;margin-top:4px;">Click "Add Subscription" to get started</p>
         </div>
         @else
-        <div class="sub-tbl-scroll">
+        <div class="sub-tbl-scroll mob-table-cards">
         <table style="width:100%;border-collapse:collapse;">
             <thead>
                 <tr style="background:#F9FAFB;border-bottom:1.5px solid #E5E7EB;">
@@ -222,18 +388,18 @@
                 @php
                     $catColors = \App\Models\Subscription::categoryColors();
                     $cc = $catColors[$sub->category] ?? $catColors['other'];
-                    $statusClass = 'status-' . $sub->status;
+                    $ssd = $subStatusColors[$sub->status] ?? $subStatusColors['active'];
                     $days = $sub->days_until_renewal;
                     $rowBg = $sub->status === 'expired' ? '#FFFAFA' : ($sub->status === 'expiring_soon' ? '#FFFEF0' : '#fff');
                 @endphp
                 <tr class="sub-row" style="border-bottom:1px solid #F3F4F6;background:{{ $rowBg }};">
-                    <td style="padding:14px 16px;">
+                    <td class="sub-td-name" data-label="Subscription" style="padding:14px 16px;">
                         <div style="display:flex;align-items:center;gap:12px;">
-                            <div style="width:38px;height:38px;border-radius:10px;background:{{ $cc['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
+                            <div class="sub-row-logo" style="width:38px;height:38px;border-radius:10px;background:{{ $cc['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
                                 @if($sub->logo_url)
                                     <img src="{{ $sub->logo_url }}" alt="{{ $sub->name }}" style="width:100%;height:100%;object-fit:contain;padding:5px;box-sizing:border-box;background:#fff;">
                                 @else
-                                    <i class="fas fa-{{ $sub->category === 'design' ? 'pen-nib' : ($sub->category === 'development' ? 'code' : ($sub->category === 'communication' ? 'comment-dots' : ($sub->category === 'marketing' ? 'bullhorn' : ($sub->category === 'security' ? 'shield-halved' : ($sub->category === 'finance' ? 'chart-line' : 'layer-group'))))) }}"
+                                    <i class="fas {{ $subCategoryIcons[$sub->category] ?? 'fa-layer-group' }}"
                                        style="color:{{ $cc['color'] }};font-size:15px;"></i>
                                 @endif
                             </div>
@@ -246,7 +412,7 @@
                             </div>
                         </div>
                     </td>
-                    <td style="padding:14px 16px;">
+                    <td data-label="Category" style="padding:14px 16px;">
                         <span class="cat-badge" style="background:{{ $cc['bg'] }};color:{{ $cc['color'] }};">
                             {{ \App\Models\Subscription::categoryOptions()[$sub->category] ?? $sub->category }}
                         </span>
@@ -258,31 +424,31 @@
                         <div style="font-size:11px;color:#9CA3AF;margin-top:4px;">Shared</div>
                         @endif
                     </td>
-                    <td style="padding:14px 16px;">
+                    <td data-label="Cost" style="padding:14px 16px;">
                         <div style="font-size:14px;font-weight:600;color:#111827;">{{ format_money($sub->cost, $sub->currency) }}</div>
                         <div style="font-size:11px;color:#9CA3AF;">/ {{ $sub->billing_cycle }}</div>
                     </td>
-                    <td style="padding:14px 16px;">
+                    <td data-label="Renewal" style="padding:14px 16px;">
                         @if($sub->renewal_date)
                         <div style="font-size:13px;font-weight:500;color:#374151;">{{ $sub->renewal_date->format('d M Y') }}</div>
                         @if($days !== null)
                             @if($days < 0)
-                            <div style="font-size:11px;color:#DC2626;font-weight:600;margin-top:2px;">Expired {{ abs($days) }}d ago</div>
+                            <div class="sub-renewal-badge sub-renewal-crit" style="font-size:11px;color:#DC2626;font-weight:600;margin-top:2px;">Expired {{ abs($days) }}d ago</div>
                             @elseif($days === 0)
-                            <div style="font-size:11px;color:#DC2626;font-weight:700;margin-top:2px;">⚡ Due today!</div>
+                            <div class="sub-renewal-badge sub-renewal-crit" style="font-size:11px;color:#DC2626;font-weight:700;margin-top:2px;">⚡ Due today!</div>
                             @elseif($days <= 7)
-                            <div style="font-size:11px;color:#EA580C;font-weight:600;margin-top:2px;">⚡ {{ $days }}d left</div>
+                            <div class="sub-renewal-badge sub-renewal-urgent" style="font-size:11px;color:#EA580C;font-weight:600;margin-top:2px;">⚡ {{ $days }}d left</div>
                             @elseif($days <= 30)
-                            <div style="font-size:11px;color:#D97706;font-weight:600;margin-top:2px;">{{ $days }}d left</div>
+                            <div class="sub-renewal-badge sub-renewal-soon" style="font-size:11px;color:#D97706;font-weight:600;margin-top:2px;">{{ $days }}d left</div>
                             @else
-                            <div style="font-size:11px;color:#9CA3AF;margin-top:2px;">{{ $days }}d left</div>
+                            <div class="sub-renewal-badge sub-renewal-far" style="font-size:11px;color:#9CA3AF;margin-top:2px;">{{ $days }}d left</div>
                             @endif
                         @endif
                         @else
                         <span style="color:#D1D5DB;font-size:13px;">—</span>
                         @endif
                     </td>
-                    <td style="padding:14px 16px;text-align:center;">
+                    <td data-label="Users" style="padding:14px 16px;text-align:center;">
                         <div style="display:flex;align-items:center;justify-content:center;gap:-4px;">
                             @foreach($sub->users->take(4) as $u)
                             <div title="{{ $u->name }}"
@@ -302,18 +468,12 @@
                         <div style="font-size:10px;color:#9CA3AF;margin-top:4px;">{{ $sub->users_count }} user{{ $sub->users_count>1?'s':'' }}</div>
                         @endif
                     </td>
-                    <td style="padding:14px 16px;">
-                        <span class="status-badge {{ $statusClass }}">
-                            @if($sub->status === 'active')
-                            <i class="fas fa-circle" style="font-size:6px;"></i> Active
-                            @elseif($sub->status === 'expiring_soon')
-                            <i class="fas fa-clock" style="font-size:10px;"></i> Expiring
-                            @else
-                            <i class="fas fa-triangle-exclamation" style="font-size:10px;"></i> Expired
-                            @endif
+                    <td data-label="Status" style="padding:14px 16px;">
+                        <span class="status-badge" style="background:{{ $ssd['bg'] }};color:{{ $ssd['color'] }};">
+                            <i class="fas {{ $ssd['icon'] }}" style="font-size:{{ $sub->status === 'active' ? '6px' : '10px' }};"></i> {{ $ssd['label'] }}
                         </span>
                     </td>
-                    <td style="padding:14px 16px;text-align:right;">
+                    <td class="sub-td-actions" data-label="Actions" style="padding:14px 16px;text-align:right;">
                         <button onclick="openRowMenu(event, this, {{ $sub->id }}, {{ json_encode($sub->name) }}, '{{ route('admin.subscriptions.show', $sub->id) }}', {{ json_encode($sub->users->map(fn($u)=>['id'=>$u->id,'name'=>$u->name,'email'=>$u->email])->values()) }}, {{ json_encode(array_merge($sub->only(['name','vendor','category','type','billing_cycle','cost','currency','max_seats','website','notes','username']), ['logo_url' => $sub->logo_url, 'has_password' => !empty($sub->password), 'assigned_user_ids' => $sub->users->pluck('id')->toArray()])) }}, '{{ $sub->purchase_date?->format('Y-m-d') }}', '{{ $sub->renewal_date?->format('Y-m-d') }}', {{ json_encode($sub->notify_days) }})"
                                 style="width:32px;height:32px;border-radius:8px;background:#F3F4F6;display:inline-flex;align-items:center;justify-content:center;color:#374151;border:none;cursor:pointer;transition:background .15s;"
                                 onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
@@ -325,6 +485,70 @@
             </tbody>
         </table>
         </div>
+        @endif
+    </div>
+
+    {{-- Mobile-only record cards — replaces the desktop table (incl. its empty state) --}}
+    <div class="sub-mobile-cards">
+        @if($subscriptions->isEmpty())
+            <x-mobile.empty-state title="No subscriptions" sub="Add a license to track renewals and seats." icon="fa-layer-group" />
+        @else
+            @foreach($subscriptions as $sub)
+                @php
+                    $mCatColors = \App\Models\Subscription::categoryColors();
+                    $mCc        = $mCatColors[$sub->category] ?? $mCatColors['other'];
+                    $mDays      = $sub->days_until_renewal;
+                    $mOverdue   = $mDays !== null && $mDays <= 0;
+                    $mDueText   = $sub->renewal_date
+                        ? ($mDays === null ? 'Renews ' . $sub->renewal_date->format('M d')
+                            : ($mDays < 0 ? 'Expired ' . abs($mDays) . 'd ago'
+                                : ($mDays === 0 ? 'Due today'
+                                    : 'Renews ' . $sub->renewal_date->format('M d') . ' · ' . $mDays . 'd')))
+                        : null;
+                    // Same $subStatusColors array the desktop table reads from (defined once,
+                    // top of file) — the mobile chip used to hardcode its own indigo palette
+                    // here, which is why "Active" rendered green on desktop but indigo on
+                    // mobile (G10). Never duplicate these colors again.
+                    $ms = $subStatusColors[$sub->status] ?? $subStatusColors['active'];
+                @endphp
+                <x-mobile.record-card
+                    :href="route('admin.subscriptions.show', $sub->id)"
+                    :title="$sub->name"
+                    :context="$sub->vendor ? ($sub->vendor . ($sub->users_count > 0 ? ' · ' . $sub->users_count . ' user' . ($sub->users_count > 1 ? 's' : '') : '')) : null"
+                    :dueText="$mDueText"
+                    :overdue="$mOverdue"
+                    style="margin-bottom:10px;"
+                >
+                    <x-slot:titleIcon>
+                        <span style="width:38px;height:38px;border-radius:11px;background:{{ $mCc['bg'] }};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
+                            @if($sub->logo_url)
+                                <img src="{{ $sub->logo_url }}" alt="" style="width:100%;height:100%;object-fit:contain;padding:5px;box-sizing:border-box;background:#fff;">
+                            @else
+                                <i class="fas {{ $subCategoryIcons[$sub->category] ?? 'fa-layer-group' }}" style="color:{{ $mCc['color'] }};font-size:15px;"></i>
+                            @endif
+                        </span>
+                    </x-slot:titleIcon>
+                    <x-slot:topLeft>
+                        <span class="cat-badge" style="background:{{ $mCc['bg'] }};color:{{ $mCc['color'] }};">
+                            {{ \App\Models\Subscription::categoryOptions()[$sub->category] ?? $sub->category }}
+                        </span>
+                    </x-slot:topLeft>
+                    <x-slot:topRight>
+                        <span style="font-size:12.5px;font-weight:700;color:#111827;">{{ format_money($sub->cost, $sub->currency) }}</span>
+                        <span style="font-size:11px;color:#9CA3AF;">/{{ $sub->billing_cycle }}</span>
+                    </x-slot:topRight>
+                    <x-slot:status>
+                        <span class="status-badge" style="background:{{ $ms['bg'] }};color:{{ $ms['color'] }};">{{ $ms['label'] }}</span>
+                    </x-slot:status>
+                    <x-slot:actions>
+                        <button type="button"
+                                onclick="openRowMenu(event, this, {{ $sub->id }}, {{ json_encode($sub->name) }}, '{{ route('admin.subscriptions.show', $sub->id) }}', {{ json_encode($sub->users->map(fn($u)=>['id'=>$u->id,'name'=>$u->name,'email'=>$u->email])->values()) }}, {{ json_encode(array_merge($sub->only(['name','vendor','category','type','billing_cycle','cost','currency','max_seats','website','notes','username']), ['logo_url' => $sub->logo_url, 'has_password' => !empty($sub->password), 'assigned_user_ids' => $sub->users->pluck('id')->toArray()])) }}, '{{ $sub->purchase_date?->format('Y-m-d') }}', '{{ $sub->renewal_date?->format('Y-m-d') }}', {{ json_encode($sub->notify_days) }})"
+                                style="width:44px;height:44px;border-radius:10px;background:#F3F4F6;display:inline-flex;align-items:center;justify-content:center;color:#374151;border:none;cursor:pointer;">
+                            <i class="fas fa-ellipsis-v" style="font-size:14px;pointer-events:none;"></i>
+                        </button>
+                    </x-slot:actions>
+                </x-mobile.record-card>
+            @endforeach
         @endif
     </div>
 
@@ -391,8 +615,7 @@
             <div id="assign-user-list" style="flex:1;overflow-y:auto;padding:8px 22px 16px;"></div>
 
             {{-- Footer --}}
-            <div style="padding:12px 22px;border-top:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
-                <span id="assign-status" style="font-size:12px;color:#9CA3AF;"></span>
+            <div style="padding:12px 22px;border-top:1px solid #F3F4F6;display:flex;align-items:center;justify-content:flex-end;">
                 <button onclick="closeAssignModal()" style="padding:8px 20px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;font-size:13px;cursor:pointer;color:#374151;">Done</button>
             </div>
         </div>
@@ -410,7 +633,7 @@
                         <h2 style="font-size:18px;font-weight:700;color:#111827;margin:0;">Add Subscription</h2>
                         <p style="font-size:13px;color:#9CA3AF;margin:2px 0 0;">Add a new software subscription or license</p>
                     </div>
-                    <button @click="createModal = false"
+                    <button @click="createModal = false" class="sub-modal-close-btn"
                             style="width:32px;height:32px;border-radius:8px;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;">
                         <i class="fas fa-times"></i>
                     </button>
@@ -443,7 +666,7 @@
                     <h2 style="font-size:18px;font-weight:700;color:#111827;margin:0;">Edit Subscription</h2>
                     <p style="font-size:13px;color:#9CA3AF;margin:2px 0 0;">Update subscription details</p>
                 </div>
-                <button onclick="closeEditModal()"
+                <button onclick="closeEditModal()" class="sub-modal-close-btn"
                         style="width:32px;height:32px;border-radius:8px;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;">
                     <i class="fas fa-times"></i>
                 </button>
@@ -496,6 +719,18 @@
             </div>
         </div>
         </div>
+    </div>
+
+    {{-- Mobile-only: sticky bottom bar for page actions (replaces the header's Export/Add buttons on mobile) --}}
+    <div class="sub-mobile-actionbar">
+        <x-mobile.action-bar>
+            <a href="{{ route('admin.subscriptions.export.pdf') }}" class="uds-btn-ghost">
+                <i class="fas fa-file-pdf"></i> Export
+            </a>
+            <button type="button" @click="createModal = true" class="uds-btn-primary">
+                <i class="fas fa-plus"></i> Add Subscription
+            </button>
+        </x-mobile.action-bar>
     </div>
 
 </div>
@@ -972,10 +1207,7 @@ function quickRemoveUser(userId) {
 }
 
 function setAssignStatus(msg, isError) {
-    const el = document.getElementById('assign-status');
-    el.textContent = msg;
-    el.style.color = isError ? '#DC2626' : '#16A34A';
-    setTimeout(() => { el.textContent = ''; }, 3000);
+    window.showToast(isError ? 'Error' : 'Done!', msg, isError ? 'error' : 'success');
 }
 </script>
 

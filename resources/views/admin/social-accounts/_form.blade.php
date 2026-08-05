@@ -6,7 +6,18 @@
 --}}
 @php $platforms = \App\Models\SocialAccount::platforms(); @endphp
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+<style>
+@media (max-width: 768px) {
+    .safeform-grid { grid-template-columns: 1fr !important; gap: var(--mob-sp-2, 16px) !important; }
+    .safeform-grid input[name], .safeform-grid select[name], .safeform-grid textarea[name] {
+        min-height: 46px !important; font-size: 14px !important; border-radius: var(--mob-r-sm, 12px) !important; box-sizing: border-box !important;
+    }
+    .safeform-grid button[style*="width:100%"] { min-height: 46px !important; }
+    .safeform-grid label { font-size: 13px !important; }
+}
+</style>
+
+<div class="safeform-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
 
     {{-- Account Name --}}
     <div style="grid-column:1/-1;">

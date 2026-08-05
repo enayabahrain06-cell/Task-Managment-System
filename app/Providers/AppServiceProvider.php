@@ -6,6 +6,7 @@ use App\Models\Project;
 use App\Models\Setting;
 use App\Observers\DatabaseNotificationObserver;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -20,6 +21,15 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Server-side mobile detection: controllers use $request->isMobileDevice() to
+        // decide whether to render a dedicated resources/views/mobile/* template.
+        Request::macro('isMobileDevice', function () {
+            return (bool) preg_match(
+                '/Mobi|Android|iPhone|iPod|BlackBerry|IEMobile|Opera Mini|Windows Phone/i',
+                $this->userAgent() ?? ''
+            );
+        });
+
         // Publish MQTT push when any DB notification is created
         DatabaseNotification::observe(DatabaseNotificationObserver::class);
 
@@ -78,8 +88,9 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
-        // Share notifications with the main app layout
-        View::composer('layouts.app', function ($view) {
+        // Share notifications with the main app layout (and any view that renders its own
+        // notification bell before the layout composes, e.g. the admin dashboard mobile header)
+        View::composer(['layouts.app', 'admin.dashboard'], function ($view) {
             if (auth()->check()) {
                 try {
                     $user = auth()->user();
