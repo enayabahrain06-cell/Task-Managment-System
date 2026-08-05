@@ -277,7 +277,7 @@
 
     {{-- headline --}}
     <div class="lg-hero">
-        <h1 class="lg-title">Welcome<br>back</h1>
+        <h1 class="lg-title">Welcome back</h1>
         <p class="lg-tagline">One team. One goal. Unlimited impact.</p>
     </div>
 
@@ -343,15 +343,14 @@
 
         <div class="lg-sso">
             @foreach ([
-                ['google', 'Google',    '#EA4335', 0],
-                ['apple',  'Apple',     '#111827', 1],
-                ['azure',  'Microsoft', '#0078D4', 2],
-            ] as [$provider, $label, $color, $i])
+                ['google', 'fa-google',  'Google',    '#EA4335', 0],
+                ['apple',  'fa-apple',   'Apple',     '#111827', 1],
+                ['azure',  'fa-windows', 'Microsoft', '#0078D4', 2],
+            ] as [$provider, $iconClass, $label, $color, $i])
                 <a href="{{ $ssoRoutable ? route('auth.redirect', $provider) : '#' }}" class="lg-sso-btn"
+                   aria-label="{{ $label }}" title="{{ $label }}"
                    style="animation-delay:{{ 0.34 + $i * 0.06 }}s">
-                    <span class="lg-sso-dot" style="background:{{ $color }}"></span>
-                    <span class="lg-sso-label">{{ $label }}</span>
-                    <i class="fas fa-chevron-right"></i>
+                    <i class="fab {{ $iconClass }}" style="color:{{ $color }}"></i>
                 </a>
             @endforeach
         </div>
@@ -439,7 +438,7 @@
     .lg-hero { position: relative; flex: none; padding: 0 24px 26px; }
     .lg-title {
         margin: 0; font-size: 30px; font-weight: 700; color: #fff;
-        letter-spacing: -.034em; line-height: 1.08;
+        letter-spacing: -.034em; line-height: 1.08; white-space: nowrap;
         animation: lgRise .58s cubic-bezier(.22,1,.36,1) .07s both;
     }
     .lg-tagline {
@@ -525,18 +524,15 @@
     .lg-divider > span:not(.lg-divider-text) { flex: 1; height: 1px; background: #EDEFF3; }
     .lg-divider-text { font-size: 11.5px; font-weight: 500; color: #9CA3AF; }
 
-    .lg-sso { display: flex; flex-direction: column; gap: 9px; }
+    .lg-sso { display: flex; gap: 9px; }
     .lg-sso-btn {
-        min-height: 50px; padding: 0 16px; border: 1px solid #E5E7EB; border-radius: 12px;
-        background: #fff; display: flex; align-items: center; gap: 11px; text-decoration: none;
-        font-size: 13.5px; font-weight: 600; color: #374151;
-        transition: transform .18s cubic-bezier(.22,1,.36,1), border-color .18s ease, background .18s ease;
+        flex: 1; min-height: 50px; border: 1px solid #E5E7EB; border-radius: 12px;
+        background: #fff; display: flex; align-items: center; justify-content: center; text-decoration: none;
+        font-size: 16px;
+        transition: border-color .18s ease, background .18s ease;
         animation: lgRise .5s cubic-bezier(.22,1,.36,1) both;
     }
-    .lg-sso-btn:hover { border-color: #C7D2FE; background: #FBFBFE; transform: translateX(2px); }
-    .lg-sso-dot { width: 8px; height: 8px; border-radius: 99px; flex: none; }
-    .lg-sso-label { flex: 1; }
-    .lg-sso-btn i { font-size: 12px; color: #C9CDD6; }
+    .lg-sso-btn:hover { border-color: #C7D2FE; background: #FBFBFE; }
 
     .lg-foot {
         margin-top: auto; padding-top: 22px;

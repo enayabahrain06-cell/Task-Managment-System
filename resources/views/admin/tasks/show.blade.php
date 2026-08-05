@@ -998,8 +998,9 @@
                         $attExt      = strtolower(pathinfo($att->name, PATHINFO_EXTENSION));
                         $attIsImage  = in_array($attExt, $attImgExts);
                         $attIsVideo  = in_array($attExt, ['mp4','mov','avi','webm','mkv']);
+                        $attIsPdf    = $attExt === 'pdf';
                         $attPreviewUrl = $att->isFile() ? ($attDlUrl.'?inline=1') : $att->url();
-                        $item = ['name'=>$att->name,'size'=>$att->humanSize(),'url'=>$att->url(),'downloadUrl'=>$attDlUrl,'previewUrl'=>$attPreviewUrl,'icon'=>$att->iconClass(),'isLink'=>$att->isLink(),'isImage'=>$attIsImage,'isVideo'=>$attIsVideo];
+                        $item = ['name'=>$att->name,'size'=>$att->humanSize(),'url'=>$att->url(),'downloadUrl'=>$attDlUrl,'previewUrl'=>$attPreviewUrl,'icon'=>$att->iconClass(),'isLink'=>$att->isLink(),'isImage'=>$attIsImage,'isVideo'=>$attIsVideo,'isPdf'=>$attIsPdf];
                     @endphp
                     <div style="display:flex;align-items:center;gap:8px;">
                         <button type="button" @click="show({{ json_encode($item) }})"
@@ -1128,6 +1129,11 @@
                             <template x-if="att.isVideo">
                                 <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#000;display:flex;justify-content:center;">
                                     <video :src="att.previewUrl || att.url" controls style="max-width:100%;max-height:75vh;border-radius:10px;display:block;outline:none;"></video>
+                                </div>
+                            </template>
+                            <template x-if="att.isPdf">
+                                <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#F9FAFB;">
+                                    <iframe :src="att.previewUrl || att.url" style="width:100%;height:75vh;border:none;border-radius:10px;background:#fff;"></iframe>
                                 </div>
                             </template>
                             <div style="padding:16px 24px;display:flex;gap:10px;justify-content:flex-end;">
@@ -1987,11 +1993,12 @@
                                     $sfExt      = strtolower(pathinfo($subFile->original_filename ?? '', PATHINFO_EXTENSION));
                                     $sfIsImage  = in_array($sfExt, ['jpg','jpeg','png','gif','webp','svg']);
                                     $sfIsVideo  = in_array($sfExt, ['mp4','mov','avi','webm','mkv']);
+                                    $sfIsPdf    = $sfExt === 'pdf';
                                     $sfDlUrl    = route('admin.submissions.download', $subFile);
                                     $sfUrl      = $sfDlUrl . '?inline=1';
                                     $sfIconMap  = ['pdf'=>'fa-file-pdf','doc'=>'fa-file-word','docx'=>'fa-file-word','xls'=>'fa-file-excel','xlsx'=>'fa-file-excel','ppt'=>'fa-file-powerpoint','pptx'=>'fa-file-powerpoint','zip'=>'fa-file-zipper','rar'=>'fa-file-zipper','txt'=>'fa-file-lines'];
                                     $sfIcon     = $sfIconMap[$sfExt] ?? 'fa-file';
-                                    $sfItem     = ['name'=>$subFile->original_filename ?? 'file','url'=>$sfUrl,'downloadUrl'=>$sfDlUrl,'previewUrl'=>$sfUrl,'isImage'=>$sfIsImage,'isVideo'=>$sfIsVideo,'version'=>$subFile->version];
+                                    $sfItem     = ['name'=>$subFile->original_filename ?? 'file','url'=>$sfUrl,'downloadUrl'=>$sfDlUrl,'previewUrl'=>$sfUrl,'isImage'=>$sfIsImage,'isVideo'=>$sfIsVideo,'isPdf'=>$sfIsPdf,'version'=>$subFile->version];
                                     $sfExists   = \Illuminate\Support\Facades\Storage::disk('public')->exists($subFile->file_path) || $subFile->nas_path;
                                 @endphp
                                 @if(!$sfExists)
@@ -2515,6 +2522,11 @@
                             <template x-if="sub.isVideo">
                                 <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#000;display:flex;justify-content:center;">
                                     <video :src="sub.previewUrl || sub.url" controls autoplay style="max-width:100%;max-height:75vh;border-radius:10px;display:block;outline:none;"></video>
+                                </div>
+                            </template>
+                            <template x-if="sub.isPdf">
+                                <div style="padding:16px 24px;border-bottom:1px solid #F3F4F6;background:#F9FAFB;">
+                                    <iframe :src="sub.previewUrl || sub.url" style="width:100%;height:75vh;border:none;border-radius:10px;background:#fff;"></iframe>
                                 </div>
                             </template>
                             <div style="padding:16px 24px;display:flex;gap:10px;justify-content:flex-end;">
