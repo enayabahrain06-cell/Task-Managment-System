@@ -28,11 +28,11 @@
     .user-task-table-wrap table { min-width: 600px !important; }
 }
 /* Sticky bottom action bar for the comment/submit primary actions — sits above the
-   global mobile tab bar (58px) so it never gets covered by it. */
+   global mobile tab bar (78px) so it never gets covered by it. */
 @media (max-width: 768px) {
     .uts-action-bar {
         position: sticky;
-        bottom: calc(58px + env(safe-area-inset-bottom));
+        bottom: calc(78px + env(safe-area-inset-bottom));
         background: #fff;
         padding: 10px 4px 4px;
         margin: 8px -4px -20px;

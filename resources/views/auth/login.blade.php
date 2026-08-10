@@ -755,10 +755,20 @@
         display: flex; align-items: center; gap: 10px;
         margin-top: 7px; padding: 0 13px; min-height: 52px;
         border-radius: 13px; background: #F4F5FB; border: 1px solid #EDEFF3;
-        transition: border-color .18s ease, box-shadow .18s ease;
+        transition: border-color .18s ease, box-shadow .2s ease, transform .2s cubic-bezier(.22,1,.36,1);
     }
-    .lg-input.is-focus { border-color: #C7D2FE; box-shadow: 0 0 0 3px #EEF2FF; }
-    .lg-input > i { font-size: 14px; color: #9CA3AF; flex: none; width: 16px; text-align: center; }
+    .lg-input.is-focus {
+        border-color: #C7D2FE;
+        box-shadow: 0 6px 16px -6px rgba(79,70,229,.35), 0 0 0 3px #EEF2FF;
+        transform: translateY(-2px);
+    }
+    .lg-input > i { font-size: 14px; color: #9CA3AF; flex: none; width: 16px; text-align: center; transition: color .18s ease; }
+    .lg-input.is-focus > i { color: var(--lg-brand); animation: lgIconPop .32s cubic-bezier(.34,1.56,.64,1); }
+    @keyframes lgIconPop {
+        0%   { transform: scale(1); }
+        50%  { transform: scale(1.25); }
+        100% { transform: scale(1); }
+    }
     .lg-input input {
         flex: 1; min-width: 0; border: 0; background: none; outline: none;
         font-family: inherit; font-size: 16px; font-weight: 500; color: #111827; /* 16px = no iOS zoom */
@@ -916,6 +926,8 @@
         .lg-brand, .lg-title, .lg-tagline, .lg-sheet, .lg-form, .lg-tabs, .lg-bio-btn,
         .lg-divider, .lg-sso-btn, .lg-foot, .lg-pin-staff, .lg-pin-pad { animation: none; opacity: 1; transform: none; }
         .lg-pin-dots-shake { animation: none; }
+        .lg-input.is-focus { transform: none; }
+        .lg-input.is-focus > i { animation: none; }
     }
 </style>
 @endsection

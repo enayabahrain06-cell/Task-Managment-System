@@ -278,7 +278,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 
     /* ── Save / cancel buttons: full width, sticky above the bottom nav ── */
     .scard-footer {
-        position:sticky; bottom:calc(58px + env(safe-area-inset-bottom));
+        position:sticky; bottom:calc(78px + env(safe-area-inset-bottom));
         border-radius:0 0 var(--mob-r-lg, 20px) var(--mob-r-lg, 20px); flex-wrap:wrap;
         background:rgba(250,250,250,.94); backdrop-filter:blur(8px);
         box-shadow:0 -6px 20px rgba(0,0,0,.06); z-index:5;

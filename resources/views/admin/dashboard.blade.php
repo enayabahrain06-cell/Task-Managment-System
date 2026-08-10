@@ -416,10 +416,9 @@
 .adash-mob-updates-card .adash-mob-updates-avatar { flex-shrink:0; }
 .adash-mob-updates-card .adash-mob-updates-name,
 .adash-mob-updates-card .adash-mob-updates-project { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.adash-mob-fab { position:fixed; right:18px; bottom:104px; width:54px; height:54px; border-radius:18px; border:0; cursor:pointer; background:var(--mob-brand-grad); box-shadow:0 12px 24px -8px rgba(79,70,229,.7); align-items:center; justify-content:center; z-index:46; }
 @media(max-width:768px){
     .adash-mobile-only { display: block !important; }
-    .adash-mob-header, .adash-mob-fab, .adash-kpi-row { display: flex !important; }
+    .adash-mob-header, .adash-kpi-row { display: flex !important; }
     .adash-title-row,
     #dev-mode-banner,
     .charts-grid,
@@ -428,10 +427,6 @@
     [data-dev-key] {
         display: none !important;
     }
-    /* FAB sits at bottom:104px + 54px tall = occupies the 104-158px band above the
-       tab bar; .app-content only reserves 78px, so the last feed card gets covered
-       unless we reserve enough room here too. */
-    .app-content { padding-bottom: 176px !important; }
 }
 </style>
 
@@ -455,13 +450,6 @@
             </div>
         </div>
     </div>
-
-    {{-- Mobile-only FAB: quick task --}}
-    @if(auth()->user()->hasPermission('manage_tasks'))
-    <button type="button" @click="taskOpen = true" class="adash-mobile-only adash-mob-fab">
-        <i class="fas fa-plus" style="color:#fff;font-size:18px;"></i>
-    </button>
-    @endif
 
     {{-- Title row --}}
     <div class="adash-title-row" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
@@ -1433,6 +1421,9 @@ function dashModals() {
                 if (v) { this.projectStep = 1; this.pNameError = false; this.pDeadlineError = false; document.body.style.overflow = 'hidden'; }
                 else { document.body.style.overflow = ''; }
             });
+            @if(auth()->user()->hasPermission('manage_tasks'))
+            document.getElementById('mbnFab')?.addEventListener('click', () => { this.taskOpen = true; });
+            @endif
         },
 
         pAddTask() { this.pTasks.push(this.pBlankTask()); },

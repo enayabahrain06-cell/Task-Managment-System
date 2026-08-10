@@ -51,29 +51,45 @@
             color: var(--mob-ink); font-size: 17px; display: flex; align-items: center; justify-content: center;
             cursor: pointer; border-radius: 99px;
         }
-        .mob-main { padding: 16px 0 96px; min-height: calc(100vh - 52px); }
+        .mob-main { padding: 16px 0 116px; min-height: calc(100vh - 52px); }
 
         .mobile-bottom-nav {
-            display: flex; position: fixed; left: 0; right: 0; bottom: 0; height: 58px;
-            background: #fff; border-top: 1px solid var(--mob-line); z-index: 45;
-            padding-bottom: env(safe-area-inset-bottom);
-            box-shadow: 0 -4px 20px rgba(17,24,39,.06);
+            display: flex; position: fixed; left: 0; right: 0; bottom: 0;
+            height: 78px; padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
+            background: #fff; border-radius: 24px 24px 0 0;
+            box-shadow: 0 -6px 24px rgba(20, 20, 40, 0.10);
+            align-items: stretch; z-index: 100;
+            -webkit-mask: radial-gradient(circle 37px at 50% 0px, transparent 36px, #000 37px);
+            mask: radial-gradient(circle 37px at 50% 0px, transparent 36px, #000 37px);
         }
         .mbn-item {
             flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            gap: 3px; text-decoration: none; color: var(--mob-ink-3); font-size: 10px; font-weight: 600;
-            min-height: 44px; position: relative; background: none; border: none; cursor: pointer;
+            gap: 5px; text-decoration: none; color: #8b909c; font-size: 12px; font-weight: 600;
+            position: relative; background: none; border: none; cursor: pointer;
             font-family: 'Inter', sans-serif;
         }
-        .mbn-item i { font-size: 17px; transition: transform .15s ease; }
-        .mbn-item.active { color: var(--mob-brand); }
+        .mbn-item i { font-size: 19px; transition: transform .15s ease; }
+        .mbn-item:hover { color: #5B54D9; }
+        .mbn-item.active { color: #5B54D9; font-weight: 700; }
         .mbn-item.active i { transform: translateY(-1px) scale(1.08); }
+        .mbn-item:nth-of-type(2) { margin-right: 34px; }
+        .mbn-item:nth-of-type(3) { margin-left: 34px; }
         .mbn-badge {
             position: absolute; top: 2px; right: calc(50% - 20px); min-width: 15px; height: 15px;
             background: #EF4444; border-radius: 999px; color: #fff; font-size: 9px; font-weight: 700;
             display: flex; align-items: center; justify-content: center; padding: 0 3px; border: 2px solid #fff;
             line-height: 1;
         }
+        .mbn-fab {
+            position: fixed; left: 50%; bottom: calc(52px + env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            width: 58px; height: 58px; border-radius: 50%; border: none;
+            background: #5B54D9; color: #fff; font-size: 24px;
+            display: grid; place-items: center;
+            box-shadow: 0 8px 20px rgba(91, 84, 217, 0.4);
+            cursor: pointer; z-index: 101;
+        }
+        .mbn-fab:hover { background: #4a43c4; }
     </style>
     @stack('head_scripts')
 </head>
@@ -106,6 +122,7 @@
         $mbnCanTasks     = $mbnRole === 'user' || auth()->user()->hasPermission('manage_tasks');
         $mbnCanTeam      = auth()->user()->hasPermission('view_team');
     @endphp
+    <button type="button" id="mbnFab" class="mbn-fab" aria-label="Add"><i class="fas fa-plus" aria-hidden="true"></i></button>
     <nav class="mobile-bottom-nav" aria-label="Primary">
         <a href="{{ route($mbnDashRoute) }}" class="mbn-item {{ request()->routeIs($mbnDashRoute) ? 'active' : '' }}"
            aria-current="{{ request()->routeIs($mbnDashRoute) ? 'page' : 'false' }}">

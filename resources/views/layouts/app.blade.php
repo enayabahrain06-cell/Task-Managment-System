@@ -38,35 +38,55 @@
 
         /* Mobile bottom tab bar */
         .mobile-bottom-nav {
-            display: none; position: fixed; left: 0; right: 0; bottom: 0; height: 58px;
-            background: #fff; border-top: 1px solid #F1F1F4; z-index: 45;
-            padding-bottom: env(safe-area-inset-bottom);
-            box-shadow: 0 -4px 20px rgba(17,24,39,.06);
+            display: none; position: fixed; left: 0; right: 0; bottom: 0; height: 78px;
+            padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
+            background: #fff; border-radius: 24px 24px 0 0; z-index: 100;
+            box-shadow: 0 -6px 24px rgba(20, 20, 40, 0.10);
+            align-items: stretch;
+            /* circular notch cut out of the top center for the FAB */
+            -webkit-mask: radial-gradient(circle 37px at 50% 0px, transparent 36px, #000 37px);
+            mask: radial-gradient(circle 37px at 50% 0px, transparent 36px, #000 37px);
         }
         .mbn-item {
             flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-            gap: 3px; text-decoration: none; color: #9CA3AF; font-size: 10px; font-weight: 600;
-            min-height: 44px; position: relative; background: none; border: none; cursor: pointer;
+            gap: 5px; text-decoration: none; color: #8b909c; font-size: 12px; font-weight: 600;
+            position: relative; background: none; border: none; cursor: pointer;
             font-family: 'Inter', sans-serif;
         }
-        .mbn-item i { font-size: 17px; transition: transform .15s ease; }
-        .mbn-item.active { color: {{ $appSettings['primary_color'] ?? '#4F46E5' }}; }
+        .mbn-item i { font-size: 19px; transition: transform .15s ease; }
+        .mbn-item:hover { color: #5B54D9; }
+        .mbn-item.active { color: #5B54D9; font-weight: 700; }
         .mbn-item.active i { transform: translateY(-1px) scale(1.08); }
+        /* central gap under the FAB */
+        .mbn-item:nth-of-type(2) { margin-right: 34px; }
+        .mbn-item:nth-of-type(3) { margin-left: 34px; }
         .mbn-badge {
             position: absolute; top: 2px; right: calc(50% - 20px); min-width: 15px; height: 15px;
             background: #EF4444; border-radius: 999px; color: #fff; font-size: 9px; font-weight: 700;
             display: flex; align-items: center; justify-content: center; padding: 0 3px; border: 2px solid #fff;
             line-height: 1;
         }
+        .mbn-fab {
+            display: none;
+            position: fixed; left: 50%; bottom: calc(52px + env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            width: 58px; height: 58px; border-radius: 50%; border: none;
+            background: #5B54D9; color: #fff; font-size: 24px;
+            place-items: center;
+            box-shadow: 0 8px 20px rgba(91, 84, 217, 0.4);
+            cursor: pointer; z-index: 101;
+        }
+        .mbn-fab:hover { background: #4a43c4; }
 
         @media (max-width: 768px) {
             .app-sidebar  { position: fixed; top: 0; left: 0; height: 100%; transform: translateX(-100%); }
             .app-sidebar.sidebar-open { transform: translateX(0); }
             .sidebar-overlay.overlay-open { display: block; }
             .hamburger-btn { display: flex; }
-            .app-content { padding: 12px; padding-bottom: 78px; }
+            .app-content { padding: 12px; padding-bottom: 98px; }
             .topbar-search { display: none !important; }
             .mobile-bottom-nav { display: flex; }
+            .mbn-fab { display: grid; }
             .app-copyright { display: none !important; }
         }
 
@@ -294,7 +314,7 @@
 
             /* Sticky bottom action bar (sits above the global bottom tab bar) */
             .mob-sticky-action-bar {
-                position: sticky; bottom: calc(58px + env(safe-area-inset-bottom));
+                position: sticky; bottom: calc(78px + env(safe-area-inset-bottom));
                 background: rgba(255,255,255,.94); backdrop-filter: blur(8px);
                 padding: 10px var(--mob-sp-2); margin: var(--mob-sp-2) calc(-1 * var(--mob-sp-2)) calc(-1 * var(--mob-sp-2));
                 box-shadow: 0 -6px 20px rgba(0,0,0,.06); border-top: 1px solid #F3F4F6; z-index: 5;
@@ -436,7 +456,7 @@
 
             /* Sticky bottom action bar */
             .uds-actionbar {
-                position: fixed; left: 0; right: 0; bottom: calc(58px + env(safe-area-inset-bottom)); z-index: 20;
+                position: fixed; left: 0; right: 0; bottom: calc(78px + env(safe-area-inset-bottom)); z-index: 20;
                 display: flex; gap: 9px; padding: 12px 16px; background: rgba(255,255,255,.94);
                 backdrop-filter: blur(18px); border-top: 1px solid #E9EBF0;
             }
@@ -461,7 +481,7 @@
             /* Toast — one dark pattern app-wide on mobile, pinned above the tab bar
                (desktop keeps its existing bottom-right floating white toast) */
             #appToastWrap {
-                left: 16px; right: 16px; bottom: calc(58px + env(safe-area-inset-bottom) + 12px) !important;
+                left: 16px; right: 16px; bottom: calc(78px + env(safe-area-inset-bottom) + 12px) !important;
                 align-items: stretch;
             }
             .app-toast { min-width: 0; max-width: none; width: 100%; box-sizing: border-box; }
@@ -499,6 +519,7 @@
         $mbnCanTasks     = $mbnRole === 'user' || auth()->user()->hasPermission('manage_tasks');
         $mbnCanTeam      = auth()->user()->hasPermission('view_team');
     @endphp
+    <button type="button" id="mbnFab" class="mbn-fab" aria-label="Add"><i class="fas fa-plus" aria-hidden="true"></i></button>
     <nav class="mobile-bottom-nav" aria-label="Primary">
         <a href="{{ route($mbnDashRoute) }}" class="mbn-item {{ request()->routeIs($mbnDashRoute) ? 'active' : '' }}"
            aria-current="{{ request()->routeIs($mbnDashRoute) ? 'page' : 'false' }}">

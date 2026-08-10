@@ -110,7 +110,7 @@
     .act-m-root .act-view-btn { color:var(--am-indigo) !important; }
 
     /* Floating Release FAB */
-    .act-m-root .act-fab { display:flex !important; position:fixed; right:18px; bottom:calc(58px + env(safe-area-inset-bottom, 0px) + 16px);
+    .act-m-root .act-fab { display:flex !important; position:fixed; right:18px; bottom:calc(78px + env(safe-area-inset-bottom, 0px) + 16px);
         height:50px; padding:0 20px; border-radius:16px; background:var(--am-indigo); color:#fff;
         align-items:center; gap:8px; font-size:14px; font-weight:800; box-shadow:0 10px 24px rgba(91,75,225,.36); z-index:46; }
 

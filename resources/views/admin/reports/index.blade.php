@@ -60,10 +60,10 @@
     /* the native select covers the chip so the OS picker opens on tap */
     .rpt-m-chip select { position:absolute; inset:0; width:100%; height:100%; opacity:0; border:0; }
 
-    /* Sticky action bar — sits above the global bottom tab bar (58px + safe-area) */
+    /* Sticky action bar — sits above the global bottom tab bar (78px + safe-area) */
     .rpt-m-actionbar {
         display:flex !important; gap:9px; position:fixed; left:0; right:0;
-        bottom:calc(58px + env(safe-area-inset-bottom)); z-index:20;
+        bottom:calc(78px + env(safe-area-inset-bottom)); z-index:20;
         padding:10px 16px; background:rgba(255,255,255,.94); backdrop-filter:blur(18px);
         border-top:1px solid #E9EBF0;
     }
