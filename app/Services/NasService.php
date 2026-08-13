@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Customer;
+use App\Models\Project;
 use App\Models\Setting;
 use App\Models\Task;
 use App\Models\User;
@@ -219,7 +220,7 @@ class NasService
      * Copy a locally stored file to the correct NAS folder for the given task and stage.
      * Returns the NAS path on success, or null on failure.
      */
-    public function copyToNas(Task $task, string $localPath, string $originalFilename, string $stage = '03_Working', int $version = 0): ?string
+    public function copyToNas(Task $task, string $localPath, string $originalFilename, string $stage = '03_Working', int $version = 0, bool $keepLocal = false): ?string
     {
         if (!$this->isEnabled()) return null;
 
@@ -238,10 +239,44 @@ class NasService
         $nasPath = $nasDir . '/' . $remote;
         $ok      = $this->smbPut($cfg, $localFull, $nasDir, $remote);
 
-        if ($ok && $this->isNetworkOnly()) {
+        if ($ok && $this->isNetworkOnly() && !$keepLocal) {
             $this->deleteLocal($localPath);
         } elseif (!$ok) {
             $this->reportSyncFailure($task, $originalFilename, $stage);
+        }
+
+        return $ok ? $nasPath : null;
+    }
+
+    /**
+     * Copy a project-level attachment (not tied to any single task) to
+     * Customers/{company}/Projects/{year}/{month}/{PRJ-id}_{name}/Project_Files/ on the NAS.
+     * Local copy is kept — this is an additive sync, not a move.
+     */
+    public function copyToNasProjectAttachment(Project $project, string $localPath, string $originalFilename): ?string
+    {
+        if (!$this->isEnabled()) return null;
+
+        $localFull = storage_path('app/public/' . $localPath);
+        if (!file_exists($localFull)) return null;
+
+        $cfg   = $this->cfg();
+        $root  = $cfg['root'];
+        $year  = $project->created_at->format('Y');
+        $month = $project->created_at->format('Y-m');
+        $company = $this->slug($project->customer?->name ?? $project->name);
+        $prjId   = 'PRJ-' . str_pad($project->id, 3, '0', STR_PAD_LEFT);
+        $prjName = $this->slug($project->name);
+        $nasDir  = "{$root}/Customers/{$company}/Projects/{$year}/{$month}/{$prjId}_{$prjName}/Project_Files";
+
+        $this->ensureFolders($cfg, $nasDir);
+
+        $remote  = $this->uniqueRemoteName($cfg, $nasDir, preg_replace('/[\\\\\/\'":<>|*?()\s]/', '_', $originalFilename));
+        $nasPath = $nasDir . '/' . $remote;
+        $ok      = $this->smbPut($cfg, $localFull, $nasDir, $remote);
+
+        if (!$ok) {
+            Log::warning('NAS sync failed', ['project_id' => $project->id, 'file' => $originalFilename, 'stage' => 'Project Attachment']);
         }
 
         return $ok ? $nasPath : null;
