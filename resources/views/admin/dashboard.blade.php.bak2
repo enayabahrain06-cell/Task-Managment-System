@@ -2,11 +2,16 @@
 
 @section('title', 'Overview')
 
+@push('head_scripts')
+<script src="/js/chart.umd.min.js"></script>
+@endpush
 @section('content')
 
 <style>
 /* ── Box-sizing reset (cross-browser) ── */
 *, *::before, *::after { box-sizing: border-box; }
+/* Grid items must not overflow their track */
+.stats-grid > *, .charts-grid > *, .bottom-grid > * { min-width: 0; }
 
 /* ── Responsive grid helpers ── */
 .stats-grid   { display: -ms-grid; display:grid; -ms-grid-columns: 1fr 16px 1fr 16px 1fr 16px 1fr 16px 1fr; grid-template-columns:repeat(5,1fr); gap:16px; margin-bottom:20px; }
@@ -34,6 +39,235 @@
 }
 @media(max-width:420px){
     .stats-grid { -ms-grid-columns:1fr; grid-template-columns:1fr; }
+}
+
+/* ── Task Analytics inner grids ── */
+.adash-pipeline-grid  { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:8px; }
+.adash-attention-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin-bottom:14px; }
+.adash-rate-grid      { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.adash-modal-2col     { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
+.adash-modal-3col     { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:center; }
+.adash-assignee-row   { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:12px; }
+
+/* ── Quick action buttons (title row) — one primary action, the rest as lighter chips ── */
+.qa-btn {
+    display:flex; align-items:center; gap:7px; flex-shrink:0; white-space:nowrap;
+    font-size:13px; font-weight:600; padding:9px 16px; border-radius:9px; cursor:pointer;
+    border:1.5px solid transparent;
+}
+.qa-btn-primary   { background:#F59E0B; color:#fff; box-shadow:0 2px 10px rgba(245,158,11,0.4); }
+.qa-btn-secondary { background:#F3F4F6; color:#374151; border-color:#E5E7EB; }
+.qa-btn-secondary:hover { background:#EEF2FF; color:#4F46E5; border-color:#C7D2FE; }
+.qa-btn-icon {
+    width:38px; height:38px; flex-shrink:0; background:#F3F4F6; border:1.5px solid #E5E7EB; border-radius:9px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; color:#6B7280;
+}
+
+@media(max-width:768px){
+    .adash-pipeline-grid  { grid-template-columns:repeat(2,1fr); }
+    .adash-attention-grid { grid-template-columns:repeat(3,1fr); }
+    .adash-rate-grid      { grid-template-columns:1fr; gap:8px; }
+    .stat-card-value      { font-size:22px; }
+    /* Page title row: stack on mobile, actions become one scrollable row instead of wrapping */
+    .adash-title-row      { flex-direction:column; align-items:flex-start !important; }
+    .adash-title-btns     {
+        width:100%; flex-wrap:nowrap !important; overflow-x:auto; padding-bottom:4px;
+        -ms-overflow-style:none; scrollbar-width:none;
+    }
+    .adash-title-btns::-webkit-scrollbar { display:none; }
+}
+@media(max-width:480px){
+    .adash-pipeline-grid  { grid-template-columns:repeat(2,1fr); }
+    .adash-attention-grid { grid-template-columns:repeat(2,1fr); }
+    .adash-modal-2col     { grid-template-columns:1fr; }
+    .adash-modal-3col     { grid-template-columns:1fr; }
+    .adash-assignee-row   { grid-template-columns:1fr; }
+    .stat-card-value      { font-size:20px; }
+}
+
+/* ── Mobile: collapse inline grids that have no responsive class ── */
+@media(max-width:768px){
+    /* Project-links modal 3-col grid */
+    [style*="grid-template-columns:1fr 1fr auto"] { grid-template-columns:1fr !important; }
+    /* Recent-tasks card-view auto-fill grid: let it go 1-col */
+    [style*="grid-template-columns:repeat(auto-fill"] { grid-template-columns:1fr !important; }
+    /* Ensure the table scroll wrapper shows a scrollbar hint */
+    .dash-card [style*="overflow-x:auto"] { -webkit-overflow-scrolling:touch; }
+    /* Recent tasks header: tighten toggle buttons */
+    .recent-tasks-toggle button { padding:6px 12px !important; font-size:12px !important; }
+    .recent-tasks-toggle { gap:2px !important; }
+}
+@media(max-width:480px){
+    /* Recent tasks header: stack on very small screens */
+    .recent-tasks-header { flex-direction:column !important; align-items:flex-start !important; gap:10px !important; }
+    .recent-tasks-header > div:last-child { width:100%; justify-content:space-between; }
+    /* Grid items in grids must not overflow */
+    .stats-grid > *, .charts-grid > *, .bottom-grid > * { min-width:0; }
+}
+@media(max-width:480px){
+    /* Any remaining 2-col inline grids inside modals */
+    [style*="grid-template-columns:1fr 1fr"] { grid-template-columns:1fr !important; }
+    /* Pipeline card legend must stay 2-column even on small phones — the blanket
+       [style*=] rule above matches it too since it shares the same inline style substring */
+    .adash-pipeline-legend { grid-template-columns:1fr 1fr !important; }
+    /* Recent tasks: hide non-essential columns if user forces table view on mobile */
+    .recent-tasks-col-project,
+    .recent-tasks-col-priority { display:none !important; }
+}
+@media(max-width:640px){
+    /* Reduce table cell padding on mobile */
+    .recent-tasks-table th,
+    .recent-tasks-table td { padding:8px 10px !important; font-size:11px !important; }
+    /* Card view: single column on small phones */
+    .recent-tasks-cards { grid-template-columns:1fr !important; }
+}
+
+/* ── Mobile: Social Media "Completed" table → stacked cards ── */
+@media(max-width:768px){
+    .sm-completed-table thead { display:none; }
+    .sm-completed-table, .sm-completed-table tbody { display:block; width:100%; }
+    .sm-completed-table tr {
+        display:block; width:100%; border-top:none !important;
+        border:1px solid #F3F4F6; border-radius:10px; margin-bottom:10px; padding:4px 0;
+    }
+    .sm-completed-table tr:last-child { margin-bottom:0; }
+    .sm-completed-table td {
+        display:block; width:100%; text-align:left;
+        padding:6px 14px !important;
+    }
+    .sm-completed-table td::before {
+        content: attr(data-label);
+        display:block;
+        font-size:10px; font-weight:700; color:#9CA3AF; text-transform:uppercase;
+        letter-spacing:.04em; margin-bottom:4px;
+    }
+    .sm-completed-table td[data-label=""] {
+        text-align:center; padding-top:10px !important; padding-bottom:10px !important;
+    }
+    .sm-completed-table td[data-label=""]::before { content:none; margin:0; }
+    /* The wrapping overflow-x:auto is no longer needed once rows are stacked */
+    .sm-completed-table { min-width:0 !important; }
+}
+
+/* ── Mobile: tap-target sizing (close buttons, icon buttons, chip removes) ── */
+@media(max-width:768px){
+    /* Modal close ("X") buttons — bump to a comfortable 44x44 tap target */
+    [style*="width:30px;height:30px;border-radius:50%;background:#F3F4F6"],
+    [style*="width:34px;height:34px;border-radius:50%;background:#F3F4F6"],
+    [style*="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.15)"],
+    [style*="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.18)"],
+    [style*="background:rgba(255,255,255,0.15);border:none;border-radius:8px;width:32px;height:32px"] {
+        width:44px !important; height:44px !important;
+    }
+    /* Title-row "..." overflow button */
+    .qa-btn-icon { width:44px; height:44px; }
+    /* Quick action buttons — taller, easier to tap */
+    .qa-btn { padding:12px 16px; min-height:44px; }
+    /* File-chip remove buttons (Quick Task / Quick SM Post / New Project uploads) */
+    [style*="border-radius:6px;background:#FEE2E2;color:#DC2626"],
+    [style*="border-radius:7px;background:#FEE2E2;color:#DC2626"] {
+        width:32px !important; height:32px !important;
+    }
+    /* Stat-card kebab menu */
+    .stat-card-menu { width:36px; height:36px; }
+    /* Prevent iOS Safari auto-zoom on focus (inputs must be >=16px) */
+    .form-input, .form-select, textarea.form-input { font-size:16px !important; padding:11px 12px; }
+    /* Recent-tasks table/cards toggle — comfortable tap height */
+    .recent-tasks-toggle button { min-height:40px; }
+}
+
+/* ── Mobile: KPI stat row → swipeable card strip; quick actions → touch-friendly tiles
+   (visual polish only — layered on top of the tap-target/table-card pass above) ── */
+@media(max-width:768px){
+    /* Stats row becomes a horizontally snapping, swipeable strip instead of a shrunk grid */
+    .stats-grid {
+        display:flex !important;
+        grid-template-columns:none !important;
+        overflow-x:auto;
+        scroll-snap-type:x mandatory;
+        -webkit-overflow-scrolling:touch;
+        gap:12px;
+        padding:2px 2px 10px;
+        margin-bottom:16px;
+    }
+    .stats-grid::-webkit-scrollbar { display:none; }
+    .stats-grid > a { scroll-snap-align:start; flex:0 0 152px; }
+    .stat-card {
+        border-radius:var(--mob-r-md, 16px) !important;
+        box-shadow:var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05));
+        padding:var(--mob-sp-2, 16px) !important;
+    }
+    /* Eyebrow label above the KPI value — consistent caption styling */
+    .stat-card-label {
+        font-size:11px !important; font-weight:700 !important;
+        text-transform:uppercase; letter-spacing:.04em;
+    }
+
+    /* Quick actions read as compact tappable chips (pill-shaped, scrollable row) rather than large tiles.
+       Height stays at the 44px touch-target floor set by the tap-target pass above — only shape/padding change. */
+    .qa-btn {
+        border-radius:999px;
+        box-shadow:var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05));
+        min-height:44px;
+        padding:10px 16px !important;
+    }
+    .qa-btn-primary { box-shadow:0 3px 10px rgba(245,158,11,.3); }
+    .qa-btn-icon { border-radius:50%; width:44px; height:44px; }
+}
+
+/* ── Mobile: unify every dash-card panel (analytics/list/empty-state) to one radius/shadow/padding system ── */
+@media(max-width:768px){
+    .dash-card {
+        border-radius:var(--mob-r-lg, 20px) !important;
+        box-shadow:var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05)) !important;
+        padding:var(--mob-sp-2, 16px) !important;
+    }
+    /* Preserve intentional zero-padding wrapper (recent-tasks table card manages its own cell padding) */
+    .dash-card[style*="padding:0;overflow:hidden"] { padding:0 !important; }
+    /* Empty-state cards ("No tasks yet" etc.) — compact vertical rhythm instead of an oversized 40px pad */
+    .dash-card[style*="padding:40px;color:#9CA3AF"] { padding:32px 16px !important; }
+
+    /* Status/priority badge pills (recent-tasks table + card view) — unify size/shape across both */
+    [style*="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:"],
+    [style*="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:"],
+    [style*="padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;background:"] {
+        padding:2px 8px !important; font-size:11px !important; font-weight:700 !important;
+    }
+
+    /* Review Cycles icon badge — shrink to the standard 36px mobile icon-badge size */
+    [style*="width:50px;height:50px;border-radius:12px;background:#EDE9FE"] {
+        width:36px !important; height:36px !important;
+    }
+    [style*="width:50px;height:50px;border-radius:12px;background:#EDE9FE"] i { font-size:16px !important; }
+
+    /* Completion-rate / on-time-rate progress rings — match the Review Cycles icon-badge
+       so all three "rate metrics" tiles share one icon-container size on mobile */
+    [style*="position:relative;width:50px;height:50px;flex-shrink:0;"],
+    [style*="width:50px;height:50px;transform:rotate(-90deg);"] {
+        width:36px !important; height:36px !important;
+    }
+
+    /* "Tasks by Customer" / workload-chart empty states — don't reserve desktop-sized
+       empty space on a narrow screen */
+    [style*="min-height:220px;color:#D1D5DB"] { min-height:140px !important; }
+
+    /* Social-media pending/completed empty states — compact vertical rhythm, same as
+       the other empty-state cards on this page */
+    [style*="text-align:center;padding:40px 20px;"] { padding:28px 16px !important; }
+
+    /* Social-media "pending post" tile — bring radius/padding in line with the shared
+       mobile card system instead of its ad-hoc 12px/14px values */
+    [style*="border-radius:12px;padding:14px;background:"] {
+        border-radius:var(--mob-r-md, 16px) !important;
+        padding:var(--mob-sp-2, 16px) !important;
+        box-shadow:var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05));
+    }
+
+    /* Tasks-by-Customer legend rows are tap targets (link to the customer) — give them
+       a comfortable touch height instead of the ~30px desktop row */
+    [style*="padding:6px 8px;border-radius:8px;"] {
+        min-height:44px !important; padding:8px !important;
+    }
 }
 
 /* ── Card base ── */
@@ -137,13 +371,92 @@
 .priority-btn.active-low    { background:#F0FDF4; border-color:#10B981; color:#059669; }
 .priority-btn.active-medium { background:#FFFBEB; border-color:#F59E0B; color:#D97706; }
 .priority-btn.active-high   { background:#FFF1F2; border-color:#EF4444; color:#DC2626; }
+
+/* ── Quick Task modal → bottom sheet on mobile ── */
+@media(max-width:640px){
+    .qt-modal-overlay { align-items:flex-end !important; padding:0 !important; }
+    .qt-modal-card {
+        max-width:100% !important;
+        width:100% !important;
+        border-radius:26px 26px 0 0 !important;
+        max-height:88vh !important;
+        overflow-y:auto !important;
+        padding-bottom:env(safe-area-inset-bottom) !important;
+        -webkit-animation:qtSheetUp .25s ease-out !important;
+        animation:qtSheetUp .25s ease-out !important;
+    }
+}
+@keyframes qtSheetUp { from { transform:translateY(100%); } to { transform:translateY(0); } }
+
+/* ── Hero focus card + KPI trio ── */
+.adash-hero-row { display:flex; align-items:center; gap:10px; padding:12px 14px; text-decoration:none; color:#fff; border-bottom:1px solid rgba(255,255,255,.12); }
+.adash-hero-row:last-child { border-bottom:none; }
+.adash-hero-row:hover { background:rgba(255,255,255,.06); }
+.adash-kpi-row { display:flex; gap:12px; margin-bottom:16px; }
+.adash-kpi-card { flex:1; min-width:0; background:#fff; border:1px solid #EDEFF3; border-radius:16px; padding:14px 16px; box-shadow:0 1px 2px rgba(17,24,39,.04); }
+@media(max-width:480px){
+    .adash-hero { padding:16px 16px !important; border-radius:18px !important; }
+    .adash-hero h2 { font-size:18px !important; }
+    .adash-kpi-row { gap:8px !important; }
+    .adash-kpi-card { padding:11px 10px !important; border-radius:14px !important; }
+    .adash-kpi-card .adash-kpi-value { font-size:21px !important; }
+}
+
+/* ── Mobile-only home screen: sticky header, Pipeline, Latest updates, FAB ──
+   replaces the desktop cascade (stats/charts/analytics/recent-tasks/etc.)
+   which is hidden below ≤768px so mobile gets one clean scrollable screen. ── */
+.adash-mobile-only { display: none; }
+.adash-mob-header { align-items:center; justify-content:space-between; gap:12px; padding:6px 4px 14px; }
+.adash-mob-updates-card { width:100%; text-align:left; background:#fff; border:1px solid #EDEFF3; border-radius:16px; padding:14px; box-shadow:0 1px 2px rgba(17,24,39,.04); text-decoration:none; margin-bottom:9px; }
+.adash-mob-fab { position:fixed; right:18px; bottom:104px; width:54px; height:54px; border-radius:18px; border:0; cursor:pointer; background:var(--mob-brand-grad); box-shadow:0 12px 24px -8px rgba(79,70,229,.7); align-items:center; justify-content:center; z-index:46; }
+@media(max-width:768px){
+    .adash-mobile-only { display: block !important; }
+    .adash-mob-header, .adash-mob-fab, .adash-kpi-row { display: flex !important; }
+    .adash-title-row,
+    #dev-mode-banner,
+    .charts-grid,
+    .bottom-grid,
+    #dash-social-media-section,
+    [data-dev-key] {
+        display: none !important;
+    }
+    /* FAB sits at bottom:104px + 54px tall = occupies the 104-158px band above the
+       tab bar; .app-content only reserves 78px, so the last feed card gets covered
+       unless we reserve enough room here too. */
+    .app-content { padding-bottom: 176px !important; }
+}
 </style>
 
 {{-- ══ Page Title + Quick Create Modals ══ --}}
 <div x-data="dashModals()" x-init="init()" style="margin-bottom:22px;">
 
+    {{-- Mobile-only sticky-feel greeting header (replaces the desktop title row on small screens) --}}
+    @php
+        $mobHour = now()->hour;
+        $mobGreeting = $mobHour < 12 ? 'Good morning' : ($mobHour < 17 ? 'Good afternoon' : 'Good evening');
+    @endphp
+    <div class="adash-mobile-only adash-mob-header">
+        <div style="display:flex;align-items:center;gap:11px;min-width:0;">
+            <div style="width:40px;height:40px;flex-shrink:0;border-radius:99px;background:var(--mob-brand-grad);color:#fff;font-size:16.8px;font-weight:700;display:flex;align-items:center;justify-content:center;">{{ strtoupper(substr(auth()->user()->name, 0, 1)) }}</div>
+            <div style="min-width:0;">
+                <div style="font-size:17.5px;font-weight:700;color:#111827;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $mobGreeting }}, {{ explode(' ', auth()->user()->name)[0] }}</div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
+                    <span style="width:6px;height:6px;border-radius:99px;background:#059669;"></span>
+                    <span style="font-size:11.5px;color:#6B7280;font-weight:500;">{{ ucfirst(auth()->user()->role) }} · Live</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Mobile-only FAB: quick task --}}
+    @if(auth()->user()->hasPermission('manage_tasks'))
+    <button type="button" @click="taskOpen = true" class="adash-mobile-only adash-mob-fab">
+        <i class="fas fa-plus" style="color:#fff;font-size:18px;"></i>
+    </button>
+    @endif
+
     {{-- Title row --}}
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div class="adash-title-row" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
         <div>
             <h1 style="font-size:22px;font-weight:700;color:#111827;margin:0;">Overview</h1>
             <p style="font-size:13px;color:#9CA3AF;margin:3px 0 0;">
@@ -154,30 +467,35 @@
                 </span>
             </p>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            {{-- NEW PROJECT BUTTON --}}
-            <button @click="projectOpen = true"
-                    style="display:flex;align-items:center;gap:7px;background:#fff;color:#4F46E5;font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;border:1.5px solid #C7D2FE;cursor:pointer;">
-                <i class="fas fa-folder-plus" style="font-size:11px;"></i> New Project
-            </button>
-            {{-- QUICK TASK BUTTON --}}
-            <button @click="taskOpen = true"
-                    style="display:flex;align-items:center;gap:7px;background:#F59E0B;color:#fff;font-size:13px;font-weight:600;padding:9px 18px;border-radius:9px;border:none;cursor:pointer;box-shadow:0 2px 10px rgba(245,158,11,0.4);">
+        <div class="adash-title-btns" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            {{-- QUICK TASK BUTTON — primary action, leads the row --}}
+            @if(auth()->user()->hasPermission('manage_tasks'))
+            <button @click="taskOpen = true" class="qa-btn qa-btn-primary">
                 <i class="fas fa-bolt" style="font-size:11px;"></i> Quick Task
             </button>
-            <button style="width:36px;height:36px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#9CA3AF;">
+            @endif
+            {{-- NEW PROJECT BUTTON --}}
+            <button @click="projectOpen = true" class="qa-btn qa-btn-secondary">
+                <i class="fas fa-folder-plus" style="font-size:11px;"></i> New Project
+            </button>
+            {{-- QUICK SM POST BUTTON --}}
+            <button @click="smPostOpen = true" class="qa-btn qa-btn-secondary">
+                <i class="fas fa-share-alt" style="font-size:11px;"></i> Quick SM Post
+            </button>
+            <button class="qa-btn-icon">
                 <i class="fas fa-ellipsis-h"></i>
             </button>
         </div>
     </div>
 
     {{-- ══ Quick Task Modal ══ --}}
+    <template x-teleport="body">
     <div x-show="taskOpen" x-cloak style="position:fixed;inset:0;z-index:9999;">
-    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;">
+    <div class="qt-modal-overlay" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;">
 
         <div @click="taskOpen = false" style="position:absolute;inset:0;background:rgba(0,0,0,0.45);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);"></div>
 
-        <div style="position:relative;width:100%;max-width:480px;background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,0.2);overflow:hidden;">
+        <div class="qt-modal-card" style="position:relative;width:100%;max-width:480px;background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,0.2);overflow:hidden;">
 
             {{-- Header --}}
             <div style="padding:20px 24px 16px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
@@ -197,15 +515,19 @@
             </div>
 
             {{-- Form --}}
-            <form method="POST" action="{{ $dashQuickTaskUrl }}" enctype="multipart/form-data" style="padding:20px 24px 24px;">
+            <form method="POST" action="{{ $dashQuickTaskUrl }}" enctype="multipart/form-data" style="padding:20px 24px 24px;"
+                  @submit="if (taskSubmitting || taskTitleDuplicate) { $event.preventDefault(); return; } taskSubmitting = true">
                 @csrf
+                <input type="hidden" name="_form" value="quick_task">
 
                 <div style="margin-bottom:14px;">
                     <label class="form-label">Task Title <span style="color:#EF4444;">*</span></label>
-                    <input type="text" name="title" class="form-input" placeholder="e.g. Update hero banner image" required
+                    <input type="text" name="title" id="dqtTitleInput" class="form-input" placeholder="e.g. Update hero banner image" required
                            value="{{ old('title') }}"
                            onfocus="this.style.borderColor='#F59E0B';this.style.boxShadow='0 0 0 3px rgba(245,158,11,0.12)'"
-                           onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">
+                           onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''"
+                           @input="checkQtDuplicate()">
+                    <p id="dqtTitleDupWarn" style="display:none;font-size:11px;color:#DC2626;margin:5px 0 0;font-weight:600;"></p>
                 </div>
 
                 <div style="margin-bottom:14px;">
@@ -228,7 +550,7 @@
                     </select>
                 </div>
 
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+                <div class="adash-modal-2col">
                     <div>
                         <label class="form-label">Priority <span style="color:#EF4444;">*</span></label>
                         <select name="priority" class="form-input form-select" required>
@@ -244,10 +566,11 @@
                     </div>
                 </div>
 
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+                <div class="adash-modal-2col" style="margin-bottom:20px;">
                     <div>
                         <label class="form-label">Link to Project <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
-                        <select name="project_id" class="form-input form-select">
+                        <select name="project_id" id="dqtProjectSelect" class="form-input form-select"
+                                @change="checkQtDuplicate()">
                             <option value="">— No project —</option>
                             @foreach($allProjects as $proj)
                             <option value="{{ $proj->id }}" {{ old('project_id') == $proj->id ? 'selected' : '' }}>
@@ -258,9 +581,10 @@
                     </div>
                     <div>
                         <label class="form-label">Customer <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
-                        <select name="customer_id" class="form-input form-select"
+                        <select name="customer_id" id="dqtCustomerSelect" class="form-input form-select"
                                 onfocus="this.style.borderColor='#F59E0B';this.style.boxShadow='0 0 0 3px rgba(245,158,11,0.12)'"
-                                onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">
+                                onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''"
+                                @change="checkQtDuplicate()">
                             <option value="">— No customer —</option>
                             @foreach($customers as $c)
                             <option value="{{ $c->id }}" {{ old('customer_id') == $c->id ? 'selected' : '' }}>
@@ -307,17 +631,216 @@
                     </template>
                 </div>
 
-                <button type="submit"
-                        style="width:100%;padding:11px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(245,158,11,.35);">
-                    <i class="fa fa-bolt"></i> Assign Task
+                <button type="submit" :disabled="taskSubmitting || taskTitleDuplicate"
+                        :style="(taskSubmitting || taskTitleDuplicate) ? 'width:100%;padding:11px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(245,158,11,.35);opacity:0.8;' : 'width:100%;padding:11px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(245,158,11,.35);'">
+                    <i class="fa" :class="taskSubmitting ? 'fa-spinner fa-spin' : 'fa-bolt'"></i>
+                    <span x-text="taskTitleDuplicate ? 'Duplicate Title' : (taskSubmitting ? 'Assigning...' : 'Assign Task')"></span>
                 </button>
             </form>
 
         </div>
     </div>
     </div>
+    </template>
+
+    {{-- ══ Quick SM Post Modal ══ --}}
+    <template x-teleport="body">
+    <div x-show="smPostOpen" x-cloak style="position:fixed;inset:0;z-index:9999;">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;">
+
+        <div @click="smPostOpen = false" style="position:absolute;inset:0;background:rgba(0,0,0,0.45);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);"></div>
+
+        <div style="position:relative;width:100%;max-width:520px;max-height:92vh;background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,0.2);overflow:hidden;display:flex;flex-direction:column;">
+
+            {{-- Header --}}
+            <div style="padding:20px 24px 16px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:34px;height:34px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-share-alt" style="color:#4F46E5;font-size:15px;"></i>
+                    </div>
+                    <div>
+                        <h2 style="font-size:16px;font-weight:700;color:#111827;margin:0;">Quick SM Post</h2>
+                        <p style="font-size:11px;color:#9CA3AF;margin:0;">Assign a social media post directly to the SM team</p>
+                    </div>
+                </div>
+                <button @click="smPostOpen = false"
+                        style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:13px;">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+
+            {{-- Form --}}
+            <form method="POST" action="{{ route('admin.tasks.quick-sm') }}" enctype="multipart/form-data" style="padding:20px 24px 24px;overflow-y:auto;flex:1;"
+                  @submit="if (smSubmitting || smTitleDuplicate) { $event.preventDefault(); return; } smSubmitting = true">
+                @csrf
+                <input type="hidden" name="_form" value="quick_sm_post">
+
+                @if(old('_form') === 'quick_sm_post' && $errors->any())
+                <div style="margin-bottom:14px;padding:10px 14px;background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;display:flex;align-items:flex-start;gap:8px;">
+                    <i class="fas fa-circle-exclamation" style="color:#DC2626;font-size:13px;margin-top:1px;flex-shrink:0;"></i>
+                    <div>
+                        @foreach($errors->all() as $error)
+                        <p style="font-size:12px;color:#991B1B;margin:0;line-height:1.5;">{{ $error }}</p>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
+                <div style="margin-bottom:14px;">
+                    <label class="form-label">Post Title <span style="color:#EF4444;">*</span></label>
+                    <input type="text" name="title" id="smTitleInput" class="form-input" placeholder="e.g. Ramadan promotion post" required
+                           value="{{ old('title') }}"
+                           onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.12)'"
+                           onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''"
+                           @input="checkSmDuplicate()">
+                    <p id="smTitleDupWarn" style="display:none;font-size:11px;color:#DC2626;margin:5px 0 0;font-weight:600;"></p>
+                </div>
+
+                <div style="margin-bottom:14px;">
+                    <label class="form-label">Assign To <span style="color:#EF4444;">*</span></label>
+                    <select name="social_assigned_to" class="form-input form-select" required
+                            onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.12)'"
+                            onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">
+                        <option value="">— Select SM team member —</option>
+                        @foreach($allUsers as $member)
+                        <option value="{{ $member->id }}" {{ old('social_assigned_to') == $member->id ? 'selected' : '' }}>
+                            {{ $member->name }} ({{ ucfirst($member->role) }})
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Platforms --}}
+                <div style="margin-bottom:14px;">
+                    <label class="form-label">Platforms <span style="color:#EF4444;">*</span></label>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;">
+                        @php
+                            $smPlatforms = [
+                                'instagram' => ['fa-instagram',  '#E1306C', 'Instagram'],
+                                'facebook'  => ['fa-facebook',   '#1877F2', 'Facebook'],
+                                'tiktok'    => ['fa-tiktok',     '#010101', 'TikTok'],
+                                'twitter'   => ['fa-x-twitter',  '#000000', 'X / Twitter'],
+                                'linkedin'  => ['fa-linkedin',   '#0A66C2', 'LinkedIn'],
+                                'snapchat'  => ['fa-snapchat',   '#F7CA00', 'Snapchat'],
+                                'youtube'   => ['fa-youtube',    '#FF0000', 'YouTube'],
+                            ];
+                        @endphp
+                        @foreach($smPlatforms as $key => [$icon, $color, $label])
+                        <label style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1.5px solid #E5E7EB;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;color:#374151;transition:all .15s;"
+                               onmouseover="this.style.borderColor='{{ $color }}';this.style.background='{{ $color }}18';"
+                               onmouseout="if(!this.querySelector('input').checked){this.style.borderColor='#E5E7EB';this.style.background='';}">
+                            <input type="checkbox" name="social_platforms[]" value="{{ $key }}"
+                                   {{ is_array(old('social_platforms')) && in_array($key, old('social_platforms')) ? 'checked' : '' }}
+                                   style="display:none;"
+                                   onchange="const lbl=this.closest('label'); if(this.checked){lbl.style.borderColor='{{ $color }}';lbl.style.background='{{ $color }}18';lbl.style.color='{{ $color }}';}else{lbl.style.borderColor='#E5E7EB';lbl.style.background='';lbl.style.color='#374151';}">
+                            <i class="fab {{ $icon }}" style="font-size:13px;color:{{ $color }};"></i>
+                            {{ $label }}
+                        </label>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div style="margin-bottom:14px;">
+                    <label class="form-label">Posting Instructions</label>
+                    <textarea name="social_description" class="form-input" rows="3"
+                              placeholder="What should be posted? Any specific guidelines, tone, or references..."
+                              style="resize:vertical;"
+                              onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.12)'"
+                              onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">{{ old('social_description') }}</textarea>
+                </div>
+
+                <div style="margin-bottom:14px;">
+                    <label class="form-label">Caption / Copy</label>
+                    <textarea name="social_caption" class="form-input" rows="3"
+                              placeholder="Ready-to-post caption text (optional)..."
+                              style="resize:vertical;"
+                              onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.12)'"
+                              onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">{{ old('social_caption') }}</textarea>
+                </div>
+
+                <div class="adash-modal-2col" style="margin-bottom:14px;">
+                    <div>
+                        <label class="form-label">Budget <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
+                        <input type="number" name="social_budget" class="form-input" placeholder="0.00" min="0" step="0.01"
+                               value="{{ old('social_budget') }}"
+                               onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.12)'"
+                               onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">
+                    </div>
+                    <div>
+                        <label class="form-label">Deadline <span style="color:#EF4444;">*</span></label>
+                        <input type="date" name="deadline" class="form-input" required
+                               min="{{ date('Y-m-d') }}" value="{{ old('deadline') }}"
+                               onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.12)'"
+                               onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''">
+                    </div>
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <label class="form-label">Customer <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
+                    <select name="customer_id" id="smCustomerSelect" class="form-input form-select"
+                            onfocus="this.style.borderColor='#6366F1';this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.12)'"
+                            onblur="this.style.borderColor='#E5E7EB';this.style.boxShadow=''"
+                            @change="checkSmDuplicate()">
+                        <option value="">— No customer —</option>
+                        @foreach($customers as $c)
+                        <option value="{{ $c->id }}" {{ old('customer_id') == $c->id ? 'selected' : '' }}>
+                            {{ $c->name }}{{ $c->company ? ' ('.$c->company.')' : '' }}
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Attachments --}}
+                <div style="margin-bottom:20px;">
+                    <label class="form-label" style="margin-bottom:6px;display:block;">Attachments <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
+                    <div @dragover.prevent="smDragover = true"
+                         @dragleave.prevent="smDragover = false"
+                         @drop.prevent="smDragover = false; smHandleFiles($event)"
+                         @click="$refs.smFileInput.click()"
+                         :style="smDragover
+                             ? 'border:2px dashed #6366F1;border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;background:#EEF2FF;'
+                             : 'border:2px dashed #E5E7EB;border-radius:10px;padding:16px;text-align:center;cursor:pointer;transition:all .2s;background:#FAFAFA;'">
+                        <i class="fas fa-cloud-arrow-up" style="font-size:18px;color:#6366F1;margin-bottom:6px;display:block;"></i>
+                        <p style="font-size:12px;color:#6B7280;margin:0;">Drop files here or <span style="color:#4F46E5;font-weight:600;">browse</span></p>
+                        <input type="file" name="attachments[]" multiple x-ref="smFileInput"
+                               @change="smHandleFiles($event)" style="display:none;">
+                    </div>
+                    <template x-if="smFiles.length > 0">
+                        <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px;">
+                            <template x-for="(file, i) in smFiles" :key="i">
+                                <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;">
+                                    <div style="width:28px;height:28px;border-radius:6px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                        <i :class="'fas ' + pFileIcon(file.name)" style="font-size:12px;color:#4F46E5;"></i>
+                                    </div>
+                                    <div style="flex:1;min-width:0;">
+                                        <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="file.name"></p>
+                                        <p style="font-size:11px;color:#9CA3AF;margin:0;" x-text="pFormatSize(file.size)"></p>
+                                    </div>
+                                    <button type="button" @click.stop="smRemoveFile(i)"
+                                            style="width:24px;height:24px;border-radius:6px;background:#FEE2E2;color:#DC2626;border:none;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+
+                <button type="submit" id="smPostSubmitBtn" :disabled="smSubmitting || smTitleDuplicate"
+                        :style="(smSubmitting || smTitleDuplicate) ? 'width:100%;padding:11px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(99,102,241,.35);opacity:0.8;' : 'width:100%;padding:11px;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(99,102,241,.35);'">
+                    <i class="fas" :class="smSubmitting ? 'fa-spinner fa-spin' : 'fa-share-alt'"></i>
+                    <span x-text="smTitleDuplicate ? 'Duplicate Title' : (smSubmitting ? 'Assigning...' : 'Assign SM Post')"></span>
+                </button>
+
+            </form>
+
+        </div>
+    </div>
+    </div>
+    </template>
 
     {{-- ══ New Project Wizard Modal ══ --}}
+    <template x-teleport="body">
     <div x-show="projectOpen" x-cloak style="position:fixed;inset:0;z-index:9999;">
     <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;">
 
@@ -367,10 +890,11 @@
             {{-- Body --}}
             <form method="POST" action="{{ $dashProjectStoreUrl }}" enctype="multipart/form-data" style="display:flex;flex-direction:column;flex:1;min-height:0;">
                 @csrf
+                <input type="hidden" name="_form" value="new_project">
                 <div style="flex:1;overflow-y:auto;padding:0 28px 4px;">
 
                     {{-- Validation errors banner --}}
-                    @if($errors->hasAny(['name','deadline','customer_id']) || preg_grep('/^tasks\./', array_keys($errors->toArray())))
+                    @if(old('_form') === 'new_project' && ($errors->hasAny(['name','deadline','customer_id']) || preg_grep('/^tasks\./', array_keys($errors->toArray()))))
                     <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px;">
                         <i class="fas fa-circle-exclamation" style="color:#DC2626;margin-top:1px;font-size:13px;flex-shrink:0;"></i>
                         <div style="font-size:12px;color:#B91C1C;line-height:1.6;">
@@ -406,7 +930,7 @@
                                       style="width:100%;padding:10px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;color:#111827;box-sizing:border-box;outline:none;resize:none;font-family:'Inter',sans-serif;"
                                       onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">{{ old('description') }}</textarea>
                         </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                        <div class="adash-modal-2col" style="margin-bottom:12px;">
                             <div>
                                 <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">
                                     First Review Date
@@ -507,7 +1031,7 @@
                                         </div>
                                         <div style="display:flex;flex-direction:column;gap:6px;">
                                             <template x-for="(assignee, j) in task.assignees" :key="j">
-                                                <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;">
+                                                <div class="adash-modal-3col">
                                                     <select :name="'tasks['+i+'][assignees]['+j+'][user_id]'" x-model="assignee.user_id"
                                                             @change="task.assigneeError = false"
                                                             :style="task.assigneeError && j === 0
@@ -535,7 +1059,7 @@
                                     </div>
 
                                     {{-- Reviewer + Priority + Deadline --}}
-                                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+                                    <div class="adash-assignee-row">
                                         <div>
                                             <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px;">Reviewer</label>
                                             <select :name="'tasks['+i+'][reviewer_id]'" x-model="task.reviewer_id"
@@ -716,6 +1240,53 @@
         </div>
     </div>
     </div>
+    </template>
+
+    {{-- Expiring Soon Modal --}}
+    <template x-teleport="body">
+    <div x-show="expiringModal" style="position:fixed;inset:0;z-index:9100;overflow-y:auto;" x-cloak>
+        <div style="position:fixed;inset:0;background:rgba(0,0,0,.45);" @click="dismissExpiring()"></div>
+        <div style="min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px 16px;position:relative;z-index:1;">
+        <div style="background:#fff;border-radius:16px;width:520px;max-width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.2);">
+            <div style="padding:20px 24px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:38px;height:38px;background:#FEF3C7;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-triangle-exclamation" style="color:#D97706;font-size:16px;"></i>
+                    </div>
+                    <div>
+                        <h3 style="font-size:16px;font-weight:700;color:#111827;margin:0;">Domains Expiring Soon</h3>
+                        <p style="font-size:12px;color:#9CA3AF;margin:0;">{{ $expiringDomains->count() }} domain{{ $expiringDomains->count() !== 1 ? 's' : '' }} within 30 days</p>
+                    </div>
+                </div>
+                <button @click="dismissExpiring()" style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:13px;flex-shrink:0;">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <div style="padding:8px 12px;overflow-y:auto;">
+                @foreach($expiringDomains as $ed)
+                <a href="{{ route('admin.domains.show', $ed->id) }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border-radius:10px;text-decoration:none;color:inherit;">
+                    <div style="min-width:0;">
+                        <div style="font-weight:700;color:#111827;font-size:13.5px;">{{ $ed->domain }}</div>
+                        <div style="font-size:11.5px;color:#9CA3AF;margin-top:1px;">
+                            {{ $ed->registrar ?: 'No registrar' }} &middot; Responsible: {{ $ed->responsibleUsers->pluck('name')->implode(', ') ?: '—' }}
+                        </div>
+                    </div>
+                    <div style="text-align:right;flex-shrink:0;">
+                        <div style="font-size:12.5px;font-weight:700;color:{{ $ed->days_until_expiry <= 7 ? '#DC2626' : '#D97706' }};">
+                            {{ $ed->days_until_expiry }} day{{ $ed->days_until_expiry !== 1 ? 's' : '' }} left
+                        </div>
+                        <div style="font-size:11px;color:#9CA3AF;">{{ $ed->expires_at->format('d M Y') }}</div>
+                    </div>
+                </a>
+                @endforeach
+            </div>
+            <div style="padding:14px 24px;border-top:1px solid #F3F4F6;flex-shrink:0;">
+                <button @click="dismissExpiring()" style="width:100%;padding:10px;background:#F3F4F6;color:#374151;border:none;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">Dismiss</button>
+            </div>
+        </div>
+        </div>
+    </div>
+    </template>
 
 </div>
 
@@ -723,16 +1294,99 @@
 <script>
 function dashModals() {
     return {
+        /* ── Expiring Domains ── */
+        expiringModal: {{ $showExpiringPopup ? 'true' : 'false' }},
+        dismissExpiring() {
+            this.expiringModal = false;
+            fetch('{{ route('domains.expiring.dismiss') }}', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=\'csrf-token\']')?.content || '', 'Accept': 'application/json' },
+            });
+        },
+
         /* ── Quick Task ── */
-        taskOpen:       {{ ($errors->any() && !$errors->hasAny(['name','deadline','customer_id']) && !preg_grep('/^tasks\./', array_keys($errors->toArray()))) ? 'true' : 'false' }},
-        taskSubmitting: false,
+        taskOpen:           {{ (old('_form') === 'quick_task' && $errors->any()) ? 'true' : 'false' }},
+        taskSubmitting:     false,
+        taskTitleDuplicate: false,
+        qtDupTimer:         null,
         priority:       '{{ old('priority', 'medium') }}',
         qtFiles:        [],
         qtDragover:     false,
+        checkQtDuplicate() {
+            clearTimeout(this.qtDupTimer);
+            const titleEl    = document.getElementById('dqtTitleInput');
+            const warnEl     = document.getElementById('dqtTitleDupWarn');
+            const customerId = document.getElementById('dqtCustomerSelect').value;
+            const projectId  = document.getElementById('dqtProjectSelect').value;
+            const title      = titleEl.value.trim();
+            if (!title || (!customerId && !projectId)) {
+                warnEl.style.display = 'none';
+                this.taskTitleDuplicate = false;
+                return;
+            }
+            this.qtDupTimer = setTimeout(async () => {
+                const params = new URLSearchParams({ title });
+                if (customerId) params.set('customer_id', customerId);
+                if (projectId) params.set('project_id', projectId);
+                try {
+                    const res  = await fetch(`{{ route('admin.tasks.check-duplicate-title') }}?${params}`);
+                    const data = await res.json();
+                    this.taskTitleDuplicate = !!data.duplicate;
+                    if (data.duplicate) {
+                        warnEl.textContent = `A task named "${title}" already exists for this customer (${data.count}${data.count >= 5 ? '+' : ''}). Use a different title to continue.`;
+                        warnEl.style.color = '#DC2626';
+                        warnEl.style.display = 'block';
+                    } else {
+                        warnEl.style.display = 'none';
+                    }
+                } catch (e) {
+                    this.taskTitleDuplicate = false;
+                    warnEl.style.display = 'none';
+                }
+            }, 450);
+        },
+
+        /* ── Quick SM Post ── */
+        smPostOpen:       {{ (old('_form') === 'quick_sm_post' && $errors->any()) ? 'true' : 'false' }},
+        smSubmitting:     false,
+        smTitleDuplicate: false,
+        smDupTimer:       null,
+        smFiles:        [],
+        smDragover:     false,
+        checkSmDuplicate() {
+            clearTimeout(this.smDupTimer);
+            const titleEl    = document.getElementById('smTitleInput');
+            const warnEl     = document.getElementById('smTitleDupWarn');
+            const customerId = document.getElementById('smCustomerSelect').value;
+            const title      = titleEl.value.trim();
+            if (!title || !customerId) {
+                warnEl.style.display = 'none';
+                this.smTitleDuplicate = false;
+                return;
+            }
+            this.smDupTimer = setTimeout(async () => {
+                const params = new URLSearchParams({ title, customer_id: customerId });
+                try {
+                    const res  = await fetch(`{{ route('admin.tasks.check-duplicate-title') }}?${params}`);
+                    const data = await res.json();
+                    this.smTitleDuplicate = !!data.duplicate;
+                    if (data.duplicate) {
+                        warnEl.textContent = `A task named "${title}" already exists for this customer (${data.count}${data.count >= 5 ? '+' : ''}). Use a different title to continue.`;
+                        warnEl.style.color = '#DC2626';
+                        warnEl.style.display = 'block';
+                    } else {
+                        warnEl.style.display = 'none';
+                    }
+                } catch (e) {
+                    this.smTitleDuplicate = false;
+                    warnEl.style.display = 'none';
+                }
+            }, 450);
+        },
 
         /* ── Project Wizard ── */
-        projectOpen:    {{ $errors->hasAny(['name','deadline','customer_id']) || $errors->has('tasks') || preg_grep('/^tasks\./', array_keys($errors->toArray())) ? 'true' : 'false' }},
-        projectStep:    {{ preg_grep('/^tasks\./', array_keys($errors->toArray())) ? 2 : ($errors->hasAny(['name','deadline','customer_id']) ? 1 : 1) }},
+        projectOpen:    {{ (old('_form') === 'new_project' && ($errors->hasAny(['name','deadline','customer_id']) || $errors->has('tasks') || preg_grep('/^tasks\./', array_keys($errors->toArray())))) ? 'true' : 'false' }},
+        projectStep:    {{ (old('_form') === 'new_project' && preg_grep('/^tasks\./', array_keys($errors->toArray()))) ? 2 : 1 }},
         pDragover:      false,
         pFiles:         [],
         pLinks:         [],
@@ -873,8 +1527,45 @@ function dashModals() {
             if (['mp3','wav','aac'].includes(ext))                        return 'fa-file-audio';
             return 'fa-file';
         },
+
+        smHandleFiles(event) {
+            const incoming = event.dataTransfer ? event.dataTransfer.files : event.target.files;
+            const dt = new DataTransfer();
+            for (let f of this.smFiles) dt.items.add(f);
+            for (let f of incoming) dt.items.add(f);
+            this.smFiles = Array.from(dt.files);
+            this.$refs.smFileInput.files = dt.files;
+        },
+
+        smRemoveFile(i) {
+            const dt = new DataTransfer();
+            this.smFiles.forEach((f, idx) => { if (idx !== i) dt.items.add(f); });
+            this.smFiles = Array.from(dt.files);
+            this.$refs.smFileInput.files = dt.files;
+        },
     };
 }
+
+/* ── SM Post submit feedback ── */
+document.addEventListener('DOMContentLoaded', function () {
+    const btn = document.getElementById('smPostSubmitBtn');
+    if (btn) {
+        btn.closest('form').addEventListener('submit', function () {
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Assigning...';
+            btn.disabled  = true;
+            btn.style.opacity = '0.8';
+        });
+    }
+
+    @if(old('_form') === 'quick_sm_post' && $errors->any())
+    /* Modal re-opened due to validation errors — fire error toast */
+    window.showToast(
+        'Could not assign post',
+        @json(implode(' • ', $errors->all())),
+        'error'
+    );
+    @endif
+});
 </script>
 @endpush
 
@@ -905,6 +1596,124 @@ function dashModals() {
        onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">
         <i class="fas fa-gear" style="font-size:10px;"></i> Manage Sections
     </a>
+</div>
+
+{{-- ══ Hero Focus Card + KPI Trio ══ --}}
+@php
+    $heroInReview   = $taskOverview['in_review'];
+    $heroOverdue    = $taskOverview['overdue'];
+    $heroRevision   = $taskOverview['revision_requested'];
+    $heroActionable = $heroInReview + $heroOverdue + $heroRevision;
+    $kpiOpenTasks   = $taskOverview['total'] - ($taskOverview['completed'] + $taskOverview['delivered'] + $taskOverview['archived']);
+@endphp
+<section class="adash-hero adash-mobile-only" style="border-radius:22px;padding:20px 22px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden;background:var(--mob-brand-grad);box-shadow:0 12px 28px -12px rgba(79,70,229,.5);">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;opacity:.75;">Needs you today</div>
+    <h2 style="font-size:21px;font-weight:700;line-height:1.25;letter-spacing:-.01em;margin:8px 0 0;max-width:36ch;">
+        @if($heroActionable > 0)
+            {{ $heroActionable }} {{ Str::plural('thing', $heroActionable) }} {{ $heroActionable === 1 ? 'needs' : 'need' }} your attention today
+        @else
+            You're all caught up — nothing needs your review today
+        @endif
+    </h2>
+    <div style="margin-top:16px;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.14);">
+        <a href="{{ route('admin.tasks.index', ['status' => 'submitted']) }}" class="adash-hero-row">
+            <span style="width:8px;height:8px;border-radius:50%;background:#EDE9FE;flex-shrink:0;box-shadow:0 0 0 3px rgba(255,255,255,.15);"></span>
+            <span style="flex:1;font-size:13.5px;font-weight:600;">Awaiting your review</span>
+            <span style="font-size:15px;font-weight:700;">{{ $heroInReview }}</span>
+            <i class="fas fa-chevron-right" style="font-size:11px;opacity:.6;"></i>
+        </a>
+        <a href="{{ route('admin.tasks.index') }}?overdue=1" class="adash-hero-row">
+            <span style="width:8px;height:8px;border-radius:50%;background:#FEE2E2;flex-shrink:0;box-shadow:0 0 0 3px rgba(255,255,255,.15);"></span>
+            <span style="flex:1;font-size:13.5px;font-weight:600;">Overdue</span>
+            <span style="font-size:15px;font-weight:700;">{{ $heroOverdue }}</span>
+            <i class="fas fa-chevron-right" style="font-size:11px;opacity:.6;"></i>
+        </a>
+        <a href="{{ route('admin.tasks.index', ['status' => 'revision_requested']) }}" class="adash-hero-row">
+            <span style="width:8px;height:8px;border-radius:50%;background:#FCA5A5;flex-shrink:0;box-shadow:0 0 0 3px rgba(255,255,255,.15);"></span>
+            <span style="flex:1;font-size:13.5px;font-weight:600;">Revision requested</span>
+            <span style="font-size:15px;font-weight:700;">{{ $heroRevision }}</span>
+            <i class="fas fa-chevron-right" style="font-size:11px;opacity:.6;"></i>
+        </a>
+    </div>
+</section>
+
+<div class="adash-kpi-row adash-mobile-only">
+    <div class="adash-kpi-card">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6B7280;">Open</div>
+        <div class="adash-kpi-value" style="font-size:26px;font-weight:700;letter-spacing:-.02em;color:#111827;margin-top:6px;line-height:1;">{{ $kpiOpenTasks }}</div>
+        <div style="font-size:11px;font-weight:500;color:#6B7280;margin-top:3px;">tasks</div>
+    </div>
+    <div class="adash-kpi-card">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6B7280;">On-time</div>
+        <div class="adash-kpi-value" style="font-size:26px;font-weight:700;letter-spacing:-.02em;color:#111827;margin-top:6px;line-height:1;">{{ $onTimeRate }}%</div>
+        <div style="font-size:11px;font-weight:500;color:#6B7280;margin-top:3px;">completed tasks</div>
+    </div>
+    <div class="adash-kpi-card">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#6B7280;">Projects</div>
+        <div class="adash-kpi-value" style="font-size:26px;font-weight:700;letter-spacing:-.02em;color:#111827;margin-top:6px;line-height:1;">{{ $activeProjects }}</div>
+        <div style="font-size:11px;font-weight:500;color:#6B7280;margin-top:3px;">active</div>
+    </div>
+</div>
+
+{{-- ══ Mobile Pipeline card — only statuses with real tasks, ordered by workflow stage ══ --}}
+@php
+    $pipelineOrder = ['draft', 'assigned', 'viewed', 'in_progress', 'paused', 'submitted', 'revision_requested', 'pending_customer', 'approved', 'delivered', 'archived'];
+    $pipelineSegments = collect($pipelineOrder)
+        ->map(fn ($key) => ['key' => $key, 'count' => (int) ($statusCounts[$key] ?? 0)])
+        ->filter(fn ($seg) => $seg['count'] > 0)
+        ->values();
+    $pipelineTotal = $pipelineSegments->sum('count');
+@endphp
+@if($pipelineTotal > 0)
+<div class="adash-mobile-only" style="margin:14px 16px 0;background:#fff;border:1px solid #EDEFF3;border-radius:18px;padding:16px;box-shadow:0 1px 2px rgba(17,24,39,.04);">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;">
+        <div style="font-size:14.5px;font-weight:700;color:#111827;letter-spacing:-.01em;">Pipeline</div>
+        <a href="{{ route('admin.tasks.index') }}" style="font-size:12.5px;font-weight:600;color:var(--mob-brand);text-decoration:none;">All tasks →</a>
+    </div>
+    <div style="display:flex;height:11px;border-radius:99px;overflow:hidden;margin:13px 0;background:#F3F4F6;gap:2px;">
+        @foreach($pipelineSegments as $seg)
+        <div style="width:{{ round($seg['count'] / $pipelineTotal * 100, 2) }}%;background:{{ \App\Support\TaskStatusColors::text($seg['key']) }};opacity:.9;"></div>
+        @endforeach
+    </div>
+    <div class="adash-pipeline-legend" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;">
+        @foreach($pipelineSegments as $seg)
+        <a href="{{ route('admin.tasks.index', ['status' => $seg['key']]) }}" style="display:flex;align-items:center;gap:8px;text-decoration:none;">
+            <span style="width:8px;height:8px;border-radius:3px;background:{{ \App\Support\TaskStatusColors::text($seg['key']) }};flex-shrink:0;"></span>
+            <span style="flex:1;font-size:12.5px;font-weight:600;color:#4B5563;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ \App\Support\TaskStatusColors::label($seg['key']) }}</span>
+            <span style="font-size:12.5px;font-weight:700;color:#111827;font-variant-numeric:tabular-nums;">{{ $seg['count'] }}</span>
+        </a>
+        @endforeach
+    </div>
+</div>
+@endif
+
+{{-- ══ Mobile "Latest updates" feed — reuses the same $recentTasks as desktop's Recent Tasks ══ --}}
+<div class="adash-mobile-only" style="display:flex;align-items:baseline;justify-content:space-between;padding:22px 20px 10px;">
+    <div style="font-size:15px;font-weight:700;color:#111827;letter-spacing:-.01em;">Latest updates</div>
+    <a href="{{ route('admin.tasks.index') }}" style="font-size:12.5px;font-weight:600;color:var(--mob-brand);text-decoration:none;">View all</a>
+</div>
+<div class="adash-mobile-only" style="padding:0 16px;">
+    @foreach($recentTasks->take(10) as $rt)
+    @php $rtOverdue = $rt->deadline && $rt->deadline->isPast() && !in_array($rt->status, ['approved', 'delivered', 'archived']); @endphp
+    <a href="{{ route('admin.tasks.show', $rt) }}" class="adash-mob-updates-card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;">
+            <x-status-chip :status="$rt->status" />
+            <span style="flex:1;"></span>
+            @if($rt->deadline)
+            <span style="font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;color:{{ $rtOverdue ? '#DC2626' : '#6B7280' }};">{{ $rt->deadline->format('M d') }}</span>
+            @endif
+        </div>
+        <div style="font-size:15px;font-weight:650;color:#111827;letter-spacing:-.012em;line-height:1.3;">{{ $rt->title }}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:11px;padding-top:11px;border-top:1px solid #F3F4F6;">
+            @if($rt->assignee)
+            <span style="width:22px;height:22px;flex-shrink:0;border-radius:99px;background:var(--mob-brand-grad);color:#fff;font-size:9.24px;font-weight:700;display:flex;align-items:center;justify-content:center;">{{ strtoupper(substr($rt->assignee->name, 0, 1)) }}</span>
+            <span style="font-size:12.5px;font-weight:600;color:#4B5563;">{{ $rt->assignee->name }}</span>
+            @endif
+            <span style="flex:1;"></span>
+            <span style="font-size:11.5px;color:#6B7280;font-weight:500;max-width:14ch;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $rt->project->name ?? 'Quick Tasks' }}</span>
+        </div>
+    </a>
+    @endforeach
 </div>
 
 {{-- ══ Stats Row ══ --}}
@@ -1018,12 +1827,14 @@ function dashModals() {
     </div>
 
     @php
-    $tasksBase = route('admin.tasks.index');
+    $tasksBase  = route('admin.tasks.index');
+    $_ttotal    = max(1, $taskOverview['total'] ?? 1);
+    $_doneVal   = $taskOverview['completed'] + $taskOverview['delivered'] + ($taskOverview['archived'] ?? 0);
     $pipelineItems = [
-        ['label'=>'Pending',        'value'=>$taskOverview['pending'],                                                                   'key'=>'pending',     'icon'=>'fa-clock',        'bg'=>'#F3F4F6','color'=>'#6B7280', 'url'=>$tasksBase.'?filter=pending'],
-        ['label'=>'In Progress',    'value'=>$taskOverview['in_progress'],                                                               'key'=>'in_progress', 'icon'=>'fa-spinner',      'bg'=>'#FEF3C7','color'=>'#D97706', 'url'=>$tasksBase.'?status=in_progress'],
-        ['label'=>'Waiting Review', 'value'=>$taskOverview['in_review'],                                                                 'key'=>'in_review',   'icon'=>'fa-gavel',        'bg'=>'#EDE9FE','color'=>'#7C3AED', 'url'=>$tasksBase.'?status=submitted'],
-        ['label'=>'Done',           'value'=>$taskOverview['completed'] + $taskOverview['delivered'] + ($taskOverview['archived'] ?? 0), 'key'=>'done',        'icon'=>'fa-circle-check', 'bg'=>'#D1FAE5','color'=>'#059669', 'url'=>$tasksBase.'?filter=done'],
+        ['label'=>'Pending',        'value'=>$taskOverview['pending'],   'pct'=>round($taskOverview['pending']   / $_ttotal * 100), 'key'=>'pending',     'icon'=>'fa-clock',        'bg'=>'#F3F4F6','color'=>'#6B7280', 'bar'=>'#9CA3AF', 'url'=>$tasksBase.'?filter=pending'],
+        ['label'=>'In Progress',    'value'=>$taskOverview['in_progress'],'pct'=>round($taskOverview['in_progress']/ $_ttotal * 100),'key'=>'in_progress', 'icon'=>'fa-spinner',      'bg'=>'#FEF3C7','color'=>'#D97706', 'bar'=>'#F59E0B', 'url'=>$tasksBase.'?status=in_progress'],
+        ['label'=>'Waiting Review', 'value'=>$taskOverview['in_review'],  'pct'=>round($taskOverview['in_review']  / $_ttotal * 100),'key'=>'in_review',   'icon'=>'fa-gavel',        'bg'=>'#EDE9FE','color'=>'#7C3AED', 'bar'=>'#8B5CF6', 'url'=>$tasksBase.'?status=submitted'],
+        ['label'=>'Done',           'value'=>$_doneVal,                   'pct'=>round($_doneVal                   / $_ttotal * 100), 'key'=>'done',        'icon'=>'fa-circle-check', 'bg'=>'#D1FAE5','color'=>'#059669', 'bar'=>'#10B981', 'url'=>$tasksBase.'?filter=done'],
     ];
     $attentionItems = [
         ['label'=>'Overdue',       'value'=>$taskOverview['overdue'],        'key'=>'overdue',       'icon'=>'fa-triangle-exclamation','color'=>'#DC2626','bg'=>'#FEE2E2', 'url'=>$tasksBase.'?overdue=1'],
@@ -1031,27 +1842,34 @@ function dashModals() {
         ['label'=>'Reopened',      'value'=>$taskOverview['reopened'],       'key'=>'reopened',      'icon'=>'fa-rotate-right',        'color'=>'#EA580C','bg'=>'#FFF7ED', 'url'=>$tasksBase.'?filter=reopened'],
         ['label'=>'Reassigned',    'value'=>$taskOverview['reassigned'],     'key'=>'reassigned',    'icon'=>'fa-arrows-rotate',       'color'=>'#16A34A','bg'=>'#F0FDF4', 'url'=>$tasksBase.'?filter=reassigned'],
         ['label'=>'Decide Later',  'value'=>$decideLaterCount,               'key'=>'decide_later',  'icon'=>'fa-hourglass-half',      'color'=>'#475569','bg'=>'#F1F5F9', 'url'=>route('admin.approvals.index').'?tab=decide_later'],
+        ['label'=>'New Revision',  'value'=>$taskOverview['revision_requested'], 'key'=>'revision_requested', 'icon'=>'fa-rotate-left', 'color'=>'#9333EA','bg'=>'#F3E8FF', 'url'=>$tasksBase.'?status=revision_requested'],
     ];
     @endphp
 
     {{-- Tier 1: core pipeline (4 equal cards) --}}
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;">
+    <div class="adash-pipeline-grid">
         @foreach($pipelineItems as $item)
         <button onclick="openAnalyticsModal('{{ $item['key'] }}','{{ $item['label'] }}','{{ $item['color'] }}','{{ $item['bg'] }}','{{ $item['icon'] }}','{{ $item['url'] }}')"
                 style="background:{{ $item['bg'] }};border-radius:10px;padding:12px 12px 10px;display:flex;flex-direction:column;gap:6px;border:none;cursor:pointer;text-align:left;width:100%;transition:filter .15s,transform .15s,box-shadow .15s;"
                 onmouseover="this.style.filter='brightness(0.95)';this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px rgba(0,0,0,.08)'"
                 onmouseout="this.style.filter='';this.style.transform='';this.style.boxShadow=''">
-            <div style="display:flex;align-items:center;gap:6px;">
-                <i class="fas {{ $item['icon'] }}" style="font-size:12px;color:{{ $item['color'] }};"></i>
-                <span style="font-size:11px;font-weight:600;color:{{ $item['color'] }};">{{ $item['label'] }}</span>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <i class="fas {{ $item['icon'] }}" style="font-size:12px;color:{{ $item['color'] }};"></i>
+                    <span style="font-size:11px;font-weight:600;color:{{ $item['color'] }};">{{ $item['label'] }}</span>
+                </div>
+                <span id="pct_{{ $item['key'] }}" style="font-size:10px;font-weight:700;color:{{ $item['color'] }};opacity:.8;">{{ $item['pct'] }}%</span>
             </div>
             <p data-rv="overview_{{ $item['key'] }}" style="font-size:26px;font-weight:700;color:#111827;margin:0;line-height:1;">{{ $item['value'] }}</p>
+            <div style="height:4px;background:rgba(0,0,0,.08);border-radius:2px;overflow:hidden;margin-top:2px;">
+                <div id="bar_{{ $item['key'] }}" style="height:100%;width:{{ $item['pct'] }}%;background:{{ $item['bar'] }};border-radius:2px;transition:width .5s ease;"></div>
+            </div>
         </button>
         @endforeach
     </div>
 
-    {{-- Tier 2: attention metrics (5 slim chips) --}}
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:14px;">
+    {{-- Tier 2: attention metrics (6 slim chips) --}}
+    <div class="adash-attention-grid">
         @foreach($attentionItems as $item)
         <button onclick="openAnalyticsModal('{{ $item['key'] }}','{{ $item['label'] }}','{{ $item['color'] }}','{{ $item['bg'] }}','{{ $item['icon'] }}','{{ $item['url'] }}')"
                 style="display:flex;align-items:center;gap:7px;padding:7px 10px;background:{{ $item['bg'] }};border:none;border-radius:8px;cursor:pointer;width:100%;transition:filter .15s,transform .15s;"
@@ -1065,7 +1883,7 @@ function dashModals() {
     </div>
 
     {{-- Rate metrics row --}}
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+    <div class="adash-rate-grid">
 
         {{-- Completion Rate --}}
         <div style="background:#F8FAFC;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:14px;">
@@ -1376,6 +2194,231 @@ function dashModals() {
 </div>
 @endif
 
+{{-- ══ Social Media Posts Section ══ --}}
+@php
+    $spIcons = [
+        'instagram' => ['fa-instagram',  '#E1306C'],
+        'facebook'  => ['fa-facebook',   '#1877F2'],
+        'tiktok'    => ['fa-tiktok',     '#010101'],
+        'twitter'   => ['fa-x-twitter',  '#000000'],
+        'linkedin'  => ['fa-linkedin',   '#0A66C2'],
+        'snapchat'  => ['fa-snapchat',   '#F7CA00'],
+        'youtube'   => ['fa-youtube',    '#FF0000'],
+        'other'     => ['fa-share-alt',  '#6366F1'],
+    ];
+@endphp
+<div id="dash-social-media-section" class="dash-card anim-card" style="margin-top:16px;margin-bottom:16px;" x-data="{ smTab: 'pending' }">
+
+    {{-- Header --}}
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#EEF2FF,#DDD6FE);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-share-alt" style="color:#6366F1;font-size:15px;"></i>
+            </div>
+            <div>
+                <h3 style="font-size:15px;font-weight:700;color:#111827;margin:0;">Social Media Posts</h3>
+                <p style="font-size:11px;color:#9CA3AF;margin:0;">Track pending assignments and completed posts</p>
+            </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+            {{-- Stats pills --}}
+            <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#FEF3C7;border-radius:20px;font-size:12px;font-weight:700;color:#D97706;">
+                <i class="fas fa-clock" style="font-size:10px;"></i>
+                {{ $smPendingTasks->count() }} Pending
+            </span>
+            <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:#F0FDF4;border-radius:20px;font-size:12px;font-weight:700;color:#16A34A;">
+                <i class="fas fa-check-circle" style="font-size:10px;"></i>
+                {{ $socialPostsTotal }} Posted
+            </span>
+            <a href="{{ route('admin.approvals.index') }}?tab=social"
+               style="display:inline-flex;align-items:center;gap:5px;padding:6px 14px;background:#EEF2FF;border-radius:8px;font-size:12px;font-weight:600;color:#4F46E5;text-decoration:none;">
+                View All <i class="fas fa-arrow-right" style="font-size:10px;"></i>
+            </a>
+        </div>
+    </div>
+
+    {{-- Tabs --}}
+    <div style="display:flex;gap:4px;margin-bottom:16px;background:#F9FAFB;padding:4px;border-radius:10px;width:fit-content;">
+        <button @click="smTab='pending'"
+                :style="smTab==='pending'
+                    ? 'padding:6px 18px;border-radius:7px;border:none;cursor:pointer;font-size:12px;font-weight:700;background:#fff;color:#D97706;box-shadow:0 1px 4px rgba(0,0,0,.1);'
+                    : 'padding:6px 18px;border-radius:7px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:transparent;color:#6B7280;'"
+                >
+            <i class="fas fa-clock" style="font-size:10px;margin-right:4px;"></i>
+            Pending
+            @if($smPendingTasks->count() > 0)
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#FEF3C7;border-radius:50%;font-size:10px;font-weight:800;color:#D97706;margin-left:4px;">{{ $smPendingTasks->count() }}</span>
+            @endif
+        </button>
+        <button @click="smTab='completed'"
+                :style="smTab==='completed'
+                    ? 'padding:6px 18px;border-radius:7px;border:none;cursor:pointer;font-size:12px;font-weight:700;background:#fff;color:#16A34A;box-shadow:0 1px 4px rgba(0,0,0,.1);'
+                    : 'padding:6px 18px;border-radius:7px;border:none;cursor:pointer;font-size:12px;font-weight:600;background:transparent;color:#6B7280;'"
+                >
+            <i class="fas fa-check-circle" style="font-size:10px;margin-right:4px;"></i>
+            Completed
+        </button>
+    </div>
+
+    {{-- ── PENDING TAB ── --}}
+    <div x-show="smTab==='pending'" x-cloak>
+        @if($smPendingTasks->isEmpty())
+        <div style="text-align:center;padding:40px 20px;">
+            <div style="width:56px;height:56px;border-radius:50%;background:#F0FDF4;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+                <i class="fas fa-check-circle" style="color:#16A34A;font-size:22px;"></i>
+            </div>
+            <p style="font-size:14px;font-weight:600;color:#111827;margin:0 0 4px;">All clear!</p>
+            <p style="font-size:12px;color:#9CA3AF;margin:0;">No pending social media posts right now.</p>
+        </div>
+        @else
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;">
+            @foreach($smPendingTasks as $smTask)
+            @php
+                $isOverdue = $smTask->deadline && $smTask->deadline < now();
+                $platforms = is_array($smTask->social_platforms)
+                    ? $smTask->social_platforms
+                    : (is_string($smTask->social_platforms) && str_starts_with($smTask->social_platforms,'[')
+                        ? json_decode($smTask->social_platforms, true)
+                        : array_filter(explode(',', $smTask->social_platforms ?? '')));
+            @endphp
+            <div style="border:1.5px solid {{ $isOverdue ? '#FECACA' : '#E5E7EB' }};border-radius:12px;padding:14px;background:{{ $isOverdue ? '#FFF5F5' : '#FAFAFA' }};position:relative;">
+                {{-- Overdue badge --}}
+                @if($isOverdue)
+                <span style="position:absolute;top:10px;right:10px;display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:#FEE2E2;border-radius:20px;font-size:10px;font-weight:700;color:#DC2626;">
+                    <i class="fas fa-exclamation-circle" style="font-size:9px;"></i> Overdue
+                </span>
+                @endif
+
+                {{-- Title --}}
+                <p style="font-size:13px;font-weight:700;color:#111827;margin:0 0 6px;padding-right:{{ $isOverdue ? '70px' : '0' }};line-height:1.4;">{{ $smTask->title }}</p>
+
+                {{-- Customer + Assignee --}}
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+                    @if($smTask->customer)
+                    <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#6B7280;">
+                        <i class="fas fa-building" style="font-size:9px;color:#9CA3AF;"></i>
+                        {{ $smTask->customer->name }}
+                    </span>
+                    <span style="color:#D1D5DB;font-size:10px;">•</span>
+                    @endif
+                    <span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#6B7280;">
+                        <i class="fas fa-user" style="font-size:9px;color:#9CA3AF;"></i>
+                        {{ $smTask->socialAssignee->name ?? '—' }}
+                    </span>
+                </div>
+
+                {{-- Platform icons --}}
+                @if(!empty($platforms))
+                <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;">
+                    @foreach($platforms as $plat)
+                    @php [$ico,$col] = $spIcons[trim($plat)] ?? $spIcons['other']; @endphp
+                    <span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:#fff;border:1px solid #E5E7EB;border-radius:6px;font-size:11px;font-weight:600;color:{{ $col }};">
+                        <i class="fab {{ $ico }}" style="font-size:11px;"></i>
+                        {{ ucfirst(trim($plat)) }}
+                    </span>
+                    @endforeach
+                </div>
+                @endif
+
+                {{-- Deadline + Action --}}
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;">
+                    <span style="font-size:11px;{{ $isOverdue ? 'color:#DC2626;font-weight:700;' : 'color:#9CA3AF;' }}">
+                        <i class="fas fa-calendar{{ $isOverdue ? '-times' : '' }}" style="font-size:10px;margin-right:3px;"></i>
+                        {{ $smTask->deadline ? $smTask->deadline->format(config('app.date_format','M d, Y')) : 'No deadline' }}
+                    </span>
+                    <a href="{{ route('admin.tasks.show', $smTask) }}"
+                       style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;background:#EEF2FF;border-radius:7px;font-size:11px;font-weight:700;color:#4F46E5;text-decoration:none;">
+                        View <i class="fas fa-arrow-right" style="font-size:9px;"></i>
+                    </a>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        @endif
+    </div>
+
+    {{-- ── COMPLETED TAB ── --}}
+    <div x-show="smTab==='completed'" x-cloak>
+        @if($smRecentCompleted->isEmpty())
+        <div style="text-align:center;padding:40px 20px;">
+            <p style="font-size:13px;color:#9CA3AF;margin:0;">No completed social posts yet.</p>
+        </div>
+        @else
+        <div style="border-radius:10px;overflow:hidden;border:1px solid #F3F4F6;">
+            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+            <table class="sm-completed-table" style="width:100%;min-width:560px;border-collapse:collapse;font-size:12px;">
+                <thead>
+                    <tr style="background:#F9FAFB;">
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.04em;">Post</th>
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.04em;">Platforms</th>
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.04em;">Posted by</th>
+                        <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.04em;">Posted on</th>
+                        <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.04em;"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($smRecentCompleted as $smDone)
+                    @php
+                        $dPlatforms = is_array($smDone->social_platforms)
+                            ? $smDone->social_platforms
+                            : (is_string($smDone->social_platforms) && str_starts_with($smDone->social_platforms,'[')
+                                ? json_decode($smDone->social_platforms, true)
+                                : array_filter(explode(',', $smDone->social_platforms ?? '')));
+                    @endphp
+                    <tr style="border-top:1px solid #F3F4F6;" onmouseover="this.style.background='#FAFAFA'" onmouseout="this.style.background=''">
+                        <td data-label="Post" style="padding:12px 14px;">
+                            <p style="font-size:13px;font-weight:600;color:#111827;margin:0 0 2px;">{{ $smDone->title }}</p>
+                            @if($smDone->customer)
+                            <p style="font-size:11px;color:#9CA3AF;margin:0;">{{ $smDone->customer->name }}</p>
+                            @endif
+                        </td>
+                        <td data-label="Platforms" style="padding:12px 14px;">
+                            <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                                @if(!empty($dPlatforms))
+                                    @foreach($dPlatforms as $plat)
+                                    @php [$ico,$col] = $spIcons[trim($plat)] ?? $spIcons['other']; @endphp
+                                    <span title="{{ ucfirst(trim($plat)) }}" style="width:24px;height:24px;border-radius:6px;background:#F3F4F6;display:inline-flex;align-items:center;justify-content:center;">
+                                        <i class="fab {{ $ico }}" style="font-size:12px;color:{{ $col }};"></i>
+                                    </span>
+                                    @endforeach
+                                @else
+                                    <span style="font-size:11px;color:#D1D5DB;">—</span>
+                                @endif
+                            </div>
+                        </td>
+                        <td data-label="Posted by" style="padding:12px 14px;">
+                            <span style="font-size:12px;color:#374151;">{{ $smDone->socialAssignee->name ?? '—' }}</span>
+                        </td>
+                        <td data-label="Posted on" style="padding:12px 14px;white-space:nowrap;">
+                            <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#F0FDF4;border-radius:6px;font-size:11px;font-weight:600;color:#16A34A;">
+                                <i class="fas fa-check" style="font-size:9px;"></i>
+                                {{ $smDone->social_posted_at->format(config('app.date_format','M d, Y')) }}
+                            </span>
+                        </td>
+                        <td data-label="" style="padding:12px 14px;text-align:center;">
+                            <a href="{{ route('admin.tasks.show', $smDone) }}"
+                               style="display:inline-flex;align-items:center;gap:3px;padding:4px 10px;background:#EEF2FF;border-radius:6px;font-size:11px;font-weight:600;color:#4F46E5;text-decoration:none;">
+                                View <i class="fas fa-arrow-right" style="font-size:9px;"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            </div>{{-- end overflow-x scroll --}}
+            @if($socialPostsTotal > 10)
+            <div style="padding:10px 14px;background:#F9FAFB;border-top:1px solid #F3F4F6;text-align:center;">
+                <a href="{{ route('admin.approvals.index') }}?tab=social" style="font-size:12px;color:#4F46E5;font-weight:600;text-decoration:none;">
+                    View all {{ $socialPostsTotal }} posts <i class="fas fa-arrow-right" style="font-size:10px;"></i>
+                </a>
+            </div>
+            @endif
+        </div>
+        @endif
+    </div>
+
+</div>
+
 {{-- ══ EXTRA: Tasks by Priority ══ --}}
 @if(in_array('dash_priority_chart', $devExtras))
 <div class="dash-card anim-card" style="margin-top:16px;display:flex;gap:28px;align-items:center;flex-wrap:wrap;" data-dev-key="dash_priority_chart" data-dev-label="Tasks by Priority" data-dev-type="extra">
@@ -1465,12 +2508,12 @@ function dashModals() {
 {{-- ══ Recent Tasks ══ --}}
 @if(!in_array('dash_recent_tasks', $devHidden))
 <div x-data="{
-        view: localStorage.getItem('dash_tasks_view') || 'table',
+        view: localStorage.getItem('dash_tasks_view') || (window.innerWidth <= 768 ? 'cards' : 'table'),
         setView(v) { this.view = v; localStorage.setItem('dash_tasks_view', v); }
      }" style="margin-top:16px;" data-dev-key="dash_recent_tasks" data-dev-label="Recent Tasks">
 
     {{-- Header --}}
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+    <div class="recent-tasks-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
         <div>
             <h3 style="font-size:15px;font-weight:700;color:#111827;margin:0;display:flex;align-items:center;gap:8px;">
                 <i class="fas fa-list-check" style="color:#6366F1;font-size:13px;"></i> Recent Tasks
@@ -1479,7 +2522,7 @@ function dashModals() {
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
             {{-- Toggle --}}
-            <div style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;">
+            <div class="recent-tasks-toggle" style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;">
                 <button @click="setView('table')" :style="view==='table'
                             ? 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);'
                             : 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:transparent;color:#6B7280;'" style="display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);">
@@ -1497,17 +2540,9 @@ function dashModals() {
     </div>
 
     @php
-    $statusMeta = [
-        'draft'              => ['label'=>'Draft',       'bg'=>'#F3F4F6','color'=>'#6B7280'],
-        'assigned'           => ['label'=>'Assigned',    'bg'=>'#EEF2FF','color'=>'#4F46E5'],
-        'viewed'             => ['label'=>'Viewed',      'bg'=>'#E0F2FE','color'=>'#0369A1'],
-        'in_progress'        => ['label'=>'In Progress', 'bg'=>'#FEF3C7','color'=>'#D97706'],
-        'submitted'          => ['label'=>'In Review',   'bg'=>'#EDE9FE','color'=>'#7C3AED'],
-        'revision_requested' => ['label'=>'Revision',    'bg'=>'#FEE2E2','color'=>'#DC2626'],
-        'approved'           => ['label'=>'Approved',    'bg'=>'#D1FAE5','color'=>'#059669'],
-        'delivered'          => ['label'=>'Delivered',   'bg'=>'#ECFDF5','color'=>'#047857'],
-        'archived'           => ['label'=>'Archived',    'bg'=>'#F3F4F6','color'=>'#6B7280'],
-    ];
+    $statusMeta = collect(\App\Support\TaskStatusColors::MAP)->mapWithKeys(fn($c, $k) => [
+        $k => ['label'=>$c['label'], 'bg'=>$c['bg'], 'color'=>$c['text']],
+    ])->all();
     $priorityMeta = [
         'high'   => ['label'=>'High',   'bg'=>'#FEE2E2','color'=>'#DC2626'],
         'medium' => ['label'=>'Med',    'bg'=>'#FEF3C7','color'=>'#D97706'],
@@ -1524,15 +2559,16 @@ function dashModals() {
 
     {{-- TABLE VIEW --}}
     <div x-show="view==='table'">
-        <div class="dash-card" style="padding:0;overflow:hidden;">
-            <table style="width:100%;border-collapse:collapse;">
+        <div class="dash-card" style="padding:0;overflow:hidden;min-width:0;">
+        <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;display:block;width:100%;">
+            <table class="recent-tasks-table" style="width:100%;min-width:480px;border-collapse:collapse;">
                 <thead>
                     <tr style="border-bottom:1.5px solid #F3F4F6;background:#FAFAFA;">
                         <th style="padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Task</th>
-                        <th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Project</th>
+                        <th class="recent-tasks-col-project" style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Project</th>
                         <th style="padding:11px 14px;text-align:left;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Assignee</th>
                         <th style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Status</th>
-                        <th style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Priority</th>
+                        <th class="recent-tasks-col-priority" style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Priority</th>
                         <th style="padding:11px 14px;text-align:center;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Deadline</th>
                     </tr>
                 </thead>
@@ -1552,7 +2588,7 @@ function dashModals() {
                                 {{ $task->title }}
                             </a>
                         </td>
-                        <td style="padding:11px 14px;">
+                        <td class="recent-tasks-col-project" style="padding:11px 14px;">
                             <span style="font-size:12px;color:#6B7280;">{{ $task->project->name ?? '—' }}</span>
                         </td>
                         <td style="padding:11px 14px;">
@@ -1572,7 +2608,7 @@ function dashModals() {
                                 {{ $sm['label'] }}
                             </span>
                         </td>
-                        <td style="padding:11px 14px;text-align:center;">
+                        <td class="recent-tasks-col-priority" style="padding:11px 14px;text-align:center;">
                             @if($pm)
                             <span style="display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:{{ $pm['bg'] }};color:{{ $pm['color'] }};">
                                 {{ $pm['label'] }}
@@ -1594,12 +2630,13 @@ function dashModals() {
                     @endforeach
                 </tbody>
             </table>
+        </div>{{-- end overflow-x scroll --}}
         </div>
     </div>
 
     {{-- CARD VIEW --}}
     <div x-show="view==='cards'">
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">
+        <div class="recent-tasks-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">
             @foreach($recentTasks as $task)
             @php
                 $sm = $statusMeta[$task->status] ?? ['label'=>ucfirst($task->status),'bg'=>'#F3F4F6','color'=>'#6B7280'];
@@ -1970,17 +3007,7 @@ fetch('{{ route('admin.dashboard.chart-tasks') }}?period=' + encodeURIComponent(
                 return;
             }
 
-            var statusMeta = {
-                draft:              { label: 'Draft',       bg: '#F3F4F6', color: '#6B7280' },
-                assigned:           { label: 'Assigned',    bg: '#EEF2FF', color: '#4F46E5' },
-                viewed:             { label: 'Viewed',      bg: '#F0F9FF', color: '#0369A1' },
-                in_progress:        { label: 'In Progress', bg: '#FFFBEB', color: '#D97706' },
-                submitted:          { label: 'In Review',   bg: '#F5F3FF', color: '#7C3AED' },
-                revision_requested: { label: 'Revision',    bg: '#FFF7ED', color: '#C2410C' },
-                approved:           { label: 'Approved',    bg: '#F0FDF4', color: '#15803D' },
-                delivered:          { label: 'Delivered',   bg: '#ECFDF5', color: '#065F46' },
-                archived:           { label: 'Archived',    bg: '#F3F4F6', color: '#6B7280' },
-            };
+            var statusMeta = @json(collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => ['label' => $c['label'], 'bg' => $c['bg'], 'color' => $c['text']]));
             var priorityMeta = {
                 high:   { label: 'High',   color: '#EF4444' },
                 medium: { label: 'Med',    color: '#F59E0B' },
@@ -2098,17 +3125,7 @@ fetch('{{ route('admin.dashboard.workload-tasks') }}?index=' + index, { headers:
 
             if (!d.tasks || !d.tasks.length) { empty.style.display = 'block'; return; }
 
-            var statusMeta = {
-                draft:              { label: 'Draft',       bg: '#F3F4F6', color: '#6B7280' },
-                assigned:           { label: 'Assigned',    bg: '#EEF2FF', color: '#4F46E5' },
-                viewed:             { label: 'Viewed',      bg: '#F0F9FF', color: '#0369A1' },
-                in_progress:        { label: 'In Progress', bg: '#FFFBEB', color: '#D97706' },
-                submitted:          { label: 'In Review',   bg: '#F5F3FF', color: '#7C3AED' },
-                revision_requested: { label: 'Revision',    bg: '#FFF7ED', color: '#C2410C' },
-                approved:           { label: 'Approved',    bg: '#F0FDF4', color: '#15803D' },
-                delivered:          { label: 'Delivered',   bg: '#ECFDF5', color: '#065F46' },
-                archived:           { label: 'Archived',    bg: '#F3F4F6', color: '#6B7280' },
-            };
+            var statusMeta = @json(collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => ['label' => $c['label'], 'bg' => $c['bg'], 'color' => $c['text']]));
             var priorityMeta = {
                 high:   { label: 'High',   color: '#EF4444' },
                 medium: { label: 'Med',    color: '#F59E0B' },
@@ -2581,8 +3598,22 @@ chartWorkload = new Chart(document.getElementById('workloadChart'), {
                 setRV('overview_overdue',        ov.overdue);
                 setRV('overview_due_today',      ov.due_today);
                 setRV('overview_due_this_week',  ov.due_this_week);
-                setRV('overview_reopened',       ov.reopened   || 0);
-                setRV('overview_reassigned',     ov.reassigned || 0);
+                setRV('overview_reopened',            ov.reopened            || 0);
+                setRV('overview_reassigned',          ov.reassigned          || 0);
+                setRV('overview_revision_requested',  ov.revision_requested  || 0);
+                // ── Pipeline % bars ──
+                (function() {
+                    var tot  = Math.max(1, ov.total || 0);
+                    var done = (ov.completed || 0) + (ov.delivered || 0) + (ov.archived || 0);
+                    var map  = { pending: ov.pending, in_progress: ov.in_progress, in_review: ov.in_review, done: done };
+                    Object.keys(map).forEach(function(k) {
+                        var pct = Math.round(map[k] / tot * 100);
+                        var bar = document.getElementById('bar_' + k);
+                        var lbl = document.getElementById('pct_' + k);
+                        if (bar) bar.style.width = pct + '%';
+                        if (lbl) lbl.textContent = pct + '%';
+                    });
+                })();
 
                 // ── Rate circles ──
                 updateRateCircle('rateCircleCompletion', 'rateTextCompletion', d.completionRate);

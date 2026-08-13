@@ -6,6 +6,36 @@
     php_value memory_limit 1024M
 </IfModule>
 
+# Gzip compression for text assets
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript
+    AddOutputFilterByType DEFLATE application/javascript application/x-javascript
+    AddOutputFilterByType DEFLATE application/json application/xml
+    AddOutputFilterByType DEFLATE image/svg+xml font/woff font/woff2
+    # Don't compress already-compressed formats
+    SetEnvIfNoCase Request_URI \.(?:gif|jpe?g|png|webp|woff2?|zip|gz)$ no-gzip
+</IfModule>
+
+# Cache headers for Vite-hashed static assets (safe to cache forever — filename changes on rebuild)
+<IfModule mod_expires.c>
+    ExpiresActive On
+    # Vite build assets have content hash in filename — immutable cache
+    <FilesMatch "\.(js|css)$">
+        ExpiresDefault "access plus 1 year"
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+    # Images and fonts — long cache, allow revalidation
+    <FilesMatch "\.(ico|png|jpg|jpeg|gif|webp|svg|woff|woff2|ttf|eot)$">
+        ExpiresDefault "access plus 6 months"
+        Header set Cache-Control "public, max-age=15552000"
+    </FilesMatch>
+    # HTML — never cache (always fresh)
+    <FilesMatch "\.html$">
+        ExpiresDefault "access plus 0 seconds"
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+    </FilesMatch>
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes

@@ -4,12 +4,16 @@
 @section('content')
 <style>
 /* ── Credential helpers ── */
-.sa-cred-val  { font-size:12px; font-weight:600; color:#111827; font-family:monospace; background:#F3F4F6; border-radius:6px; padding:4px 8px; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.sa-cred-btn  { border:none; border-radius:6px; padding:4px 8px; cursor:pointer; font-size:10px; flex-shrink:0; transition:background .15s; }
+.sa-cred-val  { font-size:12px; font-weight:500; color:#111827; font-family:monospace; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sa-cred-btn  { border:none; border-radius:6px; padding:3px 7px; cursor:pointer; font-size:10px; flex-shrink:0; transition:background .15s; }
 .sa-copy-btn  { background:#EEF2FF; color:#4F46E5; }
 .sa-copy-btn:hover  { background:#C7D2FE; }
 .sa-reveal-btn { background:#F3F4F6; color:#6B7280; }
 .sa-reveal-btn:hover { background:#E5E7EB; }
+/* ── Vault-style cred row ── */
+.vc-row   { display:flex; align-items:center; gap:8px; }
+.vc-icon  { width:20px; text-align:center; flex-shrink:0; }
+.vc-label { font-size:10px; color:#9CA3AF; width:62px; flex-shrink:0; text-transform:uppercase; letter-spacing:.04em; }
 /* ── Platform filter tabs ── */
 .sa-plat-tab { display:inline-flex; align-items:center; gap:5px; padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; border:1.5px solid #E5E7EB; background:#fff; transition:all .15s; text-decoration:none; color:#374151; white-space:nowrap; }
 .sa-plat-tab.active, .sa-plat-tab:hover { border-color:#6366F1; background:#EEF2FF; color:#4F46E5; }
@@ -47,6 +51,51 @@
 .sa-search { border:1.5px solid #E5E7EB; border-radius:10px; padding:7px 13px 7px 34px; font-size:13px; color:#111827; outline:none; width:200px; transition:border-color .15s; background:#fff; }
 .sa-search:focus { border-color:#4F46E5; }
 @media(max-width:700px) { .sa-cards-grid { grid-template-columns:1fr !important; } }
+
+/* ══════════════════════ MOBILE (<=768px) — premium pass ══════════════════════
+   Reuses shared tokens from layouts/app.blade.php (.mob-card, .mob-table-cards).
+   Scoped entirely to mobile; desktop (>768px) rules above are untouched. */
+@media (max-width: 768px) {
+    /* Card grid: always single column, never cramped */
+    .sa-cards-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
+
+    /* Card footer (avatars + actions): allow wrap instead of clipping */
+    .sa-card-footer { flex-wrap: wrap; row-gap: 8px; }
+
+    /* Toolbar: search goes full-width on its own row */
+    .sa-toolbar { gap: 8px; }
+    .sa-search { width: 100%; }
+    .sa-toolbar > div:last-child { width: 100%; margin-left: 0; }
+
+    /* Create/Edit modal: single-column form, touch-friendly field heights */
+    .sa-modal-form > div:first-of-type { grid-template-columns: 1fr !important; }
+    .sa-modal-form input[name]:not([type=hidden]),
+    .sa-modal-form select[name],
+    .sa-modal-form textarea[name] {
+        min-height: 46px;
+        box-sizing: border-box;
+    }
+
+    /* Secondary nav controls: bring up to the same 40px touch-target floor
+       used by the activity page's filter pills / action buttons (.act-filter-pill etc.) */
+    .sa-view-btn, .sa-plat-tab, .sa-search { min-height: 40px; box-sizing: border-box; }
+
+    /* Password reveal / secret modals are plain fixed-position overlays not covered
+       by .sa-modal-form — give their inputs/buttons real touch targets on mobile. */
+    #sa-reveal-modal input,
+    #sa-reveal-modal button,
+    #sa-secret-modal button {
+        min-height: 46px;
+        box-sizing: border-box;
+    }
+
+    /* Card/table row action buttons (Edit, Delete): bump to a real 44px touch target */
+    .sa-card-footer button,
+    .sa-table td button {
+        min-width: 44px !important;
+        min-height: 44px !important;
+    }
+}
 </style>
 
 @php
@@ -143,7 +192,7 @@ let formPreselectedUserIds = [];
 
 {{-- ══════════════════════ STAT CARDS ══════════════════════ --}}
 <div class="sa-stats-grid">
-    <div class="sa-stat" :class="statusFilter==='all' ? 'active-filter' : ''" @click="statusFilter='all'">
+    <div class="sa-stat mob-kpi-card" :class="statusFilter==='all' ? 'active-filter' : ''" @click="statusFilter='all'">
         <div class="sa-stat-icon" style="background:#EEF2FF;">
             <i class="fas fa-share-nodes" style="color:#4F46E5;"></i>
         </div>
@@ -152,7 +201,7 @@ let formPreselectedUserIds = [];
             <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Total Accounts</p>
         </div>
     </div>
-    <div class="sa-stat" :class="statusFilter==='active' ? 'active-filter' : ''" @click="statusFilter='active'">
+    <div class="sa-stat mob-kpi-card" :class="statusFilter==='active' ? 'active-filter' : ''" @click="statusFilter='active'">
         <div class="sa-stat-icon" style="background:#D1FAE5;">
             <i class="fas fa-circle-check" style="color:#059669;"></i>
         </div>
@@ -161,7 +210,7 @@ let formPreselectedUserIds = [];
             <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Active</p>
         </div>
     </div>
-    <div class="sa-stat" :class="statusFilter==='inactive' ? 'active-filter' : ''" @click="statusFilter='inactive'">
+    <div class="sa-stat mob-kpi-card" :class="statusFilter==='inactive' ? 'active-filter' : ''" @click="statusFilter='inactive'">
         <div class="sa-stat-icon" style="background:#F3F4F6;">
             <i class="fas fa-moon" style="color:#6B7280;"></i>
         </div>
@@ -170,7 +219,7 @@ let formPreselectedUserIds = [];
             <p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">Inactive</p>
         </div>
     </div>
-    <div class="sa-stat" :class="statusFilter==='suspended' ? 'active-filter' : ''" @click="statusFilter='suspended'">
+    <div class="sa-stat mob-kpi-card" :class="statusFilter==='suspended' ? 'active-filter' : ''" @click="statusFilter='suspended'">
         <div class="sa-stat-icon" style="background:#FEE2E2;">
             <i class="fas fa-triangle-exclamation" style="color:#DC2626;"></i>
         </div>
@@ -350,76 +399,90 @@ let formPreselectedUserIds = [];
                 default     => ['bg'=>'#F9FAFB','border'=>'#E5E7EB','color'=>'#6B7280'],
             };
         @endphp
-        <div class="sa-card" style="animation-delay:{{ $idx * 0.035 }}s;"
+        <div class="sa-card mob-card" style="animation-delay:{{ $idx * 0.035 }}s;cursor:pointer;"
              x-show="matchesCard('{{ addslashes($account->name) }}', '{{ $account->status }}')"
-             x-data="{showPw:false}">
+             x-data="{showPw:false}"
+             @click="openEdit({
+                id: {{ $account->id }},
+                name: '{{ addslashes($account->name) }}',
+                platform: '{{ $account->platform }}',
+                customer_id: {{ $account->customer_id ?? 'null' }},
+                username: '{{ addslashes($account->username ?? '') }}',
+                email: '{{ addslashes($account->email ?? '') }}',
+                account_id: '{{ addslashes($account->account_id ?? '') }}',
+                page_url: '{{ addslashes($account->page_url ?? '') }}',
+                status: '{{ $account->status }}',
+                notes: {{ json_encode($account->notes ?? '') }},
+                has_password: {{ $account->password ? 'true' : 'false' }},
+                user_ids: {{ json_encode($assignedUsers->pluck('id')->toArray()) }}
+             })">
 
-            {{-- ── Colored header zone ── --}}
-            <div style="padding:14px 16px 13px;background:{{ $pi['bg'] }};border-bottom:1.5px solid {{ $pi['color'] }}25;display:flex;align-items:center;gap:12px;">
-                {{-- Platform icon with shadow --}}
-                <div style="width:50px;height:50px;border-radius:12px;background:{{ $pi['color'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px {{ $pi['color'] }}45;">
-                    <i class="fab {{ $pi['icon'] }}" style="font-size:22px;color:#fff;"></i>
+            {{-- ── Header: gradient + platform icon inline ── --}}
+            <div style="background:linear-gradient(135deg,{{ $pi['color'] }}18,{{ $pi['color'] }}08);padding:16px 18px 13px;display:flex;align-items:flex-start;gap:13px;border-bottom:1.5px solid {{ $pi['color'] }}18;">
+                <div style="width:50px;height:50px;border-radius:13px;background:{{ $pi['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px {{ $pi['color'] }}22;">
+                    <i class="fab {{ $pi['icon'] }}" style="font-size:23px;color:{{ $pi['color'] }};"></i>
                 </div>
-                {{-- Name + badges --}}
                 <div style="flex:1;min-width:0;">
-                    <p style="font-size:15px;font-weight:800;color:#111827;margin:0 0 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:-.2px;">{{ $account->name }}</p>
+                    <h3 style="font-size:15px;font-weight:800;color:#111827;margin:0 0 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:-.2px;">{{ $account->name }}</h3>
                     <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
-                        <span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;background:{{ $pi['color'] }}18;color:{{ $pi['color'] }};text-transform:uppercase;letter-spacing:.07em;border:1px solid {{ $pi['color'] }}28;">{{ $pi['label'] }}</span>
+                        <span style="width:7px;height:7px;border-radius:50%;background:{{ $stDot }};flex-shrink:0;"></span>
+                        <span style="font-size:12px;color:#6B7280;font-weight:500;">{{ $pi['label'] }}</span>
                         @if($customer)
-                        <a href="{{ route('admin.customers.show', $customer->id) }}"
-                           style="font-size:10px;color:#6366F1;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;">
-                            <i class="fas fa-building" style="font-size:7px;"></i> {{ $customer->name }}
-                        </a>
+                        <span style="font-size:11px;color:#D1D5DB;">·</span>
+                        <i class="fas fa-building" style="font-size:9px;color:#6366F1;"></i>
+                        <a href="{{ route('admin.customers.show', $customer->id) }}" @click.stop
+                           style="font-size:11px;color:#6366F1;font-weight:600;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px;">{{ $customer->name }}</a>
                         @elseif($account->username)
-                        <span style="font-size:10px;color:#6B7280;font-family:monospace;">&#64;{{ $account->username }}</span>
+                        <span style="font-size:11px;color:#D1D5DB;">·</span>
+                        <span style="font-size:11px;color:#6B7280;font-family:monospace;">&#64;{{ $account->username }}</span>
                         @endif
                     </div>
                 </div>
-                {{-- Status pill --}}
-                <div style="flex-shrink:0;">
-                    <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;background:{{ $stPill['bg'] }};border:1px solid {{ $stPill['border'] }};">
-                        <span style="width:5px;height:5px;border-radius:50%;background:{{ $stDot }};flex-shrink:0;"></span>
-                        <span style="font-size:9px;font-weight:700;color:{{ $stPill['color'] }};text-transform:uppercase;letter-spacing:.08em;">{{ $account->status }}</span>
-                    </span>
-                </div>
+                <span style="font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;background:{{ $stPill['bg'] }};color:{{ $stPill['color'] }};flex-shrink:0;text-transform:capitalize;border:1px solid {{ $stPill['border'] }};">
+                    {{ $account->status }}
+                </span>
             </div>
 
             {{-- ── Credentials ── --}}
             @if($hasCreds)
-            <div class="sa-rule"></div>
-            <div style="padding:10px 16px;display:flex;flex-direction:column;">
+            <div style="padding:12px 18px;display:flex;flex-direction:column;gap:7px;border-bottom:1.5px solid #F3F4F6;">
+                <p style="font-size:10px;font-weight:700;color:#4F46E5;text-transform:uppercase;letter-spacing:.05em;margin:0 0 2px;display:flex;align-items:center;gap:5px;">
+                    <i class="fas fa-vault" style="font-size:9px;"></i> Credentials
+                </p>
                 @if($account->email)
-                <div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid #F7F8FA;">
-                    <span class="sa-cred-label">Email</span>
-                    <span style="font-size:12px;color:#111827;font-family:monospace;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $account->email }}</span>
-                    <button class="sa-cred-btn sa-copy-btn" style="margin-left:6px;" onclick="copyToClipboard('{{ addslashes($account->email) }}', this)" title="Copy"><i class="fas fa-copy"></i></button>
+                <div class="vc-row">
+                    <div class="vc-icon"><i class="fas fa-envelope" style="font-size:10px;color:#A5B4FC;"></i></div>
+                    <span class="vc-label">Email</span>
+                    <span class="sa-cred-val">{{ $account->email }}</span>
+                    <button class="sa-cred-btn sa-copy-btn" onclick="copyToClipboard('{{ addslashes($account->email) }}', this)" title="Copy"><i class="fas fa-copy"></i></button>
                 </div>
                 @endif
-                @if($account->username && !$account->email)
-                <div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid #F7F8FA;">
-                    <span class="sa-cred-label">Handle</span>
-                    <span style="font-size:12px;color:#111827;font-family:monospace;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">&#64;{{ $account->username }}</span>
-                    <button class="sa-cred-btn sa-copy-btn" style="margin-left:6px;" onclick="copyToClipboard('{{ addslashes($account->username) }}', this)" title="Copy"><i class="fas fa-copy"></i></button>
+                @if($account->username)
+                <div class="vc-row">
+                    <div class="vc-icon"><i class="fas fa-at" style="font-size:10px;color:#C4B5FD;"></i></div>
+                    <span class="vc-label">Handle</span>
+                    <span class="sa-cred-val">{{ $account->username }}</span>
+                    <button class="sa-cred-btn sa-copy-btn" onclick="copyToClipboard('{{ addslashes($account->username) }}', this)" title="Copy"><i class="fas fa-copy"></i></button>
                 </div>
                 @endif
                 @if($account->password)
-                <div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid #F7F8FA;" x-data="pwReveal({{ $account->id }})">
-                    <span class="sa-cred-label">Password</span>
-                    <span style="font-size:12px;color:#111827;font-family:monospace;flex:1;letter-spacing:.12em;" x-text="revealed ? pw : '••••••••'"></span>
-                    <div style="display:flex;align-items:center;gap:4px;margin-left:6px;flex-shrink:0;">
-                        <span x-show="revealed" x-text="seconds+'s'" style="font-size:9px;color:#9CA3AF;font-weight:700;min-width:18px;text-align:right;"></span>
-                        <button class="sa-cred-btn sa-reveal-btn" @click="toggle()" :title="revealed ? 'Hide' : 'Reveal'">
-                            <i :class="loading ? 'fas fa-spinner fa-spin' : (revealed ? 'fas fa-eye-slash' : 'fas fa-eye')"></i>
-                        </button>
-                        <button class="sa-cred-btn sa-copy-btn" x-show="revealed" @click="copyPw($el)" title="Copy"><i class="fas fa-copy"></i></button>
-                    </div>
+                <div class="vc-row">
+                    <div class="vc-icon"><i class="fas fa-lock" style="font-size:10px;color:#FCA5A5;"></i></div>
+                    <span class="vc-label">Password</span>
+                    <span class="sa-cred-val" style="letter-spacing:.1em;">••••••••</span>
+                    <button class="sa-cred-btn sa-reveal-btn"
+                            onclick="openSaRevealModal({{ $account->id }}, '{{ addslashes($account->name) }}')"
+                            title="Reveal password">
+                        <i class="fas fa-eye"></i>
+                    </button>
                 </div>
                 @endif
                 @if($account->account_id)
-                <div style="display:flex;align-items:center;padding:5px 0;">
-                    <span class="sa-cred-label">Acct ID</span>
-                    <span style="font-size:12px;color:#111827;font-family:monospace;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $account->account_id }}</span>
-                    <button class="sa-cred-btn sa-copy-btn" style="margin-left:6px;" onclick="copyToClipboard('{{ addslashes($account->account_id) }}', this)" title="Copy"><i class="fas fa-copy"></i></button>
+                <div class="vc-row">
+                    <div class="vc-icon"><i class="fas fa-fingerprint" style="font-size:10px;color:#6EE7B7;"></i></div>
+                    <span class="vc-label">Acct ID</span>
+                    <span class="sa-cred-val">{{ $account->account_id }}</span>
+                    <button class="sa-cred-btn sa-copy-btn" onclick="copyToClipboard('{{ addslashes($account->account_id) }}', this)" title="Copy"><i class="fas fa-copy"></i></button>
                 </div>
                 @endif
             </div>
@@ -427,10 +490,9 @@ let formPreselectedUserIds = [];
 
             {{-- ── Page URL ── --}}
             @if($account->page_url)
-            <div class="sa-rule"></div>
-            <div style="padding:8px 16px;">
+            <div style="padding:8px 18px;border-bottom:1.5px solid #F3F4F6;">
                 <a href="{{ $account->page_url }}" target="_blank"
-                   style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:{{ $pi['color'] }};text-decoration:none;text-transform:uppercase;letter-spacing:.06em;">
+                   style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:{{ $pi['color'] }};text-decoration:none;">
                     <i class="fas fa-arrow-up-right-from-square" style="font-size:9px;"></i>
                     {{ parse_url($account->page_url, PHP_URL_HOST) ?? 'Open Page' }}
                 </a>
@@ -439,42 +501,40 @@ let formPreselectedUserIds = [];
 
             {{-- ── Notes ── --}}
             @if($account->notes)
-            <div class="sa-rule"></div>
-            <div style="padding:8px 16px;">
+            <div style="padding:8px 18px;border-bottom:1.5px solid #F3F4F6;">
                 <p style="font-size:11.5px;color:#6B7280;margin:0;line-height:1.6;">{{ $account->notes }}</p>
             </div>
             @endif
 
             {{-- ── Footer: access + actions ── --}}
-            <div class="sa-rule" style="margin-top:auto;"></div>
-            <div style="padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <div class="sa-card-footer" style="padding:11px 18px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;">
                 {{-- Stacked avatars --}}
-                <div style="display:flex;align-items:center;gap:6px;min-width:0;">
+                <div style="display:flex;align-items:center;gap:7px;min-width:0;">
                     @if($assignedUsers->count())
                     <div style="display:flex;align-items:center;">
                         @foreach($assignedUsers->take(4) as $au)
                         @php $auc = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6'][$au->id % 5]; @endphp
                         <span title="{{ $au->name }}"
-                              style="width:22px;height:22px;border-radius:50%;border:2px solid #fff;background:{{ $auc }};display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;{{ $loop->first ? '' : 'margin-left:-6px;' }}">
+                              style="width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:{{ $auc }};display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;{{ $loop->first ? '' : 'margin-left:-7px;' }}">
                             {{ strtoupper(substr($au->name, 0, 1)) }}
                         </span>
                         @endforeach
                         @if($assignedUsers->count() > 4)
-                        <span style="width:22px;height:22px;border-radius:50%;border:2px solid #fff;background:#E5E7EB;display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#6B7280;margin-left:-6px;">
+                        <span style="width:24px;height:24px;border-radius:50%;border:2px solid #fff;background:#E5E7EB;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#6B7280;margin-left:-7px;">
                             +{{ $assignedUsers->count() - 4 }}
                         </span>
                         @endif
                     </div>
-                    <span style="font-size:10px;font-weight:600;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;">
+                    <span style="font-size:11px;color:#9CA3AF;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;">
                         {{ $assignedUsers->count() === 1 ? $assignedUsers->first()->name : $assignedUsers->count().' users' }}
                     </span>
                     @else
-                    <span style="font-size:10px;font-weight:600;color:#D1D5DB;text-transform:uppercase;letter-spacing:.06em;">No access</span>
+                    <span style="font-size:11px;color:#D1D5DB;font-weight:500;">No access</span>
                     @endif
                 </div>
                 {{-- Actions --}}
-                <div style="display:flex;gap:4px;flex-shrink:0;">
-                    <button @click="openEdit({
+                <div style="display:flex;gap:5px;flex-shrink:0;">
+                    <button @click.stop="openEdit({
                                 id: {{ $account->id }},
                                 name: '{{ addslashes($account->name) }}',
                                 platform: '{{ $account->platform }}',
@@ -488,13 +548,13 @@ let formPreselectedUserIds = [];
                                 has_password: {{ $account->password ? 'true' : 'false' }},
                                 user_ids: {{ json_encode($assignedUsers->pluck('id')->toArray()) }}
                             })"
-                            style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;background:transparent;color:#374151;border:1px solid #E2E4E9;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:.05em;transition:all .15s;"
-                            onmouseover="this.style.borderColor='#4F46E5';this.style.color='#4F46E5';" onmouseout="this.style.borderColor='#E2E4E9';this.style.color='#374151';">
+                            style="display:inline-flex;align-items:center;gap:5px;padding:6px 13px;background:#EEF2FF;color:#4F46E5;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;transition:background .15s;"
+                            onmouseover="this.style.background='#C7D2FE'" onmouseout="this.style.background='#EEF2FF'">
                         <i class="fas fa-pen" style="font-size:9px;"></i> Edit
                     </button>
-                    <button @click="openDelete({{ $account->id }}, '{{ addslashes($account->name) }}')"
-                            style="width:28px;height:28px;background:transparent;color:#9CA3AF;border:1px solid #E2E4E9;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;"
-                            onmouseover="this.style.borderColor='#DC2626';this.style.color='#DC2626';" onmouseout="this.style.borderColor='#E2E4E9';this.style.color='#9CA3AF';"
+                    <button @click.stop="openDelete({{ $account->id }}, '{{ addslashes($account->name) }}')"
+                            style="width:30px;height:30px;background:#FEF2F2;color:#DC2626;border:none;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;"
+                            onmouseover="this.style.background='#FEE2E2'" onmouseout="this.style.background='#FEF2F2'"
                             title="Delete">
                         <i class="fas fa-trash" style="font-size:9px;"></i>
                     </button>
@@ -513,7 +573,7 @@ let formPreselectedUserIds = [];
 </div>{{-- /cards view --}}
 
 {{-- ════════════ TABLE VIEW ════════════ --}}
-<div x-show="view==='table'" x-cloak style="background:#fff;border:1.5px solid #E5E7EB;border-radius:14px;overflow:hidden;">
+<div x-show="view==='table'" x-cloak class="mob-table-cards" style="background:#fff;border:1.5px solid #E5E7EB;border-radius:14px;overflow:hidden;">
     <table class="sa-table">
         <thead>
             <tr>
@@ -540,7 +600,7 @@ let formPreselectedUserIds = [];
             <tr x-show="matchesCard('{{ addslashes($account->name) }}', '{{ $account->status }}')">
 
                 {{-- Account --}}
-                <td>
+                <td data-label="Account">
                     <div style="display:flex;align-items:center;gap:10px;">
                         <div style="width:34px;height:34px;border-radius:9px;background:{{ $pi['bg'] }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                             <i class="fab {{ $pi['icon'] }}" style="font-size:15px;color:{{ $pi['color'] }};"></i>
@@ -553,7 +613,7 @@ let formPreselectedUserIds = [];
                 </td>
 
                 {{-- Customer --}}
-                <td>
+                <td data-label="Customer">
                     @if($customer)
                     <div style="display:flex;align-items:center;gap:6px;">
                         <span style="width:22px;height:22px;border-radius:6px;background:#EEF2FF;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -567,7 +627,7 @@ let formPreselectedUserIds = [];
                 </td>
 
                 {{-- Login --}}
-                <td style="max-width:190px;">
+                <td data-label="Login" style="max-width:190px;">
                     @if($account->email)
                     <div style="display:flex;align-items:center;gap:5px;">
                         <span style="font-size:12px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;">{{ $account->email }}</span>
@@ -577,26 +637,21 @@ let formPreselectedUserIds = [];
                         </button>
                     </div>
                     @elseif($account->username)
-                    <span style="font-size:12px;color:#374151;font-family:monospace;">@{{ $account->username }}</span>
+                    <span style="font-size:12px;color:#374151;font-family:monospace;">{{ $account->username }}</span>
                     @else
                     <span style="color:#D1D5DB;font-size:12px;">—</span>
                     @endif
                 </td>
 
                 {{-- Password --}}
-                <td x-data="pwReveal({{ $account->id }})">
+                <td data-label="Password">
                     @if($account->password)
                     <div style="display:flex;align-items:center;gap:4px;">
-                        <span x-show="!revealed" style="font-size:12px;color:#374151;font-family:monospace;letter-spacing:.1em;">••••••</span>
-                        <span x-show="revealed" x-text="pw" style="font-size:12px;color:#374151;font-family:monospace;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
-                        <span x-show="revealed" x-text="seconds+'s'" style="font-size:9px;color:#9CA3AF;font-weight:700;"></span>
-                        <button @click="toggle()"
-                                style="width:20px;height:20px;border:none;border-radius:5px;background:#F3F4F6;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#9CA3AF;">
-                            <i :class="loading ? 'fas fa-spinner fa-spin' : (revealed ? 'fas fa-eye-slash' : 'fas fa-eye')" style="font-size:8px;pointer-events:none;"></i>
-                        </button>
-                        <button x-show="revealed" @click="copyPw($el)"
-                                style="width:20px;height:20px;border:none;border-radius:5px;background:#EEF2FF;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#6366F1;">
-                            <i class="fas fa-copy" style="font-size:8px;"></i>
+                        <span style="font-size:12px;color:#374151;font-family:monospace;letter-spacing:.1em;">••••••</span>
+                        <button onclick="openSaRevealModal({{ $account->id }}, '{{ addslashes($account->name) }}')"
+                                style="width:20px;height:20px;border:none;border-radius:5px;background:#F3F4F6;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#9CA3AF;"
+                                title="Reveal password">
+                            <i class="fas fa-eye" style="font-size:8px;pointer-events:none;"></i>
                         </button>
                     </div>
                     @else
@@ -605,7 +660,7 @@ let formPreselectedUserIds = [];
                 </td>
 
                 {{-- Status --}}
-                <td>
+                <td data-label="Status">
                     <span style="display:inline-flex;align-items:center;gap:5px;background:{{ $sc['bg'] }};color:{{ $sc['color'] }};padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;">
                         <span style="width:5px;height:5px;border-radius:50%;background:{{ $stDot }};flex-shrink:0;"></span>
                         {{ ucfirst($account->status) }}
@@ -613,7 +668,7 @@ let formPreselectedUserIds = [];
                 </td>
 
                 {{-- Access --}}
-                <td>
+                <td data-label="Access">
                     @if($assignedUsers->count())
                     <div style="display:flex;align-items:center;gap:5px;">
                         <div style="display:flex;align-items:center;">
@@ -647,7 +702,7 @@ let formPreselectedUserIds = [];
                 </td>
 
                 {{-- Actions --}}
-                <td style="text-align:right;">
+                <td data-label="Actions" style="text-align:right;">
                     <div style="display:inline-flex;gap:5px;">
                         <button @click="openEdit({
                                     id: {{ $account->id }},
@@ -700,7 +755,7 @@ let formPreselectedUserIds = [];
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <form method="POST" action="{{ route('admin.social-accounts.store') }}" style="padding:20px 24px 24px;">
+            <form method="POST" action="{{ route('admin.social-accounts.store') }}" class="sa-modal-form" style="padding:20px 24px 24px;">
                 @csrf
                 @include('admin.social-accounts._form', ['account' => null, 'allUsers' => $allUsers, 'platforms' => $platforms, 'saFormCustomers' => $customers])
                 <div style="display:flex;gap:10px;margin-top:20px;">
@@ -731,7 +786,7 @@ let formPreselectedUserIds = [];
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <form method="POST" :action="'/admin/social-accounts/'+editData.id" style="padding:20px 24px 24px;">
+            <form method="POST" :action="'/admin/social-accounts/'+editData.id" class="sa-modal-form" style="padding:20px 24px 24px;">
                 @csrf @method('PUT')
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
 
@@ -1062,23 +1117,23 @@ function copyToClipboard(text, btn) {
     });
 }
 
-var _saRevealCallback = null;
-var _saRevealAccountId = null;
+// ── Step 1: Auth modal ──────────────────────────────────────────────────────
+var _saRevealAccountId   = null;
+var _saRevealAccountName = null;
 
-function openSaRevealModal(accountId, callback) {
-    _saRevealAccountId = accountId;
-    _saRevealCallback  = callback;
+function openSaRevealModal(accountId, accountName) {
+    _saRevealAccountId   = accountId;
+    _saRevealAccountName = accountName;
     document.getElementById('sa-reveal-input').value = '';
     document.getElementById('sa-reveal-error').style.display = 'none';
-    document.getElementById('sa-reveal-btn').disabled = false;
-    document.getElementById('sa-reveal-btn').textContent = 'Reveal';
+    const btn = document.getElementById('sa-reveal-btn');
+    btn.disabled = false;
+    btn.innerHTML = 'Reveal';
     document.getElementById('sa-reveal-modal').style.display = 'flex';
     setTimeout(() => document.getElementById('sa-reveal-input').focus(), 50);
 }
 function closeSaRevealModal() {
     document.getElementById('sa-reveal-modal').style.display = 'none';
-    _saRevealCallback  = null;
-    _saRevealAccountId = null;
 }
 async function submitSaReveal() {
     const pwd = document.getElementById('sa-reveal-input').value;
@@ -1099,79 +1154,159 @@ async function submitSaReveal() {
             body: JSON.stringify({ password: pwd })
         });
         const data = await res.json();
-        if (res.status === 403) { err.textContent = 'Incorrect password.'; err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Reveal'; return; }
-        if (!res.ok)            { err.textContent = 'Error. Please try again.'; err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Reveal'; return; }
-        const cb = _saRevealCallback;
+        if (res.status === 403) { err.textContent = 'Incorrect password.'; err.style.display = 'block'; btn.disabled = false; btn.innerHTML = 'Reveal'; return; }
+        if (!res.ok)            { err.textContent = 'Error. Please try again.';  err.style.display = 'block'; btn.disabled = false; btn.innerHTML = 'Reveal'; return; }
         closeSaRevealModal();
-        if (cb) cb(data.secret);
+        openSaSecretModal(data.secret, _saRevealAccountName);
     } catch (e) {
         err.textContent = 'Network error. Please try again.';
         err.style.display = 'block';
         btn.disabled = false;
-        btn.textContent = 'Reveal';
+        btn.innerHTML = 'Reveal';
     }
 }
+
+// ── Step 2: Secret display modal ────────────────────────────────────────────
+var _saSecret      = '';
+var _saSecretShown = false;
+var _saSecretTimer = null;
+const _SA_TIMER_SECS = 15;
+const _SA_CIRC       = 2 * Math.PI * 18; // ≈ 113.1
+
+function openSaSecretModal(secret, accountName) {
+    _saSecret      = secret;
+    _saSecretShown = false;
+
+    document.getElementById('sa-secret-acctname').textContent = accountName;
+    document.getElementById('sa-secret-display').textContent  = '••••••••••••';
+    document.getElementById('sa-secret-display').style.letterSpacing = '.15em';
+    document.getElementById('sa-secret-toggle-icon').className = 'fas fa-eye';
+    const copyBtn = document.getElementById('sa-secret-copy');
+    copyBtn.innerHTML = '<i class="fas fa-copy" style="font-size:12px;"></i> Copy';
+    copyBtn.style.background = '#EEF2FF';
+    copyBtn.style.color = '#4F46E5';
+
+    document.getElementById('sa-secret-modal').style.display = 'flex';
+    _startSaTimer();
+}
+
+function closeSaSecretModal() {
+    clearInterval(_saSecretTimer);
+    document.getElementById('sa-secret-modal').style.display = 'none';
+    _saSecret = '';
+}
+
+function _startSaTimer() {
+    clearInterval(_saSecretTimer);
+    let remaining = _SA_TIMER_SECS;
+    const ring = document.getElementById('sa-timer-ring');
+    const text = document.getElementById('sa-timer-text');
+    ring.style.transition = 'none';
+    ring.style.strokeDashoffset = '0';
+    text.textContent = remaining;
+
+    const footer = document.getElementById('sa-timer-footer');
+    if (footer) footer.textContent = remaining;
+
+    _saSecretTimer = setInterval(() => {
+        remaining--;
+        text.textContent = remaining;
+        if (footer) footer.textContent = remaining;
+        ring.style.transition = 'stroke-dashoffset 1s linear';
+        ring.style.strokeDashoffset = String(_SA_CIRC * (1 - remaining / _SA_TIMER_SECS));
+        if (remaining <= 0) { clearInterval(_saSecretTimer); closeSaSecretModal(); }
+    }, 1000);
+}
+
+function toggleSaSecret() {
+    _saSecretShown = !_saSecretShown;
+    const el   = document.getElementById('sa-secret-display');
+    const icon = document.getElementById('sa-secret-toggle-icon');
+    el.textContent           = _saSecretShown ? _saSecret : '••••••••••••';
+    el.style.letterSpacing   = _saSecretShown ? '.05em' : '.15em';
+    icon.className           = _saSecretShown ? 'fas fa-eye-slash' : 'fas fa-eye';
+}
+
+function copySaSecret() {
+    navigator.clipboard.writeText(_saSecret).then(() => {
+        const btn = document.getElementById('sa-secret-copy');
+        btn.innerHTML = '<i class="fas fa-check" style="font-size:12px;"></i> Copied!';
+        btn.style.background = '#DCFCE7';
+        btn.style.color = '#16A34A';
+        setTimeout(() => {
+            btn.innerHTML = '<i class="fas fa-copy" style="font-size:12px;"></i> Copy';
+            btn.style.background = '#EEF2FF';
+            btn.style.color = '#4F46E5';
+        }, 2000);
+    });
+}
+
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeSaRevealModal();
+    if (e.key === 'Escape') {
+        closeSaRevealModal();
+        closeSaSecretModal();
+    }
     if (e.key === 'Enter' && document.getElementById('sa-reveal-modal')?.style.display === 'flex') submitSaReveal();
 });
 
-function pwReveal(accountId) {
-    return {
-        pw: '',
-        revealed: false,
-        loading: false,
-        seconds: 0,
-        _countdown: null,
-
-        toggle() {
-            if (this.revealed) { this.hide(); return; }
-            // Password already fetched this session — just re-show
-            if (this.pw) { this._startCountdown(); this.revealed = true; return; }
-            openSaRevealModal(accountId, (secret) => {
-                this.pw = secret;
-                this._startCountdown();
-                this.revealed = true;
-            });
-        },
-
-        hide() {
-            this.revealed = false;
-            this.pw = '';          // wipe from memory on manual hide
-            this.seconds = 0;
-            clearInterval(this._countdown);
-        },
-
-        _startCountdown() {
-            clearInterval(this._countdown);
-            this.seconds = 15;
-            this._countdown = setInterval(() => {
-                this.seconds--;
-                if (this.seconds <= 0) {
-                    clearInterval(this._countdown);
-                    this.revealed = false;
-                    this.pw = '';  // wipe after auto-hide
-                }
-            }, 1000);
-        },
-
-        copyPw(btn) {
-            if (!this.pw) return;
-            navigator.clipboard.writeText(this.pw).then(() => {
-                const icon = btn.querySelector('i');
-                if (icon) {
-                    icon.className = 'fas fa-check';
-                    icon.style.color = '#16A34A';
-                    setTimeout(() => { icon.className = 'fas fa-copy'; icon.style.color = ''; }, 1800);
-                }
-            });
-        },
-    };
-}
 </script>
 @endpush
 
-{{-- Password-gated reveal modal --}}
+{{-- Secret display modal (step 2 — shows revealed password with countdown) --}}
+<div id="sa-secret-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;align-items:center;justify-content:center;" onclick="if(event.target===this)closeSaSecretModal()">
+    <div style="background:#fff;border-radius:18px;width:100%;max-width:400px;box-shadow:0 24px 70px rgba(0,0,0,.3);overflow:hidden;">
+
+        {{-- Header --}}
+        <div style="background:linear-gradient(135deg,#4338CA,#6366F1);padding:20px 22px 18px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:38px;height:38px;background:rgba(255,255,255,0.18);border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-key" style="color:#fff;font-size:15px;"></i>
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:14px;font-weight:700;color:#fff;line-height:1.2;">Password Revealed</div>
+                    <div id="sa-secret-acctname" style="font-size:12px;color:rgba(255,255,255,0.65);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;"></div>
+                </div>
+                {{-- Countdown ring --}}
+                <div style="position:relative;width:46px;height:46px;flex-shrink:0;">
+                    <svg width="46" height="46" style="transform:rotate(-90deg);display:block;">
+                        <circle cx="23" cy="23" r="18" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="3.5"/>
+                        <circle id="sa-timer-ring" cx="23" cy="23" r="18" fill="none" stroke="#fff" stroke-width="3.5"
+                                stroke-dasharray="113.1" stroke-dashoffset="0" stroke-linecap="round"/>
+                    </svg>
+                    <div id="sa-timer-text" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;">15</div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Body --}}
+        <div style="padding:20px 22px 22px;">
+            <div style="font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Password</div>
+            <div style="position:relative;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:11px;padding:13px 46px 13px 14px;margin-bottom:14px;">
+                <code id="sa-secret-display" style="font-family:monospace;font-size:16px;font-weight:700;color:#111827;letter-spacing:.15em;word-break:break-all;display:block;"></code>
+                <button onclick="toggleSaSecret()" title="Show / hide"
+                        style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:4px;color:#9CA3AF;line-height:1;">
+                    <i id="sa-secret-toggle-icon" class="fas fa-eye" style="font-size:14px;"></i>
+                </button>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button id="sa-secret-copy" onclick="copySaSecret()"
+                        style="flex:1;padding:10px 12px;background:#EEF2FF;border:none;border-radius:9px;font-size:13px;font-weight:600;color:#4F46E5;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .15s,color .15s;">
+                    <i class="fas fa-copy" style="font-size:12px;"></i> Copy
+                </button>
+                <button onclick="closeSaSecretModal()"
+                        style="flex:1;padding:10px 12px;background:#F3F4F6;border:none;border-radius:9px;font-size:13px;font-weight:600;color:#6B7280;cursor:pointer;">
+                    Done
+                </button>
+            </div>
+            <p style="font-size:11px;color:#D1D5DB;text-align:center;margin:12px 0 0;display:flex;align-items:center;justify-content:center;gap:5px;">
+                <i class="fas fa-shield-halved" style="color:#D97706;font-size:10px;"></i>
+                Password hidden automatically after <span id="sa-timer-footer" style="font-weight:700;color:#374151;">15</span>s
+            </p>
+        </div>
+    </div>
+</div>
+
+{{-- Password-gated auth modal (step 1) --}}
 <div id="sa-reveal-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)closeSaRevealModal()">
     <div style="background:#fff;border-radius:16px;padding:28px 28px 24px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.25);">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">

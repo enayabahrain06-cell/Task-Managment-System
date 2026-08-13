@@ -173,9 +173,9 @@ class TeamController extends Controller
             ->values()
             ->map(function ($p, $i) use ($colors) {
                 $pending    = $p->tasks_count - $p->completed_tasks_count;
-                $p->pct     = $p->tasks_count > 0 ? min(100, round($p->completed_tasks_count / $p->tasks_count * 100)) : 0;
+                $p->pct     = $p->tasks_count > 0 ? (int) min(100, round($p->completed_tasks_count / $p->tasks_count * 100)) : 0;
                 $p->color   = $colors[$i % count($colors)];
-                $p->meta    = $pending > 0 ? "{$pending} task" . ($pending === 1 ? '' : 's') . ' left' : 'All tasks done';
+                $p->meta    = $p->pct === 100 ? 'All tasks done' : ($p->pct === 0 ? 'Not started' : "{$pending} task" . ($pending === 1 ? '' : 's') . ' left');
                 return $p;
             });
 

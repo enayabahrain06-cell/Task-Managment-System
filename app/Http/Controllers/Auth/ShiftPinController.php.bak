@@ -31,6 +31,10 @@ class ShiftPinController extends Controller
         return response()->json(['users' => $users]);
     }
 
+    private const MAX_ATTEMPTS = 5;
+
+    private const LOCK_SECONDS = 900;
+
     public function authenticate(Request $request): JsonResponse
     {
         $request->validate([
@@ -41,18 +45,43 @@ class ShiftPinController extends Controller
         $user = User::find($request->integer('user_id'));
         $throttleKey = 'shift-pin:'.$user->id.'|'.$request->ip();
 
-        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+        if (RateLimiter::tooManyAttempts($throttleKey, self::MAX_ATTEMPTS)) {
             $seconds = RateLimiter::availableIn($throttleKey);
 
             return response()->json([
-                'message' => 'Too many attempts. Try again in '.max(1, (int) ceil($seconds / 60)).' minute(s), or sign in with a password.',
+                'state'       => 'locked',
+                'message'     => 'Too many attempts. Try again in '.max(1, (int) ceil($seconds / 60)).' minute(s), or sign in with a password.',
+                'retry_after' => $seconds,
             ], 429);
         }
 
-        if (! $user->hasPin() || $user->status !== 'active' || ! Hash::check($request->string('pin'), $user->getRawOriginal('pin'))) {
-            RateLimiter::hit($throttleKey, 900);
+        // PIN was removed (e.g. by an admin) after this device loaded the staff list.
+        if (! $user->hasPin()) {
+            return response()->json([
+                'state'   => 'unavailable',
+                'message' => 'Shift PIN sign-in is no longer available for this account.',
+            ], 422);
+        }
 
-            return response()->json(['message' => 'Incorrect PIN.'], 422);
+        // Account was deactivated/archived after this device loaded the staff list — never
+        // let a correct PIN through for a non-active account, same as password login.
+        if ($user->status !== 'active') {
+            return response()->json([
+                'state'   => 'inactive',
+                'message' => $user->status === 'archived'
+                    ? 'This account has been archived and can no longer sign in.'
+                    : 'This account has been deactivated. Please contact your administrator.',
+            ], 422);
+        }
+
+        if (! Hash::check($request->string('pin'), $user->getRawOriginal('pin'))) {
+            RateLimiter::hit($throttleKey, self::LOCK_SECONDS);
+
+            return response()->json([
+                'state'              => 'wrong_pin',
+                'message'            => 'Incorrect PIN.',
+                'attempts_remaining' => max(0, RateLimiter::remaining($throttleKey, self::MAX_ATTEMPTS)),
+            ], 422);
         }
 
         RateLimiter::clear($throttleKey);
@@ -60,6 +89,6 @@ class ShiftPinController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        return response()->json(['redirect' => PostLoginRedirect::url($user)]);
+        return response()->json(['state' => 'ok', 'redirect' => PostLoginRedirect::url($user)]);
     }
 }

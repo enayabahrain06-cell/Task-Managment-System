@@ -1,0 +1,189 @@
+{{--
+  Mobile restyle of resources/views/admin/social-budget/index.blade.php  (Ad Budget Monitor)
+  Scope: <=768px only. Desktop markup untouched. Replaces the page's existing
+  .sb-mobile-only block (shared uds-* components) entirely with this bespoke layout.
+
+  Vars (from Admin\SocialBudgetController@index): $tasks (paginated, already
+  transformed to plain arrays — NOT raw Task models), $stats, $allProjects, $allCustomers, $status
+  Task array keys: id, title, project (string), customer (string), social_user (string),
+                   budget (string|null — free text in real data, not always numeric),
+                   posted (bool), created_at (pre-formatted string)
+  Route: admin.social-budget.index (?status=), admin.tasks.show
+--}}
+
+<div class="adb-mobile">
+
+    <div class="m-head">
+        <div class="m-head-text">
+            <div class="m-title">Ad Budget Monitor</div>
+            <div class="m-sub">Social tasks and their ad spend</div>
+        </div>
+    </div>
+
+    {{-- SEGMENTED tabs replace the loose pill row --}}
+    <div class="m-seg">
+        @foreach ([['all','All',$stats['total']],['pending','Pending',$stats['pending']],['posted','Posted',$stats['posted']]] as [$k,$l,$n])
+            <a href="{{ route('admin.social-budget.index', array_merge(request()->query(), ['status' => $k])) }}"
+               class="m-seg-btn {{ $status === $k ? 'is-on' : '' }}">{{ $l }} <span class="m-seg-count">{{ $n }}</span></a>
+        @endforeach
+    </div>
+
+    {{-- CHIP filters replace the two full-width selects --}}
+    <form method="GET" action="{{ route('admin.social-budget.index') }}" class="m-chiprow">
+        <input type="hidden" name="status" value="{{ $status }}">
+        <label class="m-chip">
+            <span>{{ optional($allProjects->firstWhere('id', $projectId))->name ?? 'All projects' }}</span>
+            <i class="fas fa-chevron-down"></i>
+            <select name="project_id" onchange="this.form.submit()">
+                <option value="">All projects</option>
+                @foreach ($allProjects as $p)
+                    <option value="{{ $p->id }}" @selected($projectId == $p->id)>{{ $p->name }}</option>
+                @endforeach
+            </select>
+        </label>
+        <label class="m-chip">
+            <span>{{ optional($allCustomers->firstWhere('id', $customerId))->name ?? 'All customers' }}</span>
+            <i class="fas fa-chevron-down"></i>
+            <select name="customer_id" onchange="this.form.submit()">
+                <option value="">All customers</option>
+                @foreach ($allCustomers as $c)
+                    <option value="{{ $c->id }}" @selected($customerId == $c->id)>{{ $c->name }}</option>
+                @endforeach
+            </select>
+        </label>
+    </form>
+
+    {{-- 2-col KPI grid replaces the clipping swipe strip --}}
+    <div class="m-kpi-grid">
+        <div class="m-card"><div class="m-eyebrow">Social tasks</div><div class="m-kpi">{{ $stats['total'] }}</div><div class="m-kpi-sub">in this view</div></div>
+        <div class="m-card"><div class="m-eyebrow">Pending posting</div><div class="m-kpi">{{ $stats['pending'] }}</div><div class="m-kpi-sub">{{ $stats['pending'] ? 'waiting to go live' : 'nothing waiting' }}</div></div>
+        <div class="m-card"><div class="m-eyebrow">Posted</div><div class="m-kpi">{{ $stats['posted'] }}</div><div class="m-kpi-sub">live on channels</div></div>
+        <div class="m-card"><div class="m-eyebrow">Ad spend</div><div class="m-kpi is-money">BHD {{ number_format($stats['spend'], 3) }}</div><div class="m-kpi-sub">budget set on {{ $stats['withBudget'] }} tasks</div></div>
+    </div>
+
+    {{-- Task cards replace the 6-row label/value stack --}}
+    @if ($tasks->isEmpty())
+        <div class="m-empty">
+            <div class="m-empty-h">No social tasks</div>
+            <div class="m-empty-p">Nothing matches these filters.</div>
+        </div>
+    @else
+        <div class="m-list">
+            @foreach ($tasks as $t)
+                @php
+                    // social_budget is free-text in real data (a note, not always a number) —
+                    // format as currency only when it's actually numeric, otherwise show as-is.
+                    $budgetText = null;
+                    if (!empty($t['budget'])) {
+                        $budgetText = is_numeric(trim($t['budget']))
+                            ? 'BHD ' . number_format((float) trim($t['budget']), 3)
+                            : $t['budget'];
+                    }
+                    $initial = $t['social_user'] !== '—' ? mb_substr($t['social_user'], 0, 1) : '?';
+                @endphp
+                <article class="m-card m-card-lg">
+                    <div class="m-cardtop">
+                        <span class="m-chip-status {{ $t['posted'] ? 'is-posted' : 'is-pending' }}">{{ $t['posted'] ? 'Posted' : 'Pending' }}</span>
+                        <span class="m-spacer"></span>
+                        <span class="m-added">{{ $t['posted'] ? 'Posted' : 'Added' }} {{ $t['posted'] ? $t['posted_at'] : $t['created_at'] }}</span>
+                    </div>
+
+                    <a href="{{ route('admin.tasks.show', $t['id']) }}" class="m-cardmain">
+                        <span class="m-cardtitle">{{ $t['title'] }}</span>
+                        <span class="m-cardctx">{{ $t['project'] }} · {{ $t['customer'] }}</span>
+                    </a>
+
+                    <div class="m-cardfoot">
+                        <span class="m-mini-avatar">{{ $initial }}</span>
+                        <span class="m-assignee">{{ $t['social_user'] !== '—' ? $t['social_user'] : 'Unassigned' }}</span>
+                        <span class="m-budget {{ $budgetText ? '' : 'is-unset' }}">{{ $budgetText ?? 'Not set' }}</span>
+                    </div>
+                </article>
+            @endforeach
+        </div>
+
+        @if ($tasks->hasPages())
+            <div class="m-pager">{{ $tasks->withQueryString()->links() }}</div>
+        @endif
+    @endif
+</div>
+
+<style>
+.adb-mobile { display: none; }
+
+@media (max-width: 768px) {
+    /* replace the desktop header, status tabs, selects, table, KPI grid, and
+       pagination — doubled selectors to out-specificity this page's own
+       !important mobile rules for the same classes */
+    .sb-desktop-header.sb-desktop-header, .sb-status-tabs-desktop.sb-status-tabs-desktop,
+    .sb-select-desktop.sb-select-desktop, .sb-tasks-table-wrap.sb-tasks-table-wrap,
+    .sb-stats-grid.sb-stats-grid, .sb-desktop-tasklist.sb-desktop-tasklist,
+    .sb-desktop-pager.sb-desktop-pager { display: none !important; }
+
+    .adb-mobile { display: block; }
+
+    .m-head { padding: 2px 0 14px; }
+    .m-title { font-size: 20px; font-weight: 700; letter-spacing: -.02em; color: #111827; }
+    .m-sub { font-size: 12px; font-weight: 500; color: #6B7280; margin-top: 2px; }
+
+    .m-seg { display: flex; gap: 2px; background: #F3F4F6; border-radius: 11px; padding: 3px; margin-bottom: 14px; }
+    .m-seg-btn {
+        flex: 1; min-height: 40px; border-radius: 8px; background: transparent; text-decoration: none;
+        display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+        font-size: 13px; font-weight: 600; color: #6B7280;
+    }
+    .m-seg-btn.is-on { background: #fff; color: var(--mob-brand, #4F46E5); font-weight: 700; box-shadow: 0 1px 4px rgba(17,24,39,.08); }
+    .m-seg-count { padding: 1px 7px; border-radius: 20px; font-size: 11px; font-weight: 700; background: #E5E7EB; color: #6B7280; }
+    .m-seg-btn.is-on .m-seg-count { background: #EEF2FF; color: var(--mob-brand, #4F46E5); }
+
+    .m-chiprow { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; }
+    .m-chip {
+        flex: none; position: relative; display: inline-flex; align-items: center; gap: 6px;
+        min-height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid #E1E4EA;
+        background: #fff; font-size: 12.5px; font-weight: 600; color: #374151; white-space: nowrap;
+    }
+    .m-chip i { font-size: 10px; color: #9CA3AF; }
+    .m-chip select { position: absolute; inset: 0; opacity: 0; }
+
+    .m-kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .m-card {
+        background: #fff; border: 1px solid #EDEFF3; border-radius: 16px; padding: 13px;
+        box-shadow: 0 1px 2px rgba(17,24,39,.04);
+    }
+    .m-eyebrow { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #9CA3AF; }
+    .m-kpi { font-size: 21px; font-weight: 700; color: #111827; letter-spacing: -.02em; margin-top: 5px; }
+    .m-kpi.is-money { font-size: 16px; }
+    .m-kpi-sub { font-size: 11px; font-weight: 500; color: #6B7280; margin-top: 3px; }
+
+    .m-list { display: flex; flex-direction: column; gap: 10px; }
+    .m-card-lg { padding: 14px; }
+    .m-cardtop { display: flex; align-items: center; margin-bottom: 10px; }
+    .m-spacer { flex: 1; }
+    .m-chip-status { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 8px; }
+    .m-chip-status.is-posted { background: #D1FAE5; color: #059669; }
+    .m-chip-status.is-pending { background: #FEF3C7; color: #D97706; }
+    .m-added { font-size: 11px; font-weight: 600; color: #9CA3AF; }
+
+    .m-cardmain { display: block; text-decoration: none; }
+    .m-cardtitle { display: block; font-size: 15px; font-weight: 700; color: #111827; letter-spacing: -.015em; line-height: 1.3; }
+    .m-cardctx { display: block; font-size: 12px; font-weight: 500; color: #6B7280; margin-top: 4px; }
+
+    .m-cardfoot { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 11px; border-top: 1px solid #F0F1F5; }
+    .m-mini-avatar {
+        width: 22px; height: 22px; flex: none; border-radius: 99px; background: var(--mob-brand, #4F46E5);
+        color: #fff; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;
+    }
+    .m-assignee { flex: 1; min-width: 0; font-size: 12px; font-weight: 600; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .m-budget {
+        flex: none; max-width: 40%; font-size: 12px; font-weight: 700; color: #D97706;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .m-budget.is-unset { color: #9CA3AF; font-weight: 500; }
+
+    .m-empty { background: #fff; border: 1px dashed #D1D5DB; border-radius: 18px; padding: 34px 20px; text-align: center; }
+    .m-empty-h { font-size: 14.5px; font-weight: 600; color: #111827; }
+    .m-empty-p { font-size: 12.5px; color: #6B7280; margin-top: 6px; }
+
+    .m-pager { margin-top: 16px; }
+}
+</style>

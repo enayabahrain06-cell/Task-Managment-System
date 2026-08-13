@@ -1,0 +1,2283 @@
+@extends('layouts.app')
+@section('title', $customer->name)
+
+@push('styles')
+<style>
+@media print {
+    .app-sidebar,
+    .sidebar-overlay,
+    header.app-topbar,
+    [x-data*="exportOpen"],
+    .no-print { display:none !important; }
+
+    /* Break out of app-shell viewport constraints */
+    .app-shell   { display:block !important; height:auto !important; overflow:visible !important; }
+    .app-main    { display:block !important; height:auto !important; overflow:visible !important; margin-left:0 !important; padding:0 !important; }
+    main.app-content { overflow:visible !important; height:auto !important; flex:none !important; padding:0 !important; margin:0 !important; animation:none !important; }
+
+    /* Suppress browser link-URL annotations (e.g. Firefox/Chrome default print behaviour) */
+    a::after, a[href]::after { content:none !important; display:none !important; }
+
+    body { background:#fff !important; }
+    * { box-shadow:none !important; }
+    @page { margin:15mm; }
+}
+</style>
+@endpush
+
+@section('content')
+@php
+    $hideWaWeb = \App\Models\Setting::get('hide_wa_web_button', '0') === '1';
+    $_tsBg    = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['bg'])->all();
+    $_tsColor = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['text'])->all();
+    $_tsLabel = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['label'])->all();
+    $_psBg    = ['active'=>'#EEF2FF','completed'=>'#ECFDF5','pending'=>'#FEF3C7','on_hold'=>'#FEF3C7','cancelled'=>'#FEE2E2'];
+    $_psColor = ['active'=>'#4F46E5','completed'=>'#16A34A','pending'=>'#D97706','on_hold'=>'#D97706','cancelled'=>'#DC2626'];
+    $_psLabel = ['active'=>'Active','completed'=>'Completed','pending'=>'Pending','on_hold'=>'On Hold','cancelled'=>'Cancelled'];
+    $_overdueReason = function($t) {
+        if (!$t->deadline || !$t->deadline->isPast() || in_array($t->status, ['approved','delivered','archived'])) return null;
+        return match($t->status) {
+            'pending_customer'   => ['label'=>'Waiting: Customer',  'bg'=>'#FEF3C7','color'=>'#D97706','icon'=>'fa-user-clock'],
+            'submitted'          => ['label'=>'Waiting: Admin Review','bg'=>'#EEF2FF','color'=>'#4F46E5','icon'=>'fa-user-shield'],
+            'revision_requested' => ['label'=>'Waiting: Revision',  'bg'=>'#FEE2E2','color'=>'#DC2626','icon'=>'fa-rotate-left'],
+            'in_progress'        => ['label'=>'Waiting: Assignee',  'bg'=>'#FFF7ED','color'=>'#EA580C','icon'=>'fa-user-pen'],
+            'viewed'             => ['label'=>'Waiting: Assignee',  'bg'=>'#FFF7ED','color'=>'#EA580C','icon'=>'fa-user-pen'],
+            'assigned'           => ['label'=>'Waiting: Assignee',  'bg'=>'#FFF7ED','color'=>'#EA580C','icon'=>'fa-user-pen'],
+            'draft'              => ['label'=>'Not Started',         'bg'=>'#F3F4F6','color'=>'#6B7280','icon'=>'fa-circle-pause'],
+            default              => ['label'=>'Overdue',             'bg'=>'#FEE2E2','color'=>'#DC2626','icon'=>'fa-triangle-exclamation'],
+        };
+    };
+    $_mapTask = fn($t) => [
+        'title'         => $t->title,
+        'project'       => $t->project->name ?? '—',
+        'assignee'      => $t->assignee->name ?? null,
+        'statusLabel'   => $_tsLabel[$t->status] ?? ucfirst(str_replace('_',' ',$t->status)),
+        'statusBg'      => $_tsBg[$t->status]    ?? '#F3F4F6',
+        'statusColor'   => $_tsColor[$t->status]  ?? '#374151',
+        'deadline'      => $t->deadline ? $t->deadline->format(config('app.date_format', 'M d, Y')) : null,
+        'overdue'       => $t->deadline && $t->deadline->isPast() && !in_array($t->status, ['approved','delivered','archived']),
+        'overdueReason' => $_overdueReason($t),
+        'url'           => route('admin.tasks.show', $t->id),
+    ];
+    $_allTasks = $customer->tasks;
+    $taskGroupsJson = json_encode([
+        'pending' => $_allTasks->whereIn('status', ['draft','assigned','viewed'])->map($_mapTask)->values(),
+        'active'  => $_allTasks->whereIn('status', ['in_progress','submitted','revision_requested'])->map($_mapTask)->values(),
+        'done'    => $_allTasks->whereIn('status', ['approved','delivered','archived'])->map($_mapTask)->values(),
+        'overdue' => $_allTasks->filter(fn($t) => $t->deadline && $t->deadline->isPast() && !in_array($t->status, ['approved','delivered','archived']))->map($_mapTask)->values(),
+    ]);
+    $customerFilesJson = json_encode($customer->tasks->flatMap(fn($t) =>
+        ($t->submissions ?? collect())->map(fn($s) => [
+            'task_title'   => $t->title,
+            'version'      => $s->version,
+            'filename'     => $s->original_filename ?? basename($s->file_path),
+            'file_url'     => url(\Illuminate\Support\Facades\Storage::url($s->file_path)),
+            'status'       => $s->status,
+            'status_label' => match($s->status) {
+                'approved'  => 'Approved',
+                'rejected'  => 'Revision',
+                'submitted' => 'Submitted',
+                default     => ucfirst($s->status ?? ''),
+            },
+        ])
+    )->values());
+    $customerProjectsJson = json_encode($customer->projects->map(fn($p) => [
+        'name'        => $p->name,
+        'tasksCount'  => $p->tasks_count ?? 0,
+        'statusLabel' => $_psLabel[$p->status] ?? ucfirst($p->status),
+        'statusBg'    => $_psBg[$p->status]    ?? '#F3F4F6',
+        'statusColor' => $_psColor[$p->status]  ?? '#374151',
+        'deadline'    => $p->deadline ? $p->deadline->format(config('app.date_format', 'M d, Y')) : null,
+        'overdue'     => $p->deadline && $p->deadline->isPast() && $p->status !== 'completed',
+        'url'         => route('admin.projects.show', $p->id),
+    ])->values());
+@endphp
+<style>
+.cust-show-stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+.cust-show-split { display:grid; grid-template-columns:1fr 2fr; gap:20px; align-items:stretch; }
+@media (max-width: 900px) {
+    .cust-show-stats-grid { grid-template-columns: repeat(2,1fr); }
+    .cust-show-split { grid-template-columns: 1fr; }
+}
+.cust-tbl-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.cust-tbl-scroll table { min-width:500px; }
+@media (max-width: 768px) {
+    .cust-tbl-scroll { overflow-x:auto !important; -webkit-overflow-scrolling:touch; }
+    .cust-tbl-scroll table { min-width:500px !important; }
+}
+@media (max-width: 480px) {
+    .cust-show-stats-grid { grid-template-columns: repeat(2,1fr); gap:8px; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   Mobile-only redesign pass (customer detail page).
+   Everything below is scoped to <=768px — desktop untouched.
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+    /* Page rhythm: reuse the shared card/shadow tokens on every panel */
+    .cust-panel {
+        border-radius: var(--mob-r-lg, 20px) !important;
+        padding: 16px !important;
+        box-shadow: var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05)) !important;
+    }
+    .cust-show-split { gap: 12px !important; }
+    .cust-show-stats-grid { gap: 8px !important; margin-bottom: 16px !important; }
+
+    /* ── Header: avatar+name row, actions wrap into compact pill chips ── */
+    .cust-hdr { flex-wrap: wrap !important; gap: 10px !important; margin-bottom: 16px !important; }
+    .cust-hdr-back { order: 1; flex: 0 0 auto !important; }
+    .cust-hdr-name { order: 2; flex: 1 1 60% !important; min-width: 0 !important; }
+    .cust-hdr-avatar { width: 40px !important; height: 40px !important; font-size: 15px !important; border-radius: var(--mob-r-sm, 12px) !important; }
+    .cust-hdr-title { font-size: 17px !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60vw; }
+    .cust-hdr-action, .cust-hdr-export {
+        order: 4; flex: 0 0 auto !important;
+    }
+    .cust-hdr-action {
+        padding: 7px 12px !important;
+        font-size: 12px !important;
+        border-radius: 999px !important;
+        white-space: nowrap;
+        min-height: 44px !important;
+    }
+    /* Modal close "X" buttons throughout this page's modals are 30-32px circles */
+    .cust-modal-box button[style*="border-radius:50%"] {
+        width: 44px !important; height: 44px !important;
+    }
+    .cust-hdr-export-menu { min-width: 150px !important; max-width: 78vw !important; }
+
+    /* ── KPI stat cards: consistent rounded/shadow + press feedback ── */
+    .cust-stat-btn {
+        border-radius: var(--mob-r-md, 16px) !important;
+        box-shadow: var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05)) !important;
+        padding: 12px !important;
+        transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+    }
+    .cust-stat-btn:active { transform: scale(.97); opacity: .92; }
+
+    /* ── Contact card quick actions: full 44px touch targets ── */
+    .cust-touch-btn { min-height: 44px !important; }
+
+    /* ── Section "Manage" links (Domains / Social Accounts headers): comfortable touch height ── */
+    .cust-manage-link { min-height: 40px !important; padding: 9px 14px !important; }
+
+    /* ── Domains: 4-column desktop row → stacked 2×2 card ── */
+    .cust-domain-row {
+        display: grid !important;
+        grid-template-columns: 1fr auto !important;
+        grid-template-areas: "name badge" "cost expiry" !important;
+        gap: 8px 10px !important;
+        padding: 14px !important;
+        border-radius: var(--mob-r-md, 16px) !important;
+    }
+    .cust-domain-name   { grid-area: name; min-width: 0 !important; }
+    .cust-domain-badge  { grid-area: badge; justify-self: end; align-self: start; }
+    .cust-domain-cost   { grid-area: cost; text-align: left !important; }
+    .cust-domain-expiry { grid-area: expiry; text-align: right !important; min-width: 0 !important; }
+
+    /* ── Social accounts: 3-column desktop row → stacked card ── */
+    .cust-social-grid { display: block !important; min-height: 0 !important; }
+    .cust-social-left, .cust-social-mid, .cust-social-right {
+        min-width: 0 !important; max-width: none !important; width: 100% !important;
+        border-right: none !important; border-left: none !important;
+        box-sizing: border-box !important;
+    }
+    .cust-social-left  { border-bottom: 1px solid #F3F4F6 !important; padding: 12px 14px !important; }
+    .cust-social-mid   { padding: 10px 14px !important; }
+    .cust-social-right { border-top: 1px solid #F3F4F6 !important; padding: 10px 14px !important; align-items: flex-start !important; }
+
+    /* ── Design approval timeline row: assignee stacks full-width below ── */
+    .cust-approval-row { grid-template-columns: 1fr !important; gap: 6px !important; }
+    .cust-approval-title { max-width: 58vw !important; }
+    .cust-approval-right {
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        text-align: left !important;
+    }
+
+    /* ── Pagination buttons: touch-friendly ── */
+    .cust-page-btn { min-height: 34px !important; min-width: 36px !important; }
+
+    /* ── Modals: full-viewport width, roomy inputs (min 44px, 15px to avoid iOS zoom) ── */
+    .cust-modal-box { max-width: 100% !important; width: 100% !important; }
+    .cust-modal-box select,
+    .cust-modal-box textarea,
+    .cust-modal-box input[type="text"] {
+        min-height: 44px !important;
+        font-size: 15px !important;
+    }
+
+    /* ── Stats modal tabs: comfortable touch height ── */
+    .cust-show-tab-btn { min-height: 40px !important; }
+}
+
+@media (max-width: 480px) {
+    .cust-panel { padding: 14px !important; }
+    .cust-hdr-title { font-size: 16px !important; max-width: 50vw; }
+    .cust-hdr-action { font-size: 11.5px !important; padding: 6px 10px !important; }
+    .cust-domain-row { padding: 12px !important; }
+    .cust-approval-title { max-width: 48vw !important; }
+}
+</style>
+<script>window._reviewSuffix = @json("has been submitted for review. We'd love your feedback before we finalize approval.");</script>
+<div x-data="{
+    task: null,    openTask(t) { this.task = t; document.body.style.overflow='hidden'; },
+    project: null, openProject(p) { this.project = p; document.body.style.overflow='hidden'; },
+    statsModal: null,
+    statsTab: 'tasks',
+    taskGroups: {{ $taskGroupsJson }},
+    customerProjects: {{ $customerProjectsJson }},
+    openStats(group) { this.statsModal = group; this.statsTab = 'tasks'; document.body.style.overflow='hidden'; },
+    get statsModalTasks() { return this.statsModal && this.taskGroups[this.statsModal] ? this.taskGroups[this.statsModal] : []; },
+    get statsModalLabel() {
+        const m = { pending: 'Pending', active: 'In Progress', done: 'Completed', overdue: 'Overdue' };
+        return m[this.statsModal] || '';
+    },
+
+    // ── Send Update ──
+    sendModal: false,
+    sendChannel: 'whatsapp',
+    sendProject: null,
+    sendNote: '',
+    sending: false,
+    sendResult: null,
+    cName:  @js($customer->name),
+    cEmail: @js($customer->email ?? ''),
+    cPhone: @js(preg_replace('/\D/', '', $customer->phone ?? '')),
+    sendMode: 'text',
+    selectedFile: null,
+    customerFiles: {{ $customerFilesJson }},
+    fileCaption: '',
+    editableMsg: '',
+    _reviewSuffix: window._reviewSuffix,
+
+    get sendMsg() {
+        if (this.sendMode === 'file' && this.selectedFile) {
+            let msg = 'Hello ' + this.cName + ', your design for \x22' + this.selectedFile.task_title + '\x22 ' + this._reviewSuffix;
+            if (this.fileCaption.trim()) msg += '\n\n' + this.fileCaption.trim();
+            return msg;
+        }
+        const p = this.sendProject;
+        let msg = `Hello ${this.cName},\n\n`;
+        if (p) {
+            msg += `Here is an update on your project '${p.name}':\n\n`;
+            msg += `• Status: ${p.statusLabel}\n`;
+            msg += `• Tasks: ${p.tasksCount} task${p.tasksCount !== 1 ? 's' : ''}`;
+            if (p.deadline) msg += `\n• Deadline: ${p.deadline}${p.overdue ? ' ⚠ Overdue' : ''}`;
+        } else {
+            msg += `I hope this message finds you well.`;
+        }
+        if (this.sendNote.trim()) msg += `\n\n${this.sendNote.trim()}`;
+        msg += `\n\nPlease feel free to reach out if you have any questions.`;
+        return msg;
+    },
+
+    openSend(channel) {
+        this.sendChannel  = channel || 'whatsapp';
+        this.sendProject  = this.customerProjects.length === 1 ? this.customerProjects[0] : null;
+        this.sendNote     = '';
+        this.sendResult   = null;
+        this.sending      = false;
+        this.sendMode     = 'text';
+        this.selectedFile = null;
+        this.fileCaption  = '';
+        this.editableMsg  = this.sendMsg;
+        this.sendModal    = true;
+        document.body.style.overflow = 'hidden';
+    },
+    async doSend() {
+        this.sendResult = null;
+        if (this.sendChannel === 'whatsapp') {
+            if (!this.cPhone) { this.sendResult = { ok: false, message: 'No phone number on file for this customer.' }; return; }
+            if (this.sendMode === 'file' && !this.selectedFile) { this.sendResult = { ok: false, message: 'Please select a file to send.' }; return; }
+            this.sending = true;
+            try {
+                let fetchUrl, bodyData;
+                if (this.sendMode === 'file') {
+                    fetchUrl = '{{ route('admin.approvals.whatsapp-customer-media') }}';
+                    bodyData = { phone: this.cPhone, file_url: this.selectedFile.file_url, filename: this.selectedFile.filename, caption: this.editableMsg };
+                } else {
+                    fetchUrl = '{{ route('admin.approvals.whatsapp-customer') }}';
+                    bodyData = { phone: this.cPhone, message: this.editableMsg };
+                }
+                const res = await fetch(fetchUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                    body: JSON.stringify(bodyData)
+                });
+                const d = await res.json();
+                this.sendResult = d;
+                if (d.ok) { this.sendNote = ''; this.fileCaption = ''; setTimeout(() => { this.close(); }, 2200); }
+            } catch(e) {
+                this.sendResult = { ok: false, message: 'Network error. Please try again.' };
+            } finally {
+                this.sending = false;
+            }
+        } else if (this.sendChannel === 'whatsapp_web') {
+            if (!this.cPhone) { this.sendResult = { ok: false, message: 'No phone number on file for this customer.' }; return; }
+            const waUrl = 'https://web.whatsapp.com/send?phone=' + this.cPhone + '&text=' + encodeURIComponent(this.editableMsg);
+            window.open(waUrl, '_blank');
+            this.close();
+        } else {
+            if (!this.cEmail) { this.sendResult = { ok: false, message: 'No email address on file for this customer.' }; return; }
+            const subj = this.sendProject ? `Project Update – ${this.sendProject.name}` : `Message for ${this.cName}`;
+            window.location.href = 'mailto:' + this.cEmail + '?subject=' + encodeURIComponent(subj) + '&body=' + encodeURIComponent(this.editableMsg);
+        }
+    },
+
+    approvalModal: null,
+    approveNote: '',
+    approving: false,
+    openApproval(d) { this.approvalModal = d; this.approveNote = ''; this.approving = false; document.body.style.overflow='hidden'; },
+
+    close() { this.task = null; this.project = null; this.statsModal = null; this.approvalModal = null; this.approveNote = ''; this.approving = false; this.sendModal = false; this.sendResult = null; this.sending = false; this.sendMode = 'text'; this.selectedFile = null; this.fileCaption = ''; document.body.style.overflow=''; }
+}" x-init="editableMsg = sendMsg; $watch('sendMode', () => { editableMsg = sendMsg; }); $watch('selectedFile', () => { editableMsg = sendMsg; }); $watch('sendProject', () => { editableMsg = sendMsg; });" @keydown.escape.window="close()" @open-customer-task.window="openTask($event.detail)" style="width:100%;min-width:0;">
+
+{{-- Project Preview Modal --}}
+<template x-if="project">
+<div style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;"
+     @click.self="close()">
+    <div style="position:absolute;inset:0;background:rgba(0,0,0,.45);"></div>
+    <div class="cust-modal-box" style="position:relative;background:#fff;border-radius:20px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.22);">
+
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:22px 24px 0;">
+            <div style="flex:1;min-width:0;padding-right:12px;">
+                <p style="font-size:11px;color:#9CA3AF;margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em;">Project</p>
+                <h2 x-text="project.name" style="font-size:17px;font-weight:700;color:#111827;margin:0;line-height:1.35;"></h2>
+            </div>
+            <button @click="close()"
+                    style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:16px;">
+                ×
+            </button>
+        </div>
+
+        <div style="padding:20px 24px 24px;">
+
+            <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+                <span x-text="project.statusLabel"
+                      :style="'padding:3px 12px;border-radius:20px;font-size:12px;font-weight:600;background:'+project.statusBg+';color:'+project.statusColor+';'"></span>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <span style="width:110px;font-size:12px;color:#9CA3AF;flex-shrink:0;"><i class="fa fa-list-check" style="width:14px;margin-right:5px;"></i>Tasks</span>
+                    <span x-text="project.tasksCount + ' tasks'" style="font-size:13px;font-weight:600;color:#111827;"></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <span style="width:110px;font-size:12px;color:#9CA3AF;flex-shrink:0;"><i class="fa fa-calendar" style="width:14px;margin-right:5px;"></i>Deadline</span>
+                    <span x-text="project.deadline || '—'"
+                          :style="'font-size:13px;font-weight:600;color:'+(project.overdue?'#DC2626':'#111827')+';'"></span>
+                    <span x-show="project.overdue" style="font-size:11px;color:#DC2626;font-weight:600;">⚠ Overdue</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;" x-show="project.description">
+                    <span style="width:110px;font-size:12px;color:#9CA3AF;flex-shrink:0;align-self:flex-start;padding-top:1px;"><i class="fa fa-align-left" style="width:14px;margin-right:5px;"></i>Description</span>
+                    <span x-text="project.description" style="font-size:13px;color:#374151;line-height:1.55;"></span>
+                </div>
+            </div>
+
+            <a :href="project.url"
+               style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:10px;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;box-shadow:0 2px 8px rgba(99,102,241,.3);">
+                <i class="fa fa-arrow-up-right-from-square" style="font-size:11px;"></i> Open Full Project
+            </a>
+
+        </div>
+    </div>
+</div>
+</template>
+
+{{-- Task Preview Modal --}}
+<template x-if="task">
+<div style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;"
+     @click.self="close()">
+    <div style="position:absolute;inset:0;background:rgba(0,0,0,.45);"></div>
+    <div class="cust-modal-box" style="position:relative;background:#fff;border-radius:20px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.22);">
+
+        {{-- Modal header --}}
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:22px 24px 0;">
+            <div style="flex:1;min-width:0;padding-right:12px;">
+                <p x-text="task.project" style="font-size:11px;color:#9CA3AF;margin:0 0 4px;text-transform:uppercase;letter-spacing:.04em;"></p>
+                <h2 x-text="task.title" style="font-size:17px;font-weight:700;color:#111827;margin:0;line-height:1.35;"></h2>
+            </div>
+            <button @click="close()"
+                    style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:16px;">
+                ×
+            </button>
+        </div>
+
+        {{-- Modal body --}}
+        <div style="padding:20px 24px 24px;">
+
+            {{-- Status + Priority --}}
+            <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+                <span x-text="task.statusLabel"
+                      :style="'padding:3px 12px;border-radius:20px;font-size:12px;font-weight:600;background:'+task.statusBg+';color:'+task.statusColor+';'"></span>
+                <span x-text="task.priorityLabel"
+                      :style="'padding:3px 12px;border-radius:20px;font-size:12px;font-weight:600;background:'+task.priorityBg+';color:'+task.priorityColor+';'"
+                      x-show="task.priorityLabel"></span>
+            </div>
+
+            {{-- Info rows --}}
+            <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <span style="width:110px;font-size:12px;color:#9CA3AF;flex-shrink:0;"><i class="fa fa-user" style="width:14px;margin-right:5px;"></i>Assignee</span>
+                    <span x-text="task.assignee || '—'" style="font-size:13px;font-weight:600;color:#111827;"></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <span style="width:110px;font-size:12px;color:#9CA3AF;flex-shrink:0;"><i class="fa fa-folder" style="width:14px;margin-right:5px;"></i>Project</span>
+                    <span x-text="task.project || '—'" style="font-size:13px;font-weight:600;color:#111827;"></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <span style="width:110px;font-size:12px;color:#9CA3AF;flex-shrink:0;"><i class="fa fa-calendar" style="width:14px;margin-right:5px;"></i>Deadline</span>
+                    <span x-text="task.deadline || '—'"
+                          :style="'font-size:13px;font-weight:600;color:'+(task.overdue?'#DC2626':'#111827')+';'"></span>
+                    <span x-show="task.overdue" style="font-size:11px;color:#DC2626;font-weight:600;">⚠ Overdue</span>
+                </div>
+                {{-- Overdue reason row --}}
+                <template x-if="task.overdue && task.overdueReason">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <span style="width:110px;font-size:12px;color:#9CA3AF;flex-shrink:0;"><i class="fa fa-circle-exclamation" style="width:14px;margin-right:5px;"></i>Blocked by</span>
+                    <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px;"
+                          :style="'background:'+task.overdueReason.bg+';color:'+task.overdueReason.color+';'">
+                        <i :class="'fas '+task.overdueReason.icon" style="font-size:10px;"></i>
+                        <span x-text="task.overdueReason.label"></span>
+                    </span>
+                </div>
+                </template>
+                <div style="display:flex;align-items:center;gap:12px;" x-show="task.description">
+                    <span style="width:110px;font-size:12px;color:#9CA3AF;flex-shrink:0;align-self:flex-start;padding-top:1px;"><i class="fa fa-align-left" style="width:14px;margin-right:5px;"></i>Description</span>
+                    <span x-text="task.description" style="font-size:13px;color:#374151;line-height:1.55;"></span>
+                </div>
+            </div>
+
+            {{-- Open full task button --}}
+            <a :href="task.url"
+               style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:10px;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;box-shadow:0 2px 8px rgba(99,102,241,.3);">
+                <i class="fa fa-arrow-up-right-from-square" style="font-size:11px;"></i> Open Full Task
+            </a>
+
+        </div>
+    </div>
+</div>
+</template>
+
+{{-- Stats Group Modal --}}
+<template x-if="statsModal !== null">
+<div style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;"
+     @click.self="close()">
+    <div style="position:absolute;inset:0;background:rgba(0,0,0,.45);"></div>
+    <div class="cust-modal-box" style="position:relative;background:#fff;border-radius:20px;width:100%;max-width:560px;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.22);">
+
+        {{-- Modal header --}}
+        <div style="padding:20px 24px 0;flex-shrink:0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div style="width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"
+                         :style="statsModal==='pending'?'background:#EEF2FF;':statsModal==='active'?'background:#FFF7ED;':statsModal==='done'?'background:#ECFDF5;':'background:#FEF2F2;'">
+                        <i :class="statsModal==='pending'?'fas fa-clock':statsModal==='active'?'fas fa-spinner':statsModal==='done'?'fas fa-circle-check':'fas fa-triangle-exclamation'"
+                           :style="statsModal==='pending'?'color:#6366F1;font-size:13px;':statsModal==='active'?'color:#EA580C;font-size:13px;':statsModal==='done'?'color:#16A34A;font-size:13px;':'color:#DC2626;font-size:13px;'"></i>
+                    </div>
+                    <h2 x-text="statsModalLabel" style="font-size:15px;font-weight:700;color:#111827;margin:0;"></h2>
+                </div>
+                <button @click="close()"
+                        style="width:32px;height:32px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;font-size:16px;">×</button>
+            </div>
+
+            {{-- Tabs --}}
+            <div style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;width:fit-content;">
+                <button @click="statsTab='tasks'" class="cust-show-tab-btn"
+                        :style="statsTab==='tasks'
+                            ? 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);'
+                            : 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:transparent;color:#6B7280;'"
+                        style="display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);">
+                    <i class="fas fa-list-check" style="font-size:11px;"></i>
+                    Tasks <span x-text="'('+statsModalTasks.length+')'" style="font-weight:400;opacity:.7;"></span>
+                </button>
+                <button @click="statsTab='projects'" class="cust-show-tab-btn"
+                        :style="statsTab==='projects'
+                            ? 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);'
+                            : 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:transparent;color:#6B7280;'"
+                        style="display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:transparent;color:#6B7280;">
+                    <i class="fas fa-folder" style="font-size:11px;"></i>
+                    Projects <span x-text="'('+customerProjects.length+')'" style="font-weight:400;opacity:.7;"></span>
+                </button>
+            </div>
+        </div>
+
+        {{-- Tab content --}}
+        <div style="overflow-y:auto;padding:8px 16px 20px;flex:1;">
+
+            {{-- Tasks tab --}}
+            <div x-show="statsTab==='tasks'">
+                <template x-if="statsModalTasks.length === 0">
+                    <p style="text-align:center;font-size:13px;color:#9CA3AF;padding:24px 0;">No tasks in this category.</p>
+                </template>
+                <template x-for="t in statsModalTasks" :key="t.url">
+                    <a :href="t.url"
+                       style="display:flex;align-items:center;gap:12px;padding:12px 8px;border-bottom:1px solid #F9FAFB;text-decoration:none;border-radius:8px;transition:background .12s;"
+                       onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                        <div style="min-width:0;flex:1;">
+                            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                <p x-text="t.title" style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;"></p>
+                                {{-- Overdue reason badge --}}
+                                <template x-if="t.overdue && t.overdueReason">
+                                    <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0;white-space:nowrap;"
+                                          :style="'background:'+t.overdueReason.bg+';color:'+t.overdueReason.color+';'">
+                                        <i :class="'fa '+t.overdueReason.icon" style="font-size:9px;"></i>
+                                        <span x-text="t.overdueReason.label"></span>
+                                    </span>
+                                </template>
+                            </div>
+                            <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                <span style="display:flex;align-items:center;gap:3px;">
+                                    <i class="fa fa-folder" style="font-size:9px;"></i><span x-text="t.project"></span>
+                                </span>
+                                <template x-if="t.assignee">
+                                    <span style="display:flex;align-items:center;gap:3px;">
+                                        <i class="fa fa-user" style="font-size:9px;"></i><span x-text="t.assignee"></span>
+                                    </span>
+                                </template>
+                                <template x-if="t.deadline">
+                                    <span style="display:flex;align-items:center;gap:3px;" :style="t.overdue?'color:#DC2626;font-weight:600;':''">
+                                        <i class="fa fa-calendar" style="font-size:9px;"></i><span x-text="t.deadline"></span>
+                                    </span>
+                                </template>
+                            </p>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                            <span x-text="t.statusLabel"
+                                  :style="'font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+t.statusBg+';color:'+t.statusColor+';'"></span>
+                            <i class="fa fa-arrow-up-right-from-square" style="font-size:10px;color:#D1D5DB;"></i>
+                        </div>
+                    </a>
+                </template>
+            </div>
+
+            {{-- Projects tab --}}
+            <div x-show="statsTab==='projects'">
+                <template x-if="customerProjects.length === 0">
+                    <p style="text-align:center;font-size:13px;color:#9CA3AF;padding:24px 0;">No projects linked to this customer.</p>
+                </template>
+                <template x-for="p in customerProjects" :key="p.url">
+                    <a :href="p.url"
+                       style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-bottom:1px solid #F9FAFB;text-decoration:none;border-radius:8px;transition:background .12s;"
+                       onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                        <div style="width:34px;height:34px;border-radius:9px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas fa-folder-open" style="font-size:13px;color:#6B7280;"></i>
+                        </div>
+                        <div style="min-width:0;flex:1;">
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <p x-text="p.name" style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;"></p>
+                                <span x-show="p.overdue" style="font-size:10px;font-weight:600;color:#DC2626;flex-shrink:0;">⚠ Overdue</span>
+                            </div>
+                            <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;display:flex;align-items:center;gap:8px;">
+                                <span style="display:flex;align-items:center;gap:3px;">
+                                    <i class="fa fa-list-check" style="font-size:9px;"></i>
+                                    <span x-text="p.tasksCount+' task'+(p.tasksCount===1?'':'s')"></span>
+                                </span>
+                                <template x-if="p.deadline">
+                                    <span style="display:flex;align-items:center;gap:3px;" :style="p.overdue?'color:#DC2626;font-weight:600;':''">
+                                        <i class="fa fa-calendar" style="font-size:9px;"></i><span x-text="p.deadline"></span>
+                                    </span>
+                                </template>
+                            </p>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                            <span x-text="p.statusLabel"
+                                  :style="'font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+p.statusBg+';color:'+p.statusColor+';'"></span>
+                            <i class="fa fa-arrow-up-right-from-square" style="font-size:10px;color:#D1D5DB;"></i>
+                        </div>
+                    </a>
+                </template>
+            </div>
+
+        </div>
+    </div>
+</div>
+</template>
+
+    {{-- ══ SEND UPDATE MODAL ══ --}}
+    <template x-if="sendModal">
+    <div style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;" @click.self="close()">
+        <div style="position:absolute;inset:0;background:rgba(10,12,30,.6);backdrop-filter:blur(4px);"></div>
+        <div class="cust-modal-box" style="position:relative;background:#fff;border-radius:24px;width:100%;max-width:520px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 32px 90px rgba(0,0,0,.28);overflow:hidden;">
+
+            {{-- Header --}}
+            <div style="padding:20px 24px 18px;border-bottom:1px solid #F0F2F8;display:flex;align-items:center;gap:12px;flex-shrink:0;background:linear-gradient(135deg,#F8F9FF,#fff);">
+                <div style="position:relative;width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;">
+                    {{ strtoupper(substr($customer->name, 0, 1)) }}
+                    @if($customer->logo)
+                    <img src="{{ Storage::url($customer->logo) }}" alt="" decoding="async"
+                         style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;"
+                         onerror="this.remove()">
+                    @endif
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <h3 style="font-size:15px;font-weight:700;color:#111827;margin:0;">Send to {{ $customer->name }}</h3>
+                    @if($customer->company)<p style="font-size:12px;color:#9CA3AF;margin:2px 0 0;">{{ $customer->company }}</p>@endif
+                </div>
+                <button @click="close()"
+                        style="width:32px;height:32px;border-radius:9px;background:#F3F4F6;border:none;cursor:pointer;color:#6B7280;font-size:13px;display:flex;align-items:center;justify-content:center;transition:background .15s;"
+                        onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            {{-- Body --}}
+            <div style="overflow-y:auto;flex:1;padding:20px 24px;">
+
+                {{-- Channel selector --}}
+                <div style="display:grid;grid-template-columns:repeat({{ $hideWaWeb ? 2 : 3 }},1fr);gap:8px;margin-bottom:20px;">
+                    <button type="button" @click="sendChannel='whatsapp'"
+                            :style="sendChannel==='whatsapp'
+                                ? 'display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 6px;border-radius:12px;border:2px solid #25D366;background:#F0FDF4;color:#16A34A;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;'
+                                : 'display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 6px;border-radius:12px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;'">
+                        <i class="fab fa-whatsapp" :style="sendChannel==='whatsapp' ? 'font-size:16px;color:#25D366;' : 'font-size:16px;color:#9CA3AF;'"></i>
+                        WA API
+                    </button>
+                    @unless($hideWaWeb)
+                    <button type="button" @click="sendChannel='whatsapp_web'"
+                            :style="sendChannel==='whatsapp_web'
+                                ? 'display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 6px;border-radius:12px;border:2px solid #128C7E;background:#F0FDFA;color:#0D9488;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;'
+                                : 'display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 6px;border-radius:12px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;'">
+                        <i class="fab fa-whatsapp" :style="sendChannel==='whatsapp_web' ? 'font-size:16px;color:#128C7E;' : 'font-size:16px;color:#9CA3AF;'"></i>
+                        WA Web
+                    </button>
+                    @endunless
+                    <button type="button" @click="sendChannel='email'"
+                            :style="sendChannel==='email'
+                                ? 'display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 6px;border-radius:12px;border:2px solid #6366F1;background:#EEF2FF;color:#4F46E5;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;'
+                                : 'display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 6px;border-radius:12px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;'">
+                        <i class="fas fa-envelope" :style="sendChannel==='email' ? 'font-size:13px;color:#6366F1;' : 'font-size:13px;color:#9CA3AF;'"></i>
+                        Email
+                    </button>
+                </div>
+
+                {{-- Contact info strip --}}
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#F8FAFF;border-radius:10px;border:1px solid #EEF2FF;margin-bottom:18px;">
+                    <template x-if="sendChannel==='whatsapp'">
+                        <div style="display:flex;align-items:center;gap:8px;width:100%;">
+                            <i class="fab fa-whatsapp" style="color:#25D366;font-size:16px;flex-shrink:0;"></i>
+                            <span style="font-size:13px;color:#374151;font-weight:600;">{{ $customer->phone ?? '—' }}</span>
+                            @if(!$customer->phone)
+                            <span style="font-size:11px;color:#DC2626;margin-left:4px;">No phone on file —
+                                <a href="{{ route('admin.customers.edit', $customer) }}" style="color:#4F46E5;text-decoration:underline;">add one</a>
+                            </span>
+                            @endif
+                        </div>
+                    </template>
+                    @unless($hideWaWeb)
+                    <template x-if="sendChannel==='whatsapp_web'">
+                        <div style="display:flex;align-items:center;gap:8px;width:100%;">
+                            <i class="fab fa-whatsapp" style="color:#128C7E;font-size:16px;flex-shrink:0;"></i>
+                            <span style="font-size:13px;color:#374151;font-weight:600;">{{ $customer->phone ?? '—' }}</span>
+                            <span style="font-size:11px;color:#6B7280;margin-left:2px;">— opens WhatsApp Web</span>
+                            @if(!$customer->phone)
+                            <span style="font-size:11px;color:#DC2626;margin-left:4px;">No phone on file —
+                                <a href="{{ route('admin.customers.edit', $customer) }}" style="color:#4F46E5;text-decoration:underline;">add one</a>
+                            </span>
+                            @endif
+                        </div>
+                    </template>
+                    @endunless
+                    <template x-if="sendChannel==='email'">
+                        <div style="display:flex;align-items:center;gap:8px;width:100%;">
+                            <i class="fas fa-envelope" style="color:#6366F1;font-size:14px;flex-shrink:0;"></i>
+                            <span style="font-size:13px;color:#374151;font-weight:600;">{{ $customer->email ?? '—' }}</span>
+                            @if(!$customer->email)
+                            <span style="font-size:11px;color:#DC2626;margin-left:4px;">No email on file —
+                                <a href="{{ route('admin.customers.edit', $customer) }}" style="color:#4F46E5;text-decoration:underline;">add one</a>
+                            </span>
+                            @endif
+                        </div>
+                    </template>
+                </div>
+
+                {{-- Mode toggle: Text Update vs Send File (WhatsApp only, only if files exist) --}}
+                <div x-show="(sendChannel==='whatsapp' || sendChannel==='whatsapp_web') && customerFiles.length > 0" style="margin-bottom:18px;">
+                    <label style="display:block;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;">
+                        <i class="fas fa-paper-plane" style="color:#A78BFA;font-size:10px;margin-right:3px;"></i> What to send
+                    </label>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                        <button type="button" @click="sendMode='text'"
+                                :style="sendMode==='text'
+                                    ? 'display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;border-radius:10px;border:2px solid #6366F1;background:#EEF2FF;color:#4F46E5;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;'
+                                    : 'display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;border-radius:10px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;'">
+                            <i class="fas fa-comment-dots" style="font-size:12px;"></i> Text Update
+                        </button>
+                        <button type="button" @click="sendMode='file'"
+                                :style="sendMode==='file'
+                                    ? 'display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;border-radius:10px;border:2px solid #6366F1;background:#EEF2FF;color:#4F46E5;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;'
+                                    : 'display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;border-radius:10px;border:1.5px solid #E5E7EB;background:#fff;color:#6B7280;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;'">
+                            <i class="fas fa-paperclip" style="font-size:12px;"></i> Send File
+                            <span x-text="'(' + customerFiles.length + ')'" style="font-size:10px;font-weight:400;opacity:.7;"></span>
+                        </button>
+                    </div>
+                </div>
+
+                {{-- TEXT MODE: Project selector --}}
+                <div x-show="sendMode==='text'">
+                    @if($customer->projects->count() > 0)
+                    <div style="margin-bottom:16px;">
+                        <label style="display:block;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">
+                            <i class="fas fa-folder" style="color:#A78BFA;font-size:10px;margin-right:3px;"></i> Project (optional)
+                        </label>
+                        <select @change="sendProject = $event.target.value ? customerProjects.find(p => p.name === $event.target.value) : null"
+                                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;background:#fff;outline:none;cursor:pointer;transition:border-color .15s;"
+                                onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                            <option value="">— No specific project —</option>
+                            @foreach($customer->projects as $proj)
+                            <option value="{{ $proj->name }}" {{ $customer->projects->count() === 1 ? 'selected' : '' }}>
+                                {{ $proj->name }}
+                            </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <template x-if="sendProject">
+                        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#F8F9FF;border:1.5px solid #EEF2FF;border-radius:10px;margin-bottom:16px;">
+                            <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#EEF2FF,#DDD6FE);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-folder-open" style="color:#6366F1;font-size:13px;"></i>
+                            </div>
+                            <div style="flex:1;min-width:0;">
+                                <p style="font-size:13px;font-weight:600;color:#111827;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="sendProject.name"></p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                    <span x-text="sendProject.statusLabel" :style="`padding:1px 7px;border-radius:20px;font-weight:600;background:${sendProject.statusBg};color:${sendProject.statusColor};`"></span>
+                                    <span x-text="sendProject.tasksCount+' task'+(sendProject.tasksCount!==1?'s':'')"></span>
+                                    <template x-if="sendProject.deadline">
+                                        <span :style="sendProject.overdue?'color:#DC2626;font-weight:600;':''" x-text="sendProject.deadline+(sendProject.overdue?' ⚠':'')"></span>
+                                    </template>
+                                </p>
+                            </div>
+                            <a :href="sendProject.url" target="_blank" rel="noopener"
+                               style="font-size:10px;color:#6366F1;text-decoration:none;white-space:nowrap;display:flex;align-items:center;gap:3px;flex-shrink:0;"
+                               onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+                                <i class="fas fa-arrow-up-right-from-square" style="font-size:9px;"></i> View
+                            </a>
+                        </div>
+                    </template>
+                    @endif
+                </div>
+
+                {{-- Editable message --}}
+                <div style="margin-bottom:14px;">
+                    <label style="display:block;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">
+                        <i class="fas fa-comment-dots" style="color:#A78BFA;font-size:10px;margin-right:3px;"></i>
+                        <span x-text="sendMode==='file' ? 'Message (sent with file)' : 'Message'"></span>
+                        <span style="font-size:10px;font-weight:400;color:#9CA3AF;margin-left:4px;">— editable</span>
+                    </label>
+                    <textarea x-model="editableMsg" rows="5"
+                              style="width:100%;padding:13px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:12px;color:#374151;line-height:1.7;resize:vertical;box-sizing:border-box;font-family:inherit;outline:none;transition:border-color .15s;"
+                              onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"></textarea>
+                </div>
+
+                {{-- TEXT MODE: Personal note --}}
+                <div x-show="sendMode==='text'">
+                    <label style="display:block;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">
+                        <i class="fas fa-pen" style="color:#A78BFA;font-size:9px;margin-right:3px;"></i> Add a personal note <span style="font-weight:400;color:#9CA3AF;">(optional)</span>
+                    </label>
+                    <textarea x-model="sendNote" rows="2" placeholder="e.g. Let us know your thoughts, we're happy to revise…"
+                              style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:12px;color:#111827;outline:none;resize:vertical;box-sizing:border-box;line-height:1.6;transition:border-color .15s;font-family:inherit;"
+                              onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"></textarea>
+                </div>
+
+                {{-- FILE MODE: File picker + extra note --}}
+                <div x-show="sendMode==='file'">
+                    <div style="margin-bottom:16px;">
+                        <label style="display:block;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">
+                            <i class="fas fa-paperclip" style="color:#A78BFA;font-size:10px;margin-right:3px;"></i> Select file to send
+                        </label>
+                        <select @change="selectedFile = $event.target.value ? customerFiles.find(f => f.file_url === $event.target.value) : null"
+                                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:12px;color:#111827;background:#fff;outline:none;cursor:pointer;transition:border-color .15s;"
+                                onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                            <option value="">— Choose a submission file —</option>
+                            @foreach($customer->tasks as $t)
+                                @foreach($t->submissions ?? [] as $sub)
+                                    @if($sub->file_path)
+                                    <option value="{{ url(\Illuminate\Support\Facades\Storage::url($sub->file_path)) }}">
+                                        {{ $t->title }} — v{{ $sub->version }} ({{ $sub->original_filename ?? basename($sub->file_path) }})
+                                    </option>
+                                    @endif
+                                @endforeach
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <template x-if="selectedFile">
+                        <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#F8F9FF;border:1.5px solid #EEF2FF;border-radius:10px;margin-bottom:16px;">
+                            <div style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#EEF2FF,#DDD6FE);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="fas fa-file" style="color:#6366F1;font-size:13px;"></i>
+                            </div>
+                            <div style="flex:1;min-width:0;">
+                                <p style="font-size:13px;font-weight:600;color:#111827;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" x-text="selectedFile.filename"></p>
+                                <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                    <span x-text="selectedFile.task_title"></span>
+                                    <span>·</span>
+                                    <span x-text="'v' + selectedFile.version"></span>
+                                    <span x-text="selectedFile.status_label"
+                                          :style="selectedFile.status==='approved' ? 'padding:1px 7px;border-radius:20px;font-weight:600;background:#D1FAE5;color:#065F46;' : (selectedFile.status==='submitted' ? 'padding:1px 7px;border-radius:20px;font-weight:600;background:#EDE9FE;color:#5B21B6;' : 'padding:1px 7px;border-radius:20px;font-weight:600;background:#FEE2E2;color:#991B1B;')"></span>
+                                </p>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div>
+                        <label style="display:block;font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">
+                            <i class="fas fa-pen" style="color:#A78BFA;font-size:9px;margin-right:3px;"></i> Add a personal note <span style="font-weight:400;color:#9CA3AF;">(optional — appended to message)</span>
+                        </label>
+                        <textarea x-model="fileCaption" rows="2" placeholder="e.g. Please let us know if you'd like any changes…"
+                                  style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:12px;color:#111827;outline:none;resize:vertical;box-sizing:border-box;line-height:1.6;transition:border-color .15s;font-family:inherit;"
+                                  onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"></textarea>
+                    </div>
+                </div>
+
+            </div>
+
+            {{-- Result feedback --}}
+            <div x-show="sendResult" x-transition style="margin:0 24px 12px;">
+                <div :style="sendResult && sendResult.ok
+                        ? 'display:flex;align-items:center;gap:8px;padding:10px 14px;background:#ECFDF5;border:1px solid #6EE7B7;border-radius:10px;font-size:13px;font-weight:600;color:#065F46;'
+                        : 'display:flex;align-items:center;gap:8px;padding:10px 14px;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:10px;font-size:13px;font-weight:600;color:#991B1B;'">
+                    <i :class="sendResult && sendResult.ok ? 'fas fa-circle-check' : 'fas fa-circle-exclamation'" style="font-size:14px;flex-shrink:0;"></i>
+                    <span x-text="sendResult ? (typeof sendResult.message === 'string' ? sendResult.message : JSON.stringify(sendResult.message)) : ''"></span>
+                </div>
+            </div>
+
+            {{-- Footer --}}
+            <div style="padding:14px 24px;border-top:1px solid #F0F2F8;display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-shrink:0;background:#FAFBFF;">
+                <button type="button" @click="close()"
+                        style="padding:9px 20px;background:#F3F4F6;color:#374151;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;"
+                        onmouseover="this.style.background='#E5E7EB'" onmouseout="this.style.background='#F3F4F6'">
+                    Cancel
+                </button>
+                <button type="button" @click="doSend()" :disabled="sending || (sendMode==='file' && !selectedFile)"
+                        :style="sendChannel==='whatsapp'
+                            ? 'display:inline-flex;align-items:center;gap:7px;padding:9px 22px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(37,211,102,.3);transition:opacity .15s;'
+                            : sendChannel==='whatsapp_web'
+                                ? 'display:inline-flex;align-items:center;gap:7px;padding:9px 22px;background:linear-gradient(135deg,#128C7E,#0D7570);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(18,140,126,.3);transition:opacity .15s;'
+                                : 'display:inline-flex;align-items:center;gap:7px;padding:9px 22px;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(99,102,241,.3);transition:opacity .15s;'"
+                        onmouseover="if(!sending)this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+                    <template x-if="sending">
+                        <i class="fas fa-spinner fa-spin" style="font-size:14px;"></i>
+                    </template>
+                    <template x-if="!sending">
+                        <i :class="(sendChannel==='whatsapp'||sendChannel==='whatsapp_web') ? (sendMode==='file' ? 'fas fa-paperclip' : 'fab fa-whatsapp') : 'fas fa-paper-plane'"
+                           :style="(sendChannel==='whatsapp'||sendChannel==='whatsapp_web') ? 'font-size:15px;' : 'font-size:13px;'"></i>
+                    </template>
+                    <span x-text="sending ? 'Sending…' : (sendChannel==='whatsapp' ? (sendMode==='file' ? 'Send File via WhatsApp' : 'Send via WhatsApp') : sendChannel==='whatsapp_web' ? 'Open WhatsApp Web ↗' : 'Open Email Client ↗')"></span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+    </template>
+
+    {{-- Header --}}
+    <div class="cust-hdr" style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+        <a href="{{ route('admin.customers.index') }}" class="no-print cust-hdr-back"
+           style="width:34px;height:34px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;color:#6B7280;text-decoration:none;">
+            <i class="fa fa-arrow-left" style="font-size:13px;"></i>
+        </a>
+        <div class="cust-hdr-name" style="flex:1;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div class="cust-hdr-avatar" style="position:relative;width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;">
+                    {{ strtoupper(substr($customer->name, 0, 1)) }}
+                    @if($customer->logo)
+                    <img src="{{ Storage::url($customer->logo) }}" alt="" decoding="async"
+                         style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;"
+                         onerror="this.remove()">
+                    @endif
+                </div>
+                <div>
+                    <h1 class="cust-hdr-title" style="font-size:20px;font-weight:700;color:#111827;margin:0;">{{ $customer->name }}</h1>
+                    @if($customer->company)
+                    <p style="font-size:13px;color:#9CA3AF;margin:1px 0 0;">{{ $customer->company }}</p>
+                    @endif
+                </div>
+            </div>
+        </div>
+        <a href="{{ route('admin.customers.edit', $customer) }}" class="no-print cust-hdr-action"
+           style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:#EEF2FF;color:#4F46E5;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;">
+            <i class="fas fa-pencil" style="font-size:11px;"></i> Edit
+        </a>
+
+        {{-- Smart Report button --}}
+        <a href="{{ route('admin.customers.report', $customer) }}" class="no-print cust-hdr-action" target="_blank"
+           style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;box-shadow:0 2px 8px rgba(99,102,241,.35);">
+            <i class="fas fa-chart-line" style="font-size:11px;"></i> Smart Report
+        </a>
+
+        {{-- Export / Print dropdown --}}
+        <div x-data="{ exportOpen: false }" class="cust-hdr-export" style="position:relative;">
+            <button @click="exportOpen = !exportOpen" @click.outside="exportOpen = false" class="cust-hdr-action"
+                    style="display:inline-flex;align-items:center;gap:7px;padding:8px 14px;background:#F9FAFB;border:1px solid #E5E7EB;color:#374151;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;">
+                <i class="fas fa-download" style="font-size:11px;"></i> Export
+                <i class="fas fa-chevron-down" style="font-size:9px;transition:transform .2s;" :style="exportOpen ? 'transform:rotate(180deg)' : ''"></i>
+            </button>
+            <div x-show="exportOpen" x-transition
+                 class="cust-hdr-export-menu"
+                 style="position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.1);min-width:170px;z-index:200;overflow:hidden;">
+                <button @click="exportOpen=false; window.exportCustomerCSV()"
+                        style="width:100%;padding:10px 16px;background:none;border:none;text-align:left;font-size:13px;font-weight:500;color:#374151;cursor:pointer;display:flex;align-items:center;gap:9px;"
+                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                    <i class="fas fa-file-csv" style="font-size:13px;color:#16A34A;width:16px;text-align:center;"></i> Export CSV
+                </button>
+                <div style="height:1px;background:#F3F4F6;"></div>
+                <button @click="exportOpen=false; window.exportCustomerExcel()"
+                        style="width:100%;padding:10px 16px;background:none;border:none;text-align:left;font-size:13px;font-weight:500;color:#374151;cursor:pointer;display:flex;align-items:center;gap:9px;"
+                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                    <i class="fas fa-file-excel" style="font-size:13px;color:#16A34A;width:16px;text-align:center;"></i> Export Excel
+                </button>
+                <div style="height:1px;background:#F3F4F6;"></div>
+                <button @click="exportOpen=false; window.printCustomerShow()"
+                        style="width:100%;padding:10px 16px;background:none;border:none;text-align:left;font-size:13px;font-weight:500;color:#374151;cursor:pointer;display:flex;align-items:center;gap:9px;"
+                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                    <i class="fas fa-print" style="font-size:13px;color:#6366F1;width:16px;text-align:center;"></i> Print
+                </button>
+                <div style="height:1px;background:#F3F4F6;"></div>
+                <button @click="exportOpen=false; window.exportCustomerShowPDF()"
+                        style="width:100%;padding:10px 16px;background:none;border:none;text-align:left;font-size:13px;font-weight:500;color:#374151;cursor:pointer;display:flex;align-items:center;gap:9px;"
+                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                    <i class="fas fa-file-pdf" style="font-size:13px;color:#DC2626;width:16px;text-align:center;"></i> Export PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Quick Stats Bar --}}
+    @php
+        $allTasks     = $customer->tasks;
+        $statPending  = $allTasks->whereIn('status', ['draft','assigned','viewed'])->count();
+        $statActive   = $allTasks->whereIn('status', ['in_progress','submitted','revision_requested'])->count();
+        $statDone     = $allTasks->whereIn('status', ['approved','delivered','archived'])->count();
+        $statOverdue  = $allTasks->filter(fn($t) => $t->deadline && $t->deadline->isPast() && !in_array($t->status, ['approved','delivered','archived']))->count();
+
+        // CSV export data
+        $_statusLabel = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['label'])->all();
+        $csvRows = $allTasks->map(fn($t) => [
+            'title'          => $t->title,
+            'project'        => $t->project->name ?? '',
+            'status'         => $_statusLabel[$t->status] ?? ucfirst(str_replace('_',' ',$t->status)),
+            'priority'       => ucfirst($t->priority ?? ''),
+            'assignee'       => $t->assignee->name ?? '',
+            'deadline'       => $t->deadline ? $t->deadline->format('Y-m-d') : '',
+            'design_sent'    => $t->design_sent_at ? $t->design_sent_at->format('Y-m-d H:i') : '',
+            'cust_approved'  => $t->customer_approved_at ? $t->customer_approved_at->format('Y-m-d H:i') : '',
+            'approval_time'  => ($t->design_sent_at && $t->customer_approved_at)
+                                ? round(abs($t->design_sent_at->diffInSeconds($t->customer_approved_at)) / 3600, 1) . 'h'
+                                : '',
+        ])->values()->toArray();
+    @endphp
+    <div class="cust-show-stats-grid">
+        <button @click="openStats('pending')" class="cust-stat-btn"
+                style="background:#fff;border-radius:12px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;transition:box-shadow .15s,border-color .15s;"
+                onmouseover="this.style.boxShadow='0 4px 12px rgba(99,102,241,.15)';this.style.borderColor='#C7D2FE';"
+                onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)';this.style.borderColor='#F0F0F0';">
+            <div style="width:38px;height:38px;border-radius:10px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-clock" style="color:#6366F1;font-size:14px;"></i>
+            </div>
+            <div>
+                <p style="font-size:20px;font-weight:700;color:#6366F1;margin:0;line-height:1;">{{ $statPending }}</p>
+                <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Pending</p>
+            </div>
+        </button>
+        <button @click="openStats('active')" class="cust-stat-btn"
+                style="background:#fff;border-radius:12px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;transition:box-shadow .15s,border-color .15s;"
+                onmouseover="this.style.boxShadow='0 4px 12px rgba(234,88,12,.15)';this.style.borderColor='#FED7AA';"
+                onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)';this.style.borderColor='#F0F0F0';">
+            <div style="width:38px;height:38px;border-radius:10px;background:#FFF7ED;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-spinner" style="color:#EA580C;font-size:14px;"></i>
+            </div>
+            <div>
+                <p style="font-size:20px;font-weight:700;color:#EA580C;margin:0;line-height:1;">{{ $statActive }}</p>
+                <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">In Progress</p>
+            </div>
+        </button>
+        <button @click="openStats('done')" class="cust-stat-btn"
+                style="background:#fff;border-radius:12px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;transition:box-shadow .15s,border-color .15s;"
+                onmouseover="this.style.boxShadow='0 4px 12px rgba(22,163,74,.15)';this.style.borderColor='#A7F3D0';"
+                onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)';this.style.borderColor='#F0F0F0';">
+            <div style="width:38px;height:38px;border-radius:10px;background:#ECFDF5;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-circle-check" style="color:#16A34A;font-size:14px;"></i>
+            </div>
+            <div>
+                <p style="font-size:20px;font-weight:700;color:#16A34A;margin:0;line-height:1;">{{ $statDone }}</p>
+                <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Completed</p>
+            </div>
+        </button>
+        <button @click="openStats('overdue')" class="cust-stat-btn"
+                style="background:#fff;border-radius:12px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;transition:box-shadow .15s,border-color .15s;"
+                onmouseover="this.style.boxShadow='0 4px 12px rgba(220,38,38,.15)';this.style.borderColor='#FECACA';"
+                onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,.04)';this.style.borderColor='#F0F0F0';">
+            <div style="width:38px;height:38px;border-radius:10px;background:#FEF2F2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-triangle-exclamation" style="color:#DC2626;font-size:14px;"></i>
+            </div>
+            <div>
+                <p style="font-size:20px;font-weight:700;color:#DC2626;margin:0;line-height:1;">{{ $statOverdue }}</p>
+                <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Overdue</p>
+            </div>
+        </button>
+    </div>
+
+    <div class="cust-show-split" style="gap:20px;align-items:stretch;">
+
+        {{-- Contact card --}}
+        <div class="cust-panel" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;display:flex;flex-direction:column;align-self:stretch;height:100%;box-sizing:border-box;">
+            <h2 style="font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:0 0 16px;">Contact Info</h2>
+
+            {{-- Email --}}
+            @if($customer->email)
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                <div style="width:32px;height:32px;border-radius:8px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-envelope" style="font-size:13px;color:#6366F1;"></i>
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <p style="font-size:10px;color:#9CA3AF;margin:0;text-transform:uppercase;letter-spacing:.04em;">Email</p>
+                    <a href="mailto:{{ $customer->email }}" style="font-size:12px;color:#111827;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;">{{ $customer->email }}</a>
+                </div>
+            </div>
+            @else
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;opacity:.5;">
+                <div style="width:32px;height:32px;border-radius:8px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-envelope" style="font-size:13px;color:#9CA3AF;"></i>
+                </div>
+                <div>
+                    <p style="font-size:10px;color:#9CA3AF;margin:0;text-transform:uppercase;letter-spacing:.04em;">Email</p>
+                    <p style="font-size:12px;color:#D1D5DB;margin:0;">Not on file</p>
+                </div>
+            </div>
+            @endif
+
+            {{-- Phone --}}
+            @if($customer->phone)
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+                <div style="width:32px;height:32px;border-radius:8px;background:#F0FDF4;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-phone" style="font-size:13px;color:#16A34A;"></i>
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <p style="font-size:10px;color:#9CA3AF;margin:0;text-transform:uppercase;letter-spacing:.04em;">Phone / WhatsApp</p>
+                    <a href="tel:{{ $customer->phone }}" style="font-size:12px;color:#111827;text-decoration:none;">{{ $customer->phone }}</a>
+                </div>
+            </div>
+            @else
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;opacity:.5;">
+                <div style="width:32px;height:32px;border-radius:8px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-phone" style="font-size:13px;color:#9CA3AF;"></i>
+                </div>
+                <div>
+                    <p style="font-size:10px;color:#9CA3AF;margin:0;text-transform:uppercase;letter-spacing:.04em;">Phone / WhatsApp</p>
+                    <p style="font-size:12px;color:#D1D5DB;margin:0;">Not on file</p>
+                </div>
+            </div>
+            @endif
+
+            {{-- Quick action buttons --}}
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;">
+                <button type="button" @click="openSend('whatsapp')" class="cust-touch-btn"
+                        style="display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 10px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(37,211,102,.25);transition:opacity .15s;"
+                        onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"
+                        title="{{ $customer->phone ? 'Send via WhatsApp' : 'No phone on file' }}">
+                    <i class="fab fa-whatsapp" style="font-size:14px;"></i> WhatsApp
+                </button>
+                <button type="button" @click="openSend('email')" class="cust-touch-btn"
+                        style="display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 10px;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(99,102,241,.25);transition:opacity .15s;"
+                        onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"
+                        title="{{ $customer->email ? 'Send via Email' : 'No email on file' }}">
+                    <i class="fas fa-paper-plane" style="font-size:12px;"></i> Email
+                </button>
+            </div>
+
+            @if($customer->socialAccounts->isNotEmpty())
+            @php
+                $_saGroups    = $customer->socialAccounts->groupBy('platform');
+                $_saPlatforms = \App\Models\SocialAccount::platforms();
+            @endphp
+            <div style="margin-bottom:16px;padding:12px 14px;background:#FAFAFA;border-radius:10px;border:1px solid #F3F4F6;">
+                <p style="font-size:10px;color:#9CA3AF;margin:0 0 10px;text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:4px;">
+                    <i class="fas fa-share-nodes" style="font-size:9px;"></i> Social Accounts
+                </p>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                    @foreach($_saGroups as $_pKey => $_pAccounts)
+                    @php $_pi = $_saPlatforms[$_pKey] ?? ['icon'=>'fa-globe','color'=>'#6B7280','label'=>ucfirst($_pKey)]; @endphp
+                    <a href="{{ route('admin.social-accounts.index', ['customer' => $customer->id]) }}"
+                       title="{{ $_pi['label'] }}{{ $_pAccounts->count() > 1 ? ' ('.$_pAccounts->count().')' : '' }}"
+                       style="width:28px;height:28px;border-radius:7px;background:{{ $_pi['color'] }};display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;text-decoration:none;transition:opacity .15s;"
+                       onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+                        <i class="fab {{ $_pi['icon'] }}" style="font-size:13px;color:#fff;"></i>
+                        @if($_pAccounts->count() > 1)
+                        <span style="position:absolute;top:-4px;right:-5px;width:14px;height:14px;border-radius:50%;background:#fff;border:1.5px solid #e5e7eb;font-size:8px;font-weight:800;color:#374151;display:flex;align-items:center;justify-content:center;line-height:1;">{{ $_pAccounts->count() }}</span>
+                        @endif
+                    </a>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+
+            @if($customer->notes)
+            <div style="margin-bottom:16px;padding:12px 14px;background:#FAFAFA;border-radius:10px;border:1px solid #F3F4F6;">
+                <p style="font-size:10px;color:#9CA3AF;margin:0 0 5px;text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:4px;">
+                    <i class="fas fa-note-sticky" style="font-size:9px;"></i> Notes
+                </p>
+                <p style="font-size:12px;color:#374151;margin:0;line-height:1.6;white-space:pre-wrap;">{{ $customer->notes }}</p>
+            </div>
+            @endif
+
+            <div style="padding-top:16px;border-top:1px solid #F3F4F6;margin-top:auto;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center;">
+                    <div style="background:#F9FAFB;border-radius:10px;padding:12px;">
+                        <p style="font-size:20px;font-weight:700;color:#4F46E5;margin:0;">{{ $customer->projects->count() }}</p>
+                        <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Projects</p>
+                    </div>
+                    <div style="background:#F9FAFB;border-radius:10px;padding:12px;">
+                        <p style="font-size:20px;font-weight:700;color:#16A34A;margin:0;">{{ $customer->tasks->count() }}</p>
+                        <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">Tasks</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Projects + Tasks --}}
+        <div style="display:flex;flex-direction:column;gap:10px;">
+
+            {{-- Projects --}}
+            @if($customer->projects->isEmpty())
+            <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;">
+                <h2 style="font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:0;">
+                    Projects <span style="font-weight:500;color:#9CA3AF;">(0)</span>
+                    <span style="font-size:11px;font-weight:400;color:#D1D5DB;text-transform:none;letter-spacing:0;margin-left:6px;">— none linked yet</span>
+                </h2>
+                <a href="{{ route('admin.projects.create') }}"
+                   style="font-size:11px;font-weight:600;color:#4F46E5;background:#EEF2FF;padding:4px 10px;border-radius:6px;text-decoration:none;flex-shrink:0;">
+                    + New Project
+                </a>
+            </div>
+            @else
+            <div class="cust-panel" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                    <h2 style="font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:0;">
+                        Projects <span style="font-weight:500;color:#9CA3AF;">({{ $customer->projects->count() }})</span>
+                    </h2>
+                    <a href="{{ route('admin.projects.create') }}"
+                       style="font-size:11px;font-weight:600;color:#4F46E5;background:#EEF2FF;padding:4px 10px;border-radius:6px;text-decoration:none;">
+                        + New Project
+                    </a>
+                </div>
+                @php
+                    $psBg    = ['active'=>'#EEF2FF','completed'=>'#ECFDF5','on_hold'=>'#FEF3C7','cancelled'=>'#FEE2E2'];
+                    $psColor = ['active'=>'#4F46E5','completed'=>'#16A34A','on_hold'=>'#D97706','cancelled'=>'#DC2626'];
+                    $psLabel = ['active'=>'Active','completed'=>'Completed','on_hold'=>'On Hold','cancelled'=>'Cancelled'];
+                @endphp
+                @foreach($customer->projects as $project)
+                @php
+                    $projectData = json_encode([
+                        'name'        => $project->name,
+                        'statusLabel' => $psLabel[$project->status] ?? ucfirst($project->status),
+                        'statusBg'    => $psBg[$project->status]    ?? '#F3F4F6',
+                        'statusColor' => $psColor[$project->status]  ?? '#374151',
+                        'tasksCount'  => $project->tasks_count,
+                        'deadline'    => $project->deadline ? $project->deadline->format(config('app.date_format', 'M d, Y')) : null,
+                        'overdue'     => $project->deadline && $project->deadline->isPast() && $project->status !== 'completed',
+                        'description' => $project->description ? \Illuminate\Support\Str::limit($project->description, 200) : null,
+                        'url'         => route('admin.projects.show', $project->id),
+                    ]);
+                @endphp
+                <button @click="openProject({{ $projectData }})"
+                        style="display:flex;align-items:center;justify-content:space-between;padding:10px 8px;border-bottom:1px solid #F9FAFB;width:100%;background:none;border-left:none;border-right:none;border-top:none;cursor:pointer;text-align:left;transition:background .12s;border-radius:6px;"
+                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                    <div style="min-width:0;flex:1;padding-right:12px;">
+                        <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $project->name }}</p>
+                        <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">
+                            {{ $project->tasks_count }} tasks
+                            @if($project->deadline) · {{ $project->deadline->format(config('app.date_format', 'M d, Y')) }} @endif
+                        </p>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                        <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:{{ $psBg[$project->status] ?? '#F3F4F6' }};color:{{ $psColor[$project->status] ?? '#374151' }};">
+                            {{ $psLabel[$project->status] ?? ucfirst($project->status) }}
+                        </span>
+                        <i class="fa fa-chevron-right" style="font-size:10px;color:#D1D5DB;"></i>
+                    </div>
+                </button>
+                @endforeach
+            </div>
+            @endif
+
+            {{-- Tasks (direct only — tasks in customer projects are shown via the Projects section) --}}
+            @php
+                $directTasks = $customer->tasks->where('customer_id', $customer->id)->sortByDesc('created_at')->values();
+                $tsBg    = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['bg'])->all();
+                $tsColor = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['text'])->all();
+                $tsLabel = collect(\App\Support\TaskStatusColors::MAP)->map(fn($c) => $c['label'])->all();
+                $prBg    = ['high'=>'#FEE2E2','medium'=>'#FEF3C7','low'=>'#DCFCE7'];
+                $prColor = ['high'=>'#DC2626','medium'=>'#D97706','low'=>'#16A34A'];
+                $directTasksJson = $directTasks->map(fn($task) => [
+                    'title'         => $task->title,
+                    'project'       => $task->project->name ?? '—',
+                    'assignee'      => $task->assignee->name ?? null,
+                    'status'        => $task->status,
+                    'statusLabel'   => $tsLabel[$task->status] ?? ucfirst(str_replace('_',' ',$task->status)),
+                    'statusBg'      => $tsBg[$task->status]    ?? '#F3F4F6',
+                    'statusColor'   => $tsColor[$task->status]  ?? '#374151',
+                    'priorityLabel' => $task->priority ? ucfirst($task->priority) : null,
+                    'priorityBg'    => $prBg[$task->priority]   ?? '#F3F4F6',
+                    'priorityColor' => $prColor[$task->priority] ?? '#374151',
+                    'deadline'      => $task->deadline ? $task->deadline->format(config('app.date_format', 'M d, Y')) : null,
+                    'overdue'       => $task->deadline && $task->deadline->isPast() && !in_array($task->status, ['approved','delivered','archived']),
+                    'description'   => $task->description ? \Illuminate\Support\Str::limit($task->description, 200) : null,
+                    'url'           => route('admin.tasks.show', $task->id),
+                ])->values();
+            @endphp
+            <div x-data="{
+                allTasks: {{ $directTasksJson }},
+                page: 1,
+                perPage: 10,
+                get total() { return this.allTasks.length; },
+                get totalPages() { return Math.ceil(this.total / this.perPage); },
+                get start() { return (this.page - 1) * this.perPage; },
+                get end() { return Math.min(this.start + this.perPage, this.total); },
+                get pageTasks() { return this.allTasks.slice(this.start, this.end); },
+                prevPage() { if (this.page > 1) this.page--; },
+                nextPage() { if (this.page < this.totalPages) this.page++; },
+                goPage(n) { this.page = n; },
+                openTask(t) { window.dispatchEvent(new CustomEvent('open-customer-task', { detail: t })); }
+            }" class="cust-panel" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                    <h2 style="font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:0;">
+                        Tasks <span style="font-weight:500;color:#9CA3AF;">({{ $directTasks->count() }})</span>
+                    </h2>
+                </div>
+
+                <template x-if="total === 0">
+                    <p style="font-size:13px;color:#9CA3AF;text-align:center;padding:16px 0 4px;">No tasks linked yet.</p>
+                </template>
+
+                <template x-for="task in pageTasks" :key="task.url">
+                    <button @click="openTask(task)"
+                            style="display:flex;align-items:center;justify-content:space-between;padding:10px 8px;border-bottom:1px solid #F9FAFB;width:100%;background:none;border-left:none;border-right:none;border-top:none;cursor:pointer;text-align:left;transition:background .12s;border-radius:6px;"
+                            onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+                        <div style="min-width:0;flex:1;padding-right:12px;">
+                            <p style="font-size:13px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                                <span x-text="task.title"></span>
+                                <span x-show="task.overdue" style="font-size:10px;font-weight:600;color:#DC2626;margin-left:6px;">⚠ Overdue</span>
+                            </p>
+                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">
+                                <span x-text="task.project"></span>
+                                <template x-if="task.assignee"><span x-text="' · ' + task.assignee"></span></template>
+                                <template x-if="task.deadline"><span x-text="' · ' + task.deadline"></span></template>
+                            </p>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                            <span x-text="task.statusLabel"
+                                  :style="'font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:'+task.statusBg+';color:'+task.statusColor+';'"></span>
+                            <i class="fa fa-chevron-right" style="font-size:10px;color:#D1D5DB;"></i>
+                        </div>
+                    </button>
+                </template>
+
+                <template x-if="totalPages > 1">
+                    <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                        <span style="font-size:12px;color:#6B7280;">
+                            Showing <span x-text="start + 1"></span>–<span x-text="end"></span> of <span x-text="total"></span> tasks
+                        </span>
+                        <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
+                            <button @click="prevPage()" class="cust-page-btn"
+                                    :disabled="page === 1"
+                                    :style="page === 1 ? 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:default;min-width:32px;text-align:center;background:#F3F4F6;color:#D1D5DB;' : 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;min-width:32px;text-align:center;background:#F3F4F6;color:#374151;'">‹ Prev</button>
+                            <template x-for="n in totalPages" :key="n">
+                                <button @click="goPage(n)" class="cust-page-btn"
+                                        :style="n === page ? 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:700;border:none;cursor:pointer;min-width:32px;text-align:center;background:#4F46E5;color:#fff;' : 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;min-width:32px;text-align:center;background:#F3F4F6;color:#374151;'"
+                                        x-text="n"></button>
+                            </template>
+                            <button @click="nextPage()" class="cust-page-btn"
+                                    :disabled="page === totalPages"
+                                    :style="page === totalPages ? 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:default;min-width:32px;text-align:center;background:#F3F4F6;color:#D1D5DB;' : 'padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;cursor:pointer;min-width:32px;text-align:center;background:#F3F4F6;color:#374151;'">Next ›</button>
+                        </div>
+                    </div>
+                </template>
+
+            </div>
+
+        </div>
+    </div>
+
+    {{-- ══ Domains ══ --}}
+    @php
+        $customerDomains = $customer->domains;
+        $domainCycles    = App\Models\Domain::billingCycleOptions();
+    @endphp
+    <div class="cust-panel" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;margin-top:20px;">
+
+        {{-- Header --}}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(79,70,229,.15);">
+                    <i class="fas fa-globe" style="font-size:14px;color:#4F46E5;"></i>
+                </span>
+                <div>
+                    <h2 style="font-size:13px;font-weight:700;color:#111827;text-transform:uppercase;letter-spacing:.06em;margin:0;">Domains</h2>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;font-weight:500;">{{ $customerDomains->count() }} {{ Str::plural('domain', $customerDomains->count()) }} linked</p>
+                </div>
+            </div>
+            <a href="{{ route('admin.domains.index', ['customer_id' => $customer->id]) }}" class="cust-manage-link"
+               style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#4F46E5;text-decoration:none;padding:7px 14px;border-radius:8px;background:#EEF2FF;border:1px solid #C7D2FE;transition:all .15s;"
+               onmouseover="this.style.background='#E0E7FF';this.style.borderColor='#A5B4FC';" onmouseout="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE';">
+                <i class="fas fa-arrow-up-right-from-square" style="font-size:10px;"></i>
+                Manage Domains
+            </a>
+        </div>
+
+        @if($customerDomains->isEmpty())
+            <div style="text-align:center;padding:36px 0 20px;">
+                <span style="width:56px;height:56px;border-radius:16px;background:#F3F4F6;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">
+                    <i class="fas fa-globe" style="font-size:22px;color:#D1D5DB;"></i>
+                </span>
+                <p style="font-size:13px;font-weight:600;color:#6B7280;margin:0 0 4px;">No domains linked</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:0;">Domains assigned to this customer will appear here.</p>
+            </div>
+        @else
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                @foreach($customerDomains as $d)
+                    @php
+                        $dStatus  = $d->status;
+                        $stBg     = match($dStatus) { 'active'=>'#DCFCE7', 'expiring_soon'=>'#FEF3C7', 'expired'=>'#FEE2E2', default=>'#F3F4F6' };
+                        $stColor  = match($dStatus) { 'active'=>'#16A34A', 'expiring_soon'=>'#D97706', 'expired'=>'#DC2626', default=>'#6B7280' };
+                        $stLabel  = match($dStatus) { 'active'=>'Active', 'expiring_soon'=>'Expiring Soon', 'expired'=>'Expired', default=>ucfirst($dStatus) };
+                    @endphp
+                    <a href="{{ route('admin.domains.show', $d->id) }}" class="cust-domain-row"
+                       style="display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:14px;padding:14px 18px;border:1px solid #E5E7EB;border-radius:12px;text-decoration:none;transition:box-shadow .15s;"
+                       onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.07)'" onmouseout="this.style.boxShadow='none'">
+                        <div class="cust-domain-name" style="min-width:0;">
+                            <p style="font-size:13px;font-weight:700;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $d->domain }}</p>
+                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">
+                                {{ $d->registrar ?: 'No registrar' }}
+                                @if($d->responsibleUsers->isNotEmpty())
+                                &middot; {{ $d->responsibleUsers->pluck('name')->implode(', ') }}
+                                @endif
+                            </p>
+                        </div>
+                        <div class="cust-domain-cost" style="text-align:right;">
+                            <p style="font-size:12px;font-weight:600;color:#374151;margin:0;">{{ format_money($d->cost, $d->currency) }}</p>
+                            <p style="font-size:10.5px;color:#9CA3AF;margin:2px 0 0;">/ {{ $domainCycles[$d->billing_cycle] ?? $d->billing_cycle }}</p>
+                        </div>
+                        <div class="cust-domain-expiry" style="text-align:right;min-width:90px;">
+                            <p style="font-size:12px;color:#374151;margin:0;">{{ $d->expires_at ? $d->expires_at->format('d M Y') : '—' }}</p>
+                            <p style="font-size:10.5px;color:#9CA3AF;margin:2px 0 0;">expires</p>
+                        </div>
+                        <span class="cust-domain-badge" style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:{{ $stBg }};color:{{ $stColor }};white-space:nowrap;">
+                            {{ $stLabel }}
+                        </span>
+                    </a>
+                @endforeach
+            </div>
+        @endif
+    </div>
+
+    {{-- ══ Social Accounts ══ --}}
+    @php
+        $socialAccounts = $customer->socialAccounts;
+        $saPlatforms    = App\Models\SocialAccount::platforms();
+    @endphp
+    <div class="cust-panel" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;margin-top:20px;">
+
+        {{-- Header --}}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#F0FDF4,#DCFCE7);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(22,163,74,.15);">
+                    <i class="fas fa-share-nodes" style="font-size:14px;color:#16A34A;"></i>
+                </span>
+                <div>
+                    <h2 style="font-size:13px;font-weight:700;color:#111827;text-transform:uppercase;letter-spacing:.06em;margin:0;">Social Accounts</h2>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;font-weight:500;">{{ $socialAccounts->count() }} {{ Str::plural('account', $socialAccounts->count()) }} linked</p>
+                </div>
+            </div>
+            <a href="{{ route('admin.social-accounts.index', ['customer' => $customer->id]) }}" class="cust-manage-link"
+               style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#4F46E5;text-decoration:none;padding:7px 14px;border-radius:8px;background:#EEF2FF;border:1px solid #C7D2FE;transition:all .15s;"
+               onmouseover="this.style.background='#E0E7FF';this.style.borderColor='#A5B4FC';" onmouseout="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE';">
+                <i class="fas fa-arrow-up-right-from-square" style="font-size:10px;"></i>
+                Manage Accounts
+            </a>
+        </div>
+
+        @if($socialAccounts->isEmpty())
+            <div style="text-align:center;padding:36px 0 20px;">
+                <span style="width:56px;height:56px;border-radius:16px;background:#F3F4F6;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">
+                    <i class="fas fa-share-nodes" style="font-size:22px;color:#D1D5DB;"></i>
+                </span>
+                <p style="font-size:13px;font-weight:600;color:#6B7280;margin:0 0 4px;">No social accounts yet</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:0;">Link accounts from the Manage Accounts page.</p>
+            </div>
+        @else
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                @foreach($socialAccounts as $sa)
+                    @php
+                        $pi      = $saPlatforms[$sa->platform] ?? ['label'=>ucfirst($sa->platform),'icon'=>'fa-globe','color'=>'#6B7280','bg'=>'#F3F4F6'];
+                        $stBg    = match($sa->status) { 'active'=>'#DCFCE7','inactive'=>'#F3F4F6','suspended'=>'#FEE2E2', default=>'#F3F4F6' };
+                        $stColor = match($sa->status) { 'active'=>'#16A34A','inactive'=>'#6B7280','suspended'=>'#DC2626', default=>'#6B7280' };
+                        $stDot   = match($sa->status) { 'active'=>'#22C55E','inactive'=>'#9CA3AF','suspended'=>'#EF4444', default=>'#9CA3AF' };
+                        $decPw   = $sa->decrypted_password;
+                        $hasCreds = $sa->username || $sa->email || $decPw || $sa->account_id;
+                    @endphp
+                    <div x-data="{ showPw: false }"
+                         style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;overflow:hidden;transition:box-shadow .15s;"
+                         onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.07)'" onmouseout="this.style.boxShadow='none'">
+
+                        {{-- Row layout: icon+info | credentials | access+url --}}
+                        <div class="cust-social-grid" style="display:grid;grid-template-columns:auto 1fr auto;align-items:stretch;min-height:64px;">
+
+                            {{-- Left: platform icon + name --}}
+                            <div class="cust-social-left" style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-right:1px solid #F3F4F6;min-width:200px;max-width:240px;">
+                                <span style="width:44px;height:44px;border-radius:12px;background:{{ $pi['bg'] }};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.06);">
+                                    <i class="fab {{ $pi['icon'] }}" style="font-size:22px;color:{{ $pi['color'] }};"></i>
+                                </span>
+                                <div style="min-width:0;">
+                                    <p style="font-size:13px;font-weight:700;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $sa->name }}</p>
+                                    <div style="display:flex;align-items:center;gap:5px;margin-top:3px;">
+                                        <span style="width:6px;height:6px;border-radius:50%;background:{{ $stDot }};flex-shrink:0;"></span>
+                                        <span style="font-size:11px;color:#6B7280;font-weight:500;">{{ $pi['label'] }}</span>
+                                        <span style="font-size:11px;color:#D1D5DB;">·</span>
+                                        <span style="font-size:11px;font-weight:600;color:{{ $stColor }};text-transform:capitalize;">{{ $sa->status }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Middle: credentials --}}
+                            <div class="cust-social-mid" style="padding:10px 18px;display:flex;flex-direction:column;justify-content:center;gap:4px;">
+                                @if(!$hasCreds)
+                                    <span style="font-size:12px;color:#D1D5DB;font-style:italic;">No credentials stored</span>
+                                @else
+                                    @if($sa->username)
+                                        <div style="display:flex;align-items:center;gap:8px;">
+                                            <span style="width:18px;text-align:center;flex-shrink:0;"><i class="fas fa-at" style="font-size:10px;color:#C4B5FD;"></i></span>
+                                            <span style="font-size:10px;color:#9CA3AF;width:60px;flex-shrink:0;text-transform:uppercase;letter-spacing:.05em;">User</span>
+                                            <span style="font-size:12px;font-weight:600;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $sa->username }}</span>
+                                            <button onclick="navigator.clipboard.writeText('{{ addslashes($sa->username) }}')" title="Copy username"
+                                                    style="background:none;border:none;cursor:pointer;padding:3px 5px;color:#E5E7EB;border-radius:4px;flex-shrink:0;"
+                                                    onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#E5E7EB'">
+                                                <i class="fas fa-copy" style="font-size:10px;"></i>
+                                            </button>
+                                        </div>
+                                    @endif
+                                    @if($sa->email)
+                                        <div style="display:flex;align-items:center;gap:8px;">
+                                            <span style="width:18px;text-align:center;flex-shrink:0;"><i class="fas fa-envelope" style="font-size:10px;color:#93C5FD;"></i></span>
+                                            <span style="font-size:10px;color:#9CA3AF;width:60px;flex-shrink:0;text-transform:uppercase;letter-spacing:.05em;">Email</span>
+                                            <span style="font-size:12px;font-weight:600;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $sa->email }}</span>
+                                            <button onclick="navigator.clipboard.writeText('{{ addslashes($sa->email) }}')" title="Copy email"
+                                                    style="background:none;border:none;cursor:pointer;padding:3px 5px;color:#E5E7EB;border-radius:4px;flex-shrink:0;"
+                                                    onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#E5E7EB'">
+                                                <i class="fas fa-copy" style="font-size:10px;"></i>
+                                            </button>
+                                        </div>
+                                    @endif
+                                    @if($decPw)
+                                        <div style="display:flex;align-items:center;gap:8px;">
+                                            <span style="width:18px;text-align:center;flex-shrink:0;"><i class="fas fa-lock" style="font-size:10px;color:#FCA5A5;"></i></span>
+                                            <span style="font-size:10px;color:#9CA3AF;width:60px;flex-shrink:0;text-transform:uppercase;letter-spacing:.05em;">Password</span>
+                                            <span x-text="showPw ? '{{ addslashes($decPw) }}' : '••••••••'"
+                                                  style="font-size:12px;font-weight:600;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;font-family:monospace;"></span>
+                                            <button @click="showPw = !showPw" title="Show/hide"
+                                                    style="background:none;border:none;cursor:pointer;padding:3px 5px;color:#E5E7EB;border-radius:4px;flex-shrink:0;"
+                                                    onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#E5E7EB'">
+                                                <i :class="showPw ? 'fas fa-eye-slash' : 'fas fa-eye'" style="font-size:10px;"></i>
+                                            </button>
+                                            <button onclick="navigator.clipboard.writeText('{{ addslashes($decPw) }}')" title="Copy password"
+                                                    style="background:none;border:none;cursor:pointer;padding:3px 5px;color:#E5E7EB;border-radius:4px;flex-shrink:0;"
+                                                    onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#E5E7EB'">
+                                                <i class="fas fa-copy" style="font-size:10px;"></i>
+                                            </button>
+                                        </div>
+                                    @endif
+                                    @if($sa->account_id)
+                                        <div style="display:flex;align-items:center;gap:8px;">
+                                            <span style="width:18px;text-align:center;flex-shrink:0;"><i class="fas fa-fingerprint" style="font-size:10px;color:#6EE7B7;"></i></span>
+                                            <span style="font-size:10px;color:#9CA3AF;width:60px;flex-shrink:0;text-transform:uppercase;letter-spacing:.05em;">Acct ID</span>
+                                            <span style="font-size:12px;font-weight:600;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ $sa->account_id }}</span>
+                                            <button onclick="navigator.clipboard.writeText('{{ addslashes($sa->account_id) }}')" title="Copy account ID"
+                                                    style="background:none;border:none;cursor:pointer;padding:3px 5px;color:#E5E7EB;border-radius:4px;flex-shrink:0;"
+                                                    onmouseover="this.style.color='#6366F1'" onmouseout="this.style.color='#E5E7EB'">
+                                                <i class="fas fa-copy" style="font-size:10px;"></i>
+                                            </button>
+                                        </div>
+                                    @endif
+                                @endif
+                            </div>
+
+                            {{-- Right: access + link + notes --}}
+                            <div class="cust-social-right" style="padding:12px 18px;border-left:1px solid #F3F4F6;display:flex;flex-direction:column;justify-content:center;gap:8px;min-width:180px;background:#FAFAFA;">
+
+                                @if($sa->users->isNotEmpty())
+                                    <div>
+                                        <p style="font-size:10px;color:#9CA3AF;text-transform:uppercase;letter-spacing:.05em;margin:0 0 5px;">Access</p>
+                                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                            <div style="display:flex;align-items:center;">
+                                                @foreach($sa->users->take(4) as $usr)
+                                                    @php $ac = ['#4F46E5','#0EA5E9','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899'][$usr->id % 7]; @endphp
+                                                    @if($usr->avatar)
+                                                        <img src="{{ Storage::url($usr->avatar) }}" alt="{{ $usr->name }}" title="{{ $usr->name }}"
+                                                             style="width:22px;height:22px;border-radius:50%;border:2px solid #FAFAFA;object-fit:cover;{{ $loop->first ? '' : 'margin-left:-6px;' }}">
+                                                    @else
+                                                        <span title="{{ $usr->name }}"
+                                                              style="width:22px;height:22px;border-radius:50%;border:2px solid #FAFAFA;background:{{ $ac }};display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;{{ $loop->first ? '' : 'margin-left:-6px;' }}">
+                                                            {{ strtoupper(substr($usr->name, 0, 1)) }}
+                                                        </span>
+                                                    @endif
+                                                @endforeach
+                                                @if($sa->users->count() > 4)
+                                                    <span title="{{ $sa->users->skip(4)->pluck('name')->join(', ') }}"
+                                                          style="width:22px;height:22px;border-radius:50%;border:2px solid #FAFAFA;background:#E5E7EB;display:inline-flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#6B7280;margin-left:-6px;">
+                                                        +{{ $sa->users->count() - 4 }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                            <span style="font-size:11px;color:#6B7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;" title="{{ $sa->users->pluck('name')->join(', ') }}">
+                                                {{ $sa->users->count() === 1 ? $sa->users->first()->name : $sa->users->count().' users' }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                @if($sa->page_url)
+                                    <a href="{{ $sa->page_url }}" target="_blank" rel="noopener"
+                                       style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#6366F1;text-decoration:none;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;"
+                                       title="{{ $sa->page_url }}"
+                                       onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">
+                                        <i class="fas fa-arrow-up-right-from-square" style="font-size:9px;flex-shrink:0;"></i>
+                                        Open page
+                                    </a>
+                                @endif
+
+                                @if($sa->notes)
+                                    <p style="font-size:11px;color:#6B7280;margin:0;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;" title="{{ $sa->notes }}">{{ $sa->notes }}</p>
+                                @endif
+
+                            </div>
+
+                        </div>
+
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
+    </div>
+
+    {{-- ══ Design Approval Timeline ══ --}}
+    @php
+        $approvalTasks = $customer->tasks
+            ->filter(fn($t) => !is_null($t->design_sent_at) || $t->status === 'pending_customer')
+            ->sortByDesc(fn($t) => $t->design_sent_at ?? $t->updated_at);
+        $approvedRows = $approvalTasks->filter(fn($t) => !is_null($t->customer_approved_at));
+        $avgH = $approvedRows->isNotEmpty()
+            ? round($approvedRows->avg(fn($t) => $t->design_sent_at->diffInMinutes($t->customer_approved_at) / 60), 1)
+            : null;
+    @endphp
+    <div class="cust-panel" style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;margin-top:20px;">
+
+        {{-- Header --}}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+            <h2 style="font-size:13px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;margin:0;display:flex;align-items:center;gap:8px;">
+                <span style="width:22px;height:22px;border-radius:6px;background:#FEF3C7;display:inline-flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-stopwatch" style="font-size:10px;color:#D97706;"></i>
+                </span>
+                Design Approval Timeline
+            </h2>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                @if($approvedRows->isNotEmpty())
+                <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:20px;font-size:11px;font-weight:700;color:#16A34A;">
+                    <i class="fas fa-circle-check" style="font-size:10px;"></i>
+                    {{ $approvedRows->count() }} approved
+                </span>
+                @endif
+                @if($approvalTasks->filter(fn($t) => is_null($t->customer_approved_at))->isNotEmpty())
+                <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:20px;font-size:11px;font-weight:700;color:#D97706;">
+                    <i class="fas fa-hourglass-half" style="font-size:10px;"></i>
+                    {{ $approvalTasks->filter(fn($t) => is_null($t->customer_approved_at))->count() }} waiting
+                </span>
+                @endif
+                @if($avgH !== null)
+                <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:#EEF2FF;border:1px solid #C7D2FE;border-radius:20px;font-size:11px;font-weight:700;color:#4F46E5;">
+                    <i class="fas fa-clock" style="font-size:10px;"></i>
+                    Avg {{ $avgH }}h to approve
+                </span>
+                @endif
+            </div>
+        </div>
+
+        @if($approvalTasks->isEmpty())
+        <div style="text-align:center;padding:36px 20px;">
+            <div style="width:46px;height:46px;border-radius:13px;background:#FEF3C7;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;">
+                <i class="fas fa-stopwatch" style="font-size:19px;color:#D97706;"></i>
+            </div>
+            <p style="font-size:14px;font-weight:700;color:#111827;margin:0 0 5px;">No approval data yet</p>
+            <p style="font-size:12px;color:#9CA3AF;margin:0 auto;max-width:340px;line-height:1.6;">Once a manager marks one of this customer's tasks as <strong>"Awaiting Customer Approval"</strong> from the Approvals page, the send time and approval duration will appear here.</p>
+        </div>
+        @else
+        <div style="display:flex;flex-direction:column;gap:0;">
+        @foreach($approvalTasks as $t)
+        @php
+            $sent        = $t->design_sent_at ?? $t->updated_at;
+            $approved    = $t->customer_approved_at;
+            $isApproved  = !is_null($approved);
+            $diffSec     = abs($isApproved ? $sent->diffInSeconds($approved) : now()->diffInSeconds($sent));
+            $diffMin     = (int) round($diffSec / 60);
+            $diffH       = round($diffSec / 3600, 1);
+            $diffDays    = round($diffSec / 86400, 1);
+            $timeStr     = $diffSec < 3600
+                           ? $diffMin . 'm'
+                           : ($diffH < 24 ? $diffH . 'h' : $diffDays . 'd');
+            $timeBg      = $isApproved
+                           ? ($diffH <= 24 ? '#F0FDF4' : ($diffH <= 72 ? '#FEF3C7' : '#FEF2F2'))
+                           : '#FEF3C7';
+            $timeCo      = $isApproved
+                           ? ($diffH <= 24 ? '#16A34A' : ($diffH <= 72 ? '#D97706' : '#DC2626'))
+                           : '#D97706';
+        @endphp
+        @php
+            $modalData = json_encode([
+                'taskId'       => $t->id,
+                'taskUrl'      => route('admin.tasks.show', $t->id),
+                'title'        => $t->title,
+                'project'      => $t->project->name ?? null,
+                'assignee'     => $t->assignee->name ?? null,
+                'assigneeInit' => $t->assignee ? strtoupper(substr($t->assignee->name, 0, 1)) : null,
+                'status'       => $t->status,
+                'isApproved'   => $isApproved,
+                'sentDate'     => $sent->format(config('app.date_format', 'M d, Y')),
+                'sentTime'     => $sent->format('h:i A'),
+                'sentRaw'      => $sent->toIso8601String(),
+                'approvedDate' => $approved ? $approved->format(config('app.date_format', 'M d, Y')) : null,
+                'approvedTime' => $approved ? $approved->format('h:i A') : null,
+                'timeStr'      => $isApproved ? $timeStr : $timeStr . ' waiting',
+                'timeBg'       => $timeBg,
+                'timeCo'       => $timeCo,
+                'diffH'        => $diffH,
+                'sentHumans'   => $sent->diffForHumans(),
+            ]);
+        @endphp
+        <div @click="openApproval({{ $modalData }})" class="cust-approval-row"
+             style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #F9FAFB;cursor:pointer;border-radius:6px;transition:background .15s;"
+             onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+
+            {{-- Left: task + timeline --}}
+            <div style="min-width:0;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+                    <span class="cust-approval-title" style="font-size:13px;font-weight:600;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px;display:block;"
+                          title="{{ $t->title }}">{{ $t->title }}</span>
+                    @if($t->project)
+                    <span style="font-size:11px;color:#9CA3AF;display:flex;align-items:center;gap:3px;flex-shrink:0;">
+                        <i class="fas fa-folder" style="font-size:9px;"></i> {{ $t->project->name }}
+                    </span>
+                    @endif
+                </div>
+
+                {{-- Timeline row --}}
+                <div style="display:flex;align-items:center;gap:0;flex-wrap:wrap;">
+
+                    {{-- Sent bubble --}}
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#25D366,#128C7E);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fab fa-whatsapp" style="font-size:11px;color:#fff;"></i>
+                        </div>
+                        <div>
+                            <p style="font-size:11px;font-weight:600;color:#374151;margin:0;white-space:nowrap;">Sent</p>
+                            <p style="font-size:10px;color:#9CA3AF;margin:0;white-space:nowrap;">{{ $sent->format(config('app.date_format', 'M d, Y')) }} · {{ $sent->format('h:i A') }}</p>
+                        </div>
+                    </div>
+
+                    {{-- Arrow + duration --}}
+                    <div style="display:flex;align-items:center;gap:6px;margin:0 10px;">
+                        <div style="height:1px;width:20px;background:#E5E7EB;flex-shrink:0;"></div>
+                        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:{{ $timeBg }};color:{{ $timeCo }};white-space:nowrap;">
+                            {{ $isApproved ? $timeStr : $timeStr . ' waiting' }}
+                        </span>
+                        <div style="height:1px;width:20px;background:#E5E7EB;flex-shrink:0;"></div>
+                    </div>
+
+                    {{-- Approved / Waiting bubble --}}
+                    @if($isApproved)
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#10B981,#059669);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas fa-circle-check" style="font-size:11px;color:#fff;"></i>
+                        </div>
+                        <div>
+                            <p style="font-size:11px;font-weight:600;color:#16A34A;margin:0;white-space:nowrap;">Customer Approved</p>
+                            <p style="font-size:10px;color:#9CA3AF;margin:0;white-space:nowrap;">{{ $approved->format(config('app.date_format', 'M d, Y')) }} · {{ $approved->format('h:i A') }}</p>
+                        </div>
+                    </div>
+                    @else
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <div style="width:26px;height:26px;border-radius:50%;background:#FEF3C7;border:2px dashed #FCD34D;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas fa-hourglass-half" style="font-size:10px;color:#D97706;"></i>
+                        </div>
+                        <div>
+                            <p style="font-size:11px;font-weight:600;color:#D97706;margin:0;white-space:nowrap;">Awaiting Response</p>
+                            <p style="font-size:10px;color:#9CA3AF;margin:0;">since {{ $sent->diffForHumans() }}</p>
+                        </div>
+                    </div>
+                    @endif
+
+                </div>
+            </div>
+
+            {{-- Right: assignee + expand hint --}}
+            <div class="cust-approval-right" style="text-align:right;flex-shrink:0;display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                @if($t->assignee)
+                <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;">
+                    <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;">
+                        {{ strtoupper(substr($t->assignee->name, 0, 1)) }}
+                    </div>
+                    <span style="font-size:11px;color:#6B7280;">{{ $t->assignee->name }}</span>
+                </div>
+                @endif
+                <span style="font-size:10px;color:#C4B5FD;"><i class="fas fa-expand-alt" style="font-size:9px;"></i> details</span>
+            </div>
+
+        </div>
+        @endforeach
+        </div>
+        @endif
+
+    </div>
+
+    {{-- ══ Approval Detail Modal ══ --}}
+    <template x-if="approvalModal">
+    <div @click.self="close()" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div class="cust-modal-box" style="background:#fff;border-radius:16px;width:100%;max-width:520px;box-shadow:0 20px 60px rgba(0,0,0,.2);overflow:hidden;">
+
+            {{-- Header --}}
+            <div style="padding:20px 24px 16px;border-bottom:1px solid #F3F4F6;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+                <div style="min-width:0;">
+                    <p style="font-size:11px;font-weight:600;letter-spacing:.06em;color:#9CA3AF;text-transform:uppercase;margin:0 0 4px;">Design Approval</p>
+                    <h3 x-text="approvalModal.title" style="font-size:15px;font-weight:700;color:#111827;margin:0;line-height:1.3;word-break:break-word;"></h3>
+                    <div style="display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap;">
+                        <template x-if="approvalModal.project">
+                            <span style="font-size:11px;color:#9CA3AF;display:flex;align-items:center;gap:4px;">
+                                <i class="fas fa-folder" style="font-size:9px;"></i>
+                                <span x-text="approvalModal.project"></span>
+                            </span>
+                        </template>
+                        <template x-if="approvalModal.assignee">
+                            <span style="font-size:11px;color:#6B7280;display:flex;align-items:center;gap:5px;">
+                                <span style="width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;" x-text="approvalModal.assigneeInit"></span>
+                                <span x-text="approvalModal.assignee"></span>
+                            </span>
+                        </template>
+                    </div>
+                </div>
+                <button @click="close()" style="width:32px;height:32px;border-radius:50%;border:none;background:#F3F4F6;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-times" style="font-size:13px;color:#6B7280;"></i>
+                </button>
+            </div>
+
+            {{-- Timeline --}}
+            <div style="padding:24px;">
+
+                {{-- Step 1: Design Sent --}}
+                <div style="display:flex;gap:14px;align-items:flex-start;">
+                    <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">
+                        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#25D366,#128C7E);display:flex;align-items:center;justify-content:center;">
+                            <i class="fab fa-whatsapp" style="font-size:15px;color:#fff;"></i>
+                        </div>
+                        <div style="width:2px;flex:1;min-height:32px;margin:4px 0;" :style="approvalModal.isApproved ? 'background:#E5E7EB' : 'background:repeating-linear-gradient(to bottom,#FCD34D 0,#FCD34D 4px,transparent 4px,transparent 8px)'"></div>
+                    </div>
+                    <div style="padding-top:6px;padding-bottom:20px;">
+                        <p style="font-size:13px;font-weight:700;color:#374151;margin:0 0 2px;">Design sent via WhatsApp</p>
+                        <p style="font-size:12px;color:#6B7280;margin:0;" x-text="approvalModal.sentDate + ' · ' + approvalModal.sentTime"></p>
+                    </div>
+                </div>
+
+                {{-- Duration badge --}}
+                <div style="display:flex;gap:14px;align-items:center;margin:-8px 0 0 18px;">
+                    <div style="width:2px;"></div>
+                    <span style="font-size:11px;font-weight:700;padding:3px 12px;border-radius:20px;margin-left:-1px;"
+                          :style="'background:' + approvalModal.timeBg + ';color:' + approvalModal.timeCo"
+                          x-text="approvalModal.timeStr"></span>
+                </div>
+
+                {{-- Step 2: Approved or Waiting --}}
+                <div style="display:flex;gap:14px;align-items:flex-start;margin-top:0;">
+                    <div style="flex-shrink:0;">
+                        <template x-if="approvalModal.isApproved">
+                            <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#10B981,#059669);display:flex;align-items:center;justify-content:center;">
+                                <i class="fas fa-circle-check" style="font-size:15px;color:#fff;"></i>
+                            </div>
+                        </template>
+                        <template x-if="!approvalModal.isApproved">
+                            <div style="width:36px;height:36px;border-radius:50%;background:#FEF3C7;border:2px dashed #FCD34D;display:flex;align-items:center;justify-content:center;">
+                                <i class="fas fa-hourglass-half" style="font-size:13px;color:#D97706;"></i>
+                            </div>
+                        </template>
+                    </div>
+                    <div style="padding-top:6px;">
+                        <template x-if="approvalModal.isApproved">
+                            <div>
+                                <p style="font-size:13px;font-weight:700;color:#16A34A;margin:0 0 2px;">Customer Approved</p>
+                                <p style="font-size:12px;color:#6B7280;margin:0;" x-text="approvalModal.approvedDate + ' · ' + approvalModal.approvedTime"></p>
+                            </div>
+                        </template>
+                        <template x-if="!approvalModal.isApproved">
+                            <div>
+                                <p style="font-size:13px;font-weight:700;color:#D97706;margin:0 0 2px;">Awaiting Customer Response</p>
+                                <p style="font-size:12px;color:#9CA3AF;margin:0;">Sent <span x-text="approvalModal.sentHumans"></span> — no reply yet</p>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+            </div>
+
+            {{-- Note field (only when pending) --}}
+            <template x-if="approvalModal && !approvalModal.isApproved">
+            <div style="padding:0 24px 16px;">
+                <textarea x-model="approveNote" placeholder="Add a note (optional)…"
+                          style="width:100%;padding:9px 12px;border:1px solid #E5E7EB;border-radius:8px;font-size:13px;color:#374151;resize:none;outline:none;box-sizing:border-box;line-height:1.5;"
+                          rows="2"
+                          onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'"></textarea>
+            </div>
+            </template>
+
+            {{-- Footer --}}
+            <div style="padding:14px 24px;border-top:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                <a :href="approvalModal.taskUrl"
+                   style="font-size:12px;font-weight:600;color:#4F46E5;text-decoration:none;display:flex;align-items:center;gap:5px;">
+                    <i class="fas fa-arrow-up-right-from-square" style="font-size:10px;"></i> Open Task
+                </a>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button @click="close()" style="padding:8px 18px;border-radius:8px;border:1px solid #E5E7EB;background:#fff;font-size:13px;font-weight:600;color:#374151;cursor:pointer;">
+                        Close
+                    </button>
+                    <template x-if="approvalModal && !approvalModal.isApproved">
+                        <button
+                            :disabled="approving"
+                            @click="
+                                approving = true;
+                                $refs.quickApproveForm.querySelector('[name=note]').value = approveNote;
+                                $refs.quickApproveForm.action = '/admin/tasks/' + approvalModal.taskId + '/approve';
+                                $refs.quickApproveForm.submit();
+                            "
+                            :style="approving
+                                ? 'padding:8px 20px;border-radius:8px;border:none;background:#D1FAE5;color:#6EE7B7;font-size:13px;font-weight:700;cursor:not-allowed;display:flex;align-items:center;gap:7px;'
+                                : 'padding:8px 20px;border-radius:8px;border:none;background:linear-gradient(135deg,#10B981,#059669);color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 4px 14px rgba(16,185,129,.3);'">
+                            <i class="fas fa-circle-check"></i>
+                            <span x-text="approving ? 'Approving…' : 'Confirm Approval'"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            {{-- Hidden approval form --}}
+            <form x-ref="quickApproveForm" method="POST" action="#" style="display:none;">
+                @csrf
+                <input type="hidden" name="note" value="">
+            </form>
+
+        </div>
+    </div>
+    </template>
+
+</div>
+
+@push('scripts')
+<script src="/js/xlsx.full.min.js"></script>
+<script src="/js/html2pdf.bundle.min.js"></script>
+@php
+    $exportCustomerMeta = ['name'=>$customer->name,'company'=>$customer->company,'email'=>$customer->email,'phone'=>$customer->phone];
+    $exportCustomerSlug = Str::slug($customer->name);
+    $exportToday        = now()->format('Y-m-d');
+    $exportProjects     = $customer->projects->map(fn($p) => [
+        'name'        => $p->name,
+        'status'      => $_psLabel[$p->status] ?? ucfirst($p->status),
+        'tasks_count' => $p->tasks_count ?? 0,
+        'deadline'    => $p->deadline ? $p->deadline->format('Y-m-d') : '',
+        'overdue'     => ($p->deadline && $p->deadline->isPast() && $p->status !== 'completed') ? 'Yes' : '',
+    ])->values()->toArray();
+    $exportStats = ['pending'=>$statPending,'active'=>$statActive,'done'=>$statDone,'overdue'=>$statOverdue];
+@endphp
+<script>
+window.exportCustomerCSV = function () {
+    const customer = @json($exportCustomerMeta);
+    const rows     = @json($csvRows);
+
+    const headers  = ['Task','Project','Status','Priority','Assignee','Deadline','Design Sent','Customer Approved','Approval Time'];
+    const fields   = ['title','project','status','priority','assignee','deadline','design_sent','cust_approved','approval_time'];
+
+    const esc = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+
+    let csv = '# Customer: ' + customer.name;
+    if (customer.company) csv += ' — ' + customer.company;
+    if (customer.email)   csv += '\n# Email: ' + customer.email;
+    if (customer.phone)   csv += '\n# Phone: ' + customer.phone;
+    csv += '\n# Exported: ' + new Date().toLocaleString() + '\n\n';
+    csv += headers.map(esc).join(',') + '\n';
+    csv += rows.map(r => fields.map(f => esc(r[f])).join(',')).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = '{{ $exportCustomerSlug }}_tasks_{{ $exportToday }}.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+};
+
+window.exportCustomerExcel = function () {
+    if (typeof XLSX === 'undefined') {
+        alert('Excel library not loaded. Please refresh the page and try again.');
+        return;
+    }
+    const customer = @json($exportCustomerMeta);
+    const rows     = @json($csvRows);
+    const projects = @json($exportProjects);
+    const stats    = @json($exportStats);
+    const today    = new Date().toLocaleString();
+
+    const wb = XLSX.utils.book_new();
+
+    // ── Sheet 1: Summary (customer info + stats + projects) ──
+    const summaryData = [
+        ['CUSTOMER REPORT', '', '', '', ''],
+        ['', '', '', '', ''],
+        ['Customer', customer.name,          '', 'Exported', today],
+        ['Company',  customer.company || '—', '', '',         ''],
+        ['Email',    customer.email   || '—', '', '',         ''],
+        ['Phone',    customer.phone   || '—', '', '',         ''],
+        ['', '', '', '', ''],
+        ['TASK SUMMARY', '', '', '', ''],
+        ['Pending', 'In Progress', 'Completed', 'Overdue', ''],
+        [stats.pending, stats.active, stats.done, stats.overdue, ''],
+        ['', '', '', '', ''],
+    ];
+    if (projects.length) {
+        summaryData.push(['PROJECTS', '', '', '', '']);
+        summaryData.push(['Project Name', 'Status', 'Tasks', 'Deadline', 'Overdue']);
+        projects.forEach(p => summaryData.push([p.name, p.status, p.tasks_count, p.deadline || '—', p.overdue || '']));
+    }
+    const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
+    ws1['!cols'] = [{wch:30},{wch:24},{wch:12},{wch:18},{wch:22}];
+    XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
+
+    // ── Sheet 2: All Tasks ──
+    const taskHeaders = ['Task','Project','Status','Priority','Assignee','Deadline','Design Sent','Customer Approved','Approval Time'];
+    const fields      = ['title','project','status','priority','assignee','deadline','design_sent','cust_approved','approval_time'];
+    const taskData    = [
+        ['TASK LIST — ' + customer.name + (customer.company ? ' / ' + customer.company : ''), '', '', '', '', '', '', '', ''],
+        ['', '', '', '', '', '', '', '', ''],
+        taskHeaders,
+        ...rows.map(r => fields.map(f => r[f] ?? '')),
+    ];
+    const ws2 = XLSX.utils.aoa_to_sheet(taskData);
+    ws2['!cols'] = [{wch:34},{wch:24},{wch:14},{wch:10},{wch:16},{wch:12},{wch:20},{wch:20},{wch:14}];
+    XLSX.utils.book_append_sheet(wb, ws2, 'Tasks');
+
+    XLSX.writeFile(wb, '{{ $exportCustomerSlug }}_report_{{ $exportToday }}.xlsx');
+};
+
+/* ══════════════════════════════════════════════════════════
+   CUSTOMER SHOW — Branded Print & Export PDF
+══════════════════════════════════════════════════════════ */
+@php
+$showLogo = '';
+if (!empty($appSettings['logo_path'])) {
+    $lp = Storage::disk('public')->path($appSettings['logo_path']);
+    if (file_exists($lp)) {
+        $mime = mime_content_type($lp) ?: 'image/jpeg';
+        $showLogo = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($lp));
+    }
+}
+@endphp
+function buildCustomerShowHTML(immediate) {
+    var company  = '{{ addslashes($appSettings['company_name'] ?? $appSettings['app_name'] ?? config('app.name')) }}';
+    var dept     = '{{ addslashes($appSettings['department_name'] ?? 'Operations') }}';
+    var logoSrc  = '{{ $showLogo ?? '' }}';
+    var mono     = company.charAt(0).toUpperCase();
+    var dateStr  = '{{ now()->format(config('app.date_format','M d, Y')) }}';
+    var timeStr  = '{{ now()->format('H:i') }}';
+    var user     = '{{ auth()->user()->name }}';
+
+    var custName = '{{ addslashes($customer->name) }}';
+    var custCo   = '{{ addslashes($customer->company ?? '') }}';
+    var custEmail= '{{ addslashes($customer->email ?? '') }}';
+    var custPhone= '{{ addslashes($customer->phone ?? '') }}';
+    var custInit = custName.charAt(0).toUpperCase();
+
+    @php
+        $showCustLogoSrc = '';
+        if ($customer->logo) {
+            $clp = Storage::disk('public')->path($customer->logo);
+            if (file_exists($clp)) {
+                $cmime = mime_content_type($clp) ?: 'image/jpeg';
+                $showCustLogoSrc = 'data:' . $cmime . ';base64,' . base64_encode(file_get_contents($clp));
+            }
+        }
+    @endphp
+    var custLogoSrc = '{{ $showCustLogoSrc }}';
+
+    var allTasks  = @json($csvRows);
+    var projects  = @json($exportProjects);
+    var statPending   = {{ $statPending }};
+    var statActive    = {{ $statActive }};
+    var statDone      = {{ $statDone }};
+    var statOverdue   = {{ $statOverdue }};
+    var totalTasks    = allTasks.length;
+    var completionRate = totalTasks > 0 ? Math.round(statDone / totalTasks * 100) : 0;
+
+    // ── CSS ───────────────────────────────────────────────
+    var css =
+      '* { box-sizing:border-box; margin:0; padding:0; }'
+    + 'body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; font-size:12px; color:#111827; background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.pbar { position:sticky; top:0; z-index:100; background:linear-gradient(135deg,#4338CA,#7C3AED); padding:11px 28px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 3px 14px rgba(79,70,229,.35); }'
+    + '.pbar-l h2 { font-size:14px; font-weight:700; color:#fff; margin:0; }'
+    + '.pbar-l p  { font-size:10.5px; color:rgba(255,255,255,.72); margin:3px 0 0; }'
+    + '.pbar-btn  { display:flex; align-items:center; gap:7px; padding:9px 22px; background:#fff; color:#4F46E5; border:none; border-radius:9px; font-size:12px; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.14); }'
+    + '.doc  { max-width:980px; margin:0 auto; background:#fff; }'
+    + '.accent { height:6px; background:linear-gradient(90deg,#4F46E5 0%,#7C3AED 45%,#06B6D4 100%); -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.dh { padding:20px 32px 16px; display:flex; justify-content:space-between; align-items:center; gap:16px; }'
+    + '.logo-area { display:flex; align-items:center; gap:14px; }'
+    + '.logo-img  { height:48px; width:auto; max-width:160px; object-fit:contain; }'
+    + '.logo-mono { width:48px; height:48px; background:linear-gradient(135deg,#4F46E5,#7C3AED); border-radius:12px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:25px; font-weight:900; flex-shrink:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.co-name { font-size:17px; font-weight:800; color:#111827; line-height:1.2; }'
+    + '.co-sub  { font-size:10px; color:#9CA3AF; margin-top:3px; }'
+    + '.rt { text-align:right; }'
+    + '.rt-name { font-size:20px; font-weight:900; color:#4F46E5; letter-spacing:-.4px; line-height:1.15; }'
+    + '.rt-badge { display:inline-flex; align-items:center; gap:5px; margin-top:5px; padding:3px 12px; background:#EEF2FF; border-radius:20px; font-size:10px; font-weight:600; color:#6366F1; border:1px solid #C7D2FE; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.hr { height:1px; background:#E5E7EB; }'
+    + '.cust-strip { display:flex; align-items:center; gap:14px; padding:14px 32px; background:#F8FAFC; border-bottom:1px solid #E5E7EB; }'
+    + '.cav { width:42px; height:42px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-size:17px; font-weight:700; color:#fff; flex-shrink:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.cav-img { width:42px; height:42px; border-radius:11px; object-fit:cover; flex-shrink:0; }'
+    + '.cinfo-name { font-size:15px; font-weight:800; color:#111827; }'
+    + '.cinfo-co   { font-size:11px; color:#6B7280; margin-top:2px; }'
+    + '.cquick { display:flex; gap:16px; margin-left:auto; }'
+    + '.cq-item { text-align:center; }'
+    + '.cq-val { font-size:18px; font-weight:800; color:#4F46E5; line-height:1; }'
+    + '.cq-lbl { font-size:9px; color:#9CA3AF; margin-top:2px; }'
+    + '.meta { display:flex; background:#F8FAFC; padding:10px 32px; border-bottom:1px solid #E5E7EB; }'
+    + '.mi { flex:1; min-width:0; padding-right:20px; border-right:1px solid #E5E7EB; margin-right:20px; }'
+    + '.mi:last-child { border-right:none; padding-right:0; margin-right:0; }'
+    + '.mi-lbl { font-size:8px; font-weight:700; color:#9CA3AF; text-transform:uppercase; letter-spacing:.09em; }'
+    + '.mi-val { font-size:11px; font-weight:600; color:#374151; margin-top:2px; }'
+    + '.content { padding:20px 32px 26px; }'
+    + '.sh { display:flex; align-items:center; gap:10px; margin:20px 0 12px; padding-bottom:8px; border-bottom:1.5px solid #F3F4F6; }'
+    + '.sh:first-child { margin-top:0; }'
+    + '.sh-bar  { width:4px; height:18px; border-radius:4px; flex-shrink:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.sh-text { font-size:10px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.08em; }'
+    + '.sh-pill { margin-left:auto; font-size:9.5px; font-weight:600; color:#6B7280; background:#F3F4F6; padding:2px 9px; border-radius:20px; }'
+    + '.kgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:4px; }'
+    + '.kcard { border-radius:10px; padding:14px 14px 14px 18px; border:1px solid rgba(0,0,0,.06); position:relative; overflow:hidden; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.kacc  { position:absolute; top:0; left:0; width:4px; height:100%; border-radius:10px 0 0 10px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.k-lbl { font-size:8.5px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; margin-bottom:7px; }'
+    + '.k-val { font-size:26px; font-weight:900; color:#111827; line-height:1; letter-spacing:-1px; }'
+    + '.k-sub { font-size:9.5px; color:#9CA3AF; margin-top:5px; }'
+    + '.twrap { border-radius:10px; border:1px solid #E5E7EB; overflow:hidden; margin-bottom:4px; }'
+    + 'table  { width:100%; border-collapse:collapse; }'
+    + 'thead tr { background:linear-gradient(90deg,#4F46E5,#6366F1); -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + 'th { font-size:9.5px; font-weight:700; color:#fff; text-align:left; padding:9px 12px; text-transform:uppercase; letter-spacing:.05em; white-space:nowrap; }'
+    + 'td { padding:8px 12px; border-bottom:1px solid #F3F4F6; font-size:11.5px; color:#374151; vertical-align:middle; }'
+    + 'tbody tr:last-child td { border-bottom:none; }'
+    + 'tbody tr:nth-child(even) td { background:#FAFAFA; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.td-n  { font-weight:600; color:#111827; }'
+    + '.td-sm { font-size:10px; color:#9CA3AF; margin-top:1px; }'
+    + '.rb    { display:inline-block; padding:3px 10px; border-radius:20px; font-size:10px; font-weight:700; white-space:nowrap; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.foot  { margin:4px 32px 0; padding:12px 0; border-top:2px solid #4F46E5; display:flex; justify-content:space-between; align-items:center; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
+    + '.foot-brand { font-size:10px; font-weight:700; color:#4F46E5; }'
+    + '.foot-mid   { font-size:10px; color:#9CA3AF; }'
+    + '.foot-conf  { font-size:10px; color:#9CA3AF; font-style:italic; }'
+    + 'tr { page-break-inside: avoid; -webkit-column-break-inside: avoid; }'
+    + '@@media print { .pbar{display:none !important;} body{background:#fff !important;} .doc{max-width:none;} *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;} @@page{size:A4 landscape;margin:0;} }'
+    ;
+
+    // ── Status badge map ─────────────────────────────────
+    var statusBg    = { draft:'#F3F4F6', assigned:'#EEF2FF', viewed:'#E0F2FE', in_progress:'#FFF7ED', submitted:'#F5F3FF', revision_requested:'#FEE2E2', approved:'#ECFDF5', delivered:'#ECFDF5', archived:'#F3F4F6' };
+    var statusColor = { draft:'#6B7280', assigned:'#4F46E5', viewed:'#0369A1', in_progress:'#EA580C', submitted:'#7C3AED', revision_requested:'#DC2626', approved:'#16A34A', delivered:'#16A34A', archived:'#9CA3AF' };
+    var statusLabel = { draft:'Draft', assigned:'Assigned', viewed:'Viewed', in_progress:'In Progress', submitted:'In Review', revision_requested:'Revision', approved:'Approved', delivered:'Delivered', archived:'Archived' };
+    var projBg    = { active:'#EEF2FF', completed:'#ECFDF5', on_hold:'#FEF3C7', cancelled:'#FEE2E2' };
+    var projColor = { active:'#4F46E5', completed:'#16A34A', on_hold:'#D97706', cancelled:'#DC2626' };
+
+    // ── Logo ─────────────────────────────────────────────
+    var logoEl = logoSrc
+        ? '<img class="logo-img" src="' + logoSrc + '" alt="' + company + '">'
+        : '<div class="logo-mono">' + mono + '</div>';
+
+    // ── Customer avatar / logo ────────────────────────────
+    var custAvatarEl = custLogoSrc
+        ? '<img class="cav-img" src="' + custLogoSrc + '">'
+        : '<div class="cav" style="background:linear-gradient(135deg,#6366F1,#8B5CF6);">' + custInit + '</div>';
+
+    // ── Print icon SVG ────────────────────────────────────
+    var printIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>';
+
+    // ── KPI cards ─────────────────────────────────────────
+    var kpis = [
+        { label:'Pending',    value:statPending,    color:'#6366F1', bg:'#EEF2FF', sub:'Draft / Assigned / Viewed' },
+        { label:'In Progress',value:statActive,     color:'#EA580C', bg:'#FFF7ED', sub:'Active tasks' },
+        { label:'Completed',  value:statDone,       color:'#16A34A', bg:'#ECFDF5', sub:completionRate + '% rate' },
+        { label:'Overdue',    value:statOverdue,    color:'#DC2626', bg:'#FEF2F2', sub:'Past deadline' },
+    ];
+    var kHtml = '<div class="kgrid">';
+    kpis.forEach(function(k) {
+        kHtml += '<div class="kcard" style="background:' + k.bg + ';">'
+              + '<div class="kacc" style="background:' + k.color + ';"></div>'
+              + '<div class="k-lbl" style="color:' + k.color + ';">' + k.label + '</div>'
+              + '<div class="k-val">' + k.value + '</div>'
+              + '<div class="k-sub">' + k.sub + '</div>'
+              + '</div>';
+    });
+    kHtml += '</div>';
+
+    // ── Projects table ────────────────────────────────────
+    var projHtml = '';
+    if (projects.length > 0) {
+        projHtml += '<div class="sh"><div class="sh-bar" style="background:#0EA5E9;"></div><div class="sh-text">Projects</div><span class="sh-pill">' + projects.length + '</span></div>';
+        projHtml += '<div class="twrap"><table><thead><tr>'
+                 + '<th style="width:28px;">#</th><th>Project</th><th style="text-align:center;">Tasks</th><th>Deadline</th><th>Status</th>'
+                 + '</tr></thead><tbody>';
+        projects.forEach(function(p, i) {
+            var pb = projBg[p.status.toLowerCase().replace(' ','_')] || '#F3F4F6';
+            var pc = projColor[p.status.toLowerCase().replace(' ','_')] || '#374151';
+            projHtml += '<tr>'
+                     + '<td style="color:#9CA3AF;font-size:10px;">' + (i+1) + '</td>'
+                     + '<td class="td-n">' + p.name + '</td>'
+                     + '<td style="text-align:center;">' + p.tasks_count + '</td>'
+                     + '<td>' + (p.deadline || '—') + (p.overdue ? ' <span style="color:#DC2626;font-weight:700;">⚠</span>' : '') + '</td>'
+                     + '<td><span class="rb" style="background:' + pb + ';color:' + pc + ';">' + p.status + '</span></td>'
+                     + '</tr>';
+        });
+        projHtml += '</tbody></table></div>';
+    }
+
+    // ── Tasks table ───────────────────────────────────────
+    var tHtml = '<div class="sh"><div class="sh-bar" style="background:#4F46E5;"></div><div class="sh-text">All Tasks</div><span class="sh-pill">' + allTasks.length + ' tasks &mdash; ' + completionRate + '% done</span></div>';
+    tHtml += '<div class="twrap"><table><thead><tr>'
+          + '<th style="width:28px;">#</th>'
+          + '<th>Task</th><th>Project</th><th>Assignee</th><th>Deadline</th><th>Status</th>'
+          + '</tr></thead><tbody>';
+    allTasks.forEach(function(t, i) {
+        var sKey = t.status ? t.status.toLowerCase() : '';
+        var sb   = statusBg[sKey]    || '#F3F4F6';
+        var sc   = statusColor[sKey] || '#374151';
+        var sl   = statusLabel[sKey] || t.status || '';
+        var od   = t.deadline && !['approved','delivered','archived'].includes(sKey) && new Date(t.deadline) < new Date();
+        tHtml += '<tr>'
+              + '<td style="color:#9CA3AF;font-size:10px;">' + (i+1) + '</td>'
+              + '<td class="td-n">' + t.title + '</td>'
+              + '<td style="color:#6B7280;">' + (t.project || '—') + '</td>'
+              + '<td>' + (t.assignee || '—') + '</td>'
+              + '<td>' + (t.deadline ? t.deadline + (od ? ' <span style="color:#DC2626;font-weight:700;">⚠</span>' : '') : '—') + '</td>'
+              + '<td><span class="rb" style="background:' + sb + ';color:' + sc + ';">' + sl + '</span></td>'
+              + '</tr>';
+    });
+    tHtml += '</tbody></table></div>';
+
+    // ── Preview bar ───────────────────────────────────────
+    var pbar = immediate ? '' :
+        '<div class="pbar">'
+      + '<div class="pbar-l"><h2>' + custName + (custCo ? ' &mdash; ' + custCo : '') + '</h2>'
+      + '<p>' + allTasks.length + ' tasks &bull; Generated ' + dateStr + '</p></div>'
+      + '<button class="pbar-btn" onclick="window.print()">' + printIcon + ' Print / Save as PDF</button>'
+      + '</div>';
+
+    var printOnLoad = immediate ? '<sc'+'ript>window.onload=function(){window.print();}<\/'+'script>' : '';
+
+    return '<!DOCTYPE html><html lang="en"><head>'
+         + '<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+         + '<title>' + custName + ' — Customer Report</title>'
+         + '<style>' + css + '</style>'
+         + printOnLoad
+         + '</head><body>'
+         + pbar
+         + '<div class="doc">'
+
+         /* Accent bar */
+         + '<div class="accent"></div>'
+
+         /* Header */
+         + '<div class="dh">'
+         +   '<div class="logo-area">' + logoEl
+         +     '<div><div class="co-name">' + company + '</div><div class="co-sub">' + dept + '</div></div>'
+         +   '</div>'
+         +   '<div class="rt">'
+         +     '<div class="rt-name">Customer Report</div>'
+         +     '<div class="rt-badge">&#128274;&ensp;Confidential &mdash; Internal Use</div>'
+         +   '</div>'
+         + '</div>'
+         + '<div class="hr"></div>'
+
+         /* Customer strip */
+         + '<div class="cust-strip">'
+         +   custAvatarEl
+         +   '<div><div class="cinfo-name">' + custName + '</div>'
+         +     (custCo ? '<div class="cinfo-co">' + custCo + '</div>' : '') + '</div>'
+         +   '<div class="cquick">'
+         +     '<div class="cq-item"><div class="cq-val">' + totalTasks + '</div><div class="cq-lbl">Tasks</div></div>'
+         +     '<div class="cq-item"><div class="cq-val" style="color:#16A34A;">' + completionRate + '%</div><div class="cq-lbl">Done</div></div>'
+         +     '<div class="cq-item"><div class="cq-val" style="color:#DC2626;">' + statOverdue + '</div><div class="cq-lbl">Overdue</div></div>'
+         +   '</div>'
+         + '</div>'
+
+         /* Meta strip */
+         + '<div class="meta">'
+         +   '<div class="mi"><div class="mi-lbl">Generated</div><div class="mi-val">' + dateStr + ' at ' + timeStr + '</div></div>'
+         +   (custEmail ? '<div class="mi"><div class="mi-lbl">Email</div><div class="mi-val">' + custEmail + '</div></div>' : '')
+         +   (custPhone ? '<div class="mi"><div class="mi-lbl">Phone</div><div class="mi-val">' + custPhone + '</div></div>' : '')
+         +   '<div class="mi"><div class="mi-lbl">Prepared By</div><div class="mi-val">' + user + '</div></div>'
+         + '</div>'
+
+         /* Content */
+         + '<div class="content">'
+         +   '<div class="sh"><div class="sh-bar" style="background:#4F46E5;"></div><div class="sh-text">Overview</div></div>'
+         +   kHtml
+         +   projHtml
+         +   tHtml
+         + '</div>'
+
+         /* Footer */
+         + '<div class="foot">'
+         +   '<div class="foot-brand">' + company + ' &mdash; ' + custName + '</div>'
+         +   '<div class="foot-mid">Generated ' + dateStr + ' &bull; ' + user + '</div>'
+         +   '<div class="foot-conf">Confidential</div>'
+         + '</div>'
+
+         + '</div></body></html>';
+}
+
+window.printCustomerShow = function () {
+    var win = window.open('', '_blank');
+    if (win) { win.document.write(buildCustomerShowHTML(true)); win.document.close(); }
+    else { alert('Pop-up blocked — please allow pop-ups for this site.'); }
+};
+
+window.exportCustomerShowPDF = function () {
+    _pdfDownload(buildCustomerShowHTML, '{{ Str::slug($customer->name) }}-customer.pdf');
+};
+
+function _pdfDownload(buildFn, filename) {
+    if (typeof html2pdf === 'undefined') { alert('PDF library not loaded yet — please try again in a moment.'); return; }
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(17,24,39,.55);z-index:99999;display:flex;align-items:center;justify-content:center;';
+    overlay.innerHTML = '<div style="background:#fff;border-radius:14px;padding:22px 32px;font-size:14px;font-weight:600;color:#374151;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);"><div style="width:20px;height:20px;border:3px solid #4F46E5;border-top-color:transparent;border-radius:50%;animation:_pdf_spin .7s linear infinite;flex-shrink:0;"></div>Generating PDF…</div><style>@@keyframes _pdf_spin{to{transform:rotate(360deg)}}</style>';
+    document.body.appendChild(overlay);
+    var htmlStr = buildFn(false);
+    var parser  = new DOMParser();
+    var parsed  = parser.parseFromString(htmlStr, 'text/html');
+    var cssText = Array.from(parsed.querySelectorAll('style')).map(function(s){ return s.textContent; }).join('\n');
+    var docNode = parsed.querySelector('.doc');
+    if (!docNode) { document.body.removeChild(overlay); return; }
+    var content = '<style>' + cssText + '</style>' + docNode.outerHTML;
+    html2pdf().set({
+        margin: 0,
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff', logging: false, windowWidth: 1100 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', '.kcard'] }
+    }).from(content, 'string').save().then(function() {
+        document.body.removeChild(overlay);
+    }).catch(function(e) {
+        document.body.removeChild(overlay);
+        alert('PDF generation failed — ' + (e && e.message ? e.message : 'please try again.'));
+    });
+}
+</script>
+@endpush
+
+@endsection

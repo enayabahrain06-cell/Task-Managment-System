@@ -51,6 +51,127 @@
     .team-outer-tabs { flex-direction: column; width: 100%; }
     .team-outer-tabs a { justify-content: center; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   Mobile polish pass (<=768px) — team directory, permissions,
+   roles, former employees & all modals.
+   Desktop (>768px) layout/behavior is untouched.
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+    /* ── Outer tabs: comfortable tap height ── */
+    .team-outer-tabs a { min-height: 44px; }
+
+    /* ── KPI stat row → swipeable card strip (same technique used on the admin dashboard) ── */
+    .stats-grid {
+        display: flex !important;
+        grid-template-columns: none !important;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        gap: 12px;
+        padding: 2px 2px 10px;
+        margin-bottom: var(--mob-sp-2, 16px);
+    }
+    .stats-grid::-webkit-scrollbar { display: none; }
+    .stats-grid > a { scroll-snap-align: start; flex: 0 0 152px; }
+    .stat-card {
+        border-radius: var(--mob-r-md, 16px) !important;
+        box-shadow: var(--mob-shadow-1, 0 2px 10px rgba(17,24,39,.05));
+    }
+
+    /* ── Search & filter bar: full-width stacked controls, no cramped inline row ── */
+    .team-filter-form {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px !important;
+    }
+    .team-filter-form > * { width: 100% !important; min-width: 0 !important; }
+    .team-filter-form input[type="text"],
+    .team-filter-form select {
+        min-height: 46px; border-radius: var(--mob-r-sm, 12px); font-size: 15px;
+    }
+    .team-filter-form button,
+    .team-filter-form a {
+        min-height: 46px; border-radius: var(--mob-r-sm, 12px);
+        display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ── Table / Cards view toggle: full-width, comfortable tap size ── */
+    .team-view-toggle { width: 100%; }
+    .team-view-toggle button { flex: 1; min-height: 44px; justify-content: center; }
+
+    /* ── Team / former-employee / role cards ── */
+    .mob-card h3 { font-size: 16px; font-weight: 700; }
+    .mob-card-actions button,
+    .mob-card-actions a,
+    .mob-card-actions > div { min-height: 40px; }
+
+    /* ── Table view → stacked cards (mob-table-cards technique) ── */
+    .team-table-wrap { overflow-x: visible !important; }
+    .team-table-wrap table { min-width: 0 !important; width: 100% !important; }
+    .mob-table-cards tbody tr { display: flex !important; flex-direction: column !important; }
+    .mob-table-cards td {
+        display: flex !important; align-items: center !important; justify-content: space-between !important;
+        padding: 9px 4px !important; font-size: 13px !important;
+    }
+    /* Member cell: hero, full width, no label, shown first */
+    .mob-table-cards td.mob-team-cell {
+        order: 1; display: block !important; text-align: left !important;
+        padding: 4px 4px 12px !important; border-bottom: 1px solid #F3F4F6 !important;
+    }
+    .mob-table-cards td.mob-team-cell::before { content: none !important; }
+    .mob-table-cards td.mob-col-role   { order: 2; }
+    .mob-table-cards td.mob-col-status { order: 3; }
+    .mob-table-cards td.mob-col-open   { order: 4; }
+    .mob-table-cards td.mob-col-done   { order: 5; }
+    .mob-table-cards td.mob-col-actions {
+        order: 6; display: block !important; text-align: right !important;
+        padding: 12px 4px 4px !important; border-bottom: none !important; border-top: 1px solid #F3F4F6 !important; margin-top: 4px;
+    }
+    .mob-table-cards td.mob-col-actions::before { content: none !important; }
+    .mob-table-cards td.mob-col-actions .flex { justify-content: flex-end; }
+
+    /* ── Permissions tab: stack the two-column layout ── */
+    .perms-two-col {
+        flex-direction: column !important;
+        height: auto !important;
+        min-height: 0 !important;
+        gap: 12px !important;
+    }
+    .perms-user-list { width: 100% !important; max-height: 260px; }
+
+    /* ── Roles tab: permission grid inside create/edit modal collapses to 1 column ── */
+    .mob-role-perm-grid { grid-template-columns: 1fr !important; }
+
+    /* ── Phone country-code picker "back" button: real 44px tap target ── */
+    [style*="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border:none;background:#F3F4F6;border-radius:8px;cursor:pointer;color:#374151;"] {
+        width: 44px !important; height: 44px !important;
+    }
+
+    /* ── Modal close (×) buttons: real 44px tap target ── */
+    [style*="border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280"] {
+        width: 44px !important; height: 44px !important;
+    }
+    /* Modal footer "Cancel" buttons (edit-user / add-user modals) */
+    [style*="padding:9px 20px;background:#F3F4F6;border:none;border-radius:10px;font-size:13px;font-weight:600;color:#6B7280;cursor:pointer;"] {
+        min-height: 44px; padding-top: 0 !important; padding-bottom: 0 !important;
+        display: inline-flex; align-items: center; justify-content: center;
+    }
+    .btn-modal-primary { min-height: 44px; }
+
+    /* ── Legacy confirm/transfer/clone modals: edge gutter + scrollable panel + 44px action buttons ── */
+    .mob-confirm-modal { padding: 16px; box-sizing: border-box; }
+    .mob-confirm-modal > div {
+        width: 100% !important; max-height: calc(100vh - 32px) !important; overflow-y: auto !important; box-sizing: border-box;
+    }
+    .mob-confirm-modal button[style*="flex:1;padding:10px"],
+    .mob-confirm-modal button[style*="flex:2;padding:10px"] { min-height: 44px; }
+    .mob-modal-x {
+        width: 44px !important; height: 44px !important; display: inline-flex !important;
+        align-items: center; justify-content: center; font-size: 22px !important;
+    }
+}
 </style>
 
 {{-- ═══════ Page Header ═══════ --}}
@@ -70,7 +191,7 @@
 
 {{-- ═══════ Outer Tabs (admin/manager only) ═══════ --}}
 @if(in_array(auth()->user()->role, ['admin', 'manager']))
-<div class="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit mb-6" style="flex-wrap:wrap;">
+<div class="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit mb-6 team-outer-tabs" style="flex-wrap:wrap;">
     <a href="{{ route('team.index') }}"
        class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition {{ $view === 'team' ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}">
         <i class="fa fa-users text-xs"></i> Team
@@ -102,7 +223,16 @@
 </div>
 @endif
 
-@if($errors->any())
+@if($errors->userEdit->any())
+<div class="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
+    <div class="flex items-center gap-2 font-semibold mb-1"><i class="fa fa-circle-exclamation"></i> Could not save user — please fix the following errors:</div>
+    <ul class="list-disc list-inside space-y-0.5">
+        @foreach($errors->userEdit->all() as $error)
+        <li>{{ $error }}</li>
+        @endforeach
+    </ul>
+</div>
+@elseif($errors->any())
 <div class="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
     <div class="flex items-center gap-2 font-semibold mb-1"><i class="fa fa-circle-exclamation"></i> Please fix the following errors:</div>
     <ul class="list-disc list-inside space-y-0.5">
@@ -187,9 +317,38 @@
 
 </div>
 
+{{-- Mobile-only workload glance — individual contributors, sorted busiest first --}}
+@php
+    $workloadMembers = $members->getCollection()->where('role', 'user')->sortByDesc('pending_tasks')->take(8);
+    $workloadMax = $workloadMembers->max('pending_tasks') ?: 1;
+@endphp
+@if($workloadMembers->isNotEmpty())
+<div style="background:#fff;border:1px solid #EDEFF3;border-radius:16px;padding:16px;margin-bottom:20px;">
+    <div style="font-size:14.5px;font-weight:700;color:#111827;letter-spacing:-.01em;margin-bottom:12px;">Workload</div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+        @foreach($workloadMembers as $wm)
+        @php $wmPct = min(100, round($wm->pending_tasks / $workloadMax * 100)); @endphp
+        <div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                <span style="width:30px;height:30px;flex-shrink:0;border-radius:99px;background:var(--mob-brand-grad, linear-gradient(135deg,#4F46E5,#6366F1));color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;">{{ strtoupper(substr($wm->name, 0, 1)) }}</span>
+                <span style="flex:1;font-size:13px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $wm->name }}</span>
+                <span style="font-size:13px;font-weight:700;color:#111827;font-variant-numeric:tabular-nums;">{{ $wm->pending_tasks }} {{ Str::plural('task', $wm->pending_tasks) }}</span>
+            </div>
+            <div style="height:7px;border-radius:99px;background:#F3F4F6;overflow:hidden;">
+                <div style="height:100%;width:{{ $wmPct }}%;background:var(--mob-brand-accent, #6366F1);opacity:.85;border-radius:99px;"></div>
+            </div>
+            <div style="font-size:11px;font-weight:500;color:#9CA3AF;margin-top:4px;">
+                {{ $wm->pending_tasks == 0 ? 'No pending tasks' : ($wm->pending_tasks === $workloadMax && $workloadMax > 3 ? 'Busiest right now' : 'Healthy load') }}
+            </div>
+        </div>
+        @endforeach
+    </div>
+</div>
+@endif
+
 {{-- Search & Filters --}}
 @if(in_array(auth()->user()->role, ['admin', 'manager']))
-<form method="GET" action="{{ route('team.index') }}" class="flex flex-wrap gap-3 mb-5">
+<form method="GET" action="{{ route('team.index') }}" class="flex flex-wrap gap-3 mb-5 team-filter-form">
     <div class="relative flex-1 min-w-[200px]">
         <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
         <input type="text" name="search" value="{{ request('search') }}" placeholder="Search name, email or username…"
@@ -218,13 +377,13 @@
     $roleColors = ['admin' => '#EF4444', 'manager' => '#6366F1', 'user' => '#10B981'];
     $roleBg     = ['admin' => 'bg-red-100 text-red-600', 'manager' => 'bg-indigo-100 text-indigo-600', 'user' => 'bg-emerald-100 text-emerald-700'];
     $avatarColors = ['#6366F1','#10B981','#F59E0B','#EF4444','#8B5CF6','#3B82F6','#EC4899','#06B6D4'];
-    $natFlags = ['Afghan'=>'🇦🇫','Albanian'=>'🇦🇱','Algerian'=>'🇩🇿','American'=>'🇺🇸','Argentinian'=>'🇦🇷','Australian'=>'🇦🇺','Austrian'=>'🇦🇹','Bahraini'=>'🇧🇭','Bangladeshi'=>'🇧🇩','Belgian'=>'🇧🇪','Brazilian'=>'🇧🇷','British'=>'🇬🇧','Bulgarian'=>'🇧🇬','Cambodian'=>'🇰🇭','Canadian'=>'🇨🇦','Chilean'=>'🇨🇱','Chinese'=>'🇨🇳','Colombian'=>'🇨🇴','Croatian'=>'🇭🇷','Czech'=>'🇨🇿','Danish'=>'🇩🇰','Dutch'=>'🇳🇱','Egyptian'=>'🇪🇬','Emirati'=>'🇦🇪','Estonian'=>'🇪🇪','Ethiopian'=>'🇪🇹','Filipino'=>'🇵🇭','Finnish'=>'🇫🇮','French'=>'🇫🇷','German'=>'🇩🇪','Ghanaian'=>'🇬🇭','Greek'=>'🇬🇷','Hungarian'=>'🇭🇺','Indian'=>'🇮🇳','Indonesian'=>'🇮🇩','Iranian'=>'🇮🇷','Iraqi'=>'🇮🇶','Irish'=>'🇮🇪','Israeli'=>'🇮🇱','Italian'=>'🇮🇹','Japanese'=>'🇯🇵','Jordanian'=>'🇯🇴','Kenyan'=>'🇰🇪','Korean'=>'🇰🇷','Kuwaiti'=>'🇰🇼','Lebanese'=>'🇱🇧','Libyan'=>'🇱🇾','Malaysian'=>'🇲🇾','Mexican'=>'🇲🇽','Moroccan'=>'🇲🇦','Nigerian'=>'🇳🇬','Norwegian'=>'🇳🇴','Omani'=>'🇴🇲','Pakistani'=>'🇵🇰','Palestinian'=>'🇵🇸','Polish'=>'🇵🇱','Portuguese'=>'🇵🇹','Qatari'=>'🇶🇦','Romanian'=>'🇷🇴','Russian'=>'🇷🇺','Saudi'=>'🇸🇦','Serbian'=>'🇷🇸','Singaporean'=>'🇸🇬','South African'=>'🇿🇦','Spanish'=>'🇪🇸','Sri Lankan'=>'🇱🇰','Sudanese'=>'🇸🇩','Swedish'=>'🇸🇪','Swiss'=>'🇨🇭','Syrian'=>'🇸🇾','Thai'=>'🇹🇭','Tunisian'=>'🇹🇳','Turkish'=>'🇹🇷','Ukrainian'=>'🇺🇦','Yemeni'=>'🇾🇪'];
+    $natCodes = ['Afghan'=>'AF','Albanian'=>'AL','Algerian'=>'DZ','American'=>'US','Argentinian'=>'AR','Australian'=>'AU','Austrian'=>'AT','Bahraini'=>'BH','Bangladeshi'=>'BD','Belgian'=>'BE','Brazilian'=>'BR','British'=>'GB','Bulgarian'=>'BG','Cambodian'=>'KH','Canadian'=>'CA','Chilean'=>'CL','Chinese'=>'CN','Colombian'=>'CO','Croatian'=>'HR','Czech'=>'CZ','Danish'=>'DK','Dutch'=>'NL','Egyptian'=>'EG','Emirati'=>'AE','Estonian'=>'EE','Ethiopian'=>'ET','Filipino'=>'PH','Finnish'=>'FI','French'=>'FR','German'=>'DE','Ghanaian'=>'GH','Greek'=>'GR','Hungarian'=>'HU','Indian'=>'IN','Indonesian'=>'ID','Iranian'=>'IR','Iraqi'=>'IQ','Irish'=>'IE','Israeli'=>'IL','Italian'=>'IT','Japanese'=>'JP','Jordanian'=>'JO','Kenyan'=>'KE','Korean'=>'KR','Kuwaiti'=>'KW','Lebanese'=>'LB','Libyan'=>'LY','Malaysian'=>'MY','Mexican'=>'MX','Moroccan'=>'MA','Nigerian'=>'NG','Norwegian'=>'NO','Omani'=>'OM','Pakistani'=>'PK','Palestinian'=>'PS','Polish'=>'PL','Portuguese'=>'PT','Qatari'=>'QA','Romanian'=>'RO','Russian'=>'RU','Saudi'=>'SA','Serbian'=>'RS','Singaporean'=>'SG','South African'=>'ZA','Spanish'=>'ES','Sri Lankan'=>'LK','Sudanese'=>'SD','Swedish'=>'SE','Swiss'=>'CH','Syrian'=>'SY','Thai'=>'TH','Tunisian'=>'TN','Turkish'=>'TR','Ukrainian'=>'UA','Yemeni'=>'YE'];
 @endphp
 
 {{-- View Toggle Wrapper --}}
 <div x-data="{ view: localStorage.getItem('team_view') || 'cards', setView(v){ this.view=v; localStorage.setItem('team_view',v); } }">
 
-<div style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;margin-bottom:22px;width:fit-content;">
+<div class="team-view-toggle" style="display:flex;gap:2px;background:#F3F4F6;border-radius:12px;padding:4px;margin-bottom:22px;width:fit-content;">
     <button @click="setView('table')"
             :style="view==='table'
                 ? 'display:flex;align-items:center;gap:7px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);'
@@ -248,7 +407,7 @@
         $progress  = $member->total_tasks > 0 ? round(($member->completed_tasks / $member->total_tasks) * 100) : 0;
     @endphp
     @php $canViewDash = !(auth()->user()->role === 'manager' && $member->role === 'admin'); @endphp
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 transition group {{ $canViewDash ? 'hover:shadow-md hover:border-indigo-200 cursor-pointer' : 'cursor-default' }}"
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 transition group mob-card {{ $canViewDash ? 'hover:shadow-md hover:border-indigo-200 cursor-pointer' : 'cursor-default' }}"
          @if($canViewDash) onclick="window.location.href='{{ route('admin.users.dashboard', $member) }}'" @endif>
         {{-- Avatar + Name --}}
         <div class="flex flex-col items-center text-center mb-4">
@@ -263,9 +422,9 @@
                     {{ strtoupper(substr($member->name, 0, 1)) }}
                 </div>
                 @endif
-                @if(!empty($member->nationality) && isset($natFlags[$member->nationality]))
+                @if(!empty($member->nationality) && isset($natCodes[$member->nationality]))
                 <span title="{{ $member->nationality }}"
-                      style="position:absolute;bottom:0;right:0;font-size:16px;line-height:1;background:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.18);ring:2px solid #fff;">{{ $natFlags[$member->nationality] }}</span>
+                      style="position:absolute;bottom:0;right:0;background:#EEF2FF;border:1.5px solid #fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.18);font-size:7px;font-weight:800;color:#4F46E5;letter-spacing:0;line-height:1;font-family:monospace;">{{ $natCodes[$member->nationality] }}</span>
                 @endif
             </div>
             <h3 class="font-semibold text-gray-900 text-sm">{{ $member->name }}</h3>
@@ -312,7 +471,7 @@
         {{-- Actions (admin/manager) --}}
         @if(in_array(auth()->user()->role, ['admin', 'manager']))
         @php $isAdminTarget = $member->role === 'admin'; $isManager = auth()->user()->role === 'manager'; $managerBlocked = $isManager && $isAdminTarget; @endphp
-        <div class="flex gap-2 mt-4" onclick="event.stopPropagation()">
+        <div class="flex gap-2 mt-4 mob-card-actions" onclick="event.stopPropagation()">
             {{-- Edit --}}
             @if($managerBlocked)
             <div class="flex-1 text-center text-xs bg-gray-50 text-gray-300 py-1.5 rounded-lg font-medium cursor-not-allowed select-none" title="Cannot edit admin accounts">
@@ -320,7 +479,7 @@
             </div>
             @else
             <button type="button"
-                    onclick='window.dispatchEvent(new CustomEvent("open-edit-user",{detail:{{ json_encode(['id'=>$member->id,'name'=>$member->name,'username'=>$member->username??'','email'=>$member->email,'phone'=>$member->phone??'','job_title'=>$member->job_title??'','nationality'=>$member->nationality??'','role'=>$member->role,'status'=>$member->status,'avatar'=>$member->avatarUrl()??'','hourly_rate'=>$member->hourly_rate??'']) }}}))'
+                    onclick='window.dispatchEvent(new CustomEvent("open-edit-user",{detail:{{ json_encode(['id'=>$member->id,'name'=>$member->name,'username'=>$member->username??'','email'=>$member->email,'phone'=>$member->phone??'','job_title'=>$member->job_title??'','nationality'=>$member->nationality??'','role'=>$member->role,'status'=>$member->status,'avatar'=>$member->avatarUrl()??'','hourly_rate'=>$member->hourly_rate??'','mfa_enabled'=>(bool)$member->mfa_enabled,'mfa_required'=>(bool)$member->mfa_required]) }}}))'
                     class="flex-1 text-center text-xs bg-gray-100 hover:bg-indigo-100 text-gray-600 hover:text-indigo-600 py-1.5 rounded-lg transition font-medium">
                 <i class="fa fa-pen text-xs mr-1"></i> Edit
             </button>
@@ -425,7 +584,7 @@
 
 {{-- ══ TABLE VIEW ══ --}}
 <div x-show="view === 'table'" x-cloak>
-<div class="team-table-wrap bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+<div class="team-table-wrap mob-table-cards bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
     <table class="w-full">
         <thead>
             <tr class="border-b border-gray-100 bg-gray-50/50">
@@ -449,7 +608,7 @@
                 @if($canViewDash2) onclick="window.location.href='{{ route('admin.users.dashboard', $member) }}'" @endif>
 
                 {{-- Member --}}
-                <td class="px-5 py-3.5">
+                <td class="px-5 py-3.5 mob-team-cell" data-label="Member">
                     <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center"
                              style="background:{{ $aColor2 }};">
@@ -470,14 +629,14 @@
                 </td>
 
                 {{-- Role --}}
-                <td class="px-5 py-3.5">
+                <td class="px-5 py-3.5 mob-col-role" data-label="Role">
                     <span class="text-xs px-2.5 py-1 rounded-full font-medium {{ $roleBg[$member->role] ?? 'bg-gray-100 text-gray-600' }}">
                         {{ ucfirst($member->role) }}
                     </span>
                 </td>
 
                 {{-- Status --}}
-                <td class="px-5 py-3.5">
+                <td class="px-5 py-3.5 mob-col-status" data-label="Status">
                     @if($member->status === 'inactive')
                     <span class="text-xs px-2.5 py-1 rounded-full font-semibold bg-amber-100 text-amber-700">Held</span>
                     @else
@@ -486,19 +645,19 @@
                 </td>
 
                 {{-- Open Tasks --}}
-                <td class="px-5 py-3.5 text-sm text-gray-700 font-semibold">{{ $member->pending_tasks }}</td>
+                <td class="px-5 py-3.5 text-sm text-gray-700 font-semibold mob-col-open" data-label="Open">{{ $member->pending_tasks }}</td>
 
                 {{-- Done Tasks --}}
-                <td class="px-5 py-3.5 text-sm text-gray-500">{{ $member->completed_tasks }}</td>
+                <td class="px-5 py-3.5 text-sm text-gray-500 mob-col-done" data-label="Done">{{ $member->completed_tasks }}</td>
 
                 {{-- Actions --}}
                 @if(in_array(auth()->user()->role, ['admin', 'manager']))
                 @php $isAdminTarget2 = $member->role === 'admin'; $isManager2 = auth()->user()->role === 'manager'; $managerBlocked2 = $isManager2 && $isAdminTarget2; @endphp
-                <td class="px-5 py-3.5" onclick="event.stopPropagation()">
+                <td class="px-5 py-3.5 mob-col-actions" data-label="Actions" onclick="event.stopPropagation()">
                     <div class="flex items-center gap-2">
                         @if(!$managerBlocked2)
                         <button type="button"
-                                onclick='window.dispatchEvent(new CustomEvent("open-edit-user",{detail:{{ json_encode(['id'=>$member->id,'name'=>$member->name,'username'=>$member->username??'','email'=>$member->email,'phone'=>$member->phone??'','job_title'=>$member->job_title??'','nationality'=>$member->nationality??'','role'=>$member->role,'status'=>$member->status,'avatar'=>$member->avatarUrl()??'','hourly_rate'=>$member->hourly_rate??'']) }}}))'
+                                onclick='window.dispatchEvent(new CustomEvent("open-edit-user",{detail:{{ json_encode(['id'=>$member->id,'name'=>$member->name,'username'=>$member->username??'','email'=>$member->email,'phone'=>$member->phone??'','job_title'=>$member->job_title??'','nationality'=>$member->nationality??'','role'=>$member->role,'status'=>$member->status,'avatar'=>$member->avatarUrl()??'','hourly_rate'=>$member->hourly_rate??'','mfa_enabled'=>(bool)$member->mfa_enabled,'mfa_required'=>(bool)$member->mfa_required]) }}}))'
                                 class="text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition">
                             <i class="fa fa-pen text-xs mr-1"></i> Edit
                         </button>
@@ -588,7 +747,7 @@
             </tr>
             @empty
             <tr>
-                <td colspan="{{ in_array(auth()->user()->role, ['admin','manager']) ? 6 : 5 }}" class="px-5 py-12 text-center">
+                <td colspan="{{ in_array(auth()->user()->role, ['admin','manager']) ? 6 : 5 }}" class="px-5 py-12 text-center mob-team-cell">
                     <i class="fa fa-users text-4xl text-gray-200 mb-3"></i>
                     <p class="text-sm text-gray-400">No team members found</p>
                 </td>
@@ -730,10 +889,10 @@ $roleColorMap = ['admin'=>'bg-red-100 text-red-600','manager'=>'bg-amber-100 tex
 </div>
 @else
 
-<div x-data="permsApp()" x-init="init()" style="display:flex;gap:20px;height:calc(100vh - 280px);min-height:540px;">
+<div x-data="permsApp()" x-init="init()" class="perms-two-col" style="display:flex;gap:20px;height:calc(100vh - 280px);min-height:540px;">
 
     {{-- Left panel: user list --}}
-    <div style="width:272px;flex-shrink:0;background:#fff;border-radius:16px;border:1px solid #E5E7EB;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 1px 4px rgba(0,0,0,.05);">
+    <div class="perms-user-list" style="width:272px;flex-shrink:0;background:#fff;border-radius:16px;border:1px solid #E5E7EB;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 1px 4px rgba(0,0,0,.05);">
         <div style="padding:14px;border-bottom:1px solid #F3F4F6;">
             <div style="position:relative;">
                 <i class="fa fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:11px;pointer-events:none;"></i>
@@ -1051,7 +1210,7 @@ function permsApp() {
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
         @foreach($allRoles as $role)
         @php $userCount = \App\Models\User::where('role', $role->name)->count(); @endphp
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col transition hover:shadow-md">
+        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col transition hover:shadow-md mob-card">
             <div class="h-1.5 w-full" style="background:{{ $role->color }};"></div>
             <div class="p-5 flex flex-col gap-3 flex-1">
                 <div class="flex items-center justify-between">
@@ -1210,7 +1369,7 @@ function permsApp() {
                                         <i class="fa {{ $grp['icon'] }}" style="font-size:11px;color:{{ $grp['color'] }};"></i>
                                         <span style="font-size:11px;font-weight:700;color:{{ $grp['color'] }};text-transform:uppercase;letter-spacing:.05em;">{{ $grpName }}</span>
                                     </div>
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+                                    <div class="mob-role-perm-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
                                         @foreach($grp['perms'] as $pk => $pinfo)
                                         <label style="display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;border-top:1px solid #F9FAFB;{{ $loop->index % 2 === 1 ? 'border-left:1px solid #F9FAFB;' : '' }}transition:background .1s;"
                                                onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
@@ -1292,7 +1451,7 @@ function permsApp() {
                                         <i class="fa {{ $grp['icon'] }}" style="font-size:11px;color:{{ $grp['color'] }};"></i>
                                         <span style="font-size:11px;font-weight:700;color:{{ $grp['color'] }};text-transform:uppercase;letter-spacing:.05em;">{{ $grpName }}</span>
                                     </div>
-                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+                                    <div class="mob-role-perm-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
                                         @foreach($grp['perms'] as $pk => $pinfo)
                                         <label style="display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;border-top:1px solid #F9FAFB;{{ $loop->index % 2 === 1 ? 'border-left:1px solid #F9FAFB;' : '' }}transition:background .1s;"
                                                onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
@@ -1391,7 +1550,7 @@ function rolesTab() {
         $fPending  = $fTotal - $fDone;
         $fProgress = $fTotal > 0 ? round(($fDone / $fTotal) * 100) : 0;
     @endphp
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md hover:border-indigo-200 transition group cursor-pointer"
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md hover:border-indigo-200 transition group cursor-pointer mob-card"
          onclick="window.location.href='{{ route('admin.users.dashboard', $former) }}'">
 
         {{-- Avatar + Name --}}
@@ -1428,7 +1587,7 @@ function rolesTab() {
         </div>
 
         {{-- Actions --}}
-        <div class="flex gap-2 mt-4" onclick="event.stopPropagation()">
+        <div class="flex gap-2 mt-4 mob-card-actions" onclick="event.stopPropagation()">
             {{-- Restore --}}
             <form method="POST" action="{{ route('admin.users.restore', $former) }}" class="flex-1">
                 @csrf
@@ -1503,11 +1662,13 @@ function rolesTab() {
         {{-- Scrollable body --}}
         <div style="overflow-y:auto;flex:1;padding:20px 24px;">
             <form id="edit-user-form" method="POST" :action="'/admin/users/' + userId"
-                  enctype="multipart/form-data" @submit="saving = true">
+                  enctype="multipart/form-data"
+                  @submit.prevent="pwdMismatch = !!(editPwd && editPwd !== editPwdConfirm); if(!pwdMismatch){ saving=true; $el.submit(); }">
                 @csrf
                 @method('PUT')
 
                 {{-- Avatar upload --}}
+                <input type="hidden" name="remove_avatar" :value="removeAvatar ? '1' : '0'">
                 <div style="display:flex;align-items:center;gap:16px;padding:16px;background:#F9FAFB;border-radius:12px;border:1px solid #F3F4F6;margin-bottom:16px;">
                     <div style="position:relative;flex-shrink:0;">
                         <template x-if="avatarPreview">
@@ -1523,12 +1684,20 @@ function rolesTab() {
                         <label style="position:absolute;bottom:-2px;right:-2px;width:24px;height:24px;background:#6366F1;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid #fff;">
                             <i class="fa fa-camera" style="color:#fff;font-size:9px;"></i>
                             <input type="file" name="avatar" accept="image/*" class="hidden"
-                                   x-on:change="avatarPreview = $event.target.files[0] ? URL.createObjectURL($event.target.files[0]) : avatarPreview">
+                                   x-on:change="if($event.target.files[0]){ avatarPreview=URL.createObjectURL($event.target.files[0]); removeAvatar=false; }">
                         </label>
                     </div>
-                    <div>
+                    <div style="flex:1;min-width:0;">
                         <p style="font-size:13px;font-weight:600;color:#374151;margin:0;">Profile Photo</p>
-                        <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">JPG, PNG or WebP · Max 2MB. Leave blank to keep current.</p>
+                        <p style="font-size:11px;color:#9CA3AF;margin:3px 0 8px;">JPG, PNG or WebP · Max 2MB.</p>
+                        <button type="button" x-show="avatarPreview && !removeAvatar"
+                                @click="avatarPreview=null; removeAvatar=true;"
+                                style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#EF4444;background:#FEF2F2;border:1px solid #FECACA;border-radius:7px;padding:4px 10px;cursor:pointer;">
+                            <i class="fa fa-trash" style="font-size:10px;"></i> Remove Photo
+                        </button>
+                        <span x-show="removeAvatar" style="font-size:11px;color:#EF4444;font-weight:600;">
+                            <i class="fa fa-info-circle"></i> Photo will be removed on save
+                        </span>
                     </div>
                 </div>
 
@@ -1643,49 +1812,85 @@ function rolesTab() {
 
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Nationality</label>
-                        <input type="hidden" name="nationality" :value="nationality">
-                        <div x-ref="natTrigger"
-                             @click="natOpenDrop(); $nextTick(()=>$refs.natInput.focus())"
-                             @click.outside="natOpen=false; natQuery=''"
-                             style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;cursor:pointer;background:#F9FAFB;transition:border-color .15s;box-sizing:border-box;"
-                             :style="natOpen ? 'border-color:#6366F1;box-shadow:0 0 0 3px rgba(99,102,241,0.1);' : ''">
-                            <span x-text="nationalityList.find(n=>n.value===nationality)?.flag ?? '🌍'"
-                                  style="font-size:15px;flex-shrink:0;line-height:1;width:20px;text-align:center;"></span>
-                            <input type="text" x-ref="natInput" x-model="natQuery"
-                                   :placeholder="nationality || 'Search nationality…'"
-                                   @focus="natOpenDrop()" @input="natOpen=true; natActiveIdx=-1"
-                                   @keydown="natOnKey($event)"
-                                   style="flex:1;border:none;outline:none;font-size:13px;color:#111827;background:transparent;min-width:0;cursor:pointer;"
-                                   autocomplete="off" spellcheck="false">
-                            <button type="button" x-show="nationality" @click.stop="nationality=''; natQuery=''; natOpen=false;"
-                                    style="background:none;border:none;cursor:pointer;color:#9CA3AF;padding:0;font-size:16px;line-height:1;flex-shrink:0;" title="Clear">×</button>
-                            <i class="fas fa-chevron-down" style="color:#9CA3AF;font-size:10px;flex-shrink:0;transition:transform .15s;"
-                               :style="natOpen ? 'transform:rotate(180deg)' : ''"></i>
-                        </div>
-                        <template x-teleport="body">
-                            <div x-show="natOpen"
-                                 x-transition:enter="transition ease-out duration-100"
-                                 x-transition:enter-start="opacity-0 -translate-y-1"
-                                 x-transition:enter-end="opacity-100 translate-y-0"
-                                 :style="`position:absolute;top:${natDropTop}px;left:${natDropLeft}px;width:${natDropWidth}px;z-index:99999;background:#fff;border:1.5px solid #E5E7EB;border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,0.12);overflow:hidden;`">
-                                <div style="max-height:220px;overflow-y:auto;">
-                                    <template x-for="(item, idx) in natFiltered" :key="item.value">
-                                        <div :id="'nat-opt-'+idx"
-                                             @click="natPick(item)"
-                                             @mouseenter="natActiveIdx = idx"
-                                             :style="natActiveIdx===idx ? 'background:#EEF2FF;' : (nationality===item.value ? 'background:#F5F3FF;' : '')"
-                                             style="padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .1s;">
-                                            <span x-text="item.flag" style="font-size:16px;width:24px;text-align:center;flex-shrink:0;"></span>
-                                            <span x-text="item.label" style="font-size:13px;font-weight:500;color:#111827;flex:1;"></span>
-                                            <i x-show="nationality===item.value" class="fas fa-check" style="color:#6366F1;font-size:10px;flex-shrink:0;"></i>
-                                        </div>
-                                    </template>
-                                    <div x-show="natFiltered.length===0" style="padding:20px;text-align:center;font-size:13px;color:#9CA3AF;">
-                                        No results for "<span x-text="natQuery"></span>"
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
+                        <select name="nationality" x-model="nationality"
+                                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;cursor:pointer;">
+                            <option value="">— Select nationality —</option>
+                            <option value="Afghan">🇦🇫 Afghan</option>
+                            <option value="Albanian">🇦🇱 Albanian</option>
+                            <option value="Algerian">🇩🇿 Algerian</option>
+                            <option value="American">🇺🇸 American</option>
+                            <option value="Argentinian">🇦🇷 Argentinian</option>
+                            <option value="Australian">🇦🇺 Australian</option>
+                            <option value="Austrian">🇦🇹 Austrian</option>
+                            <option value="Bahraini">🇧🇭 Bahraini</option>
+                            <option value="Bangladeshi">🇧🇩 Bangladeshi</option>
+                            <option value="Belgian">🇧🇪 Belgian</option>
+                            <option value="Brazilian">🇧🇷 Brazilian</option>
+                            <option value="British">🇬🇧 British</option>
+                            <option value="Bulgarian">🇧🇬 Bulgarian</option>
+                            <option value="Cambodian">🇰🇭 Cambodian</option>
+                            <option value="Canadian">🇨🇦 Canadian</option>
+                            <option value="Chilean">🇨🇱 Chilean</option>
+                            <option value="Chinese">🇨🇳 Chinese</option>
+                            <option value="Colombian">🇨🇴 Colombian</option>
+                            <option value="Croatian">🇭🇷 Croatian</option>
+                            <option value="Czech">🇨🇿 Czech</option>
+                            <option value="Danish">🇩🇰 Danish</option>
+                            <option value="Dutch">🇳🇱 Dutch</option>
+                            <option value="Egyptian">🇪🇬 Egyptian</option>
+                            <option value="Emirati">🇦🇪 Emirati</option>
+                            <option value="Estonian">🇪🇪 Estonian</option>
+                            <option value="Ethiopian">🇪🇹 Ethiopian</option>
+                            <option value="Filipino">🇵🇭 Filipino</option>
+                            <option value="Finnish">🇫🇮 Finnish</option>
+                            <option value="French">🇫🇷 French</option>
+                            <option value="German">🇩🇪 German</option>
+                            <option value="Ghanaian">🇬🇭 Ghanaian</option>
+                            <option value="Greek">🇬🇷 Greek</option>
+                            <option value="Hungarian">🇭🇺 Hungarian</option>
+                            <option value="Indian">🇮🇳 Indian</option>
+                            <option value="Indonesian">🇮🇩 Indonesian</option>
+                            <option value="Iranian">🇮🇷 Iranian</option>
+                            <option value="Iraqi">🇮🇶 Iraqi</option>
+                            <option value="Irish">🇮🇪 Irish</option>
+                            <option value="Israeli">🇮🇱 Israeli</option>
+                            <option value="Italian">🇮🇹 Italian</option>
+                            <option value="Japanese">🇯🇵 Japanese</option>
+                            <option value="Jordanian">🇯🇴 Jordanian</option>
+                            <option value="Kenyan">🇰🇪 Kenyan</option>
+                            <option value="Korean">🇰🇷 Korean</option>
+                            <option value="Kuwaiti">🇰🇼 Kuwaiti</option>
+                            <option value="Lebanese">🇱🇧 Lebanese</option>
+                            <option value="Libyan">🇱🇾 Libyan</option>
+                            <option value="Malaysian">🇲🇾 Malaysian</option>
+                            <option value="Mexican">🇲🇽 Mexican</option>
+                            <option value="Moroccan">🇲🇦 Moroccan</option>
+                            <option value="Nigerian">🇳🇬 Nigerian</option>
+                            <option value="Norwegian">🇳🇴 Norwegian</option>
+                            <option value="Omani">🇴🇲 Omani</option>
+                            <option value="Pakistani">🇵🇰 Pakistani</option>
+                            <option value="Palestinian">🇵🇸 Palestinian</option>
+                            <option value="Polish">🇵🇱 Polish</option>
+                            <option value="Portuguese">🇵🇹 Portuguese</option>
+                            <option value="Qatari">🇶🇦 Qatari</option>
+                            <option value="Romanian">🇷🇴 Romanian</option>
+                            <option value="Russian">🇷🇺 Russian</option>
+                            <option value="Saudi">🇸🇦 Saudi</option>
+                            <option value="Serbian">🇷🇸 Serbian</option>
+                            <option value="Singaporean">🇸🇬 Singaporean</option>
+                            <option value="South African">🇿🇦 South African</option>
+                            <option value="Spanish">🇪🇸 Spanish</option>
+                            <option value="Sri Lankan">🇱🇰 Sri Lankan</option>
+                            <option value="Sudanese">🇸🇩 Sudanese</option>
+                            <option value="Swedish">🇸🇪 Swedish</option>
+                            <option value="Swiss">🇨🇭 Swiss</option>
+                            <option value="Syrian">🇸🇾 Syrian</option>
+                            <option value="Thai">🇹🇭 Thai</option>
+                            <option value="Tunisian">🇹🇳 Tunisian</option>
+                            <option value="Turkish">🇹🇷 Turkish</option>
+                            <option value="Ukrainian">🇺🇦 Ukrainian</option>
+                            <option value="Yemeni">🇾🇪 Yemeni</option>
+                        </select>
                     </div>
 
                     <div>
@@ -1723,23 +1928,126 @@ function rolesTab() {
                     </div>
                     <div class="team-form-grid-2" style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;" x-data="{s1:false,s2:false}">
                         <div style="position:relative;">
-                            <input :type="s1?'text':'password'" name="password" placeholder="New password…"
-                                   style="width:100%;padding:9px 36px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;">
+                            <input :type="s1?'text':'password'" name="password" x-model="editPwd"
+                                   placeholder="New password…" autocomplete="new-password"
+                                   style="width:100%;padding:9px 36px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
+                                   :style="pwdMismatch ? 'border-color:#EF4444;' : ''">
                             <button type="button" x-on:click="s1=!s1" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9CA3AF;">
                                 <i :class="s1?'fa fa-eye-slash':'fa fa-eye'" style="font-size:13px;"></i>
                             </button>
                         </div>
                         <div style="position:relative;">
-                            <input :type="s2?'text':'password'" name="password_confirmation" placeholder="Confirm password"
-                                   style="width:100%;padding:9px 36px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;">
+                            <input :type="s2?'text':'password'" name="password_confirmation" x-model="editPwdConfirm"
+                                   placeholder="Confirm password" autocomplete="new-password"
+                                   style="width:100%;padding:9px 36px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
+                                   :style="pwdMismatch ? 'border-color:#EF4444;' : ''">
                             <button type="button" x-on:click="s2=!s2" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9CA3AF;">
                                 <i :class="s2?'fa fa-eye-slash':'fa fa-eye'" style="font-size:13px;"></i>
                             </button>
                         </div>
                     </div>
+                    <div x-show="pwdMismatch" style="padding:0 14px 12px;">
+                        <p style="font-size:11px;color:#EF4444;margin:0;display:flex;align-items:center;gap:5px;">
+                            <i class="fas fa-circle-exclamation" style="font-size:11px;"></i> Passwords do not match.
+                        </p>
+                    </div>
                 </div>
 
             </form>
+
+            {{-- MFA Security (outside main edit form — separate action routes) --}}
+            <div style="border:1.5px solid #F3F4F6;border-radius:12px;overflow:hidden;margin-top:4px;margin-bottom:4px;">
+                <div style="padding:10px 14px;background:#F9FAFB;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
+                    <div style="display:flex;align-items:center;gap:7px;">
+                        <i class="fas fa-shield-halved" style="font-size:11px;color:#6366F1;"></i>
+                        <span style="font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">MFA Security</span>
+                    </div>
+                    <template x-if="mfaEnabled">
+                        <span style="font-size:11px;font-weight:600;background:#EEF2FF;color:#4F46E5;padding:2px 9px;border-radius:6px;border:1px solid #C7D2FE;">
+                            <i class="fas fa-shield-halved" style="font-size:9px;margin-right:3px;"></i> Enabled
+                        </span>
+                    </template>
+                    <template x-if="!mfaEnabled && mfaRequired">
+                        <span style="font-size:11px;font-weight:600;background:#FFF7ED;color:#C2410C;padding:2px 9px;border-radius:6px;border:1px solid #FED7AA;">
+                            <i class="fas fa-clock" style="font-size:9px;margin-right:3px;"></i> Setup Pending
+                        </span>
+                    </template>
+                    <template x-if="!mfaEnabled && !mfaRequired">
+                        <span style="font-size:11px;font-weight:500;background:#F3F4F6;color:#9CA3AF;padding:2px 9px;border-radius:6px;border:1px solid #E5E7EB;">Off</span>
+                    </template>
+                </div>
+                <div style="padding:14px;">
+
+                    {{-- Inline feedback message --}}
+                    <div x-show="mfaMsg" x-transition
+                         :style="mfaMsgOk ? 'background:#ECFDF5;border:1px solid #A7F3D0;color:#065F46;' : 'background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;'"
+                         style="border-radius:8px;padding:9px 12px;margin-bottom:10px;display:flex;align-items:center;gap:7px;font-size:11px;font-weight:500;">
+                        <i :class="mfaMsgOk ? 'fas fa-circle-check' : 'fas fa-circle-xmark'" style="font-size:12px;flex-shrink:0;"></i>
+                        <span x-text="mfaMsg"></span>
+                    </div>
+
+                    {{-- Inline confirm bar (destructive actions) --}}
+                    <div x-show="mfaConfirm" x-transition
+                         style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                        <span style="font-size:12px;font-weight:600;color:#92400E;">
+                            <i class="fas fa-triangle-exclamation" style="font-size:11px;margin-right:4px;"></i>
+                            <span x-text="mfaConfirm==='reset' ? 'Reset MFA — user must re-enroll on next login.' : 'Disable MFA — user can log in with password only.'"></span>
+                        </span>
+                        <div style="display:flex;gap:7px;flex-shrink:0;">
+                            <button type="button" @click="mfaConfirm=''"
+                                    style="padding:5px 12px;background:#F3F4F6;border:1px solid #D1D5DB;border-radius:7px;font-size:11px;font-weight:600;color:#6B7280;cursor:pointer;">
+                                Cancel
+                            </button>
+                            <button type="button" @click="mfaFetch(mfaConfirm+'-mfa')" :disabled="mfaLoading"
+                                    style="padding:5px 12px;background:#DC2626;border:none;border-radius:7px;font-size:11px;font-weight:600;color:#fff;cursor:pointer;display:flex;align-items:center;gap:5px;">
+                                <i x-show="mfaLoading" class="fas fa-spinner fa-spin" style="font-size:10px;"></i>
+                                <span x-text="mfaLoading ? 'Working…' : 'Yes, confirm'"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- State: MFA enabled → Reset + Disable --}}
+                    <div x-show="mfaEnabled && !mfaConfirm" style="display:flex;gap:8px;">
+                        <button type="button" @click="mfaMsg=''; mfaConfirm='reset'" :disabled="mfaLoading"
+                                style="flex:1;padding:8px 12px;background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;font-size:12px;font-weight:600;color:#C2410C;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                            <i class="fas fa-rotate-right" style="font-size:11px;"></i> Reset MFA
+                        </button>
+                        <button type="button" @click="mfaMsg=''; mfaConfirm='disable'" :disabled="mfaLoading"
+                                style="flex:1;padding:8px 12px;background:#FEF2F2;border:1.5px solid #FECACA;border-radius:10px;font-size:12px;font-weight:600;color:#B91C1C;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                            <i class="fas fa-shield-halved" style="font-size:11px;"></i> Disable MFA
+                        </button>
+                    </div>
+
+                    {{-- State: required but not yet set up → info + cancel --}}
+                    <div x-show="!mfaEnabled && mfaRequired && !mfaConfirm">
+                        <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;padding:9px 12px;margin-bottom:10px;display:flex;align-items:center;gap:7px;">
+                            <i class="fas fa-clock" style="color:#F97316;font-size:12px;flex-shrink:0;"></i>
+                            <p style="font-size:11px;color:#92400E;margin:0;">MFA setup is required — this user will be redirected to MFA setup on their next login.</p>
+                        </div>
+                        <button type="button" @click="mfaFetch('cancel-mfa-requirement')" :disabled="mfaLoading"
+                                style="width:100%;padding:8px 12px;background:#F9FAFB;border:1.5px solid #E5E7EB;border-radius:10px;font-size:12px;font-weight:600;color:#6B7280;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                            <i x-show="!mfaLoading" class="fas fa-xmark" style="font-size:11px;"></i>
+                            <i x-show="mfaLoading" class="fas fa-spinner fa-spin" style="font-size:11px;"></i>
+                            <span x-text="mfaLoading ? 'Working…' : 'Cancel Requirement'"></span>
+                        </button>
+                    </div>
+
+                    {{-- State: no MFA at all → offer to require it --}}
+                    <div x-show="!mfaEnabled && !mfaRequired && !mfaConfirm">
+                        <div style="background:#F9FAFB;border:1px solid #E5E7EB;border-radius:8px;padding:9px 12px;margin-bottom:10px;">
+                            <p style="font-size:11px;color:#6B7280;margin:0;">This user has not set up two-factor authentication. You can require it for their next login.</p>
+                        </div>
+                        <button type="button" @click="mfaFetch('require-mfa')" :disabled="mfaLoading"
+                                style="width:100%;padding:8px 12px;background:#EEF2FF;border:1.5px solid #C7D2FE;border-radius:10px;font-size:12px;font-weight:600;color:#4F46E5;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+                            <i x-show="!mfaLoading" class="fas fa-shield-halved" style="font-size:11px;"></i>
+                            <i x-show="mfaLoading" class="fas fa-spinner fa-spin" style="font-size:11px;"></i>
+                            <span x-text="mfaLoading ? 'Working…' : 'Require MFA Setup'"></span>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
         </div>
 
         {{-- Footer --}}
@@ -1758,48 +2066,6 @@ function rolesTab() {
     </div>
 </div>
 
-<script>
-window.nationalityList = [
-    {value:'Afghan',flag:'🇦🇫',label:'Afghan'},{value:'Albanian',flag:'🇦🇱',label:'Albanian'},
-    {value:'Algerian',flag:'🇩🇿',label:'Algerian'},{value:'American',flag:'🇺🇸',label:'American'},
-    {value:'Argentinian',flag:'🇦🇷',label:'Argentinian'},{value:'Australian',flag:'🇦🇺',label:'Australian'},
-    {value:'Austrian',flag:'🇦🇹',label:'Austrian'},{value:'Bahraini',flag:'🇧🇭',label:'Bahraini'},
-    {value:'Bangladeshi',flag:'🇧🇩',label:'Bangladeshi'},{value:'Belgian',flag:'🇧🇪',label:'Belgian'},
-    {value:'Brazilian',flag:'🇧🇷',label:'Brazilian'},{value:'British',flag:'🇬🇧',label:'British'},
-    {value:'Bulgarian',flag:'🇧🇬',label:'Bulgarian'},{value:'Cambodian',flag:'🇰🇭',label:'Cambodian'},
-    {value:'Canadian',flag:'🇨🇦',label:'Canadian'},{value:'Chilean',flag:'🇨🇱',label:'Chilean'},
-    {value:'Chinese',flag:'🇨🇳',label:'Chinese'},{value:'Colombian',flag:'🇨🇴',label:'Colombian'},
-    {value:'Croatian',flag:'🇭🇷',label:'Croatian'},{value:'Czech',flag:'🇨🇿',label:'Czech'},
-    {value:'Danish',flag:'🇩🇰',label:'Danish'},{value:'Dutch',flag:'🇳🇱',label:'Dutch'},
-    {value:'Egyptian',flag:'🇪🇬',label:'Egyptian'},{value:'Emirati',flag:'🇦🇪',label:'Emirati'},
-    {value:'Estonian',flag:'🇪🇪',label:'Estonian'},{value:'Ethiopian',flag:'🇪🇹',label:'Ethiopian'},
-    {value:'Filipino',flag:'🇵🇭',label:'Filipino'},{value:'Finnish',flag:'🇫🇮',label:'Finnish'},
-    {value:'French',flag:'🇫🇷',label:'French'},{value:'German',flag:'🇩🇪',label:'German'},
-    {value:'Ghanaian',flag:'🇬🇭',label:'Ghanaian'},{value:'Greek',flag:'🇬🇷',label:'Greek'},
-    {value:'Hungarian',flag:'🇭🇺',label:'Hungarian'},{value:'Indian',flag:'🇮🇳',label:'Indian'},
-    {value:'Indonesian',flag:'🇮🇩',label:'Indonesian'},{value:'Iranian',flag:'🇮🇷',label:'Iranian'},
-    {value:'Iraqi',flag:'🇮🇶',label:'Iraqi'},{value:'Irish',flag:'🇮🇪',label:'Irish'},
-    {value:'Israeli',flag:'🇮🇱',label:'Israeli'},{value:'Italian',flag:'🇮🇹',label:'Italian'},
-    {value:'Japanese',flag:'🇯🇵',label:'Japanese'},{value:'Jordanian',flag:'🇯🇴',label:'Jordanian'},
-    {value:'Kenyan',flag:'🇰🇪',label:'Kenyan'},{value:'Korean',flag:'🇰🇷',label:'Korean'},
-    {value:'Kuwaiti',flag:'🇰🇼',label:'Kuwaiti'},{value:'Lebanese',flag:'🇱🇧',label:'Lebanese'},
-    {value:'Libyan',flag:'🇱🇾',label:'Libyan'},{value:'Malaysian',flag:'🇲🇾',label:'Malaysian'},
-    {value:'Mexican',flag:'🇲🇽',label:'Mexican'},{value:'Moroccan',flag:'🇲🇦',label:'Moroccan'},
-    {value:'Nigerian',flag:'🇳🇬',label:'Nigerian'},{value:'Norwegian',flag:'🇳🇴',label:'Norwegian'},
-    {value:'Omani',flag:'🇴🇲',label:'Omani'},{value:'Pakistani',flag:'🇵🇰',label:'Pakistani'},
-    {value:'Palestinian',flag:'🇵🇸',label:'Palestinian'},{value:'Polish',flag:'🇵🇱',label:'Polish'},
-    {value:'Portuguese',flag:'🇵🇹',label:'Portuguese'},{value:'Qatari',flag:'🇶🇦',label:'Qatari'},
-    {value:'Romanian',flag:'🇷🇴',label:'Romanian'},{value:'Russian',flag:'🇷🇺',label:'Russian'},
-    {value:'Saudi',flag:'🇸🇦',label:'Saudi'},{value:'Serbian',flag:'🇷🇸',label:'Serbian'},
-    {value:'Singaporean',flag:'🇸🇬',label:'Singaporean'},{value:'South African',flag:'🇿🇦',label:'South African'},
-    {value:'Spanish',flag:'🇪🇸',label:'Spanish'},{value:'Sri Lankan',flag:'🇱🇰',label:'Sri Lankan'},
-    {value:'Sudanese',flag:'🇸🇩',label:'Sudanese'},{value:'Swedish',flag:'🇸🇪',label:'Swedish'},
-    {value:'Swiss',flag:'🇨🇭',label:'Swiss'},{value:'Syrian',flag:'🇸🇾',label:'Syrian'},
-    {value:'Thai',flag:'🇹🇭',label:'Thai'},{value:'Tunisian',flag:'🇹🇳',label:'Tunisian'},
-    {value:'Turkish',flag:'🇹🇷',label:'Turkish'},{value:'Ukrainian',flag:'🇺🇦',label:'Ukrainian'},
-    {value:'Yemeni',flag:'🇾🇪',label:'Yemeni'},
-];
-</script>
 
 <script>
 /* ─── Country dial-code list ─── */
@@ -1996,6 +2262,16 @@ function editUserModal() {
         status:       '',
         hourlyRate:   '',
         avatarPreview: null,
+        removeAvatar: false,
+        mfaEnabled:   false,
+        mfaRequired:  false,
+        mfaLoading:   false,
+        mfaMsg:       '',
+        mfaMsgOk:     true,
+        mfaConfirm:   '', // 'reset' | 'disable' | ''
+        editPwd:         '',
+        editPwdConfirm:  '',
+        pwdMismatch:     false,
         /* phone picker */
         dialCode:      '+971',
         dialFlag:      '🇦🇪',
@@ -2021,29 +2297,32 @@ function editUserModal() {
             return n ? this.dialCode + n : '';
         },
         pickDial(c) { this.dialCode = c.dial; this.dialFlag = c.flag; this.phoneSearch = ''; this.phoneDropOpen = false; },
-        natQuery: '', natOpen: false, natActiveIdx: -1,
-        natDropTop: 0, natDropLeft: 0, natDropWidth: 0,
-        get natFiltered() {
-            const q = this.natQuery.trim().toLowerCase();
-            return q ? window.nationalityList.filter(n => n.label.toLowerCase().includes(q)) : window.nationalityList;
-        },
-        natOpenDrop() {
-            const rect = this.$refs.natTrigger.getBoundingClientRect();
-            this.natDropTop = rect.bottom + window.scrollY + 4;
-            this.natDropLeft = rect.left + window.scrollX;
-            this.natDropWidth = rect.width;
-            this.natOpen = true; this.natActiveIdx = -1;
-        },
-        natPick(item) {
-            this.nationality = item.value; this.natQuery = ''; this.natOpen = false; this.natActiveIdx = -1;
-        },
-        natOnKey(e) {
-            if (!this.natOpen) { this.natOpenDrop(); return; }
-            const len = this.natFiltered.length;
-            if (e.key === 'ArrowDown') { e.preventDefault(); this.natActiveIdx = (this.natActiveIdx + 1) % len; this.$nextTick(() => { const el = document.getElementById('nat-opt-'+this.natActiveIdx); if(el) el.scrollIntoView({block:'nearest'}); }); }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); this.natActiveIdx = (this.natActiveIdx - 1 + len) % len; this.$nextTick(() => { const el = document.getElementById('nat-opt-'+this.natActiveIdx); if(el) el.scrollIntoView({block:'nearest'}); }); }
-            else if (e.key === 'Enter') { e.preventDefault(); if (this.natActiveIdx >= 0 && this.natFiltered[this.natActiveIdx]) this.natPick(this.natFiltered[this.natActiveIdx]); }
-            else if (e.key === 'Escape') { this.natOpen = false; this.natActiveIdx = -1; }
+
+        async mfaFetch(action) {
+            this.mfaLoading = true;
+            this.mfaMsg = '';
+            this.mfaConfirm = '';
+            try {
+                const res = await fetch(`/admin/users/${this.userId}/${action}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').getAttribute('content'),
+                        'Accept': 'application/json',
+                    },
+                });
+                const data = await res.json();
+                this.mfaMsgOk = data.ok;
+                this.mfaMsg   = data.message;
+                if (data.ok) {
+                    this.mfaEnabled  = !!data.mfa_enabled;
+                    this.mfaRequired = !!data.mfa_required;
+                }
+            } catch (e) {
+                this.mfaMsgOk = false;
+                this.mfaMsg   = 'Something went wrong. Please try again.';
+            } finally {
+                this.mfaLoading = false;
+            }
         },
 
         open(u) {
@@ -2057,7 +2336,16 @@ function editUserModal() {
             this.role          = u.role;
             this.status        = u.status;
             this.avatarPreview = u.avatar || null;
+            this.removeAvatar  = false;
             this.hourlyRate    = u.hourly_rate || '';
+            this.mfaEnabled    = !!u.mfa_enabled;
+            this.mfaRequired   = !!u.mfa_required;
+            this.mfaLoading    = false;
+            this.mfaMsg        = '';
+            this.mfaConfirm    = '';
+            this.editPwd        = '';
+            this.editPwdConfirm = '';
+            this.pwdMismatch    = false;
             this.saving        = false;
             /* parse phone into dial-code + local */
             const pp = window.parsePhoneNumber(u.phone || '');
@@ -2122,7 +2410,7 @@ function editUserModal() {
         {{-- Scrollable body --}}
         <div style="overflow-y:auto;flex:1;padding:20px 24px;">
             <form id="add-user-form" method="POST" action="{{ route('admin.users.store') }}"
-                  enctype="multipart/form-data" @submit="saving = true">
+                  enctype="multipart/form-data" @submit="handleSubmit($event)">
                 @csrf
 
                 {{-- Avatar --}}
@@ -2263,49 +2551,85 @@ function editUserModal() {
                     </div>
                     <div>
                         <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:5px;">Nationality</label>
-                        <input type="hidden" name="nationality" :value="nationality">
-                        <div x-ref="natTrigger"
-                             @click="natOpenDrop(); $nextTick(()=>$refs.natInput.focus())"
-                             @click.outside="natOpen=false; natQuery=''"
-                             style="display:flex;align-items:center;gap:8px;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;cursor:pointer;background:#F9FAFB;transition:border-color .15s;box-sizing:border-box;"
-                             :style="natOpen ? 'border-color:#6366F1;box-shadow:0 0 0 3px rgba(99,102,241,0.1);' : ''">
-                            <span x-text="nationalityList.find(n=>n.value===nationality)?.flag ?? '🌍'"
-                                  style="font-size:15px;flex-shrink:0;line-height:1;width:20px;text-align:center;"></span>
-                            <input type="text" x-ref="natInput" x-model="natQuery"
-                                   :placeholder="nationality || 'Search nationality…'"
-                                   @focus="natOpenDrop()" @input="natOpen=true; natActiveIdx=-1"
-                                   @keydown="natOnKey($event)"
-                                   style="flex:1;border:none;outline:none;font-size:13px;color:#111827;background:transparent;min-width:0;cursor:pointer;"
-                                   autocomplete="off" spellcheck="false">
-                            <button type="button" x-show="nationality" @click.stop="nationality=''; natQuery=''; natOpen=false;"
-                                    style="background:none;border:none;cursor:pointer;color:#9CA3AF;padding:0;font-size:16px;line-height:1;flex-shrink:0;" title="Clear">×</button>
-                            <i class="fas fa-chevron-down" style="color:#9CA3AF;font-size:10px;flex-shrink:0;transition:transform .15s;"
-                               :style="natOpen ? 'transform:rotate(180deg)' : ''"></i>
-                        </div>
-                        <template x-teleport="body">
-                            <div x-show="natOpen"
-                                 x-transition:enter="transition ease-out duration-100"
-                                 x-transition:enter-start="opacity-0 -translate-y-1"
-                                 x-transition:enter-end="opacity-100 translate-y-0"
-                                 :style="`position:absolute;top:${natDropTop}px;left:${natDropLeft}px;width:${natDropWidth}px;z-index:99999;background:#fff;border:1.5px solid #E5E7EB;border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,0.12);overflow:hidden;`">
-                                <div style="max-height:220px;overflow-y:auto;">
-                                    <template x-for="(item, idx) in natFiltered" :key="item.value">
-                                        <div :id="'nat-opt-'+idx"
-                                             @click="natPick(item)"
-                                             @mouseenter="natActiveIdx = idx"
-                                             :style="natActiveIdx===idx ? 'background:#EEF2FF;' : (nationality===item.value ? 'background:#F5F3FF;' : '')"
-                                             style="padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .1s;">
-                                            <span x-text="item.flag" style="font-size:16px;width:24px;text-align:center;flex-shrink:0;"></span>
-                                            <span x-text="item.label" style="font-size:13px;font-weight:500;color:#111827;flex:1;"></span>
-                                            <i x-show="nationality===item.value" class="fas fa-check" style="color:#6366F1;font-size:10px;flex-shrink:0;"></i>
-                                        </div>
-                                    </template>
-                                    <div x-show="natFiltered.length===0" style="padding:20px;text-align:center;font-size:13px;color:#9CA3AF;">
-                                        No results for "<span x-text="natQuery"></span>"
-                                    </div>
-                                </div>
-                            </div>
-                        </template>
+                        <select name="nationality" x-model="nationality"
+                                style="width:100%;padding:9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;cursor:pointer;">
+                            <option value="">— Select nationality —</option>
+                            <option value="Afghan">🇦🇫 Afghan</option>
+                            <option value="Albanian">🇦🇱 Albanian</option>
+                            <option value="Algerian">🇩🇿 Algerian</option>
+                            <option value="American">🇺🇸 American</option>
+                            <option value="Argentinian">🇦🇷 Argentinian</option>
+                            <option value="Australian">🇦🇺 Australian</option>
+                            <option value="Austrian">🇦🇹 Austrian</option>
+                            <option value="Bahraini">🇧🇭 Bahraini</option>
+                            <option value="Bangladeshi">🇧🇩 Bangladeshi</option>
+                            <option value="Belgian">🇧🇪 Belgian</option>
+                            <option value="Brazilian">🇧🇷 Brazilian</option>
+                            <option value="British">🇬🇧 British</option>
+                            <option value="Bulgarian">🇧🇬 Bulgarian</option>
+                            <option value="Cambodian">🇰🇭 Cambodian</option>
+                            <option value="Canadian">🇨🇦 Canadian</option>
+                            <option value="Chilean">🇨🇱 Chilean</option>
+                            <option value="Chinese">🇨🇳 Chinese</option>
+                            <option value="Colombian">🇨🇴 Colombian</option>
+                            <option value="Croatian">🇭🇷 Croatian</option>
+                            <option value="Czech">🇨🇿 Czech</option>
+                            <option value="Danish">🇩🇰 Danish</option>
+                            <option value="Dutch">🇳🇱 Dutch</option>
+                            <option value="Egyptian">🇪🇬 Egyptian</option>
+                            <option value="Emirati">🇦🇪 Emirati</option>
+                            <option value="Estonian">🇪🇪 Estonian</option>
+                            <option value="Ethiopian">🇪🇹 Ethiopian</option>
+                            <option value="Filipino">🇵🇭 Filipino</option>
+                            <option value="Finnish">🇫🇮 Finnish</option>
+                            <option value="French">🇫🇷 French</option>
+                            <option value="German">🇩🇪 German</option>
+                            <option value="Ghanaian">🇬🇭 Ghanaian</option>
+                            <option value="Greek">🇬🇷 Greek</option>
+                            <option value="Hungarian">🇭🇺 Hungarian</option>
+                            <option value="Indian">🇮🇳 Indian</option>
+                            <option value="Indonesian">🇮🇩 Indonesian</option>
+                            <option value="Iranian">🇮🇷 Iranian</option>
+                            <option value="Iraqi">🇮🇶 Iraqi</option>
+                            <option value="Irish">🇮🇪 Irish</option>
+                            <option value="Israeli">🇮🇱 Israeli</option>
+                            <option value="Italian">🇮🇹 Italian</option>
+                            <option value="Japanese">🇯🇵 Japanese</option>
+                            <option value="Jordanian">🇯🇴 Jordanian</option>
+                            <option value="Kenyan">🇰🇪 Kenyan</option>
+                            <option value="Korean">🇰🇷 Korean</option>
+                            <option value="Kuwaiti">🇰🇼 Kuwaiti</option>
+                            <option value="Lebanese">🇱🇧 Lebanese</option>
+                            <option value="Libyan">🇱🇾 Libyan</option>
+                            <option value="Malaysian">🇲🇾 Malaysian</option>
+                            <option value="Mexican">🇲🇽 Mexican</option>
+                            <option value="Moroccan">🇲🇦 Moroccan</option>
+                            <option value="Nigerian">🇳🇬 Nigerian</option>
+                            <option value="Norwegian">🇳🇴 Norwegian</option>
+                            <option value="Omani">🇴🇲 Omani</option>
+                            <option value="Pakistani">🇵🇰 Pakistani</option>
+                            <option value="Palestinian">🇵🇸 Palestinian</option>
+                            <option value="Polish">🇵🇱 Polish</option>
+                            <option value="Portuguese">🇵🇹 Portuguese</option>
+                            <option value="Qatari">🇶🇦 Qatari</option>
+                            <option value="Romanian">🇷🇴 Romanian</option>
+                            <option value="Russian">🇷🇺 Russian</option>
+                            <option value="Saudi">🇸🇦 Saudi</option>
+                            <option value="Serbian">🇷🇸 Serbian</option>
+                            <option value="Singaporean">🇸🇬 Singaporean</option>
+                            <option value="South African">🇿🇦 South African</option>
+                            <option value="Spanish">🇪🇸 Spanish</option>
+                            <option value="Sri Lankan">🇱🇰 Sri Lankan</option>
+                            <option value="Sudanese">🇸🇩 Sudanese</option>
+                            <option value="Swedish">🇸🇪 Swedish</option>
+                            <option value="Swiss">🇨🇭 Swiss</option>
+                            <option value="Syrian">🇸🇾 Syrian</option>
+                            <option value="Thai">🇹🇭 Thai</option>
+                            <option value="Tunisian">🇹🇳 Tunisian</option>
+                            <option value="Turkish">🇹🇷 Turkish</option>
+                            <option value="Ukrainian">🇺🇦 Ukrainian</option>
+                            <option value="Yemeni">🇾🇪 Yemeni</option>
+                        </select>
                     </div>
                 </div>
 
@@ -2316,9 +2640,12 @@ function editUserModal() {
                         <span style="font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;">Password</span>
                         <span style="font-size:11px;color:#9CA3AF;font-weight:400;text-transform:none;letter-spacing:0;">— required</span>
                     </div>
+                    <p style="font-size:11px;color:#9CA3AF;margin:10px 14px 0;">
+                        <i class="fa fa-circle-info" style="margin-right:4px;"></i>{{ $passwordRequirementText }}
+                    </p>
                     <div class="team-form-grid-2" style="padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px;" x-data="{s1:false,s2:false}">
                         <div style="position:relative;">
-                            <input :type="s1?'text':'password'" name="password" required placeholder="Min. 8 characters"
+                            <input :type="s1?'text':'password'" name="password" required placeholder="Min. {{ $minPasswordLength }} characters"
                                    style="width:100%;padding:9px 36px 9px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;">
                             <button type="button" x-on:click="s1=!s1" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9CA3AF;">
                                 <i :class="s1?'fa fa-eye-slash':'fa fa-eye'" style="font-size:13px;"></i>
@@ -2332,6 +2659,7 @@ function editUserModal() {
                             </button>
                         </div>
                     </div>
+                    <p x-show="pwdError" x-text="pwdError" style="color:#DC2626;font-size:12px;font-weight:600;margin:0 14px 12px;"></p>
                 </div>
 
                 {{-- MFA Security --}}
@@ -2388,7 +2716,7 @@ function editUserModal() {
                                 <i class="fa {{ $grp['icon'] }}" style="font-size:10px;color:{{ $grp['color'] }};"></i>
                                 <span style="font-size:10px;font-weight:700;color:{{ $grp['color'] }};text-transform:uppercase;letter-spacing:.05em;">{{ $grpName }}</span>
                             </div>
-                            <div style="display:grid;grid-template-columns:1fr 1fr;">
+                            <div class="mob-role-perm-grid" style="display:grid;grid-template-columns:1fr 1fr;">
                                 @foreach($grp['perms'] as $pk => $plabel)
                                 <label style="display:flex;align-items:center;gap:8px;padding:9px 14px;cursor:pointer;border-top:1px solid #F9FAFB;{{ $loop->index % 2 === 1 ? 'border-left:1px solid #F9FAFB;' : '' }}"
                                        onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
@@ -2439,30 +2767,7 @@ function addUserModal() {
         perms:        [...defaultPerms],
         avatarPreview: null,
         nationality:   '',
-        natQuery: '', natOpen: false, natActiveIdx: -1,
-        natDropTop: 0, natDropLeft: 0, natDropWidth: 0,
-        get natFiltered() {
-            const q = this.natQuery.trim().toLowerCase();
-            return q ? window.nationalityList.filter(n => n.label.toLowerCase().includes(q)) : window.nationalityList;
-        },
-        natOpenDrop() {
-            const rect = this.$refs.natTrigger.getBoundingClientRect();
-            this.natDropTop = rect.bottom + window.scrollY + 4;
-            this.natDropLeft = rect.left + window.scrollX;
-            this.natDropWidth = rect.width;
-            this.natOpen = true; this.natActiveIdx = -1;
-        },
-        natPick(item) {
-            this.nationality = item.value; this.natQuery = ''; this.natOpen = false; this.natActiveIdx = -1;
-        },
-        natOnKey(e) {
-            if (!this.natOpen) { this.natOpenDrop(); return; }
-            const len = this.natFiltered.length;
-            if (e.key === 'ArrowDown') { e.preventDefault(); this.natActiveIdx = (this.natActiveIdx + 1) % len; this.$nextTick(() => { const el = document.getElementById('nat-opt-'+this.natActiveIdx); if(el) el.scrollIntoView({block:'nearest'}); }); }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); this.natActiveIdx = (this.natActiveIdx - 1 + len) % len; this.$nextTick(() => { const el = document.getElementById('nat-opt-'+this.natActiveIdx); if(el) el.scrollIntoView({block:'nearest'}); }); }
-            else if (e.key === 'Enter') { e.preventDefault(); if (this.natActiveIdx >= 0 && this.natFiltered[this.natActiveIdx]) this.natPick(this.natFiltered[this.natActiveIdx]); }
-            else if (e.key === 'Escape') { this.natOpen = false; this.natActiveIdx = -1; }
-        },
+        pwdError:      '',
 
         open() {
             this.show          = true;
@@ -2472,8 +2777,33 @@ function addUserModal() {
             this.perms         = [...defaultPerms];
             this.avatarPreview = null;
             this.nationality   = '';
-            this.natQuery = ''; this.natOpen = false; this.natActiveIdx = -1;
+            this.pwdError      = '';
             document.body.style.overflow = 'hidden';
+        },
+
+        handleSubmit(e) {
+            const form    = e.target;
+            const pwd     = form.password.value;
+            const confirm = form.password_confirmation.value;
+            const minLen  = {{ (int) $minPasswordLength }};
+            const strong  = {{ $requireStrongPassword ? 'true' : 'false' }};
+
+            this.pwdError = '';
+            if (pwd.length < minLen) {
+                this.pwdError = `Password must be at least ${minLen} characters.`;
+            } else if (strong && !(/[a-z]/.test(pwd) && /[A-Z]/.test(pwd) && /\d/.test(pwd) && /[^A-Za-z0-9]/.test(pwd))) {
+                this.pwdError = 'Password must contain an uppercase letter, a lowercase letter, a number, and a special character.';
+            } else if (pwd !== confirm) {
+                this.pwdError = 'Passwords do not match.';
+            }
+
+            if (this.pwdError) {
+                e.preventDefault();
+                this.saving = false;
+                return;
+            }
+
+            this.saving = true;
         },
 
         close() {
@@ -2516,7 +2846,7 @@ function closePermanentDeleteConfirm() {
 </script>
 
 {{-- Delete confirmation modal --}}
-<div id="delete-confirm-modal"
+<div id="delete-confirm-modal" class="mob-confirm-modal"
      style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;"
      onclick="if(event.target===this)closeDeleteConfirm()">
     <div style="background:#fff;border-radius:16px;padding:28px 28px 24px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
@@ -2555,7 +2885,7 @@ function closePermanentDeleteConfirm() {
 </div>
 
 {{-- Permanent Delete confirmation modal --}}
-<div id="permanent-delete-modal"
+<div id="permanent-delete-modal" class="mob-confirm-modal"
      style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);align-items:center;justify-content:center;"
      onclick="if(event.target===this)closePermanentDeleteConfirm()">
     <div style="background:#fff;border-radius:16px;padding:28px 28px 24px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,0.25);">
@@ -2600,7 +2930,7 @@ function closePermanentDeleteConfirm() {
 </div>
 
 {{-- Transfer Tasks Modal --}}
-<div id="transfer-modal"
+<div id="transfer-modal" class="mob-confirm-modal"
      style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;"
      onclick="if(event.target===this)closeTransferModal()">
     <div style="background:#fff;border-radius:16px;padding:28px 28px 24px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
@@ -2612,7 +2942,7 @@ function closePermanentDeleteConfirm() {
                 <p style="font-size:15px;font-weight:700;color:#111827;margin:0;">Transfer Tasks</p>
                 <p id="transfer-subtitle" style="font-size:12px;color:#9CA3AF;margin:0;">Move all pending tasks to another member</p>
             </div>
-            <button type="button" onclick="closeTransferModal()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:18px;line-height:1;">×</button>
+            <button type="button" onclick="closeTransferModal()" class="mob-modal-x" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:18px;line-height:1;">×</button>
         </div>
 
         <form id="transfer-form" method="POST">
@@ -2647,7 +2977,7 @@ function closePermanentDeleteConfirm() {
 </div>
 
 {{-- Clone User Modal --}}
-<div id="clone-modal"
+<div id="clone-modal" class="mob-confirm-modal"
      style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;"
      onclick="if(event.target===this)closeCloneModal()">
     <div style="background:#fff;border-radius:16px;padding:28px 28px 24px;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.2);max-height:90vh;overflow-y:auto;">
@@ -2659,7 +2989,7 @@ function closePermanentDeleteConfirm() {
                 <p style="font-size:15px;font-weight:700;color:#111827;margin:0;">Clone User</p>
                 <p id="clone-subtitle" style="font-size:12px;color:#9CA3AF;margin:0;">Creates a new account with the same role & permissions — no tasks assigned</p>
             </div>
-            <button type="button" onclick="closeCloneModal()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:20px;line-height:1;">×</button>
+            <button type="button" onclick="closeCloneModal()" class="mob-modal-x" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:20px;line-height:1;">×</button>
         </div>
 
         {{-- Source badge --}}
@@ -2769,16 +3099,18 @@ let _openActDrop = null;
 function toggleActDrop(btn, id) {
     const drop = document.getElementById(id);
     if (!drop) return;
-    // If this exact drop is already open, close it
     if (_openActDrop === drop) { closeActDrop(); return; }
-    // Close any other open drop
     closeActDrop();
-    // Position under the button using fixed coords
     const r = btn.getBoundingClientRect();
-    drop.style.top   = (r.bottom + 6) + 'px';
-    drop.style.right = (window.innerWidth - r.right) + 'px';
-    drop.style.left  = 'auto';
+    // Show offscreen first so we can measure the real height
+    drop.style.top     = '-9999px';
+    drop.style.right   = (window.innerWidth - r.right) + 'px';
+    drop.style.left    = 'auto';
     drop.style.display = 'block';
+    const dropH     = drop.offsetHeight;
+    const spaceBelow = window.innerHeight - r.bottom;
+    // Flip upward if it won't fit below
+    drop.style.top = (spaceBelow >= dropH + 10 ? r.bottom + 6 : r.top - dropH - 6) + 'px';
     _openActDrop = drop;
 }
 

@@ -10,16 +10,15 @@
     <link rel="icon" type="image/png" href="{{ Storage::url($appSettings['favicon_path']) }}">
     @endif
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/inter.css">
     <link rel="stylesheet" href="/css/fa-all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.14.1/dist/cdn.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <script defer src="/js/alpine-collapse.min.js"></script>
+    <script defer src="/js/alpine.min.js"></script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     @stack('styles')
+    @stack('head_scripts')
 
     <style>
         * { box-sizing: border-box; }
@@ -28,7 +27,7 @@
 
         /* Layout */
         .app-shell   { display: flex; height: 100vh; overflow: hidden; }
-        .app-sidebar { width: 240px; min-width: 240px; background: #fff; border-right: 1px solid #E5E7EB; display: flex; flex-direction: column; overflow-y: auto; transition: transform 0.25s ease; z-index: 50; }
+        .app-sidebar { width: 240px; min-width: 240px; background: #fff; border-right: 1px solid #E5E7EB; display: flex; flex-direction: column; overflow: hidden; transition: transform 0.25s ease; z-index: 50; }
         .app-main    { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
         .app-topbar  { height: 56px; background: #fff; border-bottom: 1px solid #E5E7EB; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; flex-shrink: 0; }
         .app-content { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 16px; }
@@ -37,13 +36,58 @@
         .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 40; }
         .hamburger-btn   { display: none; width: 36px; height: 36px; border-radius: 8px; background: #F3F4F6; border: none; cursor: pointer; align-items: center; justify-content: center; color: #6B7280; font-size: 14px; flex-shrink: 0; margin-right: 8px; }
 
+        /* Mobile bottom tab bar */
+        .mobile-bottom-nav {
+            display: none; position: fixed; left: 0; right: 0; bottom: 0; height: 78px;
+            padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
+            background: #fff; border-radius: 24px 24px 0 0; z-index: 100;
+            box-shadow: 0 -6px 24px rgba(20, 20, 40, 0.10);
+            align-items: stretch;
+            /* circular notch cut out of the top center for the FAB */
+            -webkit-mask: radial-gradient(circle 37px at 50% 0px, transparent 36px, #000 37px);
+            mask: radial-gradient(circle 37px at 50% 0px, transparent 36px, #000 37px);
+        }
+        .mbn-item {
+            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 5px; text-decoration: none; color: #8b909c; font-size: 12px; font-weight: 600;
+            position: relative; background: none; border: none; cursor: pointer;
+            font-family: 'Inter', sans-serif;
+        }
+        .mbn-item i { font-size: 19px; transition: transform .15s ease; }
+        .mbn-item:hover { color: #5B54D9; }
+        .mbn-item.active { color: #5B54D9; font-weight: 700; }
+        .mbn-item.active i { transform: translateY(-1px) scale(1.08); }
+        /* central gap under the FAB */
+        .mbn-item:nth-of-type(2) { margin-right: 34px; }
+        .mbn-item:nth-of-type(3) { margin-left: 34px; }
+        .mbn-badge {
+            position: absolute; top: 2px; right: calc(50% - 20px); min-width: 15px; height: 15px;
+            background: #EF4444; border-radius: 999px; color: #fff; font-size: 9px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center; padding: 0 3px; border: 2px solid #fff;
+            line-height: 1;
+        }
+        .mbn-fab {
+            display: none;
+            position: fixed; left: 50%; bottom: calc(52px + env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            width: 58px; height: 58px; border-radius: 50%; border: none;
+            background: #5B54D9; color: #fff; font-size: 24px;
+            place-items: center;
+            box-shadow: 0 8px 20px rgba(91, 84, 217, 0.4);
+            cursor: pointer; z-index: 101;
+        }
+        .mbn-fab:hover { background: #4a43c4; }
+
         @media (max-width: 768px) {
             .app-sidebar  { position: fixed; top: 0; left: 0; height: 100%; transform: translateX(-100%); }
             .app-sidebar.sidebar-open { transform: translateX(0); }
             .sidebar-overlay.overlay-open { display: block; }
             .hamburger-btn { display: flex; }
-            .app-content { padding: 12px; }
+            .app-content { padding: 12px; padding-bottom: 98px; }
             .topbar-search { display: none !important; }
+            .mobile-bottom-nav { display: flex; }
+            .mbn-fab { display: grid; }
+            .app-copyright { display: none !important; }
         }
 
         @media (min-width: 769px) {
@@ -60,7 +104,11 @@
         .sidebar-company   { display: flex; align-items: center; justify-content: space-between; width: 100%; font-size: 13px; font-weight: 500; color: #374151; cursor: pointer; background: none; border: none; padding: 0; }
 
         /* Sidebar nav */
-        .sidebar-nav { flex: 1; padding: 12px; }
+        .sidebar-nav { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; }
+        .sidebar-nav::-webkit-scrollbar { width: 3px; }
+        .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-nav::-webkit-scrollbar-thumb { background: #E5E7EB; border-radius: 99px; }
+        .sidebar-nav::-webkit-scrollbar-thumb:hover { background: #C7D2FE; }
         .sidebar-section { font-size: 10px; font-weight: 600; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.08em; padding: 16px 8px 4px; }
         .nav-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #6B7280; text-decoration: none; transition: background 0.15s, color 0.15s; margin-bottom: 2px; }
         .nav-item:hover { background: #F9FAFB; color: #111827; }
@@ -164,6 +212,8 @@
             }
             /* Hide low-priority topbar items on very small screens */
             .topbar-hide-xs { display: none !important; }
+            /* Every dropdown row (notifications, messages, etc.) gets a full 44px tap target */
+            .app-dropdown a { min-height: 44px !important; padding-top: 12px !important; padding-bottom: 12px !important; }
             .dev-label-text { display: none !important; }
         }
         /* Profile modal — fluid on small phones */
@@ -174,8 +224,277 @@
         }
         /* Touch-friendly tap targets */
         @media (max-width: 768px) {
-            .nav-item { padding: 10px 10px; min-height: 40px; }
+            .nav-item { padding: 10px 10px; min-height: 44px; font-size: 13.5px; }
+            .nav-item .nav-icon { width: 22px; font-size: 15px; }
             .icon-btn { width: 36px; height: 36px; }
+            /* Drawer (hamburger panel) is wider than the desktop rail */
+            .app-sidebar { width: 302px; min-width: 302px; }
+            .sidebar-signout-mobile-only { display: block !important; }
+        }
+        .sidebar-signout-mobile-only { display: none; }
+
+        /* ══════════════════════════════════════════════════════════
+           Shared mobile design tokens & primitives (320–768px only)
+           Opt-in utility classes any page can use for a consistent
+           "premium native app" feel — rounded cards, soft shadows,
+           8/16/24 spacing, brand gradient. Desktop is untouched.
+           ══════════════════════════════════════════════════════════ */
+        @media (max-width: 768px) {
+            :root {
+                --mob-r-lg: 20px;
+                --mob-r-md: 16px;
+                --mob-r-sm: 12px;
+                --mob-shadow-1: 0 2px 10px rgba(17,24,39,.05);
+                --mob-shadow-2: 0 10px 30px rgba(17,24,39,.10);
+                --mob-sp-1: 8px;
+                --mob-sp-2: 16px;
+                --mob-sp-3: 24px;
+                --mob-brand: {{ $appSettings['primary_color'] ?? '#4F46E5' }};
+                --mob-brand-grad: linear-gradient(135deg, {{ $appSettings['primary_color'] ?? '#4F46E5' }} 0%, #6366F1 100%);
+            }
+
+            body { font-size: 15px; }
+
+            /* Topbar avatar-initial fallback: flat brand fill on mobile, not a gradient —
+               every page's first screenful already shows this, so it counts against the
+               "at most one gradient visible" budget everywhere unless it's flattened here. */
+            .topbar-avatar-fallback { background: var(--mob-brand, #4F46E5) !important; }
+
+            /* App-wide: any text/number/date/search/password/select/textarea field inside the
+               page content must be >=16px on mobile — smaller sizes trigger iOS Safari's
+               auto-zoom-on-focus, which is the single most common mobile input bug across the app. */
+            .app-content input[type="text"],
+            .app-content input[type="email"],
+            .app-content input[type="password"],
+            .app-content input[type="number"],
+            .app-content input[type="date"],
+            .app-content input[type="datetime-local"],
+            .app-content input[type="search"],
+            .app-content input[type="tel"],
+            .app-content input[type="url"],
+            .app-content input:not([type]),
+            .app-content select,
+            .app-content textarea {
+                font-size: 16px !important;
+            }
+
+            /* Generic rounded/soft-shadow card */
+            .mob-card {
+                border-radius: var(--mob-r-lg) !important;
+                box-shadow: var(--mob-shadow-1) !important;
+                border: 1px solid #F3F4F6 !important;
+                background: #fff;
+            }
+            .mob-card-elevated { box-shadow: var(--mob-shadow-2) !important; }
+
+            .mob-section-title {
+                font-size: 17px; font-weight: 800; color: #111827; letter-spacing: -.01em;
+                margin: var(--mob-sp-3) 0 var(--mob-sp-2);
+            }
+
+            /* Horizontally snapping KPI/stat row (swipeable stat cards) */
+            .mob-kpi-row {
+                display: flex; gap: var(--mob-sp-2); overflow-x: auto; scroll-snap-type: x mandatory;
+                -webkit-overflow-scrolling: touch; padding: 2px 2px 8px;
+            }
+            .mob-kpi-row::-webkit-scrollbar { display: none; }
+            .mob-kpi-card {
+                scroll-snap-align: start; flex: 0 0 auto; min-width: 128px;
+                border-radius: var(--mob-r-md); background: #fff; border: 1px solid #F3F4F6;
+                box-shadow: var(--mob-shadow-1); padding: var(--mob-sp-2);
+            }
+
+            /* Large touch-friendly quick-action tile */
+            .mob-quick-action {
+                border-radius: var(--mob-r-md); background: #fff; border: 1px solid #F3F4F6;
+                box-shadow: var(--mob-shadow-1); padding: var(--mob-sp-2);
+                display: flex; align-items: center; gap: 12px; min-height: 56px;
+                text-decoration: none; color: #111827;
+            }
+
+            /* Sticky bottom action bar (sits above the global bottom tab bar) */
+            .mob-sticky-action-bar {
+                position: sticky; bottom: calc(78px + env(safe-area-inset-bottom));
+                background: rgba(255,255,255,.94); backdrop-filter: blur(8px);
+                padding: 10px var(--mob-sp-2); margin: var(--mob-sp-2) calc(-1 * var(--mob-sp-2)) calc(-1 * var(--mob-sp-2));
+                box-shadow: 0 -6px 20px rgba(0,0,0,.06); border-top: 1px solid #F3F4F6; z-index: 5;
+            }
+
+            /* Table → card conversion helper.
+               Usage: wrap the table in a container with class "mob-table-cards",
+               and add data-label="Column Name" to every <td>. */
+            .mob-table-cards table { width: 100%; }
+            .mob-table-cards thead { display: none; }
+            .mob-table-cards tbody, .mob-table-cards tr { display: block; width: 100%; }
+            .mob-table-cards tr {
+                border-radius: var(--mob-r-md); background: #fff; border: 1px solid #F3F4F6;
+                box-shadow: var(--mob-shadow-1); margin-bottom: var(--mob-sp-2); padding: 4px var(--mob-sp-2);
+            }
+            .mob-table-cards td {
+                display: flex; align-items: center; justify-content: space-between; gap: 10px;
+                padding: 9px 0; border-bottom: 1px solid #F9FAFB; font-size: 13px; text-align: right; white-space: normal;
+            }
+            .mob-table-cards td:last-child { border-bottom: none; }
+            .mob-table-cards td::before {
+                content: attr(data-label); font-size: 11px; font-weight: 700; color: #9CA3AF;
+                text-transform: uppercase; letter-spacing: .04em; text-align: left; flex-shrink: 0; margin-right: auto;
+            }
+
+            /* Full-width, large, label-above touch inputs for forms opting in */
+            .mob-field { margin-bottom: var(--mob-sp-2); }
+            .mob-field label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+            .mob-field input, .mob-field select, .mob-field textarea {
+                width: 100%; min-height: 46px; font-size: 15px; border-radius: var(--mob-r-sm);
+                box-sizing: border-box;
+            }
+            .mob-btn-primary {
+                background: var(--mob-brand-grad); color: #fff; border: none; border-radius: var(--mob-r-sm);
+                min-height: 46px; font-weight: 700; font-size: 14px; box-shadow: 0 6px 16px rgba(79,70,229,.25);
+            }
+
+            /* Header simplification: menu / title / notification / profile only.
+               Secondary actions (storage badge, history, dev mode, who's-online) are hidden on mobile. */
+            .topbar-hide-mobile { display: none !important; }
+            .app-topbar { height: 52px; padding: 0 12px; }
+            .breadcrumb-current { max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .topbar-right { gap: 6px; }
+
+            /* Compact horizontally-scrolling action-chip row (replaces large quick-action buttons) */
+            .mob-action-chips {
+                display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+                padding: 2px 2px 6px; scroll-snap-type: x proximity;
+            }
+            .mob-action-chips::-webkit-scrollbar { display: none; }
+            .mob-action-chip {
+                scroll-snap-align: start; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 7px;
+                min-height: 40px; padding: 0 14px; border-radius: 999px; background: #fff;
+                border: 1px solid #F3F4F6; box-shadow: var(--mob-shadow-1); font-size: 13px; font-weight: 700;
+                color: #374151; white-space: nowrap;
+            }
+            .mob-action-chip i { font-size: 12px; color: var(--mob-brand); }
+            .mob-action-chip.mob-action-chip-primary { background: var(--mob-brand-grad); color: #fff; border: none; }
+            .mob-action-chip.mob-action-chip-primary i { color: #fff; }
+
+            /* Native-app press feedback (CSS-only, no JS) — fast, subtle */
+            .mob-card, .mob-card-elevated, .mob-kpi-card, .mob-quick-action,
+            .mob-action-chip, .mbn-item, .nav-item, .qa-btn, .usr-task-row, .utask-row {
+                transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+            }
+            .mob-card:active, .mob-kpi-card:active, .mob-quick-action:active,
+            .mob-action-chip:active, .qa-btn:active, .usr-task-row:active, .utask-row:active {
+                transform: scale(.97); opacity: .92;
+            }
+            .mbn-item:active { transform: scale(.92); }
+        }
+
+        /* ══════════════════════════════════════════════════════════
+           Unified mobile design system (uds-*) — backs the shared
+           components in resources/views/components/mobile/*.blade.php.
+           One canonical recipe per component; pages should consume the
+           component, not copy this markup. Desktop (>768px) untouched.
+           ══════════════════════════════════════════════════════════ */
+        @media (max-width: 768px) {
+            /* Record card (task / approval / project) + list-row shared card shell */
+            .uds-card {
+                background: #fff; border: 1px solid #EDEFF3; border-radius: 18px;
+                padding: 15px; box-shadow: 0 1px 2px rgba(17,24,39,.04);
+            }
+            .uds-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: #9CA3AF; }
+            .uds-card-title { font-size: 15.5px; font-weight: 700; letter-spacing: -.018em; color: #111827; line-height: 1.35; text-decoration: none; display: block; }
+            .uds-context-line { font-size: 12.5px; color: #6B7280; line-height: 1.45; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+            .uds-progress-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 11px; }
+            .uds-progress-row span:first-child { font-size: 11.5px; font-weight: 600; color: #6B7280; }
+            .uds-progress-row span:last-child { font-size: 12px; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; }
+            .uds-track { height: 6px; border-radius: 99px; background: #F3F4F6; overflow: hidden; margin-top: 5px; }
+            .uds-track-fill { display: block; height: 100%; border-radius: 99px; opacity: .85; }
+            .uds-due-row { display: flex; align-items: center; gap: 8px; margin-top: 11px; padding-top: 11px; border-top: 1px solid #F0F1F5; flex-wrap: wrap; }
+            .uds-due-line { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; }
+            .uds-actions-row { display: flex; gap: 9px; margin-top: 13px; }
+
+            /* List row (dense lists) */
+            .uds-list { background: #fff; border-radius: 18px; overflow: hidden; }
+            .uds-list-row { display: flex; align-items: center; gap: 11px; padding: 12px 14px; text-decoration: none; border-bottom: 1px solid #EDEFF3; }
+            .uds-list-row:last-child { border-bottom: none; }
+            .uds-list-title { font-size: 14.5px; font-weight: 600; letter-spacing: -.012em; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .uds-list-meta { font-size: 11.5px; color: #9CA3AF; font-weight: 500; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .uds-list-avatar { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 9px; font-weight: 700; }
+
+            /* Segmented control */
+            .uds-seg { display: flex; gap: 2px; background: #F3F4F6; border-radius: 11px; padding: 3px; }
+            .uds-seg-opt {
+                flex: 1; min-height: 44px; border: 0; border-radius: 8px; background: transparent;
+                font-family: 'Inter', sans-serif; font-size: 12.5px; font-weight: 600; color: #6B7280; cursor: pointer;
+                display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; white-space: nowrap;
+            }
+            .uds-seg-opt.is-on { background: #fff; color: var(--mob-brand, #4F46E5); font-weight: 700; box-shadow: 0 1px 4px rgba(17,24,39,.08); }
+            .uds-seg-count { padding: 4px 9px; border-radius: 8px; font-size: 11px; font-weight: 700; background: #E5E7EB; color: #6B7280; }
+            .uds-seg-opt.is-on .uds-seg-count { background: #EEF2FF; color: var(--mob-brand, #4F46E5); }
+
+            /* Filter chip row (wraps a native <select> so the OS picker still opens) */
+            .uds-chiprow { display: flex; gap: 7px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 2px 2px 4px; scrollbar-width: none; }
+            .uds-chiprow::-webkit-scrollbar { width: 0; height: 0; display: none; }
+            .uds-chip {
+                position: relative; flex: 0 0 auto; min-height: 44px; max-width: 60vw; display: inline-flex; align-items: center; gap: 7px;
+                padding: 0 12px; border: 1px solid #E1E4EA; border-radius: 10px; background: #fff;
+                font-size: 12.5px; font-weight: 600; color: #374151; white-space: nowrap;
+            }
+            .uds-chip span { overflow: hidden; text-overflow: ellipsis; }
+            .uds-chip i { font-size: 9px; color: #9CA3AF; flex-shrink: 0; }
+            .uds-chip.is-active { border-color: #C7D2FE; background: #EEF2FF; color: #4F46E5; }
+            /* inset:-1px (not 0) so the invisible tap target covers the chip's full 44px
+               border-box — inset:0 anchors to the padding box, which left this 2px short
+               (a real G2 miss: the <select> itself, not just its label, is what the audit
+               measures as the interactive element). */
+            .uds-chip select { position: absolute; inset: -1px; width: auto; height: auto; opacity: 0; border: 0; }
+
+            /* KPI grid — 2 columns, never a swipe strip that clips */
+            .uds-kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+            .uds-kpi-tile { background: #fff; border: 1px solid #EDEFF3; border-radius: 16px; padding: 13px; box-shadow: 0 1px 2px rgba(17,24,39,.04); }
+            .uds-kpi-value { font-size: 25px; font-weight: 700; letter-spacing: -.03em; color: #111827; margin-top: 7px; line-height: 1; font-variant-numeric: tabular-nums; }
+            .uds-kpi-value.is-money { font-size: 18px; }
+            .uds-kpi-sub { font-size: 11px; font-weight: 500; color: #9CA3AF; margin-top: 5px; }
+
+            /* Sticky bottom action bar */
+            .uds-actionbar {
+                position: fixed; left: 0; right: 0; bottom: calc(78px + env(safe-area-inset-bottom)); z-index: 20;
+                display: flex; gap: 9px; padding: 12px 16px; background: rgba(255,255,255,.94);
+                backdrop-filter: blur(18px); border-top: 1px solid #E9EBF0;
+            }
+            .uds-btn-ghost {
+                flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 18px; min-height: 48px;
+                border: 1px solid #C7D2FE; border-radius: 14px; background: #fff; color: var(--mob-brand, #4F46E5);
+                font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none;
+            }
+            .uds-btn-primary {
+                flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 48px;
+                border: 0; border-radius: 14px; background: var(--mob-brand-grad, linear-gradient(135deg,#4F46E5,#6366F1));
+                color: #fff; font-family: 'Inter', sans-serif; font-size: 14.5px; font-weight: 700; cursor: pointer;
+                box-shadow: 0 10px 20px -10px rgba(79,70,229,.8); text-decoration: none;
+            }
+            .uds-btn-danger { background: #FEE2E2; color: #DC2626; }
+
+            /* Empty state */
+            .uds-empty { background: #fff; border: 1px dashed #D1D5DB; border-radius: 18px; padding: 34px 20px; text-align: center; }
+            .uds-empty-title { font-size: 14.5px; font-weight: 600; color: #111827; margin: 0 0 4px; }
+            .uds-empty-sub { font-size: 12.5px; color: #9CA3AF; margin: 0; }
+
+            /* Toast — one dark pattern app-wide on mobile, pinned above the tab bar
+               (desktop keeps its existing bottom-right floating white toast) */
+            #appToastWrap {
+                left: 16px; right: 16px; bottom: calc(78px + env(safe-area-inset-bottom) + 12px) !important;
+                align-items: stretch;
+            }
+            .app-toast { min-width: 0; max-width: none; width: 100%; box-sizing: border-box; }
+            .app-toast-success, .app-toast-error {
+                background: #111827; border: none; color: #fff; border-radius: 14px; padding: 13px 15px;
+            }
+            .app-toast-icon { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px !important; margin-top: 0; }
+            .app-toast-success .app-toast-icon { background: #16A34A; color: #fff !important; }
+            .app-toast-error .app-toast-icon { background: #DC2626; color: #fff !important; }
+            .app-toast-title { font-size: 13px; font-weight: 600; color: #fff; }
+            .app-toast-msg { color: rgba(255,255,255,.75); opacity: 1; }
+            .app-toast-close { color: rgba(255,255,255,.6); }
+            .app-toast-close:hover { color: #fff; opacity: 1; }
         }
     </style>
 </head>
@@ -190,6 +509,46 @@
     <aside class="app-sidebar" :class="sidebarOpen ? 'sidebar-open' : ''">
         @include('layouts.navigation')
     </aside>
+
+    {{-- Mobile bottom tab bar (hidden on desktop; sits alongside the hamburger sidebar, not a replacement) --}}
+    @php
+        $mbnRole         = auth()->user()->role ?? 'user';
+        $mbnDashRoute    = $mbnRole === 'admin' ? 'admin.dashboard' : ($mbnRole === 'manager' ? 'manager.dashboard' : 'user.dashboard');
+        $mbnTasksRoute   = $mbnRole === 'user' ? 'user.tasks.index' : 'admin.tasks.index';
+        $mbnTasksPattern = $mbnRole === 'user' ? 'user.tasks.*' : 'admin.tasks.*';
+        $mbnCanTasks     = $mbnRole === 'user' || auth()->user()->hasPermission('manage_tasks');
+        $mbnCanTeam      = auth()->user()->hasPermission('view_team');
+    @endphp
+    <button type="button" id="mbnFab" class="mbn-fab" aria-label="Add"><i class="fas fa-plus" aria-hidden="true"></i></button>
+    <nav class="mobile-bottom-nav" aria-label="Primary">
+        <a href="{{ route($mbnDashRoute) }}" class="mbn-item {{ request()->routeIs($mbnDashRoute) ? 'active' : '' }}"
+           aria-current="{{ request()->routeIs($mbnDashRoute) ? 'page' : 'false' }}">
+            <i class="fas fa-table-cells-large" aria-hidden="true"></i>
+            <span>Home</span>
+        </a>
+        @if($mbnCanTasks)
+        <a href="{{ route($mbnTasksRoute) }}" class="mbn-item {{ request()->routeIs($mbnTasksPattern) ? 'active' : '' }}"
+           aria-current="{{ request()->routeIs($mbnTasksPattern) ? 'page' : 'false' }}">
+            <i class="fas fa-list-check" aria-hidden="true"></i>
+            <span>Tasks</span>
+        </a>
+        @endif
+        @if($mbnCanTeam)
+        <a href="{{ route('team.index') }}" class="mbn-item {{ request()->routeIs('team.*') ? 'active' : '' }}"
+           aria-current="{{ request()->routeIs('team.*') ? 'page' : 'false' }}">
+            <i class="fas fa-users" aria-hidden="true"></i>
+            <span>Team</span>
+        </a>
+        @endif
+        <a href="{{ route('alerts.index') }}" class="mbn-item {{ request()->routeIs('alerts.*') ? 'active' : '' }}"
+           aria-current="{{ request()->routeIs('alerts.*') ? 'page' : 'false' }}">
+            <i class="fas fa-bell" aria-hidden="true"></i>
+            <span>Alerts</span>
+            @if($notificationCount > 0)
+            <span class="mbn-badge">{{ $notificationCount > 9 ? '9+' : $notificationCount }}</span>
+            @endif
+        </a>
+    </nav>
 
     {{-- Main --}}
     <div class="app-main">
@@ -213,7 +572,7 @@
                 @endphp
                 @if(auth()->user()?->role === 'admin')
                 <a href="{{ route('admin.settings.index') }}#storage" title="{{ $storageNasOn ? 'Storage: NAS (SMB) — click to manage' : 'Storage: Local — click to manage' }}"
-                   class="topbar-hide-xs"
+                   class="topbar-hide-xs topbar-hide-mobile"
                    style="display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:20px;text-decoration:none;font-size:10px;font-weight:700;letter-spacing:.3px;border:1.5px solid {{ $storageNasOn ? '#BBF7D0' : '#E5E7EB' }};background:{{ $storageNasOn ? '#F0FDF4' : '#F9FAFB' }};color:{{ $storageNasOn ? '#15803D' : '#6B7280' }};transition:all .2s;flex-shrink:0;"
                    onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
                     <i class="fas {{ $storageNasOn ? 'fa-network-wired' : 'fa-hdd' }}" style="font-size:9px;"></i>
@@ -228,7 +587,7 @@
                 @endif
                 {{-- Page History --}}
                 @if(!in_array('nav_history', $headerHidden))
-                <div x-data="navHistory()" x-init="init()" @click.outside="open=false" style="position:relative;">
+                <div class="topbar-hide-mobile" x-data="navHistory()" x-init="init()" @click.outside="open=false" style="position:relative;">
                     <button @click="open=!open; if(open) load()" class="icon-btn" title="Recently viewed" style="position:relative;">
                         <i class="fas fa-clock-rotate-left"></i>
                         <span x-show="items.length>0 && !open"
@@ -279,7 +638,7 @@
                 <div x-data="notifBell()" x-init="init()" @click.outside="open = false" style="position:relative;">
 
                     {{-- Bell button --}}
-                    <button @click="open = !open" class="icon-btn" title="Notifications" style="position:relative;">
+                    <button id="topbar-notif-bell-btn" @click="open = !open" class="icon-btn" title="Notifications" style="position:relative;">
                         <i class="fas fa-bell" :class="count > 0 && !open ? 'fa-shake' : ''" style="animation-duration:2s;"></i>
                         <span x-show="count > 0"
                               style="position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;background:#EF4444;border-radius:999px;font-size:9px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 3px;border:2px solid #fff;line-height:1;"
@@ -309,39 +668,34 @@
                                         :style="soundEnabled ? 'border-color:#6366F1;color:#6366F1;background:#EEF2FF;' : 'border-color:#E5E7EB;color:#9CA3AF;'">
                                     <i :class="soundEnabled ? 'fas fa-volume-high' : 'fas fa-volume-xmark'"></i>
                                 </button>
-                                {{-- Mark all read --}}
-                                @if($notificationCount > 0)
-                                <form method="POST" action="{{ route('notifications.mark-all-read') }}">
+                                {{-- Mark all read — Alpine-reactive so it shows even for MQTT-pushed notifications --}}
+                                <form method="POST" action="{{ route('notifications.mark-all-read') }}" x-show="count > 0">
                                     @csrf
                                     <button type="submit" style="font-size:11px;color:#6366F1;font-weight:600;background:none;border:none;cursor:pointer;padding:0;">Mark all read</button>
                                 </form>
-                                @endif
                             </div>
                         </div>
 
                         {{-- List --}}
-                        <div style="max-height:360px;overflow-y:auto;">
+                        <div style="max-height:calc(100vh - 160px);overflow-y:auto;">
                             @forelse($notifications as $n)
                             @php
                                 $nData  = $n->data;
-                                $isRead = !is_null($n->read_at);
                                 $palettes = ['indigo'=>['#EEF2FF','#4F46E5'],'green'=>['#F0FDF4','#16A34A'],'red'=>['#FEF2F2','#DC2626'],'amber'=>['#FFFBEB','#D97706']];
                                 [$cbg,$cico] = $palettes[$nData['color'] ?? 'indigo'] ?? $palettes['indigo'];
                             @endphp
                             <a href="{{ route('notifications.read', $n->id) }}"
-                               style="display:flex;align-items:flex-start;gap:11px;padding:11px 16px;border-bottom:1px solid #F9FAFB;text-decoration:none;background:{{ $isRead ? '#fff' : '#F8F8FF' }};"
-                               onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background='{{ $isRead ? '#fff' : '#F8F8FF' }}'">
+                               style="display:flex;align-items:flex-start;gap:11px;padding:11px 16px;border-bottom:1px solid #F9FAFB;text-decoration:none;background:#F8F8FF;"
+                               onmouseover="this.style.background='#F0F0FF'" onmouseout="this.style.background='#F8F8FF'">
                                 <div style="width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:{{ $cbg }};">
                                     <i class="fas {{ $nData['icon'] ?? 'fa-bell' }}" style="font-size:13px;color:{{ $cico }};"></i>
                                 </div>
                                 <div style="flex:1;min-width:0;">
-                                    <p style="font-size:12px;font-weight:{{ $isRead ? '500' : '700' }};color:#111827;margin:0 0 2px;">{{ $nData['title'] ?? '' }}</p>
+                                    <p style="font-size:12px;font-weight:700;color:#111827;margin:0 0 2px;">{{ $nData['title'] ?? '' }}</p>
                                     <p style="font-size:11px;color:#6B7280;margin:0 0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $nData['message'] ?? '' }}</p>
                                     <p style="font-size:10px;color:#9CA3AF;margin:0;">{{ $n->created_at->diffForHumans() }}</p>
                                 </div>
-                                @unless($isRead)
                                 <div style="width:7px;height:7px;border-radius:50%;background:#6366F1;flex-shrink:0;margin-top:5px;"></div>
-                                @endunless
                             </a>
                             @empty
                             <div style="text-align:center;padding:32px 16px;">
@@ -355,18 +709,8 @@
 
                         {{-- Footer --}}
                         <div style="padding:8px 16px;border-top:1px solid #F3F4F6;display:flex;align-items:center;gap:6px;">
-                            <i :class="soundEnabled ? 'fas fa-volume-high' : 'fas fa-volume-xmark'"
-                               :style="soundEnabled ? 'color:#6366F1;' : 'color:#9CA3AF;'"
-                               style="font-size:11px;"></i>
-                            <span style="font-size:11px;color:#9CA3AF;" x-text="soundEnabled ? 'Sound alerts on' : 'Sound alerts off'"></span>
-                            <button @click.stop="toggleSound()"
-                                    style="margin-left:auto;font-size:11px;font-weight:600;background:none;border:none;cursor:pointer;padding:0;"
-                                    :style="soundEnabled ? 'color:#DC2626;' : 'color:#6366F1;'"
-                                    x-text="soundEnabled ? 'Mute' : 'Unmute'">
-                            </button>
-                            @php $hasAnyNotifications = auth()->user()->notifications()->exists(); @endphp
-                            @if($hasAnyNotifications)
-                            <form method="POST" action="{{ route('notifications.clear-all') }}" style="margin-left:8px;">
+                            @if($notifications->isNotEmpty())
+                            <form method="POST" action="{{ route('notifications.clear-all') }}" style="margin-left:auto;">
                                 @csrf
                                 <button type="submit" style="font-size:11px;color:#EF4444;font-weight:600;background:none;border:none;cursor:pointer;padding:0;"
                                         onclick="return confirm('Clear all notifications?')">Clear all</button>
@@ -382,6 +726,7 @@
                 @php $devOn = ($appSettings['developer_mode'] ?? '0') === '1'; @endphp
                 <button id="global-dev-mode-btn" onclick="typeof toggleGlobalDevMode!=='undefined'&&toggleGlobalDevMode(this)"
                         title="{{ $devOn ? 'Developer Mode ON — click to disable' : 'Developer Mode OFF — click to enable' }}"
+                        class="topbar-hide-mobile"
                         style="display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1.5px solid {{ $devOn ? '#C7D2FE' : '#E5E7EB' }};cursor:pointer;transition:all .2s;flex-shrink:0;{{ $devOn ? 'background:#EEF2FF;color:#4F46E5;' : 'background:#F9FAFB;color:#9CA3AF;' }}">
                     <i class="fas fa-code" style="font-size:9px;"></i>
                     <span id="global-dev-label" class="dev-label-text">{{ $devOn ? 'Dev On' : 'Dev' }}</span>
@@ -391,7 +736,7 @@
 
                 {{-- Who's Online (admin/manager only) --}}
                 @if(in_array(auth()->user()?->role, ['admin','manager']) && !in_array('nav_online_users', $headerHidden))
-                <div x-data="onlineUsers()" x-init="init()" @click.outside="open=false" style="position:relative;">
+                <div class="topbar-hide-mobile" x-data="onlineUsers()" x-init="init()" @click.outside="open=false" style="position:relative;">
                     <button @click="open=!open" class="icon-btn" title="Who's online" style="position:relative;">
                         <i class="fas fa-circle-dot" style="color:#10B981;font-size:13px;"></i>
                         <span x-show="count>0"
@@ -460,7 +805,7 @@
                             <img src="{{ $dropUser->avatarUrl() }}" alt="{{ $dropUser->name }}"
                                  style="width:32px;height:32px;border-radius:50%;object-fit:cover;display:block;">
                         @else
-                            <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;letter-spacing:-.5px;">
+                            <div class="topbar-avatar-fallback" style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366F1,#8B5CF6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;letter-spacing:-.5px;">
                                 {{ strtoupper(substr($dropUser->name ?? 'U', 0, 1)) }}
                             </div>
                         @endif
@@ -517,6 +862,12 @@
                                 </span>
                                 <span>Edit Profile</span>
                             </button>
+                            <button class="ud-item" @click="open=false; document.getElementById('global-mfa-modal').style.display='flex'">
+                                <span style="width:30px;height:30px;border-radius:8px;background:#FEF2F2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                    <i class="fas fa-shield-halved" style="font-size:12px;color:#DC2626;"></i>
+                                </span>
+                                <span>Two-Factor Auth</span>
+                            </button>
                             @if($dropCanSettings)
                             <a href="{{ route('admin.settings.index') }}" @click="open=false" class="ud-item">
                                 <span style="width:30px;height:30px;border-radius:8px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -552,7 +903,7 @@
 
         @php $copyright = \App\Models\Setting::get('copyright', ''); @endphp
         @if($copyright)
-        <div style="flex-shrink:0;text-align:center;padding:10px 16px;font-size:11.5px;color:#B0B7C3;border-top:1px solid #F3F4F6;background:#fff;">
+        <div class="app-copyright" style="flex-shrink:0;text-align:center;padding:10px 16px;font-size:11.5px;color:#B0B7C3;border-top:1px solid #F3F4F6;background:#fff;">
             {{ $copyright }}
         </div>
         @endif
@@ -565,7 +916,7 @@
 <div id="global-profile-modal"
      style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.5);"
      onclick="if(event.target===this)this.style.display='none'">
-    <div style="background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,.2);width:100%;max-width:460px;overflow:hidden;">
+    <div style="background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,.2);width:100%;max-width:460px;max-height:calc(100vh - 32px);overflow-y:auto;overflow-x:hidden;">
 
         <div style="padding:20px 24px 16px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
             <div style="display:flex;align-items:center;gap:10px;">
@@ -588,10 +939,10 @@
             <i class="fa fa-circle-check"></i> {{ session('profile_success') }}
         </div>
         @endif
-        @if($errors->has('current_password') || $errors->has('email') || $errors->has('password') || $errors->has('avatar'))
+        @if($errors->has('current_password') || $errors->has('email') || $errors->has('password') || $errors->has('avatar') || $errors->has('pin'))
         <div style="margin:16px 24px 0;background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:10px 14px;font-size:12px;color:#DC2626;display:flex;align-items:center;gap:8px;">
             <i class="fa fa-exclamation-circle"></i>
-            {{ $errors->first('current_password') ?: ($errors->first('email') ?: ($errors->first('password') ?: $errors->first('avatar'))) }}
+            {{ $errors->first('current_password') ?: ($errors->first('email') ?: ($errors->first('password') ?: ($errors->first('avatar') ?: $errors->first('pin')))) }}
         </div>
         @endif
 
@@ -675,6 +1026,40 @@
                     </div>
                 </div>
 
+                {{-- Shift PIN --}}
+                <div x-data="{ clear: false }">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                        <label style="font-size:12px;font-weight:600;color:#374151;">
+                            Shift PIN <span style="font-weight:400;color:#9CA3AF;">(4-digit quick sign-in for shared devices)</span>
+                        </label>
+                        @if($profileUser->hasPin())
+                            <span style="font-size:10px;font-weight:700;color:#166534;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:20px;padding:2px 8px;">
+                                <i class="fa fa-circle-check" style="font-size:9px;"></i> Set
+                            </span>
+                        @endif
+                    </div>
+
+                    @if($profileUser->hasPin())
+                        <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:#6B7280;cursor:pointer;margin-bottom:10px;">
+                            <input type="checkbox" name="clear_pin" value="1" x-model="clear"
+                                   style="width:14px;height:14px;accent-color:#DC2626;border-radius:4px;">
+                            Remove my Shift PIN
+                        </label>
+                    @endif
+
+                    <div class="gp-pin-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" :style="clear && 'opacity:.4;pointer-events:none;'">
+                        <input type="text" name="pin" placeholder="New PIN" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"
+                               oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)"
+                               style="width:100%;padding:10px 12px;border:1.5px solid {{ $errors->has('pin') ? '#FCA5A5' : '#E5E7EB' }};border-radius:10px;font-size:14px;letter-spacing:4px;text-align:center;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
+                               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                        <input type="text" name="pin_confirmation" placeholder="Confirm PIN" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off"
+                               oninput="this.value=this.value.replace(/\D/g,'').slice(0,4)"
+                               style="width:100%;padding:10px 12px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:14px;letter-spacing:4px;text-align:center;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
+                               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                    </div>
+                    <p style="font-size:11px;color:#9CA3AF;margin:6px 0 0;">Lets you tap your name and enter this PIN on the mobile login screen instead of typing your password &mdash; handy for handing a shared counter device to the next person on shift.</p>
+                </div>
+
             </div>
 
             <div style="padding:16px 24px;border-top:1px solid #F3F4F6;display:flex;justify-content:flex-end;gap:10px;">
@@ -688,8 +1073,167 @@
                 </button>
             </div>
         </form>
+
+        {{-- Face ID / Touch ID / fingerprint --}}
+        <div style="padding:0 24px 20px;">
+            <div style="height:1px;background:#F3F4F6;margin-bottom:20px;"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+                <label style="font-size:12px;font-weight:600;color:#374151;">
+                    Face ID / Fingerprint <span style="font-weight:400;color:#9CA3AF;">(skip password on this device)</span>
+                </label>
+            </div>
+            <p style="font-size:11px;color:#9CA3AF;margin:4px 0 12px;">Enable once per device for the fastest daily sign-in — no password or PIN typing.</p>
+
+            <div id="wa-device-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+                @forelse($profileUser->webauthnCredentials()->latest()->get() as $cred)
+                <div class="wa-device-row" data-credential-id="{{ $cred->id }}" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:10px;">
+                    <span style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#374151;">
+                        <i class="fa fa-mobile-screen-button" style="color:#9CA3AF;"></i>
+                        {{ $cred->device_label ?: 'Unnamed device' }}
+                        <span style="color:#D1D5DB;">&middot;</span>
+                        <span style="color:#9CA3AF;">{{ $cred->last_used_at ? 'used '.$cred->last_used_at->diffForHumans() : 'never used' }}</span>
+                    </span>
+                    <button type="button" onclick="waRemoveDevice({{ $cred->id }}, this)"
+                            style="border:none;background:none;color:#DC2626;cursor:pointer;font-size:12px;padding:2px 4px;">
+                        <i class="fa fa-trash"></i>
+                    </button>
+                </div>
+                @empty
+                <p id="wa-empty-hint" style="font-size:11.5px;color:#9CA3AF;margin:0;">No devices enrolled yet.</p>
+                @endforelse
+            </div>
+
+            <p id="wa-status" style="font-size:12px;font-weight:600;margin:0 0 10px;"></p>
+
+            <button type="button" id="wa-enroll-btn" onclick="waEnroll()"
+                    style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:10px;font-size:12.5px;font-weight:600;cursor:pointer;">
+                <i class="fa fa-fingerprint"></i> Enable on this device
+            </button>
+        </div>
     </div>
 </div>
+
+{{-- ════ MFA MODAL ════ --}}
+@php $mfaUser = auth()->user(); @endphp
+<div id="global-mfa-modal"
+     style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.5);"
+     onclick="if(event.target===this)this.style.display='none'">
+    <div style="background:#fff;border-radius:20px;box-shadow:0 24px 80px rgba(0,0,0,.2);width:100%;max-width:460px;overflow:hidden;">
+
+        {{-- Header --}}
+        <div style="padding:20px 24px 16px;border-bottom:1px solid #F3F4F6;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:34px;height:34px;border-radius:10px;background:#FEF2F2;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas fa-shield-halved" style="color:#DC2626;font-size:14px;"></i>
+                </div>
+                <div>
+                    <p style="font-size:15px;font-weight:700;color:#111827;margin:0;">Two-Factor Authentication</p>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;">Add an extra layer of security to your account</p>
+                </div>
+            </div>
+            <button onclick="document.getElementById('global-mfa-modal').style.display='none'"
+                    style="width:30px;height:30px;border-radius:50%;background:#F3F4F6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;">
+                <i class="fa fa-times"></i>
+            </button>
+        </div>
+
+        {{-- Flash messages --}}
+        @if(session('mfa_disabled'))
+        <div style="margin:14px 20px 0;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;padding:10px 14px;font-size:12px;color:#166534;display:flex;align-items:center;gap:8px;">
+            <i class="fa fa-circle-check"></i> Two-factor authentication has been disabled.
+        </div>
+        @endif
+        @if($errors->has('password') && !$errors->has('current_password'))
+        <div style="margin:14px 20px 0;background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;padding:10px 14px;font-size:12px;color:#DC2626;display:flex;align-items:center;gap:8px;">
+            <i class="fa fa-exclamation-circle"></i> {{ $errors->first('password') }}
+        </div>
+        @endif
+
+        <div style="padding:20px 24px 24px;">
+
+            @if($mfaUser->mfa_enabled)
+            {{-- MFA is ON --}}
+            <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+                <div style="width:36px;height:36px;border-radius:10px;background:#DCFCE7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-check-circle" style="color:#16A34A;font-size:16px;"></i>
+                </div>
+                <div>
+                    <p style="font-size:13px;font-weight:600;color:#166534;margin:0;">MFA is active</p>
+                    <p style="font-size:11px;color:#4ADE80;margin:2px 0 0;">Your account is protected with two-factor authentication</p>
+                </div>
+            </div>
+
+            <p style="font-size:12px;font-weight:600;color:#374151;margin:0 0 14px;">Manage</p>
+
+            {{-- Regenerate codes --}}
+            <details style="margin-bottom:12px;">
+                <summary style="font-size:12px;font-weight:600;color:#6366F1;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;">
+                    <i class="fas fa-rotate" style="font-size:10px;"></i> Regenerate recovery codes
+                </summary>
+                <form method="POST" action="{{ route('mfa.regenerate') }}" style="margin-top:10px;">
+                    @csrf
+                    <div style="position:relative;margin-bottom:10px;">
+                        <i class="fa fa-lock" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;z-index:1;"></i>
+                        <input type="password" name="password" placeholder="Enter your password" required
+                               style="width:100%;padding:10px 10px 10px 32px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
+                               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                    </div>
+                    <button type="submit"
+                            style="width:100%;padding:9px;background:#EEF2FF;color:#4F46E5;border:1.5px solid #C7D2FE;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;">
+                        <i class="fas fa-rotate" style="font-size:10px;margin-right:4px;"></i> Regenerate Codes
+                    </button>
+                </form>
+            </details>
+
+            {{-- Disable MFA --}}
+            <details>
+                <summary style="font-size:12px;font-weight:600;color:#DC2626;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;">
+                    <i class="fas fa-shield-xmark" style="font-size:10px;"></i> Disable two-factor authentication
+                </summary>
+                <form method="POST" action="{{ route('mfa.disable') }}" style="margin-top:10px;">
+                    @csrf
+                    <div style="position:relative;margin-bottom:10px;">
+                        <i class="fa fa-lock" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:12px;z-index:1;"></i>
+                        <input type="password" name="password" placeholder="Confirm your password" required
+                               style="width:100%;padding:10px 10px 10px 32px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;background:#F9FAFB;color:#111827;outline:none;box-sizing:border-box;"
+                               onfocus="this.style.borderColor='#6366F1'" onblur="this.style.borderColor='#E5E7EB'">
+                    </div>
+                    <button type="submit"
+                            style="width:100%;padding:9px;background:#FEF2F2;color:#DC2626;border:1.5px solid #FECACA;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;">
+                        <i class="fas fa-shield-xmark" style="font-size:10px;margin-right:4px;"></i> Disable MFA
+                    </button>
+                </form>
+            </details>
+
+            @else
+            {{-- MFA is OFF --}}
+            <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+                <div style="width:36px;height:36px;border-radius:10px;background:#FFE4E4;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-shield-xmark" style="color:#DC2626;font-size:16px;"></i>
+                </div>
+                <div>
+                    <p style="font-size:13px;font-weight:600;color:#DC2626;margin:0;">MFA is not enabled</p>
+                    <p style="font-size:11px;color:#F87171;margin:2px 0 0;">Enable MFA to protect your account from unauthorized access</p>
+                </div>
+            </div>
+
+            <a href="{{ route('mfa.setup') }}"
+               style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;background:linear-gradient(135deg,#4F46E5,#6366F1);color:#fff;border-radius:12px;font-size:13px;font-weight:600;text-decoration:none;box-shadow:0 4px 12px rgba(79,70,229,.3);box-sizing:border-box;">
+                <i class="fas fa-shield-halved"></i> Set Up Two-Factor Auth
+            </a>
+            @endif
+
+        </div>
+    </div>
+</div>
+
+@if(session('mfa_disabled') || ($errors->has('password') && !$errors->has('current_password')))
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('global-mfa-modal').style.display = 'flex';
+});
+</script>
+@endif
 
 <script>
 function gpPreviewAvatar(input) {
@@ -710,6 +1254,95 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 <script>
+// ── Face ID / Touch ID / fingerprint enrollment ──────────────────────
+function waBufToBase64url(buf) {
+    let str = '';
+    new Uint8Array(buf).forEach(b => { str += String.fromCharCode(b); });
+    return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function waBase64urlToBuf(b64url) {
+    const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - b64url.length % 4) % 4);
+    const str = atob(b64);
+    const buf = new Uint8Array(str.length);
+    for (let i = 0; i < str.length; i++) buf[i] = str.charCodeAt(i);
+    return buf.buffer;
+}
+function waCsrf() {
+    return document.querySelector('meta[name="csrf-token"]').content;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('wa-enroll-btn');
+    if (btn && !(window.PublicKeyCredential)) {
+        btn.style.display = 'none';
+        const status = document.getElementById('wa-status');
+        if (status) { status.style.color = '#9CA3AF'; status.textContent = 'Not supported in this browser.'; }
+    }
+});
+
+async function waEnroll() {
+    const status = document.getElementById('wa-status');
+    const btn = document.getElementById('wa-enroll-btn');
+    status.style.color = '#9CA3AF';
+    status.textContent = 'Follow your device prompt…';
+    btn.disabled = true;
+
+    try {
+        const optRes = await fetch('{{ route('webauthn.register.options') }}', { headers: { 'Accept': 'application/json' } });
+        if (!optRes.ok) throw new Error('options');
+        const options = await optRes.json();
+
+        options.publicKey.challenge = waBase64urlToBuf(options.publicKey.challenge);
+        options.publicKey.user.id = waBase64urlToBuf(options.publicKey.user.id);
+        (options.publicKey.excludeCredentials || []).forEach(c => { c.id = waBase64urlToBuf(c.id); });
+
+        const cred = await navigator.credentials.create({ publicKey: options.publicKey });
+
+        const payload = {
+            id: waBufToBase64url(cred.rawId),
+            clientDataJSON: waBufToBase64url(cred.response.clientDataJSON),
+            attestationObject: waBufToBase64url(cred.response.attestationObject),
+        };
+
+        const res = await fetch('{{ route('webauthn.register') }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': waCsrf(), 'Accept': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || 'Could not enable this device.');
+
+        status.style.color = '#166534';
+        status.textContent = data.message || 'Enabled.';
+        setTimeout(() => window.location.reload(), 900);
+    } catch (e) {
+        status.style.color = '#DC2626';
+        status.textContent = (e && e.name === 'NotAllowedError') ? 'Cancelled.' : (e.message || 'Could not enable this device.');
+    }
+    btn.disabled = false;
+}
+
+async function waRemoveDevice(id, btnEl) {
+    const row = btnEl.closest('.wa-device-row');
+    btnEl.disabled = true;
+    try {
+        const res = await fetch('/webauthn/credentials/' + id, {
+            method: 'DELETE',
+            headers: { 'X-CSRF-TOKEN': waCsrf(), 'Accept': 'application/json' },
+        });
+        if (!res.ok) throw new Error();
+        row.remove();
+        const list = document.getElementById('wa-device-list');
+        if (list && !list.querySelector('.wa-device-row')) {
+            list.insertAdjacentHTML('beforeend', '<p id="wa-empty-hint" style="font-size:11.5px;color:#9CA3AF;margin:0;">No devices enrolled yet.</p>');
+        }
+    } catch (e) {
+        btnEl.disabled = false;
+    }
+}
+</script>
+
+<script>
 // Close sidebar when a nav link is clicked on mobile (Alpine v3 compatible)
 document.querySelectorAll('.app-sidebar .nav-item').forEach(function(link) {
     link.addEventListener('click', function() {
@@ -723,35 +1356,49 @@ document.querySelectorAll('.app-sidebar .nav-item').forEach(function(link) {
 
 <script>
 // Global notification sound — callable from any Alpine component or plain JS
-window.playNotifSound = function () {
-    if (localStorage.getItem('notif_sound') === 'false') return;
-    const SOUNDS = {
-        chime:  [[784,0],[988,0.18]],
-        ding:   [[880,0]],
-        double: [[1047,0],[1047,0.22]],
-        pop:    [[440,0],[554,0.12]],
-        alert:  [[987,0],[1175,0.1],[1397,0.22]],
-        none:   [],
+(function () {
+    // One persistent AudioContext, resumed on first user interaction
+    let _ctx = null;
+    function getCtx() {
+        if (!_ctx) _ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (_ctx.state === 'suspended') _ctx.resume();
+        return _ctx;
+    }
+    // Unlock audio on first interaction so sounds work even before a click on the bell
+    ['click','keydown','touchstart'].forEach(evt =>
+        document.addEventListener(evt, () => { try { getCtx(); } catch(e){} }, { once: true, passive: true })
+    );
+
+    window.playNotifSound = function () {
+        if (localStorage.getItem('notif_sound') === 'false') return;
+        const SOUNDS = {
+            chime:  [[784,0],[988,0.18]],
+            ding:   [[880,0]],
+            double: [[1047,0],[1047,0.22]],
+            pop:    [[440,0],[554,0.12]],
+            alert:  [[987,0],[1175,0.1],[1397,0.22]],
+            none:   [],
+        };
+        const type   = localStorage.getItem('notif_sound_type')   || '{{ $appSettings["notif_sound_type"]   ?? "chime" }}';
+        const volume = parseFloat(localStorage.getItem('notif_sound_volume') || '{{ $appSettings["notif_sound_volume"] ?? "0.3" }}');
+        const notes  = SOUNDS[type] || SOUNDS.chime;
+        if (!notes.length) return;
+        try {
+            const ctx = getCtx();
+            notes.forEach(([freq, delay]) => {
+                const osc  = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.type = 'sine'; osc.frequency.value = freq;
+                const t = ctx.currentTime + delay;
+                gain.gain.setValueAtTime(0, t);
+                gain.gain.linearRampToValueAtTime(volume, t + 0.015);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+                osc.start(t); osc.stop(t + 0.6);
+            });
+        } catch (e) {}
     };
-    const type   = localStorage.getItem('notif_sound_type')   || '{{ $appSettings["notif_sound_type"]   ?? "chime" }}';
-    const volume = parseFloat(localStorage.getItem('notif_sound_volume') || '{{ $appSettings["notif_sound_volume"] ?? "0.3" }}');
-    const notes  = SOUNDS[type] || SOUNDS.chime;
-    if (!notes.length) return;
-    try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        notes.forEach(([freq, delay]) => {
-            const osc  = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain); gain.connect(ctx.destination);
-            osc.type = 'sine'; osc.frequency.value = freq;
-            const t = ctx.currentTime + delay;
-            gain.gain.setValueAtTime(0, t);
-            gain.gain.linearRampToValueAtTime(volume, t + 0.015);
-            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
-            osc.start(t); osc.stop(t + 0.6);
-        });
-    } catch (e) {}
-};
+})();
 
 function notifBell() {
     return {
@@ -771,12 +1418,15 @@ function notifBell() {
             // Notification count polling fallback (every 30s)
             this._timer = setInterval(() => this._poll(), 30000);
 
-            // Message unread polling — every 10s, plays sound when count rises
+            // Message unread polling — fallback only (30s); skipped entirely when MQTT is active
             this._pollMessages();
-            this._msgTimer = setInterval(() => this._pollMessages(), 10000);
+            this._msgTimer = setInterval(() => this._pollMessages(), 30000);
 
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden) { this._poll(); this._pollMessages(); }
+                if (!document.hidden) {
+                    this._poll();
+                    if (!this._mqttReady) this._pollMessages();
+                }
             });
         },
 
@@ -823,6 +1473,11 @@ function notifBell() {
         },
 
         async _pollMessages() {
+            // MQTT handles message sounds in real-time — no need to poll when connected
+            if (this._mqttReady) return;
+            const _now = Date.now();
+            if (_now - (this._lastMsgPoll || 0) < 3000) return;
+            this._lastMsgPoll = _now;
             // Skip while the messages page is open — that page handles its own sound
             if (location.pathname.startsWith('/messages')) {
                 // Still sync the baseline so we don't double-ring when leaving the page
@@ -947,6 +1602,7 @@ function navHistory() {
             if (/\/users\/\d/.test(url))    return 'fa-user';
             if (/\/settings/.test(url))     return 'fa-gear';
             if (/\/calendar/.test(url))     return 'fa-calendar';
+            if (/\/gantt/.test(url))        return 'fa-bars-progress';
             if (/\/activities/.test(url))   return 'fa-timeline';
             return 'fa-house';
         },
@@ -981,13 +1637,17 @@ function onlineUsers() {
             const attach = () => {
                 if (!window._mqtt) return;
                 window._mqtt.onTopic('tm/presence/+', () => {
-                    this._fetch();
+                    clearTimeout(this._presenceDebounce);
+                    this._presenceDebounce = setTimeout(() => this._fetch(), 2000);
                 });
             };
             if (window._mqtt) { attach(); }
             else { document.addEventListener('mqtt:ready', attach, { once: true }); }
         },
         async _fetch() {
+            const _now = Date.now();
+            if (_now - (this._lastFetch || 0) < 3000) return;
+            this._lastFetch = _now;
             try {
                 const res  = await fetch('{{ route("online.users") }}', { headers:{ 'X-Requested-With':'XMLHttpRequest' } });
                 if (!res.ok) return;
@@ -1005,17 +1665,19 @@ function onlineUsers() {
 @stack('scripts')
 
 @auth
-{{-- MQTT: initialize the browser client for the logged-in user --}}
+{{-- MQTT: credentials fetched server-side to avoid embedding secrets in HTML --}}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     if (window._mqtt && window._mqtt.initMqtt) {
-        window._mqtt.initMqtt({
-            userId:   {{ auth()->id() }},
-            wsUrl:    '{{ env("MQTT_WS_URL", "/mqtt") }}',
-            username: '{{ env("MQTT_BROWSER_USER", "tm_browser") }}',
-            password: '{{ env("MQTT_BROWSER_PASS", "") }}',
+        fetch('{{ route("mqtt.credentials") }}', {
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' }
+        })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(cfg) {
+            if (!cfg) return;
+            window._mqtt.initMqtt(cfg);
+            document.dispatchEvent(new Event('mqtt:ready'));
         });
-        document.dispatchEvent(new Event('mqtt:ready'));
     }
 });
 </script>
@@ -1181,7 +1843,7 @@ document.addEventListener('DOMContentLoaded', function () {
        Call from anywhere: window.showToast(...) */
     window.showToast = function (title, message, type, duration) {
         type     = type     || 'success';
-        duration = duration || (type === 'success' ? 4000 : 7000);
+        duration = duration || 2600;
 
         const wrap = document.getElementById('appToastWrap');
         if (!wrap) return;
@@ -1230,7 +1892,7 @@ document.addEventListener('DOMContentLoaded', function () {
 <div x-data="taskAgent()" x-init="init()" class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
 
     {{-- Chat window --}}
-    <div x-show="open" x-transition:enter="transition ease-out duration-200"
+    <div x-show="open" x-cloak x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0 translate-y-4 scale-95"
          x-transition:enter-end="opacity-100 translate-y-0 scale-100"
          x-transition:leave="transition ease-in duration-150"
@@ -1254,8 +1916,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="text-xs" style="color:rgba(255,255,255,.75);">{{ $appSettings['agent_subtitle'] ?? 'Ask me anything about your tasks' }}</div>
             </div>
             <div class="flex items-center gap-2 ml-auto flex-shrink-0">
-                <button @click="clearChat()" title="Clear chat" class="text-white/60 hover:text-white transition-colors" style="background:none;border:none;cursor:pointer;padding:2px 4px;">
-                    <i class="fas fa-broom text-xs"></i>
+                <button @click="supportMode = !supportMode; supportSent = false; supportBody = ''; supportFiles = []; supportSending = false" title="Message Support"
+                        class="transition-colors" style="background:none;border:none;cursor:pointer;padding:2px 4px;"
+                        :style="supportMode ? 'color:#fff;' : 'color:rgba(255,255,255,.6);'">
+                    <i class="fas fa-headset text-xs"></i>
                 </button>
                 <button @click="open = false" class="text-white/70 hover:text-white transition-colors" style="background:none;border:none;cursor:pointer;padding:2px 4px;">
                     <i class="fas fa-times"></i>
@@ -1264,7 +1928,7 @@ document.addEventListener('DOMContentLoaded', function () {
         </div>
 
         {{-- Messages --}}
-        <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50" x-ref="msgArea">
+        <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50" x-ref="msgArea" x-show="!supportMode">
             <template x-for="(msg, idx) in messages" :key="idx">
                 <div>
                     {{-- Agent message --}}
@@ -1483,7 +2147,9 @@ document.addEventListener('DOMContentLoaded', function () {
                                     <div class="flex flex-wrap gap-1.5 pt-1">
                                         <template x-for="qr in msg.quick_replies" :key="qr">
                                             <button @click="sendQuick(qr)"
-                                                    class="text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-full transition-colors"
+                                                    :class="qr === '📨 Message Support'
+                                                        ? 'text-xs bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 px-2.5 py-1 rounded-full transition-colors'
+                                                        : 'text-xs bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-full transition-colors'"
                                                     x-text="qr"></button>
                                         </template>
                                     </div>
@@ -1517,8 +2183,91 @@ document.addEventListener('DOMContentLoaded', function () {
             </template>
         </div>
 
+        {{-- Support Panel --}}
+        <div x-show="supportMode" class="flex-1 flex flex-col bg-gray-50 overflow-y-auto">
+            <div class="flex flex-col p-4 gap-3 min-h-full">
+                <template x-if="!supportSent">
+                    <div class="flex flex-col gap-3">
+                        <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-sm text-indigo-700 flex items-start gap-2">
+                            <i class="fas fa-headset mt-0.5 flex-shrink-0"></i>
+                            <span>Describe your issue and our support team will receive your message directly.</span>
+                        </div>
+                        <textarea x-model="supportBody" placeholder="Describe your issue…"
+                            class="text-sm bg-white border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none"
+                            rows="4"></textarea>
+
+                        {{-- Drop zone --}}
+                        <div class="rounded-xl border-2 border-dashed border-gray-300 bg-white px-3 py-3 text-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-colors"
+                             :class="supportDragging ? 'border-indigo-500 bg-indigo-50' : ''"
+                             @click="$refs.supportFileInput.click()"
+                             @dragover.prevent="supportDragging = true"
+                             @dragleave.prevent="supportDragging = false"
+                             @drop.prevent="supportDragging = false; supportHandleFiles($event.dataTransfer.files)">
+                            <i class="fas fa-paperclip text-gray-400 text-sm mb-1"></i>
+                            <p class="text-xs text-gray-400">Attach files or drag &amp; drop</p>
+                        </div>
+                        <input type="file" multiple x-ref="supportFileInput" class="hidden"
+                               @change="supportHandleFiles($event.target.files); $event.target.value = ''">
+
+                        {{-- File chips --}}
+                        <template x-if="supportFiles.length > 0">
+                            <div class="flex flex-col gap-1.5">
+                                <template x-for="(f, i) in supportFiles" :key="i">
+                                    <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs">
+                                        <i class="fas fa-file text-gray-400 flex-shrink-0"></i>
+                                        <span class="flex-1 truncate text-gray-700" x-text="f.name"></span>
+                                        <span class="text-gray-400 flex-shrink-0" x-text="(f.size / 1024).toFixed(0) + ' KB'"></span>
+                                        <button @click.stop="supportRemoveFile(i)" class="text-gray-400 hover:text-red-500 flex-shrink-0 ml-1" style="background:none;border:none;cursor:pointer;padding:0;">
+                                            <i class="fas fa-times text-xs"></i>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                        <button @click="sendSupport()" :disabled="supportSending || !supportBody.trim()"
+                                class="w-full py-2 rounded-xl text-white text-sm font-medium disabled:opacity-40 transition-colors"
+                                style="background:{{ $agentColor }};">
+                            <template x-if="!supportSending">
+                                <span><i class="fas fa-paper-plane mr-2"></i> Send to Support</span>
+                            </template>
+                            <template x-if="supportSending">
+                                <span><i class="fas fa-spinner fa-spin mr-2"></i> Sending…</span>
+                            </template>
+                        </button>
+                        <button @click="supportMode = false" class="text-xs text-gray-400 hover:text-gray-600 text-center">
+                            ← Back to assistant
+                        </button>
+                    </div>
+                </template>
+                <template x-if="supportSent">
+                    <div class="flex-1 flex flex-col items-center justify-center gap-3 text-center py-8">
+                        <div class="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
+                            <i class="fas fa-check text-green-600 text-xl"></i>
+                        </div>
+                        <div class="text-sm font-medium text-gray-800">Message sent!</div>
+                        <div class="text-xs text-gray-500" x-text="supportAdminName ? 'Your message was sent to ' + supportAdminName + '.' : 'Your message has been sent to support.'"></div>
+                        <a :href="supportUrl" class="mt-1 text-xs text-indigo-600 hover:text-indigo-800 underline font-medium" x-show="supportUrl">
+                            Open in Messages →
+                        </a>
+                        <button @click="supportMode = false; supportSent = false; supportBody = ''; supportFiles = []"
+                                class="mt-2 text-xs text-gray-400 hover:text-gray-600 underline">
+                            Back to assistant
+                        </button>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        {{-- Clear conversation link --}}
+        <div x-show="!supportMode && messages.length > 1" class="flex justify-center py-1 border-t border-gray-50 bg-white">
+            <button @click="clearChat()" class="text-xs text-gray-400 hover:text-red-400 transition-colors px-3 py-0.5 rounded-full hover:bg-red-50">
+                Clear conversation
+            </button>
+        </div>
+
         {{-- Input --}}
-        <div class="border-t border-gray-100 bg-white px-3 py-2.5 flex items-center gap-2">
+        <div class="border-t border-gray-100 bg-white px-3 py-2.5 flex items-center gap-2" x-show="!supportMode">
             <input x-ref="inputBox" x-model="input" type="text"
                    @keydown.enter="send()"
                    placeholder="Ask me anything…"
@@ -1533,26 +2282,95 @@ document.addEventListener('DOMContentLoaded', function () {
     </div>
 
     {{-- FAB toggle button --}}
-    <button @click="toggleOpen()"
-            class="w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white transition-all hover:scale-105 active:scale-95 relative"
-            style="background:{{ $agentColor }};">
-        <i class="fas text-xl transition-transform duration-200" :class="open ? 'fa-times' : 'fa-{{ $agentIcon }}'"></i>
-        {{-- Pulse ring when closed --}}
-        <span x-show="!open" class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white"></span>
+    <button @click="toggleOpen()" class="agent-fab" :class="open ? 'agent-fab--open' : ''" :title="!open && badgeTooltip ? badgeTooltip : ''">
+
+        {{-- Glossy shine layer --}}
+        <span class="agent-fab__shine"></span>
+
+        {{-- Icon --}}
+        <i class="fas agent-fab__icon" :class="open ? 'fa-times' : 'fa-{{ $agentIcon }}'"></i>
+
+        {{-- Online dot --}}
+        <span x-show="!open" class="agent-fab__online"></span>
     </button>
+
+    <style>
+    /* ── FAB base ───────────────────────────────────── */
+    .agent-fab {
+        position: relative;
+        width: 58px; height: 58px;
+        border-radius: 50%;
+        border: none; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        background: linear-gradient(145deg, {{ $agentColor }}, color-mix(in srgb, {{ $agentColor }} 80%, #000));
+        box-shadow: 0 4px 15px {{ $agentColor }}55, 0 1px 3px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.15);
+        transition: transform .25s cubic-bezier(.34,1.56,.64,1), box-shadow .25s ease;
+        outline: none;
+    }
+    .agent-fab:hover {
+        transform: scale(1.1) translateY(-2px);
+        box-shadow: 0 8px 28px {{ $agentColor }}66, 0 2px 6px rgba(0,0,0,.15), inset 0 1px 0 rgba(255,255,255,.2);
+    }
+    .agent-fab:active { transform: scale(.95); }
+    .agent-fab--open  { transform: scale(1.05); }
+
+    /* Shine */
+    .agent-fab__shine {
+        position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+        background: linear-gradient(145deg, rgba(255,255,255,.22) 0%, transparent 55%);
+    }
+
+    /* Icon */
+    .agent-fab__icon {
+        font-size: 1.3rem; color: #fff; position: relative; z-index: 1;
+        transition: transform .35s cubic-bezier(.34,1.56,.64,1), opacity .2s;
+    }
+    .agent-fab--open .agent-fab__icon { transform: rotate(90deg); }
+
+    /* ── Online dot ─────────────────────────────────── */
+    .agent-fab__online {
+        position: absolute; top: 1px; right: 1px;
+        width: 13px; height: 13px; border-radius: 50%;
+        background: #22C55E;
+        border: 2.5px solid #fff;
+        box-shadow: 0 0 0 2px rgba(34,197,94,.25);
+    }
+
+    </style>
 </div>
 
 <script>
 function taskAgent() {
     return {
-        open:     false,
-        thinking: false,
-        input:    '',
-        messages: [],
+        open:            false,
+        thinking:        false,
+        input:           '',
+        messages:        [],
+        badgeCount:      0,
+        badgeTooltip:    '',
+        supportMode:      false,
+        supportBody:      '',
+        supportSent:      false,
+        supportSending:   false,
+        supportDragging:  false,
+        supportFiles:     [],
+        supportAdminName: '',
+        supportUrl:       '',
         _csrf:    document.querySelector('meta[name="csrf-token"]')?.content || '',
 
         init() {
-            // Welcome message on first open
+            this.fetchBadge();
+        },
+
+        async fetchBadge() {
+            try {
+                const res = await fetch('{{ route("agent.badge") }}', {
+                    headers: { 'X-CSRF-TOKEN': this._csrf, 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const data = await res.json();
+                this.badgeCount    = data.count || 0;
+                this.badgeTooltip  = data.tooltip || '';
+            } catch (e) {}
         },
 
         toggleOpen() {
@@ -1561,27 +2379,35 @@ function taskAgent() {
                 this.pushAgent({
                     reply: @json($agentWelcome),
                     type:  'text',
-                    quick_replies: ['my tasks', 'stats', 'overdue', 'help'],
+                    quick_replies: ['today', 'my tasks', 'stats', 'overdue'],
                 });
             }
-            if (this.open) this.$nextTick(() => { this.$refs.inputBox?.focus(); this.scrollBottom(); });
+            if (this.open) {
+                this.badgeCount = 0;
+                this.$nextTick(() => { this.$refs.inputBox?.focus(); this.scrollBottom(); });
+            } else {
+                this.fetchBadge();
+            }
         },
 
         clearChat() {
             this.messages = [];
             this.input    = '';
             this.thinking = false;
-            this.pushAgent({
-                reply: @json($agentWelcome),
-                type:  'text',
-                quick_replies: ['my tasks', 'stats', 'overdue', 'help'],
-            });
+            // Re-add just the welcome greeting so that re-opening the chat
+            // doesn't trigger the auto "today" brief again (which fires when messages === [])
+            this.pushAgent({ reply: @json($agentWelcome), type: 'text', quick_replies: ['my tasks', 'stats', 'overdue', 'help'] });
             this.$nextTick(() => this.scrollBottom());
         },
 
         async send() {
             const text = this.input.trim();
             if (!text || this.thinking) return;
+            if (/^clear( chat)?$/i.test(text)) {
+                this.input = '';
+                this.clearChat();
+                return;
+            }
             this.input = '';
             this.messages.push({ from: 'user', text });
             this.thinking = true;
@@ -1602,10 +2428,65 @@ function taskAgent() {
             }
         },
 
-        sendQuick(text) { this.input = text; this.send(); },
+        sendQuick(text) {
+            if (text === '📨 Message Support') {
+                this.supportMode = true;
+                this.supportSent = false;
+                this.supportBody = '';
+                return;
+            }
+            this.input = text;
+            this.send();
+        },
 
         pushAgent(data) {
+            if (data.support_prompt) {
+                const qr = data.quick_replies ? [...data.quick_replies] : [];
+                if (!qr.includes('📨 Message Support')) qr.push('📨 Message Support');
+                data = { ...data, quick_replies: qr };
+            }
             this.messages.push({ from: 'agent', ...data });
+        },
+
+        supportHandleFiles(fileList) {
+            Array.from(fileList).forEach(f => {
+                if (!this.supportFiles.find(x => x.name === f.name && x.size === f.size)) {
+                    this.supportFiles.push(f);
+                }
+            });
+        },
+
+        supportRemoveFile(index) {
+            this.supportFiles.splice(index, 1);
+        },
+
+        async sendSupport() {
+            if (!this.supportBody.trim() || this.supportSending) return;
+            this.supportSending = true;
+            try {
+                const fd = new FormData();
+                fd.append('body', this.supportBody.trim());
+                fd.append('_token', this._csrf);
+                this.supportFiles.forEach(f => fd.append('attachments[]', f));
+                const res = await fetch('{{ route("agent.support") }}', {
+                    method:  'POST',
+                    headers: { 'X-CSRF-TOKEN': this._csrf, 'X-Requested-With': 'XMLHttpRequest' },
+                    body:    fd,
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    this.supportSent      = true;
+                    this.supportAdminName = data.admin || '';
+                    this.supportUrl       = data.url   || '';
+                    this.supportFiles     = [];
+                } else {
+                    alert('Failed to send: ' + (data.error || 'please try again.'));
+                }
+            } catch (e) {
+                alert('Something went wrong. Please try again.');
+            } finally {
+                this.supportSending = false;
+            }
         },
 
         scrollBottom() {
