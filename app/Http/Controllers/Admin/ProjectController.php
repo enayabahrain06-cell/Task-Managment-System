@@ -126,13 +126,16 @@ class ProjectController extends Controller
 
         // Store uploaded files
         if ($request->hasFile('attachments')) {
+            $nas = app(\App\Services\NasService::class);
             foreach ($request->file('attachments') as $file) {
                 $path = $file->store("project-attachments/{$project->id}", 'public');
+                $nasPath = $nas->copyToNasProjectAttachment($project, $path, $file->getClientOriginalName());
                 ProjectAttachment::create([
                     'project_id'  => $project->id,
                     'type'        => 'file',
                     'name'        => $file->getClientOriginalName(),
                     'path'        => $path,
+                    'nas_path'    => $nasPath,
                     'size'        => $file->getSize(),
                     'uploaded_by' => auth()->id(),
                 ]);
@@ -543,7 +546,7 @@ class ProjectController extends Controller
             $nas = app(\App\Services\NasService::class);
             foreach ($request->file('attachments') as $file) {
                 $path    = $file->store("task-attachments/{$task->id}", 'public');
-                $nasPath = $nas->copyToNas($task, $path, $file->getClientOriginalName(), '03_Working');
+                $nasPath = $nas->copyToNas($task, $path, $file->getClientOriginalName(), '03_Working', 0, keepLocal: true);
                 ProjectAttachment::create([
                     'project_id'  => $task->project_id,
                     'task_id'     => $task->id,
@@ -638,7 +641,7 @@ class ProjectController extends Controller
             $nas = app(\App\Services\NasService::class);
             foreach ($request->file('attachments') as $file) {
                 $path    = $file->store("task-attachments/{$task->id}", 'public');
-                $nasPath = $nas->copyToNas($task, $path, $file->getClientOriginalName(), '03_Working');
+                $nasPath = $nas->copyToNas($task, $path, $file->getClientOriginalName(), '03_Working', 0, keepLocal: true);
                 ProjectAttachment::create([
                     'project_id'  => $task->project_id,
                     'task_id'     => $task->id,
