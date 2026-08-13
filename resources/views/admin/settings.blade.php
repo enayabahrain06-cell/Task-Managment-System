@@ -3642,7 +3642,17 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             fetch('{{ route('admin.settings.backup.nas.list') }}', {headers:{'Accept':'application/json'}})
                                 .then(r=>r.json()).then(d=>{ this.files=d.files||[]; this.filesLoaded=true; this.loadingFiles=false; });
                         },
-                        toggle() { this.showFiles=!this.showFiles; if(this.showFiles && !this.filesLoaded) this.loadFiles(); }
+                        toggle() { this.showFiles=!this.showFiles; if(this.showFiles && !this.filesLoaded) this.loadFiles(); },
+                        copyToLocal(path, name) {
+                            if (!window.confirm('Copy \'' + name + '\' from the NAS to local server storage (storage/app/backups)?')) return;
+                            this.saving=true; this.ok=null; this.msg='';
+                            fetch('{{ route('admin.settings.backup.migrate.local') }}', {
+                                method: 'POST',
+                                headers: {'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json','Content-Type':'application/json'},
+                                body: JSON.stringify({ nas_path: path, filename: name }),
+                            }).then(r=>r.json()).then(d=>{ this.ok=d.ok; this.msg=d.msg; this.saving=false; })
+                              .catch(()=>{ this.ok=false; this.msg='Request failed.'; this.saving=false; });
+                        }
                      }">
 
                     {{-- NAS backup format picker modal --}}
@@ -3737,7 +3747,13 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                             <p style="font-size:12px;font-weight:600;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" x-text="f.name"></p>
                                             <p style="font-size:11px;color:#9CA3AF;margin:0;" x-text="f.size + ' MB · ' + f.month"></p>
                                         </div>
-                                                        <button type="button" @click="openNasRestore(f.path)"
+                                                        <button type="button" @click="copyToLocal(f.path, f.name)"
+                                                :disabled="saving"
+                                                style="display:flex;align-items:center;gap:5px;padding:5px 10px;background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap;"
+                                                onmouseover="this.style.background='#DBEAFE'" onmouseout="this.style.background='#EFF6FF'">
+                                            <i class="fas fa-download" style="font-size:9px;"></i> Copy to Local
+                                        </button>
+                                        <button type="button" @click="openNasRestore(f.path)"
                                                 style="display:flex;align-items:center;gap:5px;padding:5px 10px;background:#DC2626;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap;"
                                                 onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
                                             <i class="fas fa-rotate-left" style="font-size:9px;"></i> Restore
@@ -3754,13 +3770,25 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                      (e.g. blocked by Cloudflare's proxy body-size limit). Copy the .zip/.sqlite
                      file into storage/app/backups/ on the server directly (scp/sftp), then restore
                      it from this list — no browser upload involved. --}}
-                <div x-data="{ showFiles: false, loadingFiles: false, files: [], filesLoaded: false,
+                <div x-data="{ showFiles: false, loadingFiles: false, files: [], filesLoaded: false, deleting: null, deleteMsg: '', deleteOk: null,
                     loadFiles() {
                         this.loadingFiles=true;
                         fetch('{{ route('admin.settings.backup.server.list') }}', {headers:{'Accept':'application/json'}})
                             .then(r=>r.json()).then(d=>{ this.files=d.files||[]; this.filesLoaded=true; this.loadingFiles=false; });
                     },
-                    toggle() { this.showFiles=!this.showFiles; if(this.showFiles && !this.filesLoaded) this.loadFiles(); }
+                    toggle() { this.showFiles=!this.showFiles; if(this.showFiles && !this.filesLoaded) this.loadFiles(); },
+                    deleteFile(name) {
+                        if (!window.confirm('Permanently delete \'' + name + '\' from the server? This cannot be undone.')) return;
+                        this.deleting = name; this.deleteMsg=''; this.deleteOk=null;
+                        fetch('{{ route('admin.settings.backup.delete.server') }}', {
+                            method: 'DELETE',
+                            headers: {'X-CSRF-TOKEN':'{{ csrf_token() }}','Accept':'application/json','Content-Type':'application/json'},
+                            body: JSON.stringify({ filename: name }),
+                        }).then(r=>r.json()).then(d=>{
+                            this.deleteOk=d.ok; this.deleteMsg=d.msg; this.deleting=null;
+                            if (d.ok) this.files = this.files.filter(f => f.name !== name);
+                        }).catch(()=>{ this.deleteOk=false; this.deleteMsg='Request failed.'; this.deleting=null; });
+                    }
                 }" style="border-top:1px solid #F3F4F6;padding:14px 20px 16px;">
                     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                         <div style="display:flex;align-items:center;gap:10px;">
@@ -3786,6 +3814,10 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                         <div x-show="!loadingFiles && filesLoaded && files.length === 0" style="font-size:12px;color:#9CA3AF;padding:8px 0;">
                             No backup files found in storage/app/backups/ on the server.
                         </div>
+                        <div x-show="deleteMsg !== ''" x-cloak style="margin-bottom:8px;">
+                            <p :style="deleteOk ? 'color:#065F46;background:#ECFDF5;border:1px solid #6EE7B7;' : 'color:#7F1D1D;background:#FEF2F2;border:1px solid #FECACA;'"
+                               style="font-size:11px;border-radius:7px;padding:8px 12px;margin:0;" x-text="deleteMsg"></p>
+                        </div>
                         <template x-if="!loadingFiles && filesLoaded && files.length > 0">
                             <div style="display:flex;flex-direction:column;gap:6px;">
                                 <template x-for="f in files" :key="f.name">
@@ -3800,6 +3832,13 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                                 style="display:flex;align-items:center;gap:5px;padding:5px 10px;background:#DC2626;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap;"
                                                 onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
                                             <i class="fas fa-rotate-left" style="font-size:9px;"></i> Restore
+                                        </button>
+                                        <button type="button" @click="deleteFile(f.name)"
+                                                :disabled="deleting === f.name"
+                                                style="display:flex;align-items:center;gap:5px;padding:5px 10px;background:#fff;color:#B91C1C;border:1.5px solid #FECACA;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;white-space:nowrap;"
+                                                onmouseover="this.style.background='#FEF2F2'" onmouseout="this.style.background='#fff'">
+                                            <i class="fas" :class="deleting === f.name ? 'fa-circle-notch fa-spin' : 'fa-trash'" style="font-size:9px;"></i>
+                                            <span x-text="deleting === f.name ? 'Deleting…' : 'Delete'"></span>
                                         </button>
                                     </div>
                                 </template>
@@ -5036,7 +5075,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                             </div>
                             <div>
                                 <p style="font-size:13px;font-weight:700;color:#DC2626;margin:0 0 2px;">Full Data Reset</p>
-                                <p style="font-size:11px;color:#B91C1C;margin:0;">Clears everything above at once — users &amp; settings are kept</p>
+                                <p style="font-size:11px;color:#B91C1C;margin:0;">Clears everything above, plus customers, domains, subscriptions &amp; social accounts — users &amp; settings are kept</p>
                             </div>
                         </div>
                         <button type="button"
@@ -5187,7 +5226,9 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
                                 <li>All tasks, projects and project files</li>
                                 <li>All messages and notifications</li>
                                 <li>All task activity, comments and submissions</li>
-                                <li>All audit logs and calendar events</li>
+                                <li>All audit logs, calendar events and meetings</li>
+                                <li>All customers, domains and subscriptions</li>
+                                <li>All social media accounts</li>
                             </ul>
                             <p style="font-size:11px;color:#7F1D1D;margin:8px 0 0;font-weight:600;">
                                 Users and system settings are kept. This action <u>cannot be undone</u>.
