@@ -3136,7 +3136,7 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
             </tr>
         </thead>
         @foreach($decideLaterTasks as $dl)
-        <tbody x-data="{ expanded: false }">
+        <tbody x-data="{ expanded: {{ (int) old('task_id') === $dl->id ? 'true' : 'false' }} }">
             <tr :style="selected.includes({{ $dl->id }}) ? 'background:#FFFBEB;' : ''">
                 <td style="padding:12px 8px 12px 16px;width:44px;">
                     <div style="display:flex;align-items:center;gap:6px;">
@@ -3232,12 +3232,13 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
                         </p>
                         <form method="POST" action="{{ route('admin.tasks.social.assign', $dl->id) }}" style="display:flex;flex-direction:column;gap:8px;max-width:480px;">
                             @csrf
+                            <input type="hidden" name="task_id" value="{{ $dl->id }}">
                             <div style="display:flex;gap:6px;align-items:center;">
                                 <select name="social_user_id" required style="font-size:12px;padding:7px 10px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;color:#374151;outline:none;flex:1;min-width:0;"
                                         onfocus="this.style.borderColor='#3B82F6'" onblur="this.style.borderColor='#E5E7EB'">
                                     <option value="">Select handler…</option>
                                     @foreach($socialUsers as $su)
-                                    <option value="{{ $su->id }}">{{ $su->name }}</option>
+                                    <option value="{{ $su->id }}" {{ (int) old('task_id') === $dl->id && (int) old('social_user_id') === $su->id ? 'selected' : '' }}>{{ $su->name }}</option>
                                     @endforeach
                                 </select>
                                 <button type="submit"
@@ -3248,7 +3249,7 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
                             </div>
                             <textarea name="social_description" rows="2" placeholder="Posting instructions (optional)…"
                                       style="width:100%;padding:8px 10px;border:1.5px solid #E5E7EB;border-radius:8px;font-size:12px;color:#374151;outline:none;resize:vertical;box-sizing:border-box;"
-                                      onfocus="this.style.borderColor='#3B82F6'" onblur="this.style.borderColor='#E5E7EB'"></textarea>
+                                      onfocus="this.style.borderColor='#3B82F6'" onblur="this.style.borderColor='#E5E7EB'">{{ (int) old('task_id') === $dl->id ? old('social_description') : '' }}</textarea>
                         </form>
                     </div>
                 </td>
@@ -3313,7 +3314,7 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
             </tr>
         </thead>
         @foreach($socialTasks as $st)
-        <tbody x-data="{ expanded: false }">
+        <tbody x-data="{ expanded: {{ (int) old('task_id') === $st->id ? 'true' : 'false' }} }">
             <tr>
                 <td style="padding:12px 8px 12px 16px;width:32px;">
                     <button @click="expanded = !expanded"
@@ -3396,12 +3397,14 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
                         </p>
                         <form method="POST" action="{{ route('admin.tasks.social.assign', $st->id) }}" style="display:flex;flex-direction:column;gap:8px;max-width:480px;">
                             @csrf
+                            <input type="hidden" name="task_id" value="{{ $st->id }}">
+                            @php $stFailed = (int) old('task_id') === $st->id; @endphp
                             <div style="display:flex;gap:6px;align-items:center;">
                                 <select name="social_user_id" required style="font-size:12px;padding:7px 10px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;color:#374151;outline:none;flex:1;min-width:0;"
                                         onfocus="this.style.borderColor='#A5B4FC'" onblur="this.style.borderColor='#E5E7EB'">
                                     <option value="">Select handler…</option>
                                     @foreach($socialUsers as $su)
-                                    <option value="{{ $su->id }}" {{ $su->id == $st->social_assigned_to ? 'selected' : '' }}>{{ $su->name }}</option>
+                                    <option value="{{ $su->id }}" {{ ($stFailed ? (int) old('social_user_id') : $st->social_assigned_to) == $su->id ? 'selected' : '' }}>{{ $su->name }}</option>
                                     @endforeach
                                 </select>
                                 <button type="submit"
@@ -3412,13 +3415,13 @@ $pubPlatforms = ['facebook'=>'Facebook','instagram'=>'Instagram','twitter'=>'Twi
                             <textarea name="social_description" rows="2"
                                       placeholder="Posting instructions…"
                                       style="font-size:12px;padding:7px 10px;border:1.5px solid #E5E7EB;border-radius:8px;background:#fff;color:#374151;outline:none;resize:vertical;width:100%;box-sizing:border-box;line-height:1.5;"
-                                      onfocus="this.style.borderColor='#A5B4FC'" onblur="this.style.borderColor='#E5E7EB'">{{ $st->social_description }}</textarea>
+                                      onfocus="this.style.borderColor='#A5B4FC'" onblur="this.style.borderColor='#E5E7EB'">{{ $stFailed ? old('social_description') : $st->social_description }}</textarea>
                             <textarea name="social_caption" rows="2"
                                       placeholder="Ad caption…"
                                       style="font-size:12px;padding:7px 10px;border:1.5px solid #DDD6FE;border-radius:8px;background:#fff;color:#374151;outline:none;resize:vertical;width:100%;box-sizing:border-box;line-height:1.5;"
-                                      onfocus="this.style.borderColor='#8B5CF6'" onblur="this.style.borderColor='#DDD6FE'">{{ $st->social_caption }}</textarea>
+                                      onfocus="this.style.borderColor='#8B5CF6'" onblur="this.style.borderColor='#DDD6FE'">{{ $stFailed ? old('social_caption') : $st->social_caption }}</textarea>
                             <input type="text" name="social_budget"
-                                   value="{{ $st->social_budget }}"
+                                   value="{{ $stFailed ? old('social_budget') : $st->social_budget }}"
                                    placeholder="Ad budget (e.g. $200)…"
                                    style="font-size:12px;padding:7px 10px;border:1.5px solid #FDE68A;border-radius:8px;background:#fff;color:#374151;outline:none;width:100%;box-sizing:border-box;"
                                    onfocus="this.style.borderColor='#F59E0B'" onblur="this.style.borderColor='#FDE68A'">

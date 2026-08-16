@@ -17,5 +17,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('web', \App\Http\Middleware\UpdateLastSeen::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, \Illuminate\Http\Request $request) {
+            if ($e->getStatusCode() === 419 && ! $request->expectsJson()) {
+                return back()
+                    ->withInput($request->except('_token'))
+                    ->with('error', 'Your session expired before this could be saved — please try again.');
+            }
+        });
     })->create();

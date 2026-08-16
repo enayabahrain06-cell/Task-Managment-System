@@ -80,9 +80,9 @@ Route::middleware(['auth', MfaMiddleware::class])->group(function () {
     // MQTT credentials endpoint — served per-session to avoid embedding in HTML source
     Route::get('/mqtt/credentials', function () {
         return response()->json([
-            'wsUrl' => env('MQTT_WS_URL', '/mqtt'),
-            'username' => env('MQTT_BROWSER_USER', 'tm_browser'),
-            'password' => env('MQTT_BROWSER_PASS', ''),
+            'wsUrl' => config('mqtt.ws_url'),
+            'username' => config('mqtt.browser_user'),
+            'password' => config('mqtt.browser_pass'),
             'userId' => auth()->id(),
         ])->header('Cache-Control', 'no-store');
     })->name('mqtt.credentials');

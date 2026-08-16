@@ -1883,6 +1883,9 @@ document.addEventListener('DOMContentLoaded', function () {
         @if (session('error'))
             window.showToast('Error', @json(session('error')), 'error');
         @endif
+        @if ($errors->any())
+            window.showToast('Error', @json($errors->first()), 'error');
+        @endif
     });
 })();
 </script>

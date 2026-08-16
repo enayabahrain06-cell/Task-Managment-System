@@ -18,14 +18,14 @@ class MqttService
 
         try {
             $settings = (new ConnectionSettings)
-                ->setUsername(env('MQTT_USERNAME'))
-                ->setPassword(env('MQTT_PASSWORD'))
+                ->setUsername(config('mqtt.username'))
+                ->setPassword(config('mqtt.password'))
                 ->setConnectTimeout(3)
                 ->setUseTls(false);
 
             $client = new MqttClient(
-                env('MQTT_HOST', '127.0.0.1'),
-                (int) env('MQTT_PORT', 1883),
+                config('mqtt.host'),
+                config('mqtt.port'),
                 'laravel-publisher-' . substr(uniqid(), -6)
             );
 
