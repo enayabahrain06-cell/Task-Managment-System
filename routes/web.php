@@ -313,10 +313,12 @@ Route::middleware([AdminMiddleware::class, MfaMiddleware::class])->prefix('admin
     Route::post('settings/backup/verify-password', [AdminSettingsController::class, 'verifyRestorePassword'])->name('settings.backup.verify.password');
     Route::get('settings/backup/server-files', [AdminSettingsController::class, 'listServerBackups'])->name('settings.backup.server.list');
     Route::post('settings/backup/restore-server', [AdminSettingsController::class, 'restoreFromServer'])->name('settings.backup.restore.server');
+    Route::delete('settings/backup/server-files', [AdminSettingsController::class, 'deleteServerBackup'])->name('settings.backup.delete.server');
     Route::post('settings/backup/save-to-nas', [AdminSettingsController::class, 'saveBackupToNas'])->name('settings.backup.save.nas');
     Route::post('settings/backup/save-to-nas/sqlite', [AdminSettingsController::class, 'saveBackupSqliteToNas'])->name('settings.backup.save.nas.sqlite');
     Route::get('settings/backup/nas-files', [AdminSettingsController::class, 'listNasBackups'])->name('settings.backup.nas.list');
     Route::post('settings/backup/restore-from-nas', [AdminSettingsController::class, 'restoreFromNas'])->name('settings.backup.restore.nas');
+    Route::post('settings/backup/migrate-to-local', [AdminSettingsController::class, 'migrateNasBackupToLocal'])->name('settings.backup.migrate.local');
     Route::post('settings/backup/auto-toggle', [AdminSettingsController::class, 'toggleAutoBackup'])->name('settings.backup.auto.toggle');
     Route::post('settings/backup/auto-retain', [AdminSettingsController::class, 'updateAutoBackupRetain'])->name('settings.backup.auto.retain');
     Route::post('settings/backup/auto-time', [AdminSettingsController::class, 'updateAutoBackupTime'])->name('settings.backup.auto.time');

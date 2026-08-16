@@ -109,9 +109,16 @@ class TeamController extends Controller
         $totalCompleted = Task::whereIn('status', $doneStatuses)->count();
         $totalPending   = Task::whereNotIn('status', $doneStatuses)->count();
 
+        $minPasswordLength     = max(6, (int) Setting::get('min_password_length', 8));
+        $requireStrongPassword = Setting::get('require_strong_password', '0') === '1';
+        $passwordRequirementText = $requireStrongPassword
+            ? "At least {$minPasswordLength} characters, including an uppercase letter, a lowercase letter, a number, and a special character."
+            : "At least {$minPasswordLength} characters.";
+
         return view('team.index', compact(
             'members', 'totalMembers', 'activeMembers', 'totalCompleted', 'totalPending',
-            'allRoles', 'view', 'stats', 'formerEmployees'
+            'allRoles', 'view', 'stats', 'formerEmployees',
+            'minPasswordLength', 'requireStrongPassword', 'passwordRequirementText'
         ));
     }
 }

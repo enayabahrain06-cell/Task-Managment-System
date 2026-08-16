@@ -8,63 +8,82 @@
 
 @section('mobile-content')
 
+@php
+    $warn     = '#F59E0B';
+    $warnText = '#B45309';
+    $success  = '#34C77B';
+    $ringC    = 2 * M_PI * 14;
+@endphp
+
 @if ($isAdmin)
     <h3 class="px-5 pb-3 text-[15px] font-bold tracking-[-0.01em] text-[var(--mob-ink)]">Workload this week</h3>
 
     {{-- WORKLOAD — one card, rows inside --}}
+    @php $workloadMax = $members->max('open_tasks') ?: 1; @endphp
     <section class="mx-4 bg-white border border-[var(--mob-line)] rounded-[18px] p-4
                     flex flex-col gap-[15px] shadow-sm">
         @foreach ($members as $m)
             @php
-                $cap  = $m->capacity ?: 40;
-                $pct  = min(100, round($m->open_tasks / $cap * 100));
-                $over = $m->open_tasks > $cap * 0.85;
+                $pct = min(100, round($m->open_tasks / $workloadMax * 100));
+                $hot = $m->note === 'Busiest right now';
             @endphp
             <div class="flex items-center gap-[11px]">
+                @if ($m->avatarUrl())
+                <img src="{{ $m->avatarUrl() }}" alt="{{ $m->name }}"
+                     class="w-[34px] h-[34px] shrink-0 rounded-full object-cover">
+                @else
                 <span class="w-[34px] h-[34px] shrink-0 rounded-full text-white text-[13px] font-bold
                              flex items-center justify-center"
                       style="background:var(--mob-brand-grad)">{{ $m->initial }}</span>
+                @endif
 
                 <span class="flex-1 min-w-0">
                     <span class="flex items-baseline justify-between gap-2">
                         <span class="text-[13.5px] font-semibold text-[var(--mob-ink)] truncate">{{ $m->name }}</span>
-                        <span class="text-[12px] font-bold text-[var(--mob-ink-2)] tabular-nums">{{ $m->open_tasks }} tasks</span>
+                        <span class="text-[12px] font-bold text-[var(--mob-ink-2)] tabular-nums">{{ $m->open_tasks }} {{ Str::plural('task', $m->open_tasks) }}</span>
                     </span>
 
-                    <span class="block h-[7px] rounded-full bg-gray-100 mt-[7px] overflow-hidden">
-                        <span class="block h-full rounded-full"
-                              style="width:{{ $pct }}%;
-                                     {{ $over
-                                        ? 'background:var(--mob-brand-grad);opacity:1'
-                                        : 'background:var(--mob-brand-accent);opacity:.75' }}"></span>
+                    <span class="block h-[6px] rounded-[3px] bg-[var(--mob-line)] mt-[7px] overflow-hidden">
+                        <span class="block h-full rounded-[3px]"
+                              style="width:{{ $pct }}%; background:{{ $hot ? $warn : 'var(--mob-brand-accent)' }};"></span>
                     </span>
 
-                    <span class="block text-[11px] font-medium text-[var(--mob-ink-3)] mt-1.5">{{ $m->note }}</span>
+                    <span class="block text-[11px] font-bold mt-1.5" style="color:{{ $hot ? $warnText : 'var(--mob-ink-3)' }}">{{ $m->note }}</span>
                 </span>
             </div>
         @endforeach
     </section>
 @endif
 
-<h3 class="px-5 pt-[22px] pb-3 text-[15px] font-bold tracking-[-0.01em] text-[var(--mob-ink)]">Projects</h3>
+@php $projectsDone = $projects->where('pct', 100)->count(); @endphp
+<div class="flex items-baseline justify-between px-5 pt-[22px] pb-3">
+    <h3 class="text-[15px] font-bold tracking-[-0.01em] text-[var(--mob-ink)]">Projects</h3>
+    <span class="text-[12px] font-bold text-[var(--mob-ink-3)]">{{ $projectsDone }} of {{ $projects->count() }} complete</span>
+</div>
 
-{{-- PROJECT CARDS --}}
-<div class="flex flex-col gap-[9px] px-4 pb-1">
+{{-- PROJECT CARD — one card, divided rows, each with a progress ring --}}
+<div class="mx-4 bg-white border border-[var(--mob-line)] rounded-[18px] shadow-sm overflow-hidden">
     @foreach ($projects as $p)
+        @php
+            $dash      = round($p->pct / 100 * $ringC, 2);
+            $ringColor = $p->pct === 100 ? $success : 'var(--mob-brand-accent)';
+            $pctColor  = $p->pct === 100 ? $success : ($p->pct === 0 ? $warnText : 'var(--mob-ink)');
+            $subColor  = $p->pct === 0 ? $warnText : 'var(--mob-ink-3)';
+        @endphp
         <a href="{{ route('mobile.tasks', ['project' => $p->id]) }}"
-           class="block bg-white border border-[var(--mob-line)] rounded-2xl p-3.5 shadow-sm min-h-[44px]">
-            <div class="flex items-center gap-[9px]">
-                <span class="w-[9px] h-[9px] rounded-[3px] shrink-0" style="background:{{ $p->color }}"></span>
-                <span class="flex-1 text-[14px] font-semibold text-[var(--mob-ink)] tracking-[-0.01em] truncate">{{ $p->name }}</span>
-                <span class="text-[12px] font-bold text-[var(--mob-ink-2)] tabular-nums">{{ $p->pct }}%</span>
-            </div>
+           class="flex items-center gap-3 px-4 py-[13px] min-h-[44px] {{ $loop->last ? '' : 'border-b border-[var(--mob-line)]' }}">
+            <svg width="34" height="34" viewBox="0 0 34 34" style="flex-shrink:0;transform:rotate(-90deg)">
+                <circle cx="17" cy="17" r="14" fill="none" stroke="#EFEFF5" stroke-width="4"></circle>
+                <circle cx="17" cy="17" r="14" fill="none" stroke="{{ $ringColor }}" stroke-width="4"
+                        stroke-linecap="round" stroke-dasharray="{{ $dash }} {{ round($ringC, 2) }}"></circle>
+            </svg>
 
-            <div class="h-[7px] rounded-full bg-gray-100 mt-[11px] overflow-hidden">
-                <span class="block h-full rounded-full"
-                      style="width:{{ $p->pct }}%;background:{{ $p->color }};opacity:.85"></span>
-            </div>
+            <span class="flex-1 min-w-0">
+                <span class="block text-[14px] font-semibold text-[var(--mob-ink)] tracking-[-0.01em] truncate">{{ $p->name }}</span>
+                <span class="block text-[12px] font-semibold mt-0.5" style="color:{{ $subColor }}">{{ $p->meta }}</span>
+            </span>
 
-            <div class="text-[11.5px] font-medium text-[var(--mob-ink-3)] mt-[9px]">{{ $p->meta }}</div>
+            <span class="text-[13px] font-bold tabular-nums shrink-0" style="color:{{ $pctColor }}">{{ $p->pct }}%</span>
         </a>
     @endforeach
 </div>

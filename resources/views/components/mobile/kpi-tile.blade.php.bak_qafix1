@@ -1,0 +1,9 @@
+@props(['label', 'value', 'sub' => null])
+{{-- One KPI tile for the 2-col grid. White card, dark numeral — never a colored gradient. --}}
+<div {{ $attributes->merge(['class' => 'uds-kpi-tile']) }}>
+    <div class="uds-eyebrow">{{ $label }}</div>
+    <div class="uds-kpi-value">{{ $value }}</div>
+    @if($sub)
+        <div class="uds-kpi-sub">{{ $sub }}</div>
+    @endif
+</div>

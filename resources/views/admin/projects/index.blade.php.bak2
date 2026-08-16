@@ -25,8 +25,42 @@
     dragover: false,
     qtFiles: [],
     qtDragover: false,
+    qtSubmitting: false,
+    qtTitleDuplicate: false,
+    qtDupTimer: null,
     nameError: false,
     deadlineError: false,
+
+    checkQtDuplicate() {
+        clearTimeout(this.qtDupTimer);
+        const titleEl   = document.getElementById('qtTitleInput');
+        const warnEl    = document.getElementById('qtTitleDupWarn');
+        const projectId = document.getElementById('qtProjectSelect').value;
+        const title     = titleEl.value.trim();
+        if (!title || !projectId) {
+            warnEl.style.display = 'none';
+            this.qtTitleDuplicate = false;
+            return;
+        }
+        this.qtDupTimer = setTimeout(async () => {
+            const params = new URLSearchParams({ title, project_id: projectId });
+            try {
+                const res  = await fetch(`{{ route('admin.tasks.check-duplicate-title') }}?${params}`);
+                const data = await res.json();
+                this.qtTitleDuplicate = !!data.duplicate;
+                if (data.duplicate) {
+                    warnEl.textContent = `A task named '${title}' already exists for this customer (${data.count}${data.count >= 5 ? '+' : ''}). Use a different title to continue.`;
+                    warnEl.style.color = '#DC2626';
+                    warnEl.style.display = 'block';
+                } else {
+                    warnEl.style.display = 'none';
+                }
+            } catch (e) {
+                this.qtTitleDuplicate = false;
+                warnEl.style.display = 'none';
+            }
+        }, 450);
+    },
 
     init() { this.tasks = [this._blankTask()]; },
 
@@ -167,12 +201,11 @@
         <p class="text-sm text-gray-500 mt-0.5">{{ $projects->total() }} {{ request('status') === 'completed' ? 'completed' : 'active' }} project{{ $projects->total() !== 1 ? 's' : '' }}</p>
     </div>
     <div class="flex items-center gap-2">
+        @if(auth()->user()->hasPermission('manage_projects'))
         <button @click="openWizard()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shadow-sm shadow-indigo-200">
             <i class="fa fa-plus"></i> New Project
         </button>
-        <button @click="quickOpen = true" class="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition border border-gray-200 shadow-sm">
-            <i class="fa fa-bolt text-amber-500"></i> Quick Task
-        </button>
+        @endif
     </div>
 </div>
 
@@ -184,6 +217,14 @@
 .proj-stat-card-label { font-size:12px; font-weight:500; color:rgba(255,255,255,0.75); margin:0 0 8px; }
 .proj-stat-card-value { font-size:34px; font-weight:700; line-height:1; margin:0; }
 .proj-stat-card-sub   { font-size:11px; color:rgba(255,255,255,0.6); margin:6px 0 0; }
+/* ── Mobile responsiveness ── */
+.proj-stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+@media (max-width: 768px) { .proj-stat-grid { grid-template-columns: repeat(2,1fr); } }
+@media (max-width: 480px) { .proj-stat-grid { grid-template-columns: 1fr; } }
+@media (max-width: 480px) { .proj-task-field-row { grid-template-columns: 1fr !important; } }
+.proj-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.proj-table-wrap table { min-width: 600px; }
+.proj-tab-bar { flex-wrap: wrap; }
 </style>
 
 @php
@@ -193,7 +234,7 @@ $isCompletedTab  = ($currentStatus === 'completed');
 @endphp
 
 {{-- Tab Bar --}}
-<div style="display:flex;align-items:center;gap:3px;background:#F3F4F6;border-radius:12px;padding:4px;width:fit-content;margin-bottom:20px;">
+<div class="proj-tab-bar" style="display:flex;align-items:center;gap:3px;background:#F3F4F6;border-radius:12px;padding:4px;width:fit-content;margin-bottom:20px;">
     <a href="{{ route('admin.projects.index') }}"
        style="display:flex;align-items:center;gap:8px;padding:8px 18px;border-radius:9px;font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;{{ !$isCompletedTab ? 'background:#fff;color:#4F46E5;box-shadow:0 1px 4px rgba(0,0,0,.08);' : 'background:transparent;color:#6B7280;' }}">
         <i class="fa fa-circle-play" style="font-size:11px;"></i>
@@ -222,7 +263,7 @@ $statDefs = [
     ['label'=>'Completed',   'value'=>$stats['completed'],                   'sub'=>'All time done',    'grad'=>'linear-gradient(135deg,#7C3AED,#8B5CF6)', 'shadow'=>'rgba(124,58,237,.4)',  'url'=> route('admin.projects.index', ['status'=>'completed']),'active'=> false],
 ];
 @endphp
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;">
+<div class="proj-stat-grid">
     @foreach($statDefs as $card)
     @php $isActive = $card['active']; @endphp
     <a href="{{ $card['url'] }}" style="text-decoration:none;display:flex;">
@@ -282,7 +323,7 @@ $statDefs = [
 
 {{-- ══ TABLE VIEW ══ --}}
 <div x-show="view === 'table'" x-cloak>
-<div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+<div class="proj-table-wrap bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
     <table class="w-full">
         <thead>
             <tr class="border-b border-gray-100 bg-gray-50/50">
@@ -336,29 +377,20 @@ $statDefs = [
                     {{ $project->deadline->format(config('app.date_format', 'M d, Y')) }}
                 </td>
                 <td class="px-5 py-3.5 text-sm text-gray-400">{{ $project->created_at->format('M d') }}</td>
-                <td class="px-5 py-3.5">
-                    <div class="flex items-center gap-2">
-                        <a href="{{ route('admin.projects.show', $project) }}" class="text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-lg transition">View</a>
-                        <a href="{{ route('admin.projects.edit', $project) }}" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg transition">Edit</a>
-                        @if($project->status === 'completed')
-                        <form action="{{ route('admin.projects.reopen', $project) }}" method="POST" class="inline"
-                              onsubmit="return confirm('Reopen {{ addslashes($project->name) }} and set it back to Active?')">
-                            @csrf
-                            <button type="submit" class="text-xs font-medium text-amber-600 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-lg transition">Reopen</button>
-                        </form>
-                        @else
-                        <form action="{{ route('admin.projects.close', $project) }}" method="POST" class="inline"
-                              onsubmit="return confirm('Close &quot;{{ addslashes($project->name) }}&quot; and mark it as Completed?')">
-                            @csrf
-                            <button type="submit" class="text-xs font-medium text-emerald-600 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg transition">Close</button>
-                        </form>
-                        @endif
-                        <form action="{{ route('admin.projects.destroy', $project) }}" method="POST" class="inline"
-                              onsubmit="return confirm('Delete {{ addslashes($project->name) }}?')">
-                            @csrf @method('DELETE')
-                            <button type="submit" class="text-xs font-medium text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2.5 py-1.5 rounded-lg transition">Delete</button>
-                        </form>
-                    </div>
+                <td class="px-5 py-3.5 text-right">
+                    <button type="button"
+                            onclick="openProjMenu(event, this)"
+                            data-view="{{ route('admin.projects.show', $project) }}"
+                            data-edit="{{ route('admin.projects.edit', $project) }}"
+                            data-reopen-url="{{ $project->status === 'completed' ? route('admin.projects.reopen', $project) : '' }}"
+                            data-close-url="{{ $project->status !== 'completed' ? route('admin.projects.close', $project) : '' }}"
+                            data-delete-url="{{ auth()->user()->hasPermission('delete_projects') ? route('admin.projects.destroy', $project) : '' }}"
+                            data-name="{{ addslashes($project->name) }}"
+                            style="width:30px;height:30px;border-radius:8px;background:#F9FAFB;border:1px solid #E5E7EB;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:#6B7280;font-size:14px;transition:background .15s;"
+                            onmouseover="this.style.background='#F3F4F6'" onmouseout="this.style.background='#F9FAFB'"
+                            title="Actions">
+                        <i class="fas fa-ellipsis-vertical"></i>
+                    </button>
                 </td>
             </tr>
             @empty
@@ -495,42 +527,20 @@ $statDefs = [
                         <span class="text-xs text-gray-400">Due {{ $project->deadline->format(config('app.date_format', 'M d, Y')) }}</span>
                         @endif
                     </div>
-                    <div class="flex items-center gap-1" onclick="event.stopPropagation()">
-                        <a href="{{ route('admin.projects.edit', $project) }}"
-                           class="w-6 h-6 rounded-lg bg-gray-100 hover:bg-indigo-100 flex items-center justify-center text-gray-400 hover:text-indigo-600 transition"
-                           style="text-decoration:none;" title="Edit">
-                            <i class="fa fa-pen" style="font-size:10px;"></i>
-                        </a>
-                        @if($project->status === 'completed')
-                        <form action="{{ route('admin.projects.reopen', $project) }}" method="POST"
-                              onsubmit="return confirm('Reopen {{ addslashes($project->name) }} and set it back to Active?')" style="display:contents;">
-                            @csrf
-                            <button type="submit"
-                                    class="w-6 h-6 rounded-lg bg-amber-50 hover:bg-amber-100 flex items-center justify-center text-amber-400 hover:text-amber-600 transition"
-                                    title="Reopen Project" style="cursor:pointer;border:none;">
-                                <i class="fa fa-rotate-right" style="font-size:10px;"></i>
-                            </button>
-                        </form>
-                        @else
-                        <form action="{{ route('admin.projects.close', $project) }}" method="POST"
-                              onsubmit="return confirm('Close &quot;{{ addslashes($project->name) }}&quot; and mark it as Completed?')" style="display:contents;">
-                            @csrf
-                            <button type="submit"
-                                    class="w-6 h-6 rounded-lg bg-emerald-50 hover:bg-emerald-100 flex items-center justify-center text-emerald-400 hover:text-emerald-600 transition"
-                                    title="Close Project" style="cursor:pointer;border:none;">
-                                <i class="fa fa-check" style="font-size:10px;"></i>
-                            </button>
-                        </form>
-                        @endif
-                        <form action="{{ route('admin.projects.destroy', $project) }}" method="POST"
-                              onsubmit="return confirm('Delete {{ addslashes($project->name) }}?')" style="display:contents;">
-                            @csrf @method('DELETE')
-                            <button type="submit"
-                                    class="w-6 h-6 rounded-lg bg-gray-100 hover:bg-red-100 flex items-center justify-center text-gray-400 hover:text-red-500 transition"
-                                    title="Delete" style="cursor:pointer;border:none;">
-                                <i class="fa fa-trash" style="font-size:10px;"></i>
-                            </button>
-                        </form>
+                    <div onclick="event.stopPropagation()">
+                        <button type="button"
+                                onclick="openProjMenu(event, this)"
+                                data-view="{{ route('admin.projects.show', $project) }}"
+                                data-edit="{{ route('admin.projects.edit', $project) }}"
+                                data-reopen-url="{{ $project->status === 'completed' ? route('admin.projects.reopen', $project) : '' }}"
+                                data-close-url="{{ $project->status !== 'completed' ? route('admin.projects.close', $project) : '' }}"
+                                data-delete-url="{{ auth()->user()->hasPermission('delete_projects') ? route('admin.projects.destroy', $project) : '' }}"
+                                data-name="{{ addslashes($project->name) }}"
+                                class="w-6 h-6 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-600 transition"
+                                style="border:none;cursor:pointer;font-size:13px;"
+                                title="Actions">
+                            <i class="fas fa-ellipsis-vertical"></i>
+                        </button>
                     </div>
                 </div>
 
@@ -569,16 +579,19 @@ $statDefs = [
         </div>
 
         {{-- Form --}}
-        <form method="POST" action="{{ route('admin.tasks.quick') }}" enctype="multipart/form-data" style="padding:20px 24px 24px;">
+        <form method="POST" action="{{ route('admin.tasks.quick') }}" enctype="multipart/form-data" style="padding:20px 24px 24px;"
+              @submit="if (qtSubmitting || qtTitleDuplicate) { $event.preventDefault(); return; } qtSubmitting = true">
             @csrf
 
             <div style="margin-bottom:14px;">
                 <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">
                     Task Title <span style="color:#EF4444;">*</span>
                 </label>
-                <input type="text" name="title" required placeholder="e.g. Update hero banner image"
+                <input type="text" name="title" id="qtTitleInput" required placeholder="e.g. Update hero banner image"
                        style="width:100%;padding:9px 13px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;box-sizing:border-box;outline:none;"
-                       onfocus="this.style.borderColor='#F59E0B'" onblur="this.style.borderColor='#E5E7EB'">
+                       onfocus="this.style.borderColor='#F59E0B'" onblur="this.style.borderColor='#E5E7EB'"
+                       @input="checkQtDuplicate()">
+                <p id="qtTitleDupWarn" style="display:none;font-size:11px;color:#DC2626;margin:5px 0 0;font-weight:600;"></p>
             </div>
 
             <div style="margin-bottom:14px;">
@@ -622,8 +635,9 @@ $statDefs = [
                 <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;">
                     Link to Project <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span>
                 </label>
-                <select name="project_id"
-                        style="width:100%;padding:9px 13px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;background:#fff;box-sizing:border-box;outline:none;">
+                <select name="project_id" id="qtProjectSelect"
+                        style="width:100%;padding:9px 13px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:13px;color:#111827;background:#fff;box-sizing:border-box;outline:none;"
+                        @change="checkQtDuplicate()">
                     <option value="">— No project (standalone) —</option>
                     @foreach($projects as $p)
                     <option value="{{ $p->id }}">{{ $p->name }}</option>
@@ -633,7 +647,7 @@ $statDefs = [
 
             {{-- Attachments --}}
             <div style="margin-bottom:16px;">
-                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Attachments <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional, max 20 MB each</span></label>
+                <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Attachments <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span></label>
                 <div @dragover.prevent="qtDragover = true"
                      @dragleave.prevent="qtDragover = false"
                      @drop.prevent="qtDragover = false; qtHandleFiles($event)"
@@ -667,9 +681,10 @@ $statDefs = [
                 </template>
             </div>
 
-            <button type="submit"
-                    style="width:100%;padding:11px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(245,158,11,.35);">
-                <i class="fa fa-bolt"></i> Assign Task
+            <button type="submit" :disabled="qtSubmitting || qtTitleDuplicate"
+                    :style="(qtSubmitting || qtTitleDuplicate) ? 'width:100%;padding:11px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(245,158,11,.35);opacity:0.8;' : 'width:100%;padding:11px;background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 12px rgba(245,158,11,.35);'">
+                <i class="fa" :class="qtSubmitting ? 'fa-spinner fa-spin' : 'fa-bolt'"></i>
+                <span x-text="qtTitleDuplicate ? 'Duplicate Title' : (qtSubmitting ? 'Assigning...' : 'Assign Task')"></span>
             </button>
         </form>
 
@@ -799,10 +814,12 @@ $statDefs = [
                             <p style="font-size:13px;font-weight:700;color:#374151;margin:0;">Assign Tasks</p>
                             <p style="font-size:11px;color:#9CA3AF;margin:3px 0 0;">Assignees are automatically added as project members</p>
                         </div>
+                        @if(auth()->user()->hasPermission('manage_tasks'))
                         <button type="button" @click="addTask()"
                                 style="display:flex;align-items:center;gap:6px;padding:7px 14px;background:#EEF2FF;color:#4F46E5;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
                             <i class="fas fa-plus" style="font-size:10px;"></i> Add Task
                         </button>
+                        @endif
                     </div>
 
                     <div style="display:flex;flex-direction:column;gap:14px;">
@@ -874,7 +891,7 @@ $statDefs = [
                                 </div>
 
                                 {{-- Reviewer + Priority + Deadline --}}
-                                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+                                <div class="proj-task-field-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
                                     <div>
                                         <label style="display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px;">Reviewer</label>
                                         <select :name="'tasks['+i+'][reviewer_id]'" x-model="task.reviewer_id"
@@ -957,7 +974,7 @@ $statDefs = [
 
                     {{-- Drop Zone (fixed: all styles inside :style) --}}
                     <p style="font-size:12px;font-weight:600;color:#374151;margin:0 0 10px;">
-                        Files <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— max 20 MB each</span>
+                        Files <span style="font-size:11px;font-weight:400;color:#9CA3AF;">— optional</span>
                     </p>
                     <div @dragover.prevent="dragover = true"
                          @dragleave.prevent="dragover = false"
@@ -970,7 +987,7 @@ $statDefs = [
                             <i class="fas fa-cloud-arrow-up" style="font-size:20px;color:#0EA5E9;"></i>
                         </div>
                         <p style="font-size:13px;font-weight:600;color:#374151;margin:0 0 4px;">Drop files here or <span style="color:#6366F1;">browse</span></p>
-                        <p style="font-size:11px;color:#9CA3AF;margin:0;">PDF, Word, Images, Video — up to 20 MB</p>
+                        <p style="font-size:11px;color:#9CA3AF;margin:0;">PDF, Word, Images, Video</p>
                         <input type="file" name="attachments[]" multiple x-ref="fileInput"
                                @change="handleFiles($event)" style="display:none;">
                     </div>
@@ -1068,4 +1085,106 @@ $statDefs = [
 </div>
 
 </div>
+
+{{-- Shared project row action dropdown --}}
+<div id="proj-row-menu"
+     style="display:none;position:fixed;background:#fff;border:1px solid #E5E7EB;border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.12);min-width:160px;z-index:9998;padding:4px 0;">
+    <a id="prm-view" href="#"
+       style="display:flex;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#374151;text-decoration:none;"
+       onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+        <i class="fas fa-eye" style="width:14px;font-size:12px;color:#4F46E5;"></i> View
+    </a>
+    <a id="prm-edit" href="#"
+       style="display:flex;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#374151;text-decoration:none;"
+       onmouseover="this.style.background='#F9FAFB'" onmouseout="this.style.background=''">
+        <i class="fas fa-pencil" style="width:14px;font-size:12px;color:#6B7280;"></i> Edit
+    </a>
+    <button id="prm-reopen"
+            style="display:none;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#D97706;background:none;border:none;cursor:pointer;width:100%;text-align:left;"
+            onmouseover="this.style.background='#FFFBEB'" onmouseout="this.style.background=''">
+        <i class="fas fa-rotate-right" style="width:14px;font-size:12px;"></i> Reopen
+    </button>
+    <button id="prm-close"
+            style="display:none;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#16A34A;background:none;border:none;cursor:pointer;width:100%;text-align:left;"
+            onmouseover="this.style.background='#F0FDF4'" onmouseout="this.style.background=''">
+        <i class="fas fa-check" style="width:14px;font-size:12px;"></i> Close
+    </button>
+    <div id="prm-sep" style="display:none;border-top:1px solid #F3F4F6;margin:3px 0;"></div>
+    <button id="prm-delete"
+            style="display:none;align-items:center;gap:10px;padding:9px 15px;font-size:13px;color:#DC2626;background:none;border:none;cursor:pointer;width:100%;text-align:left;"
+            onmouseover="this.style.background='#FEF2F2'" onmouseout="this.style.background=''">
+        <i class="fas fa-trash" style="width:14px;font-size:12px;"></i> Delete
+    </button>
+</div>
+
+<form id="proj-row-reopen-form" method="POST" style="display:none;">@csrf</form>
+<form id="proj-row-close-form"  method="POST" style="display:none;">@csrf</form>
+<form id="proj-row-delete-form" method="POST" style="display:none;">@csrf @method('DELETE')</form>
+
+<script>
+function openProjMenu(evt, btn) {
+    evt.stopPropagation();
+    const menu      = document.getElementById('proj-row-menu');
+    const reopenUrl = btn.dataset.reopenUrl;
+    const closeUrl  = btn.dataset.closeUrl;
+    const deleteUrl = btn.dataset.deleteUrl;
+    const name      = btn.dataset.name;
+
+    document.getElementById('prm-view').href = btn.dataset.view;
+    document.getElementById('prm-edit').href = btn.dataset.edit;
+
+    const prmReopen = document.getElementById('prm-reopen');
+    const prmClose  = document.getElementById('prm-close');
+    const prmSep    = document.getElementById('prm-sep');
+    const prmDelete = document.getElementById('prm-delete');
+
+    if (reopenUrl) {
+        prmReopen.style.display = 'flex';
+        prmClose.style.display  = 'none';
+        prmReopen.onclick = () => {
+            closeProjMenu();
+            if (!confirm('Reopen "' + name + '" and set it back to Active?')) return;
+            const f = document.getElementById('proj-row-reopen-form');
+            f.action = reopenUrl; f.submit();
+        };
+    } else {
+        prmReopen.style.display = 'none';
+        prmClose.style.display  = 'flex';
+        prmClose.onclick = () => {
+            closeProjMenu();
+            if (!confirm('Close "' + name + '" and mark it as Completed?')) return;
+            const f = document.getElementById('proj-row-close-form');
+            f.action = closeUrl; f.submit();
+        };
+    }
+
+    if (deleteUrl) {
+        prmSep.style.display    = 'block';
+        prmDelete.style.display = 'flex';
+        prmDelete.onclick = () => {
+            closeProjMenu();
+            if (!confirm('Delete "' + name + '"?')) return;
+            const f = document.getElementById('proj-row-delete-form');
+            f.action = deleteUrl; f.submit();
+        };
+    } else {
+        prmSep.style.display    = 'none';
+        prmDelete.style.display = 'none';
+    }
+
+    menu.style.display = 'block';
+    const rect       = btn.getBoundingClientRect();
+    const menuH      = menu.offsetHeight || 180;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow > menuH + 8 ? rect.bottom + 6 : rect.top - menuH - 6;
+    menu.style.top  = top + 'px';
+    menu.style.left = (rect.right - menu.offsetWidth) + 'px';
+}
+function closeProjMenu() { document.getElementById('proj-row-menu').style.display = 'none'; }
+document.addEventListener('click', function(e) {
+    const menu = document.getElementById('proj-row-menu');
+    if (menu && !menu.contains(e.target)) closeProjMenu();
+});
+document.addEventListener('scroll', closeProjMenu, true);
+</script>
 @endsection

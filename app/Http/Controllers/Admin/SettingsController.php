@@ -2206,6 +2206,36 @@ class SettingsController extends Controller
         return response()->json(['files' => $nas->listNasBackups()]);
     }
 
+    public function migrateNasBackupToLocal(Request $request)
+    {
+        $request->validate([
+            'nas_path' => 'required|string|max:500',
+            'filename' => 'required|string|max:255',
+        ]);
+
+        $nas = app(NasService::class);
+        if (! $nas->isEnabled()) {
+            return response()->json(['ok' => false, 'msg' => 'NAS is not enabled.']);
+        }
+
+        $filename = basename($request->input('filename'));
+        $dir = storage_path('app/backups');
+        $destPath = $dir.'/'.$filename;
+        if (file_exists($destPath)) {
+            $destPath = $dir.'/'.now()->format('Ymd_His').'_'.$filename;
+        }
+
+        if (! $nas->pullFromNas($request->input('nas_path'), $destPath)) {
+            return response()->json(['ok' => false, 'msg' => 'Failed to copy backup from NAS. Check NAS connection.']);
+        }
+
+        AuditLogger::log('system.backup', null, 'NAS backup copied to local server: '.basename($destPath), [
+            'nas_path' => $request->input('nas_path'),
+        ]);
+
+        return response()->json(['ok' => true, 'msg' => 'Copied to server: storage/app/backups/'.basename($destPath)]);
+    }
+
     public function listServerBackups()
     {
         $dir = storage_path('app/backups');
@@ -2220,6 +2250,27 @@ class SettingsController extends Controller
         usort($files, fn ($a, $b) => strcmp($b['modified'], $a['modified']));
 
         return response()->json(['files' => $files, 'path' => $dir]);
+    }
+
+    public function deleteServerBackup(Request $request)
+    {
+        $request->validate(['filename' => 'required|string|max:255']);
+
+        $filename = basename($request->input('filename'));
+        $path = storage_path('app/backups/'.$filename);
+
+        if (! file_exists($path)) {
+            return response()->json(['ok' => false, 'msg' => 'File not found on server: '.$filename]);
+        }
+
+        $sizeMb = round(filesize($path) / 1048576, 1);
+        @unlink($path);
+
+        AuditLogger::log('system.backup', null, 'Local backup deleted from server: '.$filename, [
+            'size_mb' => $sizeMb,
+        ]);
+
+        return response()->json(['ok' => true, 'msg' => 'Deleted '.$filename.' ('.$sizeMb.' MB freed).']);
     }
 
     public function restoreFromServer(Request $request)
@@ -2566,62 +2617,26 @@ class SettingsController extends Controller
             }
         }
 
-        // Disable foreign key checks for SQLite so deletes don't fail on constraints
+        // Disable foreign key checks for SQLite so deletes don't fail on constraints.
+        // NOTE: this also disables cascadeOnDelete(), so every child/pivot table below
+        // must be truncated explicitly — nothing cascades automatically while this is off.
         DB::statement('PRAGMA foreign_keys = OFF');
 
         try {
             match ($type) {
-                'notifications' => DB::table('notifications')->delete(),
-
-                'messages' => DB::table('messages')->delete(),
-
+                'notifications' => $this->clearNotifications(),
+                'messages' => $this->clearMessages(),
                 'audit_logs' => DB::table('audit_logs')->delete(),
-
-                'task_activity' => (function () {
-                    DB::table('activity_reactions')->delete();
-                    DB::table('activity_replies')->delete();
-                    DB::table('task_logs')->delete();
-                    DB::table('task_comments')->delete();
-                    DB::table('task_submissions')->delete();
-                })(),
-
-                'tasks_projects' => (function () {
-                    DB::table('task_social_posts')->delete();
-                    DB::table('task_transfers')->delete();
-                    DB::table('task_assignees')->delete();
-                    DB::table('task_submissions')->delete();
-                    DB::table('task_comments')->delete();
-                    DB::table('task_logs')->delete();
-                    DB::table('activity_reactions')->delete();
-                    DB::table('activity_replies')->delete();
-                    DB::table('tasks')->delete();
-                    DB::table('project_attachments')->delete();
-                    DB::table('project_user')->delete();
-                    DB::table('projects')->delete();
-                    DB::table('calendar_events')->delete();
-                    DB::table('meetings')->delete();
-                })(),
-
+                'task_activity' => $this->clearTaskActivity(),
+                'tasks_projects' => $this->clearTasksAndProjects(),
                 'full_reset' => (function () {
-                    DB::table('notifications')->delete();
-                    DB::table('messages')->delete();
+                    $this->clearNotifications();
+                    $this->clearMessages();
                     DB::table('message_group_users')->delete();
                     DB::table('message_groups')->delete();
                     DB::table('audit_logs')->delete();
-                    DB::table('task_social_posts')->delete();
-                    DB::table('task_transfers')->delete();
-                    DB::table('task_assignees')->delete();
-                    DB::table('task_submissions')->delete();
-                    DB::table('task_comments')->delete();
-                    DB::table('task_logs')->delete();
-                    DB::table('activity_reactions')->delete();
-                    DB::table('activity_replies')->delete();
-                    DB::table('tasks')->delete();
-                    DB::table('project_attachments')->delete();
-                    DB::table('project_user')->delete();
-                    DB::table('projects')->delete();
-                    DB::table('calendar_events')->delete();
-                    DB::table('meetings')->delete();
+                    $this->clearTasksAndProjects();
+                    $this->clearBusinessRecords();
                 })(),
             };
         } finally {
@@ -2634,7 +2649,7 @@ class SettingsController extends Controller
             'audit_logs' => 'Audit logs cleared.',
             'task_activity' => 'Task logs, comments and submissions cleared.',
             'tasks_projects' => 'All tasks, projects and social media posts cleared.',
-            'full_reset' => 'Full data reset completed. Users and settings are untouched.',
+            'full_reset' => 'Full data reset completed. Users and settings are untouched — everything else was cleared.',
         ];
 
         $auditMeta = ['type' => $type];
@@ -2646,6 +2661,76 @@ class SettingsController extends Controller
         AuditLogger::log('data.cleared', null, 'Data cleared: '.$type, $auditMeta);
 
         return back()->with('success', $labels[$type])->withFragment('danger');
+    }
+
+    // ── Clear-data building blocks ──────────────────────────────────────
+
+    private function clearNotifications(): void
+    {
+        DB::table('notifications')->delete();
+    }
+
+    private function clearMessages(): void
+    {
+        DB::table('message_reactions')->delete();
+        DB::table('direct_chat_clears')->delete();
+        DB::table('messages')->delete();
+        $this->purgeUploadDir('messages');
+    }
+
+    private function clearTaskActivity(): void
+    {
+        DB::table('activity_reactions')->delete();
+        DB::table('activity_replies')->delete();
+        DB::table('task_comment_edits')->delete();
+        DB::table('task_submission_edits')->delete();
+        DB::table('task_logs')->delete();
+        DB::table('task_comments')->delete();
+        DB::table('task_submissions')->delete();
+        $this->purgeUploadDir('task-comment-files');
+        $this->purgeUploadDir('task-submissions');
+    }
+
+    private function clearTasksAndProjects(): void
+    {
+        $this->clearTaskActivity();
+        DB::table('task_social_posts')->delete();
+        DB::table('task_transfers')->delete();
+        DB::table('task_assignees')->delete();
+        DB::table('task_dependencies')->delete();
+        DB::table('deadline_extension_requests')->delete();
+        DB::table('task_timer_segments')->delete();
+        DB::table('tasks')->delete();
+        DB::table('project_attachments')->delete();
+        DB::table('project_user')->delete();
+        DB::table('projects')->delete();
+        DB::table('meeting_user')->delete();
+        DB::table('meetings')->delete();
+        DB::table('calendar_events')->delete();
+        $this->purgeUploadDir('task-attachments');
+        $this->purgeUploadDir('project-attachments');
+    }
+
+    private function clearBusinessRecords(): void
+    {
+        DB::table('social_account_users')->delete();
+        DB::table('social_accounts')->delete();
+        DB::table('subscription_users')->delete();
+        DB::table('subscription_attachments')->delete();
+        DB::table('subscriptions')->delete();
+        DB::table('domain_responsible_users')->delete();
+        DB::table('domain_attachments')->delete();
+        DB::table('domains')->delete();
+        DB::table('customers')->delete();
+        $this->purgeUploadDir('subscriptions');
+        $this->purgeUploadDir('domain-attachments');
+        $this->purgeUploadDir('customer-logos');
+    }
+
+    private function purgeUploadDir(string $dir): void
+    {
+        Storage::disk('public')->deleteDirectory($dir);
+        Storage::disk('public')->makeDirectory($dir);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────
