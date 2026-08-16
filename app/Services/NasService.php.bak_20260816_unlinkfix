@@ -434,21 +434,13 @@ class NasService
 
         abort_if($code !== 0 || !file_exists($tmpFile), 404, 'File not available on network storage.');
 
-        $cleanup = function () use ($tmpFile) {
-            if (is_file($tmpFile)) {
-                @unlink($tmpFile);
-            }
-        };
-
         if ($inline) {
             $response = response()->file($tmpFile);
-            app()->terminating($cleanup);
+            $response->deleteFileAfterSend(true);
             return $response;
         }
 
-        $response = response()->download($tmpFile, $filename);
-        app()->terminating($cleanup);
-        return $response;
+        return response()->download($tmpFile, $filename)->deleteFileAfterSend(true);
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

@@ -1,0 +1,126 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Customer;
+use App\Models\Setting;
+use App\Models\Task;
+use App\Models\TaskLog;
+use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+
+class ReportPdfService
+{
+    private function userTaskScope(User $user)
+    {
+        return Task::where(function ($q) use ($user) {
+            $q->where('assigned_to', $user->id)
+              ->orWhere('social_assigned_to', $user->id)
+              ->orWhereExists(fn ($sub) => $sub->selectRaw('1')
+                  ->from('task_assignees')
+                  ->whereColumn('task_assignees.task_id', 'tasks.id')
+                  ->where('task_assignees.user_id', $user->id));
+        });
+    }
+
+    public function userHasTasks(User $user): bool
+    {
+        return $this->userTaskScope($user)->exists();
+    }
+
+    public function buildUserReportPdf(User $user): string
+    {
+        $doneStatuses = ['approved', 'delivered', 'archived'];
+
+        $totalTasks     = $this->userTaskScope($user)->count();
+        $completedTasks = $this->userTaskScope($user)->whereIn('status', $doneStatuses)->count();
+        $pendingTasks   = $this->userTaskScope($user)->whereIn('status', ['in_progress', 'paused'])->count();
+        $inReviewTasks  = $this->userTaskScope($user)->whereIn('status', ['submitted', 'revision_requested'])->count();
+        $completionRate = $totalTasks > 0 ? round($completedTasks / $totalTasks * 100) : 0;
+
+        $tasks = $this->userTaskScope($user)
+            ->with(['project:id,name,is_quick'])
+            ->orderByRaw('CASE WHEN deadline IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('deadline')
+            ->get();
+
+        $appName      = Setting::get('app_name', config('app.name'));
+        $companyName  = Setting::get('company_name', '') ?: $appName;
+        $logoBase64   = $this->imageBase64FromStorage(Setting::get('logo_path', ''));
+        $avatarBase64 = $user->avatar ? $this->imageBase64FromStorage($user->avatar) : '';
+        $generatedAt  = now()->format('d M Y, H:i');
+
+        return Pdf::loadView('user.reports.pdf-export', compact(
+            'user', 'tasks', 'totalTasks', 'completedTasks', 'pendingTasks', 'inReviewTasks',
+            'completionRate', 'logoBase64', 'avatarBase64', 'appName', 'companyName', 'generatedAt'
+        ))->setPaper('a4', 'portrait')->output();
+    }
+
+    private function customerTaskScope(Customer $customer)
+    {
+        return Task::where(function ($q) use ($customer) {
+            $q->where('customer_id', $customer->id)
+              ->orWhereHas('project', fn ($p) => $p->where('customer_id', $customer->id)->where('is_quick', false));
+        });
+    }
+
+    public function customerHasTasks(Customer $customer): bool
+    {
+        return $this->customerTaskScope($customer)->exists();
+    }
+
+    public function buildCustomerReportPdf(Customer $customer): string
+    {
+        $allTasks = $this->customerTaskScope($customer)->with(['assignee:id,name', 'project:id,name,is_quick'])->orderBy('created_at')->get();
+        $taskIds  = $allTasks->pluck('id');
+
+        $total     = $allTasks->count();
+        $completed = $allTasks->whereIn('status', ['delivered', 'approved'])->count();
+        $active    = $allTasks->whereNotIn('status', ['delivered', 'approved', 'archived'])->count();
+        $overdue   = $allTasks->filter(fn ($t) => $t->deadline
+            && Carbon::parse($t->deadline)->isPast()
+            && !in_array($t->status, ['delivered', 'approved', 'archived'])
+        )->count();
+        $completionRate = $total > 0 ? round($completed / $total * 100) : 0;
+
+        $totalRevisions = TaskLog::whereIn('task_id', $taskIds)
+            ->where('action', 'status_updated_revision_requested')
+            ->count();
+        $revisionRate = $total > 0 ? round($totalRevisions / $total * 100) : 0;
+
+        $monthlyCreated = $allTasks->groupBy(fn ($t) => $t->created_at->format('Y-m'))->map->count()->sortKeys();
+
+        $workload = $allTasks
+            ->groupBy('assigned_to')
+            ->map(fn ($g) => [
+                'name'      => $g->first()->assignee?->name ?? 'Unassigned',
+                'total'     => $g->count(),
+                'delivered' => $g->whereIn('status', ['delivered', 'approved'])->count(),
+            ])
+            ->sortByDesc('total')
+            ->values();
+
+        $appName     = Setting::get('app_name', config('app.name'));
+        $companyName = Setting::get('company_name', '') ?: $appName;
+        $logoBase64  = $this->imageBase64FromStorage(Setting::get('logo_path', ''));
+        $generatedAt = now()->format('d M Y, H:i');
+
+        return Pdf::loadView('admin.customers.pdf-export', compact(
+            'customer', 'allTasks', 'total', 'completed', 'active', 'overdue', 'completionRate',
+            'totalRevisions', 'revisionRate', 'monthlyCreated', 'workload',
+            'appName', 'companyName', 'logoBase64', 'generatedAt'
+        ))->setPaper('a4', 'portrait')->output();
+    }
+
+    private function imageBase64FromStorage(string $storagePath): string
+    {
+        if (empty($storagePath)) return '';
+        $full = storage_path('app/public/' . ltrim($storagePath, '/'));
+        if (!file_exists($full)) return '';
+        $ext  = strtolower(pathinfo($full, PATHINFO_EXTENSION));
+        $mime = match ($ext) { 'png' => 'png', 'gif' => 'gif', 'webp' => 'webp', default => 'jpeg' };
+
+        return 'data:image/' . $mime . ';base64,' . base64_encode(file_get_contents($full));
+    }
+}

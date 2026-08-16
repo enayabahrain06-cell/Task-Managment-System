@@ -172,11 +172,6 @@
             <i class="fa fa-plus"></i> New Project
         </button>
         @endif
-        @if(auth()->user()->hasPermission('manage_tasks'))
-        <button @click="quickOpen = true" class="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition border border-gray-200 shadow-sm">
-            <i class="fa fa-bolt text-amber-500"></i> Quick Task
-        </button>
-        @endif
     </div>
 </div>
 

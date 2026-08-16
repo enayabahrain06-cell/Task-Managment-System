@@ -10,10 +10,12 @@ use App\Models\TaskCommentEdit;
 use App\Models\TaskLog;
 use App\Models\TaskSubmission;
 use App\Models\TaskSubmissionEdit;
+use App\Models\DeadlineExtensionRequest;
 use App\Models\TaskTransfer;
 use App\Models\Customer;
 use App\Models\Project;
 use App\Models\User;
+use App\Notifications\DeadlineExtensionResponded;
 use App\Notifications\TaskCommentPosted;
 use App\Notifications\TaskDelivered;
 use App\Notifications\TaskReassigned;
@@ -86,7 +88,7 @@ class TaskController extends Controller
 
         $tasks = $isDoneTab
             ? $query->orderBy('updated_at', 'desc')->paginate(10)->withQueryString()
-            : $query->orderByRaw('CASE WHEN deadline IS NULL THEN 1 ELSE 0 END')->orderBy('deadline')->paginate(24)->withQueryString();
+            : $query->orderBy('created_at', 'desc')->paginate(24)->withQueryString();
 
         $projects  = \App\Models\Project::where('is_quick', false)->orderBy('name')->get(['id','name']);
         $customers = \App\Models\Customer::orderBy('name')->get(['id','name']);
@@ -917,5 +919,58 @@ class TaskController extends Controller
         );
 
         return back()->with('success', '"' . $filename . '" deleted.');
+    }
+
+    public function approveDeadlineExtension(Task $task, DeadlineExtensionRequest $extensionRequest)
+    {
+        $extensionRequest->update([
+            'status'       => 'approved',
+            'responded_by' => auth()->id(),
+            'responded_at' => now(),
+        ]);
+
+        $oldDeadline = $task->deadline?->format('Y-m-d');
+        $task->update(['deadline' => $extensionRequest->requested_deadline]);
+
+        \App\Models\TaskLog::create([
+            'task_id'  => $task->id,
+            'user_id'  => auth()->id(),
+            'action'   => 'deadline_updated',
+            'note'     => 'Deadline extended via admin approval.',
+            'metadata' => [
+                'old_deadline'    => $oldDeadline,
+                'new_deadline'    => $extensionRequest->requested_deadline->format('Y-m-d'),
+                'changed_by_name' => auth()->user()->name,
+                'reason'          => 'Extension request approved',
+            ],
+        ]);
+
+        $extensionRequest->user->notify(new DeadlineExtensionResponded($task, $extensionRequest));
+
+        return back()->with('success', 'Deadline extension approved — task deadline updated.');
+    }
+
+    public function rejectDeadlineExtension(Request $request, Task $task, DeadlineExtensionRequest $extensionRequest)
+    {
+        $request->validate(['admin_note' => 'required|string|min:3|max:1000']);
+
+        $extensionRequest->update([
+            'status'       => 'rejected',
+            'admin_note'   => $request->input('admin_note'),
+            'responded_by' => auth()->id(),
+            'responded_at' => now(),
+        ]);
+
+        \App\Models\TaskLog::create([
+            'task_id'  => $task->id,
+            'user_id'  => auth()->id(),
+            'action'   => 'deadline_extension_rejected',
+            'note'     => 'Deadline extension request rejected.' . ($request->input('admin_note') ? ' Note: ' . $request->input('admin_note') : ''),
+            'metadata' => ['admin_note' => $request->input('admin_note')],
+        ]);
+
+        $extensionRequest->user->notify(new DeadlineExtensionResponded($task, $extensionRequest));
+
+        return back()->with('success', 'Deadline extension rejected.');
     }
 }

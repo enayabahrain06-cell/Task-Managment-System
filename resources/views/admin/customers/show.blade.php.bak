@@ -1188,6 +1188,78 @@
         </div>
     </div>
 
+    {{-- ══ Domains ══ --}}
+    @php
+        $customerDomains = $customer->domains;
+        $domainCycles    = App\Models\Domain::billingCycleOptions();
+    @endphp
+    <div style="background:#fff;border-radius:14px;border:1px solid #F0F0F0;box-shadow:0 1px 4px rgba(0,0,0,.04);padding:22px;margin-top:20px;">
+
+        {{-- Header --}}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:8px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#EEF2FF,#E0E7FF);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(79,70,229,.15);">
+                    <i class="fas fa-globe" style="font-size:14px;color:#4F46E5;"></i>
+                </span>
+                <div>
+                    <h2 style="font-size:13px;font-weight:700;color:#111827;text-transform:uppercase;letter-spacing:.06em;margin:0;">Domains</h2>
+                    <p style="font-size:11px;color:#9CA3AF;margin:0;font-weight:500;">{{ $customerDomains->count() }} {{ Str::plural('domain', $customerDomains->count()) }} linked</p>
+                </div>
+            </div>
+            <a href="{{ route('admin.domains.index', ['customer_id' => $customer->id]) }}"
+               style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#4F46E5;text-decoration:none;padding:7px 14px;border-radius:8px;background:#EEF2FF;border:1px solid #C7D2FE;transition:all .15s;"
+               onmouseover="this.style.background='#E0E7FF';this.style.borderColor='#A5B4FC';" onmouseout="this.style.background='#EEF2FF';this.style.borderColor='#C7D2FE';">
+                <i class="fas fa-arrow-up-right-from-square" style="font-size:10px;"></i>
+                Manage Domains
+            </a>
+        </div>
+
+        @if($customerDomains->isEmpty())
+            <div style="text-align:center;padding:36px 0 20px;">
+                <span style="width:56px;height:56px;border-radius:16px;background:#F3F4F6;display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;">
+                    <i class="fas fa-globe" style="font-size:22px;color:#D1D5DB;"></i>
+                </span>
+                <p style="font-size:13px;font-weight:600;color:#6B7280;margin:0 0 4px;">No domains linked</p>
+                <p style="font-size:12px;color:#9CA3AF;margin:0;">Domains assigned to this customer will appear here.</p>
+            </div>
+        @else
+            <div style="display:flex;flex-direction:column;gap:10px;">
+                @foreach($customerDomains as $d)
+                    @php
+                        $dStatus  = $d->status;
+                        $stBg     = match($dStatus) { 'active'=>'#DCFCE7', 'expiring_soon'=>'#FEF3C7', 'expired'=>'#FEE2E2', default=>'#F3F4F6' };
+                        $stColor  = match($dStatus) { 'active'=>'#16A34A', 'expiring_soon'=>'#D97706', 'expired'=>'#DC2626', default=>'#6B7280' };
+                        $stLabel  = match($dStatus) { 'active'=>'Active', 'expiring_soon'=>'Expiring Soon', 'expired'=>'Expired', default=>ucfirst($dStatus) };
+                    @endphp
+                    <a href="{{ route('admin.domains.show', $d->id) }}"
+                       style="display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:14px;padding:14px 18px;border:1px solid #E5E7EB;border-radius:12px;text-decoration:none;transition:box-shadow .15s;"
+                       onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,.07)'" onmouseout="this.style.boxShadow='none'">
+                        <div style="min-width:0;">
+                            <p style="font-size:13px;font-weight:700;color:#111827;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $d->domain }}</p>
+                            <p style="font-size:11px;color:#9CA3AF;margin:2px 0 0;">
+                                {{ $d->registrar ?: 'No registrar' }}
+                                @if($d->responsibleUsers->isNotEmpty())
+                                &middot; {{ $d->responsibleUsers->pluck('name')->implode(', ') }}
+                                @endif
+                            </p>
+                        </div>
+                        <div style="text-align:right;">
+                            <p style="font-size:12px;font-weight:600;color:#374151;margin:0;">{{ format_money($d->cost, $d->currency) }}</p>
+                            <p style="font-size:10.5px;color:#9CA3AF;margin:2px 0 0;">/ {{ $domainCycles[$d->billing_cycle] ?? $d->billing_cycle }}</p>
+                        </div>
+                        <div style="text-align:right;min-width:90px;">
+                            <p style="font-size:12px;color:#374151;margin:0;">{{ $d->expires_at ? $d->expires_at->format('d M Y') : '—' }}</p>
+                            <p style="font-size:10.5px;color:#9CA3AF;margin:2px 0 0;">expires</p>
+                        </div>
+                        <span style="display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:{{ $stBg }};color:{{ $stColor }};white-space:nowrap;">
+                            {{ $stLabel }}
+                        </span>
+                    </a>
+                @endforeach
+            </div>
+        @endif
+    </div>
+
     {{-- ══ Social Accounts ══ --}}
     @php
         $socialAccounts = $customer->socialAccounts;
